@@ -11,13 +11,13 @@ import time
 import time
 import pygame
 import pybullet as p
-from gibson.core.render.profiler import Profiler
-from gibson.learn.completion import CompletionNet
+from gibson2.core.render.profiler import Profiler
+from gibson2.learn.completion import CompletionNet
 import cv2
 import torch.nn as nn
 import torch
 from torch.autograd import Variable
-from gibson import assets
+from gibson2 import assets
 
 assets_file_dir = os.path.dirname(assets.__file__)
 

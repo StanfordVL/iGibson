@@ -1,4 +1,4 @@
-from gibson.envs.husky_env import HuskyNavigateEnv
+from gibson2.envs.husky_env import HuskyNavigateEnv
 import argparse
 import os
 import numpy as np

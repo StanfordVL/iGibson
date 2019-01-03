@@ -1,5 +1,5 @@
-from gibson.envs.husky_env import HuskyNavigateEnv
-from gibson.utils.play import play
+from gibson2.envs.husky_env import HuskyNavigateEnv
+from gibson2.utils.play import play
 import argparse
 import os
 
