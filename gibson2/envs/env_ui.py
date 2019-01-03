@@ -16,7 +16,6 @@ import zmq
 import pickle
 import scipy
 
-
 class View(Enum):
     EMPTY = 0
     RGB_FILLED = 1
@@ -26,7 +25,6 @@ class View(Enum):
     SEMANTICS = 5
     PHYSICS = 6
     MAP = 7
-
 
 class SimpleUI():
     '''Static UI'''
@@ -299,71 +297,3 @@ if __name__ == "__main__":
     #main2()
     main4()
 
-
-"""
-##### Deprecated
-class SixViewUI(SimpleUI):
-    '''UI with all modalities, default resolution
-    RGB:       512x512, (top left)
-    Map:       256x256, (top right)
-    Physics:   256x256, (center right)
-    Depth:     256x256, (bottom left)
-    Semantics: 256x256, (bottom right)
-    Normal:    256x256  (bottom right)
-    '''
-    UI_DIM    = (768, 768)
-    POS_RGB   = (0, 0)
-    POS_PHYSICS = (512, 256)
-    POS_MAP   = (512, 0)
-    POS_DEPTH = (0, 512)
-    POS_SEM   = (512, 512)
-    POS_SURF  = (256, 512)
-    def __init__(self):
-        SimpleUI.__init__(self, 768, 768)
-        self._add_all_images()
-
-
-    def add_all_images(self):
-        img_rgb = np.zeros((512, 512, 3))
-        img_map = np.zeros((256, 256, 3))
-        img_physics = np.zeros((256, 256, 3))
-        img_sem = np.zeros((256, 256, 3))
-        img_surf = np.zeros((256, 256, 3))
-        img_depth = np.zeros((256, 256, 3))
-
-        img_rgb.fill(100)
-        img_map.fill(120)
-        img_physics.fill(140)
-        img_depth.fill(120)
-        img_sem.fill(180)
-        img_surf.fill(200)
-
-        self.add_image(img_rgb, self.POS_RGB[0], self.POS_RGB[1])
-        self.add_image(img_sem, self.POS_SEM[0], self.POS_SEM[1])
-        self.add_image(img_depth, self.POS_DEPTH[0], self.POS_DEPTH[1])
-        self.add_image(img_physics, self.POS_PHYSICS[0], self.POS_PHYSICS[1])
-        self.add_image(img_surf, self.POS_SURF[0], self.POS_SURF[1])
-        self.add_image(img_map, self.POS_MAP[0], self.POS_MAP[1])
-
-    def update_rgb(self, rgb):
-        #rgb = pygame.transform.rotate(rgb, 90)
-        self.add_image(np.swapaxes(rgb, 0, 1), self.POS_RGB[0], self.POS_RGB[1])
-
-    def update_sem(self, sem):
-        #sem = pygame.transform.rotate(sem, 90)
-        self.add_image(np.swapaxes(sem, 0, 1), self.POS_SEM[0], self.POS_SEM[1])
-
-    def update_physics(self, physics):
-        #physics = pygame.transform.rotate(physics, 90)
-        self.add_image(np.swapaxes(physics, 0, 1), self.POS_PHYSICS[0], self.POS_PHYSICS[1])
-
-    def update_depth(self, depth):
-        #depth = pygame.transform.rotate(depth, 90)
-        self.add_image(np.swapaxes(depth, 0, 1), self.POS_DEPTH[0], self.POS_DEPTH[1])
-
-    def update_normal(self, surf):
-        self.add_image(np.swapaxes(surf, 0, 1), self.POS_SURF[0], self.POS_SURF[1])
-
-    def update_map(self, map_img):
-        self.add_image(np.swapaxes(map_img, 0, 1), self.POS_MAP[0], self.POS_MAP[1])
-"""

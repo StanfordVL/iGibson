@@ -660,7 +660,7 @@ class CameraRobotEnv(BaseRobotEnv):
         sys.excepthook = camera_multi_excepthook
         enable_render_smooth = 0
 
-        dr_path = osp.join(osp.dirname(osp.abspath(gibson.__file__)), 'core', 'channels', 'depth_render')
+        dr_path = osp.join(osp.dirname(osp.abspath(gibson2.__file__)), 'core', 'channels', 'depth_render')
         cur_path = os.getcwd()
         os.chdir(dr_path)
 
@@ -729,7 +729,7 @@ class SemanticRobotEnv(CameraRobotEnv):
             print(' %s: %s' %(exctype.__name__, value))
 
         sys.excepthook = semantic_excepthook
-        dr_path = osp.join(osp.dirname(osp.abspath(gibson.__file__)), 'core', 'channels', 'depth_render')
+        dr_path = osp.join(osp.dirname(osp.abspath(gibson2.__file__)), 'core', 'channels', 'depth_render')
         cur_path = os.getcwd()
         os.chdir(dr_path)
         load_semantic  = "./semantic --modelpath {} -r {} ".format(self.model_path, self._semantic_source)
