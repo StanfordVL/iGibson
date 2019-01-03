@@ -7,15 +7,15 @@ os.sys.path.insert(0,parentdir)
 
 import gym, logging
 from mpi4py import MPI
-from gibson.envs.ant_env import AntClimbEnv
+from gibson2.envs.ant_env import AntClimbEnv
 from baselines.common import set_global_seeds
-from gibson.utils import cnn_policy, mlp_policy
-from gibson.utils import pposgd_sensor, pposgd_fuse, fuse_policy
-from gibson.utils import utils
+from gibson2.utils import cnn_policy, mlp_policy
+from gibson2.utils import pposgd_sensor, pposgd_fuse, fuse_policy
+from gibson2.utils import utils
 import baselines.common.tf_util as U
 import datetime
 from baselines import logger
-from gibson.utils.monitor import Monitor
+from gibson2.utils.monitor import Monitor
 import os.path as osp
 import random
 import sys

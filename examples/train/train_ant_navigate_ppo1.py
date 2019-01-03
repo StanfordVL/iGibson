@@ -6,10 +6,10 @@ os.sys.path.insert(0,parentdir)
 
 import gym, logging
 from mpi4py import MPI
-from gibson.envs.ant_env import AntNavigateEnv
+from gibson2.envs.ant_env import AntNavigateEnv
 from baselines.common import set_global_seeds
-from gibson.utils import pposgd_sensor, pposgd_simple
-from gibson.utils import cnn_policy, mlp_policy
+from gibson2.utils import pposgd_sensor, pposgd_simple
+from gibson2.utils import cnn_policy, mlp_policy
 import baselines.common.tf_util as U
 import datetime
 from baselines import logger

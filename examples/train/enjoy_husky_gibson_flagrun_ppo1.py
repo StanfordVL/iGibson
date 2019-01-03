@@ -8,11 +8,11 @@ os.sys.path.insert(0, parentdir)
 import tensorflow as tf
 import gym, logging
 from mpi4py import MPI
-from gibson.envs.husky_env import HuskyNavigateEnv, HuskyGibsonFlagRunEnv
+from gibson2.envs.husky_env import HuskyNavigateEnv, HuskyGibsonFlagRunEnv
 from baselines.common import set_global_seeds
 import baselines.common.tf_util as U
-from gibson.utils import cnn_policy, fuse_policy
-from gibson.utils import utils
+from gibson2.utils import cnn_policy, fuse_policy
+from gibson2.utils import utils
 import datetime
 from baselines import logger
 from baselines import bench

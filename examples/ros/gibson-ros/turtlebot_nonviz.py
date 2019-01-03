@@ -1,6 +1,6 @@
 #!/usr/bin/python
-from gibson.envs.mobile_robots_env import TurtlebotNavigateEnv
-from gibson.utils.play import play
+from gibson2.envs.mobile_robots_env import TurtlebotNavigateEnv
+from gibson2.utils.play import play
 import argparse
 import os
 import rospy
@@ -17,7 +17,7 @@ import matplotlib
 import time
 import pygame
 import pybullet as p
-from gibson.core.render.profiler import Profiler
+from gibson2.core.render.profiler import Profiler
 
 rospack = rospkg.RosPack()
 path = rospack.get_path('gibson-ros')

@@ -1,5 +1,5 @@
-from gibson.envs.mobile_robots_env import JRNavigateEnv
-from gibson.utils.play import play
+from gibson2.envs.mobile_robots_env import JRNavigateEnv
+from gibson2.utils.play import play
 import argparse
 import os
 

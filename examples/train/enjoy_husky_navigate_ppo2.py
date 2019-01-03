@@ -6,17 +6,17 @@ os.sys.path.insert(0,parentdir)
 
 import gym, logging
 from mpi4py import MPI
-from gibson.envs.husky_env import HuskyNavigateEnv
+from gibson2.envs.husky_env import HuskyNavigateEnv
 from baselines.common import set_global_seeds
 import baselines.common.tf_util as U
-from gibson.utils.fuse_policy2 import CnnPolicy2, MlpPolicy
+from gibson2.utils.fuse_policy2 import CnnPolicy2, MlpPolicy
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
-from gibson.utils import utils
+from gibson2.utils import utils
 import datetime
 from baselines import logger
 #from baselines.ppo2 import ppo2
-from gibson.utils import ppo2
-from gibson.utils.monitor import Monitor
+from gibson2.utils import ppo2
+from gibson2.utils.monitor import Monitor
 import os.path as osp
 import tensorflow as tf
 import random

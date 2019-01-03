@@ -1,5 +1,5 @@
-from gibson.envs.minitaur_env import MinitaurNavigateEnv
-from gibson.utils.play import play
+from gibson2.envs.minitaur_env import MinitaurNavigateEnv
+from gibson2.utils.play import play
 import argparse
 import math
 import os

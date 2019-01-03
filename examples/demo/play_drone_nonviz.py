@@ -1,5 +1,5 @@
-from gibson.envs.drone_env import DroneNavigateEnv
-from gibson.utils.play import play
+from gibson2.envs.drone_env import DroneNavigateEnv
+from gibson2.utils.play import play
 import argparse
 import os
 

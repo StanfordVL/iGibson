@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 import rospkg
 import numpy as np
 from cv_bridge import CvBridge
-from gibson import assets
+from gibson2 import assets
 from torchvision import datasets, transforms
 
 import tf
@@ -22,8 +22,8 @@ import matplotlib
 import time
 import pygame
 import pybullet as p
-from gibson.core.render.profiler import Profiler
-from gibson.learn.completion import CompletionNet
+from gibson2.core.render.profiler import Profiler
+from gibson2.learn.completion import CompletionNet
 import cv2
 import torch.nn as nn
 import torch

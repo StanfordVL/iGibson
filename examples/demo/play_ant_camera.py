@@ -1,5 +1,5 @@
-from gibson.envs.ant_env import AntNavigateEnv
-from gibson.utils.play import play
+from gibson2.envs.ant_env import AntNavigateEnv
+from gibson2.utils.play import play
 import os
 
 config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'configs', 'play', 'play_ant_camera.yaml')
