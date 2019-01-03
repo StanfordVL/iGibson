@@ -14,10 +14,8 @@ class PostInstallCommand(install):
                 install.run(self)
 '''
 
-setup(name='gibson',
-    version='0.3.1',
-    description='Real Environment Developed by Stanford University',
-    url='https://github.com/fxia22/realenv',
+setup(name='gibson2',
+    version='0.0.1',
     author='Stanford University',
     zip_safe=False,
     install_requires=[
@@ -41,10 +39,5 @@ setup(name='gibson',
             'aenum'
     ],
     tests_require=[],
-    # cmdclass={
-    #    'install': PostInstallCommand
-    #}
 )
 
-
-# check_call("bash realenv/envs/build.sh".split())
