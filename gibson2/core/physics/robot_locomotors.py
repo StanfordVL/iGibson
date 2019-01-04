@@ -17,30 +17,24 @@ class WalkerBase(BaseRobot):
     base_position, apply_action, calc_state
     reward
     """
-        
-    def __init__(self, 
-        filename,           # robot file name 
-        robot_name,         # robot name
-        action_dim,         # action dimension
-        power,
-        initial_pos,
-        target_pos,
-        scale,
-        sensor_dim=None,
-        resolution=512,
-        control = 'torque',
-        env = None
-    ):
-        BaseRobot.__init__(self, filename, robot_name, scale, env)
+
+    def __init__(self,
+                 filename,  # robot file name
+                 robot_name,  # robot name
+                 action_dim,  # action dimension
+                 power,
+                 initial_pos,
+                 target_pos,
+                 scale,
+                 sensor_dim=None,
+                 resolution=512,
+                 control='torque',
+                 ):
+        BaseRobot.__init__(self, filename, robot_name, scale)
         self.control = control
         self.resolution = resolution
         self.obs_dim = None
         self.obs_dim = [self.resolution, self.resolution, 0]
-
-        if "rgb_filled" in self.env.config["output"]:
-            self.obs_dim[2] += 3
-        if "depth" in self.env.config["output"]:
-            self.obs_dim[2] += 1
 
         assert type(sensor_dim) == int, "Sensor dimension must be int, got {}".format(type(sensor_dim))
         assert type(action_dim) == int, "Action dimension must be int, got {}".format(type(action_dim))
@@ -56,7 +50,7 @@ class WalkerBase(BaseRobot):
         self.camera_x = 0
         self.target_pos = target_pos
         self.initial_pos = initial_pos
-        self.body_xyz=[0, 0, 0]
+        self.body_xyz = [0, 0, 0]
         self.action_dim = action_dim
         self.scale = scale
         self.angle_to_target = 0
@@ -91,7 +85,7 @@ class WalkerBase(BaseRobot):
     def move_forward(self, forward=0.05):
         x, y, z, w = self.robot_body.get_orientation()
         self.move_by(quat2mat([w, x, y, z]).dot(np.array([forward, 0, 0])))
-        
+
     def move_backward(self, backward=0.05):
         x, y, z, w = self.robot_body.get_orientation()
         self.move_by(quat2mat([w, x, y, z]).dot(np.array([-backward, 0, 0])))
@@ -105,12 +99,12 @@ class WalkerBase(BaseRobot):
         orn = self.robot_body.get_orientation()
         new_orn = qmult((euler2quat(delta, 0, 0)), orn)
         self.robot_body.set_orientation(new_orn)
-        
+
     def get_rpy(self):
         return self.robot_body.bp_pose.rpy()
 
     def apply_action(self, a):
-        #print(self.ordered_joints)
+        # print(self.ordered_joints)
         if self.control == 'torque':
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_torque(self.power * j.power_coef * float(np.clip(a[n], -1, +1)))
@@ -120,8 +114,8 @@ class WalkerBase(BaseRobot):
         elif self.control == 'position':
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_position(a[n])
-        elif type(self.control) is list or type(self.control) is tuple: #if control is a tuple, set different control
-        # type for each joint
+        elif type(self.control) is list or type(self.control) is tuple:  # if control is a tuple, set different control
+            # type for each joint
             for n, j in enumerate(self.ordered_joints):
                 if self.control[n] == 'torque':
                     j.set_motor_torque(self.power * j.power_coef * float(np.clip(a[n], -1, +1)))
@@ -146,7 +140,8 @@ class WalkerBase(BaseRobot):
         body_pose = self.robot_body.pose()
         parts_xyz = np.array([p.pose().xyz() for p in self.parts.values()]).flatten()
         self.body_xyz = (
-        parts_xyz[0::3].mean(), parts_xyz[1::3].mean(), body_pose.xyz()[2])  # torso z is more informative than mean z
+            parts_xyz[0::3].mean(), parts_xyz[1::3].mean(),
+            body_pose.xyz()[2])  # torso z is more informative than mean z
         self.body_rpy = body_pose.rpy()
         z = self.body_xyz[2]
         if self.initial_z == None:
@@ -159,8 +154,9 @@ class WalkerBase(BaseRobot):
         self.walk_target_dist = np.linalg.norm(
             [self.target_pos[1] - self.body_xyz[1], self.target_pos[0] - self.body_xyz[0]])
         self.walk_target_dist_xyz = np.linalg.norm(
-            [self.target_pos[2] - self.body_xyz[2], self.target_pos[0] - self.body_xyz[1], self.target_pos[0] - self.body_xyz[0]])
-        
+            [self.target_pos[2] - self.body_xyz[2], self.target_pos[0] - self.body_xyz[1],
+             self.target_pos[0] - self.body_xyz[0]])
+
         self.angle_to_target = self.walk_target_theta - yaw
         if self.angle_to_target > np.pi:
             self.angle_to_target -= 2 * np.pi
@@ -171,7 +167,7 @@ class WalkerBase(BaseRobot):
 
         self.dist_to_start = np.linalg.norm(np.array(self.body_xyz) - np.array(self.initial_pos))
 
-        debugmode= 0
+        debugmode = 0
         if debugmode:
             print("Robot dsebug mode: walk_height_diff", self.walk_height_diff)
             print("Robot dsebug mode: walk_target_z", self.target_pos[2])
@@ -180,45 +176,40 @@ class WalkerBase(BaseRobot):
         rot_speed = np.array(
             [[np.cos(-yaw), -np.sin(-yaw), 0],
              [np.sin(-yaw), np.cos(-yaw), 0],
-             [        0,             0, 1]]
+             [0, 0, 1]]
         )
         vx, vy, vz = np.dot(rot_speed, self.robot_body.speed())  # rotate speed back to body point of view
 
-        debugmode=0
+        debugmode = 0
         if debugmode:
             print("Robot state", self.target_pos[1] - self.body_xyz[1], self.target_pos[0] - self.body_xyz[0])
 
-        more = np.array([ z-self.initial_z,
-            np.sin(self.angle_to_target), np.cos(self.angle_to_target),
-            0.3* vx , 0.3* vy , 0.3* vz ,  # 0.3 is just scaling typical speed into -1..+1, no physical sense here
-            r, p], dtype=np.float32)
+        more = np.array([z - self.initial_z,
+                         np.sin(self.angle_to_target), np.cos(self.angle_to_target),
+                         0.3 * vx, 0.3 * vy, 0.3 * vz,
+                         # 0.3 is just scaling typical speed into -1..+1, no physical sense here
+                         r, p], dtype=np.float32)
 
         if debugmode:
             print("Robot more", more)
 
-
-        if not 'nonviz_sensor' in self.env.config["output"]:
-            j.fill(0)
-            more.fill(0)
-
-        return np.clip( np.concatenate([more] + [j] + [self.feet_contact]), -5, +5)
+        return np.clip(np.concatenate([more] + [j] + [self.feet_contact]), -5, +5)
 
     def calc_potential(self):
         # progress in potential field is speed*dt, typical speed is about 2-3 meter per second, this potential will change 2-3 per frame (not per second),
         # all rewards have rew/frame units and close to 1.0 (hzyjerry) ==> make rewards similar scale
-        debugmode=0
+        debugmode = 0
         if (debugmode):
             print("calc_potential: self.walk_target_dist x y", self.walk_target_dist)
-            print("robot position", self.body_xyz, "target position", [self.target_pos[0], self.target_pos[1], self.target_pos[2]])
+            print("robot position", self.body_xyz, "target position",
+                  [self.target_pos[0], self.target_pos[1], self.target_pos[2]])
         return - self.walk_target_dist / self.scene.dt
-
 
     def calc_goalless_potential(self):
         return self.dist_to_start / self.scene.dt
 
     def dist_to_target(self):
         return np.linalg.norm(np.array(self.body_xyz) - np.array(self.get_target_position()))
-
 
     def angle_cost(self):
         angle_const = 0.2
@@ -229,13 +220,14 @@ class WalkerBase(BaseRobot):
             print("is forward", is_forward)
             print("angle to target", self.angle_to_target)
             print("diff angle", diff_angle)
-        return -angle_const* diff_angle
+        return -angle_const * diff_angle
 
     def _is_close_to_goal(self):
         body_pose = self.robot_body.pose()
         parts_xyz = np.array([p.pose().xyz() for p in self.parts.values()]).flatten()
         self.body_xyz = (
-        parts_xyz[0::3].mean(), parts_xyz[1::3].mean(), body_pose.xyz()[2])  # torso z is more informative than mean z
+            parts_xyz[0::3].mean(), parts_xyz[1::3].mean(),
+            body_pose.xyz()[2])  # torso z is more informative than mean z
         dist_to_goal = np.linalg.norm([self.body_xyz[0] - self.target_pos[0], self.body_xyz[1] - self.target_pos[1]])
         return dist_to_goal < 2
 
@@ -246,22 +238,21 @@ class WalkerBase(BaseRobot):
         return self.robot_body.get_position() / self.mjcf_scaling
 
 
-
 class Ant(WalkerBase):
     foot_list = ['front_left_foot', 'front_right_foot', 'left_back_foot', 'right_back_foot']
     model_type = "MJCF"
     default_scale = 0.25
 
-    def __init__(self, config, env=None):
+    def __init__(self, config):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         self.mjcf_scaling = scale
-        WalkerBase.__init__(self, "ant.xml", "torso", action_dim=8, 
-                            sensor_dim=28, power=2.5, scale=scale, 
+        WalkerBase.__init__(self, "ant.xml", "torso", action_dim=8,
+                            sensor_dim=28, power=2.5, scale=scale,
                             initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"], 
-                            resolution=config["resolution"], 
-                            env = env)
+                            target_pos=config["target_pos"],
+                            resolution=config["resolution"],
+                            )
         self.r_f = 0.1
         if config["is_discrete"]:
             self.action_space = gym.spaces.Discrete(17)
@@ -308,30 +299,30 @@ class Ant(WalkerBase):
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('1'), ): 0,
-            (ord('2'), ): 1, 
-            (ord('3'), ): 2, 
-            (ord('4'), ): 3, 
-            (ord('5'), ): 4, 
-            (ord('6'), ): 5, 
-            (ord('7'), ): 6, 
-            (ord('8'), ): 7, 
-            (ord('9'), ): 8, 
-            (ord('0'), ): 9, 
-            (ord('q'), ): 10, 
-            (ord('w'), ): 11, 
-            (ord('e'), ): 12, 
-            (ord('r'), ): 13, 
-            (ord('t'), ): 14, 
-            (ord('y'), ): 15, 
+            (ord('1'),): 0,
+            (ord('2'),): 1,
+            (ord('3'),): 2,
+            (ord('4'),): 3,
+            (ord('5'),): 4,
+            (ord('6'),): 5,
+            (ord('7'),): 6,
+            (ord('8'),): 7,
+            (ord('9'),): 8,
+            (ord('0'),): 9,
+            (ord('q'),): 10,
+            (ord('w'),): 11,
+            (ord('e'),): 12,
+            (ord('r'),): 13,
+            (ord('t'),): 14,
+            (ord('y'),): 15,
             (): 4
         }
 
 
 class AntClimber(Ant):
-    def __init__(self, config, env=None):
-        Ant.__init__(self, config, env=env)
-        
+    def __init__(self, config):
+        Ant.__init__(self, config)
+
     def robot_specific_reset(self):
         Ant.robot_specific_reset(self)
         amplify = 1
@@ -343,25 +334,25 @@ class AntClimber(Ant):
         self.jdict["ankle_3"].power_coef = amplify * self.jdict["ankle_3"].power_coef
         self.jdict["ankle_4"].power_coef = amplify * self.jdict["ankle_4"].power_coef
         '''
-        debugmode=0
+        debugmode = 0
         if debugmode:
             for k in self.jdict.keys():
                 print("Power coef", self.jdict[k].power_coef)
 
     def calc_potential(self):
-        #base_potential = Ant.calc_potential(self)
-        #height_coeff   = 3
-        #height_potential = - height_coeff * self.walk_height_diff / self.scene.dt
+        # base_potential = Ant.calc_potential(self)
+        # height_coeff   = 3
+        # height_potential = - height_coeff * self.walk_height_diff / self.scene.dt
         debugmode = 0
         if debugmode:
             print("Ant xyz potential", self.walk_target_dist_xyz)
         return - self.walk_target_dist_xyz / self.scene.dt
-        
+
     def alive_bonus(self, roll, pitch):
         """Alive requires the ant's head to not touch the ground, it's roll
         and pitch cannot be too large"""
-        #return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
-        alive = roll < np.pi/2 and roll > -np.pi/2 and pitch > -np.pi/2 and pitch < np.pi/2
+        # return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
+        alive = roll < np.pi / 2 and roll > -np.pi / 2 and pitch > -np.pi / 2 and pitch < np.pi / 2
         debugmode = 0
         if debugmode:
             print("roll, pitch")
@@ -373,11 +364,16 @@ class AntClimber(Ant):
     def _is_close_to_goal(self):
         body_pose = self.robot_body.pose()
         parts_xyz = np.array([p.pose().xyz() for p in self.parts.values()]).flatten()
-        self.body_xyz = (parts_xyz[0::3].mean(), parts_xyz[1::3].mean(), body_pose.xyz()[2])  # torso z is more informative than mean z
-        dist_to_goal = np.linalg.norm([self.body_xyz[0] - self.target_pos[0], self.body_xyz[1] - self.target_pos[1], self.body_xyz[2] - self.target_pos[2]])
+        self.body_xyz = (
+        parts_xyz[0::3].mean(), parts_xyz[1::3].mean(), body_pose.xyz()[2])  # torso z is more informative than mean z
+        dist_to_goal = np.linalg.norm([self.body_xyz[0] - self.target_pos[0], self.body_xyz[1] - self.target_pos[1],
+                                       self.body_xyz[2] - self.target_pos[2]])
         debugmode = 0
         if debugmode:
-            print(np.linalg.norm([self.body_xyz[0] - self.target_pos[0], self.body_xyz[1] - self.target_pos[1], self.body_xyz[2] - self.target_pos[2]]), [self.body_xyz[0], self.body_xyz[1], self.body_xyz[2]], [self.target_pos[0], self.target_pos[1], self.target_pos[2]])
+            print(np.linalg.norm([self.body_xyz[0] - self.target_pos[0], self.body_xyz[1] - self.target_pos[1],
+                                  self.body_xyz[2] - self.target_pos[2]]),
+                  [self.body_xyz[0], self.body_xyz[1], self.body_xyz[2]],
+                  [self.target_pos[0], self.target_pos[1], self.target_pos[2]])
         return dist_to_goal < 0.5
 
 
@@ -388,16 +384,16 @@ class Humanoid(WalkerBase):
     default_scale = 0.6
     glass_offset = 0.3
 
-    def __init__(self, config, env=None):
+    def __init__(self, config):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         self.mjcf_scaling = scale
-        WalkerBase.__init__(self, "humanoid.xml", "torso", action_dim=17, 
-                            sensor_dim=44, power=0.41, scale=scale, 
+        WalkerBase.__init__(self, "humanoid.xml", "torso", action_dim=17,
+                            sensor_dim=44, power=0.41, scale=scale,
                             initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"], 
-                            resolution=config["resolution"], 
-                            env = env)
+                            target_pos=config["target_pos"],
+                            resolution=config["resolution"],
+                            )
         self.glass_id = None
         self.is_discrete = config["is_discrete"]
         if self.is_discrete:
@@ -410,14 +406,13 @@ class Humanoid(WalkerBase):
     def robot_specific_reset(self):
         humanoidId = -1
         numBodies = p.getNumBodies()
-        for i in range (numBodies):
+        for i in range(numBodies):
             bodyInfo = p.getBodyInfo(i)
             if bodyInfo[1].decode("ascii") == 'humanoid':
                 humanoidId = i
         ## Spherical radiance/glass shield to protect the robot's camera
-        
-        WalkerBase.robot_specific_reset(self)
 
+        WalkerBase.robot_specific_reset(self)
 
         if self.glass_id is None:
             glass_path = os.path.join(self.physics_model_dir, "glass.xml")
@@ -425,18 +420,17 @@ class Humanoid(WalkerBase):
             self.glass_id = glass_id
             p.changeVisualShape(self.glass_id, -1, rgbaColor=[0, 0, 0, 0])
             p.createMultiBody(baseVisualShapeIndex=glass_id, baseCollisionShapeIndex=-1)
-            cid = p.createConstraint(humanoidId, -1, self.glass_id,-1,p.JOINT_FIXED, 
-                jointAxis=[0,0,0], parentFramePosition=[0, 0, self.glass_offset],
-                childFramePosition=[0,0,0])
-        
+            cid = p.createConstraint(humanoidId, -1, self.glass_id, -1, p.JOINT_FIXED,
+                                     jointAxis=[0, 0, 0], parentFramePosition=[0, 0, self.glass_offset],
+                                     childFramePosition=[0, 0, 0])
+
         robot_pos = list(self._get_scaled_position())
         robot_pos[2] += self.glass_offset
         robot_orn = self.get_orientation()
         p.resetBasePositionAndOrientation(self.glass_id, robot_pos, robot_orn)
-                
 
-        self.motor_names  = ["abdomen_z", "abdomen_y", "abdomen_x"]
-        self.motor_power  = [100, 100, 100]
+        self.motor_names = ["abdomen_z", "abdomen_y", "abdomen_x"]
+        self.motor_power = [100, 100, 100]
         self.motor_names += ["right_hip_x", "right_hip_z", "right_hip_y", "right_knee"]
         self.motor_power += [100, 100, 300, 200]
         self.motor_names += ["left_hip_x", "left_hip_z", "left_hip_y", "left_knee"]
@@ -446,7 +440,6 @@ class Humanoid(WalkerBase):
         self.motor_names += ["left_shoulder1", "left_shoulder2", "left_elbow"]
         self.motor_power += [75, 75, 75]
         self.motors = [self.jdict[n] for n in self.motor_names]
-        
 
     def apply_action(self, a):
         if self.is_discrete:
@@ -454,15 +447,15 @@ class Humanoid(WalkerBase):
         else:
             force_gain = 1
             for i, m, power in zip(range(17), self.motors, self.motor_power):
-                m.set_motor_torque( float(force_gain * power*self.power*a[i]) )
-            #m.set_motor_torque(float(force_gain * power * self.power * np.clip(a[i], -1, +1)))
+                m.set_motor_torque(float(force_gain * power * self.power * a[i]))
+            # m.set_motor_torque(float(force_gain * power * self.power * np.clip(a[i], -1, +1)))
 
     def alive_bonus(self, z, pitch):
-        return +2 if z > 0.78 else -1   # 2 here because 17 joints produce a lot of electricity cost just from policy noise, living must be better than dying
-    
+        return +2 if z > 0.78 else -1  # 2 here because 17 joints produce a lot of electricity cost just from policy noise, living must be better than dying
+
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'), ): 0,
+            (ord('w'),): 0,
             (): 1
         }
 
@@ -472,21 +465,21 @@ class Husky(WalkerBase):
     mjcf_scaling = 1
     model_type = "URDF"
     default_scale = 0.6
-    
-    def __init__(self, config, env=None):
+
+    def __init__(self, config):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
-        
-        WalkerBase.__init__(self, "husky.urdf", "base_link", action_dim=4, 
+
+        WalkerBase.__init__(self, "husky.urdf", "base_link", action_dim=4,
                             sensor_dim=23, power=2.5, scale=scale,
                             initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"], 
-                            resolution=config["resolution"], 
-                            env = env)
+                            target_pos=config["target_pos"],
+                            resolution=config["resolution"],
+                            )
         self.is_discrete = config["is_discrete"]
 
         if self.is_discrete:
-            self.action_space = gym.spaces.Discrete(5)        
+            self.action_space = gym.spaces.Discrete(5)
             self.torque = 0.03
             self.action_list = [[self.torque, self.torque, self.torque, self.torque],
                                 [-self.torque, -self.torque, -self.torque, -self.torque],
@@ -498,7 +491,7 @@ class Husky(WalkerBase):
         else:
             action_high = 0.02 * np.ones([4])
             self.action_space = gym.spaces.Box(-action_high, action_high)
-        
+
     def apply_action(self, action):
         if self.is_discrete:
             realaction = self.action_list[action]
@@ -514,7 +507,6 @@ class Husky(WalkerBase):
         else:
             return 0
 
-
     def robot_specific_reset(self):
         WalkerBase.robot_specific_reset(self)
 
@@ -526,10 +518,10 @@ class Husky(WalkerBase):
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'), ): 0, ## forward
-            (ord('s'), ): 1, ## backward
-            (ord('d'), ): 2, ## turn right
-            (ord('a'), ): 3, ## turn left
+            (ord('w'),): 0,  ## forward
+            (ord('s'),): 1,  ## backward
+            (ord('d'),): 2,  ## turn right
+            (ord('a'),): 3,  ## turn left
             (): 4
         }
 
@@ -538,8 +530,6 @@ class Husky(WalkerBase):
 
         angular_speed = self.robot_body.angular_speed()
         return np.concatenate((base_state, np.array(angular_speed)))
-
-
 
 
 class HuskyClimber(Husky):
@@ -553,8 +543,8 @@ class HuskyClimber(Husky):
         Ant.robot_specific_reset(self)
         for j in self.jdict.keys():
             self.jdict[j].power_coef = 1.5 * self.jdict[j].power_coef
-        
-        debugmode=0
+
+        debugmode = 0
         if debugmode:
             for k in self.jdict.keys():
                 print("Power coef", self.jdict[k].power_coef)
@@ -562,29 +552,29 @@ class HuskyClimber(Husky):
 
 class Quadrotor(WalkerBase):
     model_type = "URDF"
-    default_scale=1
-    mjcf_scaling=1
+    default_scale = 1
+    mjcf_scaling = 1
 
-    def __init__(self, config, env=None):
+    def __init__(self, config):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         self.is_discrete = config["is_discrete"]
-        WalkerBase.__init__(self, "quadrotor.urdf", "base_link", action_dim=4, 
-                            sensor_dim=20, power=2.5, scale = scale, 
+        WalkerBase.__init__(self, "quadrotor.urdf", "base_link", action_dim=4,
+                            sensor_dim=20, power=2.5, scale=scale,
                             initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"], 
-                            resolution=config["resolution"], 
-                            env = env)
+                            target_pos=config["target_pos"],
+                            resolution=config["resolution"],
+                            )
         if self.is_discrete:
             self.action_space = gym.spaces.Discrete(7)
 
-            self.action_list = [[1,0,0,0,0,0],
-                                [-1,0,0,0,0,0],
-                                [0,1,0,0,0,0],
-                                [0,-1,0,0,0,0],
-                                [0,0,1,0,0,0],
-                                [0,0,-1,0,0,0],
-                                [0,0,0,0,0,0]
+            self.action_list = [[1, 0, 0, 0, 0, 0],
+                                [-1, 0, 0, 0, 0, 0],
+                                [0, 1, 0, 0, 0, 0],
+                                [0, -1, 0, 0, 0, 0],
+                                [0, 0, 1, 0, 0, 0],
+                                [0, 0, -1, 0, 0, 0],
+                                [0, 0, 0, 0, 0, 0]
                                 ]
             self.setup_keys_to_action()
         else:
@@ -592,6 +582,7 @@ class Quadrotor(WalkerBase):
             self.action_space = gym.spaces.Box(-action_high, action_high)
 
         self.foot_list = []
+
     def apply_action(self, action):
         if self.is_discrete:
             realaction = self.action_list[action]
@@ -621,8 +612,8 @@ class Turtlebot(WalkerBase):
     mjcf_scaling = 1
     model_type = "URDF"
     default_scale = 1
-    
-    def __init__(self, config, env=None):
+
+    def __init__(self, config):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "turtlebot/turtlebot.urdf", "base_link", action_dim=4,
@@ -630,8 +621,8 @@ class Turtlebot(WalkerBase):
                             initial_pos=config['initial_pos'],
                             target_pos=config["target_pos"],
                             resolution=config["resolution"],
-                            control = 'velocity',
-                            env=env)
+                            control='velocity',
+                            )
         self.is_discrete = config["is_discrete"]
 
         if self.is_discrete:
@@ -685,14 +676,13 @@ class Turtlebot(WalkerBase):
         return np.concatenate((base_state, np.array(angular_speed)))
 
 
-
 class JR(WalkerBase):
     foot_list = []
     mjcf_scaling = 1
     model_type = "URDF"
     default_scale = 0.6
-    
-    def __init__(self, config, env=None):
+
+    def __init__(self, config):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "jr1_urdf/jr1_gibson.urdf", "base_link", action_dim=4,
@@ -700,8 +690,8 @@ class JR(WalkerBase):
                             initial_pos=config['initial_pos'],
                             target_pos=config["target_pos"],
                             resolution=config["resolution"],
-                            control = 'velocity',
-                            env=env)
+                            control='velocity',
+                            )
         self.is_discrete = config["is_discrete"]
 
         if self.is_discrete:
@@ -761,7 +751,7 @@ class JR2(WalkerBase):
     model_type = "URDF"
     default_scale = 1
 
-    def __init__(self, config, env=None):
+    def __init__(self, config):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "jr2_urdf/jr2.urdf", "base_link", action_dim=4,
@@ -770,17 +760,17 @@ class JR2(WalkerBase):
                             target_pos=config["target_pos"],
                             resolution=config["resolution"],
                             control=['velocity', 'velocity', 'position', 'position'],
-                            env=env)
+                            )
         self.is_discrete = config["is_discrete"]
 
         if self.is_discrete:
             self.action_space = gym.spaces.Discrete(5)
             self.vel = 0.01
-            self.action_list = [[self.vel, self.vel,0,0.2],
-                                [-self.vel, -self.vel,0,-0.2],
-                                [self.vel, -self.vel,-0.5,0],
-                                [-self.vel, self.vel,0.5,0],
-                                [0, 0,0,0]]
+            self.action_list = [[self.vel, self.vel, 0, 0.2],
+                                [-self.vel, -self.vel, 0, -0.2],
+                                [self.vel, -self.vel, -0.5, 0],
+                                [-self.vel, self.vel, 0.5, 0],
+                                [0, 0, 0, 0]]
 
             self.setup_keys_to_action()
         else:

@@ -30,8 +30,6 @@ class StadiumScene(Scene):
         for i in self.ground_plane_mjcf:
             p.changeVisualShape(i, -1, rgbaColor=[1, 1, 1, 0.5])
 
-        self.scene_obj_list = self.stadium
-
         return [self.stadium, self.ground_plane_mjcf]
 
 
@@ -47,7 +45,6 @@ class BuildingScene(Scene):
         visualId = -1
         boundaryUid = p.createMultiBody(baseCollisionShapeIndex=collisionId, baseVisualShapeIndex=visualId)
         p.changeDynamics(boundaryUid, -1, lateralFriction=1)
-        self.scene_obj_list = [(boundaryUid, -1)]  # baselink index -1
 
         planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
         self.ground_plane_mjcf = p.loadMJCF(planeName)

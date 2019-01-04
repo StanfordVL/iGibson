@@ -1,7 +1,6 @@
 import pybullet as p
 from gibson2.core.physics.scene import StadiumScene, BuildingScene
 
-
 class Simulator:
     def __init__(self, gravity=9.8, timestep=1 / 240.0):
         self.gravity = gravity
@@ -22,6 +21,8 @@ class Simulator:
     def isconnected(self):
         return p.getConnectionInfo(self.cid)['isConnected']
 
+    def disconnect(self):
+        p.disconnect(self.cid)
 
 if __name__ == '__main__':
     s = Simulator()
