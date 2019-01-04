@@ -4,7 +4,7 @@
 import copy
 import math
 import numpy as np
-from gibson2.core.physics import motor
+from gibson2.core.physics.drivers import motor
 from gibson2.core.physics.robot_locomotors import WalkerBase
 from gibson2.core.physics.robot_bases import Joint, BodyPart
 import os, sys

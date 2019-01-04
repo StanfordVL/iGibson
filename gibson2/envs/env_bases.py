@@ -13,7 +13,6 @@ import os
 import json
 import numpy as np
 from transforms3d import euler, quaternions
-from gibson2.core.physics.physics_object import PhysicsObject
 from gibson2.core.render.profiler import Profiler
 import gym, gym.spaces, gym.utils, gym.utils.seeding
 import sys
