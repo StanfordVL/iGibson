@@ -35,7 +35,7 @@ class BaseRobot:
     Base class for mujoco .xml/ROS urdf based agents.
     Handles object loading
     """
-    def __init__(self, model_file, robot_name, scale = 1, env = None):
+    def __init__(self, model_file, robot_name, scale = 1):
         self.parts = None
         self.jdict = None
         self.ordered_joints = None
@@ -49,7 +49,6 @@ class BaseRobot:
         self._load_model()
         self.eyes = self.parts["eyes"]
         
-        self.env = env
 
     def addToScene(self, bodies):
         if self.parts is not None:
