@@ -15,6 +15,9 @@ class Simulator:
         for item in new_objects:
             self.objects.append(item)
 
+    def import_object(self, object):
+        self.objects.append(object.load())
+
     def step(self):
         p.stepSimulation()
 

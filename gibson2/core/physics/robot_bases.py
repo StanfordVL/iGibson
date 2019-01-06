@@ -48,7 +48,7 @@ class BaseRobot:
         self.scale = scale
         self._load_model()
         self.eyes = self.parts["eyes"]
-        
+
 
     def addToScene(self, bodies):
         if self.parts is not None:
@@ -66,7 +66,6 @@ class BaseRobot:
         else:
             ordered_joints = []
 
-        dump = 0
 
         for i in range(len(bodies)):
             if p.getNumJoints(bodies[i]) == 0:
@@ -77,15 +76,12 @@ class BaseRobot:
 
             for j in range(p.getNumJoints(bodies[i])):
                 p.setJointMotorControl2(bodies[i],j,p.POSITION_CONTROL,positionGain=0.1,velocityGain=0.1,force=0)
-                ## TODO (hzyjerry): the following is diabled due to pybullet update
-                #_,joint_name,joint_type, _,_,_, _,_,_,_, _,_, part_name = p.getJointInfo(bodies[i], j)
+
                 _,joint_name,joint_type, _,_,_, _,_,_,_, _,_, part_name, _,_,_,_ = p.getJointInfo(bodies[i], j)
 
                 joint_name = joint_name.decode("utf8")
                 part_name = part_name.decode("utf8")
 
-                if dump: print("ROBOT PART '%s'" % part_name)
-                if dump: print("ROBOT JOINT '%s'" % joint_name) # limits = %+0.2f..%+0.2f effort=%0.3f speed=%0.3f" % ((joint_name,) + j.limits()) )
                 parts[part_name] = BodyPart(part_name, bodies, i, j, self.scale, model_type=self.model_type)
 
                 if part_name == self.robot_name:
@@ -105,10 +101,6 @@ class BaseRobot:
 
                     joints[joint_name].power_coef = 100.0
 
-        debugmode = 0
-        if debugmode:
-            for j in ordered_joints:
-                print(j, j.power_coef)
         return parts, joints, ordered_joints, self.robot_body
 
     def _load_model(self):
@@ -121,12 +113,12 @@ class BaseRobot:
     def reset(self):
         if self.robot_ids is None:
             self._load_model()
-        
+
         self.robot_body.reset_orientation(quatToXYZW(euler2quat(*self.config["initial_orn"]), 'wxyz'))
         self.robot_body.reset_position(self.config["initial_pos"])
         self.reset_random_pos()
         self.robot_specific_reset()
-        
+
         state = self.calc_state()
         return state
 
@@ -156,7 +148,7 @@ class BaseRobot:
 
     def reset_new_pose(self, pos, orn):
         self.robot_body.reset_orientation(orn)
-        self.robot_body.reset_position(pos)        
+        self.robot_body.reset_position(pos)
 
     def calc_potential(self):
         return 0
@@ -188,13 +180,13 @@ class BodyPart:
         self.initialPosition = self.get_position() / self.scale
         self.initialOrientation = self.get_orientation()
         self.bp_pose = Pose_Helper(self)
-        
+
     def get_name(self):
         return self.body_name
 
     def _state_fields_of_pose_of(self, body_id, link_id=-1):
         """Calls native pybullet method for getting real (scaled) robot body pose
-           
+
            Note that there is difference between xyz in real world scale and xyz
            in simulation. Thus you should never call pybullet methods directly
         """
@@ -253,14 +245,14 @@ class BodyPart:
     def reset_pose(self, position, orientation):    # Backward compatibility
         self.set_pose(position, orientation)
 
-    def speed(self):
+    def velocity(self):
         if self.bodyPartIndex == -1:
             (vx, vy, vz), _ = p.getBaseVelocity(self.bodies[self.bodyIndex])
         else:
             (x,y,z), (a,b,c,d), _,_,_,_, (vx, vy, vz), (vr,vp,vyaw) = p.getLinkState(self.bodies[self.bodyIndex], self.bodyPartIndex, computeLinkVelocity=1)
         return np.array([vx, vy, vz])
 
-    def angular_speed(self):
+    def angular_velocity(self):
         if self.bodyPartIndex == -1:
             _, (vr,vp,vyaw) = p.getBaseVelocity(self.bodies[self.bodyIndex])
         else:
@@ -364,3 +356,4 @@ class Joint:
 
     def reset_position(self, position, velocity):  # Backward compatibility
         self.reset_state(position, velocity)
+

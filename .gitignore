@@ -70,3 +70,4 @@ nav_models
 gibson/assets
 *.pdf
 .cache
+notebook
