@@ -1,4 +1,4 @@
-from gibson2.core.physics.simulator import Simulator
+from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import *
 
 def test_import_building():

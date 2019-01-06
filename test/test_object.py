@@ -1,6 +1,7 @@
-from gibson2.core.physics.simulator import Simulator
+from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import *
 from gibson2.core.physics.interactive_objects import *
+
 
 def test_import_object():
     s = Simulator()
@@ -25,8 +26,9 @@ def test_import_many_object():
 
     for j in range(1000):
         s.step()
-    assert(s.objects[-1] == 33)
+    assert (s.objects[-1] == 33)
     s.disconnect()
+
 
 def test_import_rbo_object():
     s = Simulator()
@@ -38,4 +40,3 @@ def test_import_rbo_object():
 
     assert s.objects == [(0, 1, 2), (3,), 4]
     s.disconnect()
-
