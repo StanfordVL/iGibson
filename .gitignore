@@ -71,3 +71,4 @@ gibson/assets
 *.pdf
 .cache
 notebook
+build
