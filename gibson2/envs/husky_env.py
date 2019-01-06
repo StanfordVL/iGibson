@@ -6,7 +6,6 @@ import os
 import numpy as np
 import sys
 import pybullet as p
-from gibson2.core.physics.scene_stadium import SinglePlayerStadiumScene
 import pybullet_data
 import cv2
 

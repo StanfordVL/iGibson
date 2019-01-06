@@ -5,7 +5,7 @@ def test_import_building():
     s = Simulator()
     scene = BuildingScene('space7')
     s.import_scene(scene)
-    assert s.objects == [(0,), (1,)]
+    assert s.objects ==  [0, (1,)]
     s.disconnect()
 
 def test_import_stadium():

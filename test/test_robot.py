@@ -10,6 +10,7 @@ def parse_config(config):
 
 config = parse_config('test.yaml')
 
+
 def test_turtlebot():
     s = Simulator()
     scene = StadiumScene()
@@ -56,4 +57,25 @@ def test_quadrotor():
     s.import_scene(scene)
     quadrotor = Quadrotor(config)
     assert p.getNumBodies() == 5
+    s.disconnect()
+
+def test_turtlebot_position():
+    s = Simulator()
+    scene = StadiumScene()
+    s.import_scene(scene)
+    turtlebot = Turtlebot(config)
+    assert p.getNumBodies() == 5
+
+    turtlebot.set_position([0, 0, 5])
+    assert np.allclose(turtlebot.get_position(),  np.array([0,0,5]))
+    s.disconnect()
+
+def test_humanoid_position():
+    s = Simulator()
+    scene = StadiumScene()
+    s.import_scene(scene)
+    humanoid = Humanoid(config)
+    assert p.getNumBodies() == 5
+    humanoid.set_position([0, 0, 5])
+    assert np.allclose(humanoid.get_position(),  np.array([0,0,5]))
     s.disconnect()

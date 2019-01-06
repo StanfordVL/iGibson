@@ -178,7 +178,7 @@ class WalkerBase(BaseRobot):
              [np.sin(-yaw), np.cos(-yaw), 0],
              [0, 0, 1]]
         )
-        vx, vy, vz = np.dot(rot_speed, self.robot_body.speed())  # rotate speed back to body point of view
+        vx, vy, vz = np.dot(rot_speed, self.robot_body.velocity())  # rotate speed back to body point of view
 
         debugmode = 0
         if debugmode:
@@ -275,13 +275,7 @@ class Ant(WalkerBase):
                                 [0, 0, 0, 0, 0, 0, -self.r_f * self.torque, 0],
                                 [0, 0, 0, 0, 0, 0, 0, -self.r_f * self.torque],
                                 [0, 0, 0, 0, 0, 0, 0, 0]]
-            '''
-            [[self.r_f * self.torque, 0, 0, -self.r_f * self.torque, 0, 0, 0, 0], 
-                                [0, 0, self.r_f * self.torque, self.r_f * self.torque, 0, 0, 0, 0], 
-                                [0, 0, 0, 0, self.r_f * self.torque, self.r_f * self.torque, 0, 0], 
-                                [0, 0, 0, 0, 0, 0, self.r_f * self.torque, self.r_f * self.torque], 
-                                [0, 0, 0, 0, 0, 0, 0, 0]]
-            '''
+
             self.setup_keys_to_action()
 
     def apply_action(self, action):
@@ -328,12 +322,7 @@ class AntClimber(Ant):
         amplify = 1
         for j in self.jdict.keys():
             self.jdict[j].power_coef *= amplify
-        '''
-        self.jdict["ankle_1"].power_coef = amplify * self.jdict["ankle_1"].power_coef
-        self.jdict["ankle_2"].power_coef = amplify * self.jdict["ankle_2"].power_coef
-        self.jdict["ankle_3"].power_coef = amplify * self.jdict["ankle_3"].power_coef
-        self.jdict["ankle_4"].power_coef = amplify * self.jdict["ankle_4"].power_coef
-        '''
+
         debugmode = 0
         if debugmode:
             for k in self.jdict.keys():
@@ -365,7 +354,8 @@ class AntClimber(Ant):
         body_pose = self.robot_body.pose()
         parts_xyz = np.array([p.pose().xyz() for p in self.parts.values()]).flatten()
         self.body_xyz = (
-        parts_xyz[0::3].mean(), parts_xyz[1::3].mean(), body_pose.xyz()[2])  # torso z is more informative than mean z
+            parts_xyz[0::3].mean(), parts_xyz[1::3].mean(),
+            body_pose.xyz()[2])  # torso z is more informative than mean z
         dist_to_goal = np.linalg.norm([self.body_xyz[0] - self.target_pos[0], self.body_xyz[1] - self.target_pos[1],
                                        self.body_xyz[2] - self.target_pos[2]])
         debugmode = 0
@@ -528,8 +518,8 @@ class Husky(WalkerBase):
     def calc_state(self):
         base_state = WalkerBase.calc_state(self)
 
-        angular_speed = self.robot_body.angular_speed()
-        return np.concatenate((base_state, np.array(angular_speed)))
+        angular_velocity = self.robot_body.angular_velocity()
+        return np.concatenate((base_state, np.array(angular_velocity)))
 
 
 class HuskyClimber(Husky):
@@ -672,8 +662,8 @@ class Turtlebot(WalkerBase):
     def calc_state(self):
         base_state = WalkerBase.calc_state(self)
 
-        angular_speed = self.robot_body.angular_speed()
-        return np.concatenate((base_state, np.array(angular_speed)))
+        angular_velocity = self.robot_body.angular_velocity()
+        return np.concatenate((base_state, np.array(angular_velocity)))
 
 
 class JR(WalkerBase):
@@ -741,8 +731,8 @@ class JR(WalkerBase):
     def calc_state(self):
         base_state = WalkerBase.calc_state(self)
 
-        angular_speed = self.robot_body.angular_speed()
-        return np.concatenate((base_state, np.array(angular_speed)))
+        angular_velocity = self.robot_body.angular_velocity()
+        return np.concatenate((base_state, np.array(angular_velocity)))
 
 
 class JR2(WalkerBase):
@@ -810,5 +800,5 @@ class JR2(WalkerBase):
     def calc_state(self):
         base_state = WalkerBase.calc_state(self)
 
-        angular_speed = self.robot_body.angular_speed()
-        return np.concatenate((base_state, np.array(angular_speed)))
+        angular_velocity = self.robot_body.angular_velocity()
+        return np.concatenate((base_state, np.array(angular_velocity)))
