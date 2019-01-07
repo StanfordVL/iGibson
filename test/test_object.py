@@ -11,7 +11,7 @@ def test_import_object():
     obj = YCBObject('003_cracker_box')
     s.import_object(obj)
 
-    assert s.objects == [(0, 1, 2), (3,), 4]
+    assert s.objects == list(range(5))
     s.disconnect()
 
 
@@ -38,5 +38,5 @@ def test_import_rbo_object():
     obj = RBOObject('cabinet')
     s.import_object(obj)
 
-    assert s.objects == [(0, 1, 2), (3,), 4]
+    assert s.objects == list(range(5))
     s.disconnect()

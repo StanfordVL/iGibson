@@ -14,8 +14,9 @@ from mesh_renderer import CppMeshRenderer
 from mesh_renderer.get_available_devices import get_available_devices
 from mesh_renderer.glutils.utils import colormap, loadTexture
 
+
 class MeshRenderer:
-    def __init__(self, width=512, height = 512, device_idx=0):
+    def __init__(self, width=512, height=512, device_idx=0):
         self.shaderProgram = None
         self.VAOs = []
         self.VBOs = []
@@ -27,10 +28,10 @@ class MeshRenderer:
         self.faces = []
         self.poses_trans = []
         self.poses_rot = []
-        #self.context = glcontext.Context()
-        #self.context.create_opengl_context((self.width, self.height))
+        # self.context = glcontext.Context()
+        # self.context.create_opengl_context((self.width, self.height))
         available_devices = get_available_devices()
-        assert(device_idx < len(available_devices))
+        assert (device_idx < len(available_devices))
         device = available_devices[device_idx]
 
         self.r = CppMeshRenderer.CppMeshRenderer(width, height, device)
@@ -40,7 +41,7 @@ class MeshRenderer:
         from OpenGL.GL import shaders
         self.shaders = shaders
         self.colors = colormap
-        self.lightcolor = [1,1,1]
+        self.lightcolor = [1, 1, 1]
 
         vertexShader = self.shaders.compileShader("""
         #version 450
@@ -107,13 +108,13 @@ class MeshRenderer:
         self.shaderProgram = self.shaders.compileProgram(vertexShader, fragmentShader)
         self.texUnitUniform = GL.glGetUniformLocation(self.shaderProgram, 'texUnit')
 
-        self.lightpos = [0,0,0]
+        self.lightpos = [0, 0, 0]
 
         self.fbo = GL.glGenFramebuffers(1)
-        self.color_tex =  GL.glGenTextures(1)
-        self.color_tex_2 =  GL.glGenTextures(1)
-        self.color_tex_3 =  GL.glGenTextures(1)
-        self.color_tex_4 =  GL.glGenTextures(1)
+        self.color_tex = GL.glGenTextures(1)
+        self.color_tex_2 = GL.glGenTextures(1)
+        self.color_tex_3 = GL.glGenTextures(1)
+        self.color_tex_4 = GL.glGenTextures(1)
 
         self.depth_tex = GL.glGenTextures(1)
 
@@ -157,10 +158,10 @@ class MeshRenderer:
         assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
 
         self.fov = 20
-        self.camera = [1,0,0]
-        self.target = [0,0,0]
-        self.up = [0,0,1]
-        P = perspective(self.fov, float(self.width)/float(self.height), 0.01, 100)
+        self.camera = [1, 0, 0]
+        self.target = [0, 0, 0]
+        self.up = [0, 0, 1]
+        P = perspective(self.fov, float(self.width) / float(self.height), 0.01, 100)
         V = lookat(
             self.camera,
             self.target, up=self.up)
@@ -173,22 +174,22 @@ class MeshRenderer:
         self.instances = []
 
     def load_object(self, obj_path, scale=1):
-        #texture = loadTexture(texture_path)
-        #self.textures.append(texture)
+        # texture = loadTexture(texture_path)
+        # self.textures.append(texture)
 
         scene = load(obj_path)
 
         material_count = len(self.mesh_materials)
         print(material_count)
 
-        for i,item in enumerate(scene.materials):
+        for i, item in enumerate(scene.materials):
             self.materials_fn[i] = None
-            for k,v in item.properties.items():
-                #print(k,v)
+            for k, v in item.properties.items():
+                # print(k,v)
                 if k == 'file':
                     self.materials_fn[i + material_count] = v
 
-        for k,v in self.materials_fn.items():
+        for k, v in self.materials_fn.items():
             if not v is None and k > material_count:
                 dir = os.path.dirname(obj_path)
                 texture = loadTexture(os.path.join(dir, v))
@@ -235,7 +236,7 @@ class MeshRenderer:
             self.VBOs.append(VBO)
             self.faces.append(faces)
             self.objects.append(obj_path)
-            self.mesh_materials.append(mesh.materialindex + material_count )
+            self.mesh_materials.append(mesh.materialindex + material_count)
             object_ids.append(self.get_num_objects() - 1)
         print(self.mesh_materials)
         release(scene)
@@ -246,7 +247,7 @@ class MeshRenderer:
         self.poses_trans.append(np.eye(4))
         self.instances.append(object_id)
 
-    #def load_objects(self, obj_paths, texture_paths):
+    # def load_objects(self, obj_paths, texture_paths):
     #    for i in range(len(obj_paths)):
     #        self.load_object(obj_paths[i], texture_paths[i])
     #    #print(self.textures)
@@ -264,11 +265,12 @@ class MeshRenderer:
     def set_fov(self, fov):
         self.fov = fov
         # this is vertical fov
-        P = perspective(self.fov, float(self.width)/float(self.height), 0.01, 100)
+        P = perspective(self.fov, float(self.width) / float(self.height), 0.01, 100)
         self.P = np.ascontiguousarray(P, np.float32)
 
     def set_light_color(self, color):
         self.lightcolor = color
+
     def render(self):
         frame = 0
         GL.glClearColor(0, 0, 0, 1)
@@ -281,8 +283,10 @@ class MeshRenderer:
             GL.glUseProgram(self.shaderProgram)
             GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'V'), 1, GL.GL_TRUE, self.V)
             GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'P'), 1, GL.GL_FALSE, self.P)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE, self.poses_trans[object_idx])
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE, self.poses_rot[object_idx])
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE,
+                                  self.poses_trans[object_idx])
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
+                                  self.poses_rot[object_idx])
             GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'light_position'), *self.lightpos)
             GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'instance_color'), *self.colors[object_idx % 3])
             GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'light_color'), *self.lightcolor)
@@ -295,7 +299,8 @@ class MeshRenderer:
                 # Activate array
                 GL.glBindVertexArray(self.VAOs[object_idx])
                 # draw triangles
-                GL.glDrawElements(GL.GL_TRIANGLES, self.faces[object_idx].size, GL.GL_UNSIGNED_INT, self.faces[object_idx])
+                GL.glDrawElements(GL.GL_TRIANGLES, self.faces[object_idx].size, GL.GL_UNSIGNED_INT,
+                                  self.faces[object_idx])
 
             finally:
                 GL.glBindVertexArray(0)
@@ -305,49 +310,49 @@ class MeshRenderer:
 
         GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT0)
         frame = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_RGBA, GL.GL_FLOAT)
-        #frame = np.frombuffer(frame,dtype = np.float32).reshape(self.width, self.height, 4)
-        frame = frame.reshape(self.height, self.width, 4)[::-1,:]
+        # frame = np.frombuffer(frame,dtype = np.float32).reshape(self.width, self.height, 4)
+        frame = frame.reshape(self.height, self.width, 4)[::-1, :]
 
-        #GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT1)
-        #normal = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
-        #normal = np.frombuffer(frame, dtype=np.uint8).reshape(self.width, self.height, 4)
-        #normal = normal[::-1, ]
+        # GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT1)
+        # normal = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
+        # normal = np.frombuffer(frame, dtype=np.uint8).reshape(self.width, self.height, 4)
+        # normal = normal[::-1, ]
 
         GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT2)
         seg = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
-        #seg = np.frombuffer(frame, dtype=np.uint8).reshape(self.width, self.height, 4)
-        seg = seg.reshape(self.height, self.width, 4)[::-1,:]
+        # seg = np.frombuffer(frame, dtype=np.uint8).reshape(self.width, self.height, 4)
+        seg = seg.reshape(self.height, self.width, 4)[::-1, :]
 
-        #pc = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_DEPTH_COMPONENT, GL.GL_FLOAT)
+        # pc = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_DEPTH_COMPONENT, GL.GL_FLOAT)
         # seg = np.frombuffer(frame, dtype=np.uint8).reshape(self.width, self.height, 4)
 
-        #pc = np.stack([pc,pc, pc, np.ones(pc.shape)], axis = -1)
-        #pc = pc[::-1, ]
-        #pc = (1-pc) * 10
+        # pc = np.stack([pc,pc, pc, np.ones(pc.shape)], axis = -1)
+        # pc = pc[::-1, ]
+        # pc = (1-pc) * 10
 
-        #GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT3)
-        #pc2 = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
-        #seg = np.frombuffer(frame, dtype=np.uint8).reshape(self.width, self.height, 4)
-        #pc2 = pc2[::-1, ]
-        #pc2 = pc2[:,:,:3]
+        # GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT3)
+        # pc2 = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
+        # seg = np.frombuffer(frame, dtype=np.uint8).reshape(self.width, self.height, 4)
+        # pc2 = pc2[::-1, ]
+        # pc2 = pc2[:,:,:3]
 
-        #point cloud
+        # point cloud
 
         return [frame, seg]
 
-    def set_light_pos(self,light):
+    def set_light_pos(self, light):
         self.lightpos = light
 
     def get_num_objects(self):
         return len(self.objects)
 
-    #def set_poses(self, poses):
+    # def set_poses(self, poses):
     #    self.poses_rot = [np.ascontiguousarray(quat2rotmat(item[3:])) for item in poses]
     #    self.poses_trans = [np.ascontiguousarray(xyz2mat(item[:3])) for item in poses]
 
     def set_pose(self, pose, idx):
         self.poses_rot[idx] = np.ascontiguousarray(quat2rotmat(pose[3:]))
-        self.poses_trans[idx] = np.ascontiguousarray(xyz2mat(pose[:3])) 
+        self.poses_trans[idx] = np.ascontiguousarray(xyz2mat(pose[:3]))
 
     def release(self):
         print(self.glstring)
@@ -370,10 +375,10 @@ class MeshRenderer:
         self.VBOs = []
         GL.glDeleteTextures(self.textures)
         self.textures = []
-        self.objects = [] #GC should free things here
-        self.faces = [] #GC should free things here
-        self.poses_trans = [] #GC should free things here
-        self.poses_rot = [] #GC should free things here
+        self.objects = []  # GC should free things here
+        self.faces = []  # GC should free things here
+        self.poses_trans = []  # GC should free things here
+        self.poses_rot = []  # GC should free things here
 
     def transform_vector(self, vec):
         vec = np.array(vec)
@@ -388,11 +393,11 @@ class MeshRenderer:
     def transform_point(self, vec):
         vec = np.array(vec)
         if vec.shape[0] == 3:
-            v =  self.V.dot(np.concatenate([vec, np.array([1])]))
-            return v[:3]/v[-1]
+            v = self.V.dot(np.concatenate([vec, np.array([1])]))
+            return v[:3] / v[-1]
         elif vec.shape[0] == 4:
             v = self.V.dot(vec)
-            return v/v[-1]
+            return v / v[-1]
         else:
             return None
 
@@ -400,21 +405,22 @@ class MeshRenderer:
         pose_rot = quat2rotmat(pose[3:])
         pose_trans = xyz2mat(pose[:3])
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
-        return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3,:3].T)])
+        return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
     def get_poses(self):
         mat = [self.V.dot(self.poses_trans[i].T).dot(self.poses_rot[i]).T for i in range(self.get_num_objects())]
-        poses = [np.concatenate([mat2xyz(item), safemat2quat(item[:3,:3].T)]) for item in mat]
+        poses = [np.concatenate([mat2xyz(item), safemat2quat(item[:3, :3].T)]) for item in mat]
         return poses
+
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
-    renderer = MeshRenderer(width = 800, height = 600)
+    renderer = MeshRenderer(width=800, height=600)
     renderer.load_object(model_path)
     for i in range(len(renderer.objects)):
         renderer.add_instance(i)
     camera_pose = np.array([0, 0, 1.2])
-    view_direction = np.array([1,0,0])
+    view_direction = np.array([1, 0, 0])
     renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
     renderer.set_fov(90)
 
@@ -424,22 +430,24 @@ if __name__ == '__main__':
     _mouse_ix, _mouse_iy = -1, -1
     down = False
 
+
     def change_dir(event, x, y, flags, param):
         global _mouse_ix, _mouse_iy, down, view_direction
         if event == cv2.EVENT_LBUTTONDOWN:
             _mouse_ix, _mouse_iy = x, y
             down = True
-        if event ==  cv2.EVENT_MOUSEMOVE:
+        if event == cv2.EVENT_MOUSEMOVE:
             if down:
-                dx = (x - _mouse_ix)/100.0
-                dy = (y - _mouse_iy)/100.0
+                dx = (x - _mouse_ix) / 100.0
+                dy = (y - _mouse_iy) / 100.0
                 _mouse_ix = x
                 _mouse_iy = y
                 r1 = np.array([[np.cos(dy), 0, np.sin(dy)], [0, 1, 0], [-np.sin(dy), 0, np.cos(dy)]])
-                r2 = np.array([[np.cos(-dx), -np.sin(-dx), 0], [np.sin(-dx), np.cos(-dx), 0], [0,0,1]])
+                r2 = np.array([[np.cos(-dx), -np.sin(-dx), 0], [np.sin(-dx), np.cos(-dx), 0], [0, 0, 1]])
                 view_direction = r1.dot(r2).dot(view_direction)
         elif event == cv2.EVENT_LBUTTONUP:
             down = False
+
 
     cv2.namedWindow('test')
     cv2.setMouseCallback('test', change_dir)
@@ -459,7 +467,7 @@ if __name__ == '__main__':
         elif q == ord('q'):
             break
         camera_pose = np.array([px, py, 1.2])
-        renderer.set_camera(camera_pose, camera_pose + view_direction,  [0, 0, 1])
+        renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
     '''
     # mat = pose2mat(pose)
     pose = np.array([-0.025801208, 0.08432201, 0.004528991, 0.9992879, -0.0021458883, 0.0304758, 0.022142926])

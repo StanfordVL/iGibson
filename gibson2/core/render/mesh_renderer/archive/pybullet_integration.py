@@ -2,7 +2,8 @@ import pybullet as p
 import sys
 import time
 import numpy as np
-from mesh_renderer_cpu import *
+from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import *
+import cv2
 
 p.connect(p.GUI)
 
