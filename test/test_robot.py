@@ -109,3 +109,5 @@ def test_multiagent():
         turtlebot2.apply_action(1)
         turtlebot3.apply_action(1)
         s.step()
+
+    s.disconnect()

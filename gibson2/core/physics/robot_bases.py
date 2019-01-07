@@ -1,17 +1,17 @@
-## Author: pybullet, Zhiyang He
+# Author: pybullet, Zhiyang He
 
 import pybullet as p
 import gym, gym.spaces, gym.utils
 import numpy as np
 import os, inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-os.sys.path.insert(0,parentdir)
 import pybullet_data
 from gibson2 import assets
 from transforms3d.euler import euler2quat
 from transforms3d import quaternions
 
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+os.sys.path.insert(0, parentdir)
 
 def quatFromXYZW(xyzw, seq='xyzw'):
     """Convert quaternion from arbitrary sequence to XYZW (pybullet convention)
@@ -20,6 +20,7 @@ def quatFromXYZW(xyzw, seq='xyzw'):
         "Quaternion sequence {} is not valid, please double check.".format(seq)
     inds = [seq.index('x'), seq.index('y'), seq.index('z'), seq.index('w')]
     return xyzw[inds]
+
 
 def quatToXYZW(orn, seq='xyzw'):
     """Convert quaternion from XYZW (pybullet convention) to arbitrary sequence
@@ -35,7 +36,8 @@ class BaseRobot:
     Base class for mujoco .xml/ROS urdf based agents.
     Handles object loading
     """
-    def __init__(self, model_file, robot_name, scale = 1):
+
+    def __init__(self, model_file, robot_name, scale=1):
         self.parts = None
         self.jdict = None
         self.ordered_joints = None
@@ -48,7 +50,9 @@ class BaseRobot:
         self.scale = scale
         self._load_model()
         self.eyes = self.parts["eyes"]
-
+        self.model_type = None
+        self.config = None
+        self.np_random = None
 
     def addToScene(self, bodies):
         if self.parts is not None:
@@ -66,7 +70,6 @@ class BaseRobot:
         else:
             ordered_joints = []
 
-
         for i in range(len(bodies)):
             if p.getNumJoints(bodies[i]) == 0:
                 part_name, robot_name = p.getBodyInfo(bodies[i], 0)
@@ -75,9 +78,10 @@ class BaseRobot:
                 parts[part_name] = BodyPart(part_name, bodies, i, -1, self.scale, model_type=self.model_type)
 
             for j in range(p.getNumJoints(bodies[i])):
-                p.setJointMotorControl2(bodies[i],j,p.POSITION_CONTROL,positionGain=0.1,velocityGain=0.1,force=0)
+                p.setJointMotorControl2(bodies[i], j, p.POSITION_CONTROL, positionGain=0.1, velocityGain=0.1, force=0)
 
-                _,joint_name,joint_type, _,_,_, _,_,_,_, _,_, part_name, _,_,_,_ = p.getJointInfo(bodies[i], j)
+                _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, part_name, _, _, _, _ = p.getJointInfo(bodies[i],
+                                                                                                             j)
 
                 joint_name = joint_name.decode("utf8")
                 part_name = part_name.decode("utf8")
@@ -88,11 +92,12 @@ class BaseRobot:
                     self.robot_body = parts[part_name]
 
                 if i == 0 and j == 0 and self.robot_body is None:  # if nothing else works, we take this as robot_body
-                    parts[self.robot_name] = BodyPart(self.robot_name, bodies, 0, -1, self.scale, model_type=self.model_type)
+                    parts[self.robot_name] = BodyPart(self.robot_name, bodies, 0, -1, self.scale,
+                                                      model_type=self.model_type)
                     self.robot_body = parts[self.robot_name]
 
                 if joint_name[:6] == "ignore":
-                    Joint(joint_name, bodies, i, j, self.scale).disable_motor()
+                    Joint(joint_name, bodies, i, j, self.scale, model_type=self.model_type).disable_motor()
                     continue
 
                 if joint_name[:8] != "jointfix" and joint_type != p.JOINT_FIXED:
@@ -105,10 +110,18 @@ class BaseRobot:
 
     def _load_model(self):
         if self.model_type == "MJCF":
-            self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file), flags=p.URDF_USE_SELF_COLLISION+p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS)
+            self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file),
+                                        flags=p.URDF_USE_SELF_COLLISION + p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS)
         if self.model_type == "URDF":
-            self.robot_ids = (p.loadURDF(os.path.join(self.physics_model_dir, self.model_file), globalScaling = self.scale), )
+            self.robot_ids = (
+            p.loadURDF(os.path.join(self.physics_model_dir, self.model_file), globalScaling=self.scale),)
         self.parts, self.jdict, self.ordered_joints, self.robot_body = self.addToScene(self.robot_ids)
+
+    def robot_specific_reset(self):
+        raise NotImplementedError
+
+    def calc_state(self):
+        raise NotImplementedError
 
     def reset(self):
         if self.robot_ids is None:
@@ -131,20 +144,19 @@ class BaseRobot:
         pos = self.robot_body.get_position()
         orn = self.robot_body.get_orientation()
 
-
         x_range = self.config["random"]["random_init_x_range"]
         y_range = self.config["random"]["random_init_y_range"]
         z_range = self.config["random"]["random_init_z_range"]
         r_range = self.config["random"]["random_init_rot_range"]
 
-        new_pos = [ pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
-                    pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
-                    pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])]
-        new_orn = quaternions.qmult(quaternions.axangle2quat([1, 0, 0], self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
+        new_pos = [pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
+                   pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
+                   pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])]
+        new_orn = quaternions.qmult(
+            quaternions.axangle2quat([1, 0, 0], self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
 
         self.robot_body.reset_orientation(new_orn)
         self.robot_body.reset_position(new_pos)
-
 
     def reset_new_pose(self, pos, orn):
         self.robot_body.reset_orientation(orn)
@@ -152,6 +164,7 @@ class BaseRobot:
 
     def calc_potential(self):
         return 0
+
 
 class Pose_Helper:
     def __init__(self, body_part):
@@ -173,7 +186,7 @@ class BodyPart:
         self.body_name = body_name
         self.bodyIndex = bodyIndex
         self.bodyPartIndex = bodyPartIndex
-        if model_type=="MJCF":
+        if model_type == "MJCF":
             self.scale = scale
         else:
             self.scale = 1
@@ -230,33 +243,35 @@ class BodyPart:
     def pose(self):
         return self.bp_pose
 
-    def current_position(self):         # Synonym method
+    def current_position(self):  # Synonym method
         return self.get_position()
 
-    def current_orientation(self):      # Synonym method
+    def current_orientation(self):  # Synonym method
         return self.get_orientation()
 
-    def reset_position(self, position): # Backward compatibility
+    def reset_position(self, position):  # Backward compatibility
         self.set_position(position)
 
-    def reset_orientation(self, orientation):       # Backward compatibility
+    def reset_orientation(self, orientation):  # Backward compatibility
         self.set_orientation(orientation)
 
-    def reset_pose(self, position, orientation):    # Backward compatibility
+    def reset_pose(self, position, orientation):  # Backward compatibility
         self.set_pose(position, orientation)
 
     def velocity(self):
         if self.bodyPartIndex == -1:
             (vx, vy, vz), _ = p.getBaseVelocity(self.bodies[self.bodyIndex])
         else:
-            (x,y,z), (a,b,c,d), _,_,_,_, (vx, vy, vz), (vr,vp,vyaw) = p.getLinkState(self.bodies[self.bodyIndex], self.bodyPartIndex, computeLinkVelocity=1)
+            (x, y, z), (a, b, c, d), _, _, _, _, (vx, vy, vz), (vr, vp, vyaw) = p.getLinkState(
+                self.bodies[self.bodyIndex], self.bodyPartIndex, computeLinkVelocity=1)
         return np.array([vx, vy, vz])
 
     def angular_velocity(self):
         if self.bodyPartIndex == -1:
-            _, (vr,vp,vyaw) = p.getBaseVelocity(self.bodies[self.bodyIndex])
+            _, (vr, vp, vyaw) = p.getBaseVelocity(self.bodies[self.bodyIndex])
         else:
-            (x,y,z), (a,b,c,d), _,_,_,_, (vx, vy, vz), (vr,vp,vyaw) = p.getLinkState(self.bodies[self.bodyIndex], self.bodyPartIndex, computeLinkVelocity=1)
+            (x, y, z), (a, b, c, d), _, _, _, _, (vx, vy, vz), (vr, vp, vyaw) = p.getLinkState(
+                self.bodies[self.bodyIndex], self.bodyPartIndex, computeLinkVelocity=1)
         return np.array([vr, vp, vyaw])
 
     def contact_list(self):
@@ -269,9 +284,10 @@ class Joint:
         self.bodyIndex = bodyIndex
         self.jointIndex = jointIndex
         self.joint_name = joint_name
-        _,_,self.jointType,_,_,_,_,_,self.lowerLimit, self.upperLimit,_,_,_, _,_,_,_ = p.getJointInfo(self.bodies[self.bodyIndex], self.jointIndex)
+        _, _, self.jointType, _, _, _, _, _, self.lowerLimit, self.upperLimit, _, _, _, _, _, _, _ = p.getJointInfo(
+            self.bodies[self.bodyIndex], self.jointIndex)
         self.power_coeff = 0
-        if model_type=="MJCF":
+        if model_type == "MJCF":
             self.scale = scale
         else:
             self.scale = 1
@@ -285,9 +301,9 @@ class Joint:
     def get_state(self):
         """Get state of joint
            Position is defined in real world scale """
-        x, vx,_,_ = p.getJointState(self.bodies[self.bodyIndex],self.jointIndex)
+        x, vx, _, _ = p.getJointState(self.bodies[self.bodyIndex], self.jointIndex)
         if self.jointType == p.JOINT_PRISMATIC:
-            x  *= self.scale
+            x *= self.scale
             vx *= self.scale
         return x, vx
 
@@ -295,13 +311,13 @@ class Joint:
         """Set state of joint
            x is defined in real world scale """
         if self.jointType == p.JOINT_PRISMATIC:
-            x  /= self.scale
+            x /= self.scale
             vx /= self.scale
         p.resetJointState(self.bodies[self.bodyIndex], self.jointIndex, x, vx)
 
     def get_relative_state(self):
         pos, vel = self.get_state()
-        pos_mid = 0.5 * (self.lowerLimit + self.upperLimit);
+        pos_mid = 0.5 * (self.lowerLimit + self.upperLimit)
         return (
             2 * (pos - pos_mid) / (self.upperLimit - self.lowerLimit),
             0.1 * vel
@@ -312,48 +328,51 @@ class Joint:
            Position is defined in real world scale """
         if self.jointType == p.JOINT_PRISMATIC:
             position = np.array(position) / self.scale
-        p.setJointMotorControl2(self.bodies[self.bodyIndex],self.jointIndex,p.POSITION_CONTROL, targetPosition=position)
+        p.setJointMotorControl2(self.bodies[self.bodyIndex], self.jointIndex, p.POSITION_CONTROL,
+                                targetPosition=position)
 
     def set_velocity(self, velocity):
         """Set velocity of joint
            Velocity is defined in real world scale """
         if self.jointType == p.JOINT_PRISMATIC:
             velocity = np.array(velocity) / self.scale
-        p.setJointMotorControl2(self.bodies[self.bodyIndex],self.jointIndex,p.VELOCITY_CONTROL, targetVelocity=velocity) # , positionGain=0.1, velocityGain=0.1)
+        p.setJointMotorControl2(self.bodies[self.bodyIndex], self.jointIndex, p.VELOCITY_CONTROL,
+                                targetVelocity=velocity)  # , positionGain=0.1, velocityGain=0.1)
 
     def set_torque(self, torque):
-        p.setJointMotorControl2(bodyIndex=self.bodies[self.bodyIndex], jointIndex=self.jointIndex, controlMode=p.TORQUE_CONTROL, force=torque) #, positionGain=0.1, velocityGain=0.1)
+        p.setJointMotorControl2(bodyIndex=self.bodies[self.bodyIndex], jointIndex=self.jointIndex,
+                                controlMode=p.TORQUE_CONTROL, force=torque)  # , positionGain=0.1, velocityGain=0.1)
 
     def reset_state(self, pos, vel):
         self.set_state(pos, vel)
 
     def disable_motor(self):
-        p.setJointMotorControl2(self.bodies[self.bodyIndex],self.jointIndex,controlMode=p.POSITION_CONTROL, targetPosition=0, targetVelocity=0, positionGain=0.1, velocityGain=0.1, force=0)
+        p.setJointMotorControl2(self.bodies[self.bodyIndex], self.jointIndex, controlMode=p.POSITION_CONTROL,
+                                targetPosition=0, targetVelocity=0, positionGain=0.1, velocityGain=0.1, force=0)
 
-    def get_joint_relative_state(self): # Synonym method
+    def get_joint_relative_state(self):  # Synonym method
         return self.get_relative_state()
 
     def set_motor_position(self, pos):  # Synonym method
         return self.set_position(pos)
 
-    def set_motor_torque(self, torque): # Synonym method
+    def set_motor_torque(self, torque):  # Synonym method
         return self.set_torque(torque)
 
     def set_motor_velocity(self, vel):  # Synonym method
         return self.set_velocity(vel)
 
-    def reset_joint_state(self, position, velocity): # Synonym method
+    def reset_joint_state(self, position, velocity):  # Synonym method
         return self.reset_state(position, velocity)
 
-    def current_position(self):             # Backward compatibility
+    def current_position(self):  # Backward compatibility
         return self.get_state()
 
-    def current_relative_position(self):    # Backward compatibility
+    def current_relative_position(self):  # Backward compatibility
         return self.get_relative_state()
 
-    def reset_current_position(self, position, velocity):   # Backward compatibility
+    def reset_current_position(self, position, velocity):  # Backward compatibility
         self.reset_state(position, velocity)
 
     def reset_position(self, position, velocity):  # Backward compatibility
         self.reset_state(position, velocity)
-
