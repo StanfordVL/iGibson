@@ -18,6 +18,9 @@ from mesh_renderer.glutils.utils import colormap, loadTexture
 class MeshRenderer:
     def __init__(self, width=512, height=512, device_idx=0):
         self.shaderProgram = None
+        self.fbo = None
+        self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
+        self.depth_tex = None
         self.VAOs = []
         self.VBOs = []
         self.textures = []
@@ -43,120 +46,14 @@ class MeshRenderer:
         self.colors = colormap
         self.lightcolor = [1, 1, 1]
 
-        vertexShader = self.shaders.compileShader("""
-        #version 450
-        uniform mat4 V;
-        uniform mat4 P;
-        uniform mat4 pose_rot;
-        uniform mat4 pose_trans;
-        uniform vec3 instance_color;
-
-        layout (location=0) in vec3 position;
-        layout (location=1) in vec3 normal;
-        layout (location=2) in vec2 texCoords;
-        out vec2 theCoords;
-        out vec3 Normal;
-        out vec3 FragPos;
-        out vec3 Normal_cam;
-        out vec3 Instance_color;
-        out vec3 Pos_cam;
-        void main() {
-            gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1);
-            vec4 world_position4 = pose_trans * pose_rot * vec4(position, 1);
-            FragPos = vec3(world_position4.xyz / world_position4.w); // in world coordinate
-            Normal = normalize(mat3(pose_rot) * normal); // in world coordinate
-            Normal_cam = normalize(mat3(V) * mat3(pose_rot) * normal); // in camera coordinate
-            vec4 pos_cam4 = V * pose_trans * pose_rot * vec4(position, 1);
-            Pos_cam = pos_cam4.xyz / pos_cam4.w;
-            theCoords = texCoords;
-            Instance_color = instance_color;
-        }
-        """, GL.GL_VERTEX_SHADER)
-
-        fragmentShader = self.shaders.compileShader("""
-        #version 450
-        uniform sampler2D texUnit;
-        in vec2 theCoords;
-        in vec3 Normal;
-        in vec3 Normal_cam;
-        in vec3 FragPos;
-        in vec3 Instance_color;
-        in vec3 Pos_cam;
-
-        layout (location = 0) out vec4 outputColour;
-        layout (location = 1) out vec4 NormalColour;
-        layout (location = 2) out vec4 InstanceColour;
-        layout (location = 3) out vec4 PCColour;
-
-        uniform vec3 light_position;  // in world coordinate
-        uniform vec3 light_color; // light color
-
-        void main() {
-            float ambientStrength = 0.2;
-            vec3 ambient = ambientStrength * light_color;
-            vec3 lightDir = normalize(light_position - FragPos);
-            float diff = max(dot(Normal, lightDir), 0.0);
-            vec3 diffuse = diff * light_color;
-
-            outputColour =  texture(texUnit, theCoords);// albedo only
-            NormalColour =  vec4((Normal_cam + 1) / 2,1);
-            InstanceColour = vec4(Instance_color,1);
-            PCColour = vec4(Pos_cam,1);
-        }
-        """, GL.GL_FRAGMENT_SHADER)
+        vertexShader = self.shaders.compileShader(open('shaders/vert.shader').readlines(), GL.GL_VERTEX_SHADER)
+        fragmentShader = self.shaders.compileShader(open('shaders/frag.shader').readlines(), GL.GL_FRAGMENT_SHADER)
 
         self.shaderProgram = self.shaders.compileProgram(vertexShader, fragmentShader)
         self.texUnitUniform = GL.glGetUniformLocation(self.shaderProgram, 'texUnit')
 
         self.lightpos = [0, 0, 0]
-
-        self.fbo = GL.glGenFramebuffers(1)
-        self.color_tex = GL.glGenTextures(1)
-        self.color_tex_2 = GL.glGenTextures(1)
-        self.color_tex_3 = GL.glGenTextures(1)
-        self.color_tex_4 = GL.glGenTextures(1)
-
-        self.depth_tex = GL.glGenTextures(1)
-
-        GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
-
-        GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_2)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
-
-        GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_3)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
-
-        GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_4)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA32F, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_FLOAT, None)
-
-        GL.glBindTexture(GL.GL_TEXTURE_2D, self.depth_tex)
-
-        GL.glTexImage2D.wrappedOperation(
-            GL.GL_TEXTURE_2D, 0, GL.GL_DEPTH24_STENCIL8, self.width, self.height, 0,
-            GL.GL_DEPTH_STENCIL, GL.GL_UNSIGNED_INT_24_8, None)
-
-        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fbo)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0,
-                                  GL.GL_TEXTURE_2D, self.color_tex, 0)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT1,
-                                  GL.GL_TEXTURE_2D, self.color_tex_2, 0)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT2,
-                                  GL.GL_TEXTURE_2D, self.color_tex_3, 0)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT3,
-                                  GL.GL_TEXTURE_2D, self.color_tex_4, 0)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_DEPTH_STENCIL_ATTACHMENT,
-                                  GL.GL_TEXTURE_2D, self.depth_tex, 0)
-        GL.glViewport(0, 0, self.width, self.height)
-        GL.glDrawBuffers(4, [GL.GL_COLOR_ATTACHMENT0, GL.GL_COLOR_ATTACHMENT1,
-                             GL.GL_COLOR_ATTACHMENT2, GL.GL_COLOR_ATTACHMENT3])
-
-        assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
-
+        self.setup_framebuffer()
         self.fov = 20
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
@@ -173,12 +70,56 @@ class MeshRenderer:
         self.mesh_materials = []
         self.instances = []
 
+    def setup_framebuffer(self):
+        self.fbo = GL.glGenFramebuffers(1)
+        self.color_tex_rgb = GL.glGenTextures(1)
+        self.color_tex_normal = GL.glGenTextures(1)
+        self.color_tex_semantics = GL.glGenTextures(1)
+        self.color_tex_3d = GL.glGenTextures(1)
+        self.depth_tex = GL.glGenTextures(1)
+
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_rgb)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
+                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
+
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_normal)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
+                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
+
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_semantics)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
+                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
+
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_3d)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA32F, self.width, self.height, 0,
+                        GL.GL_RGBA, GL.GL_FLOAT, None)
+
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self.depth_tex)
+
+        GL.glTexImage2D.wrappedOperation(
+            GL.GL_TEXTURE_2D, 0, GL.GL_DEPTH24_STENCIL8, self.width, self.height, 0,
+            GL.GL_DEPTH_STENCIL, GL.GL_UNSIGNED_INT_24_8, None)
+
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fbo)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0,
+                                  GL.GL_TEXTURE_2D, self.color_tex_rgb, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT1,
+                                  GL.GL_TEXTURE_2D, self.color_tex_normal, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT2,
+                                  GL.GL_TEXTURE_2D, self.color_tex_semantics, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT3,
+                                  GL.GL_TEXTURE_2D, self.color_tex_3d, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_DEPTH_STENCIL_ATTACHMENT,
+                                  GL.GL_TEXTURE_2D, self.depth_tex, 0)
+        GL.glViewport(0, 0, self.width, self.height)
+        GL.glDrawBuffers(4, [GL.GL_COLOR_ATTACHMENT0, GL.GL_COLOR_ATTACHMENT1,
+                             GL.GL_COLOR_ATTACHMENT2, GL.GL_COLOR_ATTACHMENT3])
+
+        assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
+
     def load_object(self, obj_path, scale=1):
-        # texture = loadTexture(texture_path)
-        # self.textures.append(texture)
 
         scene = load(obj_path)
-
         material_count = len(self.mesh_materials)
         print(material_count)
 
@@ -247,11 +188,6 @@ class MeshRenderer:
         self.poses_trans.append(np.eye(4))
         self.instances.append(object_id)
 
-    # def load_objects(self, obj_paths, texture_paths):
-    #    for i in range(len(obj_paths)):
-    #        self.load_object(obj_paths[i], texture_paths[i])
-    #    #print(self.textures)
-
     def set_camera(self, camera, target, up):
         self.camera = camera
         self.target = target
@@ -272,7 +208,6 @@ class MeshRenderer:
         self.lightcolor = color
 
     def render(self):
-        frame = 0
         GL.glClearColor(0, 0, 0, 1)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         GL.glEnable(GL.GL_DEPTH_TEST)
@@ -310,35 +245,21 @@ class MeshRenderer:
 
         GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT0)
         frame = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_RGBA, GL.GL_FLOAT)
-        # frame = np.frombuffer(frame,dtype = np.float32).reshape(self.width, self.height, 4)
         frame = frame.reshape(self.height, self.width, 4)[::-1, :]
 
-        # GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT1)
-        # normal = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
-        # normal = np.frombuffer(frame, dtype=np.uint8).reshape(self.width, self.height, 4)
-        # normal = normal[::-1, ]
+        GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT1)
+        normal = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
+        normal = normal.reshape(self.height, self.width, 4)[::-1, :]
 
         GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT2)
         seg = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
-        # seg = np.frombuffer(frame, dtype=np.uint8).reshape(self.width, self.height, 4)
         seg = seg.reshape(self.height, self.width, 4)[::-1, :]
 
-        # pc = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_DEPTH_COMPONENT, GL.GL_FLOAT)
-        # seg = np.frombuffer(frame, dtype=np.uint8).reshape(self.width, self.height, 4)
+        GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT3)
+        pc = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
+        pc = pc.reshape(self.height, self.width, 4)[::-1, :]
 
-        # pc = np.stack([pc,pc, pc, np.ones(pc.shape)], axis = -1)
-        # pc = pc[::-1, ]
-        # pc = (1-pc) * 10
-
-        # GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT3)
-        # pc2 = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
-        # seg = np.frombuffer(frame, dtype=np.uint8).reshape(self.width, self.height, 4)
-        # pc2 = pc2[::-1, ]
-        # pc2 = pc2[:,:,:3]
-
-        # point cloud
-
-        return [frame, seg]
+        return [frame, normal, seg, pc]
 
     def set_light_pos(self, light):
         self.lightpos = light
@@ -360,11 +281,11 @@ class MeshRenderer:
         self.r.release()
 
     def clean(self):
-        GL.glDeleteTextures([self.color_tex, self.color_tex_2, self.color_tex_3, self.color_tex_4, self.depth_tex])
-        self.color_tex = None
-        self.color_tex_2 = None
-        self.color_tex_3 = None
-        self.color_tex_4 = None
+        GL.glDeleteTextures([self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d, self.depth_tex])
+        self.color_tex_rgb = None
+        self.color_tex_normal = None
+        self.color_tex_semantics = None
+        self.color_tex_3d = None
 
         self.depth_tex = None
         GL.glDeleteFramebuffers(1, [self.fbo])
