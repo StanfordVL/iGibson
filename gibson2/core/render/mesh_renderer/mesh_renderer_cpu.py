@@ -15,6 +15,91 @@ from mesh_renderer.get_available_devices import get_available_devices
 from mesh_renderer.glutils.utils import colormap, loadTexture
 
 
+class VisualObject:
+    def __init__(self, filename, VAO_ids, id, renderer):
+        self.VAO_ids = VAO_ids
+        self.filename = filename
+        self.texture_ids = []
+        self.id = id
+        self.renderer = renderer
+
+    def __str__(self):
+        return "Object({})->VAO({})".format(self.id, self.VAO_ids)
+
+    def __repr__(self):
+        return self.__str__()
+
+class Instance:
+    def __init__(self, object, id, pose_trans, pose_rot):
+        self.object = object
+        self.pose_trans = pose_trans
+        self.pose_rot = pose_rot
+        self.id = id
+        self.renderer = object.renderer
+
+    def render(self):
+        for object_idx in self.object.VAO_ids:
+            GL.glUseProgram(self.renderer.shaderProgram)
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1, GL.GL_TRUE,
+                                  self.renderer.V)
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'P'), 1, GL.GL_FALSE,
+                                  self.renderer.P)
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE,
+                                  self.pose_trans)
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
+                                  self.pose_rot)
+            GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_position'),
+                           *self.renderer.lightpos)
+            GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
+                           *self.renderer.colors[object_idx % 3])
+            GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
+                           *self.renderer.lightcolor)
+
+            try:
+                # Activate texture
+                GL.glActiveTexture(GL.GL_TEXTURE0)
+
+                if self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture():
+                    GL.glBindTexture(GL.GL_TEXTURE_2D,
+                                     self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id)
+
+                GL.glUniform1i(self.renderer.texUnitUniform, 0)
+                # Activate array
+                GL.glBindVertexArray(self.renderer.VAOs[object_idx])
+                # draw triangles
+                GL.glDrawElements(GL.GL_TRIANGLES, self.renderer.faces[object_idx].size, GL.GL_UNSIGNED_INT,
+                                  self.renderer.faces[object_idx])
+
+            finally:
+                GL.glBindVertexArray(0)
+                GL.glUseProgram(0)
+
+    def get_pose_in_camera(self):
+        mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
+        pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
+        return pose
+
+    def __str__(self):
+        return "Instance({}) -> Object({})".format(self.id, self.object.id)
+
+    def __repr__(self):
+        return self.__str__()
+
+class Material:
+    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id = None):
+        self.type=type
+        self.kd=kd
+        self.texture_id = texture_id
+
+    def is_texture(self):
+        return self.type == 'texture'
+
+    def __str__(self):
+        return "Material(type: {}, texture_id: {})".format(self.type, self.texture_id)
+
+    def __repr__(self):
+        return self.__str__()
+
 class MeshRenderer:
     def __init__(self, width=512, height=512, device_idx=0):
         self.shaderProgram = None
@@ -25,12 +110,14 @@ class MeshRenderer:
         self.VBOs = []
         self.textures = []
         self.objects = []
+        self.visual_objects = []
+
         self.texUnitUniform = None
         self.width = width
         self.height = height
         self.faces = []
-        self.poses_trans = []
-        self.poses_rot = []
+        self.instances = []
+
         # self.context = glcontext.Context()
         # self.context.create_opengl_context((self.width, self.height))
         available_devices = get_available_devices()
@@ -65,10 +152,8 @@ class MeshRenderer:
 
         self.V = np.ascontiguousarray(V, np.float32)
         self.P = np.ascontiguousarray(P, np.float32)
-        self.materials_fn = {}
-        self.materials_texture = {}
+        self.materials_mapping = {}
         self.mesh_materials = []
-        self.instances = []
 
     def setup_framebuffer(self):
         self.fbo = GL.glGenFramebuffers(1)
@@ -121,26 +206,31 @@ class MeshRenderer:
 
         scene = load(obj_path)
         material_count = len(self.mesh_materials)
-        print(material_count)
+        materials_fn = {}
 
         for i, item in enumerate(scene.materials):
-            self.materials_fn[i] = None
+            is_texture = False
             for k, v in item.properties.items():
-                # print(k,v)
                 if k == 'file':
-                    self.materials_fn[i + material_count] = v
+                    materials_fn[i + material_count] = v
+                    dir = os.path.dirname(obj_path)
+                    texture = loadTexture(os.path.join(dir, v))
+                    material = Material('texture', texture_id=texture)
+                    self.materials_mapping[i + material_count] = material
+                    self.textures.append(texture)
+                    is_texture = True
+            if not is_texture:
+                self.materials_mapping[i + material_count] = Material('color')
 
-        for k, v in self.materials_fn.items():
-            if not v is None and k > material_count:
-                dir = os.path.dirname(obj_path)
-                texture = loadTexture(os.path.join(dir, v))
-                self.materials_texture[k] = texture
-                self.textures.append(texture)
-
-        object_ids = []
+        VAO_ids = []
 
         for mesh in scene.meshes:
             faces = mesh.faces
+
+            if mesh.normals.shape[0] == 0:
+                mesh.normals = np.zeros(mesh.vertices.shape, dtype=mesh.vertices.dtype)
+            if mesh.texturecoords.shape[0] == 0:
+                mesh.texturecoords = np.zeros((1, *mesh.vertices.shape), dtype=mesh.vertices.dtype)
             vertices = np.concatenate([mesh.vertices * scale, mesh.normals, mesh.texturecoords[0, :, :2]], axis=-1)
             vertexData = vertices.astype(np.float32)
 
@@ -178,15 +268,18 @@ class MeshRenderer:
             self.faces.append(faces)
             self.objects.append(obj_path)
             self.mesh_materials.append(mesh.materialindex + material_count)
-            object_ids.append(self.get_num_objects() - 1)
+            VAO_ids.append(self.get_num_objects() - 1)
+
         print(self.mesh_materials)
         release(scene)
-        return object_ids
 
-    def add_instance(self, object_id):
-        self.poses_rot.append(np.eye(4))
-        self.poses_trans.append(np.eye(4))
-        self.instances.append(object_id)
+        new_obj = VisualObject(obj_path, VAO_ids, len(self.visual_objects), self)
+        self.visual_objects.append(new_obj)
+        return VAO_ids
+
+    def add_instance(self, object_id, pose_rot = np.eye(4), pose_trans = np.eye(4)):
+        instance = Instance(self.visual_objects[object_id], id = len(self.instances), pose_trans=pose_trans, pose_rot=pose_rot)
+        self.instances.append(instance)
 
     def set_camera(self, camera, target, up):
         self.camera = camera
@@ -195,7 +288,6 @@ class MeshRenderer:
         V = lookat(
             self.camera,
             self.target, up=self.up)
-
         self.V = np.ascontiguousarray(V, np.float32)
 
     def set_fov(self, fov):
@@ -207,42 +299,7 @@ class MeshRenderer:
     def set_light_color(self, color):
         self.lightcolor = color
 
-    def render(self):
-        GL.glClearColor(0, 0, 0, 1)
-        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
-        GL.glEnable(GL.GL_DEPTH_TEST)
-
-        for i in range(len(self.instances)):
-            object_idx = self.instances[i]
-            # active shader program
-            GL.glUseProgram(self.shaderProgram)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'V'), 1, GL.GL_TRUE, self.V)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'P'), 1, GL.GL_FALSE, self.P)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE,
-                                  self.poses_trans[object_idx])
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
-                                  self.poses_rot[object_idx])
-            GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'light_position'), *self.lightpos)
-            GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'instance_color'), *self.colors[object_idx % 3])
-            GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'light_color'), *self.lightcolor)
-
-            try:
-                # Activate texture
-                GL.glActiveTexture(GL.GL_TEXTURE0)
-                GL.glBindTexture(GL.GL_TEXTURE_2D, self.materials_texture[self.mesh_materials[object_idx]])
-                GL.glUniform1i(self.texUnitUniform, 0)
-                # Activate array
-                GL.glBindVertexArray(self.VAOs[object_idx])
-                # draw triangles
-                GL.glDrawElements(GL.GL_TRIANGLES, self.faces[object_idx].size, GL.GL_UNSIGNED_INT,
-                                  self.faces[object_idx])
-
-            finally:
-                GL.glBindVertexArray(0)
-                GL.glUseProgram(0)
-
-        GL.glDisable(GL.GL_DEPTH_TEST)
-
+    def readbuffer(self):
         GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT0)
         frame = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_RGBA, GL.GL_FLOAT)
         frame = frame.reshape(self.height, self.width, 4)[::-1, :]
@@ -261,19 +318,28 @@ class MeshRenderer:
 
         return [frame, normal, seg, pc]
 
+    def render(self):
+        GL.glClearColor(0, 0, 0, 1)
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+        GL.glEnable(GL.GL_DEPTH_TEST)
+
+        for instance in self.instances:
+            instance.render()
+        GL.glDisable(GL.GL_DEPTH_TEST)
+
+        frame, normal, seg, pc = self.readbuffer()
+
+        return [frame, normal, seg, pc]
+
     def set_light_pos(self, light):
         self.lightpos = light
 
     def get_num_objects(self):
         return len(self.objects)
 
-    # def set_poses(self, poses):
-    #    self.poses_rot = [np.ascontiguousarray(quat2rotmat(item[3:])) for item in poses]
-    #    self.poses_trans = [np.ascontiguousarray(xyz2mat(item[:3])) for item in poses]
-
     def set_pose(self, pose, idx):
-        self.poses_rot[idx] = np.ascontiguousarray(quat2rotmat(pose[3:]))
-        self.poses_trans[idx] = np.ascontiguousarray(xyz2mat(pose[:3]))
+        self.instances[idx].pose_rot = np.ascontiguousarray(quat2rotmat(pose[3:]))
+        self.instances[idx].pose_trans = np.ascontiguousarray(xyz2mat(pose[:3]))
 
     def release(self):
         print(self.glstring)
@@ -281,12 +347,12 @@ class MeshRenderer:
         self.r.release()
 
     def clean(self):
-        GL.glDeleteTextures([self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d, self.depth_tex])
+        GL.glDeleteTextures(
+            [self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d, self.depth_tex])
         self.color_tex_rgb = None
         self.color_tex_normal = None
         self.color_tex_semantics = None
         self.color_tex_3d = None
-
         self.depth_tex = None
         GL.glDeleteFramebuffers(1, [self.fbo])
         self.fbo = None
@@ -298,8 +364,8 @@ class MeshRenderer:
         self.textures = []
         self.objects = []  # GC should free things here
         self.faces = []  # GC should free things here
-        self.poses_trans = []  # GC should free things here
-        self.poses_rot = []  # GC should free things here
+        self.visual_objects = []
+        self.instances = []
 
     def transform_vector(self, vec):
         vec = np.array(vec)
@@ -328,18 +394,19 @@ class MeshRenderer:
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
-    def get_poses(self):
-        mat = [self.V.dot(self.poses_trans[i].T).dot(self.poses_rot[i]).T for i in range(self.get_num_objects())]
-        poses = [np.concatenate([mat2xyz(item), safemat2quat(item[:3, :3].T)]) for item in mat]
-        return poses
-
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
-    renderer = MeshRenderer(width=800, height=600)
+    renderer = MeshRenderer(width=200, height=200)
     renderer.load_object(model_path)
-    for i in range(len(renderer.objects)):
-        renderer.add_instance(i)
+    renderer.add_instance(0)
+
+    renderer.load_object('/home/fei/Downloads/models/011_banana/textured_simple.obj')
+    renderer.add_instance(1)
+
+    print(renderer.visual_objects, renderer.instances)
+
+    print(renderer.materials_mapping, renderer.mesh_materials)
     camera_pose = np.array([0, 0, 1.2])
     view_direction = np.array([1, 0, 0])
     renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
@@ -350,7 +417,6 @@ if __name__ == '__main__':
 
     _mouse_ix, _mouse_iy = -1, -1
     down = False
-
 
     def change_dir(event, x, y, flags, param):
         global _mouse_ix, _mouse_iy, down, view_direction
@@ -389,52 +455,5 @@ if __name__ == '__main__':
             break
         camera_pose = np.array([px, py, 1.2])
         renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
-    '''
-    # mat = pose2mat(pose)
-    pose = np.array([-0.025801208, 0.08432201, 0.004528991, 0.9992879, -0.0021458883, 0.0304758, 0.022142926])
-    pose2 = np.array([-0.56162935, 0.05060109, -0.028915625, 0.6582951, 0.03479896, -0.036391996, -0.75107396])
-    pose3 = np.array([0.22380374, 0.019853603, 0.12159989, -0.40458265, -0.036644224, -0.6464779, 0.64578354])
 
-    theta = 0
-    z = 1
-    cam_pos = [np.sin(theta),z,np.cos(theta)]
-    renderer.set_camera(cam_pos, [0,0,0], [0,1,0])
-    renderer.set_fov(40)
-    renderer.set_poses([pose, pose2, pose3])
-    renderer.set_light_pos([0,1,1])
-
-    import time
-    start = time.time()
-    while True:
-        #renderer.set_light_pos([0,-1 + 0.01 * i, 0])
-        frame = renderer.render()
-
-        if len(sys.argv) > 2 and sys.argv[2] == 'headless':
-            #print(np.mean(frame[0]))
-            theta += 0.001
-            if theta > 1: break
-        else:
-            #import matplotlib.pyplot as plt
-            #plt.imshow(np.concatenate(frame, axis=1))
-            #plt.show()
-            cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis= 1), cv2.COLOR_RGB2BGR))
-            q = cv2.waitKey(16)
-            if q == ord('w'):
-                z += 0.05
-            elif q == ord('s'):
-                z -= 0.05
-            elif q == ord('a'):
-                theta -= 0.1
-            elif q == ord('d'):
-                theta += 0.1
-            elif q == ord('q'):
-                break
-
-            #print(renderer.get_poses())
-        cam_pos = [np.sin(theta), z, np.cos(theta)]
-        renderer.set_camera(cam_pos, [0, 0, 0], [0, 1, 0])
-
-    dt = time.time() - start
-    print("{} fps".format(1000 / dt))
-    '''
     renderer.release()
