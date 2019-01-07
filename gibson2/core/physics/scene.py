@@ -30,7 +30,7 @@ class StadiumScene(Scene):
         for i in self.ground_plane_mjcf:
             p.changeVisualShape(i, -1, rgbaColor=[1, 1, 1, 0.5])
 
-        return [self.stadium, self.ground_plane_mjcf]
+        return [*self.stadium, *self.ground_plane_mjcf]
 
 
 class BuildingScene(Scene):
@@ -53,4 +53,4 @@ class BuildingScene(Scene):
         p.changeVisualShape(boundaryUid, -1, rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
                             specularColor=[0.5, 0.5, 0.5])
 
-        return [boundaryUid, self.ground_plane_mjcf]
+        return [boundaryUid, *self.ground_plane_mjcf]

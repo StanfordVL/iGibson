@@ -802,3 +802,4 @@ class JR2(WalkerBase):
 
         angular_velocity = self.robot_body.angular_velocity()
         return np.concatenate((base_state, np.array(angular_velocity)))
+
