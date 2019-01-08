@@ -2,7 +2,7 @@ import sys
 import ctypes
 
 from PIL import Image
-import mesh_renderer.glutils.glcontext as glcontext
+import gibson2.core.render.mesh_renderer.glutils.glcontext as glcontext
 import OpenGL.GL as GL
 import cv2
 import numpy as np
@@ -10,9 +10,9 @@ from pyassimp import *
 from mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-from mesh_renderer import CppMeshRenderer
-from mesh_renderer.get_available_devices import get_available_devices
-from mesh_renderer.glutils.utils import colormap, loadTexture
+from gibson2.core.render.mesh_renderer import CppMeshRenderer
+from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
+from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTexture
 
 
 class VisualObject:
@@ -28,6 +28,7 @@ class VisualObject:
 
     def __repr__(self):
         return self.__str__()
+
 
 class Instance:
     def __init__(self, object, id, pose_trans, pose_rot):
@@ -54,6 +55,13 @@ class Instance:
                            *self.renderer.colors[object_idx % 3])
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
                            *self.renderer.lightcolor)
+            GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
+                           *self.renderer.materials_mapping[
+                                         self.renderer.mesh_materials[object_idx]].kd)
+            GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
+                           float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
+
+
 
             try:
                 # Activate texture
@@ -61,7 +69,8 @@ class Instance:
 
                 if self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture():
                     GL.glBindTexture(GL.GL_TEXTURE_2D,
-                                     self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id)
+                                     self.renderer.materials_mapping[
+                                         self.renderer.mesh_materials[object_idx]].texture_id)
 
                 GL.glUniform1i(self.renderer.texUnitUniform, 0)
                 # Activate array
@@ -79,26 +88,31 @@ class Instance:
         pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
         return pose
 
+    def set_position(self, pos):
+        self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
+
     def __str__(self):
         return "Instance({}) -> Object({})".format(self.id, self.object.id)
 
     def __repr__(self):
         return self.__str__()
 
+
 class Material:
-    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id = None):
-        self.type=type
-        self.kd=kd
+    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=None):
+        self.type = type
+        self.kd = kd
         self.texture_id = texture_id
 
     def is_texture(self):
         return self.type == 'texture'
 
     def __str__(self):
-        return "Material(type: {}, texture_id: {})".format(self.type, self.texture_id)
+        return "Material(type: {}, texture_id: {}, color: {})".format(self.type, self.texture_id, self.kd)
 
     def __repr__(self):
         return self.__str__()
+
 
 class MeshRenderer:
     def __init__(self, width=512, height=512, device_idx=0):
@@ -205,11 +219,12 @@ class MeshRenderer:
     def load_object(self, obj_path, scale=1):
 
         scene = load(obj_path)
-        material_count = len(self.mesh_materials)
+        material_count = len(self.materials_mapping)
         materials_fn = {}
 
         for i, item in enumerate(scene.materials):
             is_texture = False
+            kd = [0.5, 0.5, 0.5]
             for k, v in item.properties.items():
                 if k == 'file':
                     materials_fn[i + material_count] = v
@@ -219,8 +234,11 @@ class MeshRenderer:
                     self.materials_mapping[i + material_count] = material
                     self.textures.append(texture)
                     is_texture = True
+
+                if k == 'diffuse':
+                    kd = v
             if not is_texture:
-                self.materials_mapping[i + material_count] = Material('color')
+                self.materials_mapping[i + material_count] = Material('color', kd = kd)
 
         VAO_ids = []
 
@@ -270,15 +288,15 @@ class MeshRenderer:
             self.mesh_materials.append(mesh.materialindex + material_count)
             VAO_ids.append(self.get_num_objects() - 1)
 
-        print(self.mesh_materials)
         release(scene)
 
         new_obj = VisualObject(obj_path, VAO_ids, len(self.visual_objects), self)
         self.visual_objects.append(new_obj)
         return VAO_ids
 
-    def add_instance(self, object_id, pose_rot = np.eye(4), pose_trans = np.eye(4)):
-        instance = Instance(self.visual_objects[object_id], id = len(self.instances), pose_trans=pose_trans, pose_rot=pose_rot)
+    def add_instance(self, object_id, pose_rot=np.eye(4), pose_trans=np.eye(4)):
+        instance = Instance(self.visual_objects[object_id], id=len(self.instances), pose_trans=pose_trans,
+                            pose_rot=pose_rot)
         self.instances.append(instance)
 
     def set_camera(self, camera, target, up):
@@ -397,15 +415,20 @@ class MeshRenderer:
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
-    renderer = MeshRenderer(width=200, height=200)
+    renderer = MeshRenderer(width=600, height=600)
     renderer.load_object(model_path)
-    renderer.add_instance(0)
-
     renderer.load_object('/home/fei/Downloads/models/011_banana/textured_simple.obj')
+
+    renderer.add_instance(0)
+    renderer.add_instance(1)
+    renderer.add_instance(1)
     renderer.add_instance(1)
 
-    print(renderer.visual_objects, renderer.instances)
+    renderer.instances[1].set_position([1,0,0.3])
+    renderer.instances[2].set_position([1,0,0.5])
+    renderer.instances[3].set_position([1,0,0.7])
 
+    print(renderer.visual_objects, renderer.instances)
     print(renderer.materials_mapping, renderer.mesh_materials)
     camera_pose = np.array([0, 0, 1.2])
     view_direction = np.array([1, 0, 0])
@@ -417,6 +440,7 @@ if __name__ == '__main__':
 
     _mouse_ix, _mouse_iy = -1, -1
     down = False
+
 
     def change_dir(event, x, y, flags, param):
         global _mouse_ix, _mouse_iy, down, view_direction
