@@ -19,3 +19,4 @@ def test_simulator():
 
     for i in range(1000):
         s.step()
+    s.disconnect()
