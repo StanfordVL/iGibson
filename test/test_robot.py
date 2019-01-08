@@ -22,7 +22,6 @@ def test_turtlebot():
     assert p.getNumBodies() == 5
     s.disconnect()
 
-
 def test_jr2():
     s = Simulator()
     scene = StadiumScene()
@@ -120,3 +119,5 @@ def test_multiagent():
         s.step()
 
     s.disconnect()
+
+test_multiagent()

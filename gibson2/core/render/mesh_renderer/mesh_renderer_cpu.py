@@ -31,6 +31,86 @@ class VisualObject:
         return self.__str__()
 
 
+class InstanceGroup:
+    def __init__(self, objects, id, link_ids, pybullet_uuid, pose_trans, pose_rot, dynamic):
+        #assert(len(objects) > 0) # no empty instance group
+        self.objects = objects
+        self.pose_trans = pose_trans
+        self.pose_rot = pose_rot
+        self.id = id
+        self.link_ids = link_ids
+        if len(objects) > 0:
+            self.renderer = objects[0].renderer
+        else:
+            self.renderer = None
+
+        self.pybullet_uuid = pybullet_uuid
+        self.dynamic = dynamic
+        self.tf_tree = None
+
+    def render(self):
+        if self.renderer is None:
+            return
+        for visual_object in self.objects:
+            for object_idx in visual_object.VAO_ids:
+                GL.glUseProgram(self.renderer.shaderProgram)
+                GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1, GL.GL_TRUE,
+                                      self.renderer.V)
+                GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'P'), 1, GL.GL_FALSE,
+                                      self.renderer.P)
+                GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE,
+                                      self.pose_trans)
+                GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
+                                      self.pose_rot)
+                GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_position'),
+                               *self.renderer.lightpos)
+                GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
+                               *self.renderer.colors[object_idx % 3])
+                GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
+                               *self.renderer.lightcolor)
+                GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
+                               *self.renderer.materials_mapping[
+                                             self.renderer.mesh_materials[object_idx]].kd)
+                GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
+                               float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
+
+                try:
+                    # Activate texture
+                    GL.glActiveTexture(GL.GL_TEXTURE0)
+
+                    if self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture():
+                        GL.glBindTexture(GL.GL_TEXTURE_2D,
+                                         self.renderer.materials_mapping[
+                                             self.renderer.mesh_materials[object_idx]].texture_id)
+
+                    GL.glUniform1i(self.renderer.texUnitUniform, 0)
+                    # Activate array
+                    GL.glBindVertexArray(self.renderer.VAOs[object_idx])
+                    # draw triangles
+                    GL.glDrawElements(GL.GL_TRIANGLES, self.renderer.faces[object_idx].size, GL.GL_UNSIGNED_INT,
+                                      self.renderer.faces[object_idx])
+                finally:
+                    GL.glBindVertexArray(0)
+                    GL.glUseProgram(0)
+
+    def get_pose_in_camera(self):
+        mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
+        pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
+        return pose
+
+    def set_position(self, pos):
+        self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
+
+    def set_rotation(self, rot):
+        self.pose_rot = np.ascontiguousarray(quat2rotmat(rot))
+
+    def __str__(self):
+        return "InstanceGroup({}) -> Objects({})".format(self.id, ",".join([str(object.id) for object in self.objects]))
+
+    def __repr__(self):
+        return self.__str__()
+
+
 class Instance:
     def __init__(self, object, id, pybullet_uuid, pose_trans, pose_rot, dynamic):
         self.object = object
@@ -42,6 +122,8 @@ class Instance:
         self.dynamic = dynamic
 
     def render(self):
+        if self.renderer is None:
+            return
         for object_idx in self.object.VAO_ids:
             GL.glUseProgram(self.renderer.shaderProgram)
             GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1, GL.GL_TRUE,
@@ -63,8 +145,6 @@ class Instance:
                                          self.renderer.mesh_materials[object_idx]].kd)
             GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
                            float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
-
-
 
             try:
                 # Activate texture
@@ -303,6 +383,11 @@ class MeshRenderer:
         instance = Instance(self.visual_objects[object_id], id=len(self.instances), pybullet_uuid=pybullet_uuid, pose_trans=pose_trans,
                             pose_rot=pose_rot, dynamic = dynamic)
         self.instances.append(instance)
+
+    def add_instance_group(self, object_ids, link_ids, pybullet_uuid=None, pose_rot=np.eye(4), pose_trans=np.eye(4), dynamic = False):
+        instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids], id=len(self.instances), link_ids = link_ids, pybullet_uuid=pybullet_uuid, pose_trans=pose_trans,
+                            pose_rot=pose_rot, dynamic = dynamic)
+        self.instances.append(instance_group)
 
     def set_camera(self, camera, target, up):
         self.camera = camera
