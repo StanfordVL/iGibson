@@ -13,7 +13,8 @@ from transforms3d.euler import quat2euler, mat2euler
 from gibson2.core.render.mesh_renderer import CppMeshRenderer
 from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
 from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTexture
-
+import gibson2.core.render.mesh_renderer as mesh_renderer
+import pybullet as p
 
 class VisualObject:
     def __init__(self, filename, VAO_ids, id, renderer):
@@ -31,12 +32,14 @@ class VisualObject:
 
 
 class Instance:
-    def __init__(self, object, id, pose_trans, pose_rot):
+    def __init__(self, object, id, pybullet_uuid, pose_trans, pose_rot, dynamic):
         self.object = object
         self.pose_trans = pose_trans
         self.pose_rot = pose_rot
         self.id = id
         self.renderer = object.renderer
+        self.pybullet_uuid = pybullet_uuid
+        self.dynamic = dynamic
 
     def render(self):
         for object_idx in self.object.VAO_ids:
@@ -91,12 +94,14 @@ class Instance:
     def set_position(self, pos):
         self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
 
+    def set_rotation(self, rot):
+        self.pose_rot = np.ascontiguousarray(quat2rotmat(rot))
+
     def __str__(self):
         return "Instance({}) -> Object({})".format(self.id, self.object.id)
 
     def __repr__(self):
         return self.__str__()
-
 
 class Material:
     def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=None):
@@ -147,8 +152,8 @@ class MeshRenderer:
         self.colors = colormap
         self.lightcolor = [1, 1, 1]
 
-        vertexShader = self.shaders.compileShader(open('shaders/vert.shader').readlines(), GL.GL_VERTEX_SHADER)
-        fragmentShader = self.shaders.compileShader(open('shaders/frag.shader').readlines(), GL.GL_FRAGMENT_SHADER)
+        vertexShader = self.shaders.compileShader(open(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/vert.shader')).readlines(), GL.GL_VERTEX_SHADER)
+        fragmentShader = self.shaders.compileShader(open(os.path.join(os.path.dirname(mesh_renderer.__file__),'shaders/frag.shader')).readlines(), GL.GL_FRAGMENT_SHADER)
 
         self.shaderProgram = self.shaders.compileProgram(vertexShader, fragmentShader)
         self.texUnitUniform = GL.glGetUniformLocation(self.shaderProgram, 'texUnit')
@@ -294,9 +299,9 @@ class MeshRenderer:
         self.visual_objects.append(new_obj)
         return VAO_ids
 
-    def add_instance(self, object_id, pose_rot=np.eye(4), pose_trans=np.eye(4)):
-        instance = Instance(self.visual_objects[object_id], id=len(self.instances), pose_trans=pose_trans,
-                            pose_rot=pose_rot)
+    def add_instance(self, object_id, pybullet_uuid=None, pose_rot=np.eye(4), pose_trans=np.eye(4), dynamic = False):
+        instance = Instance(self.visual_objects[object_id], id=len(self.instances), pybullet_uuid=pybullet_uuid, pose_trans=pose_trans,
+                            pose_rot=pose_rot, dynamic = dynamic)
         self.instances.append(instance)
 
     def set_camera(self, camera, target, up):
