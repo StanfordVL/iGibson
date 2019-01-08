@@ -4,7 +4,7 @@ import os
 
 class YCBObject:
     def __init__(self, name, scale=1):
-        self.filename =  os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), 'models', 'ycb', name, 'textured_simple2.obj')
+        self.filename =  os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), 'models', 'ycb', name, 'textured_simple.obj')
         self.scale = scale
 
     def load(self):

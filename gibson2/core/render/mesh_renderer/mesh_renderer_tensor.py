@@ -21,6 +21,7 @@ from mesh_renderer.get_available_devices import get_available_devices, get_cuda_
 
 MAX_NUM_OBJECTS = 3
 
+
 @contextmanager
 def cuda_activate(img):
     """Context manager simplifying use of pycuda.gl.RegisteredImage"""
@@ -55,6 +56,7 @@ def loadTexture(path):
     GL.glGenerateMipmap(GL.GL_TEXTURE_2D)
     return texture
 
+
 class MeshTensorRenderer:
     def __init__(self, width=512, height=512, device_idx=0):
         self.shaderProgram = None
@@ -71,11 +73,12 @@ class MeshTensorRenderer:
         # self.context = glcontext.Context()
         # self.context.create_opengl_context((self.width, self.height))
         available_devices = get_available_devices()
-        assert(device_idx < len(available_devices))
+        assert (device_idx < len(available_devices))
         device = available_devices[device_idx]
         self.cuda_device = (get_cuda_device(device))
         torch.cuda.device(self.cuda_device)
-        print('use GL device {} CUDA device {}: {}'.format(device, self.cuda_device, torch.cuda.get_device_name(self.cuda_device)))
+        print('use GL device {} CUDA device {}: {}'.format(device, self.cuda_device,
+                                                           torch.cuda.get_device_name(self.cuda_device)))
 
         self.r = CppMeshRenderer.CppMeshRenderer(width, height, device)
         self.r.init()
@@ -211,7 +214,7 @@ class MeshTensorRenderer:
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
-        P = perspective(self.fov, float(self.width)/float(self.height), 0.01, 100)
+        P = perspective(self.fov, float(self.width) / float(self.height), 0.01, 100)
         V = lookat(
             self.camera,
             self.target, up=self.up)
@@ -220,20 +223,20 @@ class MeshTensorRenderer:
         self.P = np.ascontiguousarray(P, np.float32)
 
     def load_object(self, obj_path):
-        #texture = loadTexture(texture_path)
-        #self.textures.append(texture)
+        # texture = loadTexture(texture_path)
+        # self.textures.append(texture)
 
         scene = load(obj_path)
 
         self.materials_fn = {}
         self.materials_texture = {}
-        for i,item in enumerate(scene.materials):
+        for i, item in enumerate(scene.materials):
             self.materials_fn[i] = None
-            for k,v in item.properties.items():
+            for k, v in item.properties.items():
                 if k == 'file':
                     self.materials_fn[i] = v
 
-        for k,v in self.materials_fn.items():
+        for k, v in self.materials_fn.items():
             if not v is None:
                 dir = os.path.dirname(obj_path)
                 texture = loadTexture(os.path.join(dir, v))
@@ -285,7 +288,7 @@ class MeshTensorRenderer:
             self.mesh_materials.append(mesh.materialindex)
         release(scene)
 
-    #def load_objects(self, obj_paths, texture_paths):
+    # def load_objects(self, obj_paths, texture_paths):
     #    for i in range(len(obj_paths)):
     #        self.load_object(obj_paths[i], texture_paths[i])
     #    # print(self.textures)
@@ -302,7 +305,7 @@ class MeshTensorRenderer:
 
     def set_fov(self, fov):
         self.fov = fov
-        P = perspective(self.fov, float(self.width)/float(self.height), 0.01, 100)
+        P = perspective(self.fov, float(self.width) / float(self.height), 0.01, 100)
         self.P = np.ascontiguousarray(P, np.float32)
 
     def set_light_color(self, color):
@@ -342,7 +345,6 @@ class MeshTensorRenderer:
                 GL.glUseProgram(0)
 
         GL.glDisable(GL.GL_DEPTH_TEST)
-
 
         if self.cuda_buffer is None:
             self.cuda_buffer = pycuda.gl.RegisteredImage(
@@ -439,6 +441,7 @@ class MeshTensorRenderer:
         mat = [self.V.dot(self.poses_trans[i].T).dot(self.poses_rot[i]).T for i in range(self.get_num_objects())]
         poses = [np.concatenate([mat2xyz(item), safemat2quat(item[:3, :3].T)]) for item in mat]
         return poses
+
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
