@@ -48,11 +48,19 @@ class BaseRobot:
         self.robot_name = robot_name
         self.physics_model_dir = os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), "models")
         self.scale = scale
-        self._load_model()
-        self.eyes = self.parts["eyes"]
-        self.model_type = None
+        self.eyes = None
+        print(self.model_file)
+        if self.model_file[-4:] == 'urdf':
+            self.model_type = 'URDF'
+        else:
+            self.model_type = 'MJCF'
         self.config = None
         self.np_random = None
+
+    def load(self):
+        ids = self._load_model()
+        self.eyes = self.parts["eyes"]
+        return ids
 
     def addToScene(self, bodies):
         if self.parts is not None:
@@ -115,8 +123,9 @@ class BaseRobot:
         if self.model_type == "URDF":
             self.robot_ids = (
             p.loadURDF(os.path.join(self.physics_model_dir, self.model_file), globalScaling=self.scale),)
-        self.parts, self.jdict, self.ordered_joints, self.robot_body = self.addToScene(self.robot_ids)
 
+        self.parts, self.jdict, self.ordered_joints, self.robot_body = self.addToScene(self.robot_ids)
+        return self.robot_ids
     def robot_specific_reset(self):
         raise NotImplementedError
 

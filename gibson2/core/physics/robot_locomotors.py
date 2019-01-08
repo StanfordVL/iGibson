@@ -285,12 +285,6 @@ class Ant(WalkerBase):
             realaction = action
         WalkerBase.apply_action(self, realaction)
 
-    def robot_specific_reset(self):
-        WalkerBase.robot_specific_reset(self)
-
-    def alive_bonus(self, z, pitch):
-        return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
-
     def setup_keys_to_action(self):
         self.keys_to_action = {
             (ord('1'),): 0,
@@ -311,60 +305,6 @@ class Ant(WalkerBase):
             (ord('y'),): 15,
             (): 4
         }
-
-
-class AntClimber(Ant):
-    def __init__(self, config):
-        Ant.__init__(self, config)
-
-    def robot_specific_reset(self):
-        Ant.robot_specific_reset(self)
-        amplify = 1
-        for j in self.jdict.keys():
-            self.jdict[j].power_coef *= amplify
-
-        debugmode = 0
-        if debugmode:
-            for k in self.jdict.keys():
-                print("Power coef", self.jdict[k].power_coef)
-
-    def calc_potential(self):
-        # base_potential = Ant.calc_potential(self)
-        # height_coeff   = 3
-        # height_potential = - height_coeff * self.walk_height_diff / self.scene.dt
-        debugmode = 0
-        if debugmode:
-            print("Ant xyz potential", self.walk_target_dist_xyz)
-        return - self.walk_target_dist_xyz / self.scene.dt
-
-    def alive_bonus(self, roll, pitch):
-        """Alive requires the ant's head to not touch the ground, it's roll
-        and pitch cannot be too large"""
-        # return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
-        alive = roll < np.pi / 2 and roll > -np.pi / 2 and pitch > -np.pi / 2 and pitch < np.pi / 2
-        debugmode = 0
-        if debugmode:
-            print("roll, pitch")
-            print(roll, pitch)
-            print("alive")
-            print(alive)
-        return +1 if alive else -1
-
-    def _is_close_to_goal(self):
-        body_pose = self.robot_body.pose()
-        parts_xyz = np.array([p.pose().xyz() for p in self.parts.values()]).flatten()
-        self.body_xyz = (
-            parts_xyz[0::3].mean(), parts_xyz[1::3].mean(),
-            body_pose.xyz()[2])  # torso z is more informative than mean z
-        dist_to_goal = np.linalg.norm([self.body_xyz[0] - self.target_pos[0], self.body_xyz[1] - self.target_pos[1],
-                                       self.body_xyz[2] - self.target_pos[2]])
-        debugmode = 0
-        if debugmode:
-            print(np.linalg.norm([self.body_xyz[0] - self.target_pos[0], self.body_xyz[1] - self.target_pos[1],
-                                  self.body_xyz[2] - self.target_pos[2]]),
-                  [self.body_xyz[0], self.body_xyz[1], self.body_xyz[2]],
-                  [self.target_pos[0], self.target_pos[1], self.target_pos[2]])
-        return dist_to_goal < 0.5
 
 
 class Humanoid(WalkerBase):
@@ -439,9 +379,6 @@ class Humanoid(WalkerBase):
             for i, m, power in zip(range(17), self.motors, self.motor_power):
                 m.set_motor_torque(float(force_gain * power * self.power * a[i]))
             # m.set_motor_torque(float(force_gain * power * self.power * np.clip(a[i], -1, +1)))
-
-    def alive_bonus(self, z, pitch):
-        return +2 if z > 0.78 else -1  # 2 here because 17 joints produce a lot of electricity cost just from policy noise, living must be better than dying
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
@@ -582,9 +519,6 @@ class Quadrotor(WalkerBase):
         p.setGravity(0, 0, 0)
         p.resetBaseVelocity(self.robot_ids[0], realaction[:3], realaction[3:])
 
-    def robot_specific_reset(self):
-        WalkerBase.robot_specific_reset(self)
-
     def setup_keys_to_action(self):
         self.keys_to_action = {
             (ord('w'),): 0,  ## +x
@@ -635,89 +569,6 @@ class Turtlebot(WalkerBase):
         else:
             realaction = action
         WalkerBase.apply_action(self, realaction)
-
-    def steering_cost(self, action):
-        if not self.is_discrete:
-            return 0
-        if action == 2 or action == 3:
-            return -0.1
-        else:
-            return 0
-
-    def robot_specific_reset(self):
-        WalkerBase.robot_specific_reset(self)
-
-    def alive_bonus(self, z, pitch):
-        return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
-
-    def setup_keys_to_action(self):
-        self.keys_to_action = {
-            (ord('w'),): 0,  ## forward
-            (ord('s'),): 1,  ## backward
-            (ord('d'),): 2,  ## turn right
-            (ord('a'),): 3,  ## turn left
-            (): 4
-        }
-
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-
-        angular_velocity = self.robot_body.angular_velocity()
-        return np.concatenate((base_state, np.array(angular_velocity)))
-
-
-class JR(WalkerBase):
-    foot_list = []
-    mjcf_scaling = 1
-    model_type = "URDF"
-    default_scale = 0.6
-
-    def __init__(self, config):
-        self.config = config
-        scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
-        WalkerBase.__init__(self, "jr1_urdf/jr1_gibson.urdf", "base_link", action_dim=4,
-                            sensor_dim=20, power=2.5, scale=scale,
-                            initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"],
-                            resolution=config["resolution"],
-                            control='velocity',
-                            )
-        self.is_discrete = config["is_discrete"]
-
-        if self.is_discrete:
-            self.action_space = gym.spaces.Discrete(5)
-            self.vel = 0.1
-            self.action_list = [[self.vel, self.vel],
-                                [-self.vel, -self.vel],
-                                [self.vel, -self.vel],
-                                [-self.vel, self.vel],
-                                [0, 0]]
-
-            self.setup_keys_to_action()
-        else:
-            action_high = 0.02 * np.ones([4])
-            self.action_space = gym.spaces.Box(-action_high, action_high)
-
-    def apply_action(self, action):
-        if self.is_discrete:
-            realaction = self.action_list[action]
-        else:
-            realaction = action
-        WalkerBase.apply_action(self, realaction)
-
-    def steering_cost(self, action):
-        if not self.is_discrete:
-            return 0
-        if action == 2 or action == 3:
-            return -0.1
-        else:
-            return 0
-
-    def robot_specific_reset(self):
-        WalkerBase.robot_specific_reset(self)
-
-    def alive_bonus(self, z, pitch):
-        return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
@@ -774,20 +625,6 @@ class JR2(WalkerBase):
             realaction = action
         WalkerBase.apply_action(self, realaction)
 
-    def steering_cost(self, action):
-        if not self.is_discrete:
-            return 0
-        if action == 2 or action == 3:
-            return -0.1
-        else:
-            return 0
-
-    def robot_specific_reset(self):
-        WalkerBase.robot_specific_reset(self)
-
-    def alive_bonus(self, z, pitch):
-        return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
-
     def setup_keys_to_action(self):
         self.keys_to_action = {
             (ord('w'),): 0,  ## forward
@@ -799,7 +636,5 @@ class JR2(WalkerBase):
 
     def calc_state(self):
         base_state = WalkerBase.calc_state(self)
-
         angular_velocity = self.robot_body.angular_velocity()
         return np.concatenate((base_state, np.array(angular_velocity)))
-

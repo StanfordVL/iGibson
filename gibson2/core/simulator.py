@@ -26,7 +26,7 @@ class Simulator:
         for new_object in new_objects:
             for shape in p.getVisualShapeData(new_object):
                 id, _, type, _, filename  = shape[:5]
-                if type == 5:
+                if type == p.GEOM_MESH:
                     filename = filename.decode('utf-8')
                     if not filename in self.visual_objects.keys():
                         self.renderer.load_object(filename)
@@ -40,7 +40,7 @@ class Simulator:
         self.objects.append(new_object)
         for shape in p.getVisualShapeData(new_object):
             id, _, type, _, filename = shape[:5]
-            if type == 5:
+            if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 print(filename, self.visual_objects)
                 if not filename in self.visual_objects.keys():
@@ -50,11 +50,18 @@ class Simulator:
                 else:
                     self.renderer.add_instance(self.visual_objects[filename], new_object, dynamic=True)
 
+    def import_robot(self, robot):
+        ids = robot.load()
+        for shape in p.getVisualShapeData(ids[0]):
+            print(shape)
+        return ids
+
     def step(self):
         p.stepSimulation()
         for instance in self.renderer.instances:
             if instance.dynamic:
                 self.update_position(instance)
+
     @staticmethod
     def update_position(instance):
         pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
