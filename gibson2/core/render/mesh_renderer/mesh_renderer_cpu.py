@@ -32,11 +32,11 @@ class VisualObject:
 
 
 class InstanceGroup:
-    def __init__(self, objects, id, link_ids, pybullet_uuid, pose_trans, pose_rot, dynamic):
+    def __init__(self, objects, id, link_ids, pybullet_uuid, poses_trans, poses_rot, dynamic):
         #assert(len(objects) > 0) # no empty instance group
         self.objects = objects
-        self.pose_trans = pose_trans
-        self.pose_rot = pose_rot
+        self.poses_trans = poses_trans
+        self.poses_rot = poses_rot
         self.id = id
         self.link_ids = link_ids
         if len(objects) > 0:
@@ -51,7 +51,7 @@ class InstanceGroup:
     def render(self):
         if self.renderer is None:
             return
-        for visual_object in self.objects:
+        for i, visual_object in enumerate(self.objects):
             for object_idx in visual_object.VAO_ids:
                 GL.glUseProgram(self.renderer.shaderProgram)
                 GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1, GL.GL_TRUE,
@@ -59,18 +59,19 @@ class InstanceGroup:
                 GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'P'), 1, GL.GL_FALSE,
                                       self.renderer.P)
                 GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE,
-                                      self.pose_trans)
+                                      self.poses_trans[i])
                 GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
-                                      self.pose_rot)
+                                      self.poses_rot[i])
                 GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_position'),
                                *self.renderer.lightpos)
                 GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
                                *self.renderer.colors[object_idx % 3])
                 GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
                                *self.renderer.lightcolor)
+
                 GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
                                *self.renderer.materials_mapping[
-                                             self.renderer.mesh_materials[object_idx]].kd)
+                                             self.renderer.mesh_materials[object_idx]].kd[:3])
                 GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
                                float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
 
@@ -301,7 +302,7 @@ class MeshRenderer:
 
         assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
 
-    def load_object(self, obj_path, scale=1):
+    def load_object(self, obj_path, scale=1, transform_orn=None, transform_pos=None, input_kd=None):
 
         scene = load(obj_path)
         material_count = len(self.materials_mapping)
@@ -325,6 +326,9 @@ class MeshRenderer:
             if not is_texture:
                 self.materials_mapping[i + material_count] = Material('color', kd = kd)
 
+        if not input_kd is None: # urdf material
+            self.materials_mapping[len(scene.materials) + material_count] = Material('color', kd=input_kd)
+
         VAO_ids = []
 
         for mesh in scene.meshes:
@@ -334,6 +338,12 @@ class MeshRenderer:
                 mesh.normals = np.zeros(mesh.vertices.shape, dtype=mesh.vertices.dtype)
             if mesh.texturecoords.shape[0] == 0:
                 mesh.texturecoords = np.zeros((1, *mesh.vertices.shape), dtype=mesh.vertices.dtype)
+            if not transform_orn is None:
+                orn = quat2rotmat([transform_orn[-1], transform_orn[0], transform_orn[1], transform_orn[2]])
+                mesh.vertices = mesh.vertices.dot(orn[:3,:3].T)
+            if not transform_pos is None:
+                mesh.vertices += np.array(transform_pos)
+
             vertices = np.concatenate([mesh.vertices * scale, mesh.normals, mesh.texturecoords[0, :, :2]], axis=-1)
             vertexData = vertices.astype(np.float32)
 
@@ -370,7 +380,10 @@ class MeshRenderer:
             self.VBOs.append(VBO)
             self.faces.append(faces)
             self.objects.append(obj_path)
-            self.mesh_materials.append(mesh.materialindex + material_count)
+            if mesh.materialindex == 0: # if there is no material, use urdf color as material
+                self.mesh_materials.append(len(scene.materials) + material_count)
+            else:
+                self.mesh_materials.append(mesh.materialindex + material_count)
             VAO_ids.append(self.get_num_objects() - 1)
 
         release(scene)
@@ -384,9 +397,10 @@ class MeshRenderer:
                             pose_rot=pose_rot, dynamic = dynamic)
         self.instances.append(instance)
 
-    def add_instance_group(self, object_ids, link_ids, pybullet_uuid=None, pose_rot=np.eye(4), pose_trans=np.eye(4), dynamic = False):
-        instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids], id=len(self.instances), link_ids = link_ids, pybullet_uuid=pybullet_uuid, pose_trans=pose_trans,
-                            pose_rot=pose_rot, dynamic = dynamic)
+    def add_instance_group(self, object_ids, link_ids, poses_rot, poses_trans, pybullet_uuid=None , dynamic = False):
+        instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids], id=len(self.instances),
+                                       link_ids = link_ids, pybullet_uuid=pybullet_uuid, poses_trans=poses_trans,
+                            poses_rot=poses_rot, dynamic = dynamic)
         self.instances.append(instance_group)
 
     def set_camera(self, camera, target, up):

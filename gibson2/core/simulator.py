@@ -61,19 +61,29 @@ class Simulator:
         ids = robot.load()
         visual_objects = []
         link_ids = []
+        poses_rot = []
+        poses_trans = []
+
         for shape in p.getVisualShapeData(ids[0]):
-            id, link_id, type, _, filename = shape[:5]
+            id, link_id, type, _, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 if not filename in self.visual_objects.keys():
-                    print(filename)
-                    self.renderer.load_object(filename)
+                    print(filename, rel_pos, rel_orn, color)
+                    self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3])
                     visual_objects.append(len(self.renderer.visual_objects) - 1)
                     self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                 else:
                     visual_objects.append(self.visual_objects[filename])
+
                 link_ids.append(link_id)
-        self.renderer.add_instance_group(visual_objects, link_ids, ids[0], dynamic=True)
+                if link_id == -1:
+                    pos, orn = p.getBasePositionAndOrientation(id)
+                else:
+                    _, _, _, _, pos, orn = p.getLinkState(id, link_id)
+                poses_rot.append(np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
+                poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+        self.renderer.add_instance_group(object_ids=visual_objects, link_ids=link_ids, pybullet_uuid=ids[0], poses_rot = poses_rot, poses_trans = poses_trans, dynamic=True)
         return ids
 
     def step(self):
@@ -91,13 +101,21 @@ class Simulator:
             instance.set_position(pos)
             instance.set_rotation([orn[-1], orn[0], orn[1], orn[2]])
         elif isinstance(instance, InstanceGroup):
+            poses_rot = []
+            poses_trans = []
+
             for link_id in instance.link_ids:
                 if link_id == -1:
                     pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
                 else:
                     _, _, _, _, pos, orn = p.getLinkState(instance.pybullet_uuid, link_id)
+                poses_rot.append(np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
+                poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+                #print(instance.pybullet_uuid, link_id, pos, orn)
 
-                print(instance.pybullet_uuid, link_id, pos, orn)
+            instance.poses_rot = poses_rot
+            instance.poses_trans = poses_trans
+
     def isconnected(self):
         return p.getConnectionInfo(self.cid)['isConnected']
 

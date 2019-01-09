@@ -391,7 +391,7 @@ class Husky(WalkerBase):
     foot_list = ['front_left_wheel_link', 'front_right_wheel_link', 'rear_left_wheel_link', 'rear_right_wheel_link']
     mjcf_scaling = 1
     model_type = "URDF"
-    default_scale = 0.6
+    default_scale = 1
 
     def __init__(self, config):
         self.config = config
