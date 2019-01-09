@@ -51,23 +51,27 @@ class InstanceGroup:
     def render(self):
         if self.renderer is None:
             return
+
+        GL.glUseProgram(self.renderer.shaderProgram)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1, GL.GL_TRUE,
+                              self.renderer.V)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'P'), 1, GL.GL_FALSE,
+                              self.renderer.P)
+        GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_position'),
+                       *self.renderer.lightpos)
+        GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
+                       *self.renderer.lightcolor)
+
         for i, visual_object in enumerate(self.objects):
             for object_idx in visual_object.VAO_ids:
-                GL.glUseProgram(self.renderer.shaderProgram)
-                GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1, GL.GL_TRUE,
-                                      self.renderer.V)
-                GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'P'), 1, GL.GL_FALSE,
-                                      self.renderer.P)
+
                 GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE,
                                       self.poses_trans[i])
                 GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
                                       self.poses_rot[i])
-                GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_position'),
-                               *self.renderer.lightpos)
+
                 GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
                                *self.renderer.colors[object_idx % 3])
-                GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
-                               *self.renderer.lightcolor)
 
                 GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
                                *self.renderer.materials_mapping[
@@ -92,7 +96,7 @@ class InstanceGroup:
                                       self.renderer.faces[object_idx])
                 finally:
                     GL.glBindVertexArray(0)
-                    GL.glUseProgram(0)
+        GL.glUseProgram(0)
 
     def get_pose_in_camera(self):
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
@@ -125,22 +129,26 @@ class Instance:
     def render(self):
         if self.renderer is None:
             return
+
+        GL.glUseProgram(self.renderer.shaderProgram)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1, GL.GL_TRUE,
+                              self.renderer.V)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'P'), 1, GL.GL_FALSE,
+                              self.renderer.P)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE,
+                              self.pose_trans)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
+                              self.pose_rot)
+        GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_position'),
+                       *self.renderer.lightpos)
+        GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
+                       *self.renderer.lightcolor)
+
+
         for object_idx in self.object.VAO_ids:
-            GL.glUseProgram(self.renderer.shaderProgram)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1, GL.GL_TRUE,
-                                  self.renderer.V)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'P'), 1, GL.GL_FALSE,
-                                  self.renderer.P)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE,
-                                  self.pose_trans)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
-                                  self.pose_rot)
-            GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_position'),
-                           *self.renderer.lightpos)
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
                            *self.renderer.colors[object_idx % 3])
-            GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
-                           *self.renderer.lightcolor)
+
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
                            *self.renderer.materials_mapping[
                                          self.renderer.mesh_materials[object_idx]].kd)
@@ -165,8 +173,8 @@ class Instance:
 
             finally:
                 GL.glBindVertexArray(0)
-                GL.glUseProgram(0)
 
+        GL.glUseProgram(0)
     def get_pose_in_camera(self):
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
         pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
@@ -567,7 +575,8 @@ if __name__ == '__main__':
     cv2.namedWindow('test')
     cv2.setMouseCallback('test', change_dir)
 
-    while True:
+    for i in range(100):
+        print(i)
         frame = renderer.render()
         cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
         q = cv2.waitKey(1)
