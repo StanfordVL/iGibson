@@ -1,8 +1,7 @@
-import pybullet as p
-from gibson2.core.physics.scene import StadiumScene, BuildingScene
+from gibson2.core.physics.scene import StadiumScene
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import *
 from gibson2.core.physics.interactive_objects import *
-from gibson2.core.viewer import Viewer
+from gibson2.core.render.viewer import Viewer
 
 class Simulator:
     def __init__(self, gravity=9.8, timestep=1 / 240.0):

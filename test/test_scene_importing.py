@@ -26,8 +26,6 @@ def test_import_stadium():
     assert s.objects == list(range(4))
     s.disconnect()
 
-
-
 def test_import_building_viewing():
     s = Simulator()
     scene = BuildingScene('Ohoopee')

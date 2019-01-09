@@ -56,7 +56,8 @@ class Viewer:
             exit()
 
         camera_pose = np.array([self.px, self.py, 1.2])
-        self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, [0, 0, 1])
+        if not self.renderer is None:
+            self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, [0, 0, 1])
 
 if __name__ == '__main__':
     viewer = Viewer()
