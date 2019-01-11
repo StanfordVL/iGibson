@@ -86,12 +86,14 @@ class Simulator:
         return ids
 
     def step(self):
-        p.stepSimulation()
-        for instance in self.renderer.instances:
-            if instance.dynamic:
-                self.update_position(instance)
-        self.viewer.update()
-
+        try:
+            p.stepSimulation()
+            for instance in self.renderer.instances:
+                if instance.dynamic:
+                    self.update_position(instance)
+            self.viewer.update()
+        except:
+            s.disconnect()
 
     @staticmethod
     def update_position(instance):
