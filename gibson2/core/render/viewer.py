@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-
+from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import *
 class Viewer:
     def __init__(self):
         self.px = 0
@@ -10,6 +10,7 @@ class Viewer:
         self.view_direction = np.array([1, 0, 0])
 
         cv2.namedWindow('test')
+        cv2.namedWindow('robots')
         cv2.setMouseCallback('test', self.change_dir)
 
         self.renderer = None
@@ -31,6 +32,9 @@ class Viewer:
             self.down = False
 
     def update(self):
+        camera_pose = np.array([self.px, self.py, 1.2])
+        if not self.renderer is None:
+            self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, [0, 0, 1])
 
         if not self.renderer is None:
             frame = cv2.cvtColor(np.concatenate(self.renderer.render(), axis=1), cv2.COLOR_RGB2BGR)
@@ -55,9 +59,11 @@ class Viewer:
         elif q == ord('q'):
             exit()
 
-        camera_pose = np.array([self.px, self.py, 1.2])
-        if not self.renderer is None:
-            self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, [0, 0, 1])
+        for instance in self.renderer.instances:
+            if isinstance(instance, InstanceGroup):
+                #print(instance.robot.eyes.get_position())
+                #print(instance.robot.eyes.get_orientation())
+                pass
 
 if __name__ == '__main__':
     viewer = Viewer()

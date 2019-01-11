@@ -33,13 +33,25 @@ def test_import_building_viewing():
     assert s.objects == list(range(2))
 
     turtlebot1 = Turtlebot(config)
+    turtlebot2 = Turtlebot(config)
+    turtlebot3 = Turtlebot(config)
+
     s.import_robot(turtlebot1)
-    turtlebot1.set_position([0, 0, 0.5])
+    s.import_robot(turtlebot2)
+    s.import_robot(turtlebot3)
 
-    for i in range(10):
-        obj = YCBObject('003_cracker_box')
-        s.import_object(obj)
+    turtlebot1.set_position([0.5, 0, 0.5])
+    turtlebot2.set_position([0, 0, 0.5])
+    turtlebot3.set_position([-0.5, 0, 0.5])
 
-    for i in range(1000):
+
+    for i in range(10000):
         s.step()
+        turtlebot1.apply_action(np.random.randint(4))
+        turtlebot2.apply_action(np.random.randint(4))
+        turtlebot3.apply_action(np.random.randint(4))
+
     s.disconnect()
+
+
+test_import_building_viewing()

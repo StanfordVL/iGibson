@@ -15,7 +15,7 @@ class Simulator:
         self.objects = []
 
         # renderer
-        self.renderer = MeshRenderer(width=300, height=300)
+        self.renderer = MeshRenderer(width=600, height=600)
         self.renderer.set_fov(90)
         self.visual_objects = {}
 
@@ -82,7 +82,7 @@ class Simulator:
                     _, _, _, _, pos, orn = p.getLinkState(id, link_id)
                 poses_rot.append(np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
                 poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
-        self.renderer.add_instance_group(object_ids=visual_objects, link_ids=link_ids, pybullet_uuid=ids[0], poses_rot = poses_rot, poses_trans = poses_trans, dynamic=True)
+        self.renderer.add_instance_group(object_ids=visual_objects, link_ids=link_ids, pybullet_uuid=ids[0], poses_rot = poses_rot, poses_trans = poses_trans, dynamic=True, robot=robot)
         return ids
 
     def step(self):

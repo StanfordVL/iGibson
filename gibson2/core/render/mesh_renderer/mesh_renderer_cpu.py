@@ -32,13 +32,14 @@ class VisualObject:
 
 
 class InstanceGroup:
-    def __init__(self, objects, id, link_ids, pybullet_uuid, poses_trans, poses_rot, dynamic):
+    def __init__(self, objects, id, link_ids, pybullet_uuid, poses_trans, poses_rot, dynamic, robot):
         #assert(len(objects) > 0) # no empty instance group
         self.objects = objects
         self.poses_trans = poses_trans
         self.poses_rot = poses_rot
         self.id = id
         self.link_ids = link_ids
+        self.robot = robot
         if len(objects) > 0:
             self.renderer = objects[0].renderer
         else:
@@ -71,7 +72,7 @@ class InstanceGroup:
                                       self.poses_rot[i])
 
                 GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
-                               *self.renderer.colors[object_idx % 3])
+                               *self.renderer.colors[self.id % 3])
 
                 GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
                                *self.renderer.materials_mapping[
@@ -147,7 +148,7 @@ class Instance:
 
         for object_idx in self.object.VAO_ids:
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
-                           *self.renderer.colors[object_idx % 3])
+                           *self.renderer.colors[self.id % 3])
 
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
                            *self.renderer.materials_mapping[
@@ -405,10 +406,10 @@ class MeshRenderer:
                             pose_rot=pose_rot, dynamic = dynamic)
         self.instances.append(instance)
 
-    def add_instance_group(self, object_ids, link_ids, poses_rot, poses_trans, pybullet_uuid=None , dynamic = False):
+    def add_instance_group(self, object_ids, link_ids, poses_rot, poses_trans, pybullet_uuid=None , dynamic = False, robot=None):
         instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids], id=len(self.instances),
                                        link_ids = link_ids, pybullet_uuid=pybullet_uuid, poses_trans=poses_trans,
-                            poses_rot=poses_rot, dynamic = dynamic)
+                            poses_rot=poses_rot, dynamic = dynamic, robot=robot)
         self.instances.append(instance_group)
 
     def set_camera(self, camera, target, up):
