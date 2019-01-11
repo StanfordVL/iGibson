@@ -100,7 +100,7 @@ def test_multiagent():
     s.import_scene(scene)
     turtlebot1 = Turtlebot(config)
     turtlebot2 = Turtlebot(config)
-    turtlebot3 = Husky(config)
+    turtlebot3 = Turtlebot(config)
 
     s.import_robot(turtlebot1)
     s.import_robot(turtlebot2)
