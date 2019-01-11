@@ -16,6 +16,7 @@ from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTextur
 import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
 
+
 class VisualObject:
     def __init__(self, filename, VAO_ids, id, renderer):
         self.VAO_ids = VAO_ids
@@ -33,7 +34,7 @@ class VisualObject:
 
 class InstanceGroup:
     def __init__(self, objects, id, link_ids, pybullet_uuid, poses_trans, poses_rot, dynamic, robot):
-        #assert(len(objects) > 0) # no empty instance group
+        # assert(len(objects) > 0) # no empty instance group
         self.objects = objects
         self.poses_trans = poses_trans
         self.poses_rot = poses_rot
@@ -66,7 +67,8 @@ class InstanceGroup:
         for i, visual_object in enumerate(self.objects):
             for object_idx in visual_object.VAO_ids:
 
-                GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE,
+                GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1,
+                                      GL.GL_FALSE,
                                       self.poses_trans[i])
                 GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
                                       self.poses_rot[i])
@@ -76,9 +78,10 @@ class InstanceGroup:
 
                 GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
                                *self.renderer.materials_mapping[
-                                             self.renderer.mesh_materials[object_idx]].kd[:3])
+                                    self.renderer.mesh_materials[object_idx]].kd[:3])
                 GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
-                               float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
+                               float(self.renderer.materials_mapping[
+                                         self.renderer.mesh_materials[object_idx]].is_texture()))
 
                 try:
                     # Activate texture
@@ -145,16 +148,16 @@ class Instance:
         GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
                        *self.renderer.lightcolor)
 
-
         for object_idx in self.object.VAO_ids:
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
                            *self.renderer.colors[self.id % 3])
 
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
                            *self.renderer.materials_mapping[
-                                         self.renderer.mesh_materials[object_idx]].kd)
+                               self.renderer.mesh_materials[object_idx]].kd)
             GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
-                           float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
+                           float(
+                               self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
 
             try:
                 # Activate texture
@@ -176,6 +179,7 @@ class Instance:
                 GL.glBindVertexArray(0)
 
         GL.glUseProgram(0)
+
     def get_pose_in_camera(self):
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
         pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
@@ -192,6 +196,7 @@ class Instance:
 
     def __repr__(self):
         return self.__str__()
+
 
 class Material:
     def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=None):
@@ -242,8 +247,12 @@ class MeshRenderer:
         self.colors = colormap
         self.lightcolor = [1, 1, 1]
 
-        vertexShader = self.shaders.compileShader(open(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/vert.shader')).readlines(), GL.GL_VERTEX_SHADER)
-        fragmentShader = self.shaders.compileShader(open(os.path.join(os.path.dirname(mesh_renderer.__file__),'shaders/frag.shader')).readlines(), GL.GL_FRAGMENT_SHADER)
+        vertexShader = self.shaders.compileShader(
+            open(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/vert.shader')).readlines(),
+            GL.GL_VERTEX_SHADER)
+        fragmentShader = self.shaders.compileShader(
+            open(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/frag.shader')).readlines(),
+            GL.GL_FRAGMENT_SHADER)
 
         self.shaderProgram = self.shaders.compileProgram(vertexShader, fragmentShader)
         self.texUnitUniform = GL.glGetUniformLocation(self.shaderProgram, 'texUnit')
@@ -333,9 +342,9 @@ class MeshRenderer:
                 if k == 'diffuse':
                     kd = v
             if not is_texture:
-                self.materials_mapping[i + material_count] = Material('color', kd = kd)
+                self.materials_mapping[i + material_count] = Material('color', kd=kd)
 
-        if not input_kd is None: # urdf material
+        if not input_kd is None:  # urdf material
             self.materials_mapping[len(scene.materials) + material_count] = Material('color', kd=input_kd)
 
         VAO_ids = []
@@ -349,7 +358,7 @@ class MeshRenderer:
                 mesh.texturecoords = np.zeros((1, *mesh.vertices.shape), dtype=mesh.vertices.dtype)
             if not transform_orn is None:
                 orn = quat2rotmat([transform_orn[-1], transform_orn[0], transform_orn[1], transform_orn[2]])
-                mesh.vertices = mesh.vertices.dot(orn[:3,:3].T)
+                mesh.vertices = mesh.vertices.dot(orn[:3, :3].T)
             if not transform_pos is None:
                 mesh.vertices += np.array(transform_pos)
 
@@ -389,7 +398,7 @@ class MeshRenderer:
             self.VBOs.append(VBO)
             self.faces.append(faces)
             self.objects.append(obj_path)
-            if mesh.materialindex == 0: # if there is no material, use urdf color as material
+            if mesh.materialindex == 0:  # if there is no material, use urdf color as material
                 self.mesh_materials.append(len(scene.materials) + material_count)
             else:
                 self.mesh_materials.append(mesh.materialindex + material_count)
@@ -401,15 +410,18 @@ class MeshRenderer:
         self.visual_objects.append(new_obj)
         return VAO_ids
 
-    def add_instance(self, object_id, pybullet_uuid=None, pose_rot=np.eye(4), pose_trans=np.eye(4), dynamic = False):
-        instance = Instance(self.visual_objects[object_id], id=len(self.instances), pybullet_uuid=pybullet_uuid, pose_trans=pose_trans,
-                            pose_rot=pose_rot, dynamic = dynamic)
+    def add_instance(self, object_id, pybullet_uuid=None, pose_rot=np.eye(4), pose_trans=np.eye(4), dynamic=False):
+        instance = Instance(self.visual_objects[object_id], id=len(self.instances), pybullet_uuid=pybullet_uuid,
+                            pose_trans=pose_trans,
+                            pose_rot=pose_rot, dynamic=dynamic)
         self.instances.append(instance)
 
-    def add_instance_group(self, object_ids, link_ids, poses_rot, poses_trans, pybullet_uuid=None , dynamic = False, robot=None):
-        instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids], id=len(self.instances),
-                                       link_ids = link_ids, pybullet_uuid=pybullet_uuid, poses_trans=poses_trans,
-                            poses_rot=poses_rot, dynamic = dynamic, robot=robot)
+    def add_instance_group(self, object_ids, link_ids, poses_rot, poses_trans, pybullet_uuid=None, dynamic=False,
+                           robot=None):
+        instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids],
+                                       id=len(self.instances),
+                                       link_ids=link_ids, pybullet_uuid=pybullet_uuid, poses_trans=poses_trans,
+                                       poses_rot=poses_rot, dynamic=dynamic, robot=robot)
         self.instances.append(instance_group)
 
     def set_camera(self, camera, target, up):
@@ -430,37 +442,46 @@ class MeshRenderer:
     def set_light_color(self, color):
         self.lightcolor = color
 
-    def readbuffer(self):
-        GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT0)
-        frame = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_RGBA, GL.GL_FLOAT)
-        frame = frame.reshape(self.height, self.width, 4)[::-1, :]
+    def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d')):
+        results = []
 
-        GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT1)
-        normal = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
-        normal = normal.reshape(self.height, self.width, 4)[::-1, :]
+        if 'rgb' in modes:
+            GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT0)
+            frame = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_RGBA, GL.GL_FLOAT)
+            frame = frame.reshape(self.height, self.width, 4)[::-1, :]
+            results.append(frame)
 
-        GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT2)
-        seg = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
-        seg = seg.reshape(self.height, self.width, 4)[::-1, :]
+        if 'normal' in modes:
+            GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT1)
+            normal = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
+            normal = normal.reshape(self.height, self.width, 4)[::-1, :]
+            results.append(normal)
 
-        GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT3)
-        pc = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
-        pc = pc.reshape(self.height, self.width, 4)[::-1, :]
+        if 'seg' in modes:
+            GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT2)
+            seg = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
+            seg = seg.reshape(self.height, self.width, 4)[::-1, :]
+            results.append(seg)
 
-        return [frame, normal, seg, pc]
+        if '3d' in modes:
+            GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT3)
+            pc = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
+            pc = pc.reshape(self.height, self.width, 4)[::-1, :]
+            results.append(pc)
 
-    def render(self):
+        return results
+
+    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden = ()):
         GL.glClearColor(0, 0, 0, 1)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         GL.glEnable(GL.GL_DEPTH_TEST)
 
         for instance in self.instances:
-            instance.render()
+            if not instance in hidden:
+                instance.render()
         GL.glDisable(GL.GL_DEPTH_TEST)
 
-        frame, normal, seg, pc = self.readbuffer()
-
-        return [frame, normal, seg, pc]
+        return self.readbuffer(modes)
 
     def set_light_pos(self, light):
         self.lightpos = light
@@ -537,9 +558,9 @@ if __name__ == '__main__':
     renderer.add_instance(1)
     renderer.add_instance(1)
 
-    renderer.instances[1].set_position([1,0,0.3])
-    renderer.instances[2].set_position([1,0,0.5])
-    renderer.instances[3].set_position([1,0,0.7])
+    renderer.instances[1].set_position([1, 0, 0.3])
+    renderer.instances[2].set_position([1, 0, 0.5])
+    renderer.instances[3].set_position([1, 0, 0.7])
 
     print(renderer.visual_objects, renderer.instances)
     print(renderer.materials_mapping, renderer.mesh_materials)

@@ -112,7 +112,7 @@ def test_multiagent():
 
     assert p.getNumBodies() == 7
 
-    for i in range(1000):
+    for i in range(100):
         turtlebot1.apply_action(1)
         turtlebot2.apply_action(1)
         turtlebot3.apply_action(1)
