@@ -12,14 +12,14 @@ config = parse_config('test.yaml')
 
 
 def test_import_building():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = BuildingScene('space7')
     s.import_scene(scene)
     assert s.objects == list(range(2))
     s.disconnect()
 
 def test_import_stadium():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     print(s.objects)
@@ -27,7 +27,7 @@ def test_import_stadium():
     s.disconnect()
 
 def test_import_building_viewing():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = BuildingScene('Ohoopee')
     s.import_scene(scene)
     assert s.objects == list(range(2))

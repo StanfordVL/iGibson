@@ -4,7 +4,7 @@ from gibson2.core.physics.interactive_objects import *
 
 
 def test_import_object():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
 
@@ -16,7 +16,7 @@ def test_import_object():
 
 
 def test_import_many_object():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
 
@@ -31,7 +31,7 @@ def test_import_many_object():
 
 
 def test_import_rbo_object():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
 

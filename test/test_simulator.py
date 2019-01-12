@@ -5,7 +5,7 @@ from gibson2.core.physics.interactive_objects import *
 from gibson2.core.simulator import Simulator
 
 def test_simulator():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     obj = YCBObject('006_mustard_bottle')
