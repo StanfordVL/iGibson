@@ -231,7 +231,7 @@ class MeshRenderer:
         self.height = height
         self.faces = []
         self.instances = []
-
+        self.fisheye = False
         # self.context = glcontext.Context()
         # self.context.create_opengl_context((self.width, self.height))
         available_devices = get_available_devices()
@@ -247,13 +247,22 @@ class MeshRenderer:
         self.colors = colormap
         self.lightcolor = [1, 1, 1]
 
-        vertexShader = self.shaders.compileShader(
-            open(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/vert.shader')).readlines(),
-            GL.GL_VERTEX_SHADER)
-        fragmentShader = self.shaders.compileShader(
-            open(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/frag.shader')).readlines(),
-            GL.GL_FRAGMENT_SHADER)
-
+        if self.fisheye:
+            vertexShader = self.shaders.compileShader(
+                "".join(open(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/fisheye_vert.shader')).readlines()).replace("FISHEYE_SIZE", str(self.width/2)),
+                GL.GL_VERTEX_SHADER)
+            fragmentShader = self.shaders.compileShader(
+                "".join(open(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/fisheye_frag.shader')).readlines()).replace("FISHEYE_SIZE", str(self.width/2)),
+                GL.GL_FRAGMENT_SHADER)
+        else:
+            vertexShader = self.shaders.compileShader(
+                "".join(open(os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                          'shaders/vert.shader')).readlines()),
+                GL.GL_VERTEX_SHADER)
+            fragmentShader = self.shaders.compileShader(
+                "".join(open(os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                          'shaders/frag.shader')).readlines()),
+                GL.GL_FRAGMENT_SHADER)
         self.shaderProgram = self.shaders.compileProgram(vertexShader, fragmentShader)
         self.texUnitUniform = GL.glGetUniformLocation(self.shaderProgram, 'texUnit')
 
@@ -597,7 +606,7 @@ if __name__ == '__main__':
     cv2.namedWindow('test')
     cv2.setMouseCallback('test', change_dir)
 
-    for i in range(100):
+    for i in range(10000):
         print(i)
         frame = renderer.render()
         cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
