@@ -4,12 +4,15 @@ from gibson2.core.physics.interactive_objects import *
 from gibson2.core.render.viewer import Viewer
 
 class Simulator:
-    def __init__(self, gravity=9.8, timestep=1 / 240.0):
+    def __init__(self, gravity=9.8, timestep=1 / 240.0, mode = 'gui'):
 
         # physics simulator
         self.gravity = gravity
         self.timestep = timestep
-        self.cid = p.connect(p.GUI)
+        if mode == 'gui':
+            self.cid = p.connect(p.GUI)
+        else:
+            self.cid = p.connect(p.DIRECT)
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
         self.objects = []

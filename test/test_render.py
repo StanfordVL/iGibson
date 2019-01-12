@@ -26,8 +26,8 @@ def test_render_rendering():
     renderer.set_camera([0, 0, 1.2], [0, 1, 1.2], [0, 1, 0])
     renderer.set_fov(90)
     rgb, _, seg, _ = renderer.render()
-    plt.imshow(np.concatenate([rgb, seg], axis=1)) # uncomment these two lines to show the rendering results
-    plt.show()
+    #plt.imshow(np.concatenate([rgb, seg], axis=1)) # uncomment these two lines to show the rendering results
+    #plt.show()
     assert (np.allclose(np.mean(rgb, axis=(0, 1)), np.array([0.51661223, 0.5035339, 0.4777793, 1.]), rtol=1e-3))
     renderer.release()
 

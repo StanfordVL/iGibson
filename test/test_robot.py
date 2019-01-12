@@ -14,7 +14,7 @@ config = parse_config('test.yaml')
 
 
 def test_turtlebot():
-    s = Simulator()
+    s =Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     turtlebot = Turtlebot(config)
@@ -23,7 +23,7 @@ def test_turtlebot():
     s.disconnect()
 
 def test_jr2():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     jr2 = JR2(config)
@@ -32,7 +32,7 @@ def test_jr2():
     s.disconnect()
 
 def test_ant():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     ant = Ant(config)
@@ -43,7 +43,7 @@ def test_ant():
     s.disconnect()
 
 def test_husky():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     husky = Husky(config)
@@ -52,7 +52,7 @@ def test_husky():
     s.disconnect()
 
 def test_humanoid():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     humanoid = Humanoid(config)
@@ -62,7 +62,7 @@ def test_humanoid():
 
 
 def test_quadrotor():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     quadrotor = Quadrotor(config)
@@ -72,7 +72,7 @@ def test_quadrotor():
 
 
 def test_turtlebot_position():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     turtlebot = Turtlebot(config)
@@ -84,7 +84,7 @@ def test_turtlebot_position():
     s.disconnect()
 
 def test_humanoid_position():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     humanoid = Humanoid(config)
@@ -95,7 +95,7 @@ def test_humanoid_position():
     s.disconnect()
 
 def test_multiagent():
-    s = Simulator()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     turtlebot1 = Turtlebot(config)
