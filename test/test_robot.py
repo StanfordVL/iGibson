@@ -60,11 +60,11 @@ def test_humanoid():
     s.add_viewer()
 
     assert p.getNumBodies() == 5
-    while True:
-        s.step()
+    #while True:
+    #    s.step()
     s.disconnect()
 
-test_humanoid()
+#test_humanoid()
 
 
 def test_quadrotor():
