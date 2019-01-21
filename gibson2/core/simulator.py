@@ -2,6 +2,7 @@ from gibson2.core.physics.scene import StadiumScene
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import *
 from gibson2.core.physics.interactive_objects import *
 from gibson2.core.render.viewer import Viewer
+from gibson2 import assets
 
 class Simulator:
     def __init__(self, gravity=9.8, timestep=1 / 240.0, mode = 'gui'):
@@ -68,6 +69,7 @@ class Simulator:
 
         for shape in p.getVisualShapeData(ids[0]):
             id, link_id, type, _, filename, rel_pos, rel_orn, color = shape[:8]
+            print(type)
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 if not filename in self.visual_objects.keys():
@@ -78,13 +80,20 @@ class Simulator:
                 else:
                     visual_objects.append(self.visual_objects[filename])
 
-                link_ids.append(link_id)
-                if link_id == -1:
-                    pos, orn = p.getBasePositionAndOrientation(id)
-                else:
-                    _, _, _, _, pos, orn = p.getLinkState(id, link_id)
-                poses_rot.append(np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
-                poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+            elif type == p.GEOM_SPHERE:
+                filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/sphere8.obj')
+                print(filename, rel_pos, rel_orn, color)
+                self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3])
+                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                #self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+
+            link_ids.append(link_id)
+            if link_id == -1:
+                pos, orn = p.getBasePositionAndOrientation(id)
+            else:
+                _, _, _, _, pos, orn = p.getLinkState(id, link_id)
+            poses_rot.append(np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
+            poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
         self.renderer.add_instance_group(object_ids=visual_objects, link_ids=link_ids, pybullet_uuid=ids[0], poses_rot = poses_rot, poses_trans = poses_trans, dynamic=True, robot=robot)
         return ids
 
