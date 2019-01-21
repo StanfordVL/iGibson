@@ -7,7 +7,7 @@ import OpenGL.GL as GL
 import cv2
 import numpy as np
 from pyassimp import *
-from mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
+from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
 from gibson2.core.render.mesh_renderer import CppMeshRenderer
@@ -329,7 +329,7 @@ class MeshRenderer:
 
         assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
 
-    def load_object(self, obj_path, scale=1, transform_orn=None, transform_pos=None, input_kd=None):
+    def load_object(self, obj_path, scale=np.array([1,1,1]), transform_orn=None, transform_pos=None, input_kd=None):
 
         scene = load(obj_path)
         material_count = len(self.materials_mapping)

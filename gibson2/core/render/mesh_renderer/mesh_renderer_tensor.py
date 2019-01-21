@@ -10,14 +10,14 @@ import OpenGL.GL as GL
 import cv2
 import numpy as np
 from pyassimp import *
-from mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
+from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-from mesh_renderer import CppMeshRenderer
+from gibson2.core.render.mesh_renderer import CppMeshRenderer
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import time
-from mesh_renderer.get_available_devices import get_available_devices, get_cuda_device
+from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices, get_cuda_device
 
 MAX_NUM_OBJECTS = 3
 

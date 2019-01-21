@@ -7,13 +7,13 @@ import OpenGL.GL as GL
 import cv2
 import numpy as np
 from pyassimp import *
-from mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
+from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-from mesh_renderer import CppMeshRenderer
-from mesh_renderer.get_available_devices import get_available_devices
+from gibson2.core.render.mesh_renderer import CppMeshRenderer
+from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
 MAX_NUM_OBJECTS = 3
-from mesh_renderer.glutils.utils import colormap
+from gibson2.core.render.mesh_renderer.glutils.utils import colormap
 
 def loadTexture(path):
     img = Image.open(path).transpose(Image.FLIP_TOP_BOTTOM)
