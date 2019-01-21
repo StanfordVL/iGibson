@@ -2,6 +2,7 @@ import sys
 import ctypes
 
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 import gibson2.core.render.mesh_renderer.glutils.glcontext as glcontext
 import OpenGL.GL as GL
 import cv2
