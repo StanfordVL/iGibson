@@ -20,13 +20,11 @@ class NavigateEnv(BaseEnv):
     def step(self, action):
         self.robots[0].apply_action(action)
         self.simulator_step()
-
         state = self.robots[0].calc_state()
         reward = 0
         return state, reward
 
     def reset(self):
-
         self.robots[0].robot_specific_reset()
         self.robots[0].set_position(pos=self.initial_pos)
         state = self.robots[0].calc_state()
@@ -36,7 +34,11 @@ class NavigateEnv(BaseEnv):
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
     nav_env = NavigateEnv(config_file=config_filename, mode='gui')
-    for j in range(10):
+    for j in range(100):
+        if j%10 == 0:
+            nav_env.set_mode('gui')
+        else:
+            nav_env.set_mode('headless')
         nav_env.reset()
-        for i in range(1000):
-            nav_env.step(1)
+        for i in range(100):
+            nav_env.step(2)

@@ -113,7 +113,7 @@ class Simulator:
             for instance in self.renderer.instances:
                 if instance.dynamic:
                     self.update_position(instance)
-            if self.mode == 'gui':
+            if self.mode == 'gui' and not self.viewer is None:
                 self.viewer.update()
         except:
             s.disconnect()
