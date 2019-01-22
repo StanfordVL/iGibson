@@ -2,12 +2,9 @@ import yaml
 from gibson2.core.physics.robot_locomotors import *
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import *
+from gibson2.utils.utils import parse_config
 
 
-def parse_config(config):
-    with open(config, 'r') as f:
-        config_data = yaml.load(f)
-    return config_data
 
 
 config = parse_config('test.yaml')
@@ -32,14 +29,20 @@ def test_jr2():
     s.disconnect()
 
 def test_ant():
-    s = Simulator(mode='headless')
+    s = Simulator(mode='gui', timestep=1/40.0)
     scene = StadiumScene()
     s.import_scene(scene)
     ant = Ant(config)
     s.import_robot(ant)
     ant2 = Ant(config)
     s.import_robot(ant2)
+    ant2.set_position([0,2,2])
     assert p.getNumBodies() == 6
+    s.add_viewer()
+    for i in range(100):
+        s.step()
+        ant.apply_action(np.random.randint(17))
+        ant2.apply_action(np.random.randint(17))
     s.disconnect()
 
 def test_husky():

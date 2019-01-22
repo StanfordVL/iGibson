@@ -10,7 +10,8 @@ class Simulator:
         # physics simulator
         self.gravity = gravity
         self.timestep = timestep
-        if mode == 'gui':
+        self.mode = mode
+        if self.mode == 'gui':
             self.cid = p.connect(p.GUI)
         else:
             self.cid = p.connect(p.DIRECT)
@@ -23,7 +24,8 @@ class Simulator:
         self.renderer.set_fov(90)
         self.visual_objects = {}
 
-        self.add_viewer()
+        if self.mode == 'gui':
+            self.add_viewer()
 
     def add_viewer(self):
         self.viewer = Viewer()
@@ -111,7 +113,8 @@ class Simulator:
             for instance in self.renderer.instances:
                 if instance.dynamic:
                     self.update_position(instance)
-            self.viewer.update()
+            if self.mode == 'gui':
+                self.viewer.update()
         except:
             s.disconnect()
 
