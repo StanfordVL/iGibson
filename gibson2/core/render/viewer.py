@@ -58,25 +58,12 @@ class Viewer:
             self.py -= 0.05
         elif q == ord('q'):
             exit()
-        frames = []
-        has_robot = False
 
         if not self.renderer is None:
-            for instance in self.renderer.instances:
-                if isinstance(instance, InstanceGroup):
-                    camera_pos = instance.robot.eyes.get_position()
-                    orn = instance.robot.eyes.get_orientation()
-                    mat = quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])[:3, :3]
-                    view_direction = mat.dot(np.array([1,0,0]))
-                    has_robot = True
-                    #pass
-                    self.renderer.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
-                    for item in self.renderer.render(modes=("rgb"), hidden = [instance]):
-                        frames.append(item)
-            if has_robot:
+            frames = self.renderer.render_robot_cameras()
+            if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
                 cv2.imshow('robots', frame)
-
 
 
 if __name__ == '__main__':

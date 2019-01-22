@@ -5,7 +5,7 @@ import functools
 import copy
 import os
 import collections
-
+import yaml
 
 def make_gpu_session(num_gpu=1):
     if num_gpu == 1:
@@ -15,3 +15,8 @@ def make_gpu_session(num_gpu=1):
         sess = tf.Session()
     return sess
 
+
+def parse_config(config):
+    with open(config, 'r') as f:
+        config_data = yaml.load(f)
+    return config_data

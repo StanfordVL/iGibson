@@ -35,7 +35,7 @@ class VisualObject:
 
 
 class InstanceGroup:
-    def __init__(self, objects, id, link_ids, pybullet_uuid, poses_trans, poses_rot, dynamic, robot):
+    def __init__(self, objects, id, link_ids, pybullet_uuid, poses_trans, poses_rot, dynamic, robot=None):
         # assert(len(objects) > 0) # no empty instance group
         self.objects = objects
         self.poses_trans = poses_trans
@@ -558,6 +558,19 @@ class MeshRenderer:
         pose_trans = xyz2mat(pose[:3])
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
+
+    def render_robot_cameras(self):
+        frames = []
+        for instance in self.instances:
+            if isinstance(instance, InstanceGroup):
+                camera_pos = instance.robot.eyes.get_position()
+                orn = instance.robot.eyes.get_orientation()
+                mat = quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])[:3, :3]
+                view_direction = mat.dot(np.array([1, 0, 0]))
+                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                for item in self.render(modes=("rgb"), hidden=[instance]):
+                    frames.append(item)
+        return frames
 
 
 if __name__ == '__main__':
