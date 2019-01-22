@@ -3,6 +3,7 @@ import ctypes
 
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
+
 import gibson2.core.render.mesh_renderer.glutils.glcontext as glcontext
 import OpenGL.GL as GL
 import cv2
@@ -366,13 +367,15 @@ class MeshRenderer:
                 mesh.normals = np.zeros(mesh.vertices.shape, dtype=mesh.vertices.dtype)
             if mesh.texturecoords.shape[0] == 0:
                 mesh.texturecoords = np.zeros((1, *mesh.vertices.shape), dtype=mesh.vertices.dtype)
-            if not transform_orn is None:
-                orn = quat2rotmat([transform_orn[-1], transform_orn[0], transform_orn[1], transform_orn[2]])
-                mesh.vertices = mesh.vertices.dot(orn[:3, :3].T)
-            if not transform_pos is None:
-                mesh.vertices += np.array(transform_pos)
 
             vertices = np.concatenate([mesh.vertices * scale, mesh.normals, mesh.texturecoords[0, :, :2]], axis=-1)
+
+            if not transform_orn is None:
+                orn = quat2rotmat([transform_orn[-1], transform_orn[0], transform_orn[1], transform_orn[2]])
+                vertices[:,:3] = vertices[:,:3].dot(orn[:3, :3].T)
+            if not transform_pos is None:
+                vertices[:,:3] += np.array(transform_pos)
+
             vertexData = vertices.astype(np.float32)
 
             VAO = GL.glGenVertexArrays(1)
@@ -463,19 +466,19 @@ class MeshRenderer:
 
         if 'normal' in modes:
             GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT1)
-            normal = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
+            normal = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_RGBA, GL.GL_FLOAT)
             normal = normal.reshape(self.height, self.width, 4)[::-1, :]
             results.append(normal)
 
         if 'seg' in modes:
             GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT2)
-            seg = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
+            seg = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_RGBA, GL.GL_FLOAT)
             seg = seg.reshape(self.height, self.width, 4)[::-1, :]
             results.append(seg)
 
         if '3d' in modes:
             GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT3)
-            pc = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_BGRA, GL.GL_FLOAT)
+            pc = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_RGBA, GL.GL_FLOAT)
             pc = pc.reshape(self.height, self.width, 4)[::-1, :]
             results.append(pc)
 

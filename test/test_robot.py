@@ -57,14 +57,8 @@ def test_humanoid():
     s.import_scene(scene)
     humanoid = Humanoid(config)
     s.import_robot(humanoid)
-    s.add_viewer()
-
     assert p.getNumBodies() == 5
-    #while True:
-    #    s.step()
     s.disconnect()
-
-#test_humanoid()
 
 
 def test_quadrotor():
