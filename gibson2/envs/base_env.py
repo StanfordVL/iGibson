@@ -1,4 +1,3 @@
-import yaml
 from gibson2.core.physics.robot_locomotors import *
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import *
