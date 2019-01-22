@@ -20,6 +20,14 @@ class BaseEnv:
         self.simulator.import_scene(scene)
         if self.config['robot'] == 'Turtlebot':
             robot = Turtlebot(self.config)
+        elif self.config['robot'] == 'Husky':
+            robot = Husky(self.config)
+        elif self.config['robot'] == 'Ant':
+            robot = Ant(self.config)
+        elif self.config['robot'] == 'Humanoid':
+            robot = Humanoid(self.config)
+        elif self.config['robot'] == 'JR2':
+            robot = JR2(self.config)
 
         self.scene = scene
         self.robots = [robot]
@@ -34,6 +42,9 @@ class BaseEnv:
 
     def reset(self):
         return NotImplementedError
+
+    def set_mode(self, mode):
+        self.simulator.mode = mode
 
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
