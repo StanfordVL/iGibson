@@ -7,16 +7,19 @@ model_id: space7
 
 robot: Turtlebot
 
+# task, observation and action
+task: pointgoal # pointgoal|objectgoal|areagoal
 
-
-
+initial_orn: [0, 0, 4.71]
+initial_pos: [-14.3, 5, 0.2]
 
 target_orn: [0, 0, 1.57]
-target_pos: [-14.3, 45.07, 0.5]
-initial_orn: [0, 0, 4.71]
-initial_pos: [-14.3, 5, 1.2]
+target_pos: [-14.3, 45.07, 0.2]
+
 fov: 1.57
 is_discrete: true
+
+# display
 
 use_filler: true
 display_ui: false

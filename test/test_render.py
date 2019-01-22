@@ -1,5 +1,5 @@
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
-from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshTensorRenderer
+from gibson2.core.render.mesh_renderer.deprecated.mesh_renderer_tensor import MeshTensorRenderer
 import numpy as np
 import torch
 import os
