@@ -241,8 +241,7 @@ class WalkerBase(BaseRobot):
 class Ant(WalkerBase):
     foot_list = ['front_left_foot', 'front_right_foot', 'left_back_foot', 'right_back_foot']
     model_type = "MJCF"
-    default_scale = 0.25
-
+    default_scale = 1
     def __init__(self, config):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
@@ -254,6 +253,8 @@ class Ant(WalkerBase):
                             resolution=config["resolution"],
                             )
         self.r_f = 0.1
+        self.is_discrete = config["is_discrete"]
+
         if config["is_discrete"]:
             self.action_space = gym.spaces.Discrete(17)
             self.torque = 10
@@ -279,7 +280,7 @@ class Ant(WalkerBase):
             self.setup_keys_to_action()
 
     def apply_action(self, action):
-        if self.config["is_discrete"]:
+        if self.is_discrete:
             realaction = self.action_list[action]
         else:
             realaction = action
@@ -311,7 +312,7 @@ class Humanoid(WalkerBase):
     self_collision = True
     foot_list = ["right_foot", "left_foot"]  # "left_hand", "right_hand"
     model_type = "MJCF"
-    default_scale = 0.6
+    default_scale = 1
     glass_offset = 0.3
 
     def __init__(self, config):
