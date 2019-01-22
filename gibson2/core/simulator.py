@@ -87,7 +87,7 @@ class Simulator:
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
                 #self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                 link_ids.append(link_id)
-            elif type == p.GEOM_CAPSULE:
+            elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/cube.obj')
                 print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
