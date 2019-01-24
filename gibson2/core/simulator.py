@@ -101,6 +101,14 @@ class Simulator:
                                           scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0] ])
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
                 link_ids.append(link_id)
+            elif type == p.GEOM_BOX:
+                filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/cube.obj')
+                print(filename, dimensions, rel_pos, rel_orn, color)
+                self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
+                                          scale=[dimensions[0], dimensions[1], dimensions[2]])
+                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                link_ids.append(link_id)
+
             if link_id == -1:
                 pos, orn = p.getBasePositionAndOrientation(id)
             else:
@@ -109,6 +117,60 @@ class Simulator:
             poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
         self.renderer.add_robot(object_ids=visual_objects, link_ids=link_ids, pybullet_uuid=ids[0], poses_rot = poses_rot, poses_trans = poses_trans, dynamic=True, robot=robot)
+        return ids
+
+    def import_interactive_object(self, obj):
+        ids = obj.load()
+        visual_objects = []
+        link_ids = []
+        poses_rot = []
+        poses_trans = []
+
+        for shape in p.getVisualShapeData(ids):
+            id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
+            print(type)
+            if type == p.GEOM_MESH:
+                filename = filename.decode('utf-8')
+                if not filename in self.visual_objects.keys():
+                    print(filename, rel_pos, rel_orn, color)
+                    self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3])
+                    visual_objects.append(len(self.renderer.visual_objects) - 1)
+                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+                else:
+                    visual_objects.append(self.visual_objects[filename])
+                link_ids.append(link_id)
+            elif type == p.GEOM_SPHERE:
+                filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/sphere8.obj')
+                print(filename, dimensions, rel_pos, rel_orn, color)
+                self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
+                                          scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
+                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                # self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+                link_ids.append(link_id)
+            elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
+                filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/cube.obj')
+                print(filename, dimensions, rel_pos, rel_orn, color)
+                self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
+                                          scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
+                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                link_ids.append(link_id)
+            elif type == p.GEOM_BOX:
+                filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/cube.obj')
+                print(filename, dimensions, rel_pos, rel_orn, color)
+                self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
+                                          scale=[dimensions[0], dimensions[1], dimensions[2]])
+                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                link_ids.append(link_id)
+
+            if link_id == -1:
+                pos, orn = p.getBasePositionAndOrientation(id)
+            else:
+                _, _, _, _, pos, orn = p.getLinkState(id, link_id)
+            poses_rot.append(np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
+            poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+
+        self.renderer.add_instance_group(object_ids=visual_objects, link_ids=link_ids, pybullet_uuid=ids, poses_rot=poses_rot,
+                                poses_trans=poses_trans, dynamic=True, robot=None)
         return ids
 
     def step(self):

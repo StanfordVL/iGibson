@@ -14,11 +14,25 @@ class YCBObject:
         return body_id
 
 
-class RBOObject:
-    def __init__(self, name, scale=1):
-        self.filename = os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), 'models', 'rbo', name, 'configuration', '{}.urdf'.format(name))
+class InteractiveObj:
+    def __init__(self, filename, scale=1):
+        self.filename = filename
         self.scale = scale
 
     def load(self):
-        body_id = p.loadURDF(self.filename, globalScaling=self.scale)
-        return body_id
+        self.body_id = p.loadURDF(self.filename, globalScaling=self.scale)
+        return self.body_id
+
+    def set_position(self, pos):
+        org_pos, org_orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
+
+    def set_position_rotation(self, pos, orn):
+        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+
+class RBOObject(InteractiveObj):
+    def __init__(self, name, scale=1):
+        filename = os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), 'models', 'rbo', name,
+                                     'configuration', '{}.urdf'.format(name))
+        super(RBOObject, self).__init__(filename, scale)
+
