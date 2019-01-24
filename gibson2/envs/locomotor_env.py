@@ -9,17 +9,23 @@ from gibson2.envs.base_env import BaseEnv
 # https://arxiv.org/pdf/1807.06757.pdf
 
 class NavigateEnv(BaseEnv):
-    def __init__(self, config_file, mode='headless'):
+    def __init__(self, config_file, mode='headless', action_timestep = 1/10.0, physics_timestep=1/240.0):
         super(NavigateEnv, self).__init__(config_file, mode)
         if self.config['task'] == 'pointgoal':
             self.target_pos = self.config['target_pos']
             self.target_orn = self.config['target_orn']
             self.initial_pos = self.config['initial_pos']
             self.initial_orn = self.config['initial_orn']
+            self.action_timestep = action_timestep
+            self.physics_timestep = physics_timestep
+            self.simulator.set_timestep(physics_timestep)
+            self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
 
     def step(self, action):
         self.robots[0].apply_action(action)
-        self.simulator_step()
+        for i in range(self.simulator_loop):
+            self.simulator_step()
+
         state = self.robots[0].calc_state()
         reward = 0
         return state, reward
@@ -34,11 +40,11 @@ class NavigateEnv(BaseEnv):
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
     nav_env = NavigateEnv(config_file=config_filename, mode='gui')
-    for j in range(100):
+    for j in range(15):
         if j%10 == 0:
             nav_env.set_mode('gui')
         else:
             nav_env.set_mode('headless')
         nav_env.reset()
         for i in range(100):
-            nav_env.step(2)
+            nav_env.step(1)

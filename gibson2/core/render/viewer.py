@@ -45,7 +45,7 @@ class Viewer:
         cv2.putText(frame, "[{:1.1f} {:1.1f} {:1.1f}]".format(*self.view_direction), (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255),
                     1, cv2.LINE_AA)
 
-        cv2.imshow('test', frame)
+        #cv2.imshow('test', frame)
 
         q = cv2.waitKey(1)
         if q == ord('w'):

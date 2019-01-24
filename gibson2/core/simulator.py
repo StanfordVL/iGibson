@@ -20,12 +20,17 @@ class Simulator:
         self.objects = []
 
         # renderer
-        self.renderer = MeshRenderer(width=600, height=600)
+        self.renderer = MeshRenderer(width=256, height=256)
         self.renderer.set_fov(90)
         self.visual_objects = {}
 
         if self.mode == 'gui':
             self.add_viewer()
+
+
+    def set_timestep(self, timestep):
+        self.timestep = timestep
+        p.setTimeStep(self.timestep)
 
     def add_viewer(self):
         self.viewer = Viewer()
