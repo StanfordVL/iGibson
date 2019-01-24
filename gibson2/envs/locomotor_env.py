@@ -12,28 +12,36 @@ class NavigateEnv(BaseEnv):
     def __init__(self, config_file, mode='headless', action_timestep = 1/10.0, physics_timestep=1/240.0):
         super(NavigateEnv, self).__init__(config_file, mode)
         if self.config['task'] == 'pointgoal':
-            self.target_pos = self.config['target_pos']
-            self.target_orn = self.config['target_orn']
-            self.initial_pos = self.config['initial_pos']
-            self.initial_orn = self.config['initial_orn']
-            self.action_timestep = action_timestep
-            self.physics_timestep = physics_timestep
-            self.simulator.set_timestep(physics_timestep)
-            self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
+            self.target_pos = np.array(self.config['target_pos'])
+            self.target_orn = np.array(self.config['target_orn'])
+            self.initial_pos = np.array(self.config['initial_pos'])
+            self.initial_orn = np.array(self.config['initial_orn'])
+            self.potential = 1
+
+        self.action_timestep = action_timestep
+        self.physics_timestep = physics_timestep
+        self.simulator.set_timestep(physics_timestep)
+        self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
+
 
     def step(self, action):
         self.robots[0].apply_action(action)
         for i in range(self.simulator_loop):
             self.simulator_step()
-
         state = self.robots[0].calc_state()
-        reward = 0
+        additional_state = self.target_pos - self.robots[0].get_position()
+        state = np.concatenate((state, additional_state), 0)
+        new_potential = np.sum((self.robots[0].get_position() - self.target_pos) ** 2) / np.sum((self.initial_pos - self.target_pos) ** 2)
+        reward = self.potential - new_potential
+        self.potential = new_potential
         return state, reward
 
     def reset(self):
         self.robots[0].robot_specific_reset()
         self.robots[0].set_position(pos=self.initial_pos)
         state = self.robots[0].calc_state()
+        additional_state = self.target_pos - self.robots[0].get_position()
+        state = np.concatenate((state, additional_state), 0)
         reward = 0
         return state, reward
 
@@ -46,5 +54,6 @@ if __name__ == "__main__":
         else:
             nav_env.set_mode('headless')
         nav_env.reset()
-        for i in range(100):
-            nav_env.step(1)
+        for i in range(100): # 100 steps, 10s world time
+            state, reward = nav_env.step(1)
+            print(state, reward)
