@@ -27,7 +27,7 @@ def test_import_stadium():
     s.disconnect()
 
 def test_import_building_viewing():
-    s = Simulator(mode='headless')
+    s = Simulator(mode='gui')
     scene = BuildingScene('Ohoopee')
     s.import_scene(scene)
     assert s.objects == list(range(2))
@@ -44,7 +44,6 @@ def test_import_building_viewing():
     turtlebot2.set_position([0, 0, 0.5])
     turtlebot3.set_position([-0.5, 0, 0.5])
 
-
     for i in range(100):
         s.step()
         turtlebot1.apply_action(np.random.randint(4))
@@ -52,4 +51,3 @@ def test_import_building_viewing():
         turtlebot3.apply_action(np.random.randint(4))
 
     s.disconnect()
-

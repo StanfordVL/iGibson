@@ -121,6 +121,12 @@ class InstanceGroup:
     def __repr__(self):
         return self.__str__()
 
+class Robot(InstanceGroup):
+    def __init__(self, *args, **kwargs):
+        super(Robot, self).__init__(*args, **kwargs)
+    def __str__(self):
+        return "Robot({}) -> Objects({})".format(self.id, ",".join([str(object.id) for object in self.objects]))
+
 
 class Instance:
     def __init__(self, object, id, pybullet_uuid, pose_trans, pose_rot, dynamic):
@@ -437,6 +443,14 @@ class MeshRenderer:
                                        poses_rot=poses_rot, dynamic=dynamic, robot=robot)
         self.instances.append(instance_group)
 
+    def add_robot(self, object_ids, link_ids, poses_rot, poses_trans, pybullet_uuid=None, dynamic=False,
+                           robot=None):
+        robot = Robot([self.visual_objects[object_id] for object_id in object_ids],
+                                       id=len(self.instances),
+                                       link_ids=link_ids, pybullet_uuid=pybullet_uuid, poses_trans=poses_trans,
+                                       poses_rot=poses_rot, dynamic=dynamic, robot=robot)
+        self.instances.append(robot)
+
     def set_camera(self, camera, target, up):
         self.camera = camera
         self.target = target
@@ -562,7 +576,7 @@ class MeshRenderer:
     def render_robot_cameras(self):
         frames = []
         for instance in self.instances:
-            if isinstance(instance, InstanceGroup):
+            if isinstance(instance, Robot):
                 camera_pos = instance.robot.eyes.get_position()
                 orn = instance.robot.eyes.get_orientation()
                 mat = quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])[:3, :3]
