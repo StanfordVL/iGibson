@@ -515,3 +515,33 @@ class JR2(WalkerBase):
         base_state = WalkerBase.calc_state(self)
         angular_velocity = self.robot_body.angular_velocity()
         return np.concatenate((base_state, np.array(angular_velocity)))
+
+
+
+class JR2_Kinova(WalkerBase):
+    mjcf_scaling = 1
+    model_type = "URDF"
+    default_scale = 1
+
+    def __init__(self, config):
+        self.config = config
+        scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
+        WalkerBase.__init__(self, "jr2_urdf/jr2_kinova.urdf", "base_link", action_dim=12,
+                            sensor_dim=20, power=2.5, scale=scale,
+                            initial_pos=config['initial_pos'],
+                            resolution=config["resolution"],
+                            control=['velocity', 'velocity', 'position', 'position', 'position', 'position',
+                                     'position', 'position', 'position', 'position', 'position', 'position'],
+                            )
+        self.is_discrete = False
+
+        action_high = 0.02 * np.ones([4])
+        self.action_space = gym.spaces.Box(-action_high, action_high)
+
+    def apply_action(self, action):
+        WalkerBase.apply_action(self, action)
+
+    def calc_state(self):
+        base_state = WalkerBase.calc_state(self)
+        angular_velocity = self.robot_body.angular_velocity()
+        return np.concatenate((base_state, np.array(angular_velocity)))

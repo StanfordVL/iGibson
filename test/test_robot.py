@@ -5,8 +5,6 @@ from gibson2.core.physics.scene import *
 from gibson2.utils.utils import parse_config
 
 
-
-
 config = parse_config('test.yaml')
 
 
