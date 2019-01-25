@@ -23,7 +23,6 @@ class NavigateEnv(BaseEnv):
         self.simulator.set_timestep(physics_timestep)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
 
-
     def step(self, action):
         self.robots[0].apply_action(action)
         for i in range(self.simulator_loop):
