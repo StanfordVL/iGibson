@@ -17,6 +17,7 @@ def test_turtlebot():
     assert p.getNumBodies() == 5
     s.disconnect()
 
+
 def test_jr2():
     s = Simulator(mode='headless')
     scene = StadiumScene()
@@ -39,8 +40,8 @@ def test_ant():
     s.add_viewer()
     for i in range(100):
         s.step()
-        ant.apply_action(np.random.randint(17))
-        ant2.apply_action(np.random.randint(17))
+        #ant.apply_action(np.random.randint(17))
+        #ant2.apply_action(np.random.randint(17))
     s.disconnect()
 
 def test_husky():
@@ -114,10 +115,48 @@ def test_multiagent():
     assert p.getNumBodies() == 7
 
     for i in range(100):
-        turtlebot1.apply_action(1)
-        turtlebot2.apply_action(1)
-        turtlebot3.apply_action(1)
+        #turtlebot1.apply_action(1)
+        #turtlebot2.apply_action(1)
+        #turtlebot3.apply_action(1)
         s.step()
 
     s.disconnect()
 
+def show_action_sensor_space():
+    s = Simulator(mode='gui')
+    scene = StadiumScene()
+    s.import_scene(scene)
+
+    turtlebot = Turtlebot(config)
+    s.import_robot(turtlebot)
+    turtlebot.set_position([0,1,0.5])
+
+    ant = Ant(config)
+    s.import_robot(ant)
+    ant.set_position([0, 2, 0.5])
+
+    h = Humanoid(config)
+    s.import_robot(h)
+    h.set_position([0, 3, 2])
+
+    jr = JR2(config)
+    s.import_robot(jr)
+    jr.set_position([0,4,0.5])
+
+    jr2 = JR2_Kinova(config)
+    s.import_robot(jr2)
+    jr2.set_position([0, 5, 0.5])
+
+    husky = Husky(config)
+    s.import_robot(husky)
+    husky.set_position([0,6,0.5])
+
+    quad = Quadrotor(config)
+    s.import_robot(quad)
+    quad.set_position([0,7,0.5])
+
+    for robot in s.robots:
+        print(type(robot), len(robot.ordered_joints), robot.calc_state().shape)
+
+    while True:
+        s.step()

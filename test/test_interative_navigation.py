@@ -43,4 +43,3 @@ def test_jr2():
         s.step()
 
     s.disconnect()
-

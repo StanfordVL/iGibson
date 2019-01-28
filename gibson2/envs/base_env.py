@@ -5,15 +5,13 @@ import gibson2
 from gibson2.utils.utils import parse_config
 
 
-class BaseEnv:
+class BaseEnv(gym.Env):
     '''
     a basic environment, step, observation and reward not implemented
     '''
     def __init__(self, config_file, mode='headless'):
         self.simulator = Simulator(mode=mode)
-
         self.config = parse_config(config_file)
-
         if self.config['scene'] == 'stadium':
             scene = StadiumScene()
 

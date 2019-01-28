@@ -8,9 +8,6 @@ from transforms3d.quaternions import quat2mat, qmult
 import transforms3d.quaternions as quat
 import sys
 
-OBSERVATION_EPS = 0.01
-
-
 class WalkerBase(BaseRobot):
     """ Built on top of BaseRobot
     Handles action_dim, sensor_dim, scene
@@ -40,7 +37,7 @@ class WalkerBase(BaseRobot):
 
         action_high = np.ones([action_dim])
         self.action_space = gym.spaces.Box(-action_high, action_high)
-        obs_high = np.inf * np.ones(self.obs_dim) + OBSERVATION_EPS
+        obs_high = np.inf * np.ones(self.obs_dim)
         self.observation_space = gym.spaces.Box(-obs_high, obs_high)
         sensor_high = np.inf * np.ones([sensor_dim])
         self.sensor_space = gym.spaces.Box(-sensor_high, sensor_high)
@@ -51,6 +48,7 @@ class WalkerBase(BaseRobot):
         self.body_xyz = [0, 0, 0]
         self.action_dim = action_dim
         self.scale = scale
+        self.sensor_dim = sensor_dim
 
     def robot_specific_reset(self):
         for j in self.ordered_joints:
@@ -224,7 +222,7 @@ class Humanoid(WalkerBase):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "humanoid.xml", "torso", action_dim=17,
-                            sensor_dim=44, power=0.41, scale=scale,
+                            sensor_dim=40, power=0.41, scale=scale,
                             initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             )
@@ -234,7 +232,6 @@ class Humanoid(WalkerBase):
             self.action_space = gym.spaces.Discrete(5)
             self.torque = 0.1
             self.action_list = np.concatenate((np.ones((1, 17)), np.zeros((1, 17)))).tolist()
-
             self.setup_keys_to_action()
 
     def robot_specific_reset(self):
@@ -301,7 +298,7 @@ class Husky(WalkerBase):
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
 
         WalkerBase.__init__(self, "husky.urdf", "base_link", action_dim=4,
-                            sensor_dim=23, power=2.5, scale=scale,
+                            sensor_dim=17, power=2.5, scale=scale,
                             initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             )
@@ -370,8 +367,8 @@ class Quadrotor(WalkerBase):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         self.is_discrete = config["is_discrete"]
-        WalkerBase.__init__(self, "quadrotor.urdf", "base_link", action_dim=4,
-                            sensor_dim=20, power=2.5, scale=scale,
+        WalkerBase.__init__(self, "quadrotor.urdf", "base_link", action_dim=6,
+                            sensor_dim=6, power=2.5, scale=scale,
                             initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             )
@@ -421,8 +418,8 @@ class Turtlebot(WalkerBase):
     def __init__(self, config):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
-        WalkerBase.__init__(self, "turtlebot/turtlebot.urdf", "base_link", action_dim=4,
-                            sensor_dim=20, power=2.5, scale=scale,
+        WalkerBase.__init__(self, "turtlebot/turtlebot.urdf", "base_link", action_dim=2,
+                            sensor_dim=13, power=2.5, scale=scale,
                             initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             control='velocity',
@@ -474,7 +471,7 @@ class JR2(WalkerBase):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "jr2_urdf/jr2.urdf", "base_link", action_dim=4,
-                            sensor_dim=20, power=2.5, scale=scale,
+                            sensor_dim=17, power=2.5, scale=scale,
                             initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             control=['velocity', 'velocity', 'position', 'position'],
@@ -527,7 +524,7 @@ class JR2_Kinova(WalkerBase):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "jr2_urdf/jr2_kinova.urdf", "base_link", action_dim=12,
-                            sensor_dim=20, power=2.5, scale=scale,
+                            sensor_dim=33, power=2.5, scale=scale,
                             initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             control=['velocity', 'velocity', 'position', 'position', 'position', 'position',
