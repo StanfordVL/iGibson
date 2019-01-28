@@ -180,15 +180,12 @@ class Simulator:
         return ids
 
     def step(self):
-        try:
-            p.stepSimulation()
-            for instance in self.renderer.instances:
-                if instance.dynamic:
-                    self.update_position(instance)
-            if self.mode == 'gui' and not self.viewer is None:
-                self.viewer.update()
-        except:
-            s.disconnect()
+        p.stepSimulation()
+        for instance in self.renderer.instances:
+            if instance.dynamic:
+                self.update_position(instance)
+        if self.mode == 'gui' and not self.viewer is None:
+            self.viewer.update()
 
     @staticmethod
     def update_position(instance):
@@ -216,7 +213,8 @@ class Simulator:
         return p.getConnectionInfo(self.cid)['isConnected']
 
     def disconnect(self):
-        p.disconnect(self.cid)
+        if self.isconnected():
+            p.disconnect(self.cid)
         self.renderer.release()
 
 if __name__ == '__main__':
