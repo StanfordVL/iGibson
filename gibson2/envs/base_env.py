@@ -32,6 +32,10 @@ class BaseEnv(gym.Env):
         for robot in self.robots:
             self.simulator.import_robot(robot)
 
+    def __del__(self):
+        if not self.simulator is None:
+            self.simulator.disconnect()
+
     def simulator_step(self):
         self.simulator.step()
 
