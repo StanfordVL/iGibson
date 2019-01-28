@@ -57,12 +57,13 @@ class NavigateEnv(BaseEnv):
         self.current_step = 0
         return state
 
+
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
-    nav_env = NavigateEnv(config_file=config_filename, mode='headless')
+    nav_env = NavigateEnv(config_file=config_filename, mode='gui')
     for j in range(15):
         if j%10 == 0:
-            nav_env.set_mode('headless')
+            nav_env.set_mode('gui')
         else:
             nav_env.set_mode('headless')
         nav_env.reset()
@@ -70,7 +71,6 @@ if __name__ == "__main__":
             action = nav_env.action_space.sample()
             ts = nav_env.step(action)
             print(ts)
-
             if ts[2]:
                 print("Episode finished after {} timesteps".format(i + 1))
                 break
