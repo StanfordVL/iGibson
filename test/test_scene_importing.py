@@ -46,8 +46,8 @@ def test_import_building_viewing():
 
     for i in range(100):
         s.step()
-        turtlebot1.apply_action(np.random.randint(4))
-        turtlebot2.apply_action(np.random.randint(4))
-        turtlebot3.apply_action(np.random.randint(4))
+        #turtlebot1.apply_action(np.random.randint(4))
+        #turtlebot2.apply_action(np.random.randint(4))
+        #turtlebot3.apply_action(np.random.randint(4))
 
     s.disconnect()

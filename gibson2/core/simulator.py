@@ -17,7 +17,6 @@ class Simulator:
             self.cid = p.connect(p.DIRECT)
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
-        self.objects = []
 
         # renderer
         self.renderer = MeshRenderer(width=256, height=256)
@@ -27,6 +26,9 @@ class Simulator:
         if self.mode == 'gui':
             self.add_viewer()
 
+        self.robots = []
+        self.scene = None
+        self.objects = []
 
     def set_timestep(self, timestep):
         self.timestep = timestep
@@ -52,6 +54,9 @@ class Simulator:
                     else:
                         self.renderer.add_instance(self.visual_objects[filename], new_object)
 
+        self.scene = scene
+
+
     def import_object(self, object):
         new_object = object.load()
         self.objects.append(new_object)
@@ -73,6 +78,7 @@ class Simulator:
         link_ids = []
         poses_rot = []
         poses_trans = []
+        self.robots.append(robot)
 
         for shape in p.getVisualShapeData(ids[0]):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
@@ -80,8 +86,8 @@ class Simulator:
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 if not filename in self.visual_objects.keys():
-                    print(filename, rel_pos, rel_orn, color)
-                    self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3])
+                    print(filename, rel_pos, rel_orn, color, dimensions)
+                    self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3], scale=np.array(dimensions))
                     visual_objects.append(len(self.renderer.visual_objects) - 1)
                     self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                 else:
@@ -132,8 +138,8 @@ class Simulator:
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 if not filename in self.visual_objects.keys():
-                    print(filename, rel_pos, rel_orn, color)
-                    self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3])
+                    print(filename, rel_pos, rel_orn, color, dimensions)
+                    self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3], scale=np.array(dimensions))
                     visual_objects.append(len(self.renderer.visual_objects) - 1)
                     self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                 else:
