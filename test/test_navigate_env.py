@@ -8,6 +8,7 @@ from gibson2.envs.locomotor_env import *
 from time import time
 
 from tf_agents.environments import gym_wrapper
+from tf_agents.environments import utils
 
 def test_env():
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
@@ -35,3 +36,4 @@ def test_wrapper():
     )
     print("action spec", tfenv.action_spec())
     print("observation spec", tfenv.observation_spec())
+    utils.validate_py_environment(tfenv, episodes=2)
