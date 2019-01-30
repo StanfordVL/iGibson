@@ -6,7 +6,6 @@ from gibson2.utils.utils import parse_config
 from gibson2.envs.base_env import BaseEnv
 from gibson2.envs.locomotor_env import *
 from time import time
-
 from tf_agents.environments import gym_wrapper
 from tf_agents.environments import utils
 

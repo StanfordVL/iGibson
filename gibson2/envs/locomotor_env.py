@@ -40,7 +40,7 @@ class NavigateEnv(BaseEnv):
         additional_state = self.target_pos - self.robots[0].get_position()
         state = np.concatenate((state, additional_state), 0)
         new_potential = np.sum((self.robots[0].get_position() - self.target_pos) ** 2) / np.sum((self.initial_pos - self.target_pos) ** 2)
-        reward = self.potential - new_potential
+        reward = 100*(self.potential - new_potential)
         self.potential = new_potential
 
         self.current_step += 1

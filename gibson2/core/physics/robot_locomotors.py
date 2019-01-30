@@ -437,7 +437,7 @@ class Turtlebot(WalkerBase):
 
             self.setup_keys_to_action()
         else:
-            action_high = 0.02 * np.ones([4])
+            action_high = 0.02 * np.ones([2])
             self.action_space = gym.spaces.Box(-action_high, action_high)
 
     def apply_action(self, action):
