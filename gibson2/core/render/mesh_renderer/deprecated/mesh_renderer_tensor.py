@@ -2,7 +2,6 @@ import sys
 import ctypes
 from contextlib import contextmanager
 from PIL import Image
-import mesh_renderer.glutils.glcontext as glcontext
 import pycuda.driver
 from pycuda.gl import graphics_map_flags
 import torch
