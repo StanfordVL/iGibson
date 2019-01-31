@@ -19,7 +19,7 @@ import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
 
 
-class VisualObject:
+class VisualObject(object):
     def __init__(self, filename, VAO_ids, id, renderer):
         self.VAO_ids = VAO_ids
         self.filename = filename
@@ -34,7 +34,7 @@ class VisualObject:
         return self.__str__()
 
 
-class InstanceGroup:
+class InstanceGroup(object):
     def __init__(self, objects, id, link_ids, pybullet_uuid, poses_trans, poses_rot, dynamic, robot=None):
         # assert(len(objects) > 0) # no empty instance group
         self.objects = objects
@@ -128,7 +128,7 @@ class Robot(InstanceGroup):
         return "Robot({}) -> Objects({})".format(self.id, ",".join([str(object.id) for object in self.objects]))
 
 
-class Instance:
+class Instance(object):
     def __init__(self, object, id, pybullet_uuid, pose_trans, pose_rot, dynamic):
         self.object = object
         self.pose_trans = pose_trans
@@ -372,7 +372,7 @@ class MeshRenderer:
             if mesh.normals.shape[0] == 0:
                 mesh.normals = np.zeros(mesh.vertices.shape, dtype=mesh.vertices.dtype)
             if mesh.texturecoords.shape[0] == 0:
-                mesh.texturecoords = np.zeros((1, *mesh.vertices.shape), dtype=mesh.vertices.dtype)
+                mesh.texturecoords = np.zeros((1, mesh.vertices.shape[0], mesh.vertices.shape[1]), dtype=mesh.vertices.dtype)
 
             vertices = np.concatenate([mesh.vertices * scale, mesh.normals, mesh.texturecoords[0, :, :2]], axis=-1)
 
