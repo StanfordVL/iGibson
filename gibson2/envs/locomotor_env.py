@@ -18,6 +18,15 @@ class NavigateEnv(BaseEnv):
             self.initial_orn = np.array(self.config['initial_orn'])
             self.potential = 1
 
+            if 'debug' in self.config:
+                start = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=[1,0,0,0.5])
+                p.createMultiBody(baseVisualShapeIndex=start, baseCollisionShapeIndex=-1,
+                                  basePosition=self.initial_pos)
+                target = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=[0, 1, 0, 0.5])
+                p.createMultiBody(baseVisualShapeIndex=target, baseCollisionShapeIndex=-1,
+                                  basePosition=self.target_pos)
+
+
         self.action_timestep = action_timestep
         self.physics_timestep = physics_timestep
         self.simulator.set_timestep(physics_timestep)
@@ -39,8 +48,8 @@ class NavigateEnv(BaseEnv):
         state = self.robots[0].calc_state()
         additional_state = self.target_pos - self.robots[0].get_position()
         state = np.concatenate((state, additional_state), 0)
-        new_potential = np.sum((self.robots[0].get_position() - self.target_pos) ** 2) / np.sum((self.initial_pos - self.target_pos) ** 2)
-        reward = 100*(self.potential - new_potential)
+        new_potential = np.sqrt(np.sum((self.robots[0].get_position() - self.target_pos) ** 2)) / np.sqrt(np.sum((self.initial_pos - self.target_pos) ** 2))
+        reward = 1000*(self.potential - new_potential)
         self.potential = new_potential
 
         self.current_step += 1
@@ -51,26 +60,35 @@ class NavigateEnv(BaseEnv):
     def reset(self):
         self.robots[0].robot_specific_reset()
         self.robots[0].set_position(pos=self.initial_pos)
+        self.robots[0].set_orientation(orn=[0,0,0,1])
         state = self.robots[0].calc_state()
         additional_state = self.target_pos - self.robots[0].get_position()
         state = np.concatenate((state, additional_state), 0)
         self.current_step = 0
+        self.potential = 1
         return state
 
 
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
-    nav_env = NavigateEnv(config_file=config_filename, mode='gui')
+    nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
+    if 'debug' in nav_env.config:
+        left_id = p.addUserDebugParameter('left', -0.02, 0.02, 0)
+        right_id = p.addUserDebugParameter('right', -0.02, 0.02, 0)
     for j in range(15):
         if j%10 == 0:
             nav_env.set_mode('gui')
         else:
-            nav_env.set_mode('headless')
+            nav_env.set_mode('gui')
         nav_env.reset()
         for i in range(300): # 300 steps, 30s world time
-            action = nav_env.action_space.sample()
+            if 'debug' in nav_env.config:
+                action = [p.readUserDebugParameter(left_id), p.readUserDebugParameter(right_id)]
+            else:
+                action = nav_env.action_space.sample()
             ts = nav_env.step(action)
-            print(ts)
+            print(ts[1], nav_env.potential)
+            #print(ts)
             if ts[2]:
                 print("Episode finished after {} timesteps".format(i + 1))
                 break

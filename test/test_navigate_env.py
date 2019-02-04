@@ -12,7 +12,6 @@ from tf_agents.environments import utils
 def test_env():
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
     nav_env = NavigateEnv(config_file=config_filename, mode='headless')
-
     for j in range(2):
         nav_env.reset()
         for i in range(300): # 300 steps, 30s world time

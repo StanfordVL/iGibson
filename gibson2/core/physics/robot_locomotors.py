@@ -67,6 +67,9 @@ class WalkerBase(BaseRobot):
     def set_position(self, pos):
         self.robot_body.reset_position(pos)
 
+    def set_orientation(self, orn):
+        self.robot_body.set_orientation(orn)
+
     def move_by(self, delta):
         new_pos = np.array(delta) + self.get_position()
         self.robot_body.reset_position(new_pos)

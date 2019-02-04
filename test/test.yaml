@@ -14,11 +14,12 @@ initial_orn: [0, 0, 4.71]
 initial_pos: [0, 0, 0.2]
 
 target_orn: [0, 0, 1.57]
-target_pos: [-14.3, 45.07, 0.2]
+target_pos: [0, 10, 0.2]
 
 fov: 1.57
 is_discrete: false
 
+debug: true
 # display
 
 use_filler: true
