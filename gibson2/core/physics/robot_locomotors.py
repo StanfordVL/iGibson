@@ -96,7 +96,6 @@ class WalkerBase(BaseRobot):
         return self.robot_body.bp_pose.rpy()
 
     def apply_action(self, a):
-        # print(self.ordered_joints)
         if self.control == 'torque':
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_torque(self.power * j.power_coef * float(np.clip(a[n], -1, +1)))
@@ -128,23 +127,32 @@ class WalkerBase(BaseRobot):
         self.body_xyz = (
             parts_xyz[0::3].mean(), parts_xyz[1::3].mean(),
             body_pose.xyz()[2])  # torso z is more informative than mean z
+        self.dist_to_start = np.linalg.norm(np.array(self.body_xyz) - np.array(self.initial_pos))
         self.body_rpy = body_pose.rpy()
         z = self.body_xyz[2]
         r, p, yaw = self.body_rpy
-
-        self.dist_to_start = np.linalg.norm(np.array(self.body_xyz) - np.array(self.initial_pos))
-
-        rot_speed = np.array(
+        rot_x = np.array(
+            [[1, 0, 0],
+             [0, np.cos(-r), -np.sin(-r)],
+             [0, np.sin(-r), np.cos(-r)]]
+        )
+        rot_y = np.array(
+            [[np.cos(-p), 0, np.sin(-p)],
+             [0, 1, 0],
+             [-np.sin(-p), 0, np.cos(-p)]]
+        )
+        rot_z = np.array(
             [[np.cos(-yaw), -np.sin(-yaw), 0],
              [np.sin(-yaw), np.cos(-yaw), 0],
              [0, 0, 1]]
         )
-        vx, vy, vz = np.dot(rot_speed, self.robot_body.velocity())  # rotate speed back to body point of view
+        # rotate speed back to body point of view
+        vx, vy, vz = np.dot(rot_x, np.dot(rot_y, np.dot(rot_z, self.robot_body.velocity())))
 
         more = np.array([z,
                          0.3 * vx, 0.3 * vy, 0.3 * vz,
                          # 0.3 is just scaling typical speed into -1..+1, no physical sense here
-                         r, p], dtype=np.float32)
+                         r, p, yaw], dtype=np.float32)
 
         return np.clip(np.concatenate([more] + [j]), -5, +5)
 
@@ -422,25 +430,23 @@ class Turtlebot(WalkerBase):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "turtlebot/turtlebot.urdf", "base_link", action_dim=2,
-                            sensor_dim=13, power=2.5, scale=scale,
+                            sensor_dim=14, power=2.5, scale=scale,
                             initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             control='velocity',
                             )
         self.is_discrete = config["is_discrete"]
-
+        self.vel = 0.25
         if self.is_discrete:
             self.action_space = gym.spaces.Discrete(5)
-            self.vel = 0.1
             self.action_list = [[self.vel, self.vel],
                                 [-self.vel, -self.vel],
                                 [self.vel, -self.vel],
                                 [-self.vel, self.vel],
                                 [0, 0]]
-
             self.setup_keys_to_action()
         else:
-            action_high = 0.02 * np.ones([2])
+            action_high = self.vel * 2 * np.ones([2])
             self.action_space = gym.spaces.Box(-action_high, action_high)
 
     def apply_action(self, action):

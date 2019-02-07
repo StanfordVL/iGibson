@@ -25,34 +25,28 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import flags
-
 from time import time
-from gibson2.envs.locomotor_env import *
+import os
+
+from gibson2.utils.tf_utils import env_load_fn
+
 import tensorflow as tf
 from tf_agents.agents.ppo.examples import train_eval
-from tf_agents.environments import utils
-from tf_agents.environments import gym_wrapper
 
+flags.DEFINE_string('gpu', '0',
+                    'gpu id for Tensorflow.')
 FLAGS = flags.FLAGS
 
 
-def env_load_fn(env_name):
-    del env_name
-    config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
-    nav_env = NavigateEnv(config_file=config_filename, mode='headless', physics_timestep=1/40.0)
-    tfenv = gym_wrapper.GymWrapper(
-        nav_env,
-        discount=1,
-        spec_dtype_map=None,
-        auto_reset=True,
-    )
-    return tfenv
-
 def main(_):
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu
+
     tf.logging.set_verbosity(tf.logging.INFO)
     train_eval.train_eval(
-      FLAGS.root_dir, tf_master=FLAGS.master,
-      env_name=FLAGS.env_name,
+      FLAGS.root_dir,
+      tf_master=FLAGS.master,
+      env_name='',
       env_load_fn=env_load_fn,
       replay_buffer_capacity=FLAGS.replay_buffer_capacity,
       num_environment_steps=FLAGS.num_environment_steps,

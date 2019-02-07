@@ -11,7 +11,7 @@ from baselines.common import set_global_seeds
 import baselines.common.tf_util as U
 from gibson2.utils.fuse_policy2 import MlpPolicy, MlpPolicy2, CnnPolicy2
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
-from gibson2.utils import utils
+from gibson2.utils import tf_utils
 import datetime
 from baselines import logger
 #from baselines.ppo2 import ppo2
@@ -28,7 +28,7 @@ import sys
 def train(num_timesteps, seed):
     rank = MPI.COMM_WORLD.Get_rank()
     #sess = U.single_threaded_session()
-    sess = utils.make_gpu_session(args.num_gpu)
+    sess = tf_utils.make_gpu_session(args.num_gpu)
     sess.__enter__()
     if args.meta != "":
         saver = tf.train.import_meta_graph(args.meta)

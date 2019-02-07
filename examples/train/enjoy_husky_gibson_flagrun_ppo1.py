@@ -12,7 +12,7 @@ from gibson2.envs.husky_env import HuskyNavigateEnv, HuskyGibsonFlagRunEnv
 from baselines.common import set_global_seeds
 import baselines.common.tf_util as U
 from gibson2.utils import cnn_policy, fuse_policy
-from gibson2.utils import utils
+from gibson2.utils import tf_utils
 import datetime
 from baselines import logger
 from baselines import bench
@@ -24,7 +24,7 @@ import random
 
 def enjoy(num_timesteps, seed):
 
-    sess = utils.make_gpu_session(1)
+    sess = tf_utils.make_gpu_session(1)
     sess.__enter__()
 
     if args.meta != "":
