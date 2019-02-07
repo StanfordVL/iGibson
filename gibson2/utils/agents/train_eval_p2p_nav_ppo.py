@@ -44,8 +44,9 @@ def main(_):
 
     tf.logging.set_verbosity(tf.logging.INFO)
     train_eval.train_eval(
-      FLAGS.root_dir, tf_master=FLAGS.master,
-      env_name=FLAGS.env_name,
+      FLAGS.root_dir,
+      tf_master=FLAGS.master,
+      env_name='',
       env_load_fn=env_load_fn,
       replay_buffer_capacity=FLAGS.replay_buffer_capacity,
       num_environment_steps=FLAGS.num_environment_steps,
