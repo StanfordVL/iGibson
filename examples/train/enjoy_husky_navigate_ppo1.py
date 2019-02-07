@@ -10,7 +10,7 @@ from gibson2.envs.husky_env import HuskyNavigateEnv
 from baselines.common import set_global_seeds
 from gibson2.utils import pposgd_simple
 import baselines.common.tf_util as U
-from gibson2.utils import utils
+from gibson2.utils import tf_utils
 from gibson2.utils import cnn_policy, mlp_policy
 import datetime
 from baselines import logger
@@ -25,7 +25,7 @@ import sys
 def train(num_timesteps, seed):
     rank = MPI.COMM_WORLD.Get_rank()
     #sess = U.single_threaded_session()
-    sess = utils.make_gpu_session(args.num_gpu)
+    sess = tf_utils.make_gpu_session(args.num_gpu)
     sess.__enter__()
     if args.meta != "":
         saver = tf.train.import_meta_graph(args.meta)
