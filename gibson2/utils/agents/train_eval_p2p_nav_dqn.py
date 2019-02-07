@@ -41,6 +41,7 @@ from tf_agents.environments import gym_wrapper
 from tf_agents.environments import parallel_py_environment
 from tf_agents.environments import suite_gym
 from tf_agents.environments import tf_py_environment
+from tf_agents.metrics import batched_py_metric
 from tf_agents.metrics import metric_utils
 from tf_agents.metrics import py_metrics
 from tf_agents.metrics import tf_metrics
@@ -51,6 +52,7 @@ from tf_agents.utils import common as common_utils
 import gin.tf
 
 from gibson2.envs.locomotor_env import *
+from gibson2.utils.tf_utils import AverageSuccessRateMetric, TFAverageSuccessRateMetric, env_load_fn
 
 nest = tf.contrib.framework.nest
 
@@ -58,27 +60,24 @@ flags.DEFINE_string('root_dir', os.getenv('TEST_UNDECLARED_OUTPUTS_DIR'),
                     'Root directory for writing logs/summaries/checkpoints.')
 flags.DEFINE_integer('num_iterations', 100000,
                      'Total number train/eval iterations to perform.')
+flags.DEFINE_integer('num_parallel_environments', 1,
+                     'Number of environments to run in parallel')
+flags.DEFINE_integer('terminal_reward', 5000,
+                     'Terminal reward to compute success rate')
 flags.DEFINE_bool('use_ddqn', False,
                   'If True uses the DdqnAgent instead of the DqnAgent.')
+flags.DEFINE_string('gpu', '0',
+                    'gpu id for Tensorflow.')
 FLAGS = flags.FLAGS
 
-def env_load_fn(env_name, mode='headless'):
-    del env_name
-    config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
-    nav_env = NavigateEnv(config_file=config_filename, mode=mode, physics_timestep=1/40.0)
-    tfenv = gym_wrapper.GymWrapper(
-        nav_env,
-        discount=1,
-        spec_dtype_map=None,
-        auto_reset=True,
-    )
-    return tfenv
 
 @gin.configurable
 def train_eval(
     root_dir,
     env_name='CartPole-v0',
     env_load_fn=None,
+    num_parallel_environments=1,
+    terminal_reward=5000,
     num_iterations=100000,
     fc_layer_params=(100,),
     # Params for collect
@@ -122,8 +121,18 @@ def train_eval(
   eval_summary_writer = tf.contrib.summary.create_file_writer(
       eval_dir, flush_millis=summaries_flush_secs * 1000)
   eval_metrics = [
-      py_metrics.AverageReturnMetric(buffer_size=num_eval_episodes),
-      py_metrics.AverageEpisodeLengthMetric(buffer_size=num_eval_episodes),
+      batched_py_metric.BatchedPyMetric(
+          py_metrics.AverageReturnMetric,
+          metric_args={'buffer_size': num_eval_episodes},
+          batch_size=num_parallel_environments),
+      batched_py_metric.BatchedPyMetric(
+          py_metrics.AverageEpisodeLengthMetric,
+          metric_args={'buffer_size': num_eval_episodes},
+          batch_size=num_parallel_environments),
+      batched_py_metric.BatchedPyMetric(
+          AverageSuccessRateMetric,
+          metric_args={'buffer_size': num_eval_episodes, 'terminal_reward': terminal_reward},
+          batch_size=num_parallel_environments),
   ]
 
   with tf.contrib.summary.record_summaries_every_n_global_steps(
@@ -135,9 +144,9 @@ def train_eval(
     else:
         tf_env = tf_py_environment.TFPyEnvironment(
             parallel_py_environment.ParallelPyEnvironment(
-                [lambda: env_load_fn(env_name)] * 1))
-        eval_py_env = env_load_fn(env_name)
-
+                [lambda: env_load_fn(env_name)] * num_parallel_environments))
+        eval_py_env = parallel_py_environment.ParallelPyEnvironment(
+            [lambda: env_load_fn(env_name)] * num_parallel_environments)
     q_net = q_network.QNetwork(
         tf_env.time_step_spec().observation,
         tf_env.action_spec(),
@@ -161,7 +170,7 @@ def train_eval(
 
     replay_buffer = tf_uniform_replay_buffer.TFUniformReplayBuffer(
         tf_agent.collect_data_spec(),
-        batch_size=tf_env.batch_size,
+        batch_size=num_parallel_environments,
         max_length=replay_buffer_capacity)
 
     eval_py_policy = py_tf_policy.PyTFPolicy(tf_agent.policy())
@@ -169,8 +178,9 @@ def train_eval(
     train_metrics = [
         tf_metrics.NumberOfEpisodes(),
         tf_metrics.EnvironmentSteps(),
-        tf_metrics.AverageReturnMetric(),
-        tf_metrics.AverageEpisodeLengthMetric(),
+        tf_metrics.AverageReturnMetric(buffer_size=100),
+        tf_metrics.AverageEpisodeLengthMetric(buffer_size=100),
+        TFAverageSuccessRateMetric(buffer_size=100, terminal_reward=terminal_reward),
     ]
 
     global_step = tf.train.get_or_create_global_step()
@@ -227,7 +237,9 @@ def train_eval(
 
     init_agent_op = tf_agent.initialize()
 
-    with tf.Session() as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config) as sess:
       # Initialize the graph.
       train_checkpointer.initialize_or_restore(sess)
       rb_checkpointer.initialize_or_restore(sess)
@@ -306,10 +318,14 @@ def train_eval(
 
 
 def main(_):
+  os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+  os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu
+
   tf.logging.set_verbosity(tf.logging.INFO)
   agent_class = dqn_agent.DdqnAgent if FLAGS.use_ddqn else dqn_agent.DdqnAgent
   train_eval(
       FLAGS.root_dir,
+      num_parallel_environments=FLAGS.num_parallel_environments,
       agent_class=agent_class,
       num_iterations=FLAGS.num_iterations,
       env_load_fn=env_load_fn)

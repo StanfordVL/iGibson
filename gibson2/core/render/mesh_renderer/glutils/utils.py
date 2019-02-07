@@ -6,7 +6,7 @@ colormap = [[1,0,0], [0,1,0], [0,0,1]]
 
 def loadTexture(path):
     img = Image.open(path).transpose(Image.FLIP_TOP_BOTTOM)
-    img_data = np.fromstring(img.tobytes(), np.uint8)
+    img_data = np.frombuffer(img.tobytes(), np.uint8)
     #print(img_data.shape)
     width, height = img.size
     # glTexImage2D expects the first element of the image data to be the

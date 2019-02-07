@@ -8,27 +8,11 @@ import pybullet_data
 from gibson2 import assets
 from transforms3d.euler import euler2quat
 from transforms3d import quaternions
+from gibson2.utils.utils import quatFromXYZW, quatToXYZW
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 os.sys.path.insert(0, parentdir)
-
-def quatFromXYZW(xyzw, seq='xyzw'):
-    """Convert quaternion from arbitrary sequence to XYZW (pybullet convention)
-    """
-    assert len(seq) == 4 and 'x' in seq and 'y' in seq and 'z' in seq and 'w' in seq, \
-        "Quaternion sequence {} is not valid, please double check.".format(seq)
-    inds = [seq.index('x'), seq.index('y'), seq.index('z'), seq.index('w')]
-    return xyzw[inds]
-
-
-def quatToXYZW(orn, seq='xyzw'):
-    """Convert quaternion from XYZW (pybullet convention) to arbitrary sequence
-    """
-    assert len(seq) == 4 and 'x' in seq and 'y' in seq and 'z' in seq and 'w' in seq, \
-        "Quaternion sequence {} is not valid, please double check.".format(seq)
-    inds = [seq.index('x'), seq.index('y'), seq.index('z'), seq.index('w')]
-    return orn[inds]
 
 
 class BaseRobot:
