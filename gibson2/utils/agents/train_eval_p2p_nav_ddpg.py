@@ -34,8 +34,7 @@ import time
 from absl import flags
 
 import tensorflow as tf
-from tf_agents.agents.ddpg.examples.train_eval_mujoco import train_eval
-
+from gibson2.utils.agents.train_eval_ddpg import train_eval
 from gibson2.envs.locomotor_env import *
 from gibson2.utils.tf_utils import env_load_fn
 
