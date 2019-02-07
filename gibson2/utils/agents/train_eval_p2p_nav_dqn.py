@@ -74,8 +74,8 @@ FLAGS = flags.FLAGS
 @gin.configurable
 def train_eval(
     root_dir,
-    env_name='CartPole-v0',
-    env_load_fn=None,
+    env_name='',
+    env_load_fn=suite_gym.load,
     num_parallel_environments=1,
     terminal_reward=5000,
     num_iterations=100000,
@@ -137,16 +137,12 @@ def train_eval(
 
   with tf.contrib.summary.record_summaries_every_n_global_steps(
       summary_interval):
+    tf_env = tf_py_environment.TFPyEnvironment(
+        parallel_py_environment.ParallelPyEnvironment(
+            [lambda: env_load_fn(env_name)] * num_parallel_environments))
+    eval_py_env = parallel_py_environment.ParallelPyEnvironment(
+        [lambda: env_load_fn(env_name)] * num_parallel_environments)
 
-    if env_load_fn is None:
-        tf_env = tf_py_environment.TFPyEnvironment(suite_gym.load(env_name))
-        eval_py_env = suite_gym.load(env_name)
-    else:
-        tf_env = tf_py_environment.TFPyEnvironment(
-            parallel_py_environment.ParallelPyEnvironment(
-                [lambda: env_load_fn(env_name)] * num_parallel_environments))
-        eval_py_env = parallel_py_environment.ParallelPyEnvironment(
-            [lambda: env_load_fn(env_name)] * num_parallel_environments)
     q_net = q_network.QNetwork(
         tf_env.time_step_spec().observation,
         tf_env.action_spec(),
