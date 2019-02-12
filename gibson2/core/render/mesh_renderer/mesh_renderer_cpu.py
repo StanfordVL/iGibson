@@ -573,7 +573,7 @@ class MeshRenderer:
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
-    def render_robot_cameras(self):
+    def render_robot_cameras(self, modes=('rgb')):
         frames = []
         for instance in self.instances:
             if isinstance(instance, Robot):
@@ -582,7 +582,7 @@ class MeshRenderer:
                 mat = quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
-                for item in self.render(modes=("rgb"), hidden=[instance]):
+                for item in self.render(modes=modes, hidden=[instance]):
                     frames.append(item)
         return frames
 
