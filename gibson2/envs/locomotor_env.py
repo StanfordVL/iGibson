@@ -45,6 +45,7 @@ class NavigateEnv(BaseEnv):
         self.action_space = self.robots[0].action_space
         self.current_step = 0
         self.max_step = 200
+        self.output = self.config['output']
 
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
@@ -61,8 +62,8 @@ class NavigateEnv(BaseEnv):
         for _ in range(self.simulator_loop):
             self.simulator_step()
 
-        state = self.robots[0].calc_state()
-        state = np.concatenate((state, self.get_additional_states()))
+        sensor_state = self.robots[0].calc_state()
+        sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
 
         new_potential = l2_distance(self.target_pos, self.robots[0].get_position()) / \
                         l2_distance(self.target_pos, self.initial_pos)
@@ -79,6 +80,14 @@ class NavigateEnv(BaseEnv):
 
         # print('action', action)
         # print('reward', reward)
+        state = {}
+        if 'sensor' in self.output:
+            state['sensor'] = sensor_state
+        if 'rgb' in self.output and 'depth' in self.output:
+            frame = self.simulator.renderer.render_robot_cameras(modes=('rgb', '3d'))
+            #from IPython import embed; embed()
+            state['rgb'] = frame[0][:,:,:3]
+            state['depth'] = frame[1][:,:,2]
 
         return state, reward, done, {}
 
