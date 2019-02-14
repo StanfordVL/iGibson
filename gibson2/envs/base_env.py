@@ -14,6 +14,8 @@ class BaseEnv(gym.Env):
         self.config = parse_config(config_file)
         if self.config['scene'] == 'stadium':
             scene = StadiumScene()
+        elif self.config['scene'] == 'building':
+            scene = BuildingScene(self.config['model_id'])
 
         self.simulator.import_scene(scene)
         if self.config['robot'] == 'Turtlebot':
