@@ -25,7 +25,7 @@
     <remap from="cmd_vel_mux/output" to="mobile_base/commands/velocity"/>
   </node>
 
- <include file="$(find turtlebot_teleop)/launch/ps3_teleop.launch">
+ <include file="$(find turtlebot_teleop)/launch/keyboard_teleop.launch">
  </include>
 
   <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan"  output="screen">
