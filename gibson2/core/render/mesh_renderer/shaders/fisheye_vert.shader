@@ -103,7 +103,7 @@ vec4 camera_model(vec3 point) {
     float cam_para2 = -8.608988802573333e-01;
     float cam_para3 = 8.521247230645207e-01;
     float cam_para4 = -7.732395849774419e-01;
-    vec2 dis_center = vec2(3.119412049523769e+02, 3.194164203930683e+02);
+    vec2 dis_center = vec2(3.119412049523769e+02, 3.194164203930683e+02) / 256.0 * FISHEYE_SIZE;
     float sig = length(point.xy);
     float A4 = 1.0;
     float A3 = -point.z/cam_para1;
@@ -135,14 +135,17 @@ void main() {
 
     gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1);
 
+
     vec4 tmp_Position = V * pose_trans * pose_rot * vec4(position, 1);
+
+    tmp_Position.z = -tmp_Position.z;
+
     vec4 projection = camera_model(tmp_Position.xyz);
 
 
     gl_Position.xy =  (projection.xy - vec2(1.2109375 * FISHEYE_SIZE, 1.2109375 * FISHEYE_SIZE)) /(1.2109375 * FISHEYE_SIZE)  ;
     gl_Position.z = - 1 / (length(tmp_Position.xyz) * 10.0);
     gl_Position.w = 1;
-
 
     float angle;
     vec3 v1 = tmp_Position.xyz / length(tmp_Position.xyz);

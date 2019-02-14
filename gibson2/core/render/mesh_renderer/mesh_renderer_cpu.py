@@ -589,7 +589,7 @@ class MeshRenderer:
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
-    renderer = MeshRenderer(width=600, height=600)
+    renderer = MeshRenderer(width=256, height=256)
     renderer.load_object(model_path)
     renderer.load_object('/home/fei/Downloads/models/011_banana/textured_simple.obj')
 

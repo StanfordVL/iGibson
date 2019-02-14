@@ -32,7 +32,7 @@ class SimNode:
         self.bridge = CvBridge()
         self.br = tf.TransformBroadcaster()
 
-        self.env = NavigateEnv(config_file=config_filename, mode='headless')
+        self.env = NavigateEnv(config_file=config_filename, mode='gui')
         print(self.env.config)
 
         obs = self.env.reset()
