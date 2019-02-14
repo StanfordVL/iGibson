@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>gibson-ros</name>
+  <name>gibson2-ros</name>
   <version>0.0.0</version>
   <description>The gibson-ros package</description>
 

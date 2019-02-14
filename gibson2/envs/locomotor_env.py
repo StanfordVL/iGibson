@@ -62,6 +62,7 @@ class NavigateEnv(BaseEnv):
         for _ in range(self.simulator_loop):
             self.simulator_step()
 
+
         sensor_state = self.robots[0].calc_state()
         sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
 
@@ -87,7 +88,7 @@ class NavigateEnv(BaseEnv):
             frame = self.simulator.renderer.render_robot_cameras(modes=('rgb', '3d'))
             #from IPython import embed; embed()
             state['rgb'] = frame[0][:,:,:3]
-            state['depth'] = frame[1][:,:,2]
+            state['depth'] = -frame[1][:,:,2]
 
         return state, reward, done, {}
 
@@ -96,11 +97,22 @@ class NavigateEnv(BaseEnv):
         self.robots[0].set_position(pos=self.initial_pos)
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
 
-        state = self.robots[0].calc_state()
-        state = np.concatenate((state, self.get_additional_states()))
+        sensor_state = self.robots[0].calc_state()
+        sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
 
         self.current_step = 0
         self.potential = 1
+
+        state = {}
+        if 'sensor' in self.output:
+            state['sensor'] = sensor_state
+        if 'rgb' in self.output and 'depth' in self.output:
+            frame = self.simulator.renderer.render_robot_cameras(modes=('rgb', '3d'))
+            # from IPython import embed; embed()
+            state['rgb'] = frame[0][:, :, :3]
+            state['depth'] = frame[1][:, :, 2]
+
+
         return state
 
 
