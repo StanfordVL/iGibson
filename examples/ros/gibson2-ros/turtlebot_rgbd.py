@@ -32,12 +32,11 @@ class SimNode:
         self.bridge = CvBridge()
         self.br = tf.TransformBroadcaster()
 
-        self.env = NavigateEnv(config_file=config_filename, mode='gui')
+        self.env = NavigateEnv(config_file=config_filename, mode='headless', action_timestep=1/30.0) # assume a 30Hz simulation
         print(self.env.config)
 
         obs = self.env.reset()
         rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
-
 
     def run(self):
         while not rospy.is_shutdown():
@@ -92,17 +91,14 @@ class SimNode:
             odom_msg.pose.pose.orientation.w = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1])
     
             odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
-            odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 25
-    
+            odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
             self.odom_pub.publish(odom_msg)
-
 
         rospy.spin()
 
     def cmd_callback(self,data):
-        self.cmdx = data.linear.x/10.0 - data.angular.z / 50.0
-        self.cmdy = data.linear.x/10.0 + data.angular.z / 50.0
-
+        self.cmdx = data.linear.x/10.0 - data.angular.z / (10*8.695652173913043)
+        self.cmdy = data.linear.x/10.0 + data.angular.z / (10*8.695652173913043)
 
 
 if __name__ == '__main__':
