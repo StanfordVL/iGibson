@@ -28,6 +28,8 @@ class BaseEnv(gym.Env):
             robot = Humanoid(self.config)
         elif self.config['robot'] == 'JR2':
             robot = JR2(self.config)
+        elif self.config['robot'] == 'JR2_Kinova':
+            robot = JR2_Kinova(self.config)
 
         self.scene = scene
         self.robots = [robot]
