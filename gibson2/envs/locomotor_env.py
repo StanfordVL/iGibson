@@ -12,7 +12,7 @@ from transforms3d.euler import euler2quat
 class NavigateEnv(BaseEnv):
     def __init__(self, config_file, mode='headless', action_timestep = 1/10.0, physics_timestep=1/240.0):
         super(NavigateEnv, self).__init__(config_file, mode)
-        if self.config['task'] == 'pointgoal':
+        if self.config['task'] == 'pointgoal' or self.config['task'] == 'reaching':
             self.target_pos = np.array(self.config['target_pos'])
             self.target_orn = np.array(self.config['target_orn'])
             self.initial_pos = np.array(self.config['initial_pos'])
@@ -54,6 +54,13 @@ class NavigateEnv(BaseEnv):
         # the angle between the direction the agent is facing and the direction to the target position
         delta_yaw = np.arctan2(relative_position[1], relative_position[0])
         additional_states = np.concatenate((relative_position, [np.sin(delta_yaw), np.cos(delta_yaw)]))
+
+        if self.config['task'] == 'reaching':
+            # get end effector information
+            #from IPython import embed; embed()
+            end_effector_pos = (self.robots[0].get_end_effector_position())
+            additional_states = np.concatenate([additional_states, end_effector_pos])
+
         assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
         return additional_states
 
@@ -61,7 +68,6 @@ class NavigateEnv(BaseEnv):
         self.robots[0].apply_action(action)
         for _ in range(self.simulator_loop):
             self.simulator_step()
-
 
         sensor_state = self.robots[0].calc_state()
         sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
@@ -74,10 +80,17 @@ class NavigateEnv(BaseEnv):
         self.current_step += 1
         done = self.current_step >= self.max_step
 
-        if l2_distance(self.target_pos, self.robots[0].get_position()) < self.dist_tol:
-            # print('goal')
-            reward = self.terminal_reward
-            done = True
+
+        if self.config['task'] == 'pointgoal':
+            if l2_distance(self.target_pos, self.robots[0].get_position()) < self.dist_tol:
+                # print('goal')
+                reward = self.terminal_reward
+                done = True
+        elif self.config['task'] == 'reaching':
+            if l2_distance(self.target_pos, self.robots[0].get_end_effector_position()) < self.dist_tol:
+                # print('goal')
+                reward = self.terminal_reward
+                done = True
 
         # print('action', action)
         # print('reward', reward)
@@ -112,17 +125,17 @@ class NavigateEnv(BaseEnv):
             state['rgb'] = frame[0][:, :, :3]
             state['depth'] = frame[1][:, :, 2]
 
-
         return state
 
 
 if __name__ == "__main__":
-    config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
-    nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
-    if nav_env.config['debug']:
-        left_id = p.addUserDebugParameter('left', -0.1, 0.1, 0)
-        right_id = p.addUserDebugParameter('right', -0.1, 0.1, 0)
-    for j in range(15):
+
+    if sys.argv[1] == 'turtlebot':
+        config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/turtlebot_p2p_nav.yaml')
+        nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
+        if nav_env.config['debug']:
+            left_id = p.addUserDebugParameter('left', -0.1, 0.1, 0)
+            right_id = p.addUserDebugParameter('right', -0.1, 0.1, 0)
         nav_env.reset()
         for i in range(300):  # 300 steps, 30s world time
             if nav_env.config['debug']:
@@ -133,3 +146,11 @@ if __name__ == "__main__":
             if done:
                 print("Episode finished after {} timesteps".format(i + 1))
                 break
+    elif sys.argv[1] == 'jr':
+        config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/jr2_reaching.yaml')
+        nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
+        action = np.array([0.005, 0.005, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        nav_env.reset()
+        #for i in range(300):
+        while True:
+            nav_env.step(action)
