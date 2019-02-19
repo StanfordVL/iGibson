@@ -1,4 +1,5 @@
 from gibson2.core.physics.robot_bases import BaseRobot
+from gibson2.utils.utils import rotate_vector_3d
 import numpy as np
 import pybullet as p
 import os
@@ -131,23 +132,9 @@ class WalkerBase(BaseRobot):
         self.body_rpy = body_pose.rpy()
         z = self.body_xyz[2]
         r, p, yaw = self.body_rpy
-        rot_x = np.array(
-            [[1, 0, 0],
-             [0, np.cos(-r), -np.sin(-r)],
-             [0, np.sin(-r), np.cos(-r)]]
-        )
-        rot_y = np.array(
-            [[np.cos(-p), 0, np.sin(-p)],
-             [0, 1, 0],
-             [-np.sin(-p), 0, np.cos(-p)]]
-        )
-        rot_z = np.array(
-            [[np.cos(-yaw), -np.sin(-yaw), 0],
-             [np.sin(-yaw), np.cos(-yaw), 0],
-             [0, 0, 1]]
-        )
+
         # rotate speed back to body point of view
-        vx, vy, vz = np.dot(rot_x, np.dot(rot_y, np.dot(rot_z, self.robot_body.velocity())))
+        vx, vy, vz = rotate_vector_3d(self.robot_body.velocity(), r, p, yaw)
 
         more = np.array([z,
                          0.3 * vx, 0.3 * vy, 0.3 * vz,
