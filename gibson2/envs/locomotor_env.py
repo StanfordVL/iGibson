@@ -156,7 +156,7 @@ if __name__ == "__main__":
             if done:
                 print("Episode finished after {} timesteps".format(i + 1))
                 break
-
+        nav_env.clean()
     elif sys.argv[1] == 'jr':
         config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/jr2_reaching.yaml')
         nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
