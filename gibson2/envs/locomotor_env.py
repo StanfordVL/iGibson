@@ -12,7 +12,7 @@ from transforms3d.euler import euler2quat
 class NavigateEnv(BaseEnv):
     def __init__(self, config_file, mode='headless', action_timestep = 1/10.0, physics_timestep=1/240.0):
         super(NavigateEnv, self).__init__(config_file, mode)
-        if self.config['task'] == 'pointgoal':
+        if self.config['task'] == 'pointgoal' or self.config['task'] == 'reaching':
             self.target_pos = np.array(self.config['target_pos'])
             self.target_orn = np.array(self.config['target_orn'])
             self.initial_pos = np.array(self.config['initial_pos'])
@@ -36,17 +36,27 @@ class NavigateEnv(BaseEnv):
         self.physics_timestep = physics_timestep
         self.simulator.set_timestep(physics_timestep)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
+        self.output = self.config['output']
 
         self.sensor_dim = self.robots[0].sensor_dim + self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
 
         # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float64)
-        self.observation_space = gym.spaces.Dict({
-            'state': gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32),
-            'observation': gym.spaces.Box(low=0.0, high=1.0,
-                                          shape=(self.config['resolution'], self.config['resolution'], 4),
-                                          dtype=np.float32)
-        })
+        observation_space = {}
+        if 'sensor' in self.output:
+            self.sensor_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32)
+            observation_space['sensor'] = self.sensor_space
+        if 'rgb' in self.output:
+            self.rgb_space = gym.spaces.Box(low=0.0, high=1.0,
+                                            shape=(self.config['resolution'], self.config['resolution'], 3),
+                                            dtype=np.float32)
+            observation_space['rgb'] = self.rgb_space
+        if 'depth' in self.output:
+            self.depth_space = gym.spaces.Box(low=0.0, high=1.0,
+                                              shape=(self.config['resolution'], self.config['resolution'], 1),
+                                              dtype=np.float32)
+            observation_space['depth'] = self.depth_space
+        self.observation_space = gym.spaces.Dict(observation_space)
 
         self.action_space = self.robots[0].action_space
         self.current_step = 0
@@ -61,6 +71,11 @@ class NavigateEnv(BaseEnv):
         additional_states = np.concatenate((relative_position,
                                             relative_position_odom,
                                             [np.sin(delta_yaw), np.cos(delta_yaw)]))
+        if self.config['task'] == 'reaching':
+            # get end effector information
+            end_effector_pos = (self.robots[0].get_end_effector_position())
+            additional_states = np.concatenate((additional_states, end_effector_pos))
+
         assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
         return additional_states
 
@@ -69,8 +84,9 @@ class NavigateEnv(BaseEnv):
         for _ in range(self.simulator_loop):
             self.simulator_step()
 
-        state = self.robots[0].calc_state()
-        state = np.concatenate((state, self.get_additional_states()))
+        sensor_state = self.robots[0].calc_state()
+        sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
+
         new_potential = l2_distance(self.target_pos, self.robots[0].get_position()) / \
                         l2_distance(self.target_pos, self.initial_pos)
         reward = 1000 * (self.potential - new_potential)
@@ -79,43 +95,59 @@ class NavigateEnv(BaseEnv):
         self.current_step += 1
         done = self.current_step >= self.max_step
 
-        if l2_distance(self.target_pos, self.robots[0].get_position()) < self.dist_tol:
-            print('goal')
-            reward = self.terminal_reward
-            done = True
+        if self.config['task'] == 'pointgoal':
+            if l2_distance(self.target_pos, self.robots[0].get_position()) < self.dist_tol:
+                print('pointgoal')
+                reward = self.terminal_reward
+                done = True
+        elif self.config['task'] == 'reaching':
+            if l2_distance(self.target_pos, self.robots[0].get_end_effector_position()) < self.dist_tol:
+                print('reaching')
+                reward = self.terminal_reward
+                done = True
 
-        observation = self.simulator.renderer.render_robot_cameras()[0]
         # print('action', action)
         # print('reward', reward)
 
-        # return state, reward, done, {}
-        return {'observation': observation, 'state': state}, reward, done, {}
+        state = {}
+        if 'sensor' in self.output:
+            state['sensor'] = sensor_state
+        if 'rgb' in self.output:
+            state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+        if 'depth' in self.output:
+            state['depth'] = self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2]
+
+        return state, reward, done, {}
 
     def reset(self):
         self.robots[0].robot_specific_reset()
         self.robots[0].set_position(pos=self.initial_pos)
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
 
-        state = self.robots[0].calc_state()
-        state = np.concatenate((state, self.get_additional_states()))
-
-        observation = self.simulator.renderer.render_robot_cameras()[0]
+        sensor_state = self.robots[0].calc_state()
+        sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
 
         self.current_step = 0
         self.potential = 1
 
-        # return state
-        return {'observation': observation, 'state': state}
+        state = {}
+        if 'sensor' in self.output:
+            state['sensor'] = sensor_state
+        if 'rgb' in self.output:
+            state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+        if 'depth' in self.output:
+            state['depth'] = self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2]
+        return state
 
 if __name__ == "__main__":
-    config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
-    nav_env = NavigateEnv(config_file=config_filename, mode='headless', action_timestep=1/10.0, physics_timestep=1/40.0)
-    if nav_env.config['debug']:
-        left_id = p.addUserDebugParameter('left', -0.1, 0.1, 0)
-        right_id = p.addUserDebugParameter('right', -0.1, 0.1, 0)
-    for j in range(15):
+    if sys.argv[1] == 'turtlebot':
+        config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/turtlebot_p2p_nav.yaml')
+        nav_env = NavigateEnv(config_file=config_filename, mode='headless', action_timestep=1/10.0, physics_timestep=1/40.0)
+        if nav_env.config['debug']:
+            left_id = p.addUserDebugParameter('left', -0.1, 0.1, 0)
+            right_id = p.addUserDebugParameter('right', -0.1, 0.1, 0)
         nav_env.reset()
-        for i in range(300):  # 300 steps, 30s world time
+        for i in range(10):  # 300 steps, 30s world time
             if nav_env.config['debug']:
                 action = [p.readUserDebugParameter(left_id), p.readUserDebugParameter(right_id)]
             else:
@@ -124,3 +156,11 @@ if __name__ == "__main__":
             if done:
                 print("Episode finished after {} timesteps".format(i + 1))
                 break
+
+    elif sys.argv[1] == 'jr':
+        config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/jr2_reaching.yaml')
+        nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
+        action = np.array([0.005, 0.005, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        nav_env.reset()
+        for i in range(300):
+            nav_env.step(action)

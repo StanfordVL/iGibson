@@ -538,3 +538,6 @@ class JR2_Kinova(WalkerBase):
         base_state = WalkerBase.calc_state(self)
         angular_velocity = self.robot_body.angular_velocity()
         return np.concatenate((base_state, np.array(angular_velocity)))
+
+    def get_end_effector_position(self):
+        return self.parts['m1n6s200_link_finger_1'].get_position()
