@@ -40,19 +40,27 @@ class NavigateEnv(BaseEnv):
         self.sensor_dim = self.robots[0].sensor_dim + self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
 
-        obs_high = np.inf * np.ones(self.sensor_dim)
-        self.observation_space = gym.spaces.Box(-obs_high, obs_high)
+        # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float64)
+        self.observation_space = gym.spaces.Dict({
+            'state': gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32),
+            'observation': gym.spaces.Box(low=0.0, high=1.0,
+                                          shape=(self.config['resolution'], self.config['resolution'], 4),
+                                          dtype=np.float32)
+        })
+
         self.action_space = self.robots[0].action_space
         self.current_step = 0
-        self.max_step = 200
+        self.max_step = self.config['max_step']
 
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
         # rotate relative position back to body point of view
-        relative_position = rotate_vector_3d(relative_position, *self.robots[0].body_rpy)
+        relative_position_odom = rotate_vector_3d(relative_position, *self.robots[0].body_rpy)
         # the angle between the direction the agent is facing and the direction to the target position
-        delta_yaw = np.arctan2(relative_position[1], relative_position[0])
-        additional_states = np.concatenate((relative_position, [np.sin(delta_yaw), np.cos(delta_yaw)]))
+        delta_yaw = np.arctan2(relative_position_odom[1], relative_position_odom[0])
+        additional_states = np.concatenate((relative_position,
+                                            relative_position_odom,
+                                            [np.sin(delta_yaw), np.cos(delta_yaw)]))
         assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
         return additional_states
 
@@ -63,7 +71,6 @@ class NavigateEnv(BaseEnv):
 
         state = self.robots[0].calc_state()
         state = np.concatenate((state, self.get_additional_states()))
-
         new_potential = l2_distance(self.target_pos, self.robots[0].get_position()) / \
                         l2_distance(self.target_pos, self.initial_pos)
         reward = 1000 * (self.potential - new_potential)
@@ -73,14 +80,16 @@ class NavigateEnv(BaseEnv):
         done = self.current_step >= self.max_step
 
         if l2_distance(self.target_pos, self.robots[0].get_position()) < self.dist_tol:
-            # print('goal')
+            print('goal')
             reward = self.terminal_reward
             done = True
 
+        observation = self.simulator.renderer.render_robot_cameras()[0]
         # print('action', action)
         # print('reward', reward)
 
-        return state, reward, done, {}
+        # return state, reward, done, {}
+        return {'observation': observation, 'state': state}, reward, done, {}
 
     def reset(self):
         self.robots[0].robot_specific_reset()
@@ -90,14 +99,17 @@ class NavigateEnv(BaseEnv):
         state = self.robots[0].calc_state()
         state = np.concatenate((state, self.get_additional_states()))
 
+        observation = self.simulator.renderer.render_robot_cameras()[0]
+
         self.current_step = 0
         self.potential = 1
-        return state
 
+        # return state
+        return {'observation': observation, 'state': state}
 
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
-    nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
+    nav_env = NavigateEnv(config_file=config_filename, mode='headless', action_timestep=1/10.0, physics_timestep=1/40.0)
     if nav_env.config['debug']:
         left_id = p.addUserDebugParameter('left', -0.1, 0.1, 0)
         right_id = p.addUserDebugParameter('right', -0.1, 0.1, 0)
