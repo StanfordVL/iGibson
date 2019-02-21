@@ -5,6 +5,7 @@ import gibson2
 from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
+from collections import OrderedDict
 
 # define navigation environments following Anderson, Peter, et al. "On evaluation of embodied navigation agents." arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
@@ -23,7 +24,7 @@ class NavigateEnv(BaseEnv):
             self.potential = 1
             self.discount_factor = self.config['discount_factor']
 
-            if self.config['debug']:
+            if 'debug' in self.config and self.config['debug'] and mode!='headless':
                 start = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=[1, 0, 0, 0.5])
                 p.createMultiBody(baseVisualShapeIndex=start, baseCollisionShapeIndex=-1,
                                   basePosition=self.initial_pos)
@@ -41,11 +42,28 @@ class NavigateEnv(BaseEnv):
         self.action_dim = self.robots[0].action_dim
 
         obs_high = np.inf * np.ones(self.sensor_dim)
-        self.observation_space = gym.spaces.Box(-obs_high, obs_high)
+        observation_space = OrderedDict()
+        self.output = self.config['output']
+
+        if 'sensor' in self.output:
+            self.sensor_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32)
+            observation_space['sensor'] = self.sensor_space
+        if 'rgb' in self.output:
+            self.rgb_space = gym.spaces.Box(low=0.0, high=1.0,
+                                            shape=(self.config['resolution'], self.config['resolution'], 3),
+                                            dtype=np.float32)
+            observation_space['rgb'] = self.rgb_space
+        if 'depth' in self.output:
+            self.depth_space = gym.spaces.Box(low=0.0, high=1.0,
+                                              shape=(self.config['resolution'], self.config['resolution'], 1),
+                                              dtype=np.float32)
+            observation_space['depth'] = self.depth_space
+        self.observation_space = gym.spaces.Dict(observation_space)
+
+
         self.action_space = self.robots[0].action_space
         self.current_step = 0
         self.max_step = 200
-        self.output = self.config['output']
 
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
@@ -94,14 +112,14 @@ class NavigateEnv(BaseEnv):
 
         # print('action', action)
         # print('reward', reward)
-        state = {}
+        state = OrderedDict()
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
         if 'rgb' in self.output and 'depth' in self.output:
             frame = self.simulator.renderer.render_robot_cameras(modes=('rgb', '3d'))
             #from IPython import embed; embed()
             state['rgb'] = frame[0][:,:,:3]
-            state['depth'] = -frame[1][:,:,2]
+            state['depth'] = np.clip(-frame[1][:,:,2:3]/10.0,0.0,1.0)
 
         return state, reward, done, {}
 
@@ -116,14 +134,14 @@ class NavigateEnv(BaseEnv):
         self.current_step = 0
         self.potential = 1
 
-        state = {}
+        state = OrderedDict()
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
         if 'rgb' in self.output and 'depth' in self.output:
             frame = self.simulator.renderer.render_robot_cameras(modes=('rgb', '3d'))
             # from IPython import embed; embed()
             state['rgb'] = frame[0][:, :, :3]
-            state['depth'] = frame[1][:, :, 2]
+            state['depth'] = np.clip(-frame[1][:, :, 2:3] / 10.0, 0.0, 1.0)
 
         return state
 
