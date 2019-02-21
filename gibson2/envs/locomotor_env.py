@@ -5,13 +5,14 @@ import gibson2
 from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
+from collections import OrderedDict
 
 # define navigation environments following Anderson, Peter, et al. "On evaluation of embodied navigation agents." arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
 
 class NavigateEnv(BaseEnv):
-    def __init__(self, config_file, mode='headless', action_timestep = 1/10.0, physics_timestep=1/240.0):
-        super(NavigateEnv, self).__init__(config_file, mode)
+    def __init__(self, config_file, mode='headless', action_timestep = 1/10.0, physics_timestep=1/240.0, device_idx=0):
+        super(NavigateEnv, self).__init__(config_file, mode, device_idx=device_idx)
         if self.config['task'] == 'pointgoal' or self.config['task'] == 'reaching':
             self.target_pos = np.array(self.config['target_pos'])
             self.target_orn = np.array(self.config['target_orn'])
@@ -42,7 +43,7 @@ class NavigateEnv(BaseEnv):
         self.action_dim = self.robots[0].action_dim
 
         # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float64)
-        observation_space = {}
+        observation_space = OrderedDict()
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32)
             observation_space['sensor'] = self.sensor_space
@@ -109,18 +110,23 @@ class NavigateEnv(BaseEnv):
         # print('action', action)
         # print('reward', reward)
 
-        state = {}
+        state = OrderedDict()
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
         if 'rgb' in self.output:
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
         if 'depth' in self.output:
-            state['depth'] = self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2]
+            state['depth'] = np.clip(
+                -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
+                0.0, 1.0)
 
         return state, reward, done, {}
 
     def reset(self):
+        print('env reset')
+        print('-' * 50)
         self.robots[0].robot_specific_reset()
+
         self.robots[0].set_position(pos=self.initial_pos)
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
 
@@ -129,25 +135,28 @@ class NavigateEnv(BaseEnv):
 
         self.current_step = 0
         self.potential = 1
-
-        state = {}
+        state = OrderedDict()
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
         if 'rgb' in self.output:
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
         if 'depth' in self.output:
-            state['depth'] = self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2]
+            state['depth'] = np.clip(
+                -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
+                0.0, 1.0)
         return state
 
 if __name__ == "__main__":
     if sys.argv[1] == 'turtlebot':
-        config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/turtlebot_p2p_nav.yaml')
+        #path = '../examples/configs/turtlebot_p2p_nav.yaml'
+        path = '../test/test.yaml'
+        config_filename = os.path.join(os.path.dirname(gibson2.__file__), path)
         nav_env = NavigateEnv(config_file=config_filename, mode='headless', action_timestep=1/10.0, physics_timestep=1/40.0)
         if nav_env.config['debug']:
             left_id = p.addUserDebugParameter('left', -0.1, 0.1, 0)
             right_id = p.addUserDebugParameter('right', -0.1, 0.1, 0)
         nav_env.reset()
-        for i in range(10):  # 300 steps, 30s world time
+        for i in range(300):  # 300 steps, 30s world time
             if nav_env.config['debug']:
                 action = [p.readUserDebugParameter(left_id), p.readUserDebugParameter(right_id)]
             else:

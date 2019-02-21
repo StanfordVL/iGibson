@@ -31,7 +31,8 @@ import tensorflow as tf
 
 from tf_agents.networks import network
 from tf_agents.networks import utils
-from tf_agents.networks import encoding_network
+# from tf_agents.networks import encoding_network
+from gibson2.utils.agents.networks import encoding_network
 from tf_agents.utils import nest_utils
 
 import gin.tf
