@@ -26,7 +26,8 @@ from tf_agents.networks import categorical_projection_network
 from tf_agents.networks import network
 from tf_agents.networks import normal_projection_network
 from tf_agents.networks import utils
-from tf_agents.networks import encoding_network
+from gibson2.utils.agents.networks import encoding_network
+# from tf_agents.networks import encoding_network
 from tf_agents.specs import tensor_spec
 from tf_agents.utils import nest_utils
 

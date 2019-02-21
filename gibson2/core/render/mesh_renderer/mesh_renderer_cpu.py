@@ -245,6 +245,7 @@ class MeshRenderer:
         available_devices = get_available_devices()
         assert (device_idx < len(available_devices))
         device = available_devices[device_idx]
+        print('using device {} bus id {}'.format(device_idx, device))
 
         self.r = CppMeshRenderer.CppMeshRenderer(width, height, device)
         self.r.init()
@@ -507,7 +508,6 @@ class MeshRenderer:
             if not instance in hidden:
                 instance.render()
         GL.glDisable(GL.GL_DEPTH_TEST)
-
         return self.readbuffer(modes)
 
     def set_light_pos(self, light):
@@ -582,6 +582,7 @@ class MeshRenderer:
                 mat = quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                # print('before render')
                 for item in self.render(modes=modes, hidden=[instance]):
                     frames.append(item)
         return frames
