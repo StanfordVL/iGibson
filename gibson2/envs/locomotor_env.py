@@ -6,13 +6,16 @@ from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, qua
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
-
+import resource
+import tracemalloc
 # define navigation environments following Anderson, Peter, et al. "On evaluation of embodied navigation agents." arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
 
 class NavigateEnv(BaseEnv):
     def __init__(self, config_file, mode='headless', action_timestep = 1/10.0, physics_timestep=1/240.0):
         super(NavigateEnv, self).__init__(config_file, mode)
+        tracemalloc.start()
+
         if self.config['task'] == 'pointgoal' or self.config['task'] == 'reaching':
             self.target_pos = np.array(self.config['target_pos'])
             self.target_orn = np.array(self.config['target_orn'])
@@ -32,7 +35,7 @@ class NavigateEnv(BaseEnv):
                 p.createMultiBody(baseVisualShapeIndex=target, baseCollisionShapeIndex=-1,
                                   basePosition=self.target_pos)
 
-
+        self.mode = mode
         self.action_timestep = action_timestep
         self.physics_timestep = physics_timestep
         self.simulator.set_timestep(physics_timestep)
@@ -59,8 +62,6 @@ class NavigateEnv(BaseEnv):
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
         self.observation_space = gym.spaces.Dict(observation_space)
-
-
         self.action_space = self.robots[0].action_space
         self.current_step = 0
         self.max_step = 200
@@ -121,6 +122,7 @@ class NavigateEnv(BaseEnv):
             state['rgb'] = frame[0][:,:,:3]
             state['depth'] = np.clip(-frame[1][:,:,2:3]/10.0,0.0,1.0)
 
+        print(self.get_memory_usage())
         return state, reward, done, {}
 
     def reset(self):
@@ -143,27 +145,39 @@ class NavigateEnv(BaseEnv):
             state['rgb'] = frame[0][:, :, :3]
             state['depth'] = np.clip(-frame[1][:, :, 2:3] / 10.0, 0.0, 1.0)
 
+        snapshot = tracemalloc.take_snapshot()
+        top_stats = snapshot.statistics('lineno')
+
+        print("[ Top 10 ]")
+        for stat in top_stats[:10]:
+            print(stat)
+
         return state
 
+    def get_memory_usage(self):
+
+        return '{} MB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000.0)
 
 if __name__ == "__main__":
-
     if sys.argv[1] == 'turtlebot':
-        config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/turtlebot_p2p_nav.yaml')
-        nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
-        if nav_env.config['debug']:
+        config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
+        nav_env = NavigateEnv(config_file=config_filename, mode='headless', action_timestep=1/10.0, physics_timestep=1/40.0)
+        if nav_env.config['debug'] and nav_env.mode!='headless':
             left_id = p.addUserDebugParameter('left', -0.1, 0.1, 0)
             right_id = p.addUserDebugParameter('right', -0.1, 0.1, 0)
-        nav_env.reset()
-        for i in range(300):  # 300 steps, 30s world time
-            if nav_env.config['debug']:
-                action = [p.readUserDebugParameter(left_id), p.readUserDebugParameter(right_id)]
-            else:
-                action = nav_env.action_space.sample()
-            state, reward, done, _ = nav_env.step(action)
-            if done:
-                print("Episode finished after {} timesteps".format(i + 1))
-                break
+
+        for episode in range(100):
+            nav_env.reset()
+            for i in range(300):  # 300 steps, 30s world time
+                if nav_env.config['debug'] and nav_env.mode!='headless':
+                    action = [p.readUserDebugParameter(left_id), p.readUserDebugParameter(right_id)]
+                else:
+                    action = nav_env.action_space.sample()
+                state, reward, done, _ = nav_env.step(action)
+                #print(state)
+                if done:
+                    print("Episode finished after {} timesteps".format(i + 1))
+                    break
         nav_env.clean()
     elif sys.argv[1] == 'jr':
         config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/jr2_reaching.yaml')
