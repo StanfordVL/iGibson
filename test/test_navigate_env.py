@@ -35,3 +35,4 @@ def test_wrapper():
     print("action spec", tfenv.action_spec())
     print("observation spec", tfenv.observation_spec())
     utils.validate_py_environment(tfenv, episodes=2)
+
