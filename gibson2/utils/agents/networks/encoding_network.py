@@ -216,6 +216,8 @@ observation
     if self._preprocessing_combiner is not None:
       states = self._preprocessing_combiner(states)
 
+    # states = states[0]
+
     for layer in self._postprocessing_layers:
       states = layer(states)
 

@@ -41,6 +41,7 @@ random:
   random_init_rot_range: [-0.1, 0.1]
 
 output: [sensor, rgb, depth]
+
 resolution: 128
 fov: 1.57
 

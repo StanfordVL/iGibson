@@ -110,15 +110,19 @@ class NavigateEnv(BaseEnv):
         # print('action', action)
         # print('reward', reward)
 
+        # state = sensor_state
+
         state = OrderedDict()
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
         if 'rgb' in self.output:
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+            # state['rgb'] = np.zeros((128, 128, 3))
         if 'depth' in self.output:
             state['depth'] = np.clip(
                 -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
                 0.0, 1.0)
+            # state['depth'] = np.zeros((128, 128, 1))
 
         return state, reward, done, {}
 
@@ -135,15 +139,21 @@ class NavigateEnv(BaseEnv):
 
         self.current_step = 0
         self.potential = 1
+
+        # state = sensor_state
+
         state = OrderedDict()
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
         if 'rgb' in self.output:
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+            # state['rgb'] = np.zeros((128, 128, 3))
         if 'depth' in self.output:
             state['depth'] = np.clip(
                 -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
                 0.0, 1.0)
+            # state['depth'] = np.zeros((128, 128, 1))
+
         return state
 
 if __name__ == "__main__":
