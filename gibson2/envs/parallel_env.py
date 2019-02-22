@@ -343,20 +343,23 @@ class ProcessPyEnvironment(object):
 
 if __name__ == "__main__":
 
-
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
     def load_env():
-          return NavigateEnv(config_file=config_filename, mode='headless')
+        return NavigateEnv(config_file=config_filename, mode='headless')
 
-    parallel_env = ParallelNavEnvironment([load_env] * 3, blocking=False)
+    parallel_env = ParallelNavEnvironment([load_env] * 2, blocking=False)
     #from IPython import embed; embed()
     #parallel_env.close()
+
+    from time import time
     for episode in range(10):
+        start = time()
         print("episode {}".format(episode))
         parallel_env.reset()
         for i in range(300):
-            res =  parallel_env.step([[0, 0.1], [0, -0.1], [0, 0.1]])
+            res =  parallel_env.step([[0, 0.1] for _ in range(2)])
             state, reward, done, _ = res[0]
             if done:
                 print("Episode finished after {} timesteps".format(i + 1))
                 break
+        print("{} elapsed".format(time() - start))

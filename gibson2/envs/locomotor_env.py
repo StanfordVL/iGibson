@@ -122,7 +122,6 @@ class NavigateEnv(BaseEnv):
             state['rgb'] = frame[0][:,:,:3]
             state['depth'] = np.clip(-frame[1][:,:,2:3]/10.0,0.0,1.0)
 
-        print(self.get_memory_usage())
         return state, reward, done, {}
 
     def reset(self):
@@ -145,17 +144,9 @@ class NavigateEnv(BaseEnv):
             state['rgb'] = frame[0][:, :, :3]
             state['depth'] = np.clip(-frame[1][:, :, 2:3] / 10.0, 0.0, 1.0)
 
-        snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
-
-        print("[ Top 10 ]")
-        for stat in top_stats[:10]:
-            print(stat)
-
         return state
 
     def get_memory_usage(self):
-
         return '{} MB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000.0)
 
 if __name__ == "__main__":
