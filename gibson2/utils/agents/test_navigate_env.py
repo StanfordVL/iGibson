@@ -20,9 +20,11 @@ def test_driver():
     num_parallel_environments = 1
     replay_buffer_capacity = 1001
 
-    tf_py_env = [lambda: env_load_fn('', device_idx=x) for x in range(num_parallel_environments)]
-    tf_py_env = parallel_py_environment.ParallelPyEnvironment(tf_py_env, blocking=True)
+    tf_py_env = [lambda: env_load_fn('', device_idx=0)] * num_parallel_environments
+    tf_py_env = parallel_py_environment.ParallelPyEnvironment(tf_py_env)
     tf_py_env = tf_py_environment.TFPyEnvironment(tf_py_env)
+    # tf_py_env = tf_py_environment.TFPyEnvironment(env_load_fn('', device_idx=0))
+
     print("action spec", tf_py_env.action_spec())
     print("observation spec", tf_py_env.observation_spec())
 
@@ -50,9 +52,21 @@ def test_driver():
                        dtype=tf.float32,
                        name='EncoderNetwork/depth')),
     }
-
     preprocessing_combiner = tf.keras.layers.Concatenate(axis=-1)
+    # preprocessing_combiner = None
 
+    # preprocessing_layers = {
+    #     'sensor': tf.keras.Sequential(
+    #         mlp_layers(conv_layer_params=None,
+    #                    fc_layer_params=encoder_fc_layers,
+    #                    kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
+    #                    dtype=tf.float32,
+    #                    name='EncoderNetwork/sensor')),
+    # }
+    # preprocessing_combiner = None
+
+    # preprocessing_layers = None
+    # preprocessing_combiner = None
 
     actor_net = actor_distribution_network.ActorDistributionNetwork(
         tf_py_env.observation_spec(),
@@ -92,7 +106,6 @@ def test_driver():
 
     # TODO(sguada): Reenable metrics when ready for batch data.
     environment_steps_metric = tf_metrics.EnvironmentSteps()
-    environment_steps_metric.build()
     step_metrics = [
         tf_metrics.NumberOfEpisodes(),
         environment_steps_metric,
@@ -110,6 +123,21 @@ def test_driver():
         collect_policy,
         observers=replay_buffer_observer + train_metrics,
         num_episodes=collect_episodes_per_iteration).run()
+
+    global_step = tf.compat.v1.train.get_or_create_global_step()
+
+    trajectories = replay_buffer.gather_all()
+
+    train_op, _ = tf_agent.train(
+        experience=trajectories, train_step_counter=global_step)
+
+    with tf.control_dependencies([train_op]):
+      clear_replay_op = replay_buffer.clear()
+
+    with tf.control_dependencies([clear_replay_op]):
+      train_op = tf.identity(train_op)
+
+
     init_agent_op = tf_agent.initialize()
 
     with tf.compat.v1.Session() as sess:
@@ -117,12 +145,15 @@ def test_driver():
 
         sess.run(init_agent_op)  # print('outputs', len(outputs), outputs[0])
 
-        tf.contrib.summary.initialize(session=sess)
+        # tf.contrib.summary.initialize(session=sess)
         for i in range(100000):
             print(i)
             print('-------------------------------')
             start = time.time()
-            result = sess.run(collect_op)
-            print(time.time() - start)
+            collect_result = sess.run(collect_op)
+            print('collect', time.time() - start)
+            start = time.time()
+            train_result = sess.run(train_op)
+            print('train', time.time() - start)
 
 test_driver()

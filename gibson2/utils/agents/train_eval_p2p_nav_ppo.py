@@ -191,7 +191,7 @@ def train_eval(
     tf_py_env = [lambda: env_load_fn(env_name, 'headless', 0)] * (num_parallel_environments - 1)
     tf_py_env += [lambda: env_load_fn(env_name, env_mode, 1)]
     tf_env = tf_py_environment.TFPyEnvironment(
-        parallel_py_environment.ParallelPyEnvironment(tf_py_env, blocking=True))
+        parallel_py_environment.ParallelPyEnvironment(tf_py_env))
     print('end tf_py_env')
     print('-' * 50)
     #assert False
@@ -394,8 +394,7 @@ def train_eval(
         print('before train')
         start_time = time.time()
         print('sess run train_op')
-        # total_loss, _ = sess.run([train_op, summary_op])
-        total_loss = sess.run([train_op])
+        total_loss, _ = sess.run([train_op, summary_op])
         train_time += time.time() - start_time
         print('after train')
         print(time.time() - start_time)

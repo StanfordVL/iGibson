@@ -62,8 +62,7 @@ from absl import logging
 
 import tensorflow as tf
 
-from gibson2.utils.agents.agents import tf_agent
-# from tf_agents.agents import tf_agent
+from tf_agents.agents import tf_agent
 from tf_agents.agents.ppo import ppo_policy
 from tf_agents.agents.ppo import ppo_utils
 from tf_agents.environments import trajectory
@@ -128,7 +127,8 @@ class PPOAgent(tf_agent.TFAgent):
                gradient_clipping=None,
                check_numerics=False,
                debug_summaries=False,
-               summarize_grads_and_vars=False):
+               summarize_grads_and_vars=False,
+               name=None):
     """Creates a PPO Agent.
 
     Args:
@@ -180,10 +180,14 @@ class PPOAgent(tf_agent.TFAgent):
         values. For debugging only.
       debug_summaries: A bool to gather debug summaries.
       summarize_grads_and_vars: If true, gradient summaries will be written.
+      name: The name of this agent. All variables in this module will fall
+        under that name. Defaults to the class name.
 
     Raises:
       ValueError: If the actor_net is not a DistributionNetwork.
     """
+    tf.experimental.Module.__init__(self, name=name)
+
     if not isinstance(actor_net, network.DistributionNetwork):
       raise ValueError(
           'actor_net must be an instance of a DistributionNetwork.')
@@ -390,8 +394,7 @@ class PPOAgent(tf_agent.TFAgent):
                   kl_penalty_loss)
 
     if gradient_clipping > 0:
-      clip_gradients = tf.contrib.training.clip_gradient_norms_fn(
-          gradient_clipping)
+      clip_gradients = eager_utils.clip_gradient_norms_fn(gradient_clipping)
     else:
       clip_gradients = lambda x: x
 
@@ -488,8 +491,6 @@ class PPOAgent(tf_agent.TFAgent):
     return returns, normalized_advantages
 
   def _train(self, experience, weights, train_step_counter):
-    print('_train starts')
-    print('-' * 50)
     # Get individual tensors from transitions.
     (time_steps, policy_steps_, next_time_steps) = trajectory.to_transition(
         experience)
@@ -540,7 +541,6 @@ class PPOAgent(tf_agent.TFAgent):
     # For each epoch, create its own train op that depends on the previous one.
     loss_info = tf.no_op()
     for i_epoch in range(self._num_epochs):
-      print(i_epoch)
       with tf.name_scope('epoch_%d' % i_epoch):
         with tf.control_dependencies(tf.nest.flatten(loss_info)):
           # Only save debug summaries for first and last epochs.
@@ -574,7 +574,6 @@ class PPOAgent(tf_agent.TFAgent):
           time_steps, action_distribution_parameters,
           self._collect_policy.distribution(time_steps, policy_state).action)
       update_adaptive_kl_beta_op = self.update_adaptive_kl_beta(kl_divergence)
-    print('update kl')
 
     with tf.control_dependencies([update_adaptive_kl_beta_op]):
       if self._observation_normalizer:
@@ -588,7 +587,6 @@ class PPOAgent(tf_agent.TFAgent):
             next_time_steps.reward, outer_dims=[0, 1])
       else:
         update_reward_norm = tf.no_op()
-    print('normalization')
 
     with tf.control_dependencies([update_obs_norm, update_reward_norm]):
       loss_info = tf.nest.map_structure(tf.identity, loss_info)
@@ -622,7 +620,6 @@ class PPOAgent(tf_agent.TFAgent):
           tf.abs(total_kl_penalty_loss))
 
       tf.contrib.summary.scalar('total_abs_loss', total_abs_loss)
-    print('losses')
 
     if self._summarize_grads_and_vars:
       with tf.name_scope('Variables/'):
@@ -630,7 +627,6 @@ class PPOAgent(tf_agent.TFAgent):
                     self._value_net.trainable_weights)
         for var in all_vars:
           tf.contrib.summary.histogram(var.name.replace(':', '_'), var)
-    print('_summarize_grads_and_vars')
 
     return loss_info
 
