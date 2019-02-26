@@ -1,12 +1,5 @@
-from gibson2.core.physics.robot_locomotors import *
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import *
-import gibson2
-from gibson2.utils.utils import parse_config
-from gibson2.envs.base_env import BaseEnv
 from gibson2.envs.locomotor_env import *
 from time import time
-from tf_agents.environments import gym_wrapper
 from tf_agents.environments import utils, tf_py_environment, parallel_py_environment
 import tensorflow as tf
 from gibson2.utils.tf_utils import env_load_fn
