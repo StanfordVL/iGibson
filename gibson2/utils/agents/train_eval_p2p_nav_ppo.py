@@ -47,8 +47,9 @@ from tf_agents.networks import actor_distribution_rnn_network
 from gibson2.utils.agents.networks import value_network
 from tf_agents.networks import value_rnn_network
 from gibson2.utils.agents.networks import encoding_network
+# from tf_agents.policies import py_tf_policy
+from gibson2.utils.agents.policies import py_tf_policy
 
-from tf_agents.policies import py_tf_policy
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
 from tf_agents.utils import common as common_utils
 
