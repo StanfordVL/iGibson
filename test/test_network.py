@@ -1,105 +1,83 @@
 import tensorflow as tf
 from tf_agents.specs import tensor_spec
+from tf_agents.networks import network
+
+from gibson2.utils.agents.networks import encoding_network
 from gibson2.utils.agents.networks import value_network
 from gibson2.utils.agents.networks import actor_distribution_network
+from gibson2.utils.tf_utils import LayerParams
 import collections
 import numpy as np
 
-def test_value_network():
-    batch_size = 4
-    states = {'observation': tf.random.uniform([batch_size, 128, 128, 4]),
-              'state': tf.random.uniform([batch_size, 19])}
-    conv_layer_params = ((32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1), (128, (3, 3), 1))
-    fc_layer_params = (256, 128)
-    preprocessing_layers = (
-        tf.keras.Sequential([
-            tf.keras.layers.Conv2D(
-                filters=filters,
-                kernel_size=kernel_size,
-                strides=strides,
-                activation=tf.keras.activations.relu,
-                kernel_initializer=None,
-                dtype=tf.float32,
-                name='ValueNetwork/conv2d')
-            for (filters, kernel_size, strides) in conv_layer_params
-        ] + [tf.keras.layers.GlobalAvgPool2D()]),
-        tf.keras.Sequential([
-            tf.keras.layers.Dense(
-                num_units,
-                activation=tf.keras.activations.relu,
-                kernel_initializer=None,
-                dtype=tf.float32,
-                name='ValueNetwork/dense') for num_units in fc_layer_params
-        ])
-    )
+
+def get_encoder():
+    fc_layer_params = (128, 64)
+    conv_layer_params = ((32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1))
     observation_spec = collections.OrderedDict([
-        ('observation', tensor_spec.BoundedTensorSpec(shape=(128, 128, 4),
-                                                      dtype=tf.float32,
-                                                      minimum=0.0,
-                                                      maximum=1.0)),
-        ('state', tensor_spec.BoundedTensorSpec(shape=(19),
+        ('sensor', tensor_spec.BoundedTensorSpec(shape=(22),
+                                                 dtype=tf.float32,
+                                                 minimum=-np.inf,
+                                                 maximum=np.inf)),
+        ('rgb', tensor_spec.BoundedTensorSpec(shape=(128, 128, 3),
+                                              dtype=tf.float32,
+                                              minimum=0.0,
+                                              maximum=1.0)),
+        ('depth', tensor_spec.BoundedTensorSpec(shape=(128, 128, 1),
                                                 dtype=tf.float32,
-                                                minimum=-np.inf,
-                                                maximum=np.inf))
+                                                minimum=0.0,
+                                                maximum=1.0)),
+
     ])
-    network = value_network.ValueNetwork(
+    preprocessing_layers_params = {
+        'sensor': LayerParams(conv=None, fc=fc_layer_params),
+        'rgb': LayerParams(conv=conv_layer_params, fc=None),
+        'depth': LayerParams(conv=conv_layer_params, fc=None),
+    }
+    preprocessing_combiner_type = 'concat'
+    encoder = encoding_network.EncodingNetwork(
         observation_spec,
-        preprocessing_layers=preprocessing_layers,
-        preprocessing_combiner=tf.keras.layers.Concatenate(axis=-1),
-        conv_layer_params=None,
-        fc_layer_params=(256, 128),
-        kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
+        preprocessing_layers_params=preprocessing_layers_params,
+        preprocessing_combiner_type=preprocessing_combiner_type,
+        kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
     )
-    value, _ = network(states)
-    assert value.shape.as_list(), [batch_size, 1]
+    return encoder
+
+def get_states():
+    batch_size = 4
+    return {'sensor': tf.random.uniform([batch_size, 22]),
+            'rgb': tf.random.uniform([batch_size, 128, 128, 3]),
+            'depth': tf.random.uniform([batch_size, 128, 128, 1])}
+
+
+def test_encoding_network():
+    encoder = get_encoder()
+    states = get_states()
+    output, _ = encoder(states)
+    assert output.shape == (4, 192)
+
+
+def test_value_network():
+    encoder = get_encoder()
+    states = get_states()
+    value_net = value_network.ValueNetwork(
+        encoder.input_tensor_spec,
+        encoder=encoder,
+        fc_layer_params=(128, 64),
+        kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
+    )
+    value, _ = value_net(states)
+    assert value.shape == (4,)
+
 
 def test_actor_distribution_network():
-    batch_size = 4
-    action_dim = 2
-    states = {'observation': tf.random.uniform([batch_size, 128, 128, 4]),
-              'state': tf.random.uniform([batch_size, 19])}
-    conv_layer_params = ((32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1), (128, (3, 3), 1))
-    fc_layer_params = (256, 128)
-    preprocessing_layers = (
-        tf.keras.Sequential([
-            tf.keras.layers.Conv2D(
-                filters=filters,
-                kernel_size=kernel_size,
-                strides=strides,
-                activation=tf.keras.activations.relu,
-                kernel_initializer=None,
-                dtype=tf.float32,
-                name='ValueNetwork/conv2d')
-            for (filters, kernel_size, strides) in conv_layer_params
-        ] + [tf.keras.layers.GlobalAvgPool2D()]),
-        tf.keras.Sequential([
-            tf.keras.layers.Dense(
-                num_units,
-                activation=tf.keras.activations.relu,
-                kernel_initializer=None,
-                dtype=tf.float32,
-                name='ValueNetwork/dense') for num_units in fc_layer_params
-        ])
-    )
-    observation_spec = collections.OrderedDict([
-        ('observation', tensor_spec.BoundedTensorSpec(shape=(128, 128, 4),
-                                                      dtype=tf.float32,
-                                                      minimum=0.0,
-                                                      maximum=1.0)),
-        ('state', tensor_spec.BoundedTensorSpec(shape=(19),
-                                                dtype=tf.float32,
-                                                minimum=-np.inf,
-                                                maximum=np.inf))
-    ])
-    action_spec = tensor_spec.BoundedTensorSpec(shape=(action_dim,), dtype=tf.float32, minimum=-0.25, maximum=0.25)
-    network = actor_distribution_network.ActorDistributionNetwork(
-        observation_spec,
-        action_spec,
-        preprocessing_layers=preprocessing_layers,
-        preprocessing_combiner=tf.keras.layers.Concatenate(axis=-1),
-        conv_layer_params=None,
-        fc_layer_params=(256, 128),
+    encoder = get_encoder()
+    states = get_states()
+    actor_net = actor_distribution_network.ActorDistributionNetwork(
+        encoder.input_tensor_spec,
+        tensor_spec.BoundedTensorSpec(shape=(2,), dtype=tf.float32, minimum=-0.25, maximum=0.25),
+        encoder=encoder,
+        fc_layer_params=(128, 64),
         kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
     )
-    actions, _ = network(states)
-    assert actions.batch_shape.as_list(), [batch_size, action_dim]
+    actions, _ = actor_net(states)
+    assert actions.batch_shape == (4, 2)
