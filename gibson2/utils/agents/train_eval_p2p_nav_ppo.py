@@ -305,16 +305,16 @@ def train_eval(
           name='global_steps/sec', tensor=steps_per_second_ph)
       while sess.run(environment_steps_count) < num_environment_steps:
         global_step_val = sess.run(global_step)
-        # if global_step_val % eval_interval == 0:
-        #   metric_utils.compute_summaries(
-        #       eval_metrics,
-        #       eval_py_env,
-        #       eval_py_policy,
-        #       num_episodes=num_eval_episodes,
-        #       global_step=global_step_val,
-        #       callback=eval_metrics_callback,
-        #   )
-        #   sess.run(eval_summary_writer_flush_op)
+        if global_step_val % eval_interval == 0:
+          metric_utils.compute_summaries(
+              eval_metrics,
+              eval_py_env,
+              eval_py_policy,
+              num_episodes=num_eval_episodes,
+              global_step=global_step_val,
+              callback=eval_metrics_callback,
+          )
+          sess.run(eval_summary_writer_flush_op)
 
         start_time = time.time()
         sess.run(collect_op)
