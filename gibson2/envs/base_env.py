@@ -9,9 +9,10 @@ class BaseEnv(gym.Env):
     '''
     a basic environment, step, observation and reward not implemented
     '''
-    def __init__(self, config_file, mode='headless'):
-        self.simulator = Simulator(mode=mode)
+    def __init__(self, config_file, mode='headless', device_idx = 0):
         self.config = parse_config(config_file)
+        self.simulator = Simulator(mode=mode,
+                                   resolution=self.config['resolution'], device_idx=device_idx)
         if self.config['scene'] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
@@ -51,6 +52,7 @@ class BaseEnv(gym.Env):
 
     def set_mode(self, mode):
         self.simulator.mode = mode
+        self.mode = mode
 
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')

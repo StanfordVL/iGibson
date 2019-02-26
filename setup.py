@@ -74,7 +74,7 @@ setup(name='gibson2',
     zip_safe=False,
     install_requires=[
             'numpy>=1.10.4',
-            'gym==0.9.4',
+            'gym==0.11',
             'Pillow>=3.3.0',
             'PyYAML>=3.12',
             'numpy>=1.13',
