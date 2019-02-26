@@ -24,7 +24,7 @@ class NavigateEnv(BaseEnv):
             self.potential = 1
             self.discount_factor = self.config['discount_factor']
 
-            if self.config['debug']:
+            if 'debug' in self.config and self.config['debug'] and mode != 'headless':
                 start = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=[1, 0, 0, 0.5])
                 p.createMultiBody(baseVisualShapeIndex=start, baseCollisionShapeIndex=-1,
                                   basePosition=self.initial_pos)
@@ -32,7 +32,7 @@ class NavigateEnv(BaseEnv):
                 p.createMultiBody(baseVisualShapeIndex=target, baseCollisionShapeIndex=-1,
                                   basePosition=self.target_pos)
 
-
+        self.mode = mode
         self.action_timestep = action_timestep
         self.physics_timestep = physics_timestep
         self.simulator.set_timestep(physics_timestep)
@@ -44,6 +44,7 @@ class NavigateEnv(BaseEnv):
 
         # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float64)
         observation_space = OrderedDict()
+
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32)
             observation_space['sensor'] = self.sensor_space
@@ -58,10 +59,10 @@ class NavigateEnv(BaseEnv):
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
         self.observation_space = gym.spaces.Dict(observation_space)
-
         self.action_space = self.robots[0].action_space
         self.current_step = 0
         self.max_step = self.config['max_step']
+
 
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
@@ -115,12 +116,10 @@ class NavigateEnv(BaseEnv):
             state['sensor'] = sensor_state
         if 'rgb' in self.output:
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
-            # state['rgb'] = np.zeros((128, 128, 3))
         if 'depth' in self.output:
             state['depth'] = np.clip(
                 -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
                 0.0, 1.0)
-            # state['depth'] = np.zeros((128, 128, 1))
 
         return state, reward, done, {}
 
@@ -150,22 +149,24 @@ class NavigateEnv(BaseEnv):
 
 if __name__ == "__main__":
     if sys.argv[1] == 'turtlebot':
-        path = '../examples/configs/turtlebot_p2p_nav.yaml'
-        config_filename = os.path.join(os.path.dirname(gibson2.__file__), path)
+        config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/turtlebot_p2p_nav.yaml')
         nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
-        if nav_env.config['debug']:
+        if nav_env.config['debug'] and nav_env.mode != 'headless':
             left_id = p.addUserDebugParameter('left', -0.1, 0.1, 0)
             right_id = p.addUserDebugParameter('right', -0.1, 0.1, 0)
-        nav_env.reset()
-        for i in range(300):  # 300 steps, 30s world time
-            if nav_env.config['debug']:
-                action = [p.readUserDebugParameter(left_id), p.readUserDebugParameter(right_id)]
-            else:
-                action = nav_env.action_space.sample()
-            state, reward, done, _ = nav_env.step(action)
-            if done:
-                print("Episode finished after {} timesteps".format(i + 1))
-                break
+
+        for episode in range(100):
+            nav_env.reset()
+            for i in range(300):  # 300 steps, 30s world time
+                if nav_env.config['debug'] and nav_env.mode != 'headless':
+                    action = [p.readUserDebugParameter(left_id), p.readUserDebugParameter(right_id)]
+                else:
+                    action = nav_env.action_space.sample()
+                state, reward, done, _ = nav_env.step(action)
+                #print(state)
+                if done:
+                    print("Episode finished after {} timesteps".format(i + 1))
+                    break
         nav_env.clean()
     elif sys.argv[1] == 'jr':
         config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/jr2_reaching.yaml')

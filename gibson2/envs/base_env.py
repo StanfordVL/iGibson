@@ -52,6 +52,7 @@ class BaseEnv(gym.Env):
 
     def set_mode(self, mode):
         self.simulator.mode = mode
+        self.mode = mode
 
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')

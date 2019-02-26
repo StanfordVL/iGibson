@@ -19,8 +19,9 @@ target_pos: [3.0, 5.0, 0.0]
 dist_tol: 0.5
 terminal_reward: 5000
 discount_factor: 1.0
+max_step: 500
 
-additional_states_dim: 5
+additional_states_dim: 8
 
 fov: 1.57
 is_discrete: false
