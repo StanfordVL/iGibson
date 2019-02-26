@@ -47,6 +47,8 @@ from tf_agents.networks import actor_distribution_rnn_network
 from gibson2.utils.agents.networks import value_network
 from tf_agents.networks import value_rnn_network
 from gibson2.utils.agents.networks import encoding_network
+# from tf_agents.networks import encoding_network
+
 # from tf_agents.policies import py_tf_policy
 from gibson2.utils.agents.policies import py_tf_policy
 
@@ -81,283 +83,292 @@ flags.DEFINE_string('config_file', '../test/test.yaml',
                     'Config file for the experiment.')
 flags.DEFINE_string('mode', 'headless',
                     'mode for the simulator (gui or headless)')
-flags.DEFINE_float('physics_timestep', 1/40.0,
-                    'physics timestep for the simulator')
+flags.DEFINE_float('physics_timestep', 1 / 40.0,
+                   'physics timestep for the simulator')
 flags.DEFINE_string('gpu_c', '0',
                     'gpu id for compute, e.g. Tensorflow.')
 flags.DEFINE_string('gpu_g', '1',
                     'gpu id for graphics, e.g. Gibson.')
 FLAGS = flags.FLAGS
 
+
 def train_eval(
-    root_dir,
-    tf_master='',
-    gpu='1',
-    env_load_fn=None,
-    env_mode='headless',
-    random_seed=0,
-    # TODO(kbanoop): rename to policy_fc_layers.
-    conv_layer_params=None,
-    encoder_fc_layers=(128, 64),
-    actor_fc_layers=(128, 64),
-    value_fc_layers=(128, 64),
-    use_rnns=False,
-    # Params for collect
-    num_environment_steps=10000000,
-    collect_episodes_per_iteration=30,
-    num_parallel_environments=30,
-    replay_buffer_capacity=1001,  # Per-environment
-    # Params for train
-    num_epochs=25,
-    learning_rate=1e-4,
-    # Params for evalActorDistributionNetwork
-    num_eval_episodes=30,
-    eval_interval=500,
-    # Params for summaries and logging
-    train_checkpoint_interval=100,
-    policy_checkpoint_interval=50,
-    rb_checkpoint_interval=200,
-    log_interval=50,
-    summary_interval=50,
-    summaries_flush_secs=1,
-    debug_summaries=False,
-    summarize_grads_and_vars=False,
-    eval_metrics_callback=None):
-  """A simple train and eval for PPO."""
-  if root_dir is None:
-    raise AttributeError('train_eval requires a root_dir.')
+        root_dir,
+        tf_master='',
+        gpu='1',
+        env_load_fn=None,
+        env_mode='headless',
+        random_seed=0,
+        # TODO(kbanoop): rename to policy_fc_layers.
+        conv_layer_params=None,
+        encoder_fc_layers=(128, 64),
+        actor_fc_layers=(128, 64),
+        value_fc_layers=(128, 64),
+        use_rnns=False,
+        # Params for collect
+        num_environment_steps=10000000,
+        collect_episodes_per_iteration=30,
+        num_parallel_environments=30,
+        replay_buffer_capacity=1001,  # Per-environment
+        # Params for train
+        num_epochs=25,
+        learning_rate=1e-4,
+        # Params for evalActorDistributionNetwork
+        num_eval_episodes=30,
+        eval_interval=500,
+        # Params for summaries and logging
+        train_checkpoint_interval=100,
+        policy_checkpoint_interval=50,
+        rb_checkpoint_interval=200,
+        log_interval=50,
+        summary_interval=50,
+        summaries_flush_secs=1,
+        debug_summaries=False,
+        summarize_grads_and_vars=False,
+        eval_metrics_callback=None):
+    """A simple train and eval for PPO."""
+    if root_dir is None:
+        raise AttributeError('train_eval requires a root_dir.')
 
-  root_dir = os.path.expanduser(root_dir)
-  train_dir = os.path.join(root_dir, 'train')
-  eval_dir = os.path.join(root_dir, 'eval')
+    root_dir = os.path.expanduser(root_dir)
+    train_dir = os.path.join(root_dir, 'train')
+    eval_dir = os.path.join(root_dir, 'eval')
 
-  train_summary_writer = tf.contrib.summary.create_file_writer(
-      train_dir, flush_millis=summaries_flush_secs * 1000)
-  train_summary_writer.set_as_default()
+    train_summary_writer = tf.contrib.summary.create_file_writer(
+        train_dir, flush_millis=summaries_flush_secs * 1000)
+    train_summary_writer.set_as_default()
 
-  eval_summary_writer = tf.contrib.summary.create_file_writer(
-      eval_dir, flush_millis=summaries_flush_secs * 1000)
+    eval_summary_writer = tf.contrib.summary.create_file_writer(
+        eval_dir, flush_millis=summaries_flush_secs * 1000)
 
-  eval_metrics = [
-      batched_py_metric.BatchedPyMetric(
-          AverageReturnMetric,
-          metric_args={'buffer_size': num_eval_episodes},
-          batch_size=1),
-      batched_py_metric.BatchedPyMetric(
-          AverageEpisodeLengthMetric,
-          metric_args={'buffer_size': num_eval_episodes},
-          batch_size=1),
-  ]
-  eval_summary_writer_flush_op = eval_summary_writer.flush()
-
-  with tf.contrib.summary.record_summaries_every_n_global_steps(
-      summary_interval):
-
-    tf.compat.v1.set_random_seed(random_seed)
-
-    gpu = [int(gpu_id) for gpu_id in gpu.split(',')]
-    gpu_ids = np.linspace(0, len(gpu), num=num_parallel_environments + 1, dtype=np.int, endpoint=False)
-    eval_py_env = parallel_py_environment.ParallelPyEnvironment([lambda gpu_id=gpu[gpu_ids[0]]: env_load_fn('headless', gpu_id)])
-    tf_py_env = [lambda gpu_id=gpu[gpu_ids[1]]: env_load_fn(env_mode, gpu_id)]
-    tf_py_env += [lambda gpu_id=gpu[gpu_ids[env_id]]: env_load_fn('headless', gpu_id)
-                  for env_id in range(2, num_parallel_environments + 1)]
-    tf_env = tf_py_environment.TFPyEnvironment(
-        parallel_py_environment.ParallelPyEnvironment(tf_py_env))
-
-    optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
-
-    preprocessing_layers_params = {
-        'sensor': LayerParams(conv=None, fc=encoder_fc_layers),
-        'rgb': LayerParams(conv=conv_layer_params, fc=None),
-        'depth': LayerParams(conv=conv_layer_params, fc=None),
-    }
-    preprocessing_combiner_type = 'concat'
-    encoder = encoding_network.EncodingNetwork(
-        tf_env.observation_spec(),
-        preprocessing_layers_params=preprocessing_layers_params,
-        preprocessing_combiner_type=preprocessing_combiner_type,
-        kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
-    )
-
-    if use_rnns:
-      actor_net = actor_distribution_rnn_network.ActorDistributionRnnNetwork(
-          tf_env.observation_spec(),
-          tf_env.action_spec(),
-          input_fc_layer_params=actor_fc_layers,
-          output_fc_layer_params=None)
-      value_net = value_rnn_network.ValueRnnNetwork(
-          tf_env.observation_spec(),
-          input_fc_layer_params=value_fc_layers,
-          output_fc_layer_params=None)
-    else:
-      actor_net = actor_distribution_network.ActorDistributionNetwork(
-          tf_env.observation_spec(),
-          tf_env.action_spec(),
-          encoder=encoder,
-          fc_layer_params=actor_fc_layers,
-          kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
-      )
-      value_net = value_network.ValueNetwork(
-          tf_env.observation_spec(),
-          encoder=encoder,
-          fc_layer_params=value_fc_layers,
-          kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
-      )
-
-    tf_agent = ppo_agent.PPOAgent(
-        tf_env.time_step_spec(),
-        tf_env.action_spec(),
-        optimizer,
-        actor_net=actor_net,
-        value_net=value_net,
-        num_epochs=num_epochs,
-        debug_summaries=debug_summaries,
-        summarize_grads_and_vars=summarize_grads_and_vars,
-        normalize_observations=True)
-
-    replay_buffer = tf_uniform_replay_buffer.TFUniformReplayBuffer(
-        tf_agent.collect_data_spec(),
-        batch_size=num_parallel_environments,
-        max_length=replay_buffer_capacity)
-
-    eval_py_policy = py_tf_policy.PyTFPolicy(tf_agent.policy())
-
-    # TODO(sguada): Reenable metrics when ready for batch data.
-    environment_steps_metric = tf_metrics.EnvironmentSteps()
-    environment_steps_count = environment_steps_metric.result()
-
-    step_metrics = [
-        tf_metrics.NumberOfEpisodes(),
-        environment_steps_metric,
+    eval_metrics = [
+        batched_py_metric.BatchedPyMetric(
+            AverageReturnMetric,
+            metric_args={'buffer_size': num_eval_episodes},
+            batch_size=1),
+        batched_py_metric.BatchedPyMetric(
+            AverageEpisodeLengthMetric,
+            metric_args={'buffer_size': num_eval_episodes},
+            batch_size=1),
     ]
-    train_metrics = step_metrics + [
-        tf_metrics.AverageReturnMetric(),
-        tf_metrics.AverageEpisodeLengthMetric(),
-    ]
+    eval_summary_writer_flush_op = eval_summary_writer.flush()
 
-    # Add to replay buffer and other agent specific observers.
-    replay_buffer_observer = [replay_buffer.add_batch]
+    with tf.contrib.summary.record_summaries_every_n_global_steps(
+            summary_interval):
 
-    global_step = tf.compat.v1.train.get_or_create_global_step()
-    collect_policy = tf_agent.collect_policy()
+        tf.compat.v1.set_random_seed(random_seed)
 
-    collect_op = dynamic_episode_driver.DynamicEpisodeDriver(
-        tf_env,
-        collect_policy,
-        observers=replay_buffer_observer + train_metrics,
-        num_episodes=collect_episodes_per_iteration).run()
+        gpu = [int(gpu_id) for gpu_id in gpu.split(',')]
+        gpu_ids = np.linspace(0, len(gpu), num=num_parallel_environments + 1, dtype=np.int, endpoint=False)
+        eval_py_env = parallel_py_environment.ParallelPyEnvironment(
+            [lambda gpu_id=gpu[gpu_ids[0]]: env_load_fn('headless', gpu_id)])
+        tf_py_env = [lambda gpu_id=gpu[gpu_ids[1]]: env_load_fn(env_mode, gpu_id)]
+        tf_py_env += [lambda gpu_id=gpu[gpu_ids[env_id]]: env_load_fn('headless', gpu_id)
+                      for env_id in range(2, num_parallel_environments + 1)]
+        tf_env = tf_py_environment.TFPyEnvironment(
+            parallel_py_environment.ParallelPyEnvironment(tf_py_env))
 
-    trajectories = replay_buffer.gather_all()
+        optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
 
-    train_op, _ = tf_agent.train(
-        experience=trajectories, train_step_counter=global_step)
+        preprocessing_layers_params = {
+            'sensor': LayerParams(conv=None, fc=encoder_fc_layers),
+            'rgb': LayerParams(conv=conv_layer_params, fc=None),
+            'depth': LayerParams(conv=conv_layer_params, fc=None),
+        }
+        preprocessing_combiner_type = 'concat'
+        actor_encoder = encoding_network.EncodingNetwork(
+            tf_env.observation_spec(),
+            preprocessing_layers_params=preprocessing_layers_params,
+            preprocessing_combiner_type=preprocessing_combiner_type,
+            kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
+        )
+        value_encoder = encoding_network.EncodingNetwork(
+            tf_env.observation_spec(),
+            preprocessing_layers_params=preprocessing_layers_params,
+            preprocessing_combiner_type=preprocessing_combiner_type,
+            kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
+        )
 
-    with tf.control_dependencies([train_op]):
-      clear_replay_op = replay_buffer.clear()
+        if use_rnns:
+            actor_net = actor_distribution_rnn_network.ActorDistributionRnnNetwork(
+                tf_env.observation_spec(),
+                tf_env.action_spec(),
+                input_fc_layer_params=actor_fc_layers,
+                output_fc_layer_params=None)
+            value_net = value_rnn_network.ValueRnnNetwork(
+                tf_env.observation_spec(),
+                input_fc_layer_params=value_fc_layers,
+                output_fc_layer_params=None)
+        else:
+            actor_net = actor_distribution_network.ActorDistributionNetwork(
+                tf_env.observation_spec(),
+                tf_env.action_spec(),
+                encoder=actor_encoder,
+                fc_layer_params=actor_fc_layers,
+                kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
+            )
+            value_net = value_network.ValueNetwork(
+                tf_env.observation_spec(),
+                encoder=value_encoder,
+                fc_layer_params=value_fc_layers,
+                kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
+            )
 
-    with tf.control_dependencies([clear_replay_op]):
-      train_op = tf.identity(train_op)
+        tf_agent = ppo_agent.PPOAgent(
+            tf_env.time_step_spec(),
+            tf_env.action_spec(),
+            optimizer,
+            actor_net=actor_net,
+            value_net=value_net,
+            num_epochs=num_epochs,
+            debug_summaries=debug_summaries,
+            summarize_grads_and_vars=summarize_grads_and_vars,
+            normalize_observations=True)
 
-    train_checkpointer = common_utils.Checkpointer(
-        ckpt_dir=train_dir,
-        agent=tf_agent,
-        global_step=global_step,
-        metrics=tf.contrib.checkpoint.List(train_metrics))
-    policy_checkpointer = common_utils.Checkpointer(
-        ckpt_dir=os.path.join(train_dir, 'policy'),
-        policy=tf_agent.policy(),
-        global_step=global_step)
-    rb_checkpointer = common_utils.Checkpointer(
-        ckpt_dir=os.path.join(train_dir, 'replay_buffer'),
-        max_to_keep=1,
-        replay_buffer=replay_buffer)
+        replay_buffer = tf_uniform_replay_buffer.TFUniformReplayBuffer(
+            tf_agent.collect_data_spec(),
+            batch_size=num_parallel_environments,
+            max_length=replay_buffer_capacity)
 
-    for train_metric in train_metrics:
-      train_metric.tf_summaries()
-    summary_op = tf.contrib.summary.all_summary_ops()
+        eval_py_policy = py_tf_policy.PyTFPolicy(tf_agent.policy())
 
-    with eval_summary_writer.as_default(), \
-         tf.contrib.summary.always_record_summaries():
-      for eval_metric in eval_metrics:
-        eval_metric.tf_summaries(step_metrics=step_metrics)
+        # TODO(sguada): Reenable metrics when ready for batch data.
+        environment_steps_metric = tf_metrics.EnvironmentSteps()
+        environment_steps_count = environment_steps_metric.result()
 
-    init_agent_op = tf_agent.initialize()
+        step_metrics = [
+            tf_metrics.NumberOfEpisodes(),
+            environment_steps_metric,
+        ]
+        train_metrics = step_metrics + [
+            tf_metrics.AverageReturnMetric(),
+            tf_metrics.AverageEpisodeLengthMetric(),
+        ]
 
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    with tf.compat.v1.Session(tf_master, config=config) as sess:
-      # Initialize graph.
-      train_checkpointer.initialize_or_restore(sess)
-      rb_checkpointer.initialize_or_restore(sess)
-      # TODO(sguada) Remove once Periodically can be saved.
-      common_utils.initialize_uninitialized_variables(sess)
+        # Add to replay buffer and other agent specific observers.
+        replay_buffer_observer = [replay_buffer.add_batch]
 
-      sess.run(init_agent_op)
+        global_step = tf.compat.v1.train.get_or_create_global_step()
+        collect_policy = tf_agent.collect_policy()
 
-      # tf.contrib.summary.initialize(session=sess, graph=tf.get_default_graph())
-      tf.contrib.summary.initialize(session=sess)
+        collect_op = dynamic_episode_driver.DynamicEpisodeDriver(
+            tf_env,
+            collect_policy,
+            observers=replay_buffer_observer + train_metrics,
+            num_episodes=collect_episodes_per_iteration).run()
 
-      collect_time = 0
-      train_time = 0
-      timed_at_step = sess.run(global_step)
-      steps_per_second_ph = tf.compat.v1.placeholder(
-          tf.float32, shape=(), name='steps_per_sec_ph')
-      steps_per_second_summary = tf.contrib.summary.scalar(
-          name='global_steps/sec', tensor=steps_per_second_ph)
-      while sess.run(environment_steps_count) < num_environment_steps:
-        global_step_val = sess.run(global_step)
-        if global_step_val % eval_interval == 0:
-          metric_utils.compute_summaries(
-              eval_metrics,
-              eval_py_env,
-              eval_py_policy,
-              num_episodes=num_eval_episodes,
-              global_step=global_step_val,
-              callback=eval_metrics_callback,
-          )
-          sess.run(eval_summary_writer_flush_op)
+        trajectories = replay_buffer.gather_all()
 
-        start_time = time.time()
-        sess.run(collect_op)
-        collect_time += time.time() - start_time
-        start_time = time.time()
-        total_loss, _ = sess.run([train_op, summary_op])
-        train_time += time.time() - start_time
+        train_op, _ = tf_agent.train(
+            experience=trajectories, train_step_counter=global_step)
 
-        global_step_val = sess.run(global_step)
-        if global_step_val % log_interval == 0:
-          logging.info('step = %d, loss = %f', global_step_val, total_loss)
-          steps_per_sec = (
-              (global_step_val - timed_at_step) / (collect_time + train_time))
-          logging.info('%.3f steps/sec', steps_per_sec)
-          sess.run(
-              steps_per_second_summary,
-              feed_dict={steps_per_second_ph: steps_per_sec})
-          logging.info('collect_time = {}, train_time = {}'.format(
-              collect_time, train_time))
-          timed_at_step = global_step_val
-          collect_time = 0
-          train_time = 0
+        with tf.control_dependencies([train_op]):
+            clear_replay_op = replay_buffer.clear()
 
-        if global_step_val % train_checkpoint_interval == 0:
-          train_checkpointer.save(global_step=global_step_val)
+        with tf.control_dependencies([clear_replay_op]):
+            train_op = tf.identity(train_op)
 
-        if global_step_val % policy_checkpoint_interval == 0:
-          policy_checkpointer.save(global_step=global_step_val)
+        train_checkpointer = common_utils.Checkpointer(
+            ckpt_dir=train_dir,
+            agent=tf_agent,
+            global_step=global_step,
+            metrics=tf.contrib.checkpoint.List(train_metrics))
+        policy_checkpointer = common_utils.Checkpointer(
+            ckpt_dir=os.path.join(train_dir, 'policy'),
+            policy=tf_agent.policy(),
+            global_step=global_step)
+        rb_checkpointer = common_utils.Checkpointer(
+            ckpt_dir=os.path.join(train_dir, 'replay_buffer'),
+            max_to_keep=1,
+            replay_buffer=replay_buffer)
 
-        if global_step_val % rb_checkpoint_interval == 0:
-          rb_checkpointer.save(global_step=global_step_val)
+        for train_metric in train_metrics:
+            train_metric.tf_summaries()
+        summary_op = tf.contrib.summary.all_summary_ops()
 
-      # One final eval before exiting.
-      metric_utils.compute_summaries(
-          eval_metrics,
-          eval_py_env,
-          eval_py_policy,
-          num_episodes=num_eval_episodes,
-          global_step=global_step_val,
-          callback=eval_metrics_callback,
-      )
-      sess.run(eval_summary_writer_flush_op)
+        with eval_summary_writer.as_default(), \
+             tf.contrib.summary.always_record_summaries():
+            for eval_metric in eval_metrics:
+                eval_metric.tf_summaries(step_metrics=step_metrics)
+
+        init_agent_op = tf_agent.initialize()
+
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        with tf.compat.v1.Session(tf_master, config=config) as sess:
+            # Initialize graph.
+            train_checkpointer.initialize_or_restore(sess)
+            rb_checkpointer.initialize_or_restore(sess)
+            # TODO(sguada) Remove once Periodically can be saved.
+            common_utils.initialize_uninitialized_variables(sess)
+
+            sess.run(init_agent_op)
+
+            # tf.contrib.summary.initialize(session=sess, graph=tf.get_default_graph())
+            tf.contrib.summary.initialize(session=sess)
+
+            collect_time = 0
+            train_time = 0
+            timed_at_step = sess.run(global_step)
+            steps_per_second_ph = tf.compat.v1.placeholder(
+                tf.float32, shape=(), name='steps_per_sec_ph')
+            steps_per_second_summary = tf.contrib.summary.scalar(
+                name='global_steps/sec', tensor=steps_per_second_ph)
+            while sess.run(environment_steps_count) < num_environment_steps:
+                global_step_val = sess.run(global_step)
+                if global_step_val % eval_interval == 0:
+                    metric_utils.compute_summaries(
+                        eval_metrics,
+                        eval_py_env,
+                        eval_py_policy,
+                        num_episodes=num_eval_episodes,
+                        global_step=global_step_val,
+                        callback=eval_metrics_callback,
+                    )
+                    sess.run(eval_summary_writer_flush_op)
+
+                start_time = time.time()
+                sess.run(collect_op)
+                collect_time += time.time() - start_time
+                start_time = time.time()
+                total_loss, _ = sess.run([train_op, summary_op])
+                train_time += time.time() - start_time
+
+                global_step_val = sess.run(global_step)
+                if global_step_val % log_interval == 0:
+                    logging.info('step = %d, loss = %f', global_step_val, total_loss)
+                    steps_per_sec = (
+                            (global_step_val - timed_at_step) / (collect_time + train_time))
+                    logging.info('%.3f steps/sec', steps_per_sec)
+                    sess.run(
+                        steps_per_second_summary,
+                        feed_dict={steps_per_second_ph: steps_per_sec})
+                    logging.info('collect_time = {}, train_time = {}'.format(
+                        collect_time, train_time))
+                    timed_at_step = global_step_val
+                    collect_time = 0
+                    train_time = 0
+
+                if global_step_val % train_checkpoint_interval == 0:
+                    train_checkpointer.save(global_step=global_step_val)
+
+                if global_step_val % policy_checkpoint_interval == 0:
+                    policy_checkpointer.save(global_step=global_step_val)
+
+                if global_step_val % rb_checkpoint_interval == 0:
+                    rb_checkpointer.save(global_step=global_step_val)
+
+            # One final eval before exiting.
+            metric_utils.compute_summaries(
+                eval_metrics,
+                eval_py_env,
+                eval_py_policy,
+                num_episodes=num_eval_episodes,
+                global_step=global_step_val,
+                callback=eval_metrics_callback,
+            )
+            sess.run(eval_summary_writer_flush_op)
+
 
 def main(_):
     os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu_c
@@ -366,21 +377,21 @@ def main(_):
         return
     tf.logging.set_verbosity(tf.logging.INFO)
     train_eval(
-      FLAGS.root_dir,
-      gpu=FLAGS.gpu_g,
-      tf_master=FLAGS.master,
-      env_load_fn=lambda mode, device_idx: env_load_fn(FLAGS.config_file, mode, FLAGS.physics_timestep, device_idx),
-      env_mode=FLAGS.mode,
-      conv_layer_params=((32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1)),
-      replay_buffer_capacity=FLAGS.replay_buffer_capacity,
-      num_environment_steps=FLAGS.num_environment_steps,
-      num_parallel_environments=FLAGS.num_parallel_environments,
-      num_epochs=FLAGS.num_epochs,
-      collect_episodes_per_iteration=FLAGS.collect_episodes_per_iteration,
-      num_eval_episodes=FLAGS.num_eval_episodes,
-      use_rnns=FLAGS.use_rnns)
+        FLAGS.root_dir,
+        gpu=FLAGS.gpu_g,
+        tf_master=FLAGS.master,
+        env_load_fn=lambda mode, device_idx: env_load_fn(FLAGS.config_file, mode, FLAGS.physics_timestep, device_idx),
+        env_mode=FLAGS.mode,
+        conv_layer_params=((32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1)),
+        replay_buffer_capacity=FLAGS.replay_buffer_capacity,
+        num_environment_steps=FLAGS.num_environment_steps,
+        num_parallel_environments=FLAGS.num_parallel_environments,
+        num_epochs=FLAGS.num_epochs,
+        collect_episodes_per_iteration=FLAGS.collect_episodes_per_iteration,
+        num_eval_episodes=FLAGS.num_eval_episodes,
+        use_rnns=FLAGS.use_rnns)
+
 
 if __name__ == '__main__':
     flags.mark_flag_as_required('root_dir')
     tf.app.run()
-
