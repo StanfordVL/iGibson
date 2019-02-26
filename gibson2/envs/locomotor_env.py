@@ -110,8 +110,6 @@ class NavigateEnv(BaseEnv):
         # print('action', action)
         # print('reward', reward)
 
-        # state = sensor_state
-
         state = OrderedDict()
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
@@ -127,8 +125,6 @@ class NavigateEnv(BaseEnv):
         return state, reward, done, {}
 
     def reset(self):
-        print('env reset')
-        print('-' * 50)
         self.robots[0].robot_specific_reset()
 
         self.robots[0].set_position(pos=self.initial_pos)
@@ -140,28 +136,23 @@ class NavigateEnv(BaseEnv):
         self.current_step = 0
         self.potential = 1
 
-        # state = sensor_state
-
         state = OrderedDict()
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
         if 'rgb' in self.output:
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
-            # state['rgb'] = np.zeros((128, 128, 3))
         if 'depth' in self.output:
             state['depth'] = np.clip(
                 -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
                 0.0, 1.0)
-            # state['depth'] = np.zeros((128, 128, 1))
 
         return state
 
 if __name__ == "__main__":
     if sys.argv[1] == 'turtlebot':
-        #path = '../examples/configs/turtlebot_p2p_nav.yaml'
-        path = '../test/test.yaml'
+        path = '../examples/configs/turtlebot_p2p_nav.yaml'
         config_filename = os.path.join(os.path.dirname(gibson2.__file__), path)
-        nav_env = NavigateEnv(config_file=config_filename, mode='headless', action_timestep=1/10.0, physics_timestep=1/40.0)
+        nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
         if nav_env.config['debug']:
             left_id = p.addUserDebugParameter('left', -0.1, 0.1, 0)
             right_id = p.addUserDebugParameter('right', -0.1, 0.1, 0)
