@@ -23,24 +23,16 @@ from absl import flags
 from absl import logging
 import time
 import os
+import numpy as np
 
-
-# import os
-# os.sys.path.insert(0, '/cvgl2/u/chengshu/gibsonv2/gibson2/core')
-# from gibson2.data.datasets import get_model_path
-# import torch
-
-from gibson2.utils.tf_utils import env_load_fn
-from gibson2.utils.tf_utils import mlp_layers
+from gibson2.utils.tf_utils import env_load_fn, LayerParams
 
 import tensorflow as tf
 # from tf_agents.agents.ppo import ppo_agent
 from gibson2.utils.agents.agents import ppo_agent
-from gibson2.core.physics.scene import StadiumScene
 from tf_agents.drivers import dynamic_episode_driver
 from tf_agents.environments import parallel_py_environment
 from tf_agents.environments import tf_py_environment
-from tf_agents.environments import suite_mujoco
 from tf_agents.metrics import batched_py_metric
 from tf_agents.metrics import metric_utils
 from tf_agents.metrics import tf_metrics
@@ -54,8 +46,9 @@ from tf_agents.networks import actor_distribution_rnn_network
 # from gibson2.utils.agents.networks import value_network_original as value_network
 from gibson2.utils.agents.networks import value_network
 from tf_agents.networks import value_rnn_network
-# from tf_agents.policies import py_tf_policy
-from gibson2.utils.agents.policies import py_tf_policy
+from gibson2.utils.agents.networks import encoding_network
+
+from tf_agents.policies import py_tf_policy
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
 from tf_agents.utils import common as common_utils
 
@@ -64,7 +57,6 @@ nest = tf.contrib.framework.nest
 flags.DEFINE_string('root_dir', os.getenv('TEST_UNDECLARED_OUTPUTS_DIR'),
                     'Root directory for writing logs/summaries/checkpoints.')
 flags.DEFINE_string('master', '', 'master session')
-flags.DEFINE_string('env_name', 'HalfCheetah-v1', 'Name of an environment')
 flags.DEFINE_integer('replay_buffer_capacity', 1001,
                      'Replay buffer capacity per env.')
 flags.DEFINE_integer('num_parallel_environments', 30,
@@ -90,15 +82,17 @@ flags.DEFINE_string('mode', 'headless',
                     'mode for the simulator (gui or headless)')
 flags.DEFINE_float('physics_timestep', 1/40.0,
                     'physics timestep for the simulator')
-flags.DEFINE_string('gpu', '0',
-                    'gpu id for Tensorflow.')
+flags.DEFINE_string('gpu_c', '0',
+                    'gpu id for compute, e.g. Tensorflow.')
+flags.DEFINE_string('gpu_g', '1',
+                    'gpu id for graphics, e.g. Gibson.')
 FLAGS = flags.FLAGS
 
 def train_eval(
     root_dir,
     tf_master='',
-    env_name='HalfCheetah-v1',
-    env_load_fn=suite_mujoco.load,
+    gpu='1',
+    env_load_fn=None,
     env_mode='headless',
     random_seed=0,
     # TODO(kbanoop): rename to policy_fc_layers.
@@ -142,18 +136,7 @@ def train_eval(
 
   eval_summary_writer = tf.contrib.summary.create_file_writer(
       eval_dir, flush_millis=summaries_flush_secs * 1000)
-  # eval_metrics = [
-  #     batched_py_metric.BatchedPyMetric(
-  #         AverageReturnMetric,
-  #         metric_args={'buffer_size': num_eval_episodes},
-  #         batch_size=num_parallel_environments),
-  #     batched_py_metric.BatchedPyMetric(
-  #         AverageEpisodeLengthMetric,
-  #         metric_args={'buffer_size': num_eval_episodes},
-  #         batch_size=num_parallel_environments),
 
-
-  # ]
   eval_metrics = [
       batched_py_metric.BatchedPyMetric(
           AverageReturnMetric,
@@ -168,68 +151,32 @@ def train_eval(
 
   with tf.contrib.summary.record_summaries_every_n_global_steps(
       summary_interval):
-    tf.compat.v1.set_random_seed(random_seed)
-    # eval_py_env = parallel_py_environment.ParallelPyEnvironment(
-    #     [lambda: env_load_fn(env_name, 'headless')] * num_parallel_environments)
-    # eval_py_env = tf_py_environment.TFPyEnvironment(parallel_py_environment.ParallelPyEnvironment(
-    #     [lambda: env_load_fn(env_name, 'headless')] * 1))
-    # print('start eval_py_env')
-    # eval_py_env = env_load_fn('abc', 'headless')
-    # eval_py_env = tf_py_environment.TFPyEnvironment(env_load_fn('abc', 'headless'))
-    # eval_py_env = parallel_py_environment.ParallelPyEnvironment([lambda: env_load_fn(env_name, 'headless')])
-    # eval_py_env = tf_py_environment.TFPyEnvironment(parallel_py_environment.ParallelPyEnvironment([lambda: env_load_fn(env_name, 'headless')]))
-    # print('end eval_py_env')
-    # print('-' * 1000)
 
-    # eval_py_env = parallel_py_environment.ParallelPyEnvironment(
-    #     [lambda: env_load_fn(env_name, 'headless')] * 1)
-    # tf_env = tf_py_environment.TFPyEnvironment(
-    #     parallel_py_environment.ParallelPyEnvironment(
-    #         [lambda: env_load_fn(env_name, env_mode)] * num_parallel_environments))
-    print('start tf_py_env')
-    print('-' * 50)
-    tf_py_env = [lambda: env_load_fn(env_name, 'headless', 0)] * (num_parallel_environments - 1)
-    tf_py_env += [lambda: env_load_fn(env_name, env_mode, 1)]
+    tf.compat.v1.set_random_seed(random_seed)
+
+    gpu = [int(gpu_id) for gpu_id in gpu.split(',')]
+    gpu_ids = np.linspace(0, len(gpu), num=num_parallel_environments + 1, dtype=np.int, endpoint=False)
+    eval_py_env = parallel_py_environment.ParallelPyEnvironment([lambda gpu_id=gpu[gpu_ids[0]]: env_load_fn('headless', gpu_id)])
+    tf_py_env = [lambda gpu_id=gpu[gpu_ids[1]]: env_load_fn(env_mode, gpu_id)]
+    tf_py_env += [lambda gpu_id=gpu[gpu_ids[env_id]]: env_load_fn('headless', gpu_id)
+                  for env_id in range(2, num_parallel_environments + 1)]
     tf_env = tf_py_environment.TFPyEnvironment(
         parallel_py_environment.ParallelPyEnvironment(tf_py_env))
-    print('end tf_py_env')
-    print('-' * 50)
-    #assert False
-
-
-    # eval_py_env = tf_py_environment.TFPyEnvironment(parallel_py_environment.ParallelPyEnvironment([lambda: env_load_fn(env_name, 'headless')]))
-
 
     optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
 
-    preprocessing_layers = {
-        'sensor': tf.keras.Sequential(
-            mlp_layers(conv_layer_params=None,
-                       fc_layer_params=encoder_fc_layers,
-                       kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
-                       dtype=tf.float32,
-                       name='EncoderNetwork/sensor')),
-        'rgb': tf.keras.Sequential(
-            mlp_layers(conv_layer_params=conv_layer_params,
-                       fc_layer_params=None,
-                       kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
-                       pooling=True,
-                       dtype=tf.float32,
-                       name='EncoderNetwork/rgb')),
-        'depth': tf.keras.Sequential(
-            mlp_layers(conv_layer_params=conv_layer_params,
-                       fc_layer_params=None,
-                       kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
-                       pooling=True,
-                       dtype=tf.float32,
-                       name='EncoderNetwork/depth')),
+    preprocessing_layers_params = {
+        'sensor': LayerParams(conv=None, fc=encoder_fc_layers),
+        'rgb': LayerParams(conv=conv_layer_params, fc=None),
+        'depth': LayerParams(conv=conv_layer_params, fc=None),
     }
-
-
-    preprocessing_combiner = tf.keras.layers.Concatenate(axis=-1)
-
-    # preprocessing_layers = None
-    # preprocessing_combiner = None
+    preprocessing_combiner_type = 'concat'
+    encoder = encoding_network.EncodingNetwork(
+        tf_env.observation_spec(),
+        preprocessing_layers_params=preprocessing_layers_params,
+        preprocessing_combiner_type=preprocessing_combiner_type,
+        kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
+    )
 
     if use_rnns:
       actor_net = actor_distribution_rnn_network.ActorDistributionRnnNetwork(
@@ -242,29 +189,16 @@ def train_eval(
           input_fc_layer_params=value_fc_layers,
           output_fc_layer_params=None)
     else:
-      # actor_net = actor_distribution_network.ActorDistributionNetwork(
-      #     tf_env.observation_spec(),
-      #     tf_env.action_spec(),
-      #     conv_layer_params=conv_layer_params,
-      #     fc_layer_params=actor_fc_layers)
-      # value_net = value_network.ValueNetwork(
-      #     tf_env.observation_spec(),
-      #     conv_layer_params=conv_layer_params,
-      #     fc_layer_params=value_fc_layers)
       actor_net = actor_distribution_network.ActorDistributionNetwork(
           tf_env.observation_spec(),
           tf_env.action_spec(),
-          preprocessing_layers=preprocessing_layers,
-          preprocessing_combiner=preprocessing_combiner,
-          conv_layer_params=None,
+          encoder=encoder,
           fc_layer_params=actor_fc_layers,
           kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
       )
       value_net = value_network.ValueNetwork(
           tf_env.observation_spec(),
-          preprocessing_layers=preprocessing_layers,
-          preprocessing_combiner=preprocessing_combiner,
-          conv_layer_params=None,
+          encoder=encoder,
           fc_layer_params=value_fc_layers,
           kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
       )
@@ -289,8 +223,8 @@ def train_eval(
 
     # TODO(sguada): Reenable metrics when ready for batch data.
     environment_steps_metric = tf_metrics.EnvironmentSteps()
-    environment_steps_metric.build()
-    environment_steps_count = environment_steps_metric.value()
+    environment_steps_count = environment_steps_metric.result()
+
     step_metrics = [
         tf_metrics.NumberOfEpisodes(),
         environment_steps_metric,
@@ -350,9 +284,6 @@ def train_eval(
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
-    # config.gpu_options.per_process_gpu_memory_fraction = 0.8
-    print('start session')
-    print('-' * 50)
     with tf.compat.v1.Session(tf_master, config=config) as sess:
       # Initialize graph.
       train_checkpointer.initialize_or_restore(sess)
@@ -360,8 +291,9 @@ def train_eval(
       # TODO(sguada) Remove once Periodically can be saved.
       common_utils.initialize_uninitialized_variables(sess)
 
-      sess.run(init_agent_op)    # print('outputs', len(outputs), outputs[0])
+      sess.run(init_agent_op)
 
+      # tf.contrib.summary.initialize(session=sess, graph=tf.get_default_graph())
       tf.contrib.summary.initialize(session=sess)
 
       collect_time = 0
@@ -373,7 +305,6 @@ def train_eval(
           name='global_steps/sec', tensor=steps_per_second_ph)
       while sess.run(environment_steps_count) < num_environment_steps:
         global_step_val = sess.run(global_step)
-        print(global_step_val)
         # if global_step_val % eval_interval == 0:
         #   metric_utils.compute_summaries(
         #       eval_metrics,
@@ -386,18 +317,11 @@ def train_eval(
         #   sess.run(eval_summary_writer_flush_op)
 
         start_time = time.time()
-        print('before collect')
         sess.run(collect_op)
         collect_time += time.time() - start_time
-        print('after collect')
-        print(time.time() - start_time)
-        print('before train')
         start_time = time.time()
-        print('sess run train_op')
         total_loss, _ = sess.run([train_op, summary_op])
         train_time += time.time() - start_time
-        print('after train')
-        print(time.time() - start_time)
 
         global_step_val = sess.run(global_step)
         if global_step_val % log_interval == 0:
@@ -424,31 +348,29 @@ def train_eval(
           rb_checkpointer.save(global_step=global_step_val)
 
       # One final eval before exiting.
-      # metric_utils.compute_summaries(
-      #     eval_metrics,device_idx=1
-      #     eval_py_env,
-      #     eval_py_policy,
-      #     num_episodes=num_eval_episodes,
-      #     global_step=global_step_val,
-      #     callback=eval_metrics_callback,
-      # )
+      metric_utils.compute_summaries(
+          eval_metrics,
+          eval_py_env,
+          eval_py_policy,
+          num_episodes=num_eval_episodes,
+          global_step=global_step_val,
+          callback=eval_metrics_callback,
+      )
       sess.run(eval_summary_writer_flush_op)
 
 def main(_):
-    # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    #os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu
+    os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu_c
 
     if tf.executing_eagerly():
         return
     tf.logging.set_verbosity(tf.logging.INFO)
     train_eval(
       FLAGS.root_dir,
+      gpu=FLAGS.gpu_g,
       tf_master=FLAGS.master,
-      env_name='',
-      env_load_fn=lambda env_name, mode, device_idx: env_load_fn(env_name, FLAGS.config_file, mode, FLAGS.physics_timestep, device_idx),
+      env_load_fn=lambda mode, device_idx: env_load_fn(FLAGS.config_file, mode, FLAGS.physics_timestep, device_idx),
       env_mode=FLAGS.mode,
       conv_layer_params=((32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1)),
-      # conv_layer_params=None,
       replay_buffer_capacity=FLAGS.replay_buffer_capacity,
       num_environment_steps=FLAGS.num_environment_steps,
       num_parallel_environments=FLAGS.num_parallel_environments,
@@ -456,125 +378,6 @@ def main(_):
       collect_episodes_per_iteration=FLAGS.collect_episodes_per_iteration,
       num_eval_episodes=FLAGS.num_eval_episodes,
       use_rnns=FLAGS.use_rnns)
-
-
-# def test_driver():
-#     encoder_fc_layers = (128, 64)
-#     conv_layer_params = ((32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1))
-#     actor_fc_layers = (128, 64)
-#     value_fc_layers = (128, 64)
-#     learning_rate = 1e-4
-#     collect_episodes_per_iteration = 30
-#     num_parallel_environments = 1
-#     replay_buffer_capacity = 1001
-#
-#     tf_py_env = [lambda: env_load_fn('', device_idx=x) for x in range(num_parallel_environments)]
-#     tf_py_env = parallel_py_environment.ParallelPyEnvironment(tf_py_env, blocking=True)
-#     tf_py_env = tf_py_environment.TFPyEnvironment(tf_py_env)
-#     print("action spec", tf_py_env.action_spec())
-#     print("observation spec", tf_py_env.observation_spec())
-#
-#     optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
-#
-#     preprocessing_layers = {
-#         'sensor': tf.keras.Sequential(
-#             mlp_layers(conv_layer_params=None,
-#                        fc_layer_params=encoder_fc_layers,
-#                        kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
-#                        dtype=tf.float32,
-#                        name='EncoderNetwork/sensor')),
-#         'rgb': tf.keras.Sequential(
-#             mlp_layers(conv_layer_params=conv_layer_params,
-#                        fc_layer_params=None,
-#                        kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
-#                        pooling=True,
-#                        dtype=tf.float32,
-#                        name='EncoderNetwork/rgb')),
-#         'depth': tf.keras.Sequential(
-#             mlp_layers(conv_layer_params=conv_layer_params,
-#                        fc_layer_params=None,
-#                        kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
-#                        pooling=True,
-#                        dtype=tf.float32,
-#                        name='EncoderNetwork/depth')),
-#     }
-#
-#     preprocessing_combiner = tf.keras.layers.Concatenate(axis=-1)
-#
-#
-#     actor_net = actor_distribution_network.ActorDistributionNetwork(
-#         tf_py_env.observation_spec(),
-#         tf_py_env.action_spec(),
-#         preprocessing_layers=preprocessing_layers,
-#         preprocessing_combiner=preprocessing_combiner,
-#         conv_layer_params=None,
-#         fc_layer_params=actor_fc_layers,
-#         kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
-#     )
-#     value_net = value_network.ValueNetwork(
-#         tf_py_env.observation_spec(),
-#         preprocessing_layers=preprocessing_layers,
-#         preprocessing_combiner=preprocessing_combiner,
-#         conv_layer_params=None,
-#         fc_layer_params=value_fc_layers,
-#         kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
-#     )
-#
-#     tf_agent = ppo_agent.PPOAgent(
-#         tf_py_env.time_step_spec(),
-#         tf_py_env.action_spec(),
-#         optimizer,
-#         actor_net=actor_net,
-#         value_net=value_net,
-#         num_epochs=25,
-#         debug_summaries=False,
-#         summarize_grads_and_vars=False,
-#         normalize_observations=True)
-#
-#     collect_policy = tf_agent.collect_policy()
-#
-#     replay_buffer = tf_uniform_replay_buffer.TFUniformReplayBuffer(
-#         tf_agent.collect_data_spec(),
-#         batch_size=num_parallel_environments,
-#         max_length=replay_buffer_capacity)
-# # from gibson2.core.physics.scene import StadiumScene
-#
-#
-#     # TODO(sguada): Reenable metrics when ready for batch data.
-#     environment_steps_metric = tf_metrics.EnvironmentSteps()
-#     environment_steps_metric.build()
-#     step_metrics = [
-#         tf_metrics.NumberOfEpisodes(),
-#         environment_steps_metric,
-#     ]
-#     train_metrics = step_metrics + [
-#         tf_metrics.AverageReturnMetric(),
-#         tf_metrics.AverageEpisodeLengthMetric(),
-#     ]
-#
-#     # Add to replay buffer and other agent specific observers.
-#     replay_buffer_observer = [replay_buffer.add_batch]
-#
-#     collect_op = dynamic_episode_driver.DynamicEpisodeDriver(
-#         tf_py_env,
-#         collect_policy,
-#         observers=replay_buffer_observer + train_metrics,
-#         num_episodes=collect_episodes_per_iteration).run()
-#     init_agent_op = tf_agent.initialize()
-#
-#     with tf.compat.v1.Session() as sess:
-#         common_utils.initialize_uninitialized_variables(sess)
-#
-#         sess.run(init_agent_op)  # print('outputs', len(outputs), outputs[0])
-#
-#         # tf.contrib.summary.initialize(session=sess)
-#         for i in range(100000):
-#             print(i)
-#             print('-------------------------------')
-#             sess.run(collect_op)
-
-# def main(_):
-#     test_driver()
 
 if __name__ == '__main__':
     flags.mark_flag_as_required('root_dir')

@@ -56,8 +56,7 @@ class TFAverageSuccessRateMetric(tf_py_metric.TFPyMetric):
     super(TFAverageSuccessRateMetric, self).__init__(py_metric=py_metric, name=name, dtype=dtype)
 
 
-def env_load_fn(env_name, config_file='../test/test.yaml', mode='headless', physics_timestep=1/40.0, device_idx=0):
-    del env_name
+def env_load_fn(config_file='../test/test.yaml', mode='headless', physics_timestep=1/40.0, device_idx=0):
     config_file = os.path.join(os.path.dirname(gibson2.__file__), config_file)
     nav_env = NavigateEnv(config_file=config_file, mode=mode, physics_timestep=physics_timestep, device_idx=device_idx)
     return gym_wrapper.GymWrapper(
@@ -68,12 +67,17 @@ def env_load_fn(env_name, config_file='../test/test.yaml', mode='headless', phys
         auto_reset=True,
     )
 
+class LayerParams(object):
+    def __init__(self, conv=None, fc=None):
+        self.conv = conv
+        self.fc = fc
 
 def mlp_layers(conv_layer_params=None,
                fc_layer_params=None,
                activation_fn=tf.keras.activations.relu,
                kernel_initializer=None,
-               pooling=False,
+               pool=False,
+               flatten=False,
                dtype=tf.float32,
                name=None):
     """Generates conv and fc layers to encode into a hidden state.
@@ -88,7 +92,8 @@ def mlp_layers(conv_layer_params=None,
         kernel_initializer: Initializer to use for the kernels of the conv and
           dense layers. If none is provided a default variance_scaling_initializer
           is used.
-        pooling: Whether to apply average global pooling after conv layers
+        pool: Whether to apply average global pooling after conv layers
+        flatten: Whether to apply flatten before fc layers
         dtype: data type for the layers
         name: Name for the mlp layers.
     Returns:
@@ -111,11 +116,11 @@ def mlp_layers(conv_layer_params=None,
                 name='/'.join([name, 'conv2d']) if name else None)
             for (filters, kernel_size, strides) in conv_layer_params
         ])
-        if pooling:
-            layers.extend([tf.keras.layers.GlobalAvgPool2D()])
-
-    if fc_layer_params:
+    if pool:
+        layers.append(tf.keras.layers.GlobalAvgPool2D())
+    if flatten:
         layers.append(tf.keras.layers.Flatten())
+    if fc_layer_params:
         layers.extend([
             tf.keras.layers.Dense(
                 num_units,
