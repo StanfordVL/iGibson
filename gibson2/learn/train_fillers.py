@@ -131,10 +131,10 @@ def main():
             loss.backward(retain_graph=True)
             optimizerG.step()
 
-            print('[%d/%d][%d/%d] %d MSEloss: %f' % (epoch, opt.nepoch, i, len(dataloader), step, loss.data[0]))
+            print('[%d/%d][%d/%d] %d MSEloss: %f' % (epoch, opt.nepoch, i, len(dataloader), step, loss.data.item()))
 
             if i % 10 == 0:
-                writer.add_scalar('MSEloss', loss.data[0], step)
+                writer.add_scalar('MSEloss', loss.data.item(), step)
 
             if i % 100 == 0:
                 visual = torch.cat([source.cpu().data, target.cpu().data, recon.cpu().data], 3)
