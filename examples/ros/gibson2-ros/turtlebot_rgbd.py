@@ -27,6 +27,7 @@ class SimNode:
         self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image",Image, queue_size=10)
         self.depth_raw_pub = rospy.Publisher("/gibson_ros/camera/depth/image_raw",Image, queue_size=10)
         self.odom_pub = rospy.Publisher("/odom",Odometry, queue_size=10)
+        self.gt_odom_pub = rospy.Publisher("/ground_truth_odom", Odometry, queue_size=10)
 
         self.camera_info_pub = rospy.Publisher("/gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
         self.bridge = CvBridge()
@@ -93,6 +94,25 @@ class SimNode:
             odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
             odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
             self.odom_pub.publish(odom_msg)
+
+            # Ground truth pose
+            gt_odom_msg = Odometry()
+            gt_odom_msg.header.stamp = rospy.Time.now()
+            gt_odom_msg.header.frame_id = 'ground_truth_odom'
+            gt_odom_msg.child_frame_id = 'base_footprint'
+
+            gt_odom_msg.pose.pose.position.x = self.env.robots[0].body_xyz[0]
+            gt_odom_msg.pose.pose.position.y = self.env.robots[0].body_xyz[1]
+            gt_odom_msg.pose.pose.position.z = self.env.robots[0].body_xyz[2]
+            gt_odom_msg.pose.pose.orientation.x, gt_odom_msg.pose.pose.orientation.y, gt_odom_msg.pose.pose.orientation.z, \
+                gt_odom_msg.pose.pose.orientation.w = tf.transformations.quaternion_from_euler(
+                    self.env.robots[0].body_rpy[0],
+                    self.env.robots[0].body_rpy[1],
+                    self.env.robots[0].body_rpy[2])
+
+            gt_odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
+            gt_odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
+            self.gt_odom_pub.publish(gt_odom_msg)
 
         rospy.spin()
 
