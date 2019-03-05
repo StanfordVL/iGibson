@@ -6,32 +6,35 @@ from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, qua
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
+import argparse
 
-# define navigation environments following Anderson, Peter, et al. "On evaluation of embodied navigation agents." arXiv preprint arXiv:1807.06757 (2018).
+
+# define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.' arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
 
 class NavigateEnv(BaseEnv):
     def __init__(self, config_file, mode='headless', action_timestep = 1/10.0, physics_timestep=1/240.0, device_idx=0):
         super(NavigateEnv, self).__init__(config_file, mode, device_idx=device_idx)
-        if self.config['task'] == 'pointgoal' or self.config['task'] == 'reaching':
-            self.target_pos = np.array(self.config['target_pos'])
-            self.target_orn = np.array(self.config['target_orn'])
-            self.initial_pos = np.array(self.config['initial_pos'])
-            self.initial_orn = np.array(self.config['initial_orn'])
-            self.dist_tol = self.config['dist_tol']
-            self.terminal_reward = self.config['terminal_reward']
-            self.additional_states_dim = self.config['additional_states_dim']
-            self.potential = 1
-            self.discount_factor = self.config['discount_factor']
+        self.target_pos = np.array(self.config['target_pos'])
+        self.target_orn = np.array(self.config['target_orn'])
+        self.initial_pos = np.array(self.config['initial_pos'])
+        self.initial_orn = np.array(self.config['initial_orn'])
+        self.additional_states_dim = self.config['additional_states_dim']
 
-            if 'debug' in self.config and self.config['debug'] and mode != 'headless':
-                start = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=[1, 0, 0, 0.5])
-                p.createMultiBody(baseVisualShapeIndex=start, baseCollisionShapeIndex=-1,
-                                  basePosition=self.initial_pos)
-                target = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=[0, 1, 0, 0.5])
-                p.createMultiBody(baseVisualShapeIndex=target, baseCollisionShapeIndex=-1,
-                                  basePosition=self.target_pos)
+        # termination condition
+        self.dist_tol = self.config.get('dist_tol', 0.5)
+        self.max_step = self.config.get('max_step', float('inf'))
 
+        # reward
+        self.terminal_reward = self.config.get('terminal_reward', 0.0)
+        self.electricity_cost = self.config.get('electricity_cost', 0.0)
+        self.stall_torque_cost = self.config.get('stall_torque_cost', 0.0)
+        self.discount_factor = self.config.get('discount_factor', 1.0)
+        print('electricity_cost', self.electricity_cost)
+        print('stall_torque_cost', self.stall_torque_cost)
+        print('-' * 50)
+
+        # simulation
         self.mode = mode
         self.action_timestep = action_timestep
         self.physics_timestep = physics_timestep
@@ -39,12 +42,12 @@ class NavigateEnv(BaseEnv):
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.output = self.config['output']
 
+        # observation and action space
         self.sensor_dim = self.robots[0].sensor_dim + self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
 
         # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float64)
         observation_space = OrderedDict()
-
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32)
             observation_space['sensor'] = self.sensor_space
@@ -55,14 +58,25 @@ class NavigateEnv(BaseEnv):
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
             self.depth_space = gym.spaces.Box(low=0.0, high=1.0,
-                                              shape=(self.config['resolution'], self.config['resolution'], 1),
+                                              shape=(self.config['resolution'], self.config['resolution'], 3),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
+
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
-        self.current_step = 0
-        self.max_step = self.config['max_step']
 
+        # debug visualization
+        if 'debug' in self.config and self.config['debug'] and mode != 'headless':
+            start = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=[1, 0, 0, 0.5])
+            p.createMultiBody(baseVisualShapeIndex=start, baseCollisionShapeIndex=-1,
+                              basePosition=self.initial_pos)
+            target = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=[0, 1, 0, 0.5])
+            p.createMultiBody(baseVisualShapeIndex=target, baseCollisionShapeIndex=-1,
+                              basePosition=self.target_pos)
+
+        # variable initialization
+        self.potential = 1
+        self.current_step = 0
 
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
@@ -75,52 +89,61 @@ class NavigateEnv(BaseEnv):
                                             [np.sin(delta_yaw), np.cos(delta_yaw)]))
         if self.config['task'] == 'reaching':
             # get end effector information
-            end_effector_pos = (self.robots[0].get_end_effector_position())
+            end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
+            end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].body_rpy)
             additional_states = np.concatenate((additional_states, end_effector_pos))
 
         assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
         return additional_states
 
     def step(self, action):
+        action = np.clip(action, self.action_space.low, self.action_space.high)
         self.robots[0].apply_action(action)
         for _ in range(self.simulator_loop):
             self.simulator_step()
 
+        # calculate state
         sensor_state = self.robots[0].calc_state()
         sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
-
-        new_potential = l2_distance(self.target_pos, self.robots[0].get_position()) / \
-                        l2_distance(self.target_pos, self.initial_pos)
-        reward = 1000 * (self.potential - new_potential)
-        self.potential = new_potential
-
-        self.current_step += 1
-        done = self.current_step >= self.max_step
-
-        if self.config['task'] == 'pointgoal':
-            if l2_distance(self.target_pos, self.robots[0].get_position()) < self.dist_tol:
-                print('pointgoal')
-                reward = self.terminal_reward
-                done = True
-        elif self.config['task'] == 'reaching':
-            if l2_distance(self.target_pos, self.robots[0].get_end_effector_position()) < self.dist_tol:
-                print('reaching')
-                reward = self.terminal_reward
-                done = True
-
-        # print('action', action)
-        # print('reward', reward)
-
         state = OrderedDict()
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
         if 'rgb' in self.output:
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
         if 'depth' in self.output:
-            state['depth'] = np.clip(
-                -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
-                0.0, 1.0)
+            # state['depth'] = np.clip(
+            #     -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
+            #     0.0, 1.0)
+            depth_img = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0
+            state['depth'] = np.tile(np.clip(depth_img, 0.0, 1.0), 3)
 
+        # calculate reward
+        if self.config['task'] == 'pointgoal':
+            robot_position = self.robots[0].get_position()
+        elif self.config['task'] == 'reaching':
+            robot_position = self.robots[0].get_end_effector_position()
+        new_potential = l2_distance(self.target_pos, robot_position) / \
+                        l2_distance(self.target_pos, self.initial_pos)
+        progress = (self.potential - new_potential) * 1000  # |progress| ~= 1.0 per step
+        self.potential = new_potential
+
+        electricity_cost = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
+        electricity_cost *= self.electricity_cost  # |electricity_cost| ~= 0.2 per step
+        stall_torque_cost = np.square(self.robots[0].joint_torque).mean()
+        stall_torque_cost *= self.stall_torque_cost  # |stall_torque_cost| ~= 0.2 per step
+
+        reward = progress + electricity_cost + stall_torque_cost
+
+        # check termination condition
+        self.current_step += 1
+        done = self.current_step >= self.max_step
+        if l2_distance(self.target_pos, robot_position) < self.dist_tol:
+            print('goal')
+            reward = self.terminal_reward
+            done = True
+
+        # print('action', action)
+        # print('reward', reward)
         return state, reward, done, {}
 
     def reset(self):
@@ -141,21 +164,34 @@ class NavigateEnv(BaseEnv):
         if 'rgb' in self.output:
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
         if 'depth' in self.output:
-            state['depth'] = np.clip(
-                -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
-                0.0, 1.0)
+            # state['depth'] = np.clip(
+            #     -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
+            #     0.0, 1.0)
+            depth_img = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0
+            state['depth'] = np.tile(np.clip(depth_img, 0.0, 1.0), 3)
 
         return state
 
-if __name__ == "__main__":
-    if sys.argv[1] == 'turtlebot':
-        config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/turtlebot_p2p_nav.yaml')
-        nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--robot', '-r', choices=['turtlebot', 'jr'], required=True,
+                        help='which robot [turtlebot|jr]')
+    parser.add_argument('--config', '-c', choices=['turtlebot', 'jr'],
+                        help='which config file to use [default: use yaml files in examples/configs]')
+    parser.add_argument('--mode', '-m', choices=['headless', 'gui'], default='headless',
+                        help='which mode for simulation (default: headless)')
+    args = parser.parse_args()
+
+    if args.robot == 'turtlebot':
+        config_filename = '../examples/configs/turtlebot_p2p_nav.yaml' if args.config is None else args.config
+        config_filename = os.path.join(os.path.dirname(gibson2.__file__), config_filename)
+        nav_env = NavigateEnv(config_file=config_filename, mode=args.mode,
+                              action_timestep=1/10.0, physics_timestep=1/40.0)
         if nav_env.config['debug'] and nav_env.mode != 'headless':
             left_id = p.addUserDebugParameter('left', -0.1, 0.1, 0)
             right_id = p.addUserDebugParameter('right', -0.1, 0.1, 0)
 
-        for episode in range(100):
+        for episode in range(10):
             nav_env.reset()
             for i in range(300):  # 300 steps, 30s world time
                 if nav_env.config['debug'] and nav_env.mode != 'headless':
@@ -163,15 +199,21 @@ if __name__ == "__main__":
                 else:
                     action = nav_env.action_space.sample()
                 state, reward, done, _ = nav_env.step(action)
-                #print(state)
                 if done:
-                    print("Episode finished after {} timesteps".format(i + 1))
+                    print('Episode finished after {} timesteps'.format(i + 1))
                     break
         nav_env.clean()
-    elif sys.argv[1] == 'jr':
-        config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/jr2_reaching.yaml')
-        nav_env = NavigateEnv(config_file=config_filename, mode='gui', action_timestep=1/10.0, physics_timestep=1/40.0)
-        action = np.array([0.005, 0.005, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        nav_env.reset()
-        for i in range(300):
-            nav_env.step(action)
+    elif args.robot == 'jr':
+        config_filename = '../examples/configs/jr2_reaching.yaml' if args.config is None else args.config
+        config_filename = os.path.join(os.path.dirname(gibson2.__file__), config_filename)
+        nav_env = NavigateEnv(config_file=config_filename, mode=args.mode,
+                              action_timestep=1/10.0, physics_timestep=1/40.0)
+        for episode in range(10):
+            nav_env.reset()
+            for i in range(300):  # 300 steps, 30s world time
+                action = nav_env.action_space.sample()
+                state, reward, done, _ = nav_env.step(action)
+                if done:
+                    print('Episode finished after {} timesteps'.format(i + 1))
+                    break
+        nav_env.clean()
