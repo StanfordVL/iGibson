@@ -5,7 +5,7 @@ from gibson2.core.render.viewer import Viewer
 from gibson2 import assets
 
 class Simulator:
-    def __init__(self, gravity=9.8, timestep=1 / 240.0, mode = 'gui'):
+    def __init__(self, gravity=9.8, timestep=1 / 240.0, use_fisheye=False, mode='gui'):
 
         # physics simulator
         self.gravity = gravity
@@ -19,7 +19,7 @@ class Simulator:
         p.setGravity(0, 0, -self.gravity)
 
         # renderer
-        self.renderer = MeshRenderer(width=256, height=256)
+        self.renderer = MeshRenderer(width=256, height=256, use_fisheye=use_fisheye)
         self.renderer.set_fov(90)
         self.visual_objects = {}
 
