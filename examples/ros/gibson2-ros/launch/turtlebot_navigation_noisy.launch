@@ -42,7 +42,7 @@
     <remap from="scan" to="/scan"/>
   </node>
 
-  <arg name="map_file" default="$(find gibson2-ros)/map/gates.yaml"/>
+  <arg name="map_file" default="$(find gibson2-ros)/map/gibson2-area1.yaml"/>
  <node pkg="map_server" type="map_server"  name="map_server" args="$(arg map_file)" />
  <node pkg="amcl" type="amcl"  name="amcl">
    <param name="min_particles" value="500"/>
