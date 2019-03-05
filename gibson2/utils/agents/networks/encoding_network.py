@@ -35,6 +35,7 @@ class EncodingNetwork(network.Network):
 
     def __init__(self,
                  input_tensor_spec,
+                 base_network=None,
                  preprocessing_layers_params=None,
                  preprocessing_combiner_type=None,
                  kernel_initializer=None,
@@ -48,6 +49,20 @@ class EncodingNetwork(network.Network):
         preprocessing_layers = None
         preprocessing_combiner = None
         if preprocessing_layers_params is not None:
+            # preprocessing_layers = {}
+            # for key in preprocessing_layers_params:
+            #     layers = []
+            #     use_base_network = preprocessing_layers_params[key].base_network is not None
+            #     if use_base_network:
+            #         if base_network is None or preprocessing_layers_params[key].base_network not in base_network:
+            #             raise Exception('preprocessing layers require base_network, but none is provided.')
+            #         layers += [base_network[preprocessing_layers_params[key].base_network]]
+            #     layers += mlp_layers(conv_layer_params=preprocessing_layers_params[key].conv,
+            #                          fc_layer_params=preprocessing_layers_params[key].fc,
+            #                          pool=preprocessing_layers_params[key].conv is not None or use_base_network,
+            #                          kernel_initializer=kernel_initializer,
+            #                          dtype=tf.float32)
+            #     preprocessing_layers[key] = tf.keras.Sequential(layers)
             preprocessing_layers = {
                 key: tf.keras.Sequential(
                     mlp_layers(conv_layer_params=preprocessing_layers_params[key].conv,
@@ -64,7 +79,7 @@ class EncodingNetwork(network.Network):
             elif preprocessing_combiner_type == 'add':
                 preprocessing_combiner = tf.keras.layers.Add()
             else:
-                assert False, 'unknown preprocessing combiner type: %s' % preprocessing_combiner_type
+                raise Exception('unknown preprocessing combiner type: {}'.format(preprocessing_combiner_type))
 
         super(EncodingNetwork, self).__init__(
             input_tensor_spec=input_tensor_spec,
