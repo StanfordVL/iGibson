@@ -10,8 +10,8 @@ class BaseEnv(gym.Env):
     a basic environment, step, observation and reward not implemented
     '''
     def __init__(self, config_file, mode='headless'):
-        self.simulator = Simulator(mode=mode)
         self.config = parse_config(config_file)
+        self.simulator = Simulator(mode=mode, use_fisheye=self.config['fisheye'])
         if self.config['scene'] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
