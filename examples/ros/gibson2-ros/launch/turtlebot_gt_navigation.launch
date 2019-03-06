@@ -39,7 +39,7 @@
  <include file="$(find turtlebot_teleop)/launch/ps3_teleop.launch">
  </include>
 
-  <arg name="map_file" default="$(find gibson2-ros)/map/gibson2-area1.yaml"/>
+  <arg name="map_file" default="$(find gibson2-ros)/map/graphnav/area_1.yaml"/>
   <rosparam param="map_file" subst_value="True">$(arg map_file)</rosparam>
   <node pkg="map_server" type="map_server"  name="map_server" args="$(arg map_file)" />
 
