@@ -63,7 +63,7 @@
     <rosparam file="$(find gibson2-ros)/param/costmap_common_params.yaml" command="load" ns="local_costmap" />
     <rosparam file="$(find gibson2-ros)/param/local_costmap_params.yaml" command="load" />
     <rosparam file="$(find gibson2-ros)/param/global_costmap_params.yaml" command="load" />
-    <rosparam file="$(find gibson2-ros)/param/dwa_local_planner_params.yaml" command="load" />
+    <rosparam file="$(find gibson2-ros)/param/gt_navigation/dwa_local_planner_params.yaml" command="load" />
     <rosparam file="$(find gibson2-ros)/param/move_base_params.yaml" command="load" />
     <rosparam file="$(find gibson2-ros)/param/global_planner_params.yaml" command="load" />
     <rosparam file="$(find gibson2-ros)/param/navfn_global_planner_params.yaml" command="load" />
