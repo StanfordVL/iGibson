@@ -92,9 +92,9 @@ class NavigateEnv(BaseEnv):
             pose_camera = self.robots[0].parts['scan_link'].get_pose()
             n_rays = 128
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays))
-            offset = np.vstack([np.cos(angle), np.sin(angle), np.zeros(n_rays)]).T
+            orig_offset = np.vstack([np.cos(angle), np.sin(angle), np.zeros(n_rays)]).T
             transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-            offset = offset.dot(np.linalg.inv(transform_matrix))
+            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
             pose_camera = pose_camera[None, :3].repeat(n_rays, axis=0)
 
             results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
@@ -105,7 +105,11 @@ class NavigateEnv(BaseEnv):
             dist[hit == self.robots[0].robot_ids[0]] = np.nan
             dist[hit == -1] = np.nan
             dist *= 30
-            state['scan'] = dist
+
+            xyz = dist[:, np.newaxis] * orig_offset
+            xyz = xyz[np.equal(np.isnan(xyz), False)]  # Remove nans
+            xyz = xyz.reshape(xyz.shape[0] / 3, -1)
+            state['lidar'] = xyz
 
         return state, reward, done, {}
 

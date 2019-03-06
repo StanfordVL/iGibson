@@ -2,9 +2,10 @@
 import argparse
 import os
 import rospy
-from std_msgs.msg import Float32, Int64
+from std_msgs.msg import Float32, Int64, Header
 from geometry_msgs.msg import Twist
-from sensor_msgs.msg import Image, CameraInfo, LaserScan
+from sensor_msgs import point_cloud2 as pc2
+from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from nav_msgs.msg import Odometry
 import rospkg
 import numpy as np
@@ -25,7 +26,7 @@ class SimNode:
         self.cmdy = 0.0
         self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image",Image, queue_size=10)
         self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image",Image, queue_size=10)
-        self.scan_pub = rospy.Publisher("/scan", LaserScan, queue_size=10)
+        self.lidar_pub = rospy.Publisher("/gibson_ros/lidar/points", PointCloud2, queue_size=10)
 
         self.depth_raw_pub = rospy.Publisher("/gibson_ros/camera/depth/image_raw",Image, queue_size=10)
         self.odom_pub = rospy.Publisher("/odom",Odometry, queue_size=10)
@@ -73,20 +74,12 @@ class SimNode:
             msg.header.frame_id = "camera_depth_optical_frame"
             self.camera_info_pub.publish(msg)
 
-
-            scan = obs['scan']
-            scan_message = LaserScan()
-            scan_message.header.stamp = now
-            scan_message.header.frame_id = 'scan_link'
-            scan_message.angle_min = 0
-            scan_message.angle_min = 2*np.pi
-            scan_message.angle_increment = 2*np.pi/128.0
-            scan_message.time_increment = 0.03/128.0
-            scan_message.scan_time = 0.03
-            scan_message.range_min = 0.1
-            scan_message.range_max = 30.0
-            scan_message.ranges = scan
-            self.scan_pub.publish(scan_message)
+            lidar_points = obs['lidar']
+            lidar_header = Header()
+            lidar_header.stamp = now
+            lidar_header.frame_id = 'scan_link'
+            lidar_message = pc2.create_cloud_xyz32(lidar_header, lidar_points.tolist())
+            self.lidar_pub.publish(lidar_message)
 
             # odometry
 
