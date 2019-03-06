@@ -1,7 +1,7 @@
 # scene
 
 scene: building
-model_id: space7
+model_id: area1
 
 # robot
 
@@ -22,7 +22,7 @@ discount_factor: 1.0
 
 additional_states_dim: 5
 
-fisheye: false
+fisheye: true
 fov: 1.57
 is_discrete: false
 
@@ -42,7 +42,7 @@ random:
   random_init_z_range: [-0.1, 0.1]
   random_init_rot_range: [-0.1, 0.1]
 
-output: [nonviz_sensor, rgb, depth]
+output: [nonviz_sensor, rgb, depth, scan]
 resolution: 256
 
 speed:
