@@ -4,7 +4,7 @@ import os
 import rospy
 from std_msgs.msg import Float32, Int64
 from geometry_msgs.msg import Twist
-from sensor_msgs.msg import Image, CameraInfo
+from sensor_msgs.msg import Image, CameraInfo, LaserScan
 from nav_msgs.msg import Odometry
 import rospkg
 import numpy as np
@@ -25,6 +25,8 @@ class SimNode:
         self.cmdy = 0.0
         self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image",Image, queue_size=10)
         self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image",Image, queue_size=10)
+        self.scan_pub = rospy.Publisher("/scan", LaserScan, queue_size=10)
+
         self.depth_raw_pub = rospy.Publisher("/gibson_ros/camera/depth/image_raw",Image, queue_size=10)
         self.odom_pub = rospy.Publisher("/odom",Odometry, queue_size=10)
         self.gt_odom_pub = rospy.Publisher("/ground_truth_odom", Odometry, queue_size=10)
@@ -70,6 +72,21 @@ class SimNode:
             msg.header.stamp = now
             msg.header.frame_id = "camera_depth_optical_frame"
             self.camera_info_pub.publish(msg)
+
+
+            scan = obs['scan']
+            scan_message = LaserScan()
+            scan_message.header.stamp = now
+            scan_message.header.frame_id = 'scan_link'
+            scan_message.angle_min = 0
+            scan_message.angle_min = 2*np.pi
+            scan_message.angle_increment = 2*np.pi/128.0
+            scan_message.time_increment = 0.03/128.0
+            scan_message.scan_time = 0.03
+            scan_message.range_min = 0.1
+            scan_message.range_max = 30.0
+            scan_message.ranges = scan
+            self.scan_pub.publish(scan_message)
 
             # odometry
 

@@ -1,4 +1,4 @@
-image: /home/kchen92/Dev/gibsonv2/examples/ros/gibson2-ros/map/gibson2-area1.pgm
+image: gibson2-area1.pgm
 resolution: 0.050000
 origin: [-100.000000, -100.000000, 0.000000]
 negate: 0

@@ -4,7 +4,8 @@ from gibson2.core.physics.scene import *
 import gibson2
 from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
-from transforms3d.euler import euler2quat
+from transforms3d.euler import euler2quat, quat2mat
+import matplotlib.pyplot as plt
 
 # define navigation environments following Anderson, Peter, et al. "On evaluation of embodied navigation agents." arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
@@ -79,8 +80,6 @@ class NavigateEnv(BaseEnv):
             reward = self.terminal_reward
             done = True
 
-        # print('action', action)
-        # print('reward', reward)
         state = {}
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
@@ -89,6 +88,24 @@ class NavigateEnv(BaseEnv):
             #from IPython import embed; embed()
             state['rgb'] = frame[0][:,:,:3]
             state['depth'] = -frame[1][:,:,2]
+        if 'scan' in self.output:
+            pose_camera = self.robots[0].parts['scan_link'].get_pose()
+            n_rays = 128
+            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays))
+            offset = np.vstack([np.cos(angle), np.sin(angle), np.zeros(n_rays)]).T
+            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+            offset = offset.dot(np.linalg.inv(transform_matrix))
+            pose_camera = pose_camera[None, :3].repeat(n_rays, axis=0)
+
+            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            hit = np.array([item[0] for item in results])
+            dist = np.array([item[2] for item in results])
+            dist[dist >= 1 - 1e-5] = np.nan
+            dist[dist < 0.1/30] = np.nan
+            dist[hit == self.robots[0].robot_ids[0]] = np.nan
+            dist[hit == -1] = np.nan
+            dist *= 30
+            state['scan'] = dist
 
         return state, reward, done, {}
 
