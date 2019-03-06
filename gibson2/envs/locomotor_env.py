@@ -6,6 +6,11 @@ from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, qua
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
+from gibson2.learn.completion import CompletionNet, identity_init, Perceptual
+import torch.nn as nn
+import torch
+from gibson2 import assets
+from torchvision import datasets, transforms
 
 # define navigation environments following Anderson, Peter, et al. "On evaluation of embodied navigation agents." arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
@@ -63,6 +68,12 @@ class NavigateEnv(BaseEnv):
         self.current_step = 0
         self.max_step = self.config['max_step']
 
+        if 'rgb_filled' in self.output: #use filler
+            self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
+            self.comp = torch.nn.DataParallel(self.comp).cuda()
+            self.comp.load_state_dict(torch.load(os.path.join(os.path.dirname(assets.__file__), 'networks', 'model.pth')))
+            self.comp.eval()
+            print(self.comp)
 
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
@@ -121,6 +132,12 @@ class NavigateEnv(BaseEnv):
                 -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
                 0.0, 1.0)
 
+        if 'rgb_filled' in self.output:
+            with torch.no_grad():
+                tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
+                rgb_filled = self.comp(tensor[None,:,:,:])[0].permute(1,2,0).cpu().numpy()
+                state['rgb_filled'] = rgb_filled
+
         return state, reward, done, {}
 
     def reset(self):
@@ -144,6 +161,12 @@ class NavigateEnv(BaseEnv):
             state['depth'] = np.clip(
                 -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
                 0.0, 1.0)
+
+        if 'rgb_filled' in self.output:
+            with torch.no_grad():
+                tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
+                rgb_filled = self.comp(tensor[None,:,:,:])[0].permute(1,2,0).cpu().numpy()
+                state['rgb_filled'] = rgb_filled
 
         return state
 

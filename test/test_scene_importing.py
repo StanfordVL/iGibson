@@ -51,5 +51,3 @@ def test_import_building_viewing():
         #turtlebot3.apply_action(np.random.randint(4))
 
     s.disconnect()
-
-test_import_building_viewing()
