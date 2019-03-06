@@ -28,8 +28,8 @@ obstacle_layer:
     topic: scan
     marking: true
     clearing: true
-    min_obstacle_height: 0.25
-    max_obstacle_height: 0.35
+    min_obstacle_height: 0.35
+    max_obstacle_height: 0.55
 
   # for debugging only, let's you see the entire voxel grid
 
