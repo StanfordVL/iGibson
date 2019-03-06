@@ -90,12 +90,17 @@ class NavigateEnv(BaseEnv):
             state['depth'] = -frame[1][:,:,2]
         if 'scan' in self.output:
             pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            n_rays = 128
-            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays))
-            orig_offset = np.vstack([np.cos(angle), np.sin(angle), np.zeros(n_rays)]).T
+            n_rays_per_horizontal = 128  # Number of rays along one horizontal scan/slice
+            n_vertical_beams = 9
+            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
+            elev_bottom_angle = -30. * np.pi / 180.
+            elev_top_angle = 10. * np.pi / 180.
+            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+                                   (elev_top_angle - elev_bottom_angle) / float(n_vertical_beams))
+            orig_offset = np.vstack([np.vstack([np.cos(angle), np.sin(angle), np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle])
             transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
             offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-            pose_camera = pose_camera[None, :3].repeat(n_rays, axis=0)
+            pose_camera = pose_camera[None, :3].repeat(n_rays_per_horizontal * n_vertical_beams, axis=0)
 
             results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
             hit = np.array([item[0] for item in results])
