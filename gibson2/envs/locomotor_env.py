@@ -37,7 +37,6 @@ class NavigateEnv(BaseEnv):
         self.discount_factor = self.config.get('discount_factor', 1.0)
         print('electricity_cost', self.electricity_cost)
         print('stall_torque_cost', self.stall_torque_cost)
-        print('-' * 50)
 
         # simulation
         self.mode = mode
