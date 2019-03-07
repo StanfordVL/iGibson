@@ -7,6 +7,11 @@ from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
 import argparse
+from gibson2.learn.completion import CompletionNet, identity_init, Perceptual
+import torch.nn as nn
+import torch
+from gibson2 import assets
+from torchvision import datasets, transforms
 
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.' arXiv preprint arXiv:1807.06757 (2018).
@@ -61,6 +66,11 @@ class NavigateEnv(BaseEnv):
                                               shape=(self.config['resolution'], self.config['resolution'], 1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
+        if 'rgb_filled' in self.output: # use filler
+            self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
+            self.comp = torch.nn.DataParallel(self.comp).cuda()
+            self.comp.load_state_dict(torch.load(os.path.join(os.path.dirname(assets.__file__), 'networks', 'model.pth')))
+            self.comp.eval()
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
@@ -113,6 +123,11 @@ class NavigateEnv(BaseEnv):
         if 'depth' in self.output:
             depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
             state['depth'] = np.clip(depth / 100.0, 0.0, 1.0)
+        if 'rgb_filled' in self.output:
+            with torch.no_grad():
+                tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
+                rgb_filled = self.comp(tensor[None,:,:,:])[0].permute(1,2,0).cpu().numpy()
+                state['rgb_filled'] = rgb_filled
 
         # calculate reward
         if self.config['task'] == 'pointgoal':
@@ -141,6 +156,7 @@ class NavigateEnv(BaseEnv):
 
         # print('action', action)
         # print('reward', reward)
+
         return state, reward, done, {}
 
     def reset(self):
@@ -163,6 +179,11 @@ class NavigateEnv(BaseEnv):
         if 'depth' in self.output:
             depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
             state['depth'] = np.clip(depth / 100.0, 0.0, 1.0)
+        if 'rgb_filled' in self.output:
+            with torch.no_grad():
+                tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
+                rgb_filled = self.comp(tensor[None,:,:,:])[0].permute(1,2,0).cpu().numpy()
+                state['rgb_filled'] = rgb_filled
 
         return state
 
