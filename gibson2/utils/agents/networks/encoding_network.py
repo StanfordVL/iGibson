@@ -41,6 +41,28 @@ class EncodingNetwork(network.Network):
                  kernel_initializer=None,
                  batch_squash=True,
                  name='EncodingNetwork'):
+        """Creates an instance of `EncodingNetwork`.
+
+        Args:
+            input_tensor_spec: A `tensor_spec.TensorSpec` or a tuple of specs
+                representing the input observations.
+            base_network: a dictionary where key is a string (e.g. modality) and value is an instance of a base network,
+                e.g. {'depth': tf.keras.applications.ResNet50(), 'rgb': tf.keras.applications.MobileNetV2}
+            preprocessing_layers_params: a dictionary where key is a string (e.g. modality) and value is a LayerParams
+                e.g. {
+                    'sensor': LayerParams(conv=None, fc=encoder_fc_layers),
+                    'rgb': LayerParams(conv=conv_layer_params, fc=None),
+                    'depth': LayerParams(conv=conv_layer_params, fc=None),
+                }.
+            preprocessing_combiner_type: a string that represents a valid combiner type,
+                which includes 'concat' and 'add'.
+
+            kernel_initializer: Initializer to use for the kernels of EncodingNetwork
+            name: A string representing name of the network.
+
+        Raises:
+            ValueError: If input_tensor_spec is not an instance of network.InputSpec.
+        """
 
         if not kernel_initializer:
             kernel_initializer = tf.compat.v1.variance_scaling_initializer(
@@ -48,30 +70,23 @@ class EncodingNetwork(network.Network):
 
         preprocessing_layers = None
         preprocessing_combiner = None
+
         if preprocessing_layers_params is not None:
-            # preprocessing_layers = {}
-            # for key in preprocessing_layers_params:
-            #     layers = []
-            #     use_base_network = preprocessing_layers_params[key].base_network is not None
-            #     if use_base_network:
-            #         if base_network is None or preprocessing_layers_params[key].base_network not in base_network:
-            #             raise Exception('preprocessing layers require base_network, but none is provided.')
-            #         layers += [base_network[preprocessing_layers_params[key].base_network]]
-            #     layers += mlp_layers(conv_layer_params=preprocessing_layers_params[key].conv,
-            #                          fc_layer_params=preprocessing_layers_params[key].fc,
-            #                          pool=preprocessing_layers_params[key].conv is not None or use_base_network,
-            #                          kernel_initializer=kernel_initializer,
-            #                          dtype=tf.float32)
-            #     preprocessing_layers[key] = tf.keras.Sequential(layers)
-            preprocessing_layers = {
-                key: tf.keras.Sequential(
-                    mlp_layers(conv_layer_params=preprocessing_layers_params[key].conv,
-                               fc_layer_params=preprocessing_layers_params[key].fc,
-                               pool=preprocessing_layers_params[key].conv is not None,
-                               kernel_initializer=kernel_initializer,
-                               dtype=tf.float32,
-                               name=key)) for key in preprocessing_layers_params
-            }
+            preprocessing_layers = {}
+            for key in preprocessing_layers_params:
+                layers = []
+                use_base_network = preprocessing_layers_params[key].base_network is not None
+                if use_base_network:
+                    if base_network is None or preprocessing_layers_params[key].base_network not in base_network:
+                        raise Exception('preprocessing layers require base_network, but none is provided.')
+                    layers += [base_network[preprocessing_layers_params[key].base_network]]
+                layers += mlp_layers(conv_layer_params=preprocessing_layers_params[key].conv,
+                                     fc_layer_params=preprocessing_layers_params[key].fc,
+                                     pool=preprocessing_layers_params[key].conv is not None or use_base_network,
+                                     kernel_initializer=kernel_initializer,
+                                     dtype=tf.float32)
+                preprocessing_layers[key] = tf.keras.Sequential(layers)
+
         preprocessing_layers = nest.flatten_up_to(input_tensor_spec, preprocessing_layers)
         if preprocessing_combiner_type is not None:
             if preprocessing_combiner_type == 'concat':

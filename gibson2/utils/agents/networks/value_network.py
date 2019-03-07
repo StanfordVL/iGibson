@@ -60,7 +60,7 @@ class ValueNetwork(network.Network):
           layer_params: Optional list of fully_connected parameters, where each
             item is the number of units in the layer.
           activation_fn: Activation function, e.g. tf.keras.activations.relu,.
-          kernel_initializer: Initializer to use for the kernels of EncodingNetwork
+          kernel_initializer: Initializer to use for the mlp and output layers
           name: A string representing name of the network.
 
         Raises:.
