@@ -58,7 +58,7 @@ class NavigateEnv(BaseEnv):
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
             self.depth_space = gym.spaces.Box(low=0.0, high=1.0,
-                                              shape=(self.config['resolution'], self.config['resolution'], 3),
+                                              shape=(self.config['resolution'], self.config['resolution'], 1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
 
@@ -111,11 +111,8 @@ class NavigateEnv(BaseEnv):
         if 'rgb' in self.output:
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
         if 'depth' in self.output:
-            # state['depth'] = np.clip(
-            #     -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
-            #     0.0, 1.0)
-            depth_img = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0
-            state['depth'] = np.tile(np.clip(depth_img, 0.0, 1.0), 3)
+            depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+            state['depth'] = np.clip(depth / 100.0, 0.0, 1.0)
 
         # calculate reward
         if self.config['task'] == 'pointgoal':
@@ -164,11 +161,8 @@ class NavigateEnv(BaseEnv):
         if 'rgb' in self.output:
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
         if 'depth' in self.output:
-            # state['depth'] = np.clip(
-            #     -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0,
-            #     0.0, 1.0)
-            depth_img = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3] / 100.0
-            state['depth'] = np.tile(np.clip(depth_img, 0.0, 1.0), 3)
+            depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+            state['depth'] = np.clip(depth / 100.0, 0.0, 1.0)
 
         return state
 
