@@ -31,6 +31,8 @@ class BaseEnv(gym.Env):
             robot = JR2(self.config)
         elif self.config['robot'] == 'JR2_Kinova':
             robot = JR2_Kinova(self.config)
+        else:
+            raise Exception('unknown robot type: {}'.format(self.config['robot']))
 
         self.scene = scene
         self.robots = [robot]

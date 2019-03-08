@@ -67,10 +67,13 @@ def env_load_fn(config_file='../test/test.yaml', mode='headless', physics_timest
         auto_reset=True,
     )
 
+
 class LayerParams(object):
-    def __init__(self, conv=None, fc=None):
+    def __init__(self, base_network=None, conv=None, fc=None):
+        self.base_network = base_network
         self.conv = conv
         self.fc = fc
+
 
 def mlp_layers(conv_layer_params=None,
                fc_layer_params=None,
