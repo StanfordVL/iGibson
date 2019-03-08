@@ -73,7 +73,7 @@ class ActorDistributionNetwork(network.DistributionNetwork):
           encoder: An instance of encoding_network.EncodingNetwork for feature extraction
           fc_layer_params: Optional list of fully_connected parameters, where each
             item is the number of units in the layer.
-          kernel_initializer: Initializer to use for the kernels of EncodingNetwork.
+          kernel_initializer: Initializer to use for the mlp and output layers
           activation_fn: Activation function, e.g. tf.nn.relu, slim.leaky_relu, ...
           discrete_projection_net: Callable that generates a discrete projection
             network to be called with some hidden state and the outer_rank of the
