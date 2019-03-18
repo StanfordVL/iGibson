@@ -135,16 +135,17 @@ void main() {
 
     gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1);
 
-
     vec4 tmp_Position = V * pose_trans * pose_rot * vec4(position, 1);
-
-    tmp_Position.z = -tmp_Position.z;
-
     vec4 projection = camera_model(tmp_Position.xyz);
 
-
-    gl_Position.xy =  (projection.xy - vec2(1.2109375 * FISHEYE_SIZE, 1.2109375 * FISHEYE_SIZE)) /(1.2109375 * FISHEYE_SIZE)  ;
-    gl_Position.z = - 1 / (length(tmp_Position.xyz) * 10.0);
+    float zfar = 100;
+    float znear = 0.01;
+    float l = length(tmp_Position.xyz);
+    gl_Position.xyz = tmp_Position.xyz/l;
+    gl_Position.z = gl_Position.z + 1;
+    gl_Position.x = gl_Position.x / gl_Position.z;
+    gl_Position.y = gl_Position.y / gl_Position.z;
+    gl_Position.z = (l-znear) / (zfar - znear);
     gl_Position.w = 1;
 
     float angle;
