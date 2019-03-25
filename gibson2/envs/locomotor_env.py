@@ -139,8 +139,13 @@ class NavigateEnv(BaseEnv):
         # print('current_step', (self.current_episode, self.current_step))
 
         self.robots[0].apply_action(action)
+
+        collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
+            collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
+
+        collision_links = np.unique(collision_links)
 
         self.robots[0].robot_specific_reset()
         # calculate state
@@ -149,6 +154,7 @@ class NavigateEnv(BaseEnv):
         sensor_state = self.get_additional_states()
 
         state = OrderedDict()
+
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
         if 'rgb' in self.output:
@@ -156,11 +162,18 @@ class NavigateEnv(BaseEnv):
         if 'depth' in self.output:
             depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
             state['depth'] = np.clip(depth / 5.0, 0.0, 1.0)
+
+        if 'normal' in self.output:
+            state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
+        if 'seg' in self.output:
+            state['seg'] = self.simulator.renderer.render_robot_cameras(modes='seg')
         if 'rgb_filled' in self.output:
             with torch.no_grad():
                 tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
                 rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
                 state['rgb_filled'] = rgb_filled
+        if 'bump' in self.output:
+            state['bump'] = -1 in collision_links # check collision for baselink, it might vary for different robots
 
         # calculate reward
         if self.config['task'] == 'pointgoal':
@@ -255,15 +268,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--robot', '-r', choices=['turtlebot', 'jr'], required=True,
                         help='which robot [turtlebot|jr]')
-    parser.add_argument('--config', '-c', choices=['turtlebot', 'jr'],
+    parser.add_argument('--config', '-c',
                         help='which config file to use [default: use yaml files in examples/configs]')
     parser.add_argument('--mode', '-m', choices=['headless', 'gui'], default='headless',
                         help='which mode for simulation (default: headless)')
     args = parser.parse_args()
 
     if args.robot == 'turtlebot':
-        config_filename = '../examples/configs/turtlebot_p2p_nav.yaml' if args.config is None else args.config
-        config_filename = os.path.join(os.path.dirname(gibson2.__file__), config_filename)
+        config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../examples/configs/turtlebot_p2p_nav.yaml')\
+            if args.config is None else args.config
         nav_env = NavigateEnv(config_file=config_filename, mode=args.mode,
                               action_timestep=1.0/10.0, physics_timestep=1/40.0)
         for episode in range(100000000000):
