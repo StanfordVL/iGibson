@@ -112,7 +112,7 @@ class NavigateEnv(BaseEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += [item[3] for item in p.getContactPoints(bodyA=nav_env.robots[0].robot_ids[0])]
+            collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
 
         collision_links = np.unique(collision_links)
 
@@ -128,6 +128,11 @@ class NavigateEnv(BaseEnv):
         if 'depth' in self.output:
             depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
             state['depth'] = np.clip(depth / 100.0, 0.0, 1.0)
+
+        if 'normal' in self.output:
+            state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
+        if 'seg' in self.output:
+            state['seg'] = self.simulator.renderer.render_robot_cameras(modes='seg')
         if 'rgb_filled' in self.output:
             with torch.no_grad():
                 tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
