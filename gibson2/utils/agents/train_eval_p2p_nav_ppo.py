@@ -56,8 +56,6 @@ from gibson2.utils.agents.policies import py_tf_policy
 from gibson2.utils.agents.replay_buffers import tf_uniform_replay_buffer
 from tf_agents.utils import common as common_utils
 
-from gibson2.utils.agents.networks import resnet
-
 nest = tf.contrib.framework.nest
 
 flags.DEFINE_string('root_dir', os.getenv('TEST_UNDECLARED_OUTPUTS_DIR'),
@@ -123,7 +121,7 @@ def train_eval(
         learning_rate=1e-4,
         # Params for evalActorDistributionNetwork
         num_eval_episodes=30,
-        eval_interval=50,
+        eval_interval=500,
         # Params for summaries and logging
         train_checkpoint_interval=100,
         policy_checkpoint_interval=50,
@@ -168,8 +166,8 @@ def train_eval(
 
         gpu = [int(gpu_id) for gpu_id in gpu.split(',')]
         gpu_ids = np.linspace(0, len(gpu), num=num_parallel_environments + 1, dtype=np.int, endpoint=False)
-        # eval_py_env = parallel_py_environment.ParallelPyEnvironment(
-        #     [lambda gpu_id=gpu[gpu_ids[0]]: env_load_fn('headless', gpu_id)])
+        eval_py_env = parallel_py_environment.ParallelPyEnvironment(
+            [lambda gpu_id=gpu[gpu_ids[0]]: env_load_fn('headless', gpu_id)])
         tf_py_env = [lambda gpu_id=gpu[gpu_ids[1]]: env_load_fn(env_mode, gpu_id)]
         tf_py_env += [lambda gpu_id=gpu[gpu_ids[env_id]]: env_load_fn('headless', gpu_id)
                       for env_id in range(2, num_parallel_environments + 1)]
@@ -185,24 +183,6 @@ def train_eval(
             'rgb': LayerParams(base_network=None, conv=conv_layer_params, fc=encoder_fc_layers, flatten=True),
             'depth': LayerParams(base_network=None, conv=conv_layer_params, fc=encoder_fc_layers, flatten=True),
         }
-
-        # base_network = {
-        #     'rgb': resnet.ResNet18(observation_spec['rgb'].shape.as_list()),
-        #     'depth': resnet.ResNet18(observation_spec['depth'].shape.as_list())
-        # }
-        # print(base_network['rgb'])
-
-        # base_network = {
-        #     'rgb': tf.keras.applications.MobileNetV2(include_top=False,
-        #                                              weights=None,
-        #                                              input_shape=observation_spec['rgb'].shape.as_list(),
-        #                                              pooling=None),
-        #     'depth': tf.keras.applications.MobileNetV2(include_top=False,
-        #                                                weights=None,
-        #                                                input_shape=observation_spec['depth'].shape.as_list(),
-        #                                                pooling=None)
-        # }
-
         preprocessing_combiner_type = 'concat'
 
         actor_encoder = encoding_network.EncodingNetwork(
@@ -299,10 +279,8 @@ def train_eval(
         # trajectories, _ = iterator.get_next()
         trajectories = replay_buffer.gather_all()
 
-        print('train_op start')
         train_op, _ = tf_agent.train(
             experience=trajectories, train_step_counter=global_step)
-        print('train_op done')
 
         with tf.control_dependencies([train_op]):
             clear_replay_op = replay_buffer.clear()
@@ -360,22 +338,21 @@ def train_eval(
 
             while sess.run(environment_steps_count) < num_environment_steps:
                 global_step_val = sess.run(global_step)
-                # if global_step_val % eval_interval == 0:
-                #     metric_utils.compute_summaries(
-                #         eval_metrics,
-                #         eval_py_env,
-                #         eval_py_policy,
-                #         num_episodes=num_eval_episodes,
-                #         global_step=global_step_val,
-                #         callback=eval_metrics_callback,
-                #     )
-                #     sess.run(eval_summary_writer_flush_op)
+                if global_step_val % eval_interval == 0:
+                    metric_utils.compute_summaries(
+                        eval_metrics,
+                        eval_py_env,
+                        eval_py_policy,
+                        num_episodes=num_eval_episodes,
+                        global_step=global_step_val,
+                        callback=eval_metrics_callback,
+                    )
+                    sess.run(eval_summary_writer_flush_op)
 
                 start_time = time.time()
                 sess.run(collect_op)
                 collect_time += time.time() - start_time
                 print('collect:', time.time() - start_time)
-                assert False
 
                 valid_range = sess.run(valid_range_op)
                 print('valid_range', valid_range)
