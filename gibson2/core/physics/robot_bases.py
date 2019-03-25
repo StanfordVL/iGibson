@@ -114,45 +114,6 @@ class BaseRobot:
     def calc_state(self):
         raise NotImplementedError
 
-    # def reset(self):
-    #     if self.robot_ids is None:
-    #         self._load_model()
-    #
-    #     self.robot_body.reset_orientation(quatToXYZW(euler2quat(*self.config["initial_orn"]), 'wxyz'))
-    #     self.robot_body.reset_position(self.config["initial_pos"])
-    #     self.reset_random_pos()
-    #     self.robot_specific_reset()
-    #
-    #     state = self.calc_state()
-    #     return state
-    #
-    # def reset_random_pos(self):
-    #     '''Add randomness to resetted initial position
-    #     '''
-    #     if not self.config["random"]["random_initial_pose"]:
-    #         return
-    #
-    #     pos = self.robot_body.get_position()
-    #     orn = self.robot_body.get_orientation()
-    #
-    #     x_range = self.config["random"]["random_init_x_range"]
-    #     y_range = self.config["random"]["random_init_y_range"]
-    #     z_range = self.config["random"]["random_init_z_range"]
-    #     r_range = self.config["random"]["random_init_rot_range"]
-    #
-    #     new_pos = [pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
-    #                pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
-    #                pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])]
-    #     new_orn = quaternions.qmult(
-    #         quaternions.axangle2quat([1, 0, 0], self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
-    #
-    #     self.robot_body.reset_orientation(new_orn)
-    #     self.robot_body.reset_position(new_pos)
-    #
-    # def reset_new_pose(self, pos, orn):
-    #     self.robot_body.reset_orientation(orn)
-    #     self.robot_body.reset_position(pos)
-
     def calc_potential(self):
         return 0
 

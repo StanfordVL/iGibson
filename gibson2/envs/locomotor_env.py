@@ -29,7 +29,7 @@ class NavigateEnv(BaseEnv):
         self.target_pos_high = np.array(self.config['target_pos_high'])
         self.target_orn_low = np.array(self.config['target_orn_low'])
         self.target_orn_high = np.array(self.config['target_orn_high'])
-        self.valid_pos = self.config.get('valid_pos', None)
+        self.valid_pos = self.config.get('valid_pos')
         if self.valid_pos is not None:
             self.valid_pos = np.array(self.valid_pos)
         self.additional_states_dim = self.config['additional_states_dim']
@@ -99,23 +99,11 @@ class NavigateEnv(BaseEnv):
             else:
                 self.target_pos_vis_obj.load()
 
-        # self.idx = 0
-
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
         # rotate relative position back to body point of view
         relative_position_odom = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
         return relative_position_odom
-
-        # relative_position = self.target_pos - self.robots[0].get_position()
-        # # rotate relative position back to body point of view
-        # relative_position_odom = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
-        # # the angle between the direction the agent is facing and the direction to the target position
-        # delta_yaw = np.arctan2(relative_position_odom[1], relative_position_odom[0])
-        # additional_states = np.concatenate((relative_position,
-        #                                     relative_position_odom,
-        #                                     [np.sin(delta_yaw), np.cos(delta_yaw)]))
-        # return additional_states
 
         # relative_position = self.target_pos - self.robots[0].get_position()
         # # rotate relative position back to body point of view
@@ -135,9 +123,6 @@ class NavigateEnv(BaseEnv):
         # return additional_states
 
     def step(self, action):
-        self.robots[0].robot_specific_reset()
-        # print('current_step', (self.current_episode, self.current_step))
-
         self.robots[0].apply_action(action)
 
         collision_links = []
@@ -147,7 +132,6 @@ class NavigateEnv(BaseEnv):
 
         collision_links = np.unique(collision_links)
 
-        self.robots[0].robot_specific_reset()
         # calculate state
         # sensor_state = self.robots[0].calc_state()
         # sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
@@ -162,7 +146,6 @@ class NavigateEnv(BaseEnv):
         if 'depth' in self.output:
             depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
             state['depth'] = np.clip(depth / 5.0, 0.0, 1.0)
-
         if 'normal' in self.output:
             state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
         if 'seg' in self.output:
@@ -173,7 +156,7 @@ class NavigateEnv(BaseEnv):
                 rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
                 state['rgb_filled'] = rgb_filled
         if 'bump' in self.output:
-            state['bump'] = -1 in collision_links # check collision for baselink, it might vary for different robots
+            state['bump'] = -1 in collision_links  # check collision for baselink, it might vary for different robots
 
         # calculate reward
         if self.config['task'] == 'pointgoal':
@@ -208,21 +191,14 @@ class NavigateEnv(BaseEnv):
         return state, reward, done, {}
 
     def reset(self):
-        # print('current_episode', self.current_episode)
-        self.current_episode += 1
         self.robots[0].robot_specific_reset()
 
         if self.valid_pos is None:
             self.initial_pos = np.random.uniform(self.initial_pos_low, self.initial_pos_high)
         else:
             self.initial_pos = self.valid_pos[np.random.randint(len(self.valid_pos))]
-            # self.initial_pos = self.valid_pos[self.idx]
-            # print(self.initial_pos)
-            # self.idx += 1
 
-        self.initial_orn = np.random.uniform(self.initial_orn_low, self.initial_orn_high)
-        self.target_orn = np.random.uniform(self.target_orn_low, self.target_orn_high)
-        # the distance of self.target_pos and self.initial_pos needs to be greater than 1 meter
+        # the distance between self.target_pos and self.initial_pos needs to be >= 1 meter
         for _ in range(100):
             if self.valid_pos is None:
                 self.target_pos = np.random.uniform(self.target_pos_low, self.target_pos_high)
@@ -231,7 +207,10 @@ class NavigateEnv(BaseEnv):
             if l2_distance(self.initial_pos, self.target_pos) >= 1.0:
                 break
         if l2_distance(self.initial_pos, self.target_pos) < 1.0:
-            raise Exception('env is too small.')
+            raise Exception('valid positions are too cluttered (< 1m away).')
+
+        self.initial_orn = np.random.uniform(self.initial_orn_low, self.initial_orn_high)
+        self.target_orn = np.random.uniform(self.target_orn_low, self.target_orn_high)
 
         self.robots[0].set_position(pos=self.initial_pos)
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
@@ -256,13 +235,22 @@ class NavigateEnv(BaseEnv):
         if 'depth' in self.output:
             depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
             state['depth'] = np.clip(depth / 5.0, 0.0, 1.0)
+        if 'normal' in self.output:
+            state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
+        if 'seg' in self.output:
+            state['seg'] = self.simulator.renderer.render_robot_cameras(modes='seg')
         if 'rgb_filled' in self.output:
             with torch.no_grad():
                 tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
                 rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
                 state['rgb_filled'] = rgb_filled
+        if 'bump' in self.output:
+            collision_links = [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
+            collision_links = np.unique(collision_links)
+            state['bump'] = -1 in collision_links  # check collision for baselink, it might vary for different robots
 
         return state
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -279,13 +267,18 @@ if __name__ == '__main__':
             if args.config is None else args.config
         nav_env = NavigateEnv(config_file=config_filename, mode=args.mode,
                               action_timestep=1.0/10.0, physics_timestep=1/40.0)
-        for episode in range(100000000000):
+        if nav_env.config.get('debug') and nav_env.mode == 'gui' and not nav_env.config.get('is_discrete'):
+            debug_params = [p.addUserDebugParameter(str(i), 0.0, 1.0, 0.5)
+                            for i in range(nav_env.action_space.shape[0])]
+
+        for episode in range(10):
             nav_env.reset()
-            for i in range(200):  # 300 steps, 30s world time
-                action = nav_env.action_space.sample()
-                # action = 0
+            for i in range(300):  # 300 steps, 30s world time
+                if nav_env.config.get('debug') and nav_env.mode == 'gui' and not nav_env.config.get('is_discrete'):
+                    action = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
+                else:
+                    action = nav_env.action_space.sample()
                 state, reward, done, _ = nav_env.step(action)
-                # print(state)
                 if done:
                     print('Episode finished after {} timesteps'.format(i + 1))
                     break

@@ -1,6 +1,6 @@
 # scene
-#scene: stadium
-scene: building
+scene: stadium
+#scene: building
 model_id: Ohoopee
 
 # robot
@@ -49,16 +49,6 @@ valid_pos: [[-9.0, 3.0, 0.0],
             [1.0, 2.5, 0.0],
             [2.0, 2.5, 0.0]]
 
-#initial_pos_low: [0.0, 0.0, 0.0]
-#initial_pos_high: [0.0, 0.0, 0.0]
-#initial_orn_low: [0.0, 0.0, 0.0]
-#initial_orn_high: [0.0, 0.0, 0.0]
-#
-#target_pos_low: [3.0, 3.0, 0.0]
-#target_pos_high: [3.0, 3.0, 0.0]
-#target_orn_low: [0.0, 0.0, 0.0]
-#target_orn_high: [0.0, 0.0, 0.0]
-
 initial_pos_low: [-5.0, -5.0, 0.0]
 initial_pos_high: [5.0, 5.0, 0.0]
 initial_orn_low: [0.0, 0.0, 0.0]
@@ -68,7 +58,6 @@ target_pos_low: [-5.0, -5.0, 0.0]
 target_pos_high: [5.0, 5.0, 0.0]
 target_orn_low: [0.0, 0.0, 0.0]
 target_orn_high: [0.0, 0.0, 6.283185307179586]
-
 
 is_discrete: true
 additional_states_dim: 3
@@ -115,3 +104,6 @@ fast_lq_render: true
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: true
+
+# debug
+debug: false
