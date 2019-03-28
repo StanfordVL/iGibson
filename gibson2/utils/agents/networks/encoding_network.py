@@ -82,7 +82,8 @@ class EncodingNetwork(network.Network):
                     layers += [base_network[preprocessing_layers_params[key].base_network]]
                 layers += mlp_layers(conv_layer_params=preprocessing_layers_params[key].conv,
                                      fc_layer_params=preprocessing_layers_params[key].fc,
-                                     pool=preprocessing_layers_params[key].conv is not None or use_base_network,
+                                     pooling=preprocessing_layers_params[key].pooling,
+                                     flatten=preprocessing_layers_params[key].flatten,
                                      kernel_initializer=kernel_initializer,
                                      dtype=tf.float32)
                 preprocessing_layers[key] = tf.keras.Sequential(layers)
