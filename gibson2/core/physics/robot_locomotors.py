@@ -22,7 +22,6 @@ class WalkerBase(BaseRobot):
                  robot_name,  # robot name
                  action_dim,  # action dimension
                  power,
-                 initial_pos,
                  scale,
                  sensor_dim=None,
                  resolution=512,
@@ -46,9 +45,6 @@ class WalkerBase(BaseRobot):
 
         self.power = power
         self.camera_x = 0
-        self.initial_pos = initial_pos
-        self.body_xyz = [0, 0, 0]
-        self.body_rpy = [0, 0, 0]
         self.action_dim = action_dim
         self.scale = scale
         self.sensor_dim = sensor_dim
@@ -97,7 +93,7 @@ class WalkerBase(BaseRobot):
         self.robot_body.set_orientation(new_orn)
 
     def get_rpy(self):
-        return self.robot_body.bp_pose.rpy()
+        return self.robot_body.get_rpy()
 
     def apply_action(self, a):
         if self.control == 'torque':
@@ -127,11 +123,8 @@ class WalkerBase(BaseRobot):
         self.joint_torque = j[2::3]
         self.joints_at_limit = np.count_nonzero(np.abs(j[0::3]) > 0.99)
 
-        body_pose = self.robot_body.pose()
-        z = body_pose.xyz()[2]
-
-        self.body_rpy = body_pose.rpy()
-        r, p, yaw = self.body_rpy
+        z = self.robot_body.get_position()[2]
+        r, p, yaw = self.robot_body.get_rpy()
 
         # rotate speed back to body point of view
         vx, vy, vz = rotate_vector_3d(self.robot_body.velocity(), r, p, yaw)
@@ -151,7 +144,6 @@ class Ant(WalkerBase):
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "ant.xml", "torso", action_dim=8,
                             sensor_dim=28, power=2.5, scale=scale,
-                            initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             )
         self.r_f = 0.1
@@ -221,7 +213,6 @@ class Humanoid(WalkerBase):
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "humanoid.xml", "torso", action_dim=17,
                             sensor_dim=40, power=0.41, scale=scale,
-                            initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             )
         self.glass_id = None
@@ -297,7 +288,6 @@ class Husky(WalkerBase):
 
         WalkerBase.__init__(self, "husky.urdf", "base_link", action_dim=4,
                             sensor_dim=17, power=2.5, scale=scale,
-                            initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             )
         self.is_discrete = config["is_discrete"]
@@ -335,8 +325,8 @@ class Husky(WalkerBase):
         WalkerBase.robot_specific_reset(self)
 
     def alive_bonus(self, z, pitch):
-        top_xyz = self.parts["top_bumper_link"].pose().xyz()
-        bottom_xyz = self.parts["base_link"].pose().xyz()
+        top_xyz = self.parts["top_bumper_link"].get_position()
+        bottom_xyz = self.parts["base_link"].get_position()
         alive = top_xyz[2] > bottom_xyz[2]
         return +1 if alive else -100  # 0.25 is central sphere rad, die if it scrapes the ground
 
@@ -366,7 +356,6 @@ class Quadrotor(WalkerBase):
         self.is_discrete = config["is_discrete"]
         WalkerBase.__init__(self, "quadrotor.urdf", "base_link", action_dim=6,
                             sensor_dim=6, power=2.5, scale=scale,
-                            initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             )
         if self.is_discrete:
@@ -416,19 +405,23 @@ class Turtlebot(WalkerBase):
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "turtlebot/turtlebot.urdf", "base_link", action_dim=2,
                             sensor_dim=16, power=2.5, scale=scale,
-                            initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             control='velocity',
                             )
         self.is_discrete = config["is_discrete"]
         self.vel = config.get('velocity', 1.0)
+        print('velocity', self.vel)
         if self.is_discrete:
-            self.action_space = gym.spaces.Discrete(5)
-            self.action_list = [[self.vel * 0.5, self.vel * 0.5],
-                                [-self.vel * 0.5, -self.vel * 0.5],
+            # self.action_space = gym.spaces.Discrete(5)
+            # self.action_list = [[self.vel * 0.5, self.vel * 0.5],
+            #                     [-self.vel * 0.5, -self.vel * 0.5],
+            #                     [self.vel * 0.5, -self.vel * 0.5],
+            #                     [-self.vel * 0.5, self.vel * 0.5],
+            #                     [0, 0]]
+            self.action_space = gym.spaces.Discrete(3)
+            self.action_list = [[self.vel, self.vel],
                                 [self.vel * 0.5, -self.vel * 0.5],
-                                [-self.vel * 0.5, self.vel * 0.5],
-                                [0, 0]]
+                                [-self.vel * 0.5, self.vel * 0.5]]
             self.setup_keys_to_action()
         else:
             self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=0.0, high=1.0)
@@ -439,17 +432,22 @@ class Turtlebot(WalkerBase):
         if self.is_discrete:
             real_action = self.action_list[action]
         else:
+            action = np.clip(action, self.action_space.low, self.action_space.high)
             real_action = (self.action_high - self.action_low) * action + self.action_low
-
         WalkerBase.apply_action(self, real_action)
 
     def setup_keys_to_action(self):
+        # self.keys_to_action = {
+        #     (ord('w'),): 0,  ## forward
+        #     (ord('s'),): 1,  ## backward
+        #     (ord('d'),): 2,  ## turn right
+        #     (ord('a'),): 3,  ## turn left
+        #     (): 4
+        # }
         self.keys_to_action = {
             (ord('w'),): 0,  ## forward
-            (ord('s'),): 1,  ## backward
-            (ord('d'),): 2,  ## turn right
-            (ord('a'),): 3,  ## turn left
-            (): 4
+            (ord('d'),): 1,  ## turn right
+            (ord('a'),): 2,  ## turn left
         }
 
     def calc_state(self):
@@ -468,7 +466,6 @@ class JR2(WalkerBase):
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "jr2_urdf/jr2.urdf", "base_link", action_dim=4,
                             sensor_dim=17, power=2.5, scale=scale,
-                            initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             control=['velocity', 'velocity', 'position', 'position'],
                             )
@@ -491,6 +488,7 @@ class JR2(WalkerBase):
         if self.is_discrete:
             real_action = self.action_list[action]
         else:
+            action = np.clip(action, self.action_space.low, self.action_space.high)
             real_action = action
         WalkerBase.apply_action(self, real_action)
 
@@ -533,7 +531,6 @@ class JR2_Kinova(WalkerBase):
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
         WalkerBase.__init__(self, "jr2_urdf/jr2_kinova.urdf", "base_link", action_dim=12,
                             sensor_dim=46, power=2.5, scale=scale,
-                            initial_pos=config['initial_pos'],
                             resolution=config["resolution"],
                             control=['velocity'] * 2 + ['position'] * 10,
                             )
@@ -562,6 +559,7 @@ class JR2_Kinova(WalkerBase):
         # self.action_space = gym.spaces.Box(shape=(8,), low=0.0, high=1.0)
 
     def apply_action(self, action):
+        action = np.clip(action, self.action_space.low, self.action_space.high)
         normalized_action = (self.action_high - self.action_low) * action + self.action_low
         real_action = np.zeros(self.action_dim)
         real_action[:2] = normalized_action[:2]
