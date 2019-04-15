@@ -42,9 +42,11 @@ class NavigateEnv(BaseEnv):
         self.terminal_reward = self.config.get('terminal_reward', 0.0)
         self.electricity_cost = self.config.get('electricity_cost', 0.0)
         self.stall_torque_cost = self.config.get('stall_torque_cost', 0.0)
+        self.collision_cost = self.config.get('collision_cost', 0.0)
         self.discount_factor = self.config.get('discount_factor', 1.0)
         print('electricity_cost', self.electricity_cost)
         print('stall_torque_cost', self.stall_torque_cost)
+        print('collision_cost', self.collision_cost)
 
         # simulation
         self.mode = mode
@@ -131,6 +133,7 @@ class NavigateEnv(BaseEnv):
             collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
 
         collision_links = np.unique(collision_links)
+        collision_cost = -10.0 if -1 in collision_links else 0.0
 
         # calculate state
         # sensor_state = self.robots[0].calc_state()
@@ -174,8 +177,9 @@ class NavigateEnv(BaseEnv):
         # stall_torque_cost *= self.stall_torque_cost  # |stall_torque_cost| ~= 0.2 per step
         electricity_cost = 0.0
         stall_torque_cost = 0.0
+        collision_cost *= self.collision_cost
 
-        reward = progress + electricity_cost + stall_torque_cost
+        reward = progress + collision_cost + electricity_cost + stall_torque_cost
 
         # check termination condition
         self.current_step += 1
@@ -273,11 +277,12 @@ if __name__ == '__main__':
 
         for episode in range(10):
             nav_env.reset()
-            for i in range(300):  # 300 steps, 30s world time
+            for i in range(500):  # 500 steps, 50s world time
                 if nav_env.config.get('debug') and nav_env.mode == 'gui' and not nav_env.config.get('is_discrete'):
                     action = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
                 else:
                     action = nav_env.action_space.sample()
+                action = 0
                 state, reward, done, _ = nav_env.step(action)
                 if done:
                     print('Episode finished after {} timesteps'.format(i + 1))

@@ -25,8 +25,7 @@ from tf_agents.utils import nest_utils
 from gibson2.utils.tf_utils import mlp_layers
 
 import gin.tf
-
-nest = tf.contrib.framework.nest
+from tensorflow.python.util import nest  # pylint:disable=g-direct-tensorflow-import  # TF internal
 
 
 @gin.configurable
@@ -96,6 +95,9 @@ class EncodingNetwork(network.Network):
                 preprocessing_combiner = tf.keras.layers.Add()
             else:
                 raise Exception('unknown preprocessing combiner type: {}'.format(preprocessing_combiner_type))
+        else:
+            # unwrap preprocessing_layers
+            preprocessing_combiner = tf.keras.layers.Lambda(lambda x: x[0])
 
         super(EncodingNetwork, self).__init__(
             input_tensor_spec=input_tensor_spec,
