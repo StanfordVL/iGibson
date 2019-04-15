@@ -45,6 +45,7 @@ class ValueNetwork(network.Network):
                  input_tensor_spec,
                  encoder=None,
                  fc_layer_params=(75, 40),
+                 dropout_layer_params=None,
                  activation_fn=tf.keras.activations.relu,
                  kernel_initializer=None,
                  name='ValueNetwork'):
@@ -59,6 +60,14 @@ class ValueNetwork(network.Network):
           encoder: An instance of encoding_network.EncodingNetwork for feature extraction
           fc_layer_params: Optional list of fully_connected parameters, where each
             item is the number of units in the layer.
+          dropout_layer_params: Optional list of dropout layer parameters, each item
+            is the fraction of input units to drop or a dictionary of parameters
+            according to the keras.Dropout documentation. The additional parameter
+            `permanent', if set to True, allows to apply dropout at inference for
+            approximated Bayesian inference. The dropout layers are interleaved with
+            the fully connected layers; there is a dropout layer after each fully
+            connected layer, except if the entry in the list is None. This list must
+            have the same length of fc_layer_params, or be None.
           activation_fn: Activation function, e.g. tf.keras.activations.relu,.
           kernel_initializer: Initializer to use for the mlp and output layers
           name: A string representing name of the network.
@@ -70,6 +79,7 @@ class ValueNetwork(network.Network):
         """
         fc_layers = mlp_layers(conv_layer_params=None,
                                fc_layer_params=fc_layer_params,
+                               dropout_layer_params=dropout_layer_params,
                                activation_fn=activation_fn,
                                kernel_initializer=kernel_initializer,
                                dtype=tf.float32,
