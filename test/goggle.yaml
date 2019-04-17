@@ -1,41 +1,29 @@
 # scene
-scene: stadium
-#scene: building
+scene: building
 model_id: Ohoopee
 
 # robot
-robot: Turtlebot
-velocity: 1.0
+robot: JR2
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 
 initial_orn: [0.0, 0.0, 0.0]
-initial_pos: [0.0, 0.0, 0.0]
-#initial_pos: [-2.5, -1.0, 0.0]
+#initial_pos: [0.0, 0.0, 0.0]
+initial_pos: [-2.5, -1.0, 0.0]
 
 target_orn: [0.0, 0.0, 0.0]
 target_pos: [-5.0, 3.2, 0.0]
+#target_pos: [3.0, 5.0, 0.0]
 
 is_discrete: false
 additional_states_dim: 8
 
-# reward
+# reward and termination condition
+dist_tol: 0.5
 terminal_reward: 5000
-#electricity_cost: -0.02
-#stall_torque_cost: -0.0001
-electricity_cost: 0.0
-stall_torque_cost: 0.0
 discount_factor: 1.0
-
-# termination condition
-dist_tol: 0.1
 max_step: 500
-
-# sensor
-output: [sensor, rgb, depth]
-resolution: 128
-fov: 1.57
 
 # display
 use_filler: true
@@ -50,6 +38,11 @@ random:
   random_init_y_range: [-0.1, 0.1]
   random_init_z_range: [-0.1, 0.1]
   random_init_rot_range: [-0.1, 0.1]
+
+output: [sensor, rgb, depth, rgb_filled]
+
+resolution: 256
+fov: 1.57
 
 speed:
   timestep: 0.001
