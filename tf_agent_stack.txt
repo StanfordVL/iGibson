@@ -1,2 +1,0 @@
-tf-agents-nightly==0.2.0.dev20190215
-tf-nightly-gpu==1.13.0.dev20190215

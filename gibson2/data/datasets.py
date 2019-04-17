@@ -507,43 +507,6 @@ class PairDataset(data.Dataset):
         return source, depth, target
 
 
-class RenderPairDataset(data.Dataset):
-    def __init__(self, root, train=True, transform=None):
-        self.root = root.rstrip('/')
-        self.train = train
-        self.fns = []
-        self.fofn = os.path.basename(root) + '_fofn' + str(int(train)) + '.pkl'
-        self.transform = transform
-        if not os.path.isfile(self.fofn):
-            for subdir, dirs, files in os.walk(self.root):
-                if self.train:
-                    files = files[:len(files) // 10 * 9]
-                else:
-                    files = files[len(files) // 10 * 9:]
-                print(subdir)
-                for file in files:
-                    if file[-3:] == 'png' and file[:3] == 'img':
-                        self.fns.append((os.path.join(subdir, file), os.path.join(subdir, 'render'+file[3:])))
-            with open(self.fofn, 'wb') as fp:
-                pickle.dump(self.fns, fp)
-        else:
-            with open(self.fofn, 'rb') as fp:
-                self.fns = pickle.load(fp)
-
-    def __len__(self):
-        return len(self.fns)
-
-    def __getitem__(self, index):
-        img_path, render_path = self.fns[index]
-
-        source = Image.open(render_path).convert('RGB')
-        target = Image.open(img_path).convert('RGB')
-
-        source = self.transform(source)
-        target = self.transform(target)
-        return source, target
-
-
 if __name__ == '__main__':
     print('test')
     parser = argparse.ArgumentParser()
@@ -579,9 +542,3 @@ if __name__ == '__main__':
         print(sample)
         if sample is not None:
             print('pair test passed')
-
-    elif opt.dataset == 'render_pair':
-        d = RenderPairDataset(root = opt.dataroot, transform = transforms.Compose([transforms.Resize(512), transforms.ToTensor()]))
-        print(len(d))
-        sample = d[0]
-        print(sample[0].size(), sample[1].size())

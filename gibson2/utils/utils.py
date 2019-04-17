@@ -37,7 +37,7 @@ def rotate_vector_3d(v, r, p, y):
 
 def l2_distance(v1, v2):
     """Returns the L2 distance between vector v1 and v2."""
-    return np.linalg.norm(v1 - v2)
+    return np.sqrt(np.sum((v1 - v2) ** 2))
 
 
 def quatFromXYZW(xyzw, seq='xyzw'):

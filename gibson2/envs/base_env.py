@@ -9,11 +9,9 @@ class BaseEnv(gym.Env):
     '''
     a basic environment, step, observation and reward not implemented
     '''
-
-    def __init__(self, config_file, mode='headless', device_idx = 0):
+    def __init__(self, config_file, mode='headless'):
         self.config = parse_config(config_file)
-        self.simulator = Simulator(mode=mode,
-                                   resolution=self.config['resolution'], device_idx=device_idx, use_fisheye=self.config['fisheye'])
+        self.simulator = Simulator(mode=mode, use_fisheye=self.config['fisheye'])
         if self.config['scene'] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
@@ -30,17 +28,13 @@ class BaseEnv(gym.Env):
             robot = Humanoid(self.config)
         elif self.config['robot'] == 'JR2':
             robot = JR2(self.config)
-        elif self.config['robot'] == 'JR2_Kinova':
-            robot = JR2_Kinova(self.config)
-        else:
-            raise Exception('unknown robot type: {}'.format(self.config['robot']))
 
         self.scene = scene
         self.robots = [robot]
         for robot in self.robots:
             self.simulator.import_robot(robot)
 
-    def clean(self):
+    def __del__(self):
         if not self.simulator is None:
             self.simulator.disconnect()
 
@@ -55,7 +49,6 @@ class BaseEnv(gym.Env):
 
     def set_mode(self, mode):
         self.simulator.mode = mode
-        self.mode = mode
 
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
