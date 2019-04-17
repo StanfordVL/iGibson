@@ -21,6 +21,7 @@ from torchvision import datasets, transforms
 class NavigateEnv(BaseEnv):
     def __init__(self, config_file, mode='headless', action_timestep = 1/10.0, physics_timestep=1/240.0, device_idx=0):
         super(NavigateEnv, self).__init__(config_file, mode, device_idx=device_idx)
+
         self.initial_pos_low = np.array(self.config['initial_pos_low'])
         self.initial_pos_high = np.array(self.config['initial_pos_high'])
         self.initial_orn_low = np.array(self.config['initial_orn_low'])
@@ -32,6 +33,7 @@ class NavigateEnv(BaseEnv):
         self.valid_pos = self.config.get('valid_pos')
         if self.valid_pos is not None:
             self.valid_pos = np.array(self.valid_pos)
+
         self.additional_states_dim = self.config['additional_states_dim']
 
         # termination condition
