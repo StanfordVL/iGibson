@@ -17,23 +17,6 @@ out vec3 Instance_color;
 out vec3 Pos_cam;
 out vec3 Diffuse_color;
 
-#version 450
-uniform mat4 V;
-uniform mat4 P;
-uniform mat4 pose_rot;
-uniform mat4 pose_trans;
-uniform vec3 instance_color;
-
-layout (location=0) in vec3 position;
-layout (location=1) in vec3 normal;
-layout (location=2) in vec2 texCoords;
-out vec2 theCoords;
-out vec3 Normal;
-out vec3 FragPos;
-out vec3 Normal_cam;
-out vec3 Instance_color;
-out vec3 Pos_cam;
-
 float polyval(float[8] p, float x) {
     float sum = 0;
     for (int i = 0; i < 8; i ++) {
