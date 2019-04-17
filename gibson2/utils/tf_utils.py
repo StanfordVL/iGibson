@@ -56,9 +56,17 @@ class TFAverageSuccessRateMetric(tf_py_metric.TFPyMetric):
     super(TFAverageSuccessRateMetric, self).__init__(py_metric=py_metric, name=name, dtype=dtype)
 
 
-def env_load_fn(config_file='../test/test.yaml', mode='headless', physics_timestep=1/40.0, device_idx=0):
+def env_load_fn(config_file='../test/test.yaml',
+                mode='headless',
+                action_timestep=1.0/10.0,
+                physics_timestep=1.0/40.0,
+                device_idx=0):
     config_file = os.path.join(os.path.dirname(gibson2.__file__), config_file)
-    nav_env = NavigateEnv(config_file=config_file, mode=mode, physics_timestep=physics_timestep, device_idx=device_idx)
+    nav_env = NavigateEnv(config_file=config_file,
+                          mode=mode,
+                          action_timestep=action_timestep,
+                          physics_timestep=physics_timestep,
+                          device_idx=device_idx)
     return gym_wrapper.GymWrapper(
         nav_env,
         discount=nav_env.discount_factor,
@@ -69,17 +77,19 @@ def env_load_fn(config_file='../test/test.yaml', mode='headless', physics_timest
 
 
 class LayerParams(object):
-    def __init__(self, base_network=None, conv=None, fc=None):
+    def __init__(self, base_network=None, conv=None, fc=None, pooling=None, flatten=False):
         self.base_network = base_network
         self.conv = conv
         self.fc = fc
+        self.pooling = pooling
+        self.flatten = flatten
 
 
 def mlp_layers(conv_layer_params=None,
                fc_layer_params=None,
                activation_fn=tf.keras.activations.relu,
                kernel_initializer=None,
-               pool=False,
+               pooling=None,
                flatten=False,
                dtype=tf.float32,
                name=None):
@@ -95,7 +105,7 @@ def mlp_layers(conv_layer_params=None,
         kernel_initializer: Initializer to use for the kernels of the conv and
           dense layers. If none is provided a default variance_scaling_initializer
           is used.
-        pool: Whether to apply average global pooling after conv layers
+        pooling: Whether to apply global pooling after conv layers, [None, 'max' or 'avg']
         flatten: Whether to apply flatten before fc layers
         dtype: data type for the layers
         name: Name for the mlp layers.
@@ -113,14 +123,18 @@ def mlp_layers(conv_layer_params=None,
                 filters=filters,
                 kernel_size=kernel_size,
                 strides=strides,
+                padding='same',
                 activation=activation_fn,
                 kernel_initializer=kernel_initializer,
                 dtype=dtype,
                 name='/'.join([name, 'conv2d']) if name else None)
             for (filters, kernel_size, strides) in conv_layer_params
         ])
-    if pool:
+    if pooling == 'avg':
         layers.append(tf.keras.layers.GlobalAvgPool2D())
+    elif pooling == 'max':
+        layers.append(tf.keras.layers.GlobalMaxPool2D())
+
     if flatten:
         layers.append(tf.keras.layers.Flatten())
     if fc_layer_params:

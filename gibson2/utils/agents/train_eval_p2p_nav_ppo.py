@@ -86,7 +86,9 @@ flags.DEFINE_string('config_file', '../test/test.yaml',
                     'Config file for the experiment.')
 flags.DEFINE_string('mode', 'headless',
                     'mode for the simulator (gui or headless)')
-flags.DEFINE_float('physics_timestep', 1 / 40.0,
+flags.DEFINE_float('action_timestep', 1.0 / 10.0,
+                   'action timestep for the simulator')
+flags.DEFINE_float('physics_timestep', 1.0 / 40.0,
                    'physics timestep for the simulator')
 flags.DEFINE_string('gpu_c', '0',
                     'gpu id for compute, e.g. Tensorflow.')
@@ -173,24 +175,25 @@ def train_eval(
             parallel_py_environment.ParallelPyEnvironment(tf_py_env))
 
         optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
+        observation_spec = tf_env.observation_spec()
 
         base_network = None
         preprocessing_layers_params = {
             'sensor': LayerParams(base_network=None, conv=None, fc=encoder_fc_layers),
-            'rgb': LayerParams(base_network=None, conv=conv_layer_params, fc=None),
-            'depth': LayerParams(base_network=None, conv=conv_layer_params, fc=None),
+            'rgb': LayerParams(base_network=None, conv=conv_layer_params, fc=encoder_fc_layers, flatten=True),
+            'depth': LayerParams(base_network=None, conv=conv_layer_params, fc=encoder_fc_layers, flatten=True),
         }
         preprocessing_combiner_type = 'concat'
 
         actor_encoder = encoding_network.EncodingNetwork(
-            tf_env.observation_spec(),
+            observation_spec,
             base_network=base_network,
             preprocessing_layers_params=preprocessing_layers_params,
             preprocessing_combiner_type=preprocessing_combiner_type,
             kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
         )
         value_encoder = encoding_network.EncodingNetwork(
-            tf_env.observation_spec(),
+            observation_spec,
             base_network=base_network,
             preprocessing_layers_params=preprocessing_layers_params,
             preprocessing_combiner_type=preprocessing_combiner_type,
@@ -199,24 +202,24 @@ def train_eval(
 
         if use_rnns:
             actor_net = actor_distribution_rnn_network.ActorDistributionRnnNetwork(
-                tf_env.observation_spec(),
+                observation_spec,
                 tf_env.action_spec(),
                 input_fc_layer_params=actor_fc_layers,
                 output_fc_layer_params=None)
             value_net = value_rnn_network.ValueRnnNetwork(
-                tf_env.observation_spec(),
+                observation_spec,
                 input_fc_layer_params=value_fc_layers,
                 output_fc_layer_params=None)
         else:
             actor_net = actor_distribution_network.ActorDistributionNetwork(
-                tf_env.observation_spec(),
+                observation_spec,
                 tf_env.action_spec(),
                 encoder=actor_encoder,
                 fc_layer_params=actor_fc_layers,
                 kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
             )
             value_net = value_network.ValueNetwork(
-                tf_env.observation_spec(),
+                observation_spec,
                 encoder=value_encoder,
                 fc_layer_params=value_fc_layers,
                 kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
@@ -240,11 +243,11 @@ def train_eval(
 
         valid_range_op = replay_buffer.valid_range_ids()
 
-        # dataset = replay_buffer.as_dataset(
-        #     num_parallel_calls=4,
-        #     sample_batch_size=batch_size,
-        #     num_steps=2).prefetch(4)
-        # iterator = tf.compat.v1.data.make_initializable_iterator(dataset)
+        dataset = replay_buffer.as_dataset(
+            num_parallel_calls=3,
+            sample_batch_size=batch_size,
+            num_steps=2).prefetch(3)
+        iterator = tf.compat.v1.data.make_initializable_iterator(dataset)
 
         eval_py_policy = py_tf_policy.PyTFPolicy(tf_agent.policy())
 
@@ -316,7 +319,7 @@ def train_eval(
             # Initialize graph.
             train_checkpointer.initialize_or_restore(sess)
             rb_checkpointer.initialize_or_restore(sess)
-            # sess.run(iterator.initializer)
+            sess.run(iterator.initializer)
 
             # TODO(sguada) Remove once Periodically can be saved.
             common_utils.initialize_uninitialized_variables(sess)
@@ -404,10 +407,17 @@ def main(_):
         FLAGS.root_dir,
         gpu=FLAGS.gpu_g,
         tf_master=FLAGS.master,
-        env_load_fn=lambda mode, device_idx: env_load_fn(FLAGS.config_file, mode, FLAGS.physics_timestep, device_idx),
+        env_load_fn=lambda mode, device_idx: env_load_fn(FLAGS.config_file,
+                                                         mode,
+                                                         FLAGS.action_timestep,
+                                                         FLAGS.physics_timestep,
+                                                         device_idx),
         env_mode=FLAGS.mode,
         batch_size=FLAGS.batch_size,
-        conv_layer_params=((32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1)),
+        conv_layer_params=[(32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1)],
+        encoder_fc_layers=[128, 64],
+        actor_fc_layers=[128, 64],
+        value_fc_layers=[128, 64],
         replay_buffer_capacity=FLAGS.replay_buffer_capacity,
         num_environment_steps=FLAGS.num_environment_steps,
         num_parallel_environments=FLAGS.num_parallel_environments,
