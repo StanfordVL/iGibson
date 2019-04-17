@@ -245,7 +245,6 @@ class MeshRenderer:
         available_devices = get_available_devices()
         assert (device_idx < len(available_devices))
         device = available_devices[device_idx]
-        print('using device {} bus id {}'.format(device_idx, device))
 
         self.r = CppMeshRenderer.CppMeshRenderer(width, height, device)
         self.r.init()
@@ -508,6 +507,7 @@ class MeshRenderer:
             if not instance in hidden:
                 instance.render()
         GL.glDisable(GL.GL_DEPTH_TEST)
+
         return self.readbuffer(modes)
 
     def set_light_pos(self, light):
