@@ -114,61 +114,8 @@ class BaseRobot:
     def calc_state(self):
         raise NotImplementedError
 
-    def reset(self):
-        if self.robot_ids is None:
-            self._load_model()
-
-        self.robot_body.reset_orientation(quatToXYZW(euler2quat(*self.config["initial_orn"]), 'wxyz'))
-        self.robot_body.reset_position(self.config["initial_pos"])
-        self.reset_random_pos()
-        self.robot_specific_reset()
-
-        state = self.calc_state()
-        return state
-
-    def reset_random_pos(self):
-        '''Add randomness to resetted initial position
-        '''
-        if not self.config["random"]["random_initial_pose"]:
-            return
-
-        pos = self.robot_body.get_position()
-        orn = self.robot_body.get_orientation()
-
-        x_range = self.config["random"]["random_init_x_range"]
-        y_range = self.config["random"]["random_init_y_range"]
-        z_range = self.config["random"]["random_init_z_range"]
-        r_range = self.config["random"]["random_init_rot_range"]
-
-        new_pos = [pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
-                   pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
-                   pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])]
-        new_orn = quaternions.qmult(
-            quaternions.axangle2quat([1, 0, 0], self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
-
-        self.robot_body.reset_orientation(new_orn)
-        self.robot_body.reset_position(new_pos)
-
-    def reset_new_pose(self, pos, orn):
-        self.robot_body.reset_orientation(orn)
-        self.robot_body.reset_position(pos)
-
     def calc_potential(self):
         return 0
-
-
-class Pose_Helper:
-    def __init__(self, body_part):
-        self.body_part = body_part
-
-    def xyz(self):
-        return self.body_part.get_position()
-
-    def rpy(self):
-        return p.getEulerFromQuaternion(self.body_part.get_orientation())
-
-    def orientation(self):
-        return self.body_part.get_orientation()
 
 
 class BodyPart:
@@ -183,7 +130,6 @@ class BodyPart:
             self.scale = 1
         self.initialPosition = self.get_position() / self.scale
         self.initialOrientation = self.get_orientation()
-        self.bp_pose = Pose_Helper(self)
 
     def get_name(self):
         return self.body_name
@@ -218,6 +164,11 @@ class BodyPart:
            Orientation is by default defined in [x,y,z,w]"""
         return self.get_pose()[3:]
 
+    def get_rpy(self):
+        """Get roll, pitch and yaw of body part
+           [roll, pitch, yaw]"""
+        return p.getEulerFromQuaternion(self.get_orientation())
+
     def set_position(self, position):
         """Get position of body part
            Position is defined in real world scale """
@@ -230,9 +181,6 @@ class BodyPart:
 
     def set_pose(self, position, orientation):
         self._set_fields_of_pose_of(position, orientation)
-
-    def pose(self):
-        return self.bp_pose
 
     def current_position(self):  # Synonym method
         return self.get_position()

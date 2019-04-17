@@ -57,7 +57,7 @@ class ValueNetwork(network.Network):
           input_tensor_spec: A `tensor_spec.TensorSpec` or a tuple of specs
             representing the input observations.
           encoder: An instance of encoding_network.EncodingNetwork for feature extraction
-          layer_params: Optional list of fully_connected parameters, where each
+          fc_layer_params: Optional list of fully_connected parameters, where each
             item is the number of units in the layer.
           activation_fn: Activation function, e.g. tf.keras.activations.relu,.
           kernel_initializer: Initializer to use for the mlp and output layers

@@ -5,20 +5,62 @@ model_id: Ohoopee
 
 # robot
 robot: Turtlebot
-velocity: 1.0
+velocity: 0.1
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 
-initial_orn: [0.0, 0.0, 0.0]
-initial_pos: [0.0, 0.0, 0.0]
-#initial_pos: [-2.5, -1.0, 0.0]
+#initial_pos_low: [-9.0, -0.5, 0.0]
+#initial_pos_high: [1.0, 4.5, 0.0]
+#initial_orn_low: [0.0, 0.0, 0.0]
+#initial_orn_high: [0.0, 0.0, 6.283185307179586]
+#
+#target_pos_low: [-9.0, -0.5, 0.0]
+#target_pos_high: [1.0, 4.5, 0.0]
+#target_orn_low: [0.0, 0.0, 0.0]
+#target_orn_high: [0.0, 0.0, 6.283185307179586]
 
-target_orn: [0.0, 0.0, 0.0]
-target_pos: [-5.0, 3.2, 0.0]
+valid_pos: [[-9.0, 3.0, 0.0],
+            [-9.0, 4.0, 0.0],
+            [-8.0, -0.5, 0.0],
+            [-8.0, 3.0, 0.0],
+            [-8.0, 4.0, 0.0],
+            [-7.0, 3.0, 0.0],
+            [-6.0, 1.0, 0.0],
+            [-6.25, 2.0, 0.0],
+            [-6.25, 3.0, 0.0],
+            [-5.0, -1.0, 0.0],
+            [-5.0, 0.0, 0.0],
+            [-5.0, 1.0, 0.0],
+            [-5.0, 2.0, 0.0],
+            [-5.0, 3.0, 0.0],
+            [-4.0, -1.0, 0.0],
+            [-4.0, 3.0, 0.0],
+            [-3.0, -1.0, 0.0],
+            [-3.0, 3.0, 0.0],
+            [-2.5, 0.0, 0.0],
+            [-2.5, 1.0, 0.0],
+            [-2.5, 2.0, 0.0],
+            [-1.0, 0.0, 0.0],
+            [-1.0, 3.0, 0.0],
+            [-1.0, 4.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0],
+            [1.0, 2.5, 0.0],
+            [2.0, 2.5, 0.0]]
 
-is_discrete: false
-additional_states_dim: 8
+initial_pos_low: [-5.0, -5.0, 0.0]
+initial_pos_high: [5.0, 5.0, 0.0]
+initial_orn_low: [0.0, 0.0, 0.0]
+initial_orn_high: [0.0, 0.0, 6.283185307179586]
+
+target_pos_low: [-5.0, -5.0, 0.0]
+target_pos_high: [5.0, 5.0, 0.0]
+target_orn_low: [0.0, 0.0, 0.0]
+target_orn_high: [0.0, 0.0, 6.283185307179586]
+
+is_discrete: true
+additional_states_dim: 3
 
 # reward
 terminal_reward: 5000
@@ -26,15 +68,15 @@ terminal_reward: 5000
 #stall_torque_cost: -0.0001
 electricity_cost: 0.0
 stall_torque_cost: 0.0
-discount_factor: 1.0
+discount_factor: 0.99
 
 # termination condition
-dist_tol: 0.1
+dist_tol: 0.5
 max_step: 500
 
 # sensor
 output: [sensor, rgb, depth]
-resolution: 128
+resolution: 64
 fov: 1.57
 
 # display
@@ -44,8 +86,8 @@ show_diagnostics: false
 ui_num: 2
 ui_components: [RGB_FILLED, DEPTH]
 random:
-  random_initial_pose : false
-  random_target_pose : false
+  random_initial_pose: false
+  random_target_pose: false
   random_init_x_range: [-0.1, 0.1]
   random_init_y_range: [-0.1, 0.1]
   random_init_z_range: [-0.1, 0.1]
@@ -58,6 +100,10 @@ speed:
 mode: web_ui #gui|headless
 verbose: false
 fast_lq_render: true
+
+# visual objects
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: true
 
 # debug
 debug: false
