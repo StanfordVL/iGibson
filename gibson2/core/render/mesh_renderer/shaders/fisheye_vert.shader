@@ -4,6 +4,7 @@ uniform mat4 P;
 uniform mat4 pose_rot;
 uniform mat4 pose_trans;
 uniform vec3 instance_color;
+uniform vec3 diffuse_color;
 
 layout (location=0) in vec3 position;
 layout (location=1) in vec3 normal;
@@ -14,6 +15,7 @@ out vec3 FragPos;
 out vec3 Normal_cam;
 out vec3 Instance_color;
 out vec3 Pos_cam;
+out vec3 Diffuse_color;
 
 float polyval(float[8] p, float x) {
     float sum = 0;
@@ -37,7 +39,7 @@ void main() {
     float l = length(tmp_Position2.xyz);
 
     float param[8] = float[8](0.016647724171699, 0.111071450095377, 0.282341042089142, 0.468925228611114,
-   0.774069098188430, 0.861099503685043, 2.274947125380967, 3.018496880968620);
+    0.774069098188430, 0.861099503685043, 2.274947125380967, 3.018496880968620);
     for (int i = 0; i < 8; i++) param[i] = param[i] * 1e2;
 
     float xc = 3.100107624460823e+02;
@@ -74,4 +76,5 @@ void main() {
 
     theCoords = texCoords;
     Instance_color = instance_color;
+    Diffuse_color = diffuse_color;
 }
