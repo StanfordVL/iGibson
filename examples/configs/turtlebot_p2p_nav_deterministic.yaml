@@ -1,5 +1,6 @@
 # scene
-scene: building
+scene: stadium
+#scene: building
 model_id: Ohoopee
 
 # robot
@@ -8,6 +9,12 @@ velocity: 0.1
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
+
+initial_pos: [-1.0, -1.0, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
+
+target_pos: [1.0, 1.0, 0.0]
+target_orn: [0.0, 0.0, 6.283185307179586]
 
 is_discrete: true
 additional_states_dim: 3
@@ -26,7 +33,7 @@ max_step: 500
 
 # sensor
 output: [sensor, rgb, depth]
-resolution: 256
+resolution: 64
 fov: 1.57
 
 # display
