@@ -28,13 +28,13 @@ import numpy as np
 from gibson2.utils.tf_utils import env_load_fn, LayerParams
 
 import tensorflow as tf
-from tf_agents.agents.ppo import ppo_agent
-# from gibson2.utils.agents.agents import ppo_agent
+# from tf_agents.agents.ppo import ppo_agent
+from gibson2.utils.agents.agents import ppo_agent
 from tf_agents.drivers import dynamic_episode_driver
 from tf_agents.environments import parallel_py_environment
 from tf_agents.environments import tf_py_environment
 from tf_agents.metrics import batched_py_metric
-from tf_agents.metrics import metric_utils
+from tf_agents.eval import metric_utils
 from tf_agents.metrics import tf_metrics
 from tf_agents.metrics.py_metrics import AverageEpisodeLengthMetric
 from tf_agents.metrics.py_metrics import AverageReturnMetric
@@ -55,6 +55,9 @@ from tf_agents.policies import py_tf_policy
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
 # from gibson2.utils.agents.replay_buffers import tf_uniform_replay_buffer
 from tf_agents.utils import common
+
+from gibson2.utils.tf_utils import AverageSuccessRateMetric, TFAverageSuccessRateMetric
+
 
 nest = tf.contrib.framework.nest
 
@@ -94,6 +97,8 @@ flags.DEFINE_string('gpu_c', '0',
                     'gpu id for compute, e.g. Tensorflow.')
 flags.DEFINE_string('gpu_g', '1',
                     'gpu id for graphics, e.g. Gibson.')
+flags.DEFINE_float('terminal_reward', 5000,
+                   'terminal reward to compute success rate')
 FLAGS = flags.FLAGS
 
 
@@ -105,6 +110,7 @@ def train_eval(
         env_mode='headless',
         random_seed=0,
         batch_size=64,
+        terminal_reward=5000,
         # TODO(kbanoop): rename to policy_fc_layers.
         conv_layer_params=None,
         encoder_fc_layers=(128, 64),
@@ -156,6 +162,10 @@ def train_eval(
             AverageEpisodeLengthMetric,
             metric_args={'buffer_size': num_eval_episodes},
             batch_size=1),
+        batched_py_metric.BatchedPyMetric(
+            AverageSuccessRateMetric,
+            metric_args={'buffer_size': num_eval_episodes, 'terminal_reward': terminal_reward},
+            batch_size=1),
     ]
     eval_summary_writer_flush_op = eval_summary_writer.flush()
 
@@ -200,6 +210,7 @@ def train_eval(
             kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
         )
 
+        # use_action_mask = True
         if use_rnns:
             actor_net = actor_distribution_rnn_network.ActorDistributionRnnNetwork(
                 observation_spec,
@@ -217,6 +228,7 @@ def train_eval(
                 encoder=actor_encoder,
                 fc_layer_params=actor_fc_layers,
                 kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
+                mean_mask=False,
             )
             value_net = value_network.ValueNetwork(
                 observation_spec,
@@ -244,7 +256,9 @@ def train_eval(
             num_epochs=num_epochs,
             debug_summaries=debug_summaries,
             summarize_grads_and_vars=summarize_grads_and_vars,
-            train_step_counter=global_step)
+            train_step_counter=global_step,
+            action_mask=False,
+        )
 
         replay_buffer = tf_uniform_replay_buffer.TFUniformReplayBuffer(
             tf_agent.collect_data_spec,
@@ -269,8 +283,9 @@ def train_eval(
             environment_steps_metric,
         ]
         train_metrics = step_metrics + [
-            tf_metrics.AverageReturnMetric(),
-            tf_metrics.AverageEpisodeLengthMetric(),
+            tf_metrics.AverageReturnMetric(buffer_size=100),
+            tf_metrics.AverageEpisodeLengthMetric(buffer_size=100),
+            TFAverageSuccessRateMetric(buffer_size=100, terminal_reward=terminal_reward)
         ]
 
         # Add to replay buffer and other agent specific observers.
@@ -410,11 +425,25 @@ def train_eval(
 
 
 def main(_):
-    os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu_c
-    tf.compat.v1.enable_resource_variables()
+    tf.enable_resource_variables()
+    logging.set_verbosity(logging.INFO)
     if tf.executing_eagerly():
         return
-    tf.logging.set_verbosity(tf.logging.INFO)
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu_c
+
+    conv_layer_params = [(32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1)]
+    encoder_fc_layers = [64]
+    actor_fc_layers = [64]
+    value_fc_layers = [64]
+
+    for k, v in FLAGS.flag_values_dict().items():
+        print(k, v)
+    print('conv_layer_params', conv_layer_params)
+    print('encoder_fc_layers', encoder_fc_layers)
+    print('actor_fc_layers', actor_fc_layers)
+    print('value_fc_layers', value_fc_layers)
+
     train_eval(
         FLAGS.root_dir,
         gpu=FLAGS.gpu_g,
@@ -426,10 +455,11 @@ def main(_):
                                                          device_idx),
         env_mode=FLAGS.mode,
         batch_size=FLAGS.batch_size,
-        conv_layer_params=[(32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1)],
-        encoder_fc_layers=[64],
-        actor_fc_layers=[64],
-        value_fc_layers=[64],
+        terminal_reward=FLAGS.terminal_reward,
+        conv_layer_params=conv_layer_params,
+        encoder_fc_layers=encoder_fc_layers,
+        actor_fc_layers=actor_fc_layers,
+        value_fc_layers=value_fc_layers,
         replay_buffer_capacity=FLAGS.replay_buffer_capacity,
         num_environment_steps=FLAGS.num_environment_steps,
         num_parallel_environments=FLAGS.num_parallel_environments,
@@ -441,4 +471,5 @@ def main(_):
 
 if __name__ == '__main__':
     flags.mark_flag_as_required('root_dir')
+    flags.mark_flag_as_required('config_file')
     tf.app.run()

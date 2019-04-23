@@ -86,7 +86,7 @@ class NavigateEnv(BaseEnv):
         self.action_space = self.robots[0].action_space
 
         # variable initialization
-        self.potential = 1
+        self.potential = 1.0
         self.current_step = 0
         self.current_episode = 0
 
@@ -102,27 +102,38 @@ class NavigateEnv(BaseEnv):
                 self.target_pos_vis_obj.load()
 
     def get_additional_states(self):
+
+        relative_position = self.target_pos - self.robots[0].get_position()
+        # rotate relative position back to body point of view
+        additional_states = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
+
+        if self.config['task'] == 'reaching':
+            end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
+            end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
+            additional_states = np.concatenate((additional_states, end_effector_pos))
+        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
+
+        return additional_states
+
+        """
+
         relative_position = self.target_pos - self.robots[0].get_position()
         # rotate relative position back to body point of view
         relative_position_odom = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
-        return relative_position_odom
+        # the angle between the direction the agent is facing and the direction to the target position
+        delta_yaw = np.arctan2(relative_position_odom[1], relative_position_odom[0])
+        additional_states = np.concatenate((relative_position,
+                                            relative_position_odom,
+                                            [np.sin(delta_yaw), np.cos(delta_yaw)]))
+        if self.config['task'] == 'reaching':
+            # get end effector information
+            end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
+            end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
+            additional_states = np.concatenate((additional_states, end_effector_pos))
 
-        # relative_position = self.target_pos - self.robots[0].get_position()
-        # # rotate relative position back to body point of view
-        # relative_position_odom = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
-        # # the angle between the direction the agent is facing and the direction to the target position
-        # delta_yaw = np.arctan2(relative_position_odom[1], relative_position_odom[0])
-        # additional_states = np.concatenate((relative_position,
-        #                                     relative_position_odom,
-        #                                     [np.sin(delta_yaw), np.cos(delta_yaw)]))
-        # if self.config['task'] == 'reaching':
-        #     # get end effector information
-        #     end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
-        #     end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
-        #     additional_states = np.concatenate((additional_states, end_effector_pos))
-        #
-        # assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
-        # return additional_states
+        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
+        return additional_states
+        """
 
     def step(self, action):
         self.robots[0].apply_action(action)
@@ -163,11 +174,12 @@ class NavigateEnv(BaseEnv):
 
         # calculate reward
         if self.config['task'] == 'pointgoal':
-            robot_position = self.robots[0].get_position()
+            robot_pos = self.robots[0].get_position()
         elif self.config['task'] == 'reaching':
-            robot_position = self.robots[0].get_end_effector_position()
-        new_potential = l2_distance(self.target_pos, robot_position) / \
-                        l2_distance(self.target_pos, self.initial_pos)
+            robot_pos = self.robots[0].get_end_effector_position()
+
+        new_potential = l2_distance(self.target_pos, robot_pos) / \
+                        l2_distance(self.target_pos, self.initial_pos_for_potential)
         progress = (self.potential - new_potential) * 1000  # |progress| ~= 1.0 per step
         self.potential = new_potential
 
@@ -184,7 +196,8 @@ class NavigateEnv(BaseEnv):
         # check termination condition
         self.current_step += 1
         done = self.current_step >= self.max_step
-        if l2_distance(self.target_pos, robot_position) < self.dist_tol:
+
+        if l2_distance(self.target_pos, robot_pos) < self.dist_tol:
             print('goal')
             reward = self.terminal_reward
             done = True
@@ -219,6 +232,11 @@ class NavigateEnv(BaseEnv):
         self.robots[0].set_position(pos=self.initial_pos)
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
 
+        if self.config['task'] == 'pointgoal':
+            self.initial_pos_for_potential = self.robots[0].get_position()
+        elif self.config['task'] == 'reaching':
+            self.initial_pos_for_potential = self.robots[0].get_end_effector_position()
+
         # set position for visual objects
         if self.visual_object_at_initial_target_pos:
             self.initial_pos_vis_obj.set_position(self.initial_pos)
@@ -229,7 +247,7 @@ class NavigateEnv(BaseEnv):
         sensor_state = self.get_additional_states()
 
         self.current_step = 0
-        self.potential = 1
+        self.potential = 1.0
 
         state = OrderedDict()
         if 'sensor' in self.output:
