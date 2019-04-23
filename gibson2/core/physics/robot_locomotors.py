@@ -533,10 +533,26 @@ class JR2_Kinova(WalkerBase):
                             sensor_dim=46, power=2.5, scale=scale,
                             resolution=config["resolution"],
                             control=['velocity'] * 2 + ['position'] * 10,
+                            # control=['velocity'] * 12,
                             )
         self.is_discrete = False
+        self.wheel_velocity = config.get('wheel_velocity', 0.1)
+        self.arm_velocity = config.get('arm_velocity', 0.01)
         self.vel = config.get('velocity', 0.1)
 
+        # wheel_dim = 2
+        # camera_dim = 2
+        # arm_dim = 8
+        # assert self.action_dim == wheel_dim + camera_dim + arm_dim
+        # self.action_low = np.array([-self.wheel_velocity] * wheel_dim + [-self.arm_velocity] * arm_dim)
+        # self.action_high = -self.action_low
+        # self.action_space = gym.spaces.Box(shape=(self.action_dim - camera_dim,), low=0.0, high=1.0)
+        # self.action_low = np.array([-self.wheel_velocity] * 2 + [-self.arm_velocity] * 1)
+        # self.action_high = -self.action_low
+        # self.action_space = gym.spaces.Box(shape=(3,), low=0.0, high=1.0)
+
+        ##############################################################################################
+        #
         # self.action_low = np.array([-self.vel, -self.vel,
         #                             -np.pi, 0.872664625997, 0.610865238198, -np.pi, -np.pi, -np.pi,
         #                             0.0, 0.0])
@@ -567,7 +583,7 @@ class JR2_Kinova(WalkerBase):
         real_action[4] = normalized_action[2]
         #real_action[4:8] = normalized_action[2:]
         # real_action[4:10] = normalized_action[2:]
-        print('real_action:', real_action)
+        # print('real_action:', real_action)
         WalkerBase.apply_action(self, real_action)
 
     def calc_state(self):

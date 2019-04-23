@@ -44,7 +44,7 @@ from tf_agents.environments import parallel_py_environment
 from tf_agents.environments import suite_gym
 from tf_agents.environments import tf_py_environment
 from tf_agents.metrics import batched_py_metric
-from tf_agents.metrics import metric_utils
+from tf_agents.eval import metric_utils
 from tf_agents.metrics import py_metrics
 from tf_agents.metrics import tf_metrics
 from tf_agents.policies import py_tf_policy
@@ -97,7 +97,7 @@ flags.DEFINE_string('gpu_c', '0',
                     'gpu id for compute, e.g. Tensorflow.')
 flags.DEFINE_string('gpu_g', '1',
                     'gpu id for graphics, e.g. Gibson.')
-flags.DEFINE_float('discount_factor', 0.99,
+flags.DEFINE_float('gamma', 0.99,
                    'discount_factor for the environment')
 flags.DEFINE_float('terminal_reward', 5000,
                    'terminal reward to compute success rate')
@@ -435,7 +435,7 @@ def main(_):
         collect_steps_per_iteration=FLAGS.collect_steps_per_iteration,
         train_steps_per_iteration=FLAGS.train_steps_per_iteration,
         batch_size=FLAGS.batch_size,
-        gamma=FLAGS.discount_factor,
+        gamma=FLAGS.gamma,
         terminal_reward=FLAGS.terminal_reward,
         replay_buffer_capacity=FLAGS.replay_buffer_capacity,
         conv_layer_params=[(32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1)],

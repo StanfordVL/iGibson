@@ -13,16 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-r"""Train and Eval DDPG.
+r"""Train and Eval TD3.
 
 To run:
 
 ```bash
-tf_agents/agents/ddpg/examples/v1/train_eval -- \
-  --root_dir=$HOME/tmp/ddpg_v1/gym/HalfCheetah-v2/ \
+tf_agents/agents/td3/examples/v1/train_eval -- \
+  --root_dir=$HOME/tmp/td3_v1/gym/HalfCheetah-v2/ \
   --num_iterations=2000000 \
   --alsologtostderr
 ```
+
 """
 
 from __future__ import absolute_import
@@ -37,7 +38,6 @@ from absl import app
 from absl import flags
 from absl import logging
 
-import gin
 import tensorflow as tf
 
 from gibson2.utils.tf_utils import env_load_fn, LayerParams
@@ -48,16 +48,17 @@ from gibson2.utils.tf_utils import AverageSuccessRateMetric, TFAverageSuccessRat
 
 # from tf_agents.agents.ddpg import actor_network
 # from tf_agents.agents.ddpg import critic_network
-from tf_agents.agents.ddpg import ddpg_agent
+from tf_agents.agents.td3 import td3_agent
 from tf_agents.drivers import dynamic_step_driver
-from tf_agents.environments import parallel_py_environment
 from tf_agents.environments import tf_py_environment
+from tf_agents.environments import parallel_py_environment
 from tf_agents.eval import metric_utils
 from tf_agents.metrics import py_metrics
 from tf_agents.metrics import tf_metrics
 from tf_agents.policies import py_tf_policy
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
 from tf_agents.utils import common
+import gin.tf
 
 flags.DEFINE_string('root_dir', os.getenv('TEST_UNDECLARED_OUTPUTS_DIR'),
                     'Root directory for writing logs/summaries/checkpoints.')
@@ -121,14 +122,14 @@ def train_eval(
         collect_steps_per_iteration=1,
         num_parallel_environments=1,
         replay_buffer_capacity=100000,
-        ou_stddev=0.2,
-        ou_damping=0.15,
+        exploration_noise_std=0.1,
         # Params for target update
         target_update_tau=0.05,
         target_update_period=5,
         # Params for train
         train_steps_per_iteration=1,
         batch_size=64,
+        actor_update_period=2,
         actor_learning_rate=1e-4,
         critic_learning_rate=1e-3,
         dqda_clipping=None,
@@ -149,7 +150,7 @@ def train_eval(
         debug_summaries=False,
         summarize_grads_and_vars=False,
         eval_metrics_callback=None):
-    """A simple train and eval for DDPG."""
+    """A simple train and eval for TD3."""
     root_dir = os.path.expanduser(root_dir)
     train_dir = os.path.join(root_dir, 'train')
     eval_dir = os.path.join(root_dir, 'eval')
@@ -163,7 +164,7 @@ def train_eval(
     eval_metrics = [
         py_metrics.AverageReturnMetric(buffer_size=num_eval_episodes),
         py_metrics.AverageEpisodeLengthMetric(buffer_size=num_eval_episodes),
-        AverageSuccessRateMetric(buffer_size=num_eval_episodes, terminal_reward=terminal_reward),
+        AverageSuccessRateMetric(buffer_size=num_eval_episodes, terminal_reward=terminal_reward)
     ]
 
     global_step = tf.compat.v1.train.get_or_create_global_step()
@@ -230,7 +231,7 @@ def train_eval(
             kernel_initializer=kernel_initializer,
         )
 
-        tf_agent = ddpg_agent.DdpgAgent(
+        tf_agent = td3_agent.Td3Agent(
             tf_env.time_step_spec(),
             tf_env.action_spec(),
             actor_network=actor_net,
@@ -239,10 +240,10 @@ def train_eval(
                 learning_rate=actor_learning_rate),
             critic_optimizer=tf.compat.v1.train.AdamOptimizer(
                 learning_rate=critic_learning_rate),
-            ou_stddev=ou_stddev,
-            ou_damping=ou_damping,
+            exploration_noise_std=exploration_noise_std,
             target_update_tau=target_update_tau,
             target_update_period=target_update_period,
+            actor_update_period=actor_update_period,
             dqda_clipping=dqda_clipping,
             td_errors_loss_fn=td_errors_loss_fn,
             gamma=gamma,
@@ -250,7 +251,8 @@ def train_eval(
             gradient_clipping=gradient_clipping,
             debug_summaries=debug_summaries,
             summarize_grads_and_vars=summarize_grads_and_vars,
-            train_step_counter=global_step)
+            train_step_counter=global_step,
+        )
 
         replay_buffer = tf_uniform_replay_buffer.TFUniformReplayBuffer(
             tf_agent.collect_data_spec,
@@ -280,14 +282,13 @@ def train_eval(
             observers=[replay_buffer.add_batch] + train_metrics,
             num_steps=collect_steps_per_iteration).run()
 
-        # Dataset generates trajectories with shape [Bx2x...]
         dataset = replay_buffer.as_dataset(
             num_parallel_calls=3,
             sample_batch_size=batch_size,
             num_steps=2).prefetch(3)
-
         iterator = tf.compat.v1.data.make_initializable_iterator(dataset)
         trajectories, unused_info = iterator.get_next()
+
         train_fn = common.function(tf_agent.train)
         train_op = train_fn(experience=trajectories)
 
@@ -322,7 +323,7 @@ def train_eval(
             train_checkpointer.initialize_or_restore(sess)
             rb_checkpointer.initialize_or_restore(sess)
             sess.run(iterator.initializer)
-            # TODO(b/126239733) Remove once Periodically can be saved.
+            # TODO(b/126239733): Remove once Periodically can be saved.
             common.initialize_uninitialized_variables(sess)
 
             sess.run(init_agent_op)
@@ -341,6 +342,7 @@ def train_eval(
                 num_episodes=num_eval_episodes,
                 global_step=global_step_val,
                 callback=eval_metrics_callback,
+                log=True,
             )
 
             collect_call = sess.make_callable(collect_op)
@@ -400,8 +402,8 @@ def train_eval(
 
 
 def main(_):
-    tf.enable_resource_variables()
     logging.set_verbosity(logging.INFO)
+    tf.enable_resource_variables()
 
     os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu_c
 

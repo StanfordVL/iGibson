@@ -26,7 +26,8 @@ from gibson2.utils.tf_utils import mlp_layers
 
 from tf_agents.networks import categorical_projection_network
 from tf_agents.networks import network
-from tf_agents.networks import normal_projection_network
+# from tf_agents.networks import normal_projection_network
+from gibson2.utils.agents.networks import normal_projection_network
 from tf_agents.specs import tensor_spec
 from tf_agents.utils import nest_utils
 
@@ -40,13 +41,16 @@ def _categorical_projection_net(action_spec, logits_init_output_factor=0.1):
 
 def _normal_projection_net(action_spec,
                            init_action_stddev=0.35,
-                           init_means_output_factor=0.1):
+                           init_means_output_factor=0.1,
+                           mean_mask=False):
     std_initializer_value = np.log(np.exp(init_action_stddev) - 1)
 
     return normal_projection_network.NormalProjectionNetwork(
         action_spec,
         init_means_output_factor=init_means_output_factor,
-        std_initializer_value=std_initializer_value)
+        std_initializer_value=std_initializer_value,
+        mean_mask=mean_mask,
+    )
 
 
 @gin.configurable
@@ -63,6 +67,7 @@ class ActorDistributionNetwork(network.DistributionNetwork):
                  activation_fn=tf.keras.activations.relu,
                  discrete_projection_net=_categorical_projection_net,
                  continuous_projection_net=_normal_projection_net,
+                 mean_mask=False,
                  name='ActorDistributionNetwork'):
         """Creates an instance of `ActorDistributionNetwork`.
 
@@ -102,7 +107,7 @@ class ActorDistributionNetwork(network.DistributionNetwork):
                 projection_networks.append(discrete_projection_net(single_output_spec))
             else:
                 projection_networks.append(
-                    continuous_projection_net(single_output_spec))
+                    continuous_projection_net(single_output_spec, mean_mask=mean_mask))
 
         projection_distribution_specs = [
             proj_net.output_spec for proj_net in projection_networks

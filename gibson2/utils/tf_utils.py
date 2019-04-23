@@ -2,7 +2,6 @@ import numpy as np
 import tensorflow as tf  # pylint: ignore-module
 from tf_agents.metrics import py_metrics
 from tf_agents.metrics import tf_py_metric
-from tf_agents.replay_buffers import numpy_storage
 from tf_agents.environments import gym_wrapper
 import builtins
 import functools
