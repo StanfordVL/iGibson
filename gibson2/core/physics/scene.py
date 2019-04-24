@@ -33,6 +33,12 @@ class StadiumScene(Scene):
 
         return [item for item in self.stadium] + [item for item in self.ground_plane_mjcf]
 
+    def get_random_point(self):
+        return 0, [np.random.uniform(-5, 5), np.random.uniform(-5, 5), 0]
+
+    def get_random_point_floor(self, floor):
+        return 0, [np.random.uniform(-5, 5), np.random.uniform(-5, 5), 0]
+
 
 class BuildingScene(Scene):
     def __init__(self, model_id):

@@ -75,6 +75,8 @@ class NavigateEnv(BaseEnv):
             self.comp = torch.nn.DataParallel(self.comp).cuda()
             self.comp.load_state_dict(torch.load(os.path.join(os.path.dirname(assets.__file__), 'networks', 'model.pth')))
             self.comp.eval()
+        if 'pointgoal' in  self.output:
+            observation_space['pointgoal'] =  gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32)
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
@@ -151,6 +153,8 @@ class NavigateEnv(BaseEnv):
                 state['rgb_filled'] = rgb_filled
         if 'bump' in self.output:
             state['bump'] = -1 in collision_links  # check collision for baselink, it might vary for different robots
+        if 'pointgoal' in self.output:
+            state['pointgoal'] = sensor_state[:2]
         return state
 
     def step(self, action):
@@ -181,7 +185,7 @@ class NavigateEnv(BaseEnv):
         self.current_step += 1
         done = self.current_step >= self.max_step
         if l2_distance(self.target_pos, robot_position) < self.dist_tol:
-            print('goal')
+            #print('goal')
             reward = self.terminal_reward
             done = True
 
@@ -214,8 +218,6 @@ class NavigateRandomEnv(NavigateEnv):
     def __init__(self, config_file, mode='headless', action_timestep=1 / 10.0, physics_timestep=1 / 240.0,
                  device_idx=0):
         super(NavigateRandomEnv, self).__init__(config_file, mode, action_timestep, physics_timestep, device_idx=device_idx)
-
-        assert(self.config['scene'] == "building"), "Random initialization is only supported for building scenes"
 
     def reset(self):
         self.robots[0].robot_specific_reset()
