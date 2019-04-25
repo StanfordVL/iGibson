@@ -216,8 +216,17 @@ class NavigateEnv(BaseEnv):
 
 class NavigateRandomEnv(NavigateEnv):
     def __init__(self, config_file, mode='headless', action_timestep=1 / 10.0, physics_timestep=1 / 240.0,
-                 device_idx=0):
+                 device_idx=0, automatic_reset=False):
         super(NavigateRandomEnv, self).__init__(config_file, mode, action_timestep, physics_timestep, device_idx=device_idx)
+        self.automatic_reset = automatic_reset
+
+    def step(self, action):
+        timestep = super(NavigateRandomEnv, self).step(action)
+        if timestep[2] and self.automatic_reset:
+            #print('auto reset')
+            return self.reset(), 0, True, {}
+        else:
+            return timestep
 
     def reset(self):
         self.robots[0].robot_specific_reset()
@@ -266,7 +275,7 @@ if __name__ == '__main__':
             if args.config is None else args.config
         if args.random:
             nav_env = NavigateRandomEnv(config_file=config_filename, mode=args.mode,
-                                  action_timestep=1.0 / 10.0, physics_timestep=1 / 40.0)
+                                  action_timestep=1.0 / 10.0, physics_timestep=1 / 40.0, automatic_reset=True)
         else:
             nav_env = NavigateEnv(config_file=config_filename, mode=args.mode,
                               action_timestep=1.0/10.0, physics_timestep=1/40.0)
