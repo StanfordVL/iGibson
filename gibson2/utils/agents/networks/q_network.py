@@ -21,7 +21,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tf_agents.networks import encoding_network
 from tf_agents.networks import network
 
 from gibson2.utils.tf_utils import mlp_layers

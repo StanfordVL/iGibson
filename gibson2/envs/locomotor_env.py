@@ -38,9 +38,11 @@ class NavigateEnv(BaseEnv):
         self.terminal_reward = self.config.get('terminal_reward', 0.0)
         self.electricity_cost = self.config.get('electricity_cost', 0.0)
         self.stall_torque_cost = self.config.get('stall_torque_cost', 0.0)
+        self.collision_cost = self.config.get('collision_cost', 0.0)
         self.discount_factor = self.config.get('discount_factor', 1.0)
         print('electricity_cost', self.electricity_cost)
         print('stall_torque_cost', self.stall_torque_cost)
+        print('collision_cost', self.collision_cost)
 
         # simulation
         self.mode = mode
@@ -82,7 +84,7 @@ class NavigateEnv(BaseEnv):
         self.action_space = self.robots[0].action_space
 
         # variable initialization
-        self.potential = 1
+        self.potential = 1.0
         self.current_step = 0
         self.current_episode = 0
 
@@ -96,29 +98,43 @@ class NavigateEnv(BaseEnv):
                 self.simulator.import_object(self.target_pos_vis_obj)
             else:
                 self.target_pos_vis_obj.load()
+            # self.target_reaching_pos_vis_obj = VisualObject(rgba_color=[0, 1, 0, 0.5], radius=0.1)
+            # self.target_reaching_pos_vis_obj.load()
 
     def get_additional_states(self):
+
+        relative_position = self.target_pos - self.robots[0].get_position()
+        # rotate relative position back to body point of view
+        additional_states = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
+
+        if self.config['task'] == 'reaching':
+            end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
+            end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
+            additional_states = np.concatenate((additional_states, end_effector_pos))
+        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
+
+        return additional_states
+
+        """
+
         relative_position = self.target_pos - self.robots[0].get_position()
         # rotate relative position back to body point of view
         relative_position_odom = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
-        return relative_position_odom
+        # the angle between the direction the agent is facing and the direction to the target position
+        delta_yaw = np.arctan2(relative_position_odom[1], relative_position_odom[0])
+        additional_states = np.concatenate((relative_position,
+                                            relative_position_odom,
+                                            [np.sin(delta_yaw), np.cos(delta_yaw)]))
+        if self.config['task'] == 'reaching':
+            # get end effector information
+            end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
+            end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
+            additional_states = np.concatenate((additional_states, end_effector_pos))
 
-        # relative_position = self.target_pos - self.robots[0].get_position()
-        # # rotate relative position back to body point of view
-        # relative_position_odom = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
-        # # the angle between the direction the agent is facing and the direction to the target position
-        # delta_yaw = np.arctan2(relative_position_odom[1], relative_position_odom[0])
-        # additional_states = np.concatenate((relative_position,
-        #                                     relative_position_odom,
-        #                                     [np.sin(delta_yaw), np.cos(delta_yaw)]))
-        # if self.config['task'] == 'reaching':
-        #     # get end effector information
-        #     end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
-        #     end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
-        #     additional_states = np.concatenate((additional_states, end_effector_pos))
-        #
-        # assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
-        # return additional_states
+        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
+        return additional_states
+        """
+
 
     def get_state(self):
         collision_links = []
@@ -127,6 +143,7 @@ class NavigateEnv(BaseEnv):
             collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
 
         collision_links = np.unique(collision_links)
+        collision_cost = -10.0 if -1 in collision_links else 0.0
 
         # calculate state
         # sensor_state = self.robots[0].calc_state()
@@ -164,11 +181,12 @@ class NavigateEnv(BaseEnv):
 
         # calculate reward
         if self.config['task'] == 'pointgoal':
-            robot_position = self.robots[0].get_position()
+            robot_pos = self.robots[0].get_position()
         elif self.config['task'] == 'reaching':
-            robot_position = self.robots[0].get_end_effector_position()
-        new_potential = l2_distance(self.target_pos, robot_position) / \
-                        l2_distance(self.target_pos, self.initial_pos)
+            robot_pos = self.robots[0].get_end_effector_position()
+
+        new_potential = l2_distance(self.target_pos, robot_pos) / \
+                        l2_distance(self.target_pos, self.initial_pos_for_potential)
         progress = (self.potential - new_potential) * 1000  # |progress| ~= 1.0 per step
         self.potential = new_potential
 
@@ -178,14 +196,22 @@ class NavigateEnv(BaseEnv):
         # stall_torque_cost *= self.stall_torque_cost  # |stall_torque_cost| ~= 0.2 per step
         electricity_cost = 0.0
         stall_torque_cost = 0.0
+        collision_cost *= self.collision_cost
 
-        reward = progress + electricity_cost + stall_torque_cost
+        reward = progress + collision_cost + electricity_cost + stall_torque_cost
 
         # check termination condition
         self.current_step += 1
         done = self.current_step >= self.max_step
-        if l2_distance(self.target_pos, robot_position) < self.dist_tol:
-            #print('goal')
+
+        # # robot flips over
+        if self.robots[0].get_position()[2] > 0.1:
+            print('death')
+            # reward = -self.terminal_reward
+            done = True
+
+        if l2_distance(self.target_pos, robot_pos) < self.dist_tol:
+            print('goal')
             reward = self.terminal_reward
             done = True
 
@@ -200,14 +226,20 @@ class NavigateEnv(BaseEnv):
         self.robots[0].set_position(pos=self.initial_pos)
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
 
+        if self.config['task'] == 'pointgoal':
+            self.initial_pos_for_potential = self.robots[0].get_position()
+        elif self.config['task'] == 'reaching':
+            self.initial_pos_for_potential = self.robots[0].get_end_effector_position()
+
         # set position for visual objects
         if self.visual_object_at_initial_target_pos:
             self.initial_pos_vis_obj.set_position(self.initial_pos)
             self.target_pos_vis_obj.set_position(self.target_pos)
+            # self.target_reaching_pos_vis_obj.set_position(self.target_pos)
 
 
         self.current_step = 0
-        self.potential = 1
+        self.potential = 1.0
 
         state = self.get_state()
 
@@ -285,11 +317,12 @@ if __name__ == '__main__':
 
         for episode in range(10):
             nav_env.reset()
-            for i in range(300):  # 300 steps, 30s world time
+            for i in range(500):  # 500 steps, 50s world time
                 if nav_env.config.get('debug') and nav_env.mode == 'gui' and not nav_env.config.get('is_discrete'):
                     action = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
                 else:
                     action = nav_env.action_space.sample()
+                action = 0
                 state, reward, done, _ = nav_env.step(action)
                 if done:
                     print('Episode finished after {} timesteps'.format(i + 1))
