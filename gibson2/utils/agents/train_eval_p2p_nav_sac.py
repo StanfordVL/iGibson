@@ -116,8 +116,8 @@ def normal_projection_net(action_spec,
 def train_eval(
         root_dir,
         gpu='0',
-        env_mode='headless',
         env_load_fn=None,
+        env_mode='headless',
         terminal_reward=5000,
         num_iterations=1000000,
         conv_layer_params=None,
@@ -378,9 +378,13 @@ def train_eval(
 
             for _ in range(num_iterations):
                 start_time = time.time()
+                collect_start_time = time.time()
                 collect_call()
+                print('collect:', time.time() - collect_start_time)
+                train_start_time = time.time()
                 for _ in range(train_steps_per_iteration):
                     total_loss, _ = train_step_call()
+                print('train:', time.time() - train_start_time)
                 time_acc += time.time() - start_time
                 global_step_val = global_step_call()
                 if global_step_val % log_interval == 0:
@@ -443,6 +447,7 @@ def main(_):
                                                                 FLAGS.action_timestep,
                                                                 FLAGS.physics_timestep,
                                                                 device_idx),
+               env_mode=FLAGS.mode,
                terminal_reward=FLAGS.terminal_reward,
                num_iterations=FLAGS.num_iterations,
                conv_layer_params=conv_layer_params,

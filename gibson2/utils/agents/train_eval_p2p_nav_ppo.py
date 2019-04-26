@@ -177,8 +177,8 @@ def train_eval(
         gpu = [int(gpu_id) for gpu_id in gpu.split(',')]
         gpu_ids = np.linspace(0, len(gpu), num=num_parallel_environments + 1, dtype=np.int, endpoint=False)
         eval_py_env = parallel_py_environment.ParallelPyEnvironment(
-            [lambda gpu_id=gpu[gpu_ids[0]]: env_load_fn('headless', gpu_id)])
-        tf_py_env = [lambda gpu_id=gpu[gpu_ids[1]]: env_load_fn(env_mode, gpu_id)]
+            [lambda gpu_id=gpu[gpu_ids[0]]: env_load_fn(env_mode, gpu_id)])
+        tf_py_env = [lambda gpu_id=gpu[gpu_ids[1]]: env_load_fn('headless', gpu_id)]
         tf_py_env += [lambda gpu_id=gpu[gpu_ids[env_id]]: env_load_fn('headless', gpu_id)
                       for env_id in range(2, num_parallel_environments + 1)]
         tf_env = tf_py_environment.TFPyEnvironment(
@@ -228,7 +228,7 @@ def train_eval(
                 encoder=actor_encoder,
                 fc_layer_params=actor_fc_layers,
                 kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
-                mean_mask=False,
+                action_mask=False,
             )
             value_net = value_network.ValueNetwork(
                 observation_spec,

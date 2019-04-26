@@ -189,18 +189,12 @@ def train_eval(
         tf_env = tf_py_environment.TFPyEnvironment(
             parallel_py_environment.ParallelPyEnvironment(tf_py_env))
 
-        # tf_env = tf_py_environment.TFPyEnvironment(
-        #     parallel_py_environment.ParallelPyEnvironment(
-        #         [lambda: env_load_fn(env_name)] * num_parallel_environments))
-        # eval_py_env = parallel_py_environment.ParallelPyEnvironment(
-        #     [lambda: env_load_fn(env_name)] * num_parallel_environments)
-
         print('using conv nets')
         base_network = None
         preprocessing_layers_params = {
             'sensor': LayerParams(base_network=None, conv=None, fc=encoder_fc_layers),
-            # 'rgb': LayerParams(base_network=None, conv=conv_layer_params, fc=encoder_fc_layers, flatten=True),
-            # 'depth': LayerParams(base_network=None, conv=conv_layer_params, fc=encoder_fc_layers, flatten=True),
+            'rgb': LayerParams(base_network=None, conv=conv_layer_params, fc=encoder_fc_layers, flatten=True),
+            'depth': LayerParams(base_network=None, conv=conv_layer_params, fc=encoder_fc_layers, flatten=True),
         }
 
         # print('using MobileNetV2')
@@ -223,8 +217,8 @@ def train_eval(
         print('preprocessing_layers_params:', preprocessing_layers_params)
         print('observation_spec:', tf_env.observation_spec())
 
-        # preprocessing_combiner_type = 'concat'
-        preprocessing_combiner_type = None
+        preprocessing_combiner_type = 'concat'
+        # preprocessing_combiner_type = None
 
         encoder = encoding_network.EncodingNetwork(
             tf_env.observation_spec(),
@@ -290,7 +284,6 @@ def train_eval(
             collect_policy,
             observers=replay_observer + train_metrics,
             num_steps=collect_steps_per_iteration).run()
-        print('collect op done')
 
         # Dataset generates trajectories with shape [Bx2x...]
         dataset = replay_buffer.as_dataset(
@@ -367,14 +360,15 @@ def train_eval(
                 step=global_step)
 
             for it in range(num_iterations):
-                print('it:', it)
                 # Train/collect/eval.
                 start_time = time.time()
                 collect_call()
+                print('collect:', time.time() - start_time)
                 collect_time += time.time() - start_time
                 start_time = time.time()
                 for train_step in range(train_steps_per_iteration):
                     loss_info_value, _ = train_step_call()
+                print('train:', time.time() - start_time)
                 train_time += time.time() - start_time
 
                 global_step_val = global_step_call()
@@ -446,4 +440,6 @@ def main(_):
 
 if __name__ == '__main__':
     flags.mark_flag_as_required('root_dir')
+    flags.mark_flag_as_required('config_file')
+
     app.run(main)
