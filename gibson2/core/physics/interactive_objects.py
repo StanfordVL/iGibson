@@ -15,12 +15,12 @@ class YCBObject:
 
 
 class VisualObject(object):
-    def __init__(self, rgba_color=[1, 0, 0, 0.5], mesh_scale=[1.0, 1.0, 1.0]):
+    def __init__(self, rgba_color=[1, 0, 0, 0.5], radius=1.0):
         self.rgba_color = rgba_color
-        self.mesh_scale = mesh_scale
+        self.radius = radius
 
     def load(self):
-        shape = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=self.rgba_color, meshScale=self.mesh_scale)
+        shape = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=self.rgba_color, radius=self.radius)
         self.body_id = p.createMultiBody(baseVisualShapeIndex=shape,
                                          baseCollisionShapeIndex=-1)
         return self.body_id
