@@ -6,7 +6,8 @@ parentdir = os.path.dirname(currentdir)
 os.sys.path.insert(0, parentdir)
 import pybullet_data
 from gibson2.data.datasets import get_model_path
-
+import numpy as np
+from PIL import Image
 
 class Scene:
     def load(self):
@@ -32,6 +33,12 @@ class StadiumScene(Scene):
 
         return [item for item in self.stadium] + [item for item in self.ground_plane_mjcf]
 
+    def get_random_point(self):
+        return 0, [np.random.uniform(-5, 5), np.random.uniform(-5, 5), 0]
+
+    def get_random_point_floor(self, floor):
+        return 0, [np.random.uniform(-5, 5), np.random.uniform(-5, 5), 0]
+
 
 class BuildingScene(Scene):
     def __init__(self, model_id):
@@ -53,4 +60,33 @@ class BuildingScene(Scene):
         p.changeVisualShape(boundaryUid, -1, rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
                             specularColor=[0.5, 0.5, 0.5])
 
+        floor_height_path = os.path.join(get_model_path(self.model_id), 'floors.txt')
+
+        if os.path.exists(floor_height_path):
+            self.floor_map = []
+            with open(floor_height_path, 'r') as f:
+                self.floors = sorted(list(map(float, f.readlines())))
+                print(self.floors)
+            for i in range(len(self.floors)):
+                trav = np.array(Image.open(os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(i))))
+                self.max_length = trav.shape[0]/200
+
+                self.floor_map.append(trav)
+
         return [boundaryUid] + [item for item in self.ground_plane_mjcf]
+
+    def get_random_point(self):
+        floor = np.random.randint(0, high=len(self.floors))
+        trav = self.floor_map[floor]
+        y = np.where(trav == 255)[0] / 100.0 - self.max_length
+        x = np.where(trav == 255)[1] / 100.0 - self.max_length
+        idx = np.random.randint(0, high=len(x))
+        return floor, [x[idx], y[idx], self.floors[floor]]
+
+
+    def get_random_point_floor(self, floor):
+        trav = self.floor_map[floor]
+        y = np.where(trav == 255)[0] / 100.0 - self.max_length
+        x = np.where(trav == 255)[1] / 100.0 - self.max_length
+        idx = np.random.randint(0, high=len(x))
+        return floor, [x[idx], y[idx], self.floors[floor]]
