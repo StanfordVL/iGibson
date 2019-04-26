@@ -357,7 +357,7 @@ if __name__ == "__main__":
         print("episode {}".format(episode))
         parallel_env.reset()
         for i in range(300):
-            res =  parallel_env.step([[0, 0.1] for _ in range(2)])
+            res =  parallel_env.step([[0.5, 0.5] for _ in range(2)])
             state, reward, done, _ = res[0]
             if done:
                 print("Episode finished after {} timesteps".format(i + 1))

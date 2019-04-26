@@ -9,5 +9,4 @@ def test_device():
 def test_binding():
     r = CppMeshRenderer.CppMeshRenderer(256, 256, get_available_devices()[0])
     r.init()
-    r.query()
     r.release()
