@@ -1,7 +1,7 @@
 from gibson2.core.physics.robot_locomotors import *
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import *
-from gibson2.core.physics.interactive_objects import VisualObject
+from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj
 import gibson2
 from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
@@ -13,7 +13,6 @@ import torch.nn as nn
 import torch
 from gibson2 import assets
 from torchvision import datasets, transforms
-
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.' arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
@@ -224,7 +223,7 @@ class NavigateRandomEnv(NavigateEnv):
         timestep = super(NavigateRandomEnv, self).step(action)
         if timestep[2] and self.automatic_reset:
             #print('auto reset')
-            return self.reset(), 0, True, {}
+            return self.reset(), timestep[1], True, {}
         else:
             return timestep
 
@@ -254,6 +253,59 @@ class NavigateRandomEnv(NavigateEnv):
 
         state = self.get_state()
 
+        return state
+
+class InteractiveNavigateEnv(NavigateEnv):
+    def __init__(self, config_file, mode='headless', action_timestep=1 / 10.0, physics_timestep=1 / 240.0,
+                 device_idx=0, automatic_reset=False):
+        super(InteractiveNavigateEnv, self).__init__(config_file, mode, action_timestep, physics_timestep, device_idx=device_idx)
+        self.automatic_reset = automatic_reset
+        obj3 = InteractiveObj(os.path.join(os.path.dirname(assets.__file__), 'models', 'scene_components', 'realdoor.urdf'),
+                              scale=1.35)
+        self.simulator.import_interactive_object(obj3)
+
+        wall1 = InteractiveObj(os.path.join(os.path.dirname(assets.__file__), 'models', 'scene_components', 'walls.urdf'),
+                              scale=1)
+        self.simulator.import_interactive_object(wall1)
+        wall1.set_position_rotation([0,-1.5,1], [0,0,0,1])
+
+        wall2 = InteractiveObj(
+            os.path.join(os.path.dirname(assets.__file__), 'models', 'scene_components', 'walls.urdf'),
+            scale=1)
+        self.simulator.import_interactive_object(wall2)
+        wall2.set_position_rotation([0, 1.5, 1], [0, 0, 0, 1])
+        obj3.set_position_rotation([0, 0, -0.02], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+
+    def step(self, action):
+        timestep = super(InteractiveNavigateEnv, self).step(action)
+        return timestep
+
+    def reset(self):
+        self.robots[0].robot_specific_reset()
+
+        collision_links = [-1]
+        while (-1 in collision_links): # if collision happens restart
+            #floor, pos = self.scene.get_random_point()
+
+            pos = [np.random.uniform(4,5), 0, 0]
+            self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
+            self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+            collision_links = []
+            for _ in range(self.simulator_loop):
+                self.simulator_step()
+                collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
+            collision_links = np.unique(collision_links)
+
+        self.target_pos = [np.random.uniform(-5,-4), 0, 0]
+
+        if self.visual_object_at_initial_target_pos:
+            self.initial_pos_vis_obj.set_position(pos)
+            self.target_pos_vis_obj.set_position(self.target_pos)
+
+        self.current_step = 0
+        self.potential = 1
+
+        state = self.get_state()
         return state
 
 
@@ -299,7 +351,7 @@ if __name__ == '__main__':
         config_filename = '../examples/configs/jr2_reaching.yaml' if args.config is None else args.config
         config_filename = os.path.join(os.path.dirname(gibson2.__file__), config_filename)
         nav_env = NavigateEnv(config_file=config_filename, mode=args.mode,
-                              action_timestep=1/10.0, physics_timestep=1/40.0)
+                              action_timestep=1/10.0, physics_timestep=1/100.0)
         for episode in range(10):
             nav_env.reset()
             for i in range(300):  # 300 steps, 30s world time

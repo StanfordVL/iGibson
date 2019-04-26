@@ -39,6 +39,24 @@ class StadiumScene(Scene):
     def get_random_point_floor(self, floor):
         return 0, [np.random.uniform(-5, 5), np.random.uniform(-5, 5), 0]
 
+class StadiumSceneInteractive(Scene):
+    zero_at_running_strip_start_line = True  # if False, center of coordinates (0,0,0) will be at the middle of the stadium
+    stadium_halflen = 105 * 0.25  # FOOBALL_FIELD_HALFLEN
+    stadium_halfwidth = 50 * 0.25  # FOOBALL_FIELD_HALFWID
+
+    def load(self):
+        filename = os.path.join(pybullet_data.getDataPath(), "stadium_no_collision.sdf")
+        self.stadium = p.loadSDF(filename)
+        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+        self.ground_plane_mjcf = p.loadMJCF(planeName)
+        for i in self.ground_plane_mjcf:
+            pos, orn = p.getBasePositionAndOrientation(i)
+            p.resetBasePositionAndOrientation(i, [pos[0], pos[1], pos[2] - 0.005], orn)
+
+        for i in self.ground_plane_mjcf:
+            p.changeVisualShape(i, -1, rgbaColor=[1, 1, 1, 0.5])
+
+        return [item for item in self.stadium] + [item for item in self.ground_plane_mjcf]
 
 class BuildingScene(Scene):
     def __init__(self, model_id):
