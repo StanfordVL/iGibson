@@ -54,7 +54,7 @@ class NormalProjectionNetwork(network.DistributionNetwork):
                  std_transform=tf.nn.softplus,
                  state_dependent_std=False,
                  scale_distribution=False,
-                 mean_mask=False,
+                 action_mask=False,
                  name='NormalProjectionNetwork'):
         """Creates an instance of NormalProjectionNetwork.
 
@@ -101,14 +101,14 @@ class NormalProjectionNetwork(network.DistributionNetwork):
             bias_initializer=tf.keras.initializers.Zeros(),
             name='means_projection_layer')
 
-        self._mean_mask = mean_mask
-        if self._mean_mask:
-            self._mean_mask_layer = tf.keras.Sequential([
+        self._action_mask = action_mask
+        if self._action_mask:
+            self._action_mask_layer = tf.keras.Sequential([
                 tf.keras.layers.Dense(
                     sample_spec.shape.num_elements(),
-                    activation=activation_fn,
+                    activation=None,
                     kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
-                    name='mean_mask_layer'),
+                    name='action_mask_layer'),
                 tf.keras.layers.Activation('sigmoid'),
             ])
 
@@ -161,8 +161,8 @@ class NormalProjectionNetwork(network.DistributionNetwork):
         if self._mean_transform is not None:
             means = self._mean_transform(means, self._sample_spec)
 
-        if self._mean_mask:
-            mask = self._mean_mask_layer(inputs)
+        if self._action_mask:
+            mask = self._action_mask_layer(inputs)
             mask = tf.reshape(mask, [-1] + self._sample_spec.shape.as_list())
             means = tf.multiply(means, mask)
 

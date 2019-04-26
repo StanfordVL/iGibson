@@ -100,6 +100,8 @@ class NavigateEnv(BaseEnv):
                 self.simulator.import_object(self.target_pos_vis_obj)
             else:
                 self.target_pos_vis_obj.load()
+            # self.target_reaching_pos_vis_obj = VisualObject(rgba_color=[0, 1, 0, 0.5], radius=0.1)
+            # self.target_reaching_pos_vis_obj.load()
 
     def get_additional_states(self):
 
@@ -134,6 +136,7 @@ class NavigateEnv(BaseEnv):
         assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
         return additional_states
         """
+
 
     def step(self, action):
         self.robots[0].apply_action(action)
@@ -197,6 +200,12 @@ class NavigateEnv(BaseEnv):
         self.current_step += 1
         done = self.current_step >= self.max_step
 
+        # # robot flips over
+        if self.robots[0].get_position()[2] > 0.1:
+            print('death')
+            # reward = -self.terminal_reward
+            done = True
+
         if l2_distance(self.target_pos, robot_pos) < self.dist_tol:
             print('goal')
             reward = self.terminal_reward
@@ -241,6 +250,7 @@ class NavigateEnv(BaseEnv):
         if self.visual_object_at_initial_target_pos:
             self.initial_pos_vis_obj.set_position(self.initial_pos)
             self.target_pos_vis_obj.set_position(self.target_pos)
+            # self.target_reaching_pos_vis_obj.set_position(self.target_pos)
 
         # sensor_state = self.robots[0].calc_state()
         # sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
