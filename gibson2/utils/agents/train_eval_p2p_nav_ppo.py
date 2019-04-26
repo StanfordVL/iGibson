@@ -34,7 +34,7 @@ from tf_agents.drivers import dynamic_episode_driver
 from tf_agents.environments import parallel_py_environment
 from tf_agents.environments import tf_py_environment
 from tf_agents.metrics import batched_py_metric
-from tf_agents.metrics import metric_utils
+from tf_agents.eval import metric_utils
 from tf_agents.metrics import tf_metrics
 from tf_agents.metrics.py_metrics import AverageEpisodeLengthMetric
 from tf_agents.metrics.py_metrics import AverageReturnMetric
@@ -49,12 +49,15 @@ from tf_agents.networks import value_rnn_network
 from gibson2.utils.agents.networks import encoding_network
 # from tf_agents.networks import encoding_network
 
-# from tf_agents.policies import py_tf_policy
-from gibson2.utils.agents.policies import py_tf_policy
+from tf_agents.policies import py_tf_policy
+# from gibson2.utils.agents.policies import py_tf_policy
 
-# from tf_agents.replay_buffers import tf_uniform_replay_buffer
-from gibson2.utils.agents.replay_buffers import tf_uniform_replay_buffer
-from tf_agents.utils import common as common_utils
+from tf_agents.replay_buffers import tf_uniform_replay_buffer
+# from gibson2.utils.agents.replay_buffers import tf_uniform_replay_buffer
+from tf_agents.utils import common
+
+from gibson2.utils.tf_utils import AverageSuccessRateMetric, TFAverageSuccessRateMetric
+
 
 nest = tf.contrib.framework.nest
 
@@ -94,6 +97,8 @@ flags.DEFINE_string('gpu_c', '0',
                     'gpu id for compute, e.g. Tensorflow.')
 flags.DEFINE_string('gpu_g', '1',
                     'gpu id for graphics, e.g. Gibson.')
+flags.DEFINE_float('terminal_reward', 5000,
+                   'terminal reward to compute success rate')
 FLAGS = flags.FLAGS
 
 
@@ -105,6 +110,7 @@ def train_eval(
         env_mode='headless',
         random_seed=0,
         batch_size=64,
+        terminal_reward=5000,
         # TODO(kbanoop): rename to policy_fc_layers.
         conv_layer_params=None,
         encoder_fc_layers=(128, 64),
@@ -140,11 +146,11 @@ def train_eval(
     train_dir = os.path.join(root_dir, 'train')
     eval_dir = os.path.join(root_dir, 'eval')
 
-    train_summary_writer = tf.contrib.summary.create_file_writer(
+    train_summary_writer = tf.compat.v2.summary.create_file_writer(
         train_dir, flush_millis=summaries_flush_secs * 1000)
     train_summary_writer.set_as_default()
 
-    eval_summary_writer = tf.contrib.summary.create_file_writer(
+    eval_summary_writer = tf.compat.v2.summary.create_file_writer(
         eval_dir, flush_millis=summaries_flush_secs * 1000)
 
     eval_metrics = [
@@ -156,19 +162,23 @@ def train_eval(
             AverageEpisodeLengthMetric,
             metric_args={'buffer_size': num_eval_episodes},
             batch_size=1),
+        batched_py_metric.BatchedPyMetric(
+            AverageSuccessRateMetric,
+            metric_args={'buffer_size': num_eval_episodes, 'terminal_reward': terminal_reward},
+            batch_size=1),
     ]
     eval_summary_writer_flush_op = eval_summary_writer.flush()
 
-    with tf.contrib.summary.record_summaries_every_n_global_steps(
-            summary_interval):
-
+    global_step = tf.compat.v1.train.get_or_create_global_step()
+    with tf.compat.v2.summary.record_if(
+            lambda: tf.math.equal(global_step % summary_interval, 0)):
         tf.compat.v1.set_random_seed(random_seed)
 
         gpu = [int(gpu_id) for gpu_id in gpu.split(',')]
         gpu_ids = np.linspace(0, len(gpu), num=num_parallel_environments + 1, dtype=np.int, endpoint=False)
         eval_py_env = parallel_py_environment.ParallelPyEnvironment(
-            [lambda gpu_id=gpu[gpu_ids[0]]: env_load_fn('headless', gpu_id)])
-        tf_py_env = [lambda gpu_id=gpu[gpu_ids[1]]: env_load_fn(env_mode, gpu_id)]
+            [lambda gpu_id=gpu[gpu_ids[0]]: env_load_fn(env_mode, gpu_id)])
+        tf_py_env = [lambda gpu_id=gpu[gpu_ids[1]]: env_load_fn('headless', gpu_id)]
         tf_py_env += [lambda gpu_id=gpu[gpu_ids[env_id]]: env_load_fn('headless', gpu_id)
                       for env_id in range(2, num_parallel_environments + 1)]
         tf_env = tf_py_environment.TFPyEnvironment(
@@ -200,6 +210,7 @@ def train_eval(
             kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
         )
 
+        # use_action_mask = True
         if use_rnns:
             actor_net = actor_distribution_rnn_network.ActorDistributionRnnNetwork(
                 observation_spec,
@@ -217,6 +228,7 @@ def train_eval(
                 encoder=actor_encoder,
                 fc_layer_params=actor_fc_layers,
                 kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform(),
+                action_mask=False,
             )
             value_net = value_network.ValueNetwork(
                 observation_spec,
@@ -225,6 +237,16 @@ def train_eval(
                 kernel_initializer=tf.compat.v1.keras.initializers.glorot_uniform()
             )
 
+        # tf_agent = ppo_agent.PPOAgent(
+        #     tf_env.time_step_spec(),
+        #     tf_env.action_spec(),
+        #     optimizer,
+        #     actor_net=actor_net,
+        #     value_net=value_net,
+        #     num_epochs=num_epochs,
+        #     debug_summaries=debug_summaries,
+        #     summarize_grads_and_vars=summarize_grads_and_vars,
+        #     normalize_observations=True)
         tf_agent = ppo_agent.PPOAgent(
             tf_env.time_step_spec(),
             tf_env.action_spec(),
@@ -234,24 +256,25 @@ def train_eval(
             num_epochs=num_epochs,
             debug_summaries=debug_summaries,
             summarize_grads_and_vars=summarize_grads_and_vars,
-            normalize_observations=True)
+            train_step_counter=global_step,
+            action_mask=False,
+        )
 
         replay_buffer = tf_uniform_replay_buffer.TFUniformReplayBuffer(
-            tf_agent.collect_data_spec(),
+            tf_agent.collect_data_spec,
             batch_size=num_parallel_environments,
             max_length=replay_buffer_capacity)
 
-        valid_range_op = replay_buffer.valid_range_ids()
+        # valid_range_op = replay_buffer.valid_range_ids()
+        #
+        # dataset = replay_buffer.as_dataset(
+        #     num_parallel_calls=3,
+        #     sample_batch_size=batch_size,
+        #     num_steps=2).prefetch(3)
+        # iterator = tf.compat.v1.data.make_initializable_iterator(dataset)
+        #
+        eval_py_policy = py_tf_policy.PyTFPolicy(tf_agent.policy)
 
-        dataset = replay_buffer.as_dataset(
-            num_parallel_calls=3,
-            sample_batch_size=batch_size,
-            num_steps=2).prefetch(3)
-        iterator = tf.compat.v1.data.make_initializable_iterator(dataset)
-
-        eval_py_policy = py_tf_policy.PyTFPolicy(tf_agent.policy())
-
-        # TODO(sguada): Reenable metrics when ready for batch data.
         environment_steps_metric = tf_metrics.EnvironmentSteps()
         environment_steps_count = environment_steps_metric.result()
 
@@ -260,15 +283,16 @@ def train_eval(
             environment_steps_metric,
         ]
         train_metrics = step_metrics + [
-            tf_metrics.AverageReturnMetric(),
-            tf_metrics.AverageEpisodeLengthMetric(),
+            tf_metrics.AverageReturnMetric(buffer_size=100),
+            tf_metrics.AverageEpisodeLengthMetric(buffer_size=100),
+            TFAverageSuccessRateMetric(buffer_size=100, terminal_reward=terminal_reward)
         ]
 
         # Add to replay buffer and other agent specific observers.
         replay_buffer_observer = [replay_buffer.add_batch]
 
         global_step = tf.compat.v1.train.get_or_create_global_step()
-        collect_policy = tf_agent.collect_policy()
+        collect_policy = tf_agent.collect_policy
 
         collect_op = dynamic_episode_driver.DynamicEpisodeDriver(
             tf_env,
@@ -279,8 +303,7 @@ def train_eval(
         # trajectories, _ = iterator.get_next()
         trajectories = replay_buffer.gather_all()
 
-        train_op, _ = tf_agent.train(
-            experience=trajectories, train_step_counter=global_step)
+        train_op, _ = tf_agent.train(experience=trajectories)
 
         with tf.control_dependencies([train_op]):
             clear_replay_op = replay_buffer.clear()
@@ -288,28 +311,30 @@ def train_eval(
         with tf.control_dependencies([clear_replay_op]):
             train_op = tf.identity(train_op)
 
-        train_checkpointer = common_utils.Checkpointer(
+        train_checkpointer = common.Checkpointer(
             ckpt_dir=train_dir,
             agent=tf_agent,
             global_step=global_step,
-            metrics=tf.contrib.checkpoint.List(train_metrics))
-        policy_checkpointer = common_utils.Checkpointer(
+            metrics=metric_utils.MetricsGroup(train_metrics, 'train_metrics'))
+        policy_checkpointer = common.Checkpointer(
             ckpt_dir=os.path.join(train_dir, 'policy'),
-            policy=tf_agent.policy(),
+            policy=tf_agent.policy,
             global_step=global_step)
-        rb_checkpointer = common_utils.Checkpointer(
+        rb_checkpointer = common.Checkpointer(
             ckpt_dir=os.path.join(train_dir, 'replay_buffer'),
             max_to_keep=1,
             replay_buffer=replay_buffer)
 
+        summary_ops = []
         for train_metric in train_metrics:
-            train_metric.tf_summaries()
-        summary_op = tf.contrib.summary.all_summary_ops()
+            summary_ops.append(train_metric.tf_summaries(
+                train_step=global_step, step_metrics=step_metrics))
 
         with eval_summary_writer.as_default(), \
-             tf.contrib.summary.always_record_summaries():
+             tf.compat.v2.summary.record_if(True):
             for eval_metric in eval_metrics:
-                eval_metric.tf_summaries(step_metrics=step_metrics)
+                eval_metric.tf_summaries(
+                    train_step=global_step, step_metrics=step_metrics)
 
         init_agent_op = tf_agent.initialize()
 
@@ -319,22 +344,25 @@ def train_eval(
             # Initialize graph.
             train_checkpointer.initialize_or_restore(sess)
             rb_checkpointer.initialize_or_restore(sess)
-            sess.run(iterator.initializer)
+            # sess.run(iterator.initializer)
 
             # TODO(sguada) Remove once Periodically can be saved.
-            common_utils.initialize_uninitialized_variables(sess)
+            common.initialize_uninitialized_variables(sess)
             sess.run(init_agent_op)
+            sess.run(train_summary_writer.init())
+            sess.run(eval_summary_writer.init())
 
             # tf.contrib.summary.initialize(session=sess, graph=tf.get_default_graph())
-            tf.contrib.summary.initialize(session=sess)
+            # tf.contrib.summary.initialize(session=sess)
 
             collect_time = 0
             train_time = 0
             timed_at_step = sess.run(global_step)
             steps_per_second_ph = tf.compat.v1.placeholder(
                 tf.float32, shape=(), name='steps_per_sec_ph')
-            steps_per_second_summary = tf.contrib.summary.scalar(
-                name='global_steps/sec', tensor=steps_per_second_ph)
+            steps_per_second_summary = tf.compat.v2.summary.scalar(
+                name='global_steps_per_sec', data=steps_per_second_ph,
+                step=global_step)
 
             while sess.run(environment_steps_count) < num_environment_steps:
                 global_step_val = sess.run(global_step)
@@ -346,6 +374,7 @@ def train_eval(
                         num_episodes=num_eval_episodes,
                         global_step=global_step_val,
                         callback=eval_metrics_callback,
+                        log=True,
                     )
                     sess.run(eval_summary_writer_flush_op)
 
@@ -354,11 +383,8 @@ def train_eval(
                 collect_time += time.time() - start_time
                 print('collect:', time.time() - start_time)
 
-                valid_range = sess.run(valid_range_op)
-                print('valid_range', valid_range)
-
                 start_time = time.time()
-                total_loss, _ = sess.run([train_op, summary_op])
+                total_loss, _ = sess.run([train_op, summary_ops])
                 train_time += time.time() - start_time
                 print('train:', time.time() - start_time)
 
@@ -370,7 +396,7 @@ def train_eval(
                     sess.run(
                         steps_per_second_summary,
                         feed_dict={steps_per_second_ph: steps_per_sec})
-                    logging.info('collect_time = {}, train_time = {}'.format(
+                    logging.info('%s', 'collect_time = {}, train_time = {}'.format(
                         collect_time, train_time))
                     timed_at_step = global_step_val
                     collect_time = 0
@@ -393,16 +419,31 @@ def train_eval(
                 num_episodes=num_eval_episodes,
                 global_step=global_step_val,
                 callback=eval_metrics_callback,
+                log=True,
             )
             sess.run(eval_summary_writer_flush_op)
 
 
 def main(_):
-    os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu_c
-
+    tf.enable_resource_variables()
+    logging.set_verbosity(logging.INFO)
     if tf.executing_eagerly():
         return
-    tf.logging.set_verbosity(tf.logging.INFO)
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu_c
+
+    conv_layer_params = [(32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1)]
+    encoder_fc_layers = [64]
+    actor_fc_layers = [64]
+    value_fc_layers = [64]
+
+    for k, v in FLAGS.flag_values_dict().items():
+        print(k, v)
+    print('conv_layer_params', conv_layer_params)
+    print('encoder_fc_layers', encoder_fc_layers)
+    print('actor_fc_layers', actor_fc_layers)
+    print('value_fc_layers', value_fc_layers)
+
     train_eval(
         FLAGS.root_dir,
         gpu=FLAGS.gpu_g,
@@ -414,10 +455,11 @@ def main(_):
                                                          device_idx),
         env_mode=FLAGS.mode,
         batch_size=FLAGS.batch_size,
-        conv_layer_params=[(32, (8, 8), 4), (64, (4, 4), 2), (64, (3, 3), 1)],
-        encoder_fc_layers=[128, 64],
-        actor_fc_layers=[128, 64],
-        value_fc_layers=[128, 64],
+        terminal_reward=FLAGS.terminal_reward,
+        conv_layer_params=conv_layer_params,
+        encoder_fc_layers=encoder_fc_layers,
+        actor_fc_layers=actor_fc_layers,
+        value_fc_layers=value_fc_layers,
         replay_buffer_capacity=FLAGS.replay_buffer_capacity,
         num_environment_steps=FLAGS.num_environment_steps,
         num_parallel_environments=FLAGS.num_parallel_environments,
@@ -429,4 +471,5 @@ def main(_):
 
 if __name__ == '__main__':
     flags.mark_flag_as_required('root_dir')
+    flags.mark_flag_as_required('config_file')
     tf.app.run()

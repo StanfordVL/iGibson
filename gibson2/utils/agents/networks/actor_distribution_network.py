@@ -26,7 +26,8 @@ from gibson2.utils.tf_utils import mlp_layers
 
 from tf_agents.networks import categorical_projection_network
 from tf_agents.networks import network
-from tf_agents.networks import normal_projection_network
+# from tf_agents.networks import normal_projection_network
+from gibson2.utils.agents.networks import normal_projection_network
 from tf_agents.specs import tensor_spec
 from tf_agents.utils import nest_utils
 
@@ -40,13 +41,16 @@ def _categorical_projection_net(action_spec, logits_init_output_factor=0.1):
 
 def _normal_projection_net(action_spec,
                            init_action_stddev=0.35,
-                           init_means_output_factor=0.1):
+                           init_means_output_factor=0.1,
+                           action_mask=False):
     std_initializer_value = np.log(np.exp(init_action_stddev) - 1)
 
     return normal_projection_network.NormalProjectionNetwork(
         action_spec,
         init_means_output_factor=init_means_output_factor,
-        std_initializer_value=std_initializer_value)
+        std_initializer_value=std_initializer_value,
+        action_mask=action_mask,
+    )
 
 
 @gin.configurable
@@ -58,10 +62,12 @@ class ActorDistributionNetwork(network.DistributionNetwork):
                  output_tensor_spec,
                  encoder=None,
                  fc_layer_params=(200, 100),
+                 dropout_layer_params=None,
                  kernel_initializer=None,
                  activation_fn=tf.keras.activations.relu,
                  discrete_projection_net=_categorical_projection_net,
                  continuous_projection_net=_normal_projection_net,
+                 action_mask=False,
                  name='ActorDistributionNetwork'):
         """Creates an instance of `ActorDistributionNetwork`.
 
@@ -73,6 +79,14 @@ class ActorDistributionNetwork(network.DistributionNetwork):
           encoder: An instance of encoding_network.EncodingNetwork for feature extraction
           fc_layer_params: Optional list of fully_connected parameters, where each
             item is the number of units in the layer.
+          dropout_layer_params: Optional list of dropout layer parameters, each item
+            is the fraction of input units to drop or a dictionary of parameters
+            according to the keras.Dropout documentation. The additional parameter
+            `permanent', if set to True, allows to apply dropout at inference for
+            approximated Bayesian inference. The dropout layers are interleaved with
+            the fully connected layers; there is a dropout layer after each fully
+            connected layer, except if the entry in the list is None. This list must
+            have the same length of fc_layer_params, or be None.
           kernel_initializer: Initializer to use for the mlp and output layers
           activation_fn: Activation function, e.g. tf.nn.relu, slim.leaky_relu, ...
           discrete_projection_net: Callable that generates a discrete projection
@@ -93,7 +107,7 @@ class ActorDistributionNetwork(network.DistributionNetwork):
                 projection_networks.append(discrete_projection_net(single_output_spec))
             else:
                 projection_networks.append(
-                    continuous_projection_net(single_output_spec))
+                    continuous_projection_net(single_output_spec, action_mask=action_mask))
 
         projection_distribution_specs = [
             proj_net.output_spec for proj_net in projection_networks
@@ -103,6 +117,7 @@ class ActorDistributionNetwork(network.DistributionNetwork):
 
         fc_layers = tf.keras.Sequential(mlp_layers(conv_layer_params=None,
                                                    fc_layer_params=fc_layer_params,
+                                                   dropout_layer_params=dropout_layer_params,
                                                    activation_fn=activation_fn,
                                                    kernel_initializer=kernel_initializer,
                                                    dtype=tf.float32,
