@@ -1,4 +1,0 @@
-tf-agents-nightly==0.2.0.dev20190321
-tf-estimator-nightly=1.14.0.dev2019022701
-tf-nightly-gpu==1.14.1.dev20190321
-tfp-nightly==0.7.0.dev20190304
