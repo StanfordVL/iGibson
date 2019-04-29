@@ -409,23 +409,23 @@ class Turtlebot(WalkerBase):
                             control='velocity',
                             )
         self.is_discrete = config["is_discrete"]
-        self.vel = config.get('velocity', 1.0)
-        print('velocity', self.vel)
+        self.velocity = config.get('velocity', 1.0)
+        print('velocity', self.velocity)
         if self.is_discrete:
             # self.action_space = gym.spaces.Discrete(5)
-            # self.action_list = [[self.vel * 0.5, self.vel * 0.5],
-            #                     [-self.vel * 0.5, -self.vel * 0.5],
-            #                     [self.vel * 0.5, -self.vel * 0.5],
-            #                     [-self.vel * 0.5, self.vel * 0.5],
+            # self.action_list = [[self.velocity * 0.5, self.velocity * 0.5],
+            #                     [-self.velocity * 0.5, -self.velocity * 0.5],
+            #                     [self.velocity * 0.5, -self.velocity * 0.5],
+            #                     [-self.velocity * 0.5, self.velocity * 0.5],
             #                     [0, 0]]
             self.action_space = gym.spaces.Discrete(3)
-            self.action_list = [[self.vel, self.vel],
-                                [self.vel * 0.5, -self.vel * 0.5],
-                                [-self.vel * 0.5, self.vel * 0.5]]
+            self.action_list = [[self.velocity, self.velocity],
+                                [self.velocity * 0.5, -self.velocity * 0.5],
+                                [-self.velocity * 0.5, self.velocity * 0.5]]
             self.setup_keys_to_action()
         else:
             self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=0.0, high=1.0)
-            self.action_low = -self.vel * np.ones([self.action_dim])
+            self.action_low = -self.velocity * np.ones([self.action_dim])
             self.action_high = -self.action_low
 
     def apply_action(self, action):
@@ -473,15 +473,15 @@ class JR2(WalkerBase):
 
         if self.is_discrete:
             self.action_space = gym.spaces.Discrete(5)
-            self.action_list = [[self.vel * 0.5, self.vel * 0.5, 0, 0.2],
-                                [-self.vel * 0.5, -self.vel * 0.5, 0, -0.2],
-                                [self.vel * 0.5, -self.vel * 0.5, -0.5, 0],
-                                [-self.vel * 0.5, self.vel * 0.5, 0.5, 0],
+            self.action_list = [[self.velocity * 0.5, self.velocity * 0.5, 0, 0.2],
+                                [-self.velocity * 0.5, -self.velocity * 0.5, 0, -0.2],
+                                [self.velocity * 0.5, -self.velocity * 0.5, -0.5, 0],
+                                [-self.velocity * 0.5, self.velocity * 0.5, 0.5, 0],
                                 [0, 0, 0, 0]]
 
             self.setup_keys_to_action()
         else:
-            action_high = self.vel * np.ones([4])
+            action_high = self.velocity * np.ones([4])
             self.action_space = gym.spaces.Box(-action_high, action_high)
 
     def apply_action(self, action):
@@ -538,7 +538,6 @@ class JR2_Kinova(WalkerBase):
         self.is_discrete = False
         self.wheel_velocity = config.get('wheel_velocity', 0.1)
         self.arm_velocity = config.get('arm_velocity', 0.01)
-        self.vel = config.get('velocity', 0.1)
 
         # wheel_dim = 2
         # camera_dim = 2
@@ -554,15 +553,15 @@ class JR2_Kinova(WalkerBase):
 
         ##############################################################################################
         #
-        # self.action_low = np.array([-self.vel, -self.vel,
+        # self.action_low = np.array([-self.velocity, -self.velocity,
         #                             -np.pi, 0.872664625997, 0.610865238198, -np.pi, -np.pi, -np.pi,
         #                             0.0, 0.0])
-        # self.action_high = np.array([self.vel, self.vel,
+        # self.action_high = np.array([self.velocity, self.velocity,
         #                              np.pi, 5.41052068118, 5.67232006898, np.pi, np.pi, np.pi,
         #                              2.0, 2.0])
         # self.action_space = gym.spaces.Box(shape=(10,), low=0.0, high=1.0)
-        # self.action_low = np.array([-self.vel, -self.vel, -np.pi])
-        # self.action_high = np.array([self.vel, self.vel, np.pi])
+        # self.action_low = np.array([-self.velocity, -self.velocity, -np.pi])
+        # self.action_high = np.array([self.velocity, self.velocity, np.pi])
         # self.action_space = gym.spaces.Box(shape=(3,), low=0.0, high=1.0)
         #self.action_low = np.array([-0.05, -0.05,
         #                            -np.pi, 0.872664625997, 0.610865238198, -np.pi])

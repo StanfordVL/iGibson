@@ -5,32 +5,17 @@ scene: stadium
 
 # robot
 robot: JR2_Kinova
-velocity: 0.025
 wheel_velocity: 0.025
 arm_velocity: 0.01
 
 # task, observation and action
 task: reaching # pointgoal|objectgoal|areagoal|reaching
 
-#initial_pos_low: [0.0, 0.0, 0.0]
-#initial_pos_high: [0.0, 0.0, 0.0]
-#initial_orn_low: [0.0, 0.0, 0.0]
-#initial_orn_high: [0.0, 0.0, 0.0]
-#
-#target_pos_low: [-5.0, 3.2, 0.75]
-#target_pos_high: [-5.0, 3.2, 0.75]
-#target_orn_low: [0.0, 0.0, 0.0]
-#target_orn_high: [0.0, 0.0, 0.0]
+initial_pos: [-1.0, -1.0, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
 
-initial_pos_low: [-5.0, -5.0, 0.0]
-initial_pos_high: [5.0, 5.0, 0.0]
-initial_orn_low: [0.0, 0.0, 0.0]
-initial_orn_high: [0.0, 0.0, 6.283185307179586]
-
-target_pos_low: [-5.0, -5.0, 0.4]
-target_pos_high: [5.0, 5.0, 0.8]
-target_orn_low: [0.0, 0.0, 0.0]
-target_orn_high: [0.0, 0.0, 6.283185307179586]
+target_pos: [1.0, 1.0, 0.8]
+target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
 additional_states_dim: 6

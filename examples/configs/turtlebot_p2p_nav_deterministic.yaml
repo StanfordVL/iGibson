@@ -1,7 +1,7 @@
 # scene
 scene: stadium
 #scene: building
-model_id: Ohoopee
+#model_id: Ohoopee
 
 # robot
 robot: Turtlebot
