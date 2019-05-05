@@ -1,6 +1,6 @@
 # scene
-scene: stadium
-#scene: building
+#scene: stadium
+scene: building
 model_id: Ohoopee
 
 # robot
