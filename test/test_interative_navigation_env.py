@@ -13,14 +13,15 @@ def test_jr2():
                                    '../examples/configs/jr_interactive_nav.yaml')
     nav_env = InteractiveNavigateEnv(config_file=config_filename, mode='gui',
                           action_timestep=1.0 / 10.0, physics_timestep=1 / 40.0)
-    nav_env.reset()
-    for i in range(1000):  # 300 steps, 30s world time
-        action = nav_env.action_space.sample()
-        state, reward, done, _ = nav_env.step(action)
-        if done:
-            print('Episode finished after {} timesteps'.format(i + 1))
-
-    nav_env.clean()
+    try:
+        nav_env.reset()
+        for i in range(10):  # 300 steps, 30s world time
+            action = nav_env.action_space.sample()
+            state, reward, done, _ = nav_env.step(action)
+            if done:
+                print('Episode finished after {} timesteps'.format(i + 1))
+    finally:
+        nav_env.clean()
 
 """
     s =Simulator(mode='gui')
