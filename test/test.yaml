@@ -1,6 +1,6 @@
 # scene
-scene: stadium
-#scene: building
+#scene: stadium
+scene: building
 model_id: Ohoopee
 
 # robot
@@ -18,7 +18,7 @@ target_orn: [0.0, 0.0, 0.0]
 target_pos: [-5.0, 3.2, 0.0]
 
 is_discrete: true
-additional_states_dim: 8
+additional_states_dim: 3
 
 # reward
 terminal_reward: 5000
