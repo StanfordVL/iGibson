@@ -95,7 +95,8 @@ setup(name='gibson2',
             'aenum',
             'pyopengl==3.1.0',
             'pyopengl-accelerate==3.1.0',
-            'pyassimp==4.1.3'
+            'pyassimp==4.1.3',
+            'gputil'
     ],
     ext_modules=[CMakeExtension('CppMeshRenderer', sourcedir='gibson2/core/render')],
     cmdclass=dict(build_ext=CMakeBuild),
