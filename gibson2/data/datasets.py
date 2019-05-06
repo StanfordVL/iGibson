@@ -20,7 +20,7 @@ import argparse
 import json
 from numpy.linalg import inv
 import pickle
-from gibson2 import assets
+import gibson2
 
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',

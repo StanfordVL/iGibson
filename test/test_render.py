@@ -3,10 +3,11 @@ from gibson2.core.render.mesh_renderer.deprecated.mesh_renderer_tensor import Me
 import numpy as np
 import torch
 import os
-from gibson2 import assets
 import matplotlib.pyplot as plt
+import gibson2
 
-dir = os.path.join(os.path.dirname(assets.__file__), 'test')
+
+dir = os.path.join(gibson2.assets_path, 'test')
 
 
 def test_render_loading_cleaning():
