@@ -101,7 +101,7 @@ class CompletionNet(nn.Module):
         )
 
     def forward(self, x):
-        return F.tanh(self.convs(x))
+        return torch.tanh(self.convs(x))
 
 
 def identity_init(m):

@@ -20,6 +20,8 @@ class Simulator:
 
         # renderer
         self.renderer = MeshRenderer(width=resolution, height=resolution, device_idx=device_idx)
+        self.resolution = resolution
+        self.device_idx = device_idx
         self.renderer.set_fov(90)
         self.visual_objects = {}
 
@@ -37,6 +39,24 @@ class Simulator:
     def add_viewer(self):
         self.viewer = Viewer()
         self.viewer.renderer = self.renderer
+
+    def reload(self):
+        self.renderer.release()
+        self.renderer = MeshRenderer(width=self.resolution, height=self.resolution, device_idx=self.device_idx)
+        p.disconnect(self.cid)
+        if self.mode == 'gui':
+            self.cid = p.connect(p.GUI)
+        else:
+            self.cid = p.connect(p.DIRECT)
+        p.setTimeStep(self.timestep)
+        p.setGravity(0, 0, -self.gravity)
+        self.visual_objects = {}
+        if self.mode == 'gui':
+            self.viewer.renderer = self.renderer
+        self.renderer.set_fov(90)
+        self.robots = []
+        self.scene = None
+        self.objects = []
 
     def import_scene(self, scene):
         new_objects = scene.load()

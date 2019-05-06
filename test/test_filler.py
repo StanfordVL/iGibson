@@ -10,10 +10,10 @@ import cv2
 
 def test_env():
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/goggle.yaml')
-    nav_env = NavigateEnv(config_file=config_filename, mode='headless')
+    nav_env = NavigateEnv(config_file=config_filename, mode='gui')
     for j in range(2):
         nav_env.reset()
-        for i in range(500): # 300 steps, 30s world time
+        for i in range(10): # 10 steps, 1s world time
             s = time()
             action = nav_env.action_space.sample()
             ts = nav_env.step(action)
@@ -25,4 +25,5 @@ def test_env():
             if ts[2]:
                 print("Episode finished after {} timesteps".format(i + 1))
                 break
-test_env()
+
+    nav_env.clean()
