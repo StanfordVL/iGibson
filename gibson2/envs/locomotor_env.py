@@ -96,6 +96,58 @@ class NavigateEnv(BaseEnv):
             else:
                 self.target_pos_vis_obj.load()
 
+    def reload(self, config_file):
+        super().reload(config_file)
+        self.initial_pos = np.array(self.config.get('initial_pos', [0, 0, 0]))
+        self.initial_orn = np.array(self.config.get('initial_orn', [0, 0, 0]))
+
+        self.target_pos = np.array(self.config.get('target_pos', [5, 5, 0]))
+        self.target_orn = np.array(self.config.get('target_orn', [0, 0, 0]))
+
+        self.additional_states_dim = self.config['additional_states_dim']
+
+        # termination condition
+        self.dist_tol = self.config.get('dist_tol', 0.5)
+        self.max_step = self.config.get('max_step', float('inf'))
+
+        # reward
+        self.terminal_reward = self.config.get('terminal_reward', 0.0)
+        self.electricity_cost = self.config.get('electricity_cost', 0.0)
+        self.stall_torque_cost = self.config.get('stall_torque_cost', 0.0)
+        self.collision_cost = self.config.get('collision_cost', 0.0)
+        self.discount_factor = self.config.get('discount_factor', 1.0)
+        self.output = self.config['output']
+
+        self.sensor_dim = self.additional_states_dim
+        self.action_dim = self.robots[0].action_dim
+
+        # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float64)
+        observation_space = OrderedDict()
+        if 'sensor' in self.output:
+            self.sensor_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32)
+            observation_space['sensor'] = self.sensor_space
+        if 'rgb' in self.output:
+            self.rgb_space = gym.spaces.Box(low=0.0, high=1.0,
+                                            shape=(self.config['resolution'], self.config['resolution'], 3),
+                                            dtype=np.float32)
+            observation_space['rgb'] = self.rgb_space
+        if 'depth' in self.output:
+            self.depth_space = gym.spaces.Box(low=0.0, high=1.0,
+                                              shape=(self.config['resolution'], self.config['resolution'], 1),
+                                              dtype=np.float32)
+            observation_space['depth'] = self.depth_space
+        if 'rgb_filled' in self.output:  # use filler
+            self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
+            self.comp = torch.nn.DataParallel(self.comp).cuda()
+            self.comp.load_state_dict(
+                torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
+            self.comp.eval()
+        if 'pointgoal' in self.output:
+            observation_space['pointgoal'] = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32)
+
+        self.observation_space = gym.spaces.Dict(observation_space)
+        self.action_space = self.robots[0].action_space
+
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
         # rotate relative position back to body point of view

@@ -37,11 +37,11 @@ class WalkerBase(BaseRobot):
         assert type(action_dim) == int, "Action dimension must be int, got {}".format(type(action_dim))
 
         action_high = np.ones([action_dim])
-        self.action_space = gym.spaces.Box(-action_high, action_high)
+        self.action_space = gym.spaces.Box(-action_high, action_high, dtype=np.float32)
         obs_high = np.inf * np.ones(self.obs_dim)
-        self.observation_space = gym.spaces.Box(-obs_high, obs_high)
+        self.observation_space = gym.spaces.Box(-obs_high, obs_high, dtype=np.float32)
         sensor_high = np.inf * np.ones([sensor_dim])
-        self.sensor_space = gym.spaces.Box(-sensor_high, sensor_high)
+        self.sensor_space = gym.spaces.Box(-sensor_high, sensor_high, dtype=np.float32)
 
         self.power = power
         self.camera_x = 0
@@ -96,6 +96,9 @@ class WalkerBase(BaseRobot):
         return self.robot_body.get_rpy()
 
     def apply_action(self, a):
+        if isinstance(a, list):
+            action = np.array(a)
+
         if self.control == 'torque':
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_torque(self.power * j.power_coef * float(np.clip(a[n], -1, +1)))
@@ -174,6 +177,9 @@ class Ant(WalkerBase):
             self.setup_keys_to_action()
 
     def apply_action(self, action):
+        if isinstance(action, list):
+            action = np.array(action)
+
         if self.is_discrete:
             real_action = self.action_list[action]
         else:
@@ -262,6 +268,10 @@ class Humanoid(WalkerBase):
         self.motors = [self.jdict[n] for n in self.motor_names]
 
     def apply_action(self, a):
+
+        if isinstance(action, list):
+            action = np.array(action)
+
         if self.is_discrete:
             real_action = self.action_list[a]
         else:
@@ -304,9 +314,12 @@ class Husky(WalkerBase):
             self.setup_keys_to_action()
         else:
             action_high = 0.02 * np.ones([4])
-            self.action_space = gym.spaces.Box(-action_high, action_high)
+            self.action_space = gym.spaces.Box(-action_high, action_high, dtype=np.float32)
 
     def apply_action(self, action):
+        if isinstance(action, list):
+            action = np.array(action)
+
         if self.is_discrete:
             real_action = self.action_list[action]
         else:
@@ -372,9 +385,12 @@ class Quadrotor(WalkerBase):
             self.setup_keys_to_action()
         else:
             action_high = 0.02 * np.ones([6])
-            self.action_space = gym.spaces.Box(-action_high, action_high)
+            self.action_space = gym.spaces.Box(-action_high, action_high, dtype=np.float32)
 
     def apply_action(self, action):
+        if isinstance(action, list):
+            action = np.array(action)
+
         if self.is_discrete:
             real_action = self.action_list[action]
         else:
@@ -424,11 +440,14 @@ class Turtlebot(WalkerBase):
                                 [-self.velocity * 0.5, self.velocity * 0.5]]
             self.setup_keys_to_action()
         else:
-            self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=0.0, high=1.0)
+            self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=0.0, high=1.0, dtype=np.float32)
             self.action_low = -self.velocity * np.ones([self.action_dim])
             self.action_high = -self.action_low
 
     def apply_action(self, action):
+        if isinstance(action, list):
+            action = np.array(action)
+
         if self.is_discrete:
             real_action = self.action_list[action]
         else:
@@ -470,6 +489,8 @@ class JR2(WalkerBase):
                             control=['velocity', 'velocity', 'position', 'position'],
                             )
         self.is_discrete = config["is_discrete"]
+        self.velocity = config.get('velocity', 1.0)
+        print('velocity', self.velocity)
 
         if self.is_discrete:
             self.action_space = gym.spaces.Discrete(5)
@@ -482,9 +503,12 @@ class JR2(WalkerBase):
             self.setup_keys_to_action()
         else:
             action_high = self.velocity * np.ones([4])
-            self.action_space = gym.spaces.Box(-action_high, action_high)
+            self.action_space = gym.spaces.Box(-action_high, action_high, dtype=np.float32)
 
     def apply_action(self, action):
+        if isinstance(action, list):
+            action = np.array(action)
+
         if self.is_discrete:
             real_action = self.action_list[action]
         else:
@@ -545,7 +569,7 @@ class JR2_Kinova(WalkerBase):
         # assert self.action_dim == wheel_dim + camera_dim + arm_dim
         self.action_low = np.array([-self.wheel_velocity] * 2 + [-self.arm_velocity] * 8)
         self.action_high = -self.action_low
-        self.action_space = gym.spaces.Box(shape=(10,), low=-1.0, high=1.0)
+        self.action_space = gym.spaces.Box(shape=(10,), low=-1.0, high=1.0, dtype=np.float32)
         # self.action_low = np.array([-self.wheel_velocity] * 2 + [-self.arm_velocity] * 1)
         # self.action_high = -self.action_low
         # self.action_space = gym.spaces.Box(shape=(3,), low=0.0, high=1.0)
@@ -575,6 +599,8 @@ class JR2_Kinova(WalkerBase):
         # self.action_space = gym.spaces.Box(shape=(8,), low=0.0, high=1.0)
 
     def apply_action(self, action):
+        if isinstance(action, list):
+            action = np.array(action)
         action = np.clip(action, self.action_space.low, self.action_space.high)
         normalized_action = self.action_high * action
         real_action = np.zeros(self.action_dim)

@@ -48,7 +48,7 @@ class InteractiveObj:
 
 class RBOObject(InteractiveObj):
     def __init__(self, name, scale=1):
-        filename = os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), 'models', 'rbo', name,
+        filename = os.path.join(gibson2.assets_path, 'models', 'rbo', name,
                                      'configuration', '{}.urdf'.format(name))
         super(RBOObject, self).__init__(filename, scale)
 

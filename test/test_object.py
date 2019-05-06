@@ -9,9 +9,9 @@ def test_import_object():
 
     obj = YCBObject('003_cracker_box')
     s.import_object(obj)
-
-    assert s.objects == list(range(5))
+    objs = s.objects
     s.disconnect()
+    assert objs == list(range(5))
 
 
 def test_import_many_object():
@@ -25,27 +25,30 @@ def test_import_many_object():
 
     for j in range(1000):
         s.step()
-    assert (s.objects[-1] == 33)
+    last_obj = s.objects[-1]
     s.disconnect()
+    assert (last_obj == 33)
 
 
 def test_import_rbo_object():
     s = Simulator(mode='gui')
-    scene = StadiumScene()
-    s.import_scene(scene)
+    try:
+        scene = StadiumScene()
+        s.import_scene(scene)
 
-    obj = RBOObject('book')
-    s.import_interactive_object(obj)
+        obj = RBOObject('book')
+        s.import_interactive_object(obj)
 
-    obj2 = RBOObject('microwave')
-    s.import_interactive_object(obj2)
+        obj2 = RBOObject('microwave')
+        s.import_interactive_object(obj2)
 
-    obj.set_position([0, 0, 2])
-    obj2.set_position([0, 1, 2])
+        obj.set_position([0, 0, 2])
+        obj2.set_position([0, 1, 2])
 
-    obj3 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'door.urdf'))
-    s.import_interactive_object(obj3)
+        obj3 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'door.urdf'))
+        s.import_interactive_object(obj3)
 
-    for i in range(100):
-        s.step()
-    s.disconnect()
+        for i in range(100):
+            s.step()
+    finally:
+        s.disconnect()
