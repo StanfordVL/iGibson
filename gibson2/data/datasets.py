@@ -48,7 +48,7 @@ def depth_loader(path):
 
 
 def get_model_path(model_id):
-    data_path = os.path.join(gibson2.assets_path, 'dataset')
+    data_path = gibson2.dataset_path
     assert (model_id in os.listdir(data_path)) or model_id == 'stadium', "Model {} does not exist".format(model_id)
     return os.path.join(data_path, model_id)
 
@@ -178,7 +178,7 @@ class ViewDataSet3D(data.Dataset):
                  semantic_transform=np.array, env = None, only_load = None):
         print('Processing the data:')
         if not root:
-            self.root = os.path.join(gibson2.assets_path, "dataset")
+            self.root = gibson2.dataset_path
         else:
             self.root = root
         self.train = train
