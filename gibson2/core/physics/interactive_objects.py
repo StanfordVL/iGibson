@@ -1,10 +1,10 @@
 import pybullet as p
-from gibson2 import assets
 import os
+import gibson2
 
 class YCBObject:
     def __init__(self, name, scale=1):
-        self.filename = os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), 'models', 'ycb', name, 'textured_simple.obj')
+        self.filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name, 'textured_simple.obj')
         self.scale = scale
 
     def load(self):

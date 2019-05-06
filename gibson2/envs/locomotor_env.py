@@ -11,7 +11,6 @@ import argparse
 from gibson2.learn.completion import CompletionNet, identity_init, Perceptual
 import torch.nn as nn
 import torch
-from gibson2 import assets
 from torchvision import datasets, transforms
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.' arXiv preprint arXiv:1807.06757 (2018).
@@ -73,7 +72,7 @@ class NavigateEnv(BaseEnv):
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
             self.comp.load_state_dict(
-                torch.load(os.path.join(os.path.dirname(assets.__file__), 'networks', 'model.pth')))
+                torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
         if 'pointgoal' in self.output:
             observation_space['pointgoal'] = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32)
@@ -285,18 +284,18 @@ class InteractiveNavigateEnv(NavigateEnv):
                                                      device_idx=device_idx)
         self.automatic_reset = automatic_reset
         door = InteractiveObj(
-            os.path.join(os.path.dirname(assets.__file__), 'models', 'scene_components', 'realdoor.urdf'),
+            os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
             scale=1.35)
         self.simulator.import_interactive_object(door)
 
         wall1 = InteractiveObj(
-            os.path.join(os.path.dirname(assets.__file__), 'models', 'scene_components', 'walls.urdf'),
+            os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
             scale=1)
         self.simulator.import_interactive_object(wall1)
         wall1.set_position_rotation([0, -1.5, 1], [0, 0, 0, 1])
 
         wall2 = InteractiveObj(
-            os.path.join(os.path.dirname(assets.__file__), 'models', 'scene_components', 'walls.urdf'),
+            os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
             scale=1)
         self.simulator.import_interactive_object(wall2)
         wall2.set_position_rotation([0, 1.5, 1], [0, 0, 0, 1])
