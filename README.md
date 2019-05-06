@@ -26,6 +26,7 @@ Release
 =================
 **This is the gibson2 0.0.1 release. Bug reports, suggestions for improvement, as well as community developments are encouraged and appreciated.** [change log file](misc/CHANGELOG.md).  
 
+Support for [Gibson v1](http://github.com/StanfordVL/GibsonEnv/) will move to this repo.
 
 Database
 =================
@@ -39,6 +40,7 @@ Table of contents
         * [Building from source](#b-building-from-source)
         * [Uninstalling](#uninstalling)
    * [Quick Start](#quick-start)
+        * [Tests](#tests)
         * [Gibson FPS](#gibson-framerate)
         * [Web User Interface](#web-user-interface)
         * [Rendering Semantics](#rendering-semantics)
@@ -50,13 +52,18 @@ Table of contents
    * [Citation](#citation)
 
 
-
 Installation
 =================
 
 #### Installation Method
 
-There are two ways to install gibson, A. using our docker image (recommended) and B. building from source. 
+Gibson v2 can be installed as a python package:
+
+```bash
+git clone https://github.com/fxia22/gibsonv2
+cd gibsonv2
+pip install -e .
+```
 
 #### System requirements
 
