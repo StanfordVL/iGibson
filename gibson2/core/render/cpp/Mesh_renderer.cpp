@@ -220,17 +220,6 @@ public:
     return 0;
     };
 
-    void query() {
-        const GLubyte* ven = glGetString(GL_VENDOR);
-        printf("GL_VENDOR=%s\n", ven);
-        const GLubyte* ren = glGetString(GL_RENDERER);
-        printf("GL_RENDERER=%s\n", ren);
-        const GLubyte* ver = glGetString(GL_VERSION);
-        printf("GL_VERSION=%s\n", ver);
-        const GLubyte* sl = glGetString(GL_SHADING_LANGUAGE_VERSION);
-        printf("GL_SHADING_LANGUAGE_VERSION=%s\n", sl);
-    }
-
     void release(){
         eglTerminate(m_data->egl_display);
         delete m_data;
@@ -277,10 +266,7 @@ PYBIND11_MODULE(CppMeshRenderer, m) {
     py::class_<CppMeshRenderer>(m, "CppMeshRenderer")
         .def(py::init<int, int, int>())
         .def("init", &CppMeshRenderer::init)
-        .def("query", &CppMeshRenderer::query)
-        .def("draw", &CppMeshRenderer::draw, py::arg().noconvert())
-        .def("release", &CppMeshRenderer::release)
-        .def("draw_py", &CppMeshRenderer::draw_py, py::arg().noconvert());
+        .def("release", &CppMeshRenderer::release);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

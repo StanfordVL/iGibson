@@ -2,7 +2,6 @@ from gibson2.core.physics.scene import StadiumScene
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import *
 from gibson2.core.physics.interactive_objects import *
 from gibson2.core.render.viewer import Viewer
-from gibson2 import assets
 
 class Simulator:
     def __init__(self, gravity=9.8, timestep=1 / 240.0, use_fisheye=False, mode='gui'):
@@ -19,7 +18,9 @@ class Simulator:
         p.setGravity(0, 0, -self.gravity)
 
         # renderer
-        self.renderer = MeshRenderer(width=256, height=256, use_fisheye=use_fisheye)
+        self.renderer = MeshRenderer(width=resolution, height=resolution, device_idx=device_idx)
+        self.resolution = resolution
+        self.device_idx = device_idx
         self.renderer.set_fov(90)
         self.visual_objects = {}
 
@@ -37,6 +38,24 @@ class Simulator:
     def add_viewer(self):
         self.viewer = Viewer()
         self.viewer.renderer = self.renderer
+
+    def reload(self):
+        self.renderer.release()
+        self.renderer = MeshRenderer(width=self.resolution, height=self.resolution, device_idx=self.device_idx)
+        p.disconnect(self.cid)
+        if self.mode == 'gui':
+            self.cid = p.connect(p.GUI)
+        else:
+            self.cid = p.connect(p.DIRECT)
+        p.setTimeStep(self.timestep)
+        p.setGravity(0, 0, -self.gravity)
+        self.visual_objects = {}
+        if self.mode == 'gui':
+            self.viewer.renderer = self.renderer
+        self.renderer.set_fov(90)
+        self.robots = []
+        self.scene = None
+        self.objects = []
 
     def import_scene(self, scene):
         new_objects = scene.load()
@@ -70,7 +89,16 @@ class Simulator:
                     self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1, new_object, dynamic=True)
                 else:
-                    self.renderer.add_instance(self.visual_objects[filename], new_object, dynamic=True)
+                    self.renderer.add_instance(self.visual_objects[filename],
+                                               pybullet_uuid=new_object,
+                                               dynamic=True)
+            elif type == p.GEOM_SPHERE:
+                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
+                self.renderer.load_object(filename, input_kd=color[:3],
+                                          scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
+                self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                                           pybullet_uuid=new_object,
+                                           dynamic=True)
 
     def import_robot(self, robot):
         ids = robot.load()
@@ -94,21 +122,21 @@ class Simulator:
                     visual_objects.append(self.visual_objects[filename])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
-                filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/sphere8.obj')
+                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
                 print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3], scale=[dimensions[0]/0.5, dimensions[0]/0.5, dimensions[0]/0.5])
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
                 #self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
-                filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/cube.obj')
+                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
                                           scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0] ])
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
-                filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/cube.obj')
+                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
                                           scale=[dimensions[0], dimensions[1], dimensions[2]])
@@ -146,7 +174,7 @@ class Simulator:
                     visual_objects.append(self.visual_objects[filename])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
-                filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/sphere8.obj')
+                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
                 print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
                                           scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
@@ -154,14 +182,14 @@ class Simulator:
                 # self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
-                filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/cube.obj')
+                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
                                           scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
-                filename = os.path.join(os.path.dirname(assets.__file__), 'models/mjcf_primitives/cube.obj')
+                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
                                           scale=[dimensions[0], dimensions[1], dimensions[2]])
