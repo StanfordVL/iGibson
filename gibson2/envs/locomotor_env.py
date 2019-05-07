@@ -181,7 +181,7 @@ class NavigateEnv(BaseEnv):
         return additional_states
         """
 
-    def get_state(self):
+    def get_state(self, collision_links=[]):
         # calculate state
         # sensor_state = self.robots[0].calc_state()
         # sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
@@ -265,7 +265,7 @@ class NavigateEnv(BaseEnv):
     def step(self, action):
         self.robots[0].apply_action(action)
         collision_links = self.run_simulation()
-        state = self.get_state()
+        state = self.get_state(collision_links)
         reward = self.get_reward(collision_links)
         done = self.get_termination()
 
