@@ -5,10 +5,10 @@ import gym, gym.spaces, gym.utils
 import numpy as np
 import os, inspect
 import pybullet_data
-from gibson2 import assets
 from transforms3d.euler import euler2quat
 from transforms3d import quaternions
 from gibson2.utils.utils import quatFromXYZW, quatToXYZW
+import gibson2
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -30,7 +30,7 @@ class BaseRobot:
         self.robot_ids = None
         self.model_file = model_file
         self.robot_name = robot_name
-        self.physics_model_dir = os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), "models")
+        self.physics_model_dir = os.path.join(gibson2.assets_path, "models")
         self.scale = scale
         self.eyes = None
         print(self.model_file)

@@ -9,7 +9,6 @@ from nav_msgs.msg import Odometry
 import rospkg
 import numpy as np
 from cv_bridge import CvBridge
-from gibson2 import assets
 from torchvision import datasets, transforms
 
 import tf
@@ -28,10 +27,11 @@ import cv2
 import torch.nn as nn
 import torch
 from torch.autograd import Variable
+import gibson2
 
 rospack = rospkg.RosPack()
 path = rospack.get_path('gibson-ros')
-assets_file_dir = os.path.dirname(assets.__file__)
+assets_file_dir = gibson2.assets_path
 
 class Goggle:
     def __init__(self):

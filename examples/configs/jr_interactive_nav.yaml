@@ -1,0 +1,67 @@
+# scene
+scene: stadium
+#scene: building
+model_id: Ohoopee
+
+# robot
+robot: JR2_Kinova
+wheel_velocity: 0.025
+arm_velocity: 0.01
+
+# task, observation and action
+task: pointgoal # pointgoal|objectgoal|areagoal|reaching
+
+initial_pos: [0, -5, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
+
+target_pos: [0, 5, 0.0]
+target_orn: [0.0, 0.0, 6.283185307179586]
+
+is_discrete: false
+additional_states_dim: 3
+
+# reward
+terminal_reward: 5000
+#electricity_cost: -0.02
+#stall_torque_cost: -0.0001
+electricity_cost: 0.0
+stall_torque_cost: 0.0
+discount_factor: 0.99
+
+# termination condition
+dist_tol: 0.5
+max_step: 1000
+
+# sensor
+output: [sensor, rgb, depth]
+resolution: 64
+fov: 1.57
+
+# display
+use_filler: true
+display_ui: false
+show_diagnostics: false
+ui_num: 2
+ui_components: [RGB_FILLED, DEPTH]
+random:
+  random_initial_pose: false
+  random_target_pose: false
+  random_init_x_range: [-0.1, 0.1]
+  random_init_y_range: [-0.1, 0.1]
+  random_init_z_range: [-0.1, 0.1]
+  random_init_rot_range: [-0.1, 0.1]
+
+speed:
+  timestep: 0.001
+  frameskip: 10
+
+mode: web_ui #gui|headless
+verbose: false
+fast_lq_render: true
+
+# visual objects
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: true
+
+# debug
+debug: false

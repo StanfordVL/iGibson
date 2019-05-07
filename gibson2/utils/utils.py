@@ -1,18 +1,11 @@
 import numpy as np
-import builtins
-import functools
-import copy
-import os
-import collections
 import yaml
-
 
 # File I/O related
 def parse_config(config):
     with open(config, 'r') as f:
         config_data = yaml.load(f)
     return config_data
-
 
 # Geometry related
 def rotate_vector_3d(v, r, p, y):

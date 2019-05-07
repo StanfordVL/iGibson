@@ -1,12 +1,22 @@
 import pybullet as p
+<<<<<<< HEAD
 from gibson2 import assets
 import numpy as np
+=======
+>>>>>>> 2471fabfbd04b920cc0802926dac4eb399d04853
 import os
+import gibson2
 
+<<<<<<< HEAD
 
 class ShapeNetObject(object):
     def __init__(self, path, scale=1., position=[0, 0, 0], orientation=[0, 0, 0]):
         self.filename =  path
+=======
+class YCBObject:
+    def __init__(self, name, scale=1):
+        self.filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name, 'textured_simple.obj')
+>>>>>>> 2471fabfbd04b920cc0802926dac4eb399d04853
         self.scale = scale
         self.position = position
         self.orientation = orientation
@@ -34,6 +44,7 @@ class ShapeNetObject(object):
                                     baseVisualShapeIndex=-1)
         return body_id
 
+<<<<<<< HEAD
 class YCBObject:
     def __init__(self, name, scale=1):
         self.filename =  os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), 'models', 'ycb', name, 'textured_simple.obj')
@@ -44,6 +55,23 @@ class YCBObject:
         body_id = p.createMultiBody(basePosition=[0, 0, 0], baseMass=0.1, baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=-1)
         return body_id
+=======
+
+class VisualObject(object):
+    def __init__(self, rgba_color=[1, 0, 0, 0.5], radius=1.0):
+        self.rgba_color = rgba_color
+        self.radius = radius
+
+    def load(self):
+        shape = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=self.rgba_color, radius=self.radius)
+        self.body_id = p.createMultiBody(baseVisualShapeIndex=shape,
+                                         baseCollisionShapeIndex=-1)
+        return self.body_id
+
+    def set_position(self, pos):
+        _, org_orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
+>>>>>>> 2471fabfbd04b920cc0802926dac4eb399d04853
 
 
 class InteractiveObj:
@@ -64,7 +92,7 @@ class InteractiveObj:
 
 class RBOObject(InteractiveObj):
     def __init__(self, name, scale=1):
-        filename = os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), 'models', 'rbo', name,
+        filename = os.path.join(gibson2.assets_path, 'models', 'rbo', name,
                                      'configuration', '{}.urdf'.format(name))
         super(RBOObject, self).__init__(filename, scale)
 

@@ -12,6 +12,8 @@ from distutils.version import LooseVersion
 import subprocess
 import platform
 
+use_clang = False
+
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
         Extension.__init__(self, name, sources=[])
@@ -38,6 +40,9 @@ class CMakeBuild(build_ext):
         cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + os.path.join(extdir, 'gibson2/core/render/mesh_renderer'),
                       '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=' + os.path.join(extdir, 'gibson2/core/render/mesh_renderer', 'build'),
                       '-DPYTHON_EXECUTABLE=' + sys.executable]
+
+        if use_clang:
+            cmake_args += ['-DCMAKE_C_COMPILER=/usr/bin/clang', '-DCMAKE_CXX_COMPILER=/usr/bin/clang++']
 
         cfg = 'Debug' if self.debug else 'Release'
         build_args = ['--config', cfg]
@@ -81,18 +86,19 @@ setup(name='gibson2',
             'numpy>=1.13',
             'pybullet==2.4.1',
             'transforms3d>=0.3.1',
-            'tqdm >= 4',
-            'pyzmq>=16.0.2',
+            'tqdm == 4.19.9',
             'Pillow>=4.2.1',
             'matplotlib>=2.1.0',
             'mpi4py>=2.0.0',
             'cloudpickle>=0.4.1',
             'pygame>=1.9.3',
             'opencv-python',
-            'torchvision==0.2.0',
+            'torchvision==0.2.2',
             'aenum',
             'pyopengl==3.1.0',
             'pyopengl-accelerate==3.1.0',
+            'pyassimp==4.1.3',
+            'gputil'
     ],
     ext_modules=[CMakeExtension('CppMeshRenderer', sourcedir='gibson2/core/render')],
     cmdclass=dict(build_ext=CMakeBuild),
