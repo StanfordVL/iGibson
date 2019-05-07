@@ -1,6 +1,6 @@
 # GIBSON ENVIRONMENT for Embodied Active Agents with Real-World Perception (V2)
 
-You shouldn't play video games all day, so shouldn't your AI! We built a virtual environment simulator, Gibson, that offers real-world experience for learning perception.  
+**Gibson V2 is an updated version of GibsonEnv, it achieves higher rendering performance and added the ability for robots to interacte with objects.**
 
 <img src=misc/ui.gif width="600">
 
@@ -26,7 +26,7 @@ Release
 =================
 **This is the gibson2 0.0.1 release. Bug reports, suggestions for improvement, as well as community developments are encouraged and appreciated.** [change log file](misc/CHANGELOG.md).  
 
-Support for [Gibson v1](http://github.com/StanfordVL/GibsonEnv/) will move to this repo.
+**Support for [Gibson v1](http://github.com/StanfordVL/GibsonEnv/) will be moved to this repo**.
 
 Database
 =================
@@ -144,8 +144,6 @@ Gibson v2 framerate compared with gibson v1 is shown in the table below:
                </tbody>
              </table>
 
-
-
 Web User Interface
 ----
 TBA
@@ -175,36 +173,13 @@ To enable (optionally) abstracting away low-level control and robot dynamics for
 
 ### Starter Code 
 
-More demonstration examples can be found in `examples/demo` folder
+Demonstration examples can be found in `examples/demo` folder. `demo.py` shows the procedure of starting an environment with a random agent.
 
-| Example        | Explanation          |
-|:-------------: |:-------------|
-|`play_ant_camera.py`|Use 1234567890qwerty keys on your keyboard to control an ant to navigate around Gates building, while RGB and depth camera outputs are also shown. |
-|`play_ant_nonviz.py`| Use 1234567890qwerty keys on your keyboard to control an ant to navigate around Gates building.|
-|`play_drone_camera.py`| Use ASWDZX keys on your keyboard to control a drone to navigate around Gates building, while RGB and depth camera outputs are also shown.|
-|`play_drone_nonviz.py`| Use ASWDZX keys on your keyboard to control a drone to navigate around Gates building|
-|`play_humanoid_camera.py`| Use 1234567890qwertyui keys on your keyboard to control a humanoid to navigate around Gates building. Just kidding, controlling humaniod with keyboard is too difficult, you can only watch it fall. Press R to reset. RGB and depth camera outputs are also shown. |
-|`play_humanoid_nonviz.py`| Watch a humanoid fall. Press R to reset.|
-|`play_husky_camera.py`| Use ASWD keys on your keyboard to control a car to navigate around Gates building, while RGB and depth camera outputs are also shown.|
-|`play_husky_nonviz.py`| Use ASWD keys on your keyboard to control a car to navigate around Gates building|
-
-More training code can be found in `examples/train` folder.
-
-| Example        | Explanation          |
-|:-------------: |:-------------|
-|`train_husky_navigate_ppo2.py`|   Use PPO2 to train a car to navigate down the hallway in Gates building, using RGBD input from the camera.|
-|`train_husky_navigate_ppo1.py`|   Use PPO1 to train a car to navigate down the hallway in Gates building, using RGBD input from the camera.|
-|`train_ant_navigate_ppo1.py`| Use PPO1 to train an ant to navigate down the hallway in Gates building, using visual input from the camera. |
-|`train_ant_climb_ppo1.py`| Use PPO1 to train an ant to climb down the stairs in Gates building, using visual input from the camera.  |
-|`train_ant_gibson_flagrun_ppo1.py`| Use PPO1 to train an ant to chase a target (a red cube) in Gates building. Everytime the ant gets to target(or time out), the target will change position.|
-|`train_husky_gibson_flagrun_ppo1.py`|Use PPO1 to train a car to chase a target (a red cube) in Gates building. Everytime the car gets to target(or time out), the target will change position. |
 
 ROS Configuration
 ---------
 
 We provide examples of configuring Gibson with ROS [here](examples/ros/gibson-ros). We use turtlebot as an example, after a policy is trained in Gibson, it requires minimal changes to deploy onto a turtlebot. See [README](examples/ros/gibson-ros) for more details.
-
-
 
 
 Coding Your RL Agent
