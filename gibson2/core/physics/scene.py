@@ -103,7 +103,7 @@ class BuildingScene(Scene):
         floor = np.random.randint(0, high=len(self.floors))
         return self.get_random_point_floor(floor)
 
-    def get_random_point_floor(self, floor):
+    def get_random_point_floor(self, floor, random_height=False):
         trav = self.floor_map[floor]
         y = np.where(trav == 255)[0] / 100.0 - self.max_length
         x = np.where(trav == 255)[1] / 100.0 - self.max_length
