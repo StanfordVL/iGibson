@@ -1,6 +1,6 @@
 # GIBSON ENVIRONMENT for Embodied Active Agents with Real-World Perception (V2)
 
-**Gibson V2 is an updated version of GibsonEnv, it achieves higher rendering performance and added the ability for robots to interacte with objects.**
+**Gibson V2 is an updated version of GibsonEnv, it achieves higher rendering performance and added the ability for robots to interact with objects.**
 
 <img src=misc/ui.gif width="600">
 
@@ -36,13 +36,9 @@ Table of contents
 =================
 
    * [Installation](#installation)
-        * [Quick Installation (docker)](#a-quick-installation-docker)
-        * [Building from source](#b-building-from-source)
-        * [Uninstalling](#uninstalling)
    * [Quick Start](#quick-start)
         * [Tests](#tests)
         * [Gibson FPS](#gibson-framerate)
-        * [Web User Interface](#web-user-interface)
         * [Rendering Semantics](#rendering-semantics)
         * [Robotic Agents](#robotic-agents)
         * [ROS Configuration](#ros-configuration)
@@ -144,9 +140,6 @@ Gibson v2 framerate compared with gibson v1 is shown in the table below:
                </tbody>
              </table>
 
-Web User Interface
-----
-TBA
 
 Rendering Semantics
 ----
@@ -174,7 +167,6 @@ To enable (optionally) abstracting away low-level control and robot dynamics for
 ### Starter Code 
 
 Demonstration examples can be found in `examples/demo` folder. `demo.py` shows the procedure of starting an environment with a random agent.
-
 
 ROS Configuration
 ---------
@@ -223,13 +215,8 @@ Each environment is configured with a `yaml` file. Examples of `yaml` files can 
 | use_filler | true/false  | use neural network filler or not. It is recommended to leave this argument true. See [Gibson Environment website](http://gibson.vision/) for more information. |
 |display_ui | true/false  | Gibson has two ways of showing visual output, either in multiple windows, or aggregate them into a single pygame window. This argument determines whether to show pygame ui or not, if in a production environment (training), you need to turn this off |
 |show_diagnostics | true/false  | show dignostics(including fps, robot position and orientation, accumulated rewards) overlaying on the RGB image |
-|ui_num |2  | how many ui components to show, this should be length of ui_components. |
-| ui_components | [RGB_FILLED, DEPTH]  | which are the ui components, choose from [RGB_FILLED, DEPTH, NORMAL, SEMANTICS, RGB_PREFILLED] |
 |output | [nonviz_sensor, rgb_filled, depth]  | output of the environment to the robot, choose from  [nonviz_sensor, rgb_filled, depth]. These values are independent of `ui_components`, as `ui_components` determines what to show and `output` determines what the robot receives. |
 |resolution | 512 | choose from [128, 256, 512] resolution of rgb/depth image |
-|initial_orn | [0, 0, 3.14] | initial orientation (in radian) for navigating, the reference frame is world frame |
-|speed : timestep | 0.01 | length of one physics simulation step in seconds(as defined in [Bullet](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA/edit)). For example, if timestep=0.01 sec, frameskip=10, and the environment is running at 100fps, it will be 10x real time. Note: setting timestep above 0.1 can cause instability in current version of Bullet simulator since an object should not travel faster than its own radius within one timestep. You can keep timestep at a low value but increase frameskip to simulate at a faster speed. See [Bullet guide](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA/edit) under "discrete collision detection" for more info.|
-|speed : frameskip | 10 | how many timestep to skip when rendering frames. See above row for an example. For tasks that does not require high frequency control, you can set frameskip to larger value to gain further speed up. |
 |mode | gui/headless/web_ui  | gui or headless, if in a production environment (training), you need to turn this to headless. In gui mode, there will be visual output; in headless mode, there will be no visual output. In addition to that, if you set mode to web_ui, it will behave like in headless mode but the visual will be rendered to a web UI server. ([more information](#web-user-interface))|
 |verbose |true/false  | show diagnostics in terminal |
 |fast_lq_render| true/false| if there is fast_lq_render in yaml file, Gibson will use a smaller filler network, this will render faster but generate slightly lower quality camera output. This option is useful for training RL agents fast. |
@@ -239,8 +226,6 @@ Gibson provides a set of methods for you to define your own environments. You ca
 
 | Method name        | Usage           |
 |:------------------:|:---------------------------|
-| robot.render_observation(pose) | Render new observations based on pose, returns a dictionary. |
-| robot.get_observation() | Get observation at current pose. Needs to be called after robot.render_observation(pose). This does not induce extra computation. |
 | robot.get_position() | Get current robot position. |
 | robot.get_orientation() | Get current robot orientation. |
 | robot.eyes.get_position() | Get current robot perceptive camera position. |
