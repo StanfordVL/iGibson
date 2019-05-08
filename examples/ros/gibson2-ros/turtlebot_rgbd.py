@@ -5,7 +5,8 @@ import rospy
 from std_msgs.msg import Float32, Int64, Header
 from geometry_msgs.msg import Twist
 from sensor_msgs import point_cloud2 as pc2
-from sensor_msgs.msg import Image, CameraInfo, PointCloud2
+from sensor_msgs.msg import CameraInfo, PointCloud2
+from sensor_msgs.msg import Image as ImageMsg
 from nav_msgs.msg import Odometry
 import rospkg
 import numpy as np
@@ -24,11 +25,11 @@ class SimNode:
 
         self.cmdx = 0.0
         self.cmdy = 0.0
-        self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image",Image, queue_size=10)
-        self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image",Image, queue_size=10)
+        self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image",ImageMsg, queue_size=10)
+        self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image",ImageMsg, queue_size=10)
         self.lidar_pub = rospy.Publisher("/gibson_ros/lidar/points", PointCloud2, queue_size=10)
 
-        self.depth_raw_pub = rospy.Publisher("/gibson_ros/camera/depth/image_raw",Image, queue_size=10)
+        self.depth_raw_pub = rospy.Publisher("/gibson_ros/camera/depth/image_raw",ImageMsg, queue_size=10)
         self.odom_pub = rospy.Publisher("/odom",Odometry, queue_size=10)
         self.gt_odom_pub = rospy.Publisher("/ground_truth_odom", Odometry, queue_size=10)
 
@@ -92,6 +93,7 @@ class SimNode:
             self.lidar_pub.publish(lidar_message)
 
             # odometry
+            self.env.robots[0].calc_state()
 
             odom = [np.array(self.env.robots[0].body_xyz) - np.array(self.env.config["initial_pos"]),
                     np.array(self.env.robots[0].body_rpy)]
@@ -133,8 +135,6 @@ class SimNode:
             gt_odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
             gt_odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
             self.gt_odom_pub.publish(gt_odom_msg)
-
-        rospy.spin()
 
     def cmd_callback(self,data):
         self.cmdx = data.linear.x/10.0 - data.angular.z / (10*8.695652173913043)

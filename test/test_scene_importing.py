@@ -13,7 +13,7 @@ config = parse_config('test.yaml')
 
 def test_import_building():
     s = Simulator(mode='headless')
-    scene = BuildingScene('space7')
+    scene = BuildingScene('Ohoopee')
     s.import_scene(scene)
     assert s.objects == list(range(2))
     s.disconnect()
@@ -44,7 +44,7 @@ def test_import_building_viewing():
     turtlebot2.set_position([0, 0, 0.5])
     turtlebot3.set_position([-0.5, 0, 0.5])
 
-    for i in range(1000):
+    for i in range(10):
         s.step()
         #turtlebot1.apply_action(np.random.randint(4))
         #turtlebot2.apply_action(np.random.randint(4))

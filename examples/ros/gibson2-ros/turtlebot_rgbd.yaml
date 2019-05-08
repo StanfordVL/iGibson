@@ -20,7 +20,7 @@ dist_tol: 0.5
 terminal_reward: 5000
 discount_factor: 1.0
 
-additional_states_dim: 5
+additional_states_dim: 3
 
 fisheye: true
 fov: 1.57
@@ -52,3 +52,7 @@ speed:
 mode: web_ui #gui|headless
 verbose: false
 fast_lq_render: true
+
+# visual objects
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: true

@@ -1,49 +1,55 @@
 # scene
-scene: stadium
+scene: building
+model_id: Ohoopee
 
 # robot
-
 robot: Turtlebot
 velocity: 0.1
 
 # task, observation and action
-task: pointgoal # pointgoal|objectgoal|areagoal
-
-initial_orn: [0.0, 0.0, 0.0]
-initial_pos: [0.0, 0.0, 0.0]
-
-target_orn: [0.0, 0.0, 0.0]
-target_pos: [-5.0, 3.2, 0.0]
-
-is_discrete: true
-additional_states_dim: 3
-
-dist_tol: 0.5
-terminal_reward: 5000
-discount_factor: 1.0
-
-fov: 1.57
-is_discrete: false
+task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 fisheye: false
 
-debug: true
-# display
+initial_pos: [-1.0, -1.0, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
 
+target_pos: [1.0, 1.0, 0.0]
+target_orn: [0.0, 0.0, 0.0]
+
+is_discrete: false
+additional_states_dim: 3
+
+# reward
+terminal_reward: 5000
+#electricity_cost: -0.02
+#stall_torque_cost: -0.0001
+electricity_cost: 0.0
+stall_torque_cost: 0.0
+collision_cost: 0.0
+discount_factor: 0.99
+
+# termination condition
+dist_tol: 0.5
+max_step: 500
+
+# sensor
+output: [sensor, rgb, depth]
+resolution: 256
+fov: 1.57
+
+# display
 use_filler: true
 display_ui: false
 show_diagnostics: false
 ui_num: 2
 ui_components: [RGB_FILLED, DEPTH]
 random:
-  random_initial_pose : false
-  random_target_pose : false
+  random_initial_pose: false
+  random_target_pose: false
   random_init_x_range: [-0.1, 0.1]
   random_init_y_range: [-0.1, 0.1]
   random_init_z_range: [-0.1, 0.1]
   random_init_rot_range: [-0.1, 0.1]
-
-output: [nonviz_sensor, rgb, depth]
-resolution: 256
 
 speed:
   timestep: 0.001
@@ -56,3 +62,6 @@ fast_lq_render: true
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: true
+
+# debug
+debug: false
