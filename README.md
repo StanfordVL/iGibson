@@ -56,7 +56,7 @@ Installation
 Gibson v2 can be installed as a python package:
 
 ```bash
-git clone https://github.com/fxia22/gibsonv2
+git clone https://github.com/fxia22/gibsonv2 --recursive
 cd gibsonv2
 
 conda create -n py3-gibson python=3.6 anaconda
