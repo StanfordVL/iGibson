@@ -19,7 +19,7 @@ from torchvision import datasets, transforms
 class NavigateEnv(BaseEnv):
     def __init__(self, config_file, mode='headless', action_timestep=1 / 10.0, physics_timestep=1 / 240.0,
                  device_idx=0):
-        super(NavigateEnv, self).__init__(config_file, mode, device_idx=device_idx)
+        super(NavigateEnv, self).__init__(config_file=config_file, mode=mode, device_idx=device_idx)
 
         self.initial_pos = np.array(self.config.get('initial_pos', [0, 0, 0]))
         self.initial_orn = np.array(self.config.get('initial_orn', [0, 0, 0]))
