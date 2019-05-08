@@ -4,7 +4,7 @@ from gibson2.core.physics.interactive_objects import *
 from gibson2.core.render.viewer import Viewer
 
 class Simulator:
-    def __init__(self, gravity=9.8, timestep=1 / 240.0, use_fisheye=False, mode='gui'):
+    def __init__(self, gravity=9.8, timestep=1 / 240.0, use_fisheye=False, mode='gui', resolution=256, device_idx=0):
 
         # physics simulator
         self.gravity = gravity
