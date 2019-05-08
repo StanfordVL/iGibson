@@ -45,6 +45,7 @@ class NavigateEnv(BaseEnv):
         self.physics_timestep = physics_timestep
         self.simulator.set_timestep(physics_timestep)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
+        self.output = self.config['output']
 
         self.sensor_dim = self.robots[0].sensor_dim + self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
@@ -80,8 +81,20 @@ class NavigateEnv(BaseEnv):
         # variable initialization
         self.potential = 1.0
         self.current_step = 0
-        self.max_step = 200
-        self.output = self.config['output']
+        self.current_episode = 0
+
+        self.max_step = self.config.get('max_step', float('inf'))
+
+        self.visual_object_at_initial_target_pos = self.config.get('visual_object_at_initial_target_pos', False)
+        if self.visual_object_at_initial_target_pos:
+            self.initial_pos_vis_obj = VisualObject(rgba_color=[1, 0, 0, 0.5])
+            self.target_pos_vis_obj = VisualObject(rgba_color=[0, 0, 1, 0.5])
+            self.initial_pos_vis_obj.load()
+            if self.config.get('target_visual_object_visible_to_agent', False):
+                self.simulator.import_object(self.target_pos_vis_obj)
+            else:
+                self.target_pos_vis_obj.load()
+
 
     def reload(self, config_file):
         super().reload(config_file)
@@ -134,6 +147,17 @@ class NavigateEnv(BaseEnv):
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
+
+        self.visual_object_at_initial_target_pos = self.config.get('visual_object_at_initial_target_pos', False)
+        if self.visual_object_at_initial_target_pos:
+            self.initial_pos_vis_obj = VisualObject(rgba_color=[1, 0, 0, 0.5])
+            self.target_pos_vis_obj = VisualObject(rgba_color=[0, 0, 1, 0.5])
+            self.initial_pos_vis_obj.load()
+            if self.config.get('target_visual_object_visible_to_agent', False):
+                self.simulator.import_object(self.target_pos_vis_obj)
+            else:
+                self.target_pos_vis_obj.load()
+
 
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
