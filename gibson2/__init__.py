@@ -1,34 +1,19 @@
-#from realenv.client.client_actions import client_actions as actions
-#from realenv.client.vnc_client import VNCClient as VNCClient
+import yaml
+import os
 
 
-from gym.envs.registration import registry, register, make, spec
+with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                       'global_config.yaml')) as f:
+    global_config = yaml.load(f)
 
-#===================== Full Environments =====================#
-## Eventually we will package all environments for encapsulation
-#  An environment can be invoked by:
-#   env = gym.make('HumanoidCamera-v0')        ## unconfigurable
-##  env = HumanoidCamera(human=True)           ## configurable 
+assets_path = global_config['assets_path']
+dataset_path = global_config['dataset_path']
 
+if not os.path.isabs(assets_path):
+    assets_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                               assets_path)
+if not os.path.isabs(dataset_path):
+    dataset_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                dataset_path)
 
-register(
-    id='HumanoidCamera-v0',
-    entry_point='realenv.envs.humanoid_env:HumanoidCameraEnv'
-)
-
-register(
-    id='HumanoidSensor-v0',
-    entry_point='realenv.envs.humanoid_env:HumanoidSensorEnv'
-)
-
-
-register(
-    id='AntWalkingEnv-v0',
-    entry_point='realenv.envs.simple_env:AntWalkingEnv'
-)
-
-
-register(
-    id='HuskyWalkingEnv-v0',
-    entry_point='realenv.envs.simple_env:HuskyWalkingEnv'
-)
+print('using asset: path {} dataset path:'.format(assets_path, dataset_path))

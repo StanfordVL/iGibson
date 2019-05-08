@@ -20,7 +20,7 @@ import argparse
 import json
 from numpy.linalg import inv
 import pickle
-from gibson2 import assets
+import gibson2
 
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
@@ -48,7 +48,7 @@ def depth_loader(path):
 
 
 def get_model_path(model_id):
-    data_path = os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), 'dataset')
+    data_path = gibson2.dataset_path
     assert (model_id in os.listdir(data_path)) or model_id == 'stadium', "Model {} does not exist".format(model_id)
     return os.path.join(data_path, model_id)
 
@@ -178,7 +178,7 @@ class ViewDataSet3D(data.Dataset):
                  semantic_transform=np.array, env = None, only_load = None):
         print('Processing the data:')
         if not root:
-            self.root = os.path.join(os.path.dirname(os.path.abspath(assets.__file__)), "dataset")
+            self.root = gibson2.dataset_path
         else:
             self.root = root
         self.train = train

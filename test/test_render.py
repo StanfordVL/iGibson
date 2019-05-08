@@ -1,21 +1,16 @@
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
-from gibson2.core.render.mesh_renderer.deprecated.mesh_renderer_tensor import MeshTensorRenderer
 import numpy as np
 import torch
 import os
-from gibson2 import assets
 import matplotlib.pyplot as plt
+import gibson2
+import GPUtil
 
-dir = os.path.join(os.path.dirname(assets.__file__), 'test')
 
+dir = os.path.join(gibson2.assets_path, 'test')
 
 def test_render_loading_cleaning():
     renderer = MeshRenderer(width=800, height=600)
-    renderer.release()
-
-
-def test_tensor_render_loading_cleaning():
-    renderer = MeshTensorRenderer(width=800, height=600)
     renderer.release()
 
 
@@ -30,6 +25,20 @@ def test_render_rendering():
     #plt.show()
     assert (np.allclose(np.mean(rgb, axis=(0, 1)), np.array([0.51661223, 0.5035339, 0.4777793, 1.]), rtol=1e-3))
     renderer.release()
+
+
+def test_render_rendering_cleaning():
+    for i in range(5):
+        renderer = MeshRenderer(width=800, height=600)
+        renderer.load_object(os.path.join(dir, 'mesh/bed1a77d92d64f5cbbaaae4feed64ec1_new.obj'))
+        renderer.add_instance(0)
+        renderer.set_camera([0, 0, 1.2], [0, 1, 1.2], [0, 1, 0])
+        renderer.set_fov(90)
+        rgb, _, seg, _ = renderer.render()
+        assert (np.allclose(np.mean(rgb, axis=(0, 1)), np.array([0.51661223, 0.5035339, 0.4777793, 1.]), rtol=1e-3))
+        GPUtil.showUtilization()
+        renderer.release()
+        GPUtil.showUtilization()
 
 '''
 def test_tensor_render_rendering():

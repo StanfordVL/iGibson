@@ -12,7 +12,6 @@ import transforms3d
 import json
 import zmq
 
-from gibson2 import assets
 
 from torchvision import datasets, transforms
 from torch.autograd import Variable
@@ -22,12 +21,14 @@ from multiprocessing import Process
 
 from gibson2.data.datasets import ViewDataSet3D
 from gibson2.learn.completion import CompletionNet
+import gibson2
 import torch.nn as nn
 
 import pdb
 
+
 file_dir = os.path.dirname(os.path.abspath(__file__))
-assets_file_dir = os.path.dirname(assets.__file__)
+assets_file_dir = gibson2.assets_path
 
 coords  = np.load(os.path.join(assets_file_dir, 'coord.npy'))
 
