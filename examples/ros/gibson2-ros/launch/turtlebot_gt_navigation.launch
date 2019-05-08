@@ -12,7 +12,7 @@
 
   <node name="turtlebot_gibson_sim" pkg="gibson2-ros" type="turtlebot_rgbd.py" output="screen">
   </node>
-
+  
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
     <param name="publish_frequency" type="double" value="5.0" />
   </node>

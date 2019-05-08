@@ -80,7 +80,7 @@ setup(name='gibson2',
     install_requires=[
             'numpy>=1.10.4',
             'pyglet>=1.2.0',
-            'gym==0.9.4',
+            'gym==0.12',
             'Pillow>=3.3.0',
             'PyYAML>=3.12',
             'numpy>=1.13',

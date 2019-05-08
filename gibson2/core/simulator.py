@@ -18,7 +18,7 @@ class Simulator:
         p.setGravity(0, 0, -self.gravity)
 
         # renderer
-        self.renderer = MeshRenderer(width=resolution, height=resolution, device_idx=device_idx)
+        self.renderer = MeshRenderer(width=resolution, height=resolution, device_idx=device_idx, use_fisheye=use_fisheye)
         self.resolution = resolution
         self.device_idx = device_idx
         self.renderer.set_fov(90)
@@ -80,7 +80,7 @@ class Simulator:
         new_object = object.load()
         self.objects.append(new_object)
         for shape in p.getVisualShapeData(new_object):
-            id, _, type, _, filename = shape[:5]
+            id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 print(filename, self.visual_objects)

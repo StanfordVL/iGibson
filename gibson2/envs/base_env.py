@@ -9,9 +9,9 @@ class BaseEnv(gym.Env):
     '''
     a basic environment, step, observation and reward not implemented
     '''
-    def __init__(self, config_file, mode='headless'):
+    def __init__(self, config_file, mode='headless', device_idx=0):
         self.config = parse_config(config_file)
-        self.simulator = Simulator(mode=mode, use_fisheye=self.config['fisheye'])
+        self.simulator = Simulator(mode=mode, use_fisheye=self.config.get('fisheye', False), device_idx=device_idx)
         if self.config['scene'] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
@@ -28,7 +28,10 @@ class BaseEnv(gym.Env):
             robot = Humanoid(self.config)
         elif self.config['robot'] == 'JR2':
             robot = JR2(self.config)
-
+        elif self.config['robot'] == 'JR2_Kinova':
+            robot = JR2_Kinova(self.config)
+        else:
+            print('robot not defined')
         self.scene = scene
         self.robots = [robot]
         for robot in self.robots:

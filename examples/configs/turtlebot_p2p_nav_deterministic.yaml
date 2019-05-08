@@ -9,6 +9,7 @@ velocity: 0.1
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
+fisheye: false
 
 initial_pos: [-1.0, -1.0, 0.0]
 initial_orn: [0.0, 0.0, 0.0]
