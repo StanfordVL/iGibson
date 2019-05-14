@@ -102,8 +102,6 @@ class NavigateEnv(BaseEnv):
         self.action_space = self.robots[0].action_space
 
         # variable initialization
-        self.potential = 1.0
-        self.current_step = 0
         self.current_episode = 0
 
         # add visual objects
@@ -193,15 +191,17 @@ class NavigateEnv(BaseEnv):
         elif self.config['task'] == 'reaching':
             return self.robots[0].get_end_effector_position()
 
+    def get_potential(self):
+        return l2_distance(self.target_pos, self.get_position_of_interest())
+
     def get_reward(self, collision_links):
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
-        pof = self.get_position_of_interest()
-        new_potential = l2_distance(self.target_pos, pof) / self.distance_normalizer
+        new_normalized_potential = self.get_potential() / self.initial_potential
 
-        potential_reward = self.potential - new_potential
-        reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.15 per step
-        self.potential = new_potential
+        potential_reward = self.normalized_potential - new_normalized_potential
+        reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+        self.normalized_potential = new_normalized_potential
 
         # electricity_reward = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
         electricity_reward = 0.0
@@ -260,15 +260,14 @@ class NavigateEnv(BaseEnv):
     def reset(self):
         self.robots[0].robot_specific_reset()
         self.reset_initial_and_target_pos()
-        self.distance_normalizer = l2_distance(self.target_pos, self.get_position_of_interest())
+        self.initial_potential = self.get_potential()
+        self.normalized_potential = 1.0
+        self.current_step = 0
 
         # set position for visual objects
         if self.visual_object_at_initial_target_pos:
             self.initial_pos_vis_obj.set_position(self.initial_pos)
             self.target_pos_vis_obj.set_position(self.target_pos)
-
-        self.current_step = 0
-        self.potential = 1.0
 
         state = self.get_state()
         return state
