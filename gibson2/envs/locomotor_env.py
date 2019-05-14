@@ -13,14 +13,34 @@ import torch.nn as nn
 import torch
 from torchvision import datasets, transforms
 
-# define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.' arXiv preprint arXiv:1807.06757 (2018).
+
+# define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
+# arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
 
 class NavigateEnv(BaseEnv):
-    def __init__(self, config_file, mode='headless', action_timestep=1 / 10.0, physics_timestep=1 / 240.0,
-                 device_idx=0):
-        super(NavigateEnv, self).__init__(config_file=config_file, mode=mode, device_idx=device_idx)
+    def __init__(self,
+                 config_file,
+                 mode='headless',
+                 action_timestep=1 / 10.0,
+                 physics_timestep=1 / 240.0,
+                 automatic_reset=False,
+                 device_idx=0,
+                 ):
+        super(NavigateEnv, self).__init__(config_file=config_file,
+                                          mode=mode,
+                                          device_idx=device_idx)
+        self.automatic_reset = automatic_reset
 
+        # simulation
+        self.mode = mode
+        self.action_timestep = action_timestep
+        self.physics_timestep = physics_timestep
+        self.simulator.set_timestep(physics_timestep)
+        self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
+
+    def load(self):
+        super().load()
         self.initial_pos = np.array(self.config.get('initial_pos', [0, 0, 0]))
         self.initial_orn = np.array(self.config.get('initial_orn', [0, 0, 0]))
 
@@ -30,22 +50,23 @@ class NavigateEnv(BaseEnv):
         self.additional_states_dim = self.config['additional_states_dim']
 
         # termination condition
-        self.dist_tol = self.config.get('dist_tol', 0.5)
+        self.dist_tol = self.config.get('dist_tol', 0.2)
         self.max_step = self.config.get('max_step', float('inf'))
 
         # reward
-        self.terminal_reward = self.config.get('terminal_reward', 0.0)
-        self.electricity_cost = self.config.get('electricity_cost', 0.0)
-        self.stall_torque_cost = self.config.get('stall_torque_cost', 0.0)
-        self.collision_cost = self.config.get('collision_cost', 0.0)
+        self.success_reward = self.config.get('success_reward', 10.0)
+        self.slack_reward = self.config.get('slack_reward', -0.01)
+
+        # reward weight
+        self.potential_reward_weight = self.config.get('potential_reward_weight', 10.0)
+        self.electricity_reward_weight = self.config.get('electricity_reward_weight', 0.0)
+        self.stall_torque_reward_weight = self.config.get('stall_torque_reward_weight', 0.0)
+        self.collision_reward_weight = self.config.get('collision_reward_weight', 0.0)
+
+        # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
 
-        # simulation
-        self.mode = mode
-        self.action_timestep = action_timestep
-        self.physics_timestep = physics_timestep
-        self.simulator.set_timestep(physics_timestep)
-        self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
+        # output
         self.output = self.config['output']
 
         # observation and action space
@@ -53,11 +74,13 @@ class NavigateEnv(BaseEnv):
         self.sensor_dim = self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
 
-        # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float64)
         observation_space = OrderedDict()
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32)
             observation_space['sensor'] = self.sensor_space
+        if 'pointgoal' in self.output:
+            self.pointgoal_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32)
+            observation_space['pointgoal'] = self.pointgoal_space
         if 'rgb' in self.output:
             self.rgb_space = gym.spaces.Box(low=0.0, high=1.0,
                                             shape=(self.config['resolution'], self.config['resolution'], 3),
@@ -74,8 +97,6 @@ class NavigateEnv(BaseEnv):
             self.comp.load_state_dict(
                 torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
-        if 'pointgoal' in self.output:
-            observation_space['pointgoal'] = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32)
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
@@ -95,58 +116,6 @@ class NavigateEnv(BaseEnv):
                 self.simulator.import_object(self.target_pos_vis_obj)
             else:
                 self.target_pos_vis_obj.load()
-
-    def reload(self, config_file):
-        super().reload(config_file)
-        self.initial_pos = np.array(self.config.get('initial_pos', [0, 0, 0]))
-        self.initial_orn = np.array(self.config.get('initial_orn', [0, 0, 0]))
-
-        self.target_pos = np.array(self.config.get('target_pos', [5, 5, 0]))
-        self.target_orn = np.array(self.config.get('target_orn', [0, 0, 0]))
-
-        self.additional_states_dim = self.config['additional_states_dim']
-
-        # termination condition
-        self.dist_tol = self.config.get('dist_tol', 0.5)
-        self.max_step = self.config.get('max_step', float('inf'))
-
-        # reward
-        self.terminal_reward = self.config.get('terminal_reward', 0.0)
-        self.electricity_cost = self.config.get('electricity_cost', 0.0)
-        self.stall_torque_cost = self.config.get('stall_torque_cost', 0.0)
-        self.collision_cost = self.config.get('collision_cost', 0.0)
-        self.discount_factor = self.config.get('discount_factor', 1.0)
-        self.output = self.config['output']
-
-        self.sensor_dim = self.additional_states_dim
-        self.action_dim = self.robots[0].action_dim
-
-        # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float64)
-        observation_space = OrderedDict()
-        if 'sensor' in self.output:
-            self.sensor_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32)
-            observation_space['sensor'] = self.sensor_space
-        if 'rgb' in self.output:
-            self.rgb_space = gym.spaces.Box(low=0.0, high=1.0,
-                                            shape=(self.config['resolution'], self.config['resolution'], 3),
-                                            dtype=np.float32)
-            observation_space['rgb'] = self.rgb_space
-        if 'depth' in self.output:
-            self.depth_space = gym.spaces.Box(low=0.0, high=1.0,
-                                              shape=(self.config['resolution'], self.config['resolution'], 1),
-                                              dtype=np.float32)
-            observation_space['depth'] = self.depth_space
-        if 'rgb_filled' in self.output:  # use filler
-            self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
-            self.comp = torch.nn.DataParallel(self.comp).cuda()
-            self.comp.load_state_dict(
-                torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
-            self.comp.eval()
-        if 'pointgoal' in self.output:
-            observation_space['pointgoal'] = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32)
-
-        self.observation_space = gym.spaces.Dict(observation_space)
-        self.action_space = self.robots[0].action_space
 
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
@@ -190,11 +159,13 @@ class NavigateEnv(BaseEnv):
         state = OrderedDict()
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
+        if 'pointgoal' in self.output:
+            state['pointgoal'] = sensor_state[:2]
         if 'rgb' in self.output:
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
         if 'depth' in self.output:
             depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            state['depth'] = np.clip(depth / 5.0, 0.0, 1.0)
+            state['depth'] = np.clip(depth, 0.0, 5.0) / 5.0  # clip between 0.0 and 5.0 and normalized to [0.0, 1.0]
         if 'normal' in self.output:
             state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
         if 'seg' in self.output:
@@ -206,6 +177,7 @@ class NavigateEnv(BaseEnv):
                 state['rgb_filled'] = rgb_filled
         if 'bump' in self.output:
             state['bump'] = -1 in collision_links  # check collision for baselink, it might vary for different robots
+
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
 
@@ -258,54 +230,64 @@ class NavigateEnv(BaseEnv):
             return self.robots[0].get_end_effector_position()
 
     def get_reward(self, collision_links):
-        pof = self.get_position_of_interest()
-        # goal reached
-        if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
-            return self.terminal_reward
+        reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
-        new_potential = l2_distance(self.target_pos, pof) / \
-                        l2_distance(self.target_pos, self.initial_pos_for_potential)
-        progress = (self.potential - new_potential) * 1000  # |progress| ~= 1.0 per step
+        pof = self.get_position_of_interest()
+        new_potential = l2_distance(self.target_pos, pof) / self.distance_normalizer
+
+        potential_reward = self.potential - new_potential
+        reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.15 per step
         self.potential = new_potential
 
-        # electricity_cost = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
-        # electricity_cost *= self.electricity_cost  # |electricity_cost| ~= 0.2 per step
-        # stall_torque_cost = np.square(self.robots[0].joint_torque).mean()
-        # stall_torque_cost *= self.stall_torque_cost  # |stall_torque_cost| ~= 0.2 per step
-        electricity_cost = 0.0
-        stall_torque_cost = 0.0
-        collision_cost = -10.0 if -1 in collision_links else 0.0
-        collision_cost *= self.collision_cost
+        # electricity_reward = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
+        electricity_reward = 0.0
+        reward += electricity_reward * self.electricity_reward_weight  # |electricity_reward| ~= 0.05 per step
 
-        reward = progress + collision_cost + electricity_cost + stall_torque_cost
+        # stall_torque_reward = np.square(self.robots[0].joint_torque).mean()
+        stall_torque_reward = 0.0
+        reward += stall_torque_reward * self.stall_torque_reward_weight  # |stall_torque_reward| ~= 0.05 per step
+
+        collision_reward = -1.0 if -1 in collision_links else 0.0
+        reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
+
+        # goal reached
+        if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
+            reward += self.success_reward  # |success_reward| = 10.0 per step
+
         return reward
 
     def get_termination(self):
         self.current_step += 1
-
-        # robot flips over
-        # if self.robots[0].get_position()[2] > 0.1:
-        #     print('death')
-        #     return True
+        done, info = False, {}
 
         # goal reached
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
-            print('goal')
-            return True
+            # print('goal')
+            done = True
+            info['success'] = True
+        # robot flips over
+        elif self.robots[0].get_position()[2] > 0.1:
+            # print('death')
+            done = True
+            info['success'] = False
+        # time out
+        elif self.current_step >= self.max_step:
+            # print('timeout')
+            done = True
+            info['success'] = False
 
-        return self.current_step >= self.max_step
+        return done, info
 
     def step(self, action):
         self.robots[0].apply_action(action)
         collision_links = self.run_simulation()
         state = self.get_state(collision_links)
         reward = self.get_reward(collision_links)
-        done = self.get_termination()
+        done, info = self.get_termination()
 
-        # print('action', action)
-        # print('reward', reward)
-
-        return state, reward, done, {}
+        if done and self.automatic_reset:
+            state = self.reset()
+        return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
         self.robots[0].set_position(pos=self.initial_pos)
@@ -314,7 +296,7 @@ class NavigateEnv(BaseEnv):
     def reset(self):
         self.robots[0].robot_specific_reset()
         self.reset_initial_and_target_pos()
-        self.initial_pos_for_potential = self.get_position_of_interest()
+        self.distance_normalizer = l2_distance(self.target_pos, self.get_position_of_interest())
 
         # set position for visual objects
         if self.visual_object_at_initial_target_pos:
@@ -329,20 +311,22 @@ class NavigateEnv(BaseEnv):
 
 
 class NavigateRandomEnv(NavigateEnv):
-    def __init__(self, config_file, mode='headless', action_timestep=1 / 10.0, physics_timestep=1 / 240.0,
-                 device_idx=0, automatic_reset=False, random_height=False):
-        super(NavigateRandomEnv, self).__init__(config_file, mode, action_timestep, physics_timestep,
+    def __init__(self,
+                 config_file,
+                 mode='headless',
+                 action_timestep=1 / 10.0,
+                 physics_timestep=1 / 240.0,
+                 automatic_reset=False,
+                 random_height=False,
+                 device_idx=0,
+                 ):
+        super(NavigateRandomEnv, self).__init__(config_file,
+                                                mode=mode,
+                                                action_timestep=action_timestep,
+                                                physics_timestep=physics_timestep,
+                                                automatic_reset=automatic_reset,
                                                 device_idx=device_idx)
-        self.automatic_reset = automatic_reset
         self.random_height = random_height
-
-    def step(self, action):
-        state, reward, done, info = super(NavigateRandomEnv, self).step(action)
-        if done and self.automatic_reset:
-            # print('auto reset')
-            return self.reset(), reward, done, info
-        else:
-            return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
         collision_links = [-1]
@@ -363,11 +347,19 @@ class NavigateRandomEnv(NavigateEnv):
 
 
 class InteractiveNavigateEnv(NavigateEnv):
-    def __init__(self, config_file, mode='headless', action_timestep=1 / 10.0, physics_timestep=1 / 240.0,
-                 device_idx=0, automatic_reset=False):
-        super(InteractiveNavigateEnv, self).__init__(config_file, mode, action_timestep, physics_timestep,
+    def __init__(self,
+                 config_file,
+                 mode='headless',
+                 action_timestep=1 / 10.0,
+                 physics_timestep=1 / 240.0,
+                 device_idx=0,
+                 automatic_reset=False):
+        super(InteractiveNavigateEnv, self).__init__(config_file,
+                                                     mode=mode,
+                                                     action_timestep=action_timestep,
+                                                     physics_timestep=physics_timestep,
+                                                     automatic_reset=automatic_reset,
                                                      device_idx=device_idx)
-        self.automatic_reset = automatic_reset
         door = InteractiveObj(
             os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
             scale=1.35)
@@ -385,7 +377,6 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.simulator.import_interactive_object(wall2)
         wall2.set_position_rotation([0, 1.5, 1], [0, 0, 0, 1])
         door.set_position_rotation([0, 0, -0.02], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
-
 
     def reset_initial_and_target_pos(self):
         collision_links = [-1]
@@ -416,7 +407,7 @@ if __name__ == '__main__':
 
     if args.robot == 'turtlebot':
         config_filename = os.path.join(os.path.dirname(gibson2.__file__),
-                                       '../examples/configs/turtlebot_p2p_nav.yaml') \
+                                       '../examples/configs/turtlebot_p2p_nav_discrete.yaml') \
             if args.config is None else args.config
     elif args.robot == 'jr':
         config_filename = os.path.join(os.path.dirname(gibson2.__file__),
@@ -433,8 +424,9 @@ if __name__ == '__main__':
                                          action_timestep=1.0 / 10.0, physics_timestep=1 / 40.0)
 
     for episode in range(10):
+        print('Episode: {}'.format(episode))
         nav_env.reset()
-        for i in range(100):  # 300 steps, 30s world time
+        for i in range(300):  # 300 steps, 30s world time
             action = nav_env.action_space.sample()
             state, reward, done, _ = nav_env.step(action)
             if done:

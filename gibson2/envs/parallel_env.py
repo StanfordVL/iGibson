@@ -299,6 +299,7 @@ class ProcessPyEnvironment(object):
       KeyError: When receiving a message of unknown type.
     """
     try:
+      np.random.seed()
       env = env_constructor()
       #action_spec = env.action_spec()
       conn.send(self._READY)  # Ready.

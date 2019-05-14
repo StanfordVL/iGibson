@@ -11,26 +11,15 @@ class Simulator:
         self.gravity = gravity
         self.timestep = timestep
         self.mode = mode
-        if self.mode == 'gui':
-            self.cid = p.connect(p.GUI)
-        else:
-            self.cid = p.connect(p.DIRECT)
-        p.setTimeStep(self.timestep)
-        p.setGravity(0, 0, -self.gravity)
 
         # renderer
-        self.renderer = MeshRenderer(width=resolution, height=resolution, device_idx=device_idx)
         self.resolution = resolution
         self.device_idx = device_idx
-        self.renderer.set_fov(90)
-        self.visual_objects = {}
 
         if self.mode == 'gui':
-            self.add_viewer()
+            self.viewer = Viewer()
 
-        self.robots = []
-        self.scene = None
-        self.objects = []
+        self.load()
 
     def set_timestep(self, timestep):
         self.timestep = timestep
@@ -42,18 +31,24 @@ class Simulator:
 
     def reload(self):
         self.renderer.release()
-        self.renderer = MeshRenderer(width=self.resolution, height=self.resolution, device_idx=self.device_idx)
         p.disconnect(self.cid)
+        self.load()
+
+    def load(self):
         if self.mode == 'gui':
             self.cid = p.connect(p.GUI)
         else:
             self.cid = p.connect(p.DIRECT)
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
-        self.visual_objects = {}
+
+        self.renderer = MeshRenderer(width=self.resolution, height=self.resolution, device_idx=self.device_idx)
+        self.renderer.set_fov(90)
+
         if self.mode == 'gui':
             self.viewer.renderer = self.renderer
-        self.renderer.set_fov(90)
+
+        self.visual_objects = {}
         self.robots = []
         self.scene = None
         self.objects = []
