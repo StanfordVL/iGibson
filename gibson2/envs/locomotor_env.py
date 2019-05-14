@@ -177,6 +177,42 @@ class NavigateEnv(BaseEnv):
                 state['rgb_filled'] = rgb_filled
         if 'bump' in self.output:
             state['bump'] = -1 in collision_links  # check collision for baselink, it might vary for different robots
+
+        if 'pointgoal' in self.output:
+            state['pointgoal'] = sensor_state[:2]
+
+        if 'scan' in self.output:
+            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+            pose_camera = self.robots[0].parts['scan_link'].get_pose()
+            n_rays_per_horizontal = 128  # Number of rays along one horizontal scan/slice
+            n_vertical_beams = 9
+            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
+            elev_bottom_angle = -30. * np.pi / 180.
+            elev_top_angle = 10. * np.pi / 180.
+            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+                                   (elev_top_angle - elev_bottom_angle) / float(n_vertical_beams))
+            orig_offset = np.vstack(
+                [np.vstack([np.cos(angle), np.sin(angle), np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in
+                 elev_angle])
+            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+            pose_camera = pose_camera[None, :3].repeat(n_rays_per_horizontal * n_vertical_beams, axis=0)
+
+            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            hit = np.array([item[0] for item in results])
+            dist = np.array([item[2] for item in results])
+            dist[dist >= 1 - 1e-5] = np.nan
+            dist[dist < 0.1 / 30] = np.nan
+            dist[hit == self.robots[0].robot_ids[0]] = np.nan
+            dist[hit == -1] = np.nan
+            dist *= 30
+
+            xyz = dist[:, np.newaxis] * orig_offset
+            xyz = xyz[np.equal(np.isnan(xyz), False)]  # Remove nans
+            #print(xyz.shape)
+            xyz = xyz.reshape(xyz.shape[0] // 3, -1)
+            state['scan'] = xyz
+
         return state
 
     def run_simulation(self):
