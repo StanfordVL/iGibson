@@ -6,7 +6,7 @@ from gibson2.utils.utils import parse_config
 from gibson2.core.physics.interactive_objects import InteractiveObj
 import gibson2
 
-config = parse_config('test.yaml')
+config = parse_config('test_interactive_nav.yaml')
 
 def test_jr2():
     s =Simulator(mode='gui')
