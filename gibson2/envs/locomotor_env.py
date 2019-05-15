@@ -87,7 +87,7 @@ class NavigateEnv(BaseEnv):
                                             dtype=np.float32)
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
-            self.depth_space = gym.spaces.Box(low=0.0, high=1.0,
+            self.depth_space = gym.spaces.Box(low=0.0, high=np.inf,
                                               shape=(self.config['resolution'], self.config['resolution'], 1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
@@ -97,11 +97,18 @@ class NavigateEnv(BaseEnv):
             self.comp.load_state_dict(
                 torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
+        if 'scan' in self.output:
+            self.scan_space = gym.spaces.Box(low=0.0, high=np.inf,
+                                            shape=(self.config['scan_beams'],),
+                                            dtype=np.float32)
+            observation_space['scan'] = self.scan_space
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
 
         # variable initialization
+        self.potential = 1.0
+        self.current_step = 0
         self.current_episode = 0
 
         # add visual objects
@@ -182,8 +189,10 @@ class NavigateEnv(BaseEnv):
         if 'scan' in self.output:
             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
             pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            n_rays_per_horizontal = 128  # Number of rays along one horizontal scan/slice
-            n_vertical_beams = 9
+            n_rays_per_horizontal = self.config['scan_beams']  # Number of rays along one horizontal scan/slice
+            n_vertical_beams = 1
+            max_distance = 25
+            min_distance = 0.05
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
             elev_bottom_angle = -30. * np.pi / 180.
             elev_top_angle = 10. * np.pi / 180.
@@ -196,20 +205,19 @@ class NavigateEnv(BaseEnv):
             offset = orig_offset.dot(np.linalg.inv(transform_matrix))
             pose_camera = pose_camera[None, :3].repeat(n_rays_per_horizontal * n_vertical_beams, axis=0)
 
-            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            results = p.rayTestBatch(pose_camera, pose_camera + offset * max_distance)
             hit = np.array([item[0] for item in results])
             dist = np.array([item[2] for item in results])
-            dist[dist >= 1 - 1e-5] = np.nan
-            dist[dist < 0.1 / 30] = np.nan
-            dist[hit == self.robots[0].robot_ids[0]] = np.nan
-            dist[hit == -1] = np.nan
-            dist *= 30
-
-            xyz = dist[:, np.newaxis] * orig_offset
-            xyz = xyz[np.equal(np.isnan(xyz), False)]  # Remove nans
-            #print(xyz.shape)
-            xyz = xyz.reshape(xyz.shape[0] // 3, -1)
-            state['scan'] = xyz
+            dist[dist >= 1 - 1e-5] = 1
+            dist[dist < min_distance / max_distance] = min_distance / max_distance
+            dist[hit == self.robots[0].robot_ids[0]] = 0 # hit itself
+            dist[hit == -1] = max_distance # did not hit anything
+            dist *= max_distance
+            # xyz = dist[:, np.newaxis] * orig_offset
+            # xyz = np.linalg.norm(xyz, axis=1)
+            # xyz = xyz[np.equal(np.isnan(xyz), False)]  # Remove nans
+            # xyz = xyz.reshape(xyz.shape[0] // 3, -1)
+            state['scan'] = dist
 
         return state
 
@@ -227,17 +235,15 @@ class NavigateEnv(BaseEnv):
         elif self.config['task'] == 'reaching':
             return self.robots[0].get_end_effector_position()
 
-    def get_potential(self):
-        return l2_distance(self.target_pos, self.get_position_of_interest())
-
     def get_reward(self, collision_links):
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
-        new_normalized_potential = self.get_potential() / self.initial_potential
+        pof = self.get_position_of_interest()
+        new_potential = l2_distance(self.target_pos, pof) / self.distance_normalizer
 
-        potential_reward = self.normalized_potential - new_normalized_potential
-        reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
-        self.normalized_potential = new_normalized_potential
+        potential_reward = self.potential - new_potential
+        reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.15 per step
+        self.potential = new_potential
 
         # electricity_reward = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
         electricity_reward = 0.0
@@ -296,14 +302,15 @@ class NavigateEnv(BaseEnv):
     def reset(self):
         self.robots[0].robot_specific_reset()
         self.reset_initial_and_target_pos()
-        self.initial_potential = self.get_potential()
-        self.normalized_potential = 1.0
-        self.current_step = 0
+        self.distance_normalizer = l2_distance(self.target_pos, self.get_position_of_interest())
 
         # set position for visual objects
         if self.visual_object_at_initial_target_pos:
             self.initial_pos_vis_obj.set_position(self.initial_pos)
             self.target_pos_vis_obj.set_position(self.target_pos)
+
+        self.current_step = 0
+        self.potential = 1.0
 
         state = self.get_state()
         return state
