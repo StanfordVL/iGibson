@@ -99,7 +99,7 @@ class NavigateEnv(BaseEnv):
             self.comp.eval()
         if 'scan' in self.output:
             self.scan_space = gym.spaces.Box(low=0.0, high=np.inf,
-                                            shape=(self.config['scan_beams'],),
+                                            shape=(self.config['scan_beams']*self.config['scan_vertical_beams'],),
                                             dtype=np.float32)
             observation_space['scan'] = self.scan_space
 
