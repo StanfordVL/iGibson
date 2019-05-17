@@ -190,7 +190,7 @@ class NavigateEnv(BaseEnv):
             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
             pose_camera = self.robots[0].parts['scan_link'].get_pose()
             n_rays_per_horizontal = self.config['scan_beams']  # Number of rays along one horizontal scan/slice
-            n_vertical_beams = 1
+            n_vertical_beams = self.config['scan_vertical_beams']
             max_distance = 25
             min_distance = 0.05
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
