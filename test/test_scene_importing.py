@@ -44,10 +44,11 @@ def test_import_building_viewing():
     turtlebot2.set_position([0, 0, 0.5])
     turtlebot3.set_position([-0.5, 0, 0.5])
 
-    for i in range(10):
+    for i in range(1000000):
         s.step()
         #turtlebot1.apply_action(np.random.randint(4))
         #turtlebot2.apply_action(np.random.randint(4))
         #turtlebot3.apply_action(np.random.randint(4))
 
     s.disconnect()
+test_import_building_viewing()
