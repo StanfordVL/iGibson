@@ -197,7 +197,7 @@ class NavigateEnv(BaseEnv):
             elev_bottom_angle = -30. * np.pi / 180.
             elev_top_angle = 10. * np.pi / 180.
             if n_vertical_beams == 1:
-                elev_angle = np.arange(0)
+                elev_angle = np.arange(0,1)
             else: 
                 elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
                                    (elev_top_angle - elev_bottom_angle) / float(n_vertical_beams))
