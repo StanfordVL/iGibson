@@ -52,3 +52,19 @@ def test_import_rbo_object():
             s.step()
     finally:
         s.disconnect()
+
+def test_import_human():
+    s = Simulator(mode='gui')
+    scene = StadiumScene()
+    s.import_scene(scene)
+
+    obj = Pedestrian()
+    s.import_object(obj)
+
+    for j in range(100):
+        s.step()
+        obj.reset_position_orientation([j * 0.001, 0, 0], [0,0,0,1])
+
+    last_obj = s.objects[-1]
+    s.disconnect()
+    assert (last_obj == 4)

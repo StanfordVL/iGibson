@@ -2,7 +2,7 @@ import pybullet as p
 import os
 import gibson2
 
-class YCBObject:
+class YCBObject(object):
     def __init__(self, name, scale=1):
         self.filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name, 'textured_simple.obj')
         self.scale = scale
@@ -12,6 +12,33 @@ class YCBObject:
         body_id = p.createMultiBody(basePosition=[0, 0, 0], baseMass=0.1, baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=-1)
         return body_id
+
+class Pedestrian(object):
+    def __init__(self, style='standing', pos=[0,0,0]):
+        self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes', 'person_{}'.format(style),
+                                               'meshes', 'person_vhacd.obj')
+        self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
+                                               'person_{}'.format(style),
+                                               'meshes', 'person.obj')
+        self.body_id = None
+        self.cid = None
+
+        self.pos = pos
+    def load(self):
+        collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename)
+        visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
+        body_id = p.createMultiBody(basePosition=[0, 0, 0], baseMass=60, baseCollisionShapeIndex=collision_id,
+                                    baseVisualShapeIndex=visual_id)
+        self.body_id = body_id
+
+        p.resetBasePositionAndOrientation(self.body_id, self.pos, [-0.5,-0.5,-0.5,0.5])
+
+        self.cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.pos,
+                                      parentFrameOrientation=[-0.5,-0.5,-0.5,0.5]) # facing x axis
+        return body_id
+
+    def reset_position_orientation(self, pos, orn):
+        p.changeConstraint(self.cid, pos, orn)
 
 
 class VisualObject(object):
@@ -30,7 +57,7 @@ class VisualObject(object):
         p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
 
 
-class InteractiveObj:
+class InteractiveObj(object):
     def __init__(self, filename, scale=1):
         self.filename = filename
         self.scale = scale

@@ -109,3 +109,7 @@ class BuildingScene(Scene):
         x = np.where(trav == 255)[1] / 100.0 - self.max_length
         idx = np.random.randint(0, high=len(x))
         return floor, np.array([x[idx], y[idx], self.floors[floor]])
+    def coord_to_pos(self, x, y):
+        x = x/100.0 - self.max_length
+        y = y/100.0 - self.max_length
+        return [x,y]

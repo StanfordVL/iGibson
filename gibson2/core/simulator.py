@@ -68,8 +68,8 @@ class Simulator:
                         self.renderer.add_instance(len(self.renderer.visual_objects) - 1, new_object)
                     else:
                         self.renderer.add_instance(self.visual_objects[filename], new_object)
-
         self.scene = scene
+        return new_objects
 
     def import_object(self, object):
         new_object = object.load()
@@ -96,6 +96,7 @@ class Simulator:
                 self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                            pybullet_uuid=new_object,
                                            dynamic=True)
+        return new_object
 
     def import_robot(self, robot):
         ids = robot.load()
