@@ -9,6 +9,7 @@ class BaseEnv(gym.Env):
     '''
     a basic environment, step, observation and reward not implemented
     '''
+
     def __init__(self, config_file, mode='headless', device_idx=0):
         self.config = parse_config(config_file)
         self.simulator = Simulator(mode=mode,

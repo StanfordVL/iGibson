@@ -3,8 +3,15 @@ from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import *
 from gibson2.core.physics.interactive_objects import *
 from gibson2.core.render.viewer import Viewer
 
+
 class Simulator:
-    def __init__(self, gravity=9.8, timestep=1 / 240.0, use_fisheye=False, mode='gui', resolution=256, device_idx=0):
+    def __init__(self,
+                 gravity=9.8,
+                 timestep=1 / 240.0,
+                 use_fisheye=False,
+                 mode='gui',
+                 resolution=256,
+                 device_idx=0):
 
         # physics simulator
         self.gravity = gravity
@@ -12,7 +19,10 @@ class Simulator:
         self.mode = mode
 
         # renderer
-        self.renderer = MeshRenderer(width=resolution, height=resolution, device_idx=device_idx, use_fisheye=use_fisheye)
+        self.renderer = MeshRenderer(width=resolution,
+                                     height=resolution,
+                                     device_idx=device_idx,
+                                     use_fisheye=use_fisheye)
         self.resolution = resolution
         self.device_idx = device_idx
 
@@ -61,7 +71,7 @@ class Simulator:
             self.objects.append(item)
         for new_object in new_objects:
             for shape in p.getVisualShapeData(new_object):
-                id, _, type, _, filename  = shape[:5]
+                id, _, type, _, filename = shape[:5]
                 if type == p.GEOM_MESH:
                     filename = filename.decode('utf-8')
                     if not filename in self.visual_objects.keys():
@@ -75,7 +85,6 @@ class Simulator:
         self.scene = scene
         return new_objects
 
-
     def import_object(self, object):
         new_object = object.load()
         self.objects.append(new_object)
@@ -87,7 +96,9 @@ class Simulator:
                 if not filename in self.visual_objects.keys():
                     self.renderer.load_object(filename)
                     self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                    self.renderer.add_instance(len(self.renderer.visual_objects) - 1, new_object, dynamic=True)
+                    self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                                               new_object,
+                                               dynamic=True)
                 else:
                     self.renderer.add_instance(self.visual_objects[filename],
                                                pybullet_uuid=new_object,
@@ -316,6 +327,7 @@ class Simulator:
         if self.isconnected():
             p.disconnect(self.cid)
         self.renderer.release()
+
 
 if __name__ == '__main__':
     s = Simulator()

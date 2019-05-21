@@ -132,6 +132,7 @@ class BaseRobot:
         self.parts, self.jdict, self.ordered_joints, self.robot_body = self.addToScene(
             self.robot_ids)
         return self.robot_ids
+
     def robot_specific_reset(self):
         raise NotImplementedError
 
@@ -142,7 +143,8 @@ class BaseRobot:
         if self.robot_ids is None:
             self._load_model()
 
-        self.robot_body.reset_orientation(quatToXYZW(euler2quat(*self.config["initial_orn"]), 'wxyz'))
+        self.robot_body.reset_orientation(
+            quatToXYZW(euler2quat(*self.config["initial_orn"]), 'wxyz'))
         self.robot_body.reset_position(self.config["initial_pos"])
         self.reset_random_pos()
         self.robot_specific_reset()
@@ -164,11 +166,14 @@ class BaseRobot:
         z_range = self.config["random"]["random_init_z_range"]
         r_range = self.config["random"]["random_init_rot_range"]
 
-        new_pos = [pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
-                   pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
-                   pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])]
+        new_pos = [
+            pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
+            pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
+            pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])
+        ]
         new_orn = quaternions.qmult(
-            quaternions.axangle2quat([1, 0, 0], self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
+            quaternions.axangle2quat([1, 0, 0],
+                                     self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
 
         self.robot_body.reset_orientation(new_orn)
         self.robot_body.reset_position(new_pos)
@@ -229,7 +234,6 @@ class BodyPart:
         """Calls native pybullet method for setting real (scaled) robot body pose"""
         p.resetBasePositionAndOrientation(self.bodies[self.body_index],
                                           np.array(pos) / self.scale, orn)
-
 
     def get_pose(self):
         return self._state_fields_of_pose_of(self.bodies[self.body_index], self.body_part_index)
@@ -351,7 +355,6 @@ class Joint:
             vel *= 0.5
         return pos, vel, trq
 
-
     def set_position(self, position):
         """Set position of joint
            Position is defined in real world scale """
@@ -360,7 +363,6 @@ class Joint:
         p.setJointMotorControl2(self.bodies[self.body_index],
                                 self.joint_index,
                                 p.POSITION_CONTROL,
-
                                 targetPosition=position)
 
     def set_velocity(self, velocity):
@@ -378,7 +380,6 @@ class Joint:
                                 jointIndex=self.joint_index,
                                 controlMode=p.TORQUE_CONTROL,
                                 force=torque)    # , positionGain=0.1, velocityGain=0.1)
-
 
     def reset_state(self, pos, vel):
         self.set_state(pos, vel)

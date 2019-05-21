@@ -154,7 +154,6 @@ def main():
         imgnet_std.view(1, 3, 1, 1).repeat(opt.batchsize * 4, 1, patchsize, patchsize)).cuda()
     test_loader_enum = enumerate(dataloader_test)
 
-
     test_loader_enum = enumerate(dataloader_test)
     for epoch in range(current_epoch, opt.nepoch):
         for i, data in enumerate(dataloader, 0):
@@ -167,8 +166,8 @@ def main():
             mask = (torch.sum(source[:, :3, :, :], 1) > 0).float().unsqueeze(1)
             # img_mean = torch.sum(torch.sum(source[:,:3,:,:], 2),2) / torch.sum(torch.sum(mask, 2),2).view(opt.batchsize,1)
 
-            source[:, :3, :, :] += (1 - mask.repeat(1, 3, 1, 1)) * mean.view(1, 3, 1, 1).repeat(opt.batchsize, 1, 1024,
-                                                                                                2048)
+            source[:, :3, :, :] += (1 - mask.repeat(1, 3, 1, 1)) * mean.view(1, 3, 1, 1).repeat(
+                opt.batchsize, 1, 1024, 2048)
             source_depth = source_depth[:, :, :, 0].unsqueeze(1)
             # print(source_depth.size(), mask.size())
             source_depth = torch.cat([source_depth, mask], 1)
@@ -186,20 +185,26 @@ def main():
             elif opt.loss == 'perceptual':
                 loss = l2(p(recon), p(img_originalc).detach()) + opt.l1 * l2(recon, img_originalc)
             elif opt.loss == 'color_stable':
-                loss = l2(p(recon.view(recon.size(0) * 3, 1, patchsize, patchsize).repeat(1, 3, 1, 1)),
-                          p(img_originalc.view(img_originalc.size(0) * 3, 1, patchsize, patchsize).repeat(1, 3, 1, 1)).detach())
+                loss = l2(
+                    p(recon.view(recon.size(0) * 3, 1, patchsize, patchsize).repeat(1, 3, 1, 1)),
+                    p(
+                        img_originalc.view(img_originalc.size(0) * 3, 1, patchsize,
+                                           patchsize).repeat(1, 3, 1, 1)).detach())
             elif opt.loss == 'color_correction':
                 recon_percept = p((recon - imgnet_mean_img) / imgnet_std_img)
                 org_percept = p((img_originalc - imgnet_mean_img) / (imgnet_std_img)).detach()
                 loss = l2(recon_percept, org_percept)
                 for scale in [32]:
-                    img_originalc_patch = img_originalc.view(opt.batchsize * 4, 3, patchsize // scale, scale, patchsize // scale,
-                                                             scale).transpose(4, 3).contiguous().view(opt.batchsize * 4,
-                                                                                                      3, patchsize // scale,
-                                                                                                      patchsize // scale, -1)
-                    recon_patch = recon.view(opt.batchsize * 4, 3, patchsize // scale, scale, patchsize // scale, scale).transpose(4,
-                                                                                                                     3).contiguous().view(
-                        opt.batchsize * 4, 3, patchsize // scale, patchsize // scale, -1)
+                    img_originalc_patch = img_originalc.view(
+                        opt.batchsize * 4, 3, patchsize // scale, scale, patchsize // scale,
+                        scale).transpose(4, 3).contiguous().view(opt.batchsize * 4, 3,
+                                                                 patchsize // scale,
+                                                                 patchsize // scale, -1)
+                    recon_patch = recon.view(opt.batchsize * 4, 3, patchsize // scale, scale,
+                                             patchsize // scale,
+                                             scale).transpose(4, 3).contiguous().view(
+                                                 opt.batchsize * 4, 3, patchsize // scale,
+                                                 patchsize // scale, -1)
                     img_originalc_patch_mean = img_originalc_patch.mean(dim=-1)
                     recon_patch_mean = recon_patch.mean(dim=-1)
                     # recon_patch_cov = []
@@ -212,8 +217,9 @@ def main():
                     # recon_patch_cov_cat = torch.cat(recon_patch_cov,1)
                     # img_originalc_patch_cov_cat = torch.cat(img_originalc_patch_cov, 1)
 
-                    color_loss = l2(recon_patch_mean,
-                                    img_originalc_patch_mean)  # + l2(recon_patch_cov_cat, img_originalc_patch_cov_cat.detach())
+                    color_loss = l2(
+                        recon_patch_mean, img_originalc_patch_mean
+                    )    # + l2(recon_patch_cov_cat, img_originalc_patch_cov_cat.detach())
 
                     loss += opt.color_coeff * color_loss
 
@@ -240,11 +246,16 @@ def main():
                     loss2 += 0.2 * l2(recon2_percept, org_percept)
 
                 for scale in [32]:
-                    img_originalc_patch = recon.detach().view(opt.batchsize * 4, 3, patchsize / scale, scale, patchsize / scale,
-                                                              scale).transpose(4, 3).contiguous().view(
-                        opt.batchsize * 4, 3, patchsize / scale, patchsize / scale, -1)
-                    recon2_patch = recon2.view(opt.batchsize * 4, 3, patchsize / scale, scale, patchsize / scale, scale).transpose(
-                        4, 3).contiguous().view(opt.batchsize * 4, 3, patchsize / scale, patchsize / scale, -1)
+                    img_originalc_patch = recon.detach().view(
+                        opt.batchsize * 4, 3, patchsize / scale, scale, patchsize / scale,
+                        scale).transpose(4, 3).contiguous().view(opt.batchsize * 4, 3,
+                                                                 patchsize / scale,
+                                                                 patchsize / scale, -1)
+                    recon2_patch = recon2.view(opt.batchsize * 4, 3, patchsize / scale, scale,
+                                               patchsize / scale,
+                                               scale).transpose(4, 3).contiguous().view(
+                                                   opt.batchsize * 4, 3, patchsize / scale,
+                                                   patchsize / scale, -1)
                     img_originalc_patch_mean = img_originalc_patch.mean(dim=-1)
                     recon2_patch_mean = recon2_patch.mean(dim=-1)
                     recon2_patch_cov = []
@@ -252,9 +263,11 @@ def main():
 
                     for j in range(3):
                         recon2_patch_cov.append(
-                            (recon2_patch * recon2_patch[:, j:j + 1].repeat(1, 3, 1, 1, 1)).mean(dim=-1))
+                            (recon2_patch *
+                             recon2_patch[:, j:j + 1].repeat(1, 3, 1, 1, 1)).mean(dim=-1))
                         img_originalc_patch_cov.append(
-                            (img_originalc_patch * img_originalc_patch[:, j:j + 1].repeat(1, 3, 1, 1, 1)).mean(dim=-1))
+                            (img_originalc_patch *
+                             img_originalc_patch[:, j:j + 1].repeat(1, 3, 1, 1, 1)).mean(dim=-1))
 
                     recon2_patch_cov_cat = torch.cat(recon2_patch_cov, 1)
                     img_originalc_patch_cov_cat = torch.cat(img_originalc_patch_cov, 1)
@@ -291,7 +304,6 @@ def main():
             print('[%d/%d][%d/%d] %d MSEloss: %f' %
                   (epoch, opt.nepoch, i, len(dataloader), step, loss.data.item()))
 
-
             if i % 200 == 0:
 
                 test_i, test_data = next(test_loader_enum)
@@ -304,8 +316,8 @@ def main():
 
                 mask = (torch.sum(source[:, :3, :, :], 1) > 0).float().unsqueeze(1)
 
-                source[:, :3, :, :] += (1 - mask.repeat(1, 3, 1, 1)) * mean.view(1, 3, 1, 1).repeat(opt.batchsize, 1,
-                                                                                                    1024, 2048)
+                source[:, :3, :, :] += (1 - mask.repeat(1, 3, 1, 1)) * mean.view(1, 3, 1, 1).repeat(
+                    opt.batchsize, 1, 1024, 2048)
                 source_depth = source_depth[:, :, :, 0].unsqueeze(1)
                 source_depth = torch.cat([source_depth, mask], 1)
                 img.data.copy_(source)
@@ -321,7 +333,8 @@ def main():
                     # maskvc.data.fill_(0)
                     recon2 = comp2(img_originalc, maskvc)
                     comp2.train()
-                    visual = torch.cat([imgc.data[:, :3, :, :], recon.data, recon2.data, img_originalc.data], 3)
+                    visual = torch.cat(
+                        [imgc.data[:, :3, :, :], recon.data, recon2.data, img_originalc.data], 3)
                 else:
                     visual = torch.cat([imgc.data[:, :3, :, :], recon.data, img_originalc.data], 3)
 
@@ -338,7 +351,8 @@ def main():
                 torch.save(comp.state_dict(), '%s/compG_epoch%d_%d.pth' % (opt.outf, epoch, i))
 
                 if opt.unfiller:
-                    torch.save(comp2.state_dict(), '%s/compG2_epoch%d_%d.pth' % (opt.outf, epoch, i))
+                    torch.save(comp2.state_dict(),
+                               '%s/compG2_epoch%d_%d.pth' % (opt.outf, epoch, i))
 
 
 if __name__ == '__main__':

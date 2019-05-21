@@ -26,15 +26,19 @@ class SimNode:
         self.cmdx = 0.0
         self.cmdy = 0.0
 
-        self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image",ImageMsg, queue_size=10)
-        self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image",ImageMsg, queue_size=10)
+        self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
+        self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
         self.lidar_pub = rospy.Publisher("/gibson_ros/lidar/points", PointCloud2, queue_size=10)
 
-        self.depth_raw_pub = rospy.Publisher("/gibson_ros/camera/depth/image_raw",ImageMsg, queue_size=10)
-        self.odom_pub = rospy.Publisher("/odom",Odometry, queue_size=10)
+        self.depth_raw_pub = rospy.Publisher("/gibson_ros/camera/depth/image_raw",
+                                             ImageMsg,
+                                             queue_size=10)
+        self.odom_pub = rospy.Publisher("/odom", Odometry, queue_size=10)
         self.gt_odom_pub = rospy.Publisher("/ground_truth_odom", Odometry, queue_size=10)
 
-        self.camera_info_pub = rospy.Publisher("/gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
+        self.camera_info_pub = rospy.Publisher("/gibson_ros/camera/depth/camera_info",
+                                               CameraInfo,
+                                               queue_size=10)
         self.bridge = CvBridge()
         self.br = tf.TransformBroadcaster()
 
@@ -53,7 +57,10 @@ class SimNode:
         from gibson2.core.physics.interactive_objects import ShapeNetObject
         # obj_path = '/cvgl/group/ShapeNetCore.v2/03001627/1b05971a4373c7d2463600025db2266/models/model_normalized.obj'
         obj_path = '/cvgl/group/ShapeNetCore.v2/03001627/60b3d70238246b3e408442c6701ebe92/models/model_normalized.obj'
-        cur_obj = ShapeNetObject(obj_path, scale=1.0, position=[0, -2.0, 0.5], orientation=[0, 0, np.pi])
+        cur_obj = ShapeNetObject(obj_path,
+                                 scale=1.0,
+                                 position=[0, -2.0, 0.5],
+                                 orientation=[0, 0, np.pi])
         env.simulator.import_object(cur_obj)
 
     def run(self):

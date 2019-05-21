@@ -70,7 +70,6 @@ class NavigateEnv(BaseEnv):
         self.sensor_dim = self.robots[0].sensor_dim + self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
 
-
         observation_space = OrderedDict()
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf,
@@ -124,7 +123,6 @@ class NavigateEnv(BaseEnv):
             else:
                 self.target_pos_vis_obj.load()
 
-
     def reload(self, config_file):
         super().reload(config_file)
         self.initial_pos = np.array(self.config.get('initial_pos', [0, 0, 0]))
@@ -153,31 +151,42 @@ class NavigateEnv(BaseEnv):
         # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float64)
         observation_space = OrderedDict()
         if 'sensor' in self.output:
-            self.sensor_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32)
+            self.sensor_space = gym.spaces.Box(low=-np.inf,
+                                               high=np.inf,
+                                               shape=(self.sensor_dim, ),
+                                               dtype=np.float32)
             observation_space['sensor'] = self.sensor_space
         if 'rgb' in self.output:
-            self.rgb_space = gym.spaces.Box(low=0.0, high=1.0,
-                                            shape=(self.config['resolution'], self.config['resolution'], 3),
+            self.rgb_space = gym.spaces.Box(low=0.0,
+                                            high=1.0,
+                                            shape=(self.config['resolution'],
+                                                   self.config['resolution'], 3),
                                             dtype=np.float32)
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
-            self.depth_space = gym.spaces.Box(low=0.0, high=1.0,
-                                              shape=(self.config['resolution'], self.config['resolution'], 1),
+            self.depth_space = gym.spaces.Box(low=0.0,
+                                              high=1.0,
+                                              shape=(self.config['resolution'],
+                                                     self.config['resolution'], 1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
-        if 'rgb_filled' in self.output:  # use filler
+        if 'rgb_filled' in self.output:    # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
             self.comp.load_state_dict(
                 torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
         if 'pointgoal' in self.output:
-            observation_space['pointgoal'] = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32)
+            observation_space['pointgoal'] = gym.spaces.Box(low=-np.inf,
+                                                            high=np.inf,
+                                                            shape=(2, ),
+                                                            dtype=np.float32)
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
 
-        self.visual_object_at_initial_target_pos = self.config.get('visual_object_at_initial_target_pos', False)
+        self.visual_object_at_initial_target_pos = self.config.get(
+            'visual_object_at_initial_target_pos', False)
         if self.visual_object_at_initial_target_pos:
             self.initial_pos_vis_obj = VisualObject(rgba_color=[1, 0, 0, 0.5])
             self.target_pos_vis_obj = VisualObject(rgba_color=[0, 0, 1, 0.5])
@@ -186,7 +195,6 @@ class NavigateEnv(BaseEnv):
                 self.simulator.import_object(self.target_pos_vis_obj)
             else:
                 self.target_pos_vis_obj.load()
-
 
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
@@ -276,7 +284,6 @@ class NavigateEnv(BaseEnv):
             offset = orig_offset.dot(np.linalg.inv(transform_matrix))
             pose_camera = pose_camera[None, :3].repeat(n_rays_per_horizontal * n_vertical_beams,
                                                        axis=0)
-
 
             results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
             hit = np.array([item[0] for item in results])
