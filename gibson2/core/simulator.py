@@ -53,7 +53,7 @@ class Simulator:
         self.scene = None
         self.objects = []
 
-    def import_scene(self, scene):
+    def import_scene(self, scene, texture_scale=1.0):
         new_objects = scene.load()
         for item in new_objects:
             self.objects.append(item)
@@ -63,7 +63,7 @@ class Simulator:
                 if type == p.GEOM_MESH:
                     filename = filename.decode('utf-8')
                     if not filename in self.visual_objects.keys():
-                        self.renderer.load_object(filename)
+                        self.renderer.load_object(filename, texture_scale=texture_scale)
                         self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                         self.renderer.add_instance(len(self.renderer.visual_objects) - 1, new_object)
                     else:

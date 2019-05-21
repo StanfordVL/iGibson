@@ -12,9 +12,18 @@ config = parse_config('test.yaml')
 
 
 def test_import_building():
+    s = Simulator(mode='gui')
+    scene = BuildingScene('Ohoopee')
+    s.import_scene(scene, texture_scale=0.4)
+    for i in range(15):
+        s.step()
+    assert s.objects == list(range(2))
+    s.disconnect()
+
+def test_import_building_big():
     s = Simulator(mode='headless')
     scene = BuildingScene('Ohoopee')
-    s.import_scene(scene)
+    s.import_scene(scene, texture_scale=1)
     assert s.objects == list(range(2))
     s.disconnect()
 

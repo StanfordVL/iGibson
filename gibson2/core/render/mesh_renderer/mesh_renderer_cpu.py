@@ -17,7 +17,7 @@ from gibson2.core.render.mesh_renderer.get_available_devices import get_availabl
 from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTexture
 import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
-
+import gibson2
 
 class VisualObject(object):
     def __init__(self, filename, VAO_ids, id, renderer):
@@ -338,7 +338,7 @@ class MeshRenderer:
 
         assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
 
-    def load_object(self, obj_path, scale=np.array([1,1,1]), transform_orn=None, transform_pos=None, input_kd=None):
+    def load_object(self, obj_path, scale=np.array([1,1,1]), transform_orn=None, transform_pos=None, input_kd=None, texture_scale=1.0):
 
         scene = load(obj_path)
         material_count = len(self.materials_mapping)
@@ -351,7 +351,7 @@ class MeshRenderer:
                 if k == 'file':
                     materials_fn[i + material_count] = v
                     dir = os.path.dirname(obj_path)
-                    texture = loadTexture(os.path.join(dir, v))
+                    texture = loadTexture(os.path.join(dir, v), scale=texture_scale)
                     material = Material('texture', texture_id=texture)
                     self.materials_mapping[i + material_count] = material
                     self.textures.append(texture)
@@ -469,6 +469,25 @@ class MeshRenderer:
 
     def set_light_color(self, color):
         self.lightcolor = color
+
+    def get_intrinsics(self):
+        P = self.P
+        w, h = self.width, self.height
+        znear, zfar = 0.01, 100.0
+        a = (2.0 * znear) / P[0, 0]
+        b = P[2, 0] * a
+        right = (a + b) / 2.0
+        left = b - right
+        c = (2.0 * znear) / P[1, 1]
+        d = P[3, 1] * c
+        top = (c + d) / 2.0
+        bottom = d - top
+        fu = w * znear / (right - left)
+        fv = h * znear / (top - bottom)
+
+        u0 = w - right * fu / znear
+        v0 = h - top * fv / znear
+        return np.array([[fu, 0, u0], [0, fv, v0], [0, 0, 1]])
 
     def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d')):
         results = []
@@ -591,7 +610,7 @@ if __name__ == '__main__':
     model_path = sys.argv[1]
     renderer = MeshRenderer(width=256, height=256)
     renderer.load_object(model_path)
-    renderer.load_object('/home/fei/Downloads/models/011_banana/textured_simple.obj')
+    renderer.load_object(os.path.join(gibson2.assets_path, 'models/ycb/011_banana/textured_simple.obj'))
 
     renderer.add_instance(0)
     renderer.add_instance(1)
@@ -608,7 +627,7 @@ if __name__ == '__main__':
     view_direction = np.array([1, 0, 0])
     renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
     renderer.set_fov(90)
-
+    print(renderer.get_intrinsics())
     px = 0
     py = 0
 

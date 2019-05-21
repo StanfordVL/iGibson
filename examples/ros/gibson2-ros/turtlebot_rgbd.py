@@ -63,9 +63,9 @@ class SimNode:
             self.depth_pub.publish(depth_message)
             self.depth_raw_pub.publish(depth_raw_message)
             msg = CameraInfo(height=256, width=256, distortion_model="plumb_bob", D=[0.0, 0.0, 0.0, 0.0, 0.0],
-                             K=[128, 0.0, 128.5, 0.0, 128, 128.5, 0.0, 0.0, 1.0],
+                             K=[128, 0.0, 128, 0.0, 128, 128, 0.0, 0.0, 1.0],
                              R=[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-                             P=[128, 0.0, 128.5, -0.0, 0.0, 128, 128.5, 0.0, 0.0, 0.0, 1.0, 0.0])
+                             P=[128, 0.0, 128, 0.0, 0.0, 128, 128, 0.0, 0.0, 0.0, 1.0, 0.0])
             msg.header.stamp = now
             msg.header.frame_id = "camera_depth_optical_frame"
             self.camera_info_pub.publish(msg)
