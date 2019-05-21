@@ -50,8 +50,8 @@ def loadTexture(path):
     GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR_MIPMAP_LINEAR)
     GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_EDGE)
     GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE)
-    GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, width, height, 0,
-                    GL.GL_RGB, GL.GL_UNSIGNED_BYTE, img_data)
+    GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, width, height, 0, GL.GL_RGB,
+                    GL.GL_UNSIGNED_BYTE, img_data)
     GL.glGenerateMipmap(GL.GL_TEXTURE_2D)
     return texture
 
@@ -76,8 +76,8 @@ class MeshTensorRenderer:
         device = available_devices[device_idx]
         self.cuda_device = (get_cuda_device(device))
         torch.cuda.device(self.cuda_device)
-        print('use GL device {} CUDA device {}: {}'.format(device, self.cuda_device,
-                                                           torch.cuda.get_device_name(self.cuda_device)))
+        print('use GL device {} CUDA device {}: {}'.format(
+            device, self.cuda_device, torch.cuda.get_device_name(self.cuda_device)))
 
         self.r = CppMeshRenderer.CppMeshRenderer(width, height, device)
         self.r.init()
@@ -93,7 +93,8 @@ class MeshTensorRenderer:
 
         self.cuda_buffer = None
         self.cuda_buffer2 = None
-        vertexShader = self.shaders.compileShader("""
+        vertexShader = self.shaders.compileShader(
+            """
         #version 450
         uniform mat4 V;
         uniform mat4 P;
@@ -125,7 +126,8 @@ class MeshTensorRenderer:
         }
         """, GL.GL_VERTEX_SHADER)
 
-        fragmentShader = self.shaders.compileShader("""
+        fragmentShader = self.shaders.compileShader(
+            """
         #version 450
         uniform sampler2D texUnit;
         in vec2 theCoords;
@@ -171,41 +173,43 @@ class MeshTensorRenderer:
         self.depth_tex = GL.glGenTextures(1)
 
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0, GL.GL_RGBA,
+                        GL.GL_UNSIGNED_BYTE, None)
 
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_2)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0, GL.GL_RGBA,
+                        GL.GL_UNSIGNED_BYTE, None)
 
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_3)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0, GL.GL_RGBA,
+                        GL.GL_UNSIGNED_BYTE, None)
 
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_4)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA32F, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_FLOAT, None)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA32F, self.width, self.height, 0, GL.GL_RGBA,
+                        GL.GL_FLOAT, None)
 
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.depth_tex)
 
-        GL.glTexImage2D.wrappedOperation(
-            GL.GL_TEXTURE_2D, 0, GL.GL_DEPTH24_STENCIL8, self.width, self.height, 0,
-            GL.GL_DEPTH_STENCIL, GL.GL_UNSIGNED_INT_24_8, None)
+        GL.glTexImage2D.wrappedOperation(GL.GL_TEXTURE_2D, 0, GL.GL_DEPTH24_STENCIL8, self.width,
+                                         self.height, 0, GL.GL_DEPTH_STENCIL,
+                                         GL.GL_UNSIGNED_INT_24_8, None)
 
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fbo)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0,
-                                  GL.GL_TEXTURE_2D, self.color_tex, 0)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT1,
-                                  GL.GL_TEXTURE_2D, self.color_tex_2, 0)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT2,
-                                  GL.GL_TEXTURE_2D, self.color_tex_3, 0)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT3,
-                                  GL.GL_TEXTURE_2D, self.color_tex_4, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_TEXTURE_2D,
+                                  self.color_tex, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT1, GL.GL_TEXTURE_2D,
+                                  self.color_tex_2, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT2, GL.GL_TEXTURE_2D,
+                                  self.color_tex_3, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT3, GL.GL_TEXTURE_2D,
+                                  self.color_tex_4, 0)
         GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_DEPTH_STENCIL_ATTACHMENT,
                                   GL.GL_TEXTURE_2D, self.depth_tex, 0)
         GL.glViewport(0, 0, self.width, self.height)
-        GL.glDrawBuffers(4, [GL.GL_COLOR_ATTACHMENT0, GL.GL_COLOR_ATTACHMENT1,
-                             GL.GL_COLOR_ATTACHMENT2, GL.GL_COLOR_ATTACHMENT3])
+        GL.glDrawBuffers(4, [
+            GL.GL_COLOR_ATTACHMENT0, GL.GL_COLOR_ATTACHMENT1, GL.GL_COLOR_ATTACHMENT2,
+            GL.GL_COLOR_ATTACHMENT3
+        ])
 
         assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
 
@@ -214,9 +218,7 @@ class MeshTensorRenderer:
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
         P = perspective(self.fov, float(self.width) / float(self.height), 0.01, 100)
-        V = lookat(
-            self.camera,
-            self.target, up=self.up)
+        V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
         self.P = np.ascontiguousarray(P, np.float32)
@@ -246,7 +248,8 @@ class MeshTensorRenderer:
 
         for mesh in scene.meshes:
             faces = mesh.faces
-            vertices = np.concatenate([mesh.vertices, mesh.normals, mesh.texturecoords[0, :, :2]], axis=-1)
+            vertices = np.concatenate([mesh.vertices, mesh.normals, mesh.texturecoords[0, :, :2]],
+                                      axis=-1)
             vertexData = vertices.astype(np.float32)
 
             VAO = GL.glGenVertexArrays(1)
@@ -255,8 +258,7 @@ class MeshTensorRenderer:
             # Need VBO for triangle vertices and texture UV coordinates
             VBO = GL.glGenBuffers(1)
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, VBO)
-            GL.glBufferData(GL.GL_ARRAY_BUFFER, vertexData.nbytes, vertexData,
-                            GL.GL_STATIC_DRAW)
+            GL.glBufferData(GL.GL_ARRAY_BUFFER, vertexData.nbytes, vertexData, GL.GL_STATIC_DRAW)
 
             # enable array and set up data
             positionAttrib = GL.glGetAttribLocation(self.shaderProgram, 'position')
@@ -267,8 +269,7 @@ class MeshTensorRenderer:
             GL.glEnableVertexAttribArray(1)
             GL.glEnableVertexAttribArray(2)
 
-            GL.glVertexAttribPointer(positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 32,
-                                     None)
+            GL.glVertexAttribPointer(positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 32, None)
             GL.glVertexAttribPointer(normalAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 32,
                                      ctypes.c_void_p(12))
             # the last parameter is a pointer
@@ -296,9 +297,7 @@ class MeshTensorRenderer:
         self.camera = camera
         self.target = target
         self.up = up
-        V = lookat(
-            self.camera,
-            self.target, up=self.up)
+        V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
 
@@ -319,15 +318,20 @@ class MeshTensorRenderer:
         for i in range(len(self.VAOs)):
             # active shader program
             GL.glUseProgram(self.shaderProgram)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'V'), 1, GL.GL_TRUE, self.V)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'P'), 1, GL.GL_FALSE, self.P)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE,
-                                  self.poses_trans[i])
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
-                                  self.poses_rot[i])
-            GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'light_position'), *self.lightpos)
-            GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'instance_color'), *self.colors[i % 3])
-            GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'light_color'), *self.lightcolor)
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'V'), 1, GL.GL_TRUE,
+                                  self.V)
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'P'), 1, GL.GL_FALSE,
+                                  self.P)
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'pose_trans'), 1,
+                                  GL.GL_FALSE, self.poses_trans[i])
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.shaderProgram, 'pose_rot'), 1,
+                                  GL.GL_TRUE, self.poses_rot[i])
+            GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'light_position'),
+                           *self.lightpos)
+            GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'instance_color'),
+                           *self.colors[i % 3])
+            GL.glUniform3f(GL.glGetUniformLocation(self.shaderProgram, 'light_color'),
+                           *self.lightcolor)
 
             try:
                 # Activate texture
@@ -337,7 +341,8 @@ class MeshTensorRenderer:
                 # Activate array
                 GL.glBindVertexArray(self.VAOs[i])
                 # draw triangles
-                GL.glDrawElements(GL.GL_TRIANGLES, self.faces[i].size, GL.GL_UNSIGNED_INT, self.faces[i])
+                GL.glDrawElements(GL.GL_TRIANGLES, self.faces[i].size, GL.GL_UNSIGNED_INT,
+                                  self.faces[i])
 
             finally:
                 GL.glBindVertexArray(0)
@@ -346,11 +351,11 @@ class MeshTensorRenderer:
         GL.glDisable(GL.GL_DEPTH_TEST)
 
         if self.cuda_buffer is None:
-            self.cuda_buffer = pycuda.gl.RegisteredImage(
-                int(self.color_tex), GL.GL_TEXTURE_2D, pycuda.gl.graphics_map_flags.NONE)
+            self.cuda_buffer = pycuda.gl.RegisteredImage(int(self.color_tex), GL.GL_TEXTURE_2D,
+                                                         pycuda.gl.graphics_map_flags.NONE)
         if self.cuda_buffer2 is None:
-            self.cuda_buffer2 = pycuda.gl.RegisteredImage(
-                int(self.color_tex_3), GL.GL_TEXTURE_2D, pycuda.gl.graphics_map_flags.NONE)
+            self.cuda_buffer2 = pycuda.gl.RegisteredImage(int(self.color_tex_3), GL.GL_TEXTURE_2D,
+                                                          pycuda.gl.graphics_map_flags.NONE)
 
         nbytes = tensor.numel() * tensor.element_size()
         mapping = self.cuda_buffer.map()
@@ -392,7 +397,8 @@ class MeshTensorRenderer:
         self.r.release()
 
     def clean(self):
-        GL.glDeleteTextures([self.color_tex, self.color_tex_2, self.color_tex_3, self.color_tex_4, self.depth_tex])
+        GL.glDeleteTextures(
+            [self.color_tex, self.color_tex_2, self.color_tex_3, self.color_tex_4, self.depth_tex])
         self.color_tex = None
         self.color_tex_2 = None
         self.color_tex_3 = None
@@ -406,10 +412,10 @@ class MeshTensorRenderer:
         self.VBOs = []
         GL.glDeleteTextures(self.textures)
         self.textures = []
-        self.objects = []  # GC should free things here
-        self.faces = []  # GC should free things here
-        self.poses_trans = []  # GC should free things here
-        self.poses_rot = []  # GC should free things here
+        self.objects = []    # GC should free things here
+        self.faces = []    # GC should free things here
+        self.poses_trans = []    # GC should free things here
+        self.poses_rot = []    # GC should free things here
 
     def transform_vector(self, vec):
         vec = np.array(vec)
@@ -437,7 +443,10 @@ class MeshTensorRenderer:
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
     def get_poses(self):
-        mat = [self.V.dot(self.poses_trans[i].T).dot(self.poses_rot[i]).T for i in range(self.get_num_objects())]
+        mat = [
+            self.V.dot(self.poses_trans[i].T).dot(self.poses_rot[i]).T
+            for i in range(self.get_num_objects())
+        ]
         poses = [np.concatenate([mat2xyz(item), safemat2quat(item[:3, :3].T)]) for item in mat]
         return poses
 

@@ -4,10 +4,13 @@ from gibson2.core.physics.robot_locomotors import *
 from gibson2.core.physics.interactive_objects import *
 import yaml
 
+
 def parse_config(config):
     with open(config, 'r') as f:
         config_data = yaml.load(f)
     return config_data
+
+
 config = parse_config('test.yaml')
 
 
@@ -20,12 +23,14 @@ def test_import_building():
     assert s.objects == list(range(2))
     s.disconnect()
 
+
 def test_import_building_big():
     s = Simulator(mode='headless')
     scene = BuildingScene('Ohoopee')
     s.import_scene(scene, texture_scale=1)
     assert s.objects == list(range(2))
     s.disconnect()
+
 
 def test_import_stadium():
     s = Simulator(mode='headless')
@@ -34,6 +39,7 @@ def test_import_stadium():
     print(s.objects)
     assert s.objects == list(range(4))
     s.disconnect()
+
 
 def test_import_building_viewing():
     s = Simulator(mode='gui')

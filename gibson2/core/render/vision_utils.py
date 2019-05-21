@@ -38,9 +38,9 @@ class RandomScale(object):
         Returns:
             PIL.Image: Rescaled image.
         """
-        
+
         size = random.randint(self.minsize, self.maxsize)
-        
+
         if isinstance(size, int):
             w, h = img.size
             if (w <= h and w == size) or (h <= w and h == size):

@@ -6,6 +6,7 @@ import numpy as np
 from transforms3d import quaternions
 from transforms3d.quaternions import axangle2quat, mat2quat
 
+
 def frustum(left, right, bottom, top, znear, zfar):
     """Create view frustum matrix."""
     assert right != left
@@ -139,7 +140,7 @@ def load_obj(fn):
             for chunk in line.split():
                 # tuple order: pos_idx, uv_idx, normal_idx
                 vt = _parse_vertex_tuple(chunk)
-                if vt not in tuple2idx:  # create a new output vertex?
+                if vt not in tuple2idx:    # create a new output vertex?
                     tuple2idx[vt] = len(tuple2idx)
                 output_face_indices.append(tuple2idx[vt])
             # generate face triangles
@@ -158,6 +159,7 @@ def load_obj(fn):
         outputs['normal'] = _unify_rows(normal)[normal_idx]
     return outputs
 
+
 def normalize_mesh(mesh):
     '''Scale mesh to fit into -1..1 cube'''
     mesh = dict(mesh)
@@ -167,28 +169,33 @@ def normalize_mesh(mesh):
     mesh['position'] = pos
     return mesh
 
-def quat2rotmat(quat):
-    quat_mat = np.eye(4)
-    quat_mat[:3,:3] = quaternions.quat2mat(quat)
-    return quat_mat
 
 def quat2rotmat(quat):
     quat_mat = np.eye(4)
-    quat_mat[:3,:3] = quaternions.quat2mat(quat)
+    quat_mat[:3, :3] = quaternions.quat2mat(quat)
     return quat_mat
+
+
+def quat2rotmat(quat):
+    quat_mat = np.eye(4)
+    quat_mat[:3, :3] = quaternions.quat2mat(quat)
+    return quat_mat
+
 
 def xyz2mat(xyz):
     trans_mat = np.eye(4)
     trans_mat[-1, :3] = xyz
     return trans_mat
 
+
 def mat2xyz(mat):
-    xyz = mat[-1,:3]
+    xyz = mat[-1, :3]
     xyz[np.isnan(xyz)] = 0
     return xyz
 
+
 def safemat2quat(mat):
-    quat = np.array([1,0,0,0])
+    quat = np.array([1, 0, 0, 0])
     try:
         quat = mat2quat(mat)
     except:

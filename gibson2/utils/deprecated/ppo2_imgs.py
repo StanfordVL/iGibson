@@ -10,9 +10,10 @@ from baselines.common import explained_variance
 import gym
 from gibson2.core.render.profiler import Profiler
 
+
 class Model(object):
-    def __init__(self, *, policy, ob_space, ac_space, nbatch_act, nbatch_train,
-                nsteps, ent_coef, vf_coef, max_grad_norm):
+    def __init__(self, *, policy, ob_space, ac_space, nbatch_act, nbatch_train, nsteps, ent_coef,
+                 vf_coef, max_grad_norm):
         sess = tf.get_default_session()
 
         act_model = policy(sess, ob_space, ac_space, nbatch_act, 1, reuse=False)
@@ -30,7 +31,7 @@ class Model(object):
         entropy = tf.reduce_mean(train_model.pd.entropy())
 
         vpred = train_model.vf
-        vpredclipped = OLDVPRED + tf.clip_by_value(train_model.vf - OLDVPRED, - CLIPRANGE, CLIPRANGE)
+        vpredclipped = OLDVPRED + tf.clip_by_value(train_model.vf - OLDVPRED, -CLIPRANGE, CLIPRANGE)
         vf_losses1 = tf.square(vpred - R)
         vf_losses2 = tf.square(vpredclipped - R)
         vf_loss = .5 * tf.reduce_mean(tf.maximum(vf_losses1, vf_losses2))
@@ -53,15 +54,21 @@ class Model(object):
         def train(lr, cliprange, obs, returns, masks, actions, values, neglogpacs, states=None):
             advs = returns - values
             advs = (advs - advs.mean()) / (advs.std() + 1e-8)
-            td_map = {train_model.X:obs, A:actions, ADV:advs, R:returns, LR:lr, 
-                    CLIPRANGE:cliprange, OLDNEGLOGPAC:neglogpacs, OLDVPRED:values}
+            td_map = {
+                train_model.X: obs,
+                A: actions,
+                ADV: advs,
+                R: returns,
+                LR: lr,
+                CLIPRANGE: cliprange,
+                OLDNEGLOGPAC: neglogpacs,
+                OLDVPRED: values
+            }
             if states is not None:
                 td_map[train_model.S] = states
                 td_map[train_model.M] = masks
-            return sess.run(
-                [pg_loss, vf_loss, entropy, approxkl, clipfrac, _train],
-                td_map
-            )[:-1]
+            return sess.run([pg_loss, vf_loss, entropy, approxkl, clipfrac, _train], td_map)[:-1]
+
         self.loss_names = ['policy_loss', 'value_loss', 'policy_entropy', 'approxkl', 'clipfrac']
 
         def save(save_path):
@@ -83,10 +90,10 @@ class Model(object):
         self.initial_state = act_model.initial_state
         self.save = save
         self.load = load
-        tf.global_variables_initializer().run(session=sess) #pylint: disable=E1101
+        tf.global_variables_initializer().run(session=sess)    #pylint: disable=E1101
+
 
 class Runner(object):
-
     def __init__(self, *, imgs, model, nsteps, gamma, lam):
 
         self.model = model
@@ -94,9 +101,11 @@ class Runner(object):
         nenv = 1
 
         observation_space_shape = (256, 256, 3)
-        sensor_space_shape = (20,)
-        self.obs = np.zeros((nenv,) + observation_space_shape, dtype=model.train_model.X.dtype.name)
-        self.obs_sensor = np.zeros((nenv,) + sensor_space_shape, dtype=model.train_model.X.dtype.name)
+        sensor_space_shape = (20, )
+        self.obs = np.zeros((nenv, ) + observation_space_shape,
+                            dtype=model.train_model.X.dtype.name)
+        self.obs_sensor = np.zeros((nenv, ) + sensor_space_shape,
+                                   dtype=model.train_model.X.dtype.name)
 
         #self.obs[:], self.obs_sensor[:] = env.reset()
         self.gamma = gamma
@@ -109,14 +118,15 @@ class Runner(object):
         self.imgs = imgs
 
     def run(self):
-        mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
+        mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [], [], [], [], [], []
         mb_states = self.states
         epinfos = []
         all_actions = []
         for i in range(len(self.imgs)):
             #with Profiler("PPO2 step"):
             self.obs[:] = self.imgs[i]
-            actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
+            actions, values, self.states, neglogpacs = self.model.step(
+                self.obs, self.states, self.dones)
             #print("actions", actions)
             mb_obs.append(self.obs.copy())
             mb_actions.append([actions])
@@ -128,6 +138,8 @@ class Runner(object):
             print(i, self.obs.shape, actions)
 
         return all_actions
+
+
 # obs, returns, masks, actions, values, neglogpacs, states = runner.run()
 def sf01(arr):
     """
@@ -138,9 +150,11 @@ def sf01(arr):
     #print("arr shape", s)
     return arr.swapaxes(0, 1).reshape(s[0] * s[1], *s[2:])
 
+
 def constfn(val):
     def f(_):
         return val
+
     return f
 
 
@@ -148,12 +162,23 @@ def safemean(xs):
     return np.nan if len(xs) == 0 else np.mean(xs)
 
 
-
-
-def enjoy(*, policy, imgs, nsteps, total_timesteps, ent_coef, lr,
-            vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95, 
-            log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
-            save_interval=0, reload_name=None):
+def enjoy(*,
+          policy,
+          imgs,
+          nsteps,
+          total_timesteps,
+          ent_coef,
+          lr,
+          vf_coef=0.5,
+          max_grad_norm=0.5,
+          gamma=0.99,
+          lam=0.95,
+          log_interval=10,
+          nminibatches=4,
+          noptepochs=4,
+          cliprange=0.2,
+          save_interval=0,
+          reload_name=None):
 
     if isinstance(lr, float): lr = constfn(lr)
     else: assert callable(lr)
@@ -166,33 +191,37 @@ def enjoy(*, policy, imgs, nsteps, total_timesteps, ent_coef, lr,
     ac_space = gym.spaces.Discrete(5)
 
     observation_space_shape = (256, 256, 3)
-    sensor_space_shape = (20,)
+    sensor_space_shape = (20, )
 
     obs_high = np.inf * np.ones(observation_space_shape)
     ob_space = gym.spaces.Box(-obs_high, obs_high)
 
-
     nbatch = nenvs * nsteps
     nbatch_train = nbatch // nminibatches
 
-    make_model = lambda : Model(policy=policy, ob_space=ob_space, ac_space=ac_space, nbatch_act=nenvs, nbatch_train=nbatch_train, 
-                    nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef,
-                    max_grad_norm=max_grad_norm)
-    
+    make_model = lambda: Model(policy=policy,
+                               ob_space=ob_space,
+                               ac_space=ac_space,
+                               nbatch_act=nenvs,
+                               nbatch_train=nbatch_train,
+                               nsteps=nsteps,
+                               ent_coef=ent_coef,
+                               vf_coef=vf_coef,
+                               max_grad_norm=max_grad_norm)
+
     if save_interval and logger.get_dir():
         import cloudpickle
         with open(osp.join(logger.get_dir(), 'make_model.pkl'), 'wb') as fh:
             fh.write(cloudpickle.dumps(make_model))
-    
+
     model = make_model()
     if reload_name:
         model.load(reload_name)
-    
+
     runner = Runner(imgs=imgs, model=model, nsteps=nsteps, gamma=gamma, lam=lam)
 
     epinfobuf = deque(maxlen=100)
     tfirststart = time.time()
 
-
-    actions = runner.run() #pylint: disable=E0632
+    actions = runner.run()    #pylint: disable=E0632
     return actions

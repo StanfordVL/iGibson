@@ -16,6 +16,7 @@ import zmq
 import pickle
 import scipy
 
+
 class View(Enum):
     EMPTY = 0
     RGB_FILLED = 1
@@ -26,11 +27,20 @@ class View(Enum):
     PHYSICS = 6
     MAP = 7
 
+
 class SimpleUI():
     '''Static UI'''
-    def __init__(self, width_col, height_col, windowsz, port, env=None, save_first=False, use_pygame=True):
+
+    def __init__(self,
+                 width_col,
+                 height_col,
+                 windowsz,
+                 port,
+                 env=None,
+                 save_first=False,
+                 use_pygame=True):
         self.env = env
-        self.width  = width_col * windowsz
+        self.width = width_col * windowsz
         self.height = height_col * windowsz
         self.windowsz = windowsz
         self.use_pygame = use_pygame
@@ -49,6 +59,7 @@ class SimpleUI():
         self.socket = self.context.socket(zmq.PUB)
         self.socket.bind("tcp://*:%s" % self.port)
         self.record_nframe = 0
+
     def _close(self):
         self.context.destroy()
 
@@ -59,7 +70,7 @@ class SimpleUI():
             self._add_image(img, self.POS[index][0], self.POS[index][1])
 
     def update_view(self, view, tag):
-        assert(tag in self.components), "Invalid view tag " + view
+        assert (tag in self.components), "Invalid view tag " + view
         self.nframe += 1
         if self.save_first and self.nframe <= len(self.POS):
             import scipy.misc
@@ -68,15 +79,12 @@ class SimpleUI():
             scipy.misc.imsave("Img%d.png" % self.nframe, img)
         for index, component in enumerate(self.components):
             if tag == component:
-                self._add_image(
-                    np.swapaxes(view, 0, 1),
-                    self.POS[index][0],
-                    self.POS[index][1])
+                self._add_image(np.swapaxes(view, 0, 1), self.POS[index][0], self.POS[index][1])
                 return
 
     def _add_image(self, img, x, y):
         #self.screen.blit(img, (x, y))
-        self.screen_arr[x: x + img.shape[0], y:y + img.shape[1], :] = img
+        self.screen_arr[x:x + img.shape[0], y:y + img.shape[1], :] = img
 
     def clear(self):
         self.screen_arr.fill(255)
@@ -86,7 +94,7 @@ class SimpleUI():
         if "enable_ui_recording" in self.env.config:
             screen_to_dump = cv2.cvtColor(self.screen_arr.transpose(1, 0, 2), cv2.COLOR_BGR2RGB)
             cv2.imshow("Recording", screen_to_dump)
-            cmd=cv2.waitKey(5)%256
+            cmd = cv2.waitKey(5) % 256
             if cmd == ord('r'):
                 self.start_record()
             if cmd == ord('q'):
@@ -95,32 +103,31 @@ class SimpleUI():
             if self.is_recording:
                 #self.curr_output.write(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
                 #from IPython import embed; embed()
-                cv2.imwrite(os.path.join(self.output_dir, "frame%06d.png" % self.record_nframe), screen_to_dump)
+                cv2.imwrite(os.path.join(self.output_dir, "frame%06d.png" % self.record_nframe),
+                            screen_to_dump)
                 self.record_nframe += 1
                 #self.curr_output.write(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        
+
         #with Profiler("Refreshing"):
         if self.use_pygame:
             pygame.display.flip()
             surfarray.blit_array(self.screen, self.screen_arr)
         #print(self.screen_arr.shape)
-        screen_to_dump = cv2.cvtColor(self.screen_arr.transpose(1,0,2), cv2.COLOR_BGR2RGB)
+        screen_to_dump = cv2.cvtColor(self.screen_arr.transpose(1, 0, 2), cv2.COLOR_BGR2RGB)
         screen = pickle.dumps(cv2.imencode('.jpg', screen_to_dump), protocol=0)
 
         self.socket.send(b"ui" + screen)
 
-
         #surf = pygame.surfarray.make_surface(self.screen_arr)
         #self.screen.blit(surf, (0, 0))
         #pygame.display.update()
-
 
     def start_record(self):
         self.record_nframe = 0
         print("start recording")
         if self.is_recording:
             return    # prevent double enter
-        fourcc = cv2.VideoWriter_fourcc(*'MJPG') # 'XVID' smaller
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')    # 'XVID' smaller
         file_keyword = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
         #filename = 'record-{}.mpeg'.format(file_keyword)
         self.output_dir = file_keyword
@@ -142,27 +149,31 @@ class SimpleUI():
         self.is_recording = False
         return
 
+
 class OneViewUI(SimpleUI):
     '''UI with four modalities, default resolution
     One: Center,
     '''
-    def __init__(self, windowsz=256, env = None, port=-1, use_pygame=True):
-        self.POS = [
-            (0, 0)                 # One
-        ]
+
+    def __init__(self, windowsz=256, env=None, port=-1, use_pygame=True):
+        self.POS = [(0, 0)    # One
+                    ]
         SimpleUI.__init__(self, 1, 1, windowsz, port, env, use_pygame=use_pygame)
+
 
 class TwoViewUI(SimpleUI):
     '''UI with four modalities, default resolution
     One: Left,
     Two: Right
     '''
-    def __init__(self, windowsz=256, env = None, port=-1, use_pygame=True):
+
+    def __init__(self, windowsz=256, env=None, port=-1, use_pygame=True):
         self.POS = [
-            (0, 0),                 # One
-            (windowsz, 0)           # Two
+            (0, 0),    # One
+            (windowsz, 0)    # Two
         ]
         SimpleUI.__init__(self, 2, 1, windowsz, port, env, use_pygame=use_pygame)
+
 
 class ThreeViewUI(SimpleUI):
     '''UI with four modalities, default resolution
@@ -170,13 +181,15 @@ class ThreeViewUI(SimpleUI):
     Two:    center
     Three:  right
     '''
-    def __init__(self, windowsz=256, env = None, port=-1, use_pygame=True):
+
+    def __init__(self, windowsz=256, env=None, port=-1, use_pygame=True):
         self.POS = [
-            (0, 0),                 # One
-            (windowsz, 0),          # Two
-            (windowsz * 2, 0)       # Three
+            (0, 0),    # One
+            (windowsz, 0),    # Two
+            (windowsz * 2, 0)    # Three
         ]
         SimpleUI.__init__(self, 3, 1, windowsz, port, env, use_pygame=use_pygame)
+
 
 class FourViewUI(SimpleUI):
     '''UI with four modalities, default resolution
@@ -185,11 +198,12 @@ class FourViewUI(SimpleUI):
     Three:  bottom left
     Four:   bottom right
     '''
-    def __init__(self, windowsz=256, env = None, port=-1, use_pygame=True):
+
+    def __init__(self, windowsz=256, env=None, port=-1, use_pygame=True):
         self.POS = [
-            (0, 0),                 # One
-            (0, windowsz),          # Two
-            (windowsz, 0),          # Three
+            (0, 0),    # One
+            (0, windowsz),    # Two
+            (windowsz, 0),    # Three
             (windowsz, windowsz)    # Four
         ]
         SimpleUI.__init__(self, 2, 2, windowsz, port, env, use_pygame=use_pygame)
@@ -221,7 +235,6 @@ def main6():
     ## Bottom right
     grey_6 = np.zeros((256, 256, 3))
     grey_6.fill(200)
-
 
     UI = SixViewUI()
     rgb = np.zeros((512, 512, 3))
@@ -269,6 +282,7 @@ def main4():
         time.sleep(0.2)
         #screen_arr = 255 - screen_arr
 
+
 def main2():
     ## Center left top
     grey_1 = np.zeros((256, 256, 3))
@@ -292,8 +306,8 @@ def main2():
         time.sleep(0.2)
         #screen_arr = 255 - screen_arr
 
+
 if __name__ == "__main__":
     #main6()
     #main2()
     main4()
-

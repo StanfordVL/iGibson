@@ -28,6 +28,7 @@ def weights_init(m):
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0)
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataroot', required=True, help='path to dataset')
@@ -52,7 +53,8 @@ def main():
     parser.add_argument('--zoom', type=int, default=1, help='debug mode')
     parser.add_argument('--patchsize', type=int, default=256, help='debug mode')
 
-    mean = torch.from_numpy(np.array([0.57441127, 0.54226291, 0.50356019]).astype(np.float32)).clone()
+    mean = torch.from_numpy(np.array([0.57441127, 0.54226291,
+                                      0.50356019]).astype(np.float32)).clone()
     opt = parser.parse_args()
     print(opt)
     writer = SummaryWriter(opt.outf + '/runs/' + datetime.now().strftime('%B%d  %H:%M:%S'))
@@ -74,10 +76,18 @@ def main():
 
     cudnn.benchmark = True
 
-    dataloader = torch.utils.data.DataLoader(d, batch_size=opt.batchsize, shuffle=True, num_workers=int(opt.workers),
-                                             drop_last=True, pin_memory=False)
-    dataloader_test = torch.utils.data.DataLoader(d_test, batch_size=opt.batchsize, shuffle=True,
-                                                  num_workers=int(opt.workers), drop_last=True, pin_memory=False)
+    dataloader = torch.utils.data.DataLoader(d,
+                                             batch_size=opt.batchsize,
+                                             shuffle=True,
+                                             num_workers=int(opt.workers),
+                                             drop_last=True,
+                                             pin_memory=False)
+    dataloader_test = torch.utils.data.DataLoader(d_test,
+                                                  batch_size=opt.batchsize,
+                                                  shuffle=True,
+                                                  num_workers=int(opt.workers),
+                                                  drop_last=True,
+                                                  pin_memory=False)
 
     comp = CompletionNet(norm=nn.BatchNorm2d, nf=opt.nf)
 
@@ -100,7 +110,8 @@ def main():
     # else:
     optimizerG = torch.optim.Adam(comp.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
-    curriculum = (200000, 300000)  # step to start D training and G training, slightly different from the paper
+    curriculum = (200000, 300000
+                  )    # step to start D training and G training, slightly different from the paper
     alpha = 0.004
 
     vgg16 = models.vgg16(pretrained=False)
@@ -114,8 +125,10 @@ def main():
     imgnet_mean = torch.from_numpy(np.array([0.485, 0.456, 0.406]).astype(np.float32)).clone()
     imgnet_std = torch.from_numpy(np.array([0.229, 0.224, 0.225]).astype(np.float32)).clone()
 
-    imgnet_mean_img = Variable(imgnet_mean.view(1, 3, 1, 1).repeat(opt.batchsize * 4, 1, patchsize, patchsize)).cuda()
-    imgnet_std_img = Variable(imgnet_std.view(1, 3, 1, 1).repeat(opt.batchsize * 4, 1, patchsize, patchsize)).cuda()
+    imgnet_mean_img = Variable(
+        imgnet_mean.view(1, 3, 1, 1).repeat(opt.batchsize * 4, 1, patchsize, patchsize)).cuda()
+    imgnet_std_img = Variable(
+        imgnet_std.view(1, 3, 1, 1).repeat(opt.batchsize * 4, 1, patchsize, patchsize)).cuda()
     test_loader_enum = enumerate(dataloader_test)
 
     for epoch in range(current_epoch, opt.nepoch):
@@ -131,7 +144,8 @@ def main():
             loss.backward(retain_graph=True)
             optimizerG.step()
 
-            print('[%d/%d][%d/%d] %d MSEloss: %f' % (epoch, opt.nepoch, i, len(dataloader), step, loss.data.item()))
+            print('[%d/%d][%d/%d] %d MSEloss: %f' %
+                  (epoch, opt.nepoch, i, len(dataloader), step, loss.data.item()))
 
             if i % 10 == 0:
                 writer.add_scalar('MSEloss', loss.data.item(), step)

@@ -22,12 +22,15 @@ from gibson2.core.render.mesh_renderer_tensor import *
 import torch.nn as nn
 MAX_NUM_OBJECTS = 3
 
+
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(4, 4, stride = 1, kernel_size=3, padding = 1)
+        self.conv1 = nn.Conv2d(4, 4, stride=1, kernel_size=3, padding=1)
+
     def forward(self, x):
         return self.conv1(x)
+
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
@@ -53,7 +56,7 @@ if __name__ == '__main__':
     for _ in tqdm(range(3000)):
         renderer.render(tensor, tensor2)
         torch.cuda.synchronize()
-        res = pytorch_model.forward(tensor.float().permute(2,0,1).unsqueeze(0))
+        res = pytorch_model.forward(tensor.float().permute(2, 0, 1).unsqueeze(0))
         #print(res.size())
         torch.cuda.synchronize()
 

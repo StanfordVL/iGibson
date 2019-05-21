@@ -65,30 +65,52 @@ class BaseRobot:
 
         part_name, robot_name = p.getBodyInfo(bodies[0])
         part_name = part_name.decode("utf8")
-        parts[part_name] = BodyPart(part_name, bodies, 0, -1, self.scale, model_type=self.model_type)
+        parts[part_name] = BodyPart(part_name,
+                                    bodies,
+                                    0,
+                                    -1,
+                                    self.scale,
+                                    model_type=self.model_type)
 
         # By default, use base_link as self.robot_body
         if self.robot_name == part_name:
             self.robot_body = parts[part_name]
 
         for j in range(p.getNumJoints(bodies[0])):
-            p.setJointMotorControl2(bodies[0], j, p.POSITION_CONTROL, positionGain=0.1, velocityGain=0.1, force=0)
-            _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, part_name, _, _, _, _ = p.getJointInfo(bodies[0], j)
+            p.setJointMotorControl2(bodies[0],
+                                    j,
+                                    p.POSITION_CONTROL,
+                                    positionGain=0.1,
+                                    velocityGain=0.1,
+                                    force=0)
+            _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, part_name, _, _, _, _ = p.getJointInfo(
+                bodies[0], j)
             joint_name = joint_name.decode("utf8")
             part_name = part_name.decode("utf8")
 
-            parts[part_name] = BodyPart(part_name, bodies, 0, j, self.scale, model_type=self.model_type)
+            parts[part_name] = BodyPart(part_name,
+                                        bodies,
+                                        0,
+                                        j,
+                                        self.scale,
+                                        model_type=self.model_type)
 
             # If self.robot_name is not base_link, but a body part, use it as self.robot_body
             if self.robot_name == part_name:
                 self.robot_body = parts[part_name]
 
             if joint_name[:6] == "ignore":
-                Joint(joint_name, bodies, 0, j, self.scale, model_type=self.model_type).disable_motor()
+                Joint(joint_name, bodies, 0, j, self.scale,
+                      model_type=self.model_type).disable_motor()
                 continue
 
             if joint_name[:8] != "jointfix" and joint_type != p.JOINT_FIXED:
-                joints[joint_name] = Joint(joint_name, bodies, 0, j, self.scale, model_type=self.model_type)
+                joints[joint_name] = Joint(joint_name,
+                                           bodies,
+                                           0,
+                                           j,
+                                           self.scale,
+                                           model_type=self.model_type)
                 ordered_joints.append(joints[joint_name])
                 joints[joint_name].power_coef = 100.0
 
@@ -100,12 +122,14 @@ class BaseRobot:
     def _load_model(self):
         if self.model_type == "MJCF":
             self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file),
-                                        flags=p.URDF_USE_SELF_COLLISION + p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS)
+                                        flags=p.URDF_USE_SELF_COLLISION +
+                                        p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS)
         if self.model_type == "URDF":
-            self.robot_ids = (
-            p.loadURDF(os.path.join(self.physics_model_dir, self.model_file), globalScaling=self.scale), )
+            self.robot_ids = (p.loadURDF(os.path.join(self.physics_model_dir, self.model_file),
+                                         globalScaling=self.scale), )
 
-        self.parts, self.jdict, self.ordered_joints, self.robot_body = self.addToScene(self.robot_ids)
+        self.parts, self.jdict, self.ordered_joints, self.robot_body = self.addToScene(
+            self.robot_ids)
         return self.robot_ids
 
     def robot_specific_reset(self):
@@ -149,7 +173,8 @@ class BodyPart:
 
     def _set_fields_of_pose_of(self, pos, orn):
         """Calls native pybullet method for setting real (scaled) robot body pose"""
-        p.resetBasePositionAndOrientation(self.bodies[self.body_index], np.array(pos) / self.scale, orn)
+        p.resetBasePositionAndOrientation(self.bodies[self.body_index],
+                                          np.array(pos) / self.scale, orn)
 
     def get_pose(self):
         return self._state_fields_of_pose_of(self.bodies[self.body_index], self.body_part_index)
@@ -182,19 +207,19 @@ class BodyPart:
     def set_pose(self, position, orientation):
         self._set_fields_of_pose_of(position, orientation)
 
-    def current_position(self):  # Synonym method
+    def current_position(self):    # Synonym method
         return self.get_position()
 
-    def current_orientation(self):  # Synonym method
+    def current_orientation(self):    # Synonym method
         return self.get_orientation()
 
-    def reset_position(self, position):  # Backward compatibility
+    def reset_position(self, position):    # Backward compatibility
         self.set_position(position)
 
-    def reset_orientation(self, orientation):  # Backward compatibility
+    def reset_orientation(self, orientation):    # Backward compatibility
         self.set_orientation(orientation)
 
-    def reset_pose(self, position, orientation):  # Backward compatibility
+    def reset_pose(self, position, orientation):    # Backward compatibility
         self.set_pose(position, orientation)
 
     def velocity(self):
@@ -259,7 +284,8 @@ class Joint:
 
         # normalize position to [-1, 1]
         if self.lower_limit < self.upper_limit:
-            pos = 2 * (pos - 0.5 * (self.lower_limit + self.upper_limit)) / (self.upper_limit - self.lower_limit)
+            pos = 2 * (pos - 0.5 * (self.lower_limit + self.upper_limit)) / (self.upper_limit -
+                                                                             self.lower_limit)
 
         # (try to) normalize velocity to [-1, 1]
         if self.max_velocity > 0:
@@ -275,7 +301,9 @@ class Joint:
            Position is defined in real world scale """
         if self.joint_type == p.JOINT_PRISMATIC:
             position = np.array(position) / self.scale
-        p.setJointMotorControl2(self.bodies[self.body_index], self.joint_index, p.POSITION_CONTROL,
+        p.setJointMotorControl2(self.bodies[self.body_index],
+                                self.joint_index,
+                                p.POSITION_CONTROL,
                                 targetPosition=position)
 
     def set_velocity(self, velocity):
@@ -283,43 +311,53 @@ class Joint:
            Velocity is defined in real world scale """
         if self.joint_type == p.JOINT_PRISMATIC:
             velocity = np.array(velocity) / self.scale
-        p.setJointMotorControl2(self.bodies[self.body_index], self.joint_index, p.VELOCITY_CONTROL,
-                                targetVelocity=velocity)  # , positionGain=0.1, velocityGain=0.1)
+        p.setJointMotorControl2(self.bodies[self.body_index],
+                                self.joint_index,
+                                p.VELOCITY_CONTROL,
+                                targetVelocity=velocity)    # , positionGain=0.1, velocityGain=0.1)
 
     def set_torque(self, torque):
-        p.setJointMotorControl2(bodyIndex=self.bodies[self.body_index], jointIndex=self.joint_index,
-                                controlMode=p.TORQUE_CONTROL, force=torque)  # , positionGain=0.1, velocityGain=0.1)
+        p.setJointMotorControl2(bodyIndex=self.bodies[self.body_index],
+                                jointIndex=self.joint_index,
+                                controlMode=p.TORQUE_CONTROL,
+                                force=torque)    # , positionGain=0.1, velocityGain=0.1)
 
     def reset_state(self, pos, vel):
         self.set_state(pos, vel)
 
     def disable_motor(self):
-        p.setJointMotorControl2(self.bodies[self.body_index], self.joint_index, controlMode=p.POSITION_CONTROL,
-                                targetPosition=0, targetVelocity=0, positionGain=0.1, velocityGain=0.1, force=0)
+        p.setJointMotorControl2(self.bodies[self.body_index],
+                                self.joint_index,
+                                controlMode=p.POSITION_CONTROL,
+                                targetPosition=0,
+                                targetVelocity=0,
+                                positionGain=0.1,
+                                velocityGain=0.1,
+                                force=0)
 
-    def get_joint_relative_state(self):  # Synonym method
+    def get_joint_relative_state(self):    # Synonym method
         return self.get_relative_state()
 
-    def set_motor_position(self, pos):  # Synonym method
+    def set_motor_position(self, pos):    # Synonym method
         return self.set_position(pos)
 
-    def set_motor_torque(self, torque):  # Synonym method
+    def set_motor_torque(self, torque):    # Synonym method
         return self.set_torque(torque)
 
-    def set_motor_velocity(self, vel):  # Synonym method
+    def set_motor_velocity(self, vel):    # Synonym method
         return self.set_velocity(vel)
 
-    def reset_joint_state(self, position, velocity):  # Synonym method
+    def reset_joint_state(self, position, velocity):    # Synonym method
         return self.reset_state(position, velocity)
 
-    def current_position(self):  # Backward compatibility
+    def current_position(self):    # Backward compatibility
         return self.get_state()
 
-    def current_relative_position(self):  # Backward compatibility
+    def current_relative_position(self):    # Backward compatibility
         return self.get_relative_state()
 
-    def reset_current_position(self, position, velocity):  # Backward compatibility
+    def reset_current_position(self, position, velocity):    # Backward compatibility
         self.reset_state(position, velocity)
 
-    def reset_position(self, position, velocity):  # Backward compatibility
+    def reset_position(self, position, velocity):    # Backward compatibility
         self.reset_state(position, velocity)

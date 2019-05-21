@@ -30,12 +30,11 @@ from __future__ import print_function
 # pylint: disable=unused-import,g-import-not-at-top,g-statement-before-imports
 
 try:
-  import OpenGL
+    import OpenGL
 except:
-  print('This module depends on PyOpenGL.')
-  print('Please run "\033[1m!pip install -q pyopengl\033[0m" '
-        'prior importing this module.')
-  raise
+    print('This module depends on PyOpenGL.')
+    print('Please run "\033[1m!pip install -q pyopengl\033[0m" ' 'prior importing this module.')
+    raise
 
 import ctypes
 from ctypes import pointer
@@ -61,22 +60,21 @@ os.environ['PYOPENGL_PLATFORM'] = 'egl'
 _find_library_old = ctypes.util.find_library
 try:
 
-  def _find_library_new(name):
-    return {
-        'GL': 'libOpenGL.so',
-        'EGL': 'libEGL.so',
-    }.get(name, _find_library_old(name))
-  ctypes.util.find_library = _find_library_new
-  import OpenGL.GL as gl
-  import OpenGL.EGL as egl
+    def _find_library_new(name):
+        return {
+            'GL': 'libOpenGL.so',
+            'EGL': 'libEGL.so',
+        }.get(name, _find_library_old(name))
+
+    ctypes.util.find_library = _find_library_new
+    import OpenGL.GL as gl
+    import OpenGL.EGL as egl
 except:
-  print('Unable to load OpenGL libraries. '
-        'Make sure you use GPU-enabled backend.')
-  print('Press "Runtime->Change runtime type" and set '
-        '"Hardware accelerator" to GPU.')
-  raise
+    print('Unable to load OpenGL libraries. ' 'Make sure you use GPU-enabled backend.')
+    print('Press "Runtime->Change runtime type" and set ' '"Hardware accelerator" to GPU.')
+    raise
 finally:
-  ctypes.util.find_library = _find_library_old
+    ctypes.util.find_library = _find_library_old
 
 
 class Context:
@@ -98,33 +96,31 @@ class Context:
         egl.eglInitialize(egl_display, pointer(major), pointer(minor))
 
         config_attribs = [
-          egl.EGL_SURFACE_TYPE, egl.EGL_PBUFFER_BIT, egl.EGL_BLUE_SIZE, 8,
-          egl.EGL_GREEN_SIZE, 8, egl.EGL_RED_SIZE, 8, egl.EGL_DEPTH_SIZE, 24,
-          egl.EGL_RENDERABLE_TYPE, egl.EGL_OPENGL_BIT, egl.EGL_NONE
+            egl.EGL_SURFACE_TYPE, egl.EGL_PBUFFER_BIT, egl.EGL_BLUE_SIZE, 8, egl.EGL_GREEN_SIZE, 8,
+            egl.EGL_RED_SIZE, 8, egl.EGL_DEPTH_SIZE, 24, egl.EGL_RENDERABLE_TYPE,
+            egl.EGL_OPENGL_BIT, egl.EGL_NONE
         ]
         # if need MSAA https://www.khronos.org/opengl/wiki/Multisampling
         config_attribs = (egl.EGLint * len(config_attribs))(*config_attribs)
 
         num_configs = egl.EGLint()
         egl_cfg = egl.EGLConfig()
-        egl.eglChooseConfig(egl_display, config_attribs, pointer(egl_cfg), 1,
-                          pointer(num_configs))
+        egl.eglChooseConfig(egl_display, config_attribs, pointer(egl_cfg), 1, pointer(num_configs))
 
         width, height = surface_size
         pbuffer_attribs = [
-          egl.EGL_WIDTH,
-          width,
-          egl.EGL_HEIGHT,
-          height,
-          egl.EGL_NONE,
+            egl.EGL_WIDTH,
+            width,
+            egl.EGL_HEIGHT,
+            height,
+            egl.EGL_NONE,
         ]
         pbuffer_attribs = (egl.EGLint * len(pbuffer_attribs))(*pbuffer_attribs)
         egl_surf = egl.eglCreatePbufferSurface(egl_display, egl_cfg, pbuffer_attribs)
 
         egl.eglBindAPI(egl.EGL_OPENGL_API)
 
-        egl_context = egl.eglCreateContext(egl_display, egl_cfg, egl.EGL_NO_CONTEXT,
-                                         None)
+        egl_context = egl.eglCreateContext(egl_display, egl_cfg, egl.EGL_NO_CONTEXT, None)
         egl.eglMakeCurrent(egl_display, egl_surf, egl_surf, egl_context)
         self.display = egl_display
 
