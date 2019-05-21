@@ -10,12 +10,11 @@ scene = BuildingScene("Maugansville")
 ids = s.import_scene(scene)
 print(ids)
 
-trav_map = np.array(Image.open('/cvgl/group/Gibson/gibson_v2/Maugansville/floor_trav_1_v3.png'))
-obstacle_map = np.array(Image.open('/cvgl/group/Gibson/gibson_v2/Maugansville/floor_1.png'))
+trav_map = np.array(Image.open(os.path.join(gibson2.dataset_path, 'Maugansville/floor_trav_1_v3.png')))
+obstacle_map = np.array(Image.open(os.path.join(gibson2.dataset_path, 'Maugansville/floor_1.png')))
 trav_map[obstacle_map == 0] = 0
 
 trav_map = cv2.erode(trav_map, np.ones((30,30)))
-
 
 plt.figure(figsize=(12,12))
 plt.imshow(trav_map)
@@ -90,4 +89,3 @@ for point in path[1:]:
     angle = np.arctan2(y-prev_y_mean, x-prev_x_mean)
     direction = p.getQuaternionFromEuler([0,0,angle])
     obj.reset_position_orientation([x, y, 0.03], direction)
-
