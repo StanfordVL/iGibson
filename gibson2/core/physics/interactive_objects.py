@@ -31,12 +31,6 @@ class VisualObject(object):
 
 
 
-
-
-
-
-
-
 class CollisionObject(object):
     def __init__(self, pos=[1,2,3], dim=[1, 2, 3]):
         self.basePos = pos
@@ -44,20 +38,15 @@ class CollisionObject(object):
 
     def load(self):
         mass = 200
-        visualShapeId = -1
         # basePosition = [1,2,2]
         baseOrientation = [0, 0, 0, 1]
 
         colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
-        self.body_id = p.createMultiBody(mass, colBoxId, visualShapeId, self.basePos,
-                                      baseOrientation)
+        visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension)
 
+        self.body_id = p.createMultiBody(baseMass=mass, baseCollisionShapeIndex=colBoxId, baseVisualShapeIndex=visualShapeId,
+                                         basePosition=self.basePos, baseOrientation=baseOrientation)
 
-
-
-        # shape = p.createVisualShape(p.GEOM_BOX, rgbaColor=self.rgba_color, halfExtents=self.dimension)
-        # self.body_id = p.createMultiBody(baseVisualShapeIndex=shape,
-        #                                  baseCollisionShapeIndex=-1)
         return self.body_id
 
     def set_position(self, pos):

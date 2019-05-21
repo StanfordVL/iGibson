@@ -31,12 +31,12 @@ def test_import_object():
     for i in range(len(wall)):
         curr = wall[i]
         obj = CollisionObject(curr[0], curr[1])
-        s.import_object(obj)
+        s.import_interactive_object(obj)
 
     for i in range(len(obstacles)):
         curr = obstacles[i]
         obj = CollisionObject(curr[0], curr[1])
-        s.import_object(obj)
+        s.import_interactive_object(obj)
 
     turtlebot1 = Turtlebot(config)
     turtlebot2 = Turtlebot(config)
