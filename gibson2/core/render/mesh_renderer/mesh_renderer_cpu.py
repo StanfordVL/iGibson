@@ -244,7 +244,7 @@ class Material:
 
 
 class MeshRenderer:
-    def __init__(self, width=512, height=512, device_idx=0):
+    def __init__(self, width=512, height=512, device_idx=0, use_fisheye=False):
         self.shaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
@@ -260,13 +260,12 @@ class MeshRenderer:
         self.height = height
         self.faces = []
         self.instances = []
-        self.fisheye = False
+        self.fisheye = use_fisheye
         # self.context = glcontext.Context()
         # self.context.create_opengl_context((self.width, self.height))
         available_devices = get_available_devices()
         assert (device_idx < len(available_devices))
         device = available_devices[device_idx]
-        print('using device {} bus id {}'.format(device_idx, device))
 
         self.r = CppMeshRenderer.CppMeshRenderer(width, height, device)
         self.r.init()
@@ -591,6 +590,7 @@ class MeshRenderer:
             if not instance in hidden:
                 instance.render()
         GL.glDisable(GL.GL_DEPTH_TEST)
+
         return self.readbuffer(modes)
 
     def set_light_pos(self, light):

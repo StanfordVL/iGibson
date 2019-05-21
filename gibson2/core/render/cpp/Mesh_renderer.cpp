@@ -222,6 +222,11 @@ public:
         exit(EXIT_FAILURE);
     }
 
+    if (!gladLoadGL(eglGetProcAddress)) {
+        fprintf(stderr, "failed to load GL with glad.\n");
+        exit(EXIT_FAILURE);
+    }
+
 
     return 0;
     };
@@ -231,6 +236,40 @@ public:
         delete m_data;
     }
 
+    void draw(py::array_t<float> x) {
+        //printf("draw\n");
+        int size = 3 * m_windowWidth * m_windowHeight;
+        //unsigned char *data2 = new unsigned char[size];
+
+        auto ptr = (float *) x.mutable_data();
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        glBegin(GL_TRIANGLES);
+        glColor3f(1, 0, 0);
+        glVertex2f(0,  1);
+
+        glColor3f(0, 1, 0);
+        glVertex2f(-1, -1);
+
+        glColor3f(0, 0, 1);
+        glVertex2f(1, -1);
+        glEnd();
+
+        eglSwapBuffers( m_data->egl_display, m_data->egl_surface);
+        glReadPixels(0,0,m_windowWidth,m_windowHeight,GL_RGB, GL_FLOAT, ptr);
+        //unsigned error = lodepng::encode("test.png", (unsigned char*)data2, m_windowWidth, m_windowHeight, LCT_RGB, 8);
+        //delete data2;
+    }
+
+    void draw_py(py::array_t<float> x) {
+        /*auto r = x.mutable_unchecked<3>(); // Will throw if ndim != 3 or flags.writeable is false
+            for (ssize_t i = 0; i < r.shape(0); i++)
+                for (ssize_t j = 0; j < r.shape(1); j++)
+                    for (ssize_t k = 0; k < r.shape(2); k++)
+                        r(i, j, k) += 1.0;*/
+
+        std::fill(x.mutable_data(), x.mutable_data() + x.size(), 42);
+    }
 };
 
 

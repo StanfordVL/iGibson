@@ -13,6 +13,7 @@ initial_pos: [-2.5, -1.0, 0.0]
 
 target_orn: [0.0, 0.0, 0.0]
 target_pos: [-5.0, 3.2, 0.0]
+fisheye: false
 
 is_discrete: false
 additional_states_dim: 3
@@ -38,6 +39,10 @@ random:
   random_init_rot_range: [-0.1, 0.1]
 
 output: [sensor, rgb, depth, rgb_filled]
+
+# visual objects
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: true
 
 resolution: 256
 fov: 1.57

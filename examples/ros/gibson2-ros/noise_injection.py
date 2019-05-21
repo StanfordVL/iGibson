@@ -11,7 +11,6 @@ from nav_msgs.msg import Odometry
 import rospkg
 import numpy as np
 from cv_bridge import CvBridge
-
 import tf
 
 
@@ -29,7 +28,7 @@ class NoiseInjectionNode:
     def callback(self, msg):
         print(msg)
 
-        if not (msg.linear.x == 0 and msg.angular.y == 0):
+        if not (msg.linear.x == 0 and msg.angular.z == 0):
             msg.linear.x += self.x
             msg.angular.z += self.z
 
