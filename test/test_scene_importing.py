@@ -12,18 +12,28 @@ config = parse_config('test.yaml')
 
 
 def test_import_building():
-    s = Simulator(mode='headless')
+    s = Simulator(mode='gui')
     scene = BuildingScene('Ohoopee')
     s.import_scene(scene)
     assert s.objects == list(range(2))
+
+    for i in range(1000000):
+        s.step()
+
+
     s.disconnect()
 
 def test_import_stadium():
-    s = Simulator(mode='headless')
+    s = Simulator(mode='gui')
     scene = StadiumScene()
     s.import_scene(scene)
     print(s.objects)
     assert s.objects == list(range(4))
+
+    for i in range(1000000):
+        s.step()
+
+        
     s.disconnect()
 
 def test_import_building_viewing():
@@ -51,4 +61,6 @@ def test_import_building_viewing():
         #turtlebot3.apply_action(np.random.randint(4))
 
     s.disconnect()
-test_import_building_viewing()
+
+test_import_stadium()
+# test_import_building_viewing()
