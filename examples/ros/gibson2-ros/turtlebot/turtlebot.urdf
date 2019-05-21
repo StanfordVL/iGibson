@@ -38,6 +38,27 @@
       <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001"/>
     </inertial>
   </link>
+
+    <link name="scan_link">
+  <inertial>
+      <mass value="0"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001"/>
+    </inertial>
+  <visual>
+      <geometry>
+       <cylinder length="0.02" radius="0.01"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0.001 0 0.05199"/>
+    </visual>
+  </link>
+  <joint name="scan_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="scan_link"/>
+    <origin rpy="0 0 0" xyz="0.00 0.0 0.36"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
   <joint name="wheel_left_joint" type="continuous">
     <parent link="base_link"/>
     <child link="wheel_left_link"/>
@@ -759,7 +780,7 @@
     </inertial>
   </link>
   <joint name="camera_rgb_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="-0.087 -0.0125 0.287"/>
+    <origin rpy="0 0 0" xyz="0.1233 0.0 0.565"/>
     <parent link="base_link"/>
     <child link="camera_rgb_frame"/>
   </joint>

@@ -71,7 +71,11 @@ class BuildingScene(Scene):
         self.model_id = model_id
 
     def load(self):
-        filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
+        filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_downsampled.obj")
+        if os.path.isfile(filename):
+            print('Using downsampled mesh!')
+        else:
+            filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
         scaling = [1, 1, 1]
         collisionId = p.createCollisionShape(p.GEOM_MESH,
                                              fileName=filename,

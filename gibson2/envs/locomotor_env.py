@@ -1,6 +1,7 @@
 from gibson2.core.physics.robot_locomotors import *
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import *
+
 from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj
 import gibson2
 from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
@@ -64,14 +65,11 @@ class NavigateEnv(BaseEnv):
 
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
-
-        # output
         self.output = self.config['output']
 
-        # observation and action space
-        # self.sensor_dim = self.robots[0].sensor_dim + self.additional_states_dim
-        self.sensor_dim = self.additional_states_dim
+        self.sensor_dim = self.robots[0].sensor_dim + self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
+
 
         observation_space = OrderedDict()
         if 'sensor' in self.output:
@@ -116,6 +114,7 @@ class NavigateEnv(BaseEnv):
         # add visual objects
         self.visual_object_at_initial_target_pos = self.config.get(
             'visual_object_at_initial_target_pos', False)
+
         if self.visual_object_at_initial_target_pos:
             self.initial_pos_vis_obj = VisualObject(rgba_color=[1, 0, 0, 0.5])
             self.target_pos_vis_obj = VisualObject(rgba_color=[0, 0, 1, 0.5])
@@ -124,6 +123,70 @@ class NavigateEnv(BaseEnv):
                 self.simulator.import_object(self.target_pos_vis_obj)
             else:
                 self.target_pos_vis_obj.load()
+
+
+    def reload(self, config_file):
+        super().reload(config_file)
+        self.initial_pos = np.array(self.config.get('initial_pos', [0, 0, 0]))
+        self.initial_orn = np.array(self.config.get('initial_orn', [0, 0, 0]))
+
+        self.target_pos = np.array(self.config.get('target_pos', [5, 5, 0]))
+        self.target_orn = np.array(self.config.get('target_orn', [0, 0, 0]))
+
+        self.additional_states_dim = self.config['additional_states_dim']
+
+        # termination condition
+        self.dist_tol = self.config.get('dist_tol', 0.5)
+        self.max_step = self.config.get('max_step', float('inf'))
+
+        # reward
+        self.terminal_reward = self.config.get('terminal_reward', 0.0)
+        self.electricity_cost = self.config.get('electricity_cost', 0.0)
+        self.stall_torque_cost = self.config.get('stall_torque_cost', 0.0)
+        self.collision_cost = self.config.get('collision_cost', 0.0)
+        self.discount_factor = self.config.get('discount_factor', 1.0)
+        self.output = self.config['output']
+
+        self.sensor_dim = self.additional_states_dim
+        self.action_dim = self.robots[0].action_dim
+
+        # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float64)
+        observation_space = OrderedDict()
+        if 'sensor' in self.output:
+            self.sensor_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.sensor_dim,), dtype=np.float32)
+            observation_space['sensor'] = self.sensor_space
+        if 'rgb' in self.output:
+            self.rgb_space = gym.spaces.Box(low=0.0, high=1.0,
+                                            shape=(self.config['resolution'], self.config['resolution'], 3),
+                                            dtype=np.float32)
+            observation_space['rgb'] = self.rgb_space
+        if 'depth' in self.output:
+            self.depth_space = gym.spaces.Box(low=0.0, high=1.0,
+                                              shape=(self.config['resolution'], self.config['resolution'], 1),
+                                              dtype=np.float32)
+            observation_space['depth'] = self.depth_space
+        if 'rgb_filled' in self.output:  # use filler
+            self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
+            self.comp = torch.nn.DataParallel(self.comp).cuda()
+            self.comp.load_state_dict(
+                torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
+            self.comp.eval()
+        if 'pointgoal' in self.output:
+            observation_space['pointgoal'] = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32)
+
+        self.observation_space = gym.spaces.Dict(observation_space)
+        self.action_space = self.robots[0].action_space
+
+        self.visual_object_at_initial_target_pos = self.config.get('visual_object_at_initial_target_pos', False)
+        if self.visual_object_at_initial_target_pos:
+            self.initial_pos_vis_obj = VisualObject(rgba_color=[1, 0, 0, 0.5])
+            self.target_pos_vis_obj = VisualObject(rgba_color=[0, 0, 1, 0.5])
+            self.initial_pos_vis_obj.load()
+            if self.config.get('target_visual_object_visible_to_agent', False):
+                self.simulator.import_object(self.target_pos_vis_obj)
+            else:
+                self.target_pos_vis_obj.load()
+
 
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
@@ -196,6 +259,7 @@ class NavigateEnv(BaseEnv):
             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
             pose_camera = self.robots[0].parts['scan_link'].get_pose()
             n_rays_per_horizontal = 128    # Number of rays along one horizontal scan/slice
+
             n_vertical_beams = 9
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
             elev_bottom_angle = -30. * np.pi / 180.
@@ -213,11 +277,13 @@ class NavigateEnv(BaseEnv):
             pose_camera = pose_camera[None, :3].repeat(n_rays_per_horizontal * n_vertical_beams,
                                                        axis=0)
 
+
             results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
             hit = np.array([item[0] for item in results])
             dist = np.array([item[2] for item in results])
             dist[dist >= 1 - 1e-5] = np.nan
             dist[dist < 0.1 / 30] = np.nan
+
             dist[hit == self.robots[0].robot_ids[0]] = np.nan
             dist[hit == -1] = np.nan
             dist *= 30

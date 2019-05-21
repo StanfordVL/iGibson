@@ -26,10 +26,12 @@ class AdaptiveNorm2d(nn.Module):
 
 
 class CompletionNet(nn.Module):
-    def __init__(self, norm=AdaptiveNorm2d, nf=64):
+    def __init__(self, norm=AdaptiveNorm2d, nf=64, skip_first_bn=False):
         super(CompletionNet, self).__init__()
+
         self.nf = nf
         alpha = 0.05
+
         self.convs = nn.Sequential(
             nn.Conv2d(3, nf // 4, kernel_size=5, stride=1, padding=2),
             norm(nf // 4, momentum=alpha),
