@@ -17,8 +17,6 @@ import tf, tf2_ros
 from visualization_msgs.msg import Marker, MarkerArray
 import copy
 
-
-
 # hacky matrix inverse because BLAS has an issue that makes it use all GPUs!!
 # see bug here:
 # https://github.com/numpy/numpy/issues/8120
@@ -26,45 +24,49 @@ import copy
 # This inverse method is from here:
 # https://stackoverflow.com/questions/32114054/matrix-inversion-without-numpy
 
-def transposeMatrix(m):
-    return map(list,zip(*m))
 
-def getMatrixMinor(m,i,j):
-    return [row[:j] + row[j+1:] for row in (m[:i]+m[i+1:])]
+def transposeMatrix(m):
+    return map(list, zip(*m))
+
+
+def getMatrixMinor(m, i, j):
+    return [row[:j] + row[j + 1:] for row in (m[:i] + m[i + 1:])]
+
 
 def getMatrixDeternminant(m):
     #base case for 2x2 matrix
     if len(m) == 2:
 
-        return m[0][0]*m[1][1]-m[0][1]*m[1][0]
+        return m[0][0] * m[1][1] - m[0][1] * m[1][0]
     determinant = 0
     for c in range(len(m)):
-        determinant += ((-1)**c)*m[0][c]*getMatrixDeternminant(getMatrixMinor(m,0,c))
+        determinant += ((-1)**c) * m[0][c] * getMatrixDeternminant(getMatrixMinor(m, 0, c))
     return determinant
+
 
 def getMatrixInverse(m):
     determinant = getMatrixDeternminant(m)
     #special case for 2x2 matrix:
     if len(m) == 2:
-        return [[m[1][1]/determinant, -1*m[0][1]/determinant],
-                [-1*m[1][0]/determinant, m[0][0]/determinant]]
+        return [[m[1][1] / determinant, -1 * m[0][1] / determinant],
+                [-1 * m[1][0] / determinant, m[0][0] / determinant]]
 
     #find matrix of cofactors
     cofactors = []
     for r in range(len(m)):
         cofactorRow = []
         for c in range(len(m)):
-            minor = getMatrixMinor(m,r,c)
-            cofactorRow.append(((-1)**(r+c)) * getMatrixDeternminant(minor))
+            minor = getMatrixMinor(m, r, c)
+            cofactorRow.append(((-1)**(r + c)) * getMatrixDeternminant(minor))
         cofactors.append(cofactorRow)
     cofactors = transposeMatrix(cofactors)
     for r in range(len(cofactors)):
         for c in range(len(cofactors)):
-            cofactors[r][c] = cofactors[r][c]/determinant
+            cofactors[r][c] = cofactors[r][c] / determinant
     return cofactors
 
-## end of hacky matrix inverse
 
+## end of hacky matrix inverse
 
 
 class TrueMapOdomNode():
@@ -92,7 +94,9 @@ class TrueMapOdomNode():
             self.marker_pub = rospy.Publisher('markers_true_pose', Marker, queue_size=10)
 
         # Publish the pose on a pseudo amcl ground truth topic
-        self.pose_in_map_pub = rospy.Publisher('amcl_pose_ground_truth', PoseWithCovarianceStamped, queue_size=10)
+        self.pose_in_map_pub = rospy.Publisher('amcl_pose_ground_truth',
+                                               PoseWithCovarianceStamped,
+                                               queue_size=10)
 
         # get world->map static transform
         # (we do this only once since we know the transform is static)
@@ -102,17 +106,17 @@ class TrueMapOdomNode():
             rospy.sleep(0.1)
 
             try:
-                self.tf_listener.waitForTransform(self.map_frame, self.world_frame,
-                                                  rospy.Time(0), rospy.Duration(0.1))
-                map_from_world_tup = self.tf_listener.lookupTransform(self.map_frame, self.world_frame, rospy.Time.now())
+                self.tf_listener.waitForTransform(self.map_frame, self.world_frame, rospy.Time(0),
+                                                  rospy.Duration(0.1))
+                map_from_world_tup = self.tf_listener.lookupTransform(self.map_frame,
+                                                                      self.world_frame,
+                                                                      rospy.Time.now())
 
                 t_map_from_world, q_map_from_world = map_from_world_tup
                 self.T_map_from_world = tf.transformations.translation_matrix(t_map_from_world)
                 self.R_map_from_world = tf.transformations.quaternion_matrix(q_map_from_world)
 
-            except (tf2_ros.TransformException,
-                    tf.LookupException,
-                    tf.ConnectivityException,
+            except (tf2_ros.TransformException, tf.LookupException, tf.ConnectivityException,
                     tf.ExtrapolationException) as e:
 
                 if (rospy.Time.now() - last_check).to_sec() > 2.0:
@@ -123,7 +127,8 @@ class TrueMapOdomNode():
 
         rospy.loginfo("Got static transform {}->{}".format(self.world_frame, self.map_frame))
 
-        self.gt_sub = rospy.Subscriber(self.ground_truth_topic, Odometry, self.ground_truth_callback)
+        self.gt_sub = rospy.Subscriber(self.ground_truth_topic, Odometry,
+                                       self.ground_truth_callback)
 
         rospy.spin()
 
@@ -138,14 +143,11 @@ class TrueMapOdomNode():
             pass
         return frame_exists
 
-    def make_R_t_from_pose(self,pose):
-        T = tf.transformations.translation_matrix([pose.position.x,
-                                                   pose.position.y,
-                                                   pose.position.z])
-        Rq = tf.transformations.quaternion_matrix([pose.orientation.x,
-                                                   pose.orientation.y,
-                                                   pose.orientation.z,
-                                                   pose.orientation.w])
+    def make_R_t_from_pose(self, pose):
+        T = tf.transformations.translation_matrix(
+            [pose.position.x, pose.position.y, pose.position.z])
+        Rq = tf.transformations.quaternion_matrix(
+            [pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w])
         return Rq, T
 
     def ground_truth_callback(self, odometry_msg):
@@ -171,7 +173,7 @@ class TrueMapOdomNode():
             pose_in_map_marker.header.stamp = rospy.Time.now()
             pose_in_map_marker.ns = "true_pose_markers"
             pose_in_map_marker.id = 0
-            pose_in_map_marker.type = 0  # arrow
+            pose_in_map_marker.type = 0    # arrow
             pose_in_map_marker.pose.position.x = t_baselink[0]
             pose_in_map_marker.pose.position.y = t_baselink[1]
             pose_in_map_marker.pose.position.z = t_baselink[2]
@@ -179,7 +181,7 @@ class TrueMapOdomNode():
             pose_in_map_marker.pose.orientation.y = q_baselink[1]
             pose_in_map_marker.pose.orientation.z = q_baselink[2]
             pose_in_map_marker.pose.orientation.w = q_baselink[3]
-            pose_in_map_marker.scale.x = 0.5  # arrow length
+            pose_in_map_marker.scale.x = 0.5    # arrow length
             pose_in_map_marker.scale.y = 0.1
             pose_in_map_marker.scale.z = 0.2
             pose_in_map_marker.color.r = 1.0
@@ -214,7 +216,6 @@ class TrueMapOdomNode():
             t_baselink_from_odom, q_baselink_from_odom = \
                 self.tf_listener.lookupTransform(self.baselink_frame, self.odom_frame, odometry_msg.header.stamp)
 
-
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
             rospy.logwarn(e)
             return
@@ -229,9 +230,7 @@ class TrueMapOdomNode():
         q_map = tf.transformations.quaternion_from_matrix(T_map_from_odom)
 
         rospy.logdebug('hello')
-        self.tf_broadcaster.sendTransform(t_map, q_map,
-                                          rospy.Time.now(),
-                                          self.odom_frame,
+        self.tf_broadcaster.sendTransform(t_map, q_map, rospy.Time.now(), self.odom_frame,
                                           self.map_frame)
 
 
