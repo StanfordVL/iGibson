@@ -96,6 +96,21 @@ class Simulator:
                 self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                            pybullet_uuid=new_object,
                                            dynamic=True)
+            elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
+                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
+                                          scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
+                self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                                           pybullet_uuid=new_object,
+                                           dynamic=True)
+            elif type == p.GEOM_BOX:
+                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                self.renderer.load_object(filename, transform_orn=rel_orn, transform_pos=rel_pos, input_kd=color[:3],
+                                          scale=[dimensions[0], dimensions[1], dimensions[2]])
+                self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                                           pybullet_uuid=new_object,
+                                           dynamic=True)
+
         return new_object
 
     def import_robot(self, robot):
@@ -108,7 +123,6 @@ class Simulator:
 
         for shape in p.getVisualShapeData(ids[0]):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
-            print(type)
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 if not filename in self.visual_objects.keys():
@@ -162,7 +176,6 @@ class Simulator:
 
         for shape in p.getVisualShapeData(ids):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
-            print(type)
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 if not filename in self.visual_objects.keys():
