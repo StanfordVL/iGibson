@@ -17,23 +17,25 @@ class WalkerBase(BaseRobot):
     reward
     """
 
-    def __init__(self,
-                 filename,  # robot file name
-                 robot_name,  # robot name
-                 action_dim,  # action dimension
-                 power,
-                 scale,
-                 sensor_dim=None,
-                 resolution=512,
-                 control='torque',
-                 is_discrete=True,
-                 ):
+    def __init__(
+            self,
+            filename,    # robot file name
+            robot_name,    # robot name
+            action_dim,    # action dimension
+            power,
+            scale,
+            sensor_dim=None,
+            resolution=512,
+            control='torque',
+            is_discrete=True,
+    ):
         BaseRobot.__init__(self, filename, robot_name, scale)
         self.control = control
         self.resolution = resolution
         self.is_discrete = is_discrete
 
-        assert type(action_dim) == int, "Action dimension must be int, got {}".format(type(action_dim))
+        assert type(action_dim) == int, "Action dimension must be int, got {}".format(
+            type(action_dim))
         self.action_dim = action_dim
 
         # deprecated
@@ -41,7 +43,8 @@ class WalkerBase(BaseRobot):
         obs_high = np.inf * np.ones(self.obs_dim)
         self.observation_space = gym.spaces.Box(-obs_high, obs_high, dtype=np.float32)
 
-        assert type(sensor_dim) == int, "Sensor dimension must be int, got {}".format(type(sensor_dim))
+        assert type(sensor_dim) == int, "Sensor dimension must be int, got {}".format(
+            type(sensor_dim))
         self.sensor_dim = sensor_dim
         sensor_high = np.inf * np.ones([self.sensor_dim])
         self.sensor_space = gym.spaces.Box(-sensor_high, sensor_high, dtype=np.float32)
@@ -122,13 +125,16 @@ class WalkerBase(BaseRobot):
         elif self.control == 'position':
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_position(action[n])
-        elif type(self.control) is list or type(self.control) is tuple:  # if control is a tuple, set different control
+        elif type(self.control) is list or type(
+                self.control) is tuple:    # if control is a tuple, set different control
             # type for each joint
             for n, j in enumerate(self.ordered_joints):
                 if self.control[n] == 'torque':
-                    j.set_motor_torque(self.power * j.power_coef * float(np.clip(action[n], -1, +1)))
+                    j.set_motor_torque(self.power * j.power_coef *
+                                       float(np.clip(action[n], -1, +1)))
                 elif self.control[n] == 'velocity':
-                    j.set_motor_velocity(self.power * j.power_coef * float(np.clip(action[n], -1, +1)))
+                    j.set_motor_velocity(self.power * j.power_coef *
+                                         float(np.clip(action[n], -1, +1)))
                 elif self.control[n] == 'position':
                     j.set_motor_position(action[n])
         else:
@@ -147,7 +153,8 @@ class WalkerBase(BaseRobot):
         self.apply_real_action(real_action)
 
     def calc_state(self):
-        j = np.array([j.get_joint_relative_state() for j in self.ordered_joints], dtype=np.float32).flatten()
+        j = np.array([j.get_joint_relative_state() for j in self.ordered_joints],
+                     dtype=np.float32).flatten()
         self.joint_speeds = j[1::3]
         self.joint_torque = j[2::3]
         self.joints_at_limit = np.count_nonzero(np.abs(j[0::3]) > 0.99)
@@ -157,9 +164,7 @@ class WalkerBase(BaseRobot):
 
         # rotate speed back to body point of view
         vx, vy, vz = rotate_vector_3d(self.robot_body.velocity(), r, p, yaw)
-        more = np.array([z,
-                         vx, vy, vz,
-                         r, p, yaw], dtype=np.float32)
+        more = np.array([z, vx, vy, vz, r, p, yaw], dtype=np.float32)
 
         return np.clip(np.concatenate([more] + [j]), -5, +5)
 
@@ -171,20 +176,24 @@ class Ant(WalkerBase):
     def __init__(self, config):
         self.config = config
         self.torque = config.get("torque", 1.0)
-        WalkerBase.__init__(self,
-                            "ant.xml",
-                            "torso",
-                            action_dim=8,
-                            sensor_dim=28,
-                            power=2.5,
-                            scale=config.get("robot_scale", self.default_scale),
-                            resolution=config.get("resolution", 64),
-                            is_discrete=config.get("is_discrete", True),
-                            control="torque",
-                            )
+        WalkerBase.__init__(
+            self,
+            "ant.xml",
+            "torso",
+            action_dim=8,
+            sensor_dim=28,
+            power=2.5,
+            scale=config.get("robot_scale", self.default_scale),
+            resolution=config.get("resolution", 64),
+            is_discrete=config.get("is_discrete", True),
+            control="torque",
+        )
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
+        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
         self.action_high = self.torque * np.ones([self.action_dim])
         self.action_low = -self.action_high
 
@@ -206,28 +215,28 @@ class Ant(WalkerBase):
                             [0, 0, 0, 0, 0, -self.torque, 0, 0],
                             [0, 0, 0, 0, 0, 0, -self.torque, 0],
                             [0, 0, 0, 0, 0, 0, 0, -self.torque],
-                            [0, 0, 0, 0, 0, 0, 0, 0]]
+                            [0, 0, 0, 0, 0, 0, 0, 0]]  # yapf: disable
         self.action_space = gym.spaces.Discrete(len(self.action_list))
         self.setup_keys_to_action()
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('1'),): 0,
-            (ord('2'),): 1,
-            (ord('3'),): 2,
-            (ord('4'),): 3,
-            (ord('5'),): 4,
-            (ord('6'),): 5,
-            (ord('7'),): 6,
-            (ord('8'),): 7,
-            (ord('9'),): 8,
-            (ord('0'),): 9,
-            (ord('q'),): 10,
-            (ord('w'),): 11,
-            (ord('e'),): 12,
-            (ord('r'),): 13,
-            (ord('t'),): 14,
-            (ord('y'),): 15,
+            (ord('1'), ): 0,
+            (ord('2'), ): 1,
+            (ord('3'), ): 2,
+            (ord('4'), ): 3,
+            (ord('5'), ): 4,
+            (ord('6'), ): 5,
+            (ord('7'), ): 6,
+            (ord('8'), ): 7,
+            (ord('9'), ): 8,
+            (ord('0'), ): 9,
+            (ord('q'), ): 10,
+            (ord('w'), ): 11,
+            (ord('e'), ): 12,
+            (ord('r'), ): 13,
+            (ord('t'), ): 14,
+            (ord('y'), ): 15,
             (): 4
         }
 
@@ -242,20 +251,24 @@ class Humanoid(WalkerBase):
         self.config = config
         self.torque = config.get("torque", 0.1)
         self.glass_id = None
-        WalkerBase.__init__(self,
-                            "humanoid.xml",
-                            "torso",
-                            action_dim=17,
-                            sensor_dim=40,
-                            power=0.41,
-                            scale=config.get("robot_scale", self.default_scale),
-                            resolution=config.get("resolution", 64),
-                            is_discrete=config.get("is_discrete", True),
-                            control="torque",
-                            )
+        WalkerBase.__init__(
+            self,
+            "humanoid.xml",
+            "torso",
+            action_dim=17,
+            sensor_dim=40,
+            power=0.41,
+            scale=config.get("robot_scale", self.default_scale),
+            resolution=config.get("resolution", 64),
+            is_discrete=config.get("is_discrete", True),
+            control="torque",
+        )
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
+        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
         self.action_high = self.torque * np.ones([self.action_dim])
         self.action_low = -self.action_high
 
@@ -281,8 +294,13 @@ class Humanoid(WalkerBase):
             self.glass_id = glass_id
             p.changeVisualShape(self.glass_id, -1, rgbaColor=[0, 0, 0, 0])
             p.createMultiBody(baseVisualShapeIndex=glass_id, baseCollisionShapeIndex=-1)
-            cid = p.createConstraint(humanoidId, -1, self.glass_id, -1, p.JOINT_FIXED,
-                                     jointAxis=[0, 0, 0], parentFramePosition=[0, 0, self.glass_offset],
+            cid = p.createConstraint(humanoidId,
+                                     -1,
+                                     self.glass_id,
+                                     -1,
+                                     p.JOINT_FIXED,
+                                     jointAxis=[0, 0, 0],
+                                     parentFramePosition=[0, 0, self.glass_offset],
                                      childFramePosition=[0, 0, 0])
 
         robot_pos = list(self.get_position())
@@ -318,10 +336,7 @@ class Humanoid(WalkerBase):
                 m.set_motor_torque(float(force_gain * power * self.power * real_action[i]))
 
     def setup_keys_to_action(self):
-        self.keys_to_action = {
-            (ord('w'),): 0,
-            (): 1
-        }
+        self.keys_to_action = {(ord('w'), ): 0, (): 1}
 
 
 class Husky(WalkerBase):
@@ -341,11 +356,13 @@ class Husky(WalkerBase):
                             scale=config.get("robot_scale", self.default_scale),
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", True),
-                            control="torque"
-                            )
+                            control="torque")
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
+        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
         self.action_high = self.torque * np.ones([self.action_dim])
         self.action_low = -self.action_high
 
@@ -353,8 +370,7 @@ class Husky(WalkerBase):
         self.action_list = [[self.torque, self.torque, self.torque, self.torque],
                             [-self.torque, -self.torque, -self.torque, -self.torque],
                             [self.torque, -self.torque, self.torque, -self.torque],
-                            [-self.torque, self.torque, -self.torque, self.torque],
-                            [0, 0, 0, 0]]
+                            [-self.torque, self.torque, -self.torque, self.torque], [0, 0, 0, 0]]
         self.action_space = gym.spaces.Discrete(len(self.action_list))
         self.setup_keys_to_action()
 
@@ -373,14 +389,14 @@ class Husky(WalkerBase):
         top_xyz = self.parts["top_bumper_link"].get_position()
         bottom_xyz = self.parts["base_link"].get_position()
         alive = top_xyz[2] > bottom_xyz[2]
-        return +1 if alive else -100  # 0.25 is central sphere rad, die if it scrapes the ground
+        return +1 if alive else -100    # 0.25 is central sphere rad, die if it scrapes the ground
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'),): 0,  ## forward
-            (ord('s'),): 1,  ## backward
-            (ord('d'),): 2,  ## turn right
-            (ord('a'),): 3,  ## turn left
+            (ord('w'), ): 0,    ## forward
+            (ord('s'), ): 1,    ## backward
+            (ord('d'), ): 2,    ## turn right
+            (ord('a'), ): 3,    ## turn left
             (): 4
         }
 
@@ -407,21 +423,20 @@ class Quadrotor(WalkerBase):
                             scale=config.get("robot_scale", self.default_scale),
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", True),
-                            control="torque"
-                            )
+                            control="torque")
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
+        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
         self.action_high = self.torque * np.ones([self.action_dim])
         self.action_low = -self.action_high
 
     def set_up_discrete_action_space(self):
-        self.action_list = [[self.torque, 0, 0, 0, 0, 0],
-                            [-self.torque, 0, 0, 0, 0, 0],
-                            [0, self.torque, 0, 0, 0, 0],
-                            [0, -self.torque, 0, 0, 0, 0],
-                            [0, 0, self.torque, 0, 0, 0],
-                            [0, 0, -self.torque, 0, 0, 0],
+        self.action_list = [[self.torque, 0, 0, 0, 0, 0], [-self.torque, 0, 0, 0, 0, 0],
+                            [0, self.torque, 0, 0, 0, 0], [0, -self.torque, 0, 0, 0, 0],
+                            [0, 0, self.torque, 0, 0, 0], [0, 0, -self.torque, 0, 0, 0],
                             [0, 0, 0, 0, 0, 0]]
         self.action_space = gym.spaces.Discrete(len(self.action_list))
         self.setup_keys_to_action()
@@ -442,12 +457,12 @@ class Quadrotor(WalkerBase):
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'),): 0,  ## +x
-            (ord('s'),): 1,  ## -x
-            (ord('d'),): 2,  ## +y
-            (ord('a'),): 3,  ## -y
-            (ord('z'),): 4,  ## +z
-            (ord('x'),): 5,  ## -z
+            (ord('w'), ): 0,    ## +x
+            (ord('s'), ): 1,    ## -x
+            (ord('d'), ): 2,    ## +y
+            (ord('a'), ): 3,    ## -y
+            (ord('z'), ): 4,    ## +z
+            (ord('x'), ): 5,    ## -z
             (): 6
         }
 
@@ -469,30 +484,30 @@ class Turtlebot(WalkerBase):
                             scale=config.get("robot_scale", self.default_scale),
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", True),
-                            control="velocity"
-                            )
+                            control="velocity")
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
+        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
         self.action_high = self.velocity * np.ones([self.action_dim])
         self.action_low = -self.action_high
 
     def set_up_discrete_action_space(self):
-        self.action_list = [[self.velocity, self.velocity],
-                            [-self.velocity, -self.velocity],
+        self.action_list = [[self.velocity, self.velocity], [-self.velocity, -self.velocity],
                             [self.velocity * 0.5, -self.velocity * 0.5],
-                            [-self.velocity * 0.5, self.velocity * 0.5],
-                            [0, 0]]
+                            [-self.velocity * 0.5, self.velocity * 0.5], [0, 0]]
         self.action_space = gym.spaces.Discrete(len(self.action_list))
         self.setup_keys_to_action()
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'),): 0,  # forward
-            (ord('s'),): 1,  # backward
-            (ord('d'),): 2,  # turn right
-            (ord('a'),): 3,  # turn left
-            (): 4            # stay still
+            (ord('w'), ): 0,    # forward
+            (ord('s'), ): 1,    # backward
+            (ord('d'), ): 2,    # turn right
+            (ord('a'), ): 3,    # turn left
+            (): 4    # stay still
         }
 
     def calc_state(self):
@@ -518,11 +533,13 @@ class JR2(WalkerBase):
                             scale=config.get("robot_scale", self.default_scale),
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", True),
-                            control='velocity'
-                            )
+                            control='velocity')
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
+        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
         self.action_high = self.velocity * np.ones([self.action_dim])
         self.action_low = -self.action_high
 
@@ -530,17 +547,16 @@ class JR2(WalkerBase):
         self.action_list = [[self.velocity, self.velocity, 0, self.velocity],
                             [-self.velocity, -self.velocity, 0, -self.velocity],
                             [self.velocity, -self.velocity, -self.velocity, 0],
-                            [-self.velocity, self.velocity, self.velocity, 0],
-                            [0, 0, 0, 0]]
+                            [-self.velocity, self.velocity, self.velocity, 0], [0, 0, 0, 0]]
         self.action_space = gym.spaces.Discrete(len(self.action_list))
         self.setup_keys_to_action()
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'),): 0,  ## forward
-            (ord('s'),): 1,  ## backward
-            (ord('d'),): 2,  ## turn right
-            (ord('a'),): 3,  ## turn left
+            (ord('w'), ): 0,    ## forward
+            (ord('s'), ): 1,    ## backward
+            (ord('d'), ): 2,    ## turn right
+            (ord('a'), ): 3,    ## turn left
             (): 4
         }
 
@@ -585,13 +601,15 @@ class JR2_Kinova(WalkerBase):
                             scale=config.get("robot_scale", self.default_scale),
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", True),
-                            control='velocity'
-                            )
+                            control='velocity')
 
     def set_up_continuous_action_space(self):
         self.action_high = np.array([self.wheel_velocity] * 2 + [self.arm_velocity] * 8)
         self.action_low = -self.action_high
-        self.action_space = gym.spaces.Box(shape=(self.wheel_dim + self.arm_dim,), low=-1.0, high=1.0, dtype=np.float32)
+        self.action_space = gym.spaces.Box(shape=(self.wheel_dim + self.arm_dim, ),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
 
     def set_up_discrete_action_space(self):
         assert False, "JR2_Kinova does not support discrete actions"

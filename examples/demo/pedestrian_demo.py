@@ -10,33 +10,35 @@ scene = BuildingScene("Maugansville")
 ids = s.import_scene(scene)
 print(ids)
 
-trav_map = np.array(Image.open(os.path.join(gibson2.dataset_path, 'Maugansville/floor_trav_1_v3.png')))
+trav_map = np.array(
+    Image.open(os.path.join(gibson2.dataset_path, 'Maugansville/floor_trav_1_v3.png')))
 obstacle_map = np.array(Image.open(os.path.join(gibson2.dataset_path, 'Maugansville/floor_1.png')))
 trav_map[obstacle_map == 0] = 0
 
-trav_map = cv2.erode(trav_map, np.ones((30,30)))
+trav_map = cv2.erode(trav_map, np.ones((30, 30)))
 
-plt.figure(figsize=(12,12))
+plt.figure(figsize=(12, 12))
 plt.imshow(trav_map)
 plt.show()
+
 
 def dist(a, b):
     (x1, y1) = a
     (x2, y2) = b
-    return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+    return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
 
 
-xlen,ylen = trav_map.shape
+xlen, ylen = trav_map.shape
 g = nx.Graph()
 
-for i in range(1,xlen):
-    for j in range(1,ylen):
-        if trav_map[i,j] > 0:
-            g.add_node((i,j))
-            if trav_map[i-1,j] > 0:
-                g.add_edge((i-1,j), (i,j))
-            if trav_map[i,j-1] > 0:
-                g.add_edge((i,j-1), (i,j))
+for i in range(1, xlen):
+    for j in range(1, ylen):
+        if trav_map[i, j] > 0:
+            g.add_node((i, j))
+            if trav_map[i - 1, j] > 0:
+                g.add_edge((i - 1, j), (i, j))
+            if trav_map[i, j - 1] > 0:
+                g.add_edge((i, j - 1), (i, j))
 
 largest_cc = max(nx.connected_components(g), key=len)
 
@@ -55,9 +57,9 @@ for i in range(10):
 
 path = np.array(path)
 
-plt.figure(figsize=(12,12))
+plt.figure(figsize=(12, 12))
 plt.imshow(trav_map)
-plt.scatter(path[:,1], path[:,0], s=1,c='r')
+plt.scatter(path[:, 1], path[:, 0], s=1, c='r')
 plt.show()
 
 obj = Pedestrian()
@@ -86,6 +88,6 @@ for point in path[1:]:
     if len(prev_x) > 5:
         prev_x.pop(0)
 
-    angle = np.arctan2(y-prev_y_mean, x-prev_x_mean)
-    direction = p.getQuaternionFromEuler([0,0,angle])
+    angle = np.arctan2(y - prev_y_mean, x - prev_x_mean)
+    direction = p.getQuaternionFromEuler([0, 0, angle])
     obj.reset_position_orientation([x, y, 0.03], direction)

@@ -44,15 +44,13 @@ class Texture(GLObject):
 
 
 class Shader(GLObject):
-
     def __init__(self, vp_code, fp_code):
         # Importing here, when gl context is already present.
         # Otherwise get expection on Python3 because of PyOpenGL bug.
         from OpenGL.GL import shaders
         self._as_parameter_ = self._shader = shaders.compileProgram(
             shaders.compileShader(vp_code, gl.GL_VERTEX_SHADER),
-            shaders.compileShader(fp_code, gl.GL_FRAGMENT_SHADER)
-        )
+            shaders.compileShader(fp_code, gl.GL_FRAGMENT_SHADER))
         self._uniforms = {}
 
     def release(self):
@@ -79,17 +77,16 @@ class MeshRenderer(object):
         w, h = size
 
         with self.color_tex:
-            gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA32F, w, h, 0,
-                            gl.GL_RGBA, gl.GL_FLOAT, None)
+            gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA32F, w, h, 0, gl.GL_RGBA, gl.GL_FLOAT,
+                            None)
 
         with self.depth_tex:
-            gl.glTexImage2D.wrappedOperation(
-                gl.GL_TEXTURE_2D, 0, gl.GL_DEPTH24_STENCIL8, w, h, 0,
-                gl.GL_DEPTH_STENCIL, gl.GL_UNSIGNED_INT_24_8, None)
+            gl.glTexImage2D.wrappedOperation(gl.GL_TEXTURE_2D, 0, gl.GL_DEPTH24_STENCIL8, w, h, 0,
+                                             gl.GL_DEPTH_STENCIL, gl.GL_UNSIGNED_INT_24_8, None)
 
         with self.fbo:
-            gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0,
-                                      gl.GL_TEXTURE_2D, self.color_tex, 0)
+            gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D,
+                                      self.color_tex, 0)
             gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_STENCIL_ATTACHMENT,
                                       gl.GL_TEXTURE_2D, self.depth_tex, 0)
             gl.glViewport(0, 0, w, h)
@@ -134,9 +131,7 @@ class MeshRenderer(object):
     def proj_matrix(self):
         return perspective(self.fovy, self.aspect, self.znear, self.zfar)
 
-    def render_mesh(self, position, uv, face=None,
-                    clear_color=[0, 0, 0, 0],
-                    modelview=np.eye(4)):
+    def render_mesh(self, position, uv, face=None, clear_color=[0, 0, 0, 0], modelview=np.eye(4)):
         MVP = modelview.T.dot(self.proj_matrix())
         MVP = np.ascontiguousarray(MVP, np.float32)
         position = np.ascontiguousarray(position, np.float32)
@@ -160,10 +155,10 @@ class MeshRenderer(object):
             frame = gl.glReadPixels(0, 0, w, h, gl.GL_RGBA, gl.GL_FLOAT)
             # from IPython import embed; embed()
 
-            frame = frame.reshape(h, w, 4)  # fix PyOpenGL bug
+            frame = frame.reshape(h, w, 4)    # fix PyOpenGL bug
             # frame = frame.repeat(4, axis=2)
             # frame = (1 - frame) * 100
-            frame = frame[::-1, ::-1]  # verical flip to match GL convention
+            frame = frame[::-1, ::-1]    # verical flip to match GL convention
             return frame
 
     def loadTexture(self, path):
@@ -187,7 +182,7 @@ class MeshRenderer(object):
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR_MIPMAP_LINEAR)
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
-        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, width, height, 0,
-                        gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, img_data)
+        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, width, height, 0, gl.GL_RGBA,
+                        gl.GL_UNSIGNED_BYTE, img_data)
         gl.glGenerateMipmap(gl.GL_TEXTURE_2D)
         return texture

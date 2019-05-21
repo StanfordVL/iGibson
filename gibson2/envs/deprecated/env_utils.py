@@ -1,4 +1,3 @@
-
 def get_segmentId_by_name_MP3D(meta, name):
     category_ids = []
     object_ids = []
@@ -35,12 +34,14 @@ def get_segmentId_by_name_2D3DS(mtl, obj, name):
                 obj_id += 1
     '''
     for semantic_label in semantic_label_list:
-        assert len(semantic_label.split("_")) == 5 or len(semantic_label.split("_")) == 3, "Unable to parse semantic label {}".format(semantic_label)
+        assert len(semantic_label.split("_")) == 5 or len(semantic_label.split(
+            "_")) == 3, "Unable to parse semantic label {}".format(semantic_label)
         if len(semantic_label.split("_")) == 5:
-            object_name, object_count, context_name, context_count, floor_count = semantic_label.split("_")
+            object_name, object_count, context_name, context_count, floor_count = semantic_label.split(
+                "_")
             if name in object_name:
                 object_ids.append(obj_id)
-            obj_id += 1 
+            obj_id += 1
         if len(semantic_label.split("_")) == 3:
             object_name, object_count, floor_count = semantic_label.split("_")
             if name in object_name:
@@ -56,6 +57,7 @@ def get_semantic_label_list_2D3DS(obj):
             if "usemtl " in line:
                 label_list.append(line.split()[1])
     return label_list
+
 
 if __name__ == "__main__":
     meta = ""

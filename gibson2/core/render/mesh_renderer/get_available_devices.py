@@ -1,6 +1,7 @@
 import subprocess
 import os
 
+
 def get_available_devices():
     executable_path = os.path.join(os.path.dirname(__file__), 'build')
 
@@ -9,11 +10,14 @@ def get_available_devices():
     available_devices = []
     for i in range(num_devices):
         try:
-            if b"NVIDIA" in subprocess.check_output(["{}/test_device".format(executable_path),  str(i)]):
+            if b"NVIDIA" in subprocess.check_output(
+                ["{}/test_device".format(executable_path),
+                 str(i)]):
                 available_devices.append(i)
         except subprocess.CalledProcessError as e:
             print(e)
-    return(available_devices)
+    return (available_devices)
+
 
 def get_cuda_device(idx):
     output = subprocess.check_output(["nvidia-smi", '-q', '-i', str(idx)])
@@ -21,6 +25,7 @@ def get_cuda_device(idx):
     output_list = [item for item in output_list if 'Minor' in item]
     num = int(output_list[0].split(':')[-1])
     return num
+
 
 if __name__ == '__main__':
     print(get_available_devices())

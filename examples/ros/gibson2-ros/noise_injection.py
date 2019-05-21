@@ -14,6 +14,7 @@ from cv_bridge import CvBridge
 
 import tf
 
+
 class NoiseInjectionNode:
     def __init__(self):
         rospy.init_node('gibson-sim-noise')
@@ -21,7 +22,6 @@ class NoiseInjectionNode:
         self.pub = rospy.Publisher("/mobile_base/commands/velocity", Twist, queue_size=10)
 
         self.x, self.z = 0, 0
-
 
     def register_callback(self):
         rospy.Subscriber("/mobile_base/commands/velocity_raw", Twist, self.callback)
@@ -39,7 +39,6 @@ class NoiseInjectionNode:
         #pass through for zero velocity command
 
         self.pub.publish(msg)
-
 
     def run(self):
         rospy.spin()

@@ -6,8 +6,9 @@ from gibson2.utils.utils import parse_config
 import pytest
 config = parse_config('test.yaml')
 
+
 def test_turtlebot():
-    s =Simulator(mode='headless')
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     turtlebot = Turtlebot(config)
@@ -15,6 +16,7 @@ def test_turtlebot():
     nbody = p.getNumBodies()
     s.disconnect()
     assert nbody == 5
+
 
 def test_jr2():
     s = Simulator(mode='headless')
@@ -26,15 +28,16 @@ def test_jr2():
     s.disconnect()
     assert nbody == 5
 
+
 def test_ant():
-    s = Simulator(mode='gui', timestep=1/40.0)
+    s = Simulator(mode='gui', timestep=1 / 40.0)
     scene = StadiumScene()
     s.import_scene(scene)
     ant = Ant(config)
     s.import_robot(ant)
     ant2 = Ant(config)
     s.import_robot(ant2)
-    ant2.set_position([0,2,2])
+    ant2.set_position([0, 2, 2])
     nbody = p.getNumBodies()
     s.add_viewer()
     for i in range(100):
@@ -43,6 +46,7 @@ def test_ant():
         #ant2.apply_action(np.random.randint(17))
     s.disconnect()
     assert nbody == 6
+
 
 def test_husky():
     s = Simulator(mode='headless')
@@ -53,6 +57,7 @@ def test_husky():
     nbody = p.getNumBodies()
     s.disconnect()
     assert nbody == 5
+
 
 def test_humanoid():
     s = Simulator(mode='headless')
@@ -106,6 +111,7 @@ def test_humanoid_position():
     assert nbody == 5
     assert np.allclose(pos, np.array([0, 0, 5]))
 
+
 def test_multiagent():
     s = Simulator(mode='headless')
     scene = StadiumScene()
@@ -132,6 +138,7 @@ def test_multiagent():
     s.disconnect()
     assert nbody == 7
 
+
 def show_action_sensor_space():
     s = Simulator(mode='gui')
     scene = StadiumScene()
@@ -139,7 +146,7 @@ def show_action_sensor_space():
 
     turtlebot = Turtlebot(config)
     s.import_robot(turtlebot)
-    turtlebot.set_position([0,1,0.5])
+    turtlebot.set_position([0, 1, 0.5])
 
     ant = Ant(config)
     s.import_robot(ant)
@@ -151,7 +158,7 @@ def show_action_sensor_space():
 
     jr = JR2(config)
     s.import_robot(jr)
-    jr.set_position([0,4,0.5])
+    jr.set_position([0, 4, 0.5])
 
     jr2 = JR2_Kinova(config)
     s.import_robot(jr2)
@@ -159,11 +166,11 @@ def show_action_sensor_space():
 
     husky = Husky(config)
     s.import_robot(husky)
-    husky.set_position([0,6,0.5])
+    husky.set_position([0, 6, 0.5])
 
     quad = Quadrotor(config)
     s.import_robot(quad)
-    quad.set_position([0,7,0.5])
+    quad.set_position([0, 7, 0.5])
 
     for robot in s.robots:
         print(type(robot), len(robot.ordered_joints), robot.calc_state().shape)

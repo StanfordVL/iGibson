@@ -12,46 +12,39 @@ import pybullet as p
 import gym
 from transforms3d.euler import euler2quat
 
-
-tracking_camera = {
-    'yaw': 20,
-    'z_offset': 0.3,
-    'distance': 2,
-    'pitch': -20
-}
+tracking_camera = {'yaw': 20, 'z_offset': 0.3, 'distance': 2, 'pitch': -20}
 
 
 class MinitaurBase(WalkerBase):
     model_type = "URDF"
     default_scale = 1
-    
+
     KNEE_CONSTRAINT_POINT_RIGHT = [0, 0.005, 0.2]
     KNEE_CONSTRAINT_POINT_LEFT = [0, 0.01, 0.2]
     OVERHEAT_SHUTDOWN_TORQUE = 2.45
     OVERHEAT_SHUTDOWN_TIME = 1.0
     LEG_POSITION = ["front_left", "back_left", "front_right", "back_right"]
     MOTOR_NAMES = [
-        "motor_front_leftL_joint", "motor_front_leftR_joint",
-        "motor_back_leftL_joint", "motor_back_leftR_joint",
-        "motor_front_rightL_joint", "motor_front_rightR_joint",
+        "motor_front_leftL_joint", "motor_front_leftR_joint", "motor_back_leftL_joint",
+        "motor_back_leftR_joint", "motor_front_rightL_joint", "motor_front_rightR_joint",
         "motor_back_rightL_joint", "motor_back_rightR_joint"
     ]
     LEG_LINK_ID = [2, 3, 5, 6, 8, 9, 11, 12, 15, 16, 18, 19, 21, 22, 24, 25]
     MOTOR_LINK_ID = [1, 4, 7, 10, 14, 17, 20, 23]
     FOOT_LINK_ID = [3, 6, 9, 12, 16, 19, 22, 25]
     BASE_LINK_ID = -1
-    OBSERVATION_DIM = 3 * len(MOTOR_NAMES) + 4   # VELOCITY, ANGLE, TORQUES
+    OBSERVATION_DIM = 3 * len(MOTOR_NAMES) + 4    # VELOCITY, ANGLE, TORQUES
 
-    self_collision_enabled=True
-    motor_velocity_limit=np.inf
-    
+    self_collision_enabled = True
+    motor_velocity_limit = np.inf
+
     #accurate_motor_model_enabled=False   ## (hzyjerry): affect speed?
-    motor_kp=1.00
-    motor_kd=0.2
-    torque_control_enabled=False
-    motor_overheat_protection=True
-    on_rack=False
-    kd_for_pd_controllers=0.3 
+    motor_kp = 1.00
+    motor_kd = 0.2
+    torque_control_enabled = False
+    motor_overheat_protection = True
+    on_rack = False
+    kd_for_pd_controllers = 0.3
     mjcf_scaling = 1
     num_motors = 8
     num_legs = int(num_motors / 2)
@@ -60,12 +53,10 @@ class MinitaurBase(WalkerBase):
     applied_motor_torques = np.zeros(num_motors)
     max_force = 5.5
     joint_name_to_id = None
-        
     """The minitaur class that simulates a quadruped robot from Ghost Robotics.
     """
 
-    def __init__(self, config, env=None,
-                 pd_control_enabled=True,
+    def __init__(self, config, env=None, pd_control_enabled=True,
                  accurate_motor_model_enabled=True):
         """Constructs a minitaur and reset it to the initial states.
 
@@ -92,28 +83,30 @@ class MinitaurBase(WalkerBase):
         #self.robot_name = "quadruped"
         self.robot_name = "base_chassis_link"
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
-        
-        WalkerBase.__init__(self, 
-                            "quadruped/minitaur.urdf", 
-                            self.robot_name, 
-                            action_dim=8, 
-                            sensor_dim=self.OBSERVATION_DIM, 
+
+        WalkerBase.__init__(self,
+                            "quadruped/minitaur.urdf",
+                            self.robot_name,
+                            action_dim=8,
+                            sensor_dim=self.OBSERVATION_DIM,
                             power=5,
-                            scale = scale,
+                            scale=scale,
                             initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"], 
-                            resolution=config["resolution"], 
-                            env = env)
-        
+                            target_pos=config["target_pos"],
+                            resolution=config["resolution"],
+                            env=env)
+
         self.r_f = 0.1
         self.time_step = config["speed"]["timestep"]
         self.pd_control_enabled = pd_control_enabled
-        self.minitaur = None   ## TODO: fix this
+        self.minitaur = None    ## TODO: fix this
         self.accurate_motor_model_enabled = accurate_motor_model_enabled
         if self.accurate_motor_model_enabled:
             self._kp = self.motor_kp
             self._kd = self.motor_kd
-            self._motor_model = motor.MotorModel(torque_control_enabled=self.torque_control_enabled,kp=self._kp,kd=self._kd)
+            self._motor_model = motor.MotorModel(torque_control_enabled=self.torque_control_enabled,
+                                                 kp=self._kp,
+                                                 kd=self._kd)
         elif self.pd_control_enabled:
             self._kp = 8
             self._kd = self.kd_for_pd_controllers
@@ -124,7 +117,7 @@ class MinitaurBase(WalkerBase):
         if config["is_discrete"]:
             self.action_space = gym.spaces.Discrete(17)
             self.torque = 10
-            ## Hip_1, Ankle_1, Hip_2, Ankle_2, Hip_3, Ankle_3, Hip_4, Ankle_4 
+            ## Hip_1, Ankle_1, Hip_2, Ankle_2, Hip_3, Ankle_3, Hip_4, Ankle_4
             self.action_list = [[self.r_f * self.torque, 0, 0, 0, 0, 0, 0, 0],
                                 [0, self.r_f * self.torque, 0, 0, 0, 0, 0, 0],
                                 [0, 0, self.r_f * self.torque, 0, 0, 0, 0, 0],
@@ -146,7 +139,6 @@ class MinitaurBase(WalkerBase):
         self.debug_count = 0
         self.qmax = [0] * 8
         self.fmax = [0] * 8
-    
 
     def _RecordMassInfoFromURDF(self):
         self._base_mass_urdf = p.getDynamicsInfo(self.minitaur, self.BASE_LINK_ID)[0]
@@ -162,10 +154,7 @@ class MinitaurBase(WalkerBase):
             self.joint_name_to_id[joint_info[1].decode("UTF-8")] = joint_info[0]
 
     def _BuildMotorIdList(self):
-        self._motor_id_list = [
-            self.joint_name_to_id[motor_name] for motor_name in self.MOTOR_NAMES
-        ]
-
+        self._motor_id_list = [self.joint_name_to_id[motor_name] for motor_name in self.MOTOR_NAMES]
 
     def robot_specific_reset(self, reload_urdf=True):
         """Reset the minitaur to its initial states.
@@ -185,7 +174,8 @@ class MinitaurBase(WalkerBase):
             self._overheat_counter = np.zeros(self.num_motors)
             self._motor_enabled_list = [True] * self.num_motors
             if self.on_rack:
-                p.createConstraint(self.minitaur, -1, -1, -1, p.JOINT_FIXED,[0, 0, 0], [0, 0, 0], [0, 0, 1])
+                p.createConstraint(self.minitaur, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0],
+                                   [0, 0, 1])
         self.ResetPose(add_constraint=True)
 
     def _SetMotorTorqueById(self, motor_id, torque):
@@ -204,18 +194,17 @@ class MinitaurBase(WalkerBase):
                                 force=self.max_force)
 
     def _SetDesiredMotorAngleByName(self, motor_name, desired_angle):
-        self._SetDesiredMotorAngleById(self.joint_name_to_id[motor_name],desired_angle)
+        self._SetDesiredMotorAngleById(self.joint_name_to_id[motor_name], desired_angle)
 
     def calc_potential(self):
         return 0
 
-
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('s'), ): 0, ## backward
-            (ord('w'), ): 1, ## forward
-            (ord('d'), ): 2, ## turn right
-            (ord('a'), ): 3, ## turn left
+            (ord('s'), ): 0,    ## backward
+            (ord('w'), ): 1,    ## forward
+            (ord('d'), ): 2,    ## turn right
+            (ord('a'), ): 3,    ## turn left
             (): 4
         }
 
@@ -241,45 +230,41 @@ class MinitaurBase(WalkerBase):
         knee_angle = -2.1834
 
         leg_position = self.LEG_POSITION[leg_id]
-        p.resetJointState(
-            self.minitaur,
-            self.joint_name_to_id["motor_" + leg_position + "L_joint"],
-            self.motor_direction[2 * leg_id] * half_pi,
-            targetVelocity=0)
-        p.resetJointState(
-            self.minitaur,
-            self.joint_name_to_id["knee_" + leg_position + "L_link"],
-            self.motor_direction[2 * leg_id] * knee_angle,
-            targetVelocity=0)
-        p.resetJointState(
-            self.minitaur,
-            self.joint_name_to_id["motor_" + leg_position + "R_joint"],
-            self.motor_direction[2 * leg_id + 1] * half_pi,
-            targetVelocity=0)
-        p.resetJointState(
-            self.minitaur,
-            self.joint_name_to_id["knee_" + leg_position + "R_link"],
-            self.motor_direction[2 * leg_id + 1] * knee_angle,
-            targetVelocity=0)
+        p.resetJointState(self.minitaur,
+                          self.joint_name_to_id["motor_" + leg_position + "L_joint"],
+                          self.motor_direction[2 * leg_id] * half_pi,
+                          targetVelocity=0)
+        p.resetJointState(self.minitaur,
+                          self.joint_name_to_id["knee_" + leg_position + "L_link"],
+                          self.motor_direction[2 * leg_id] * knee_angle,
+                          targetVelocity=0)
+        p.resetJointState(self.minitaur,
+                          self.joint_name_to_id["motor_" + leg_position + "R_joint"],
+                          self.motor_direction[2 * leg_id + 1] * half_pi,
+                          targetVelocity=0)
+        p.resetJointState(self.minitaur,
+                          self.joint_name_to_id["knee_" + leg_position + "R_link"],
+                          self.motor_direction[2 * leg_id + 1] * knee_angle,
+                          targetVelocity=0)
         if add_constraint:
-            p.createConstraint(self.minitaur, 
+            p.createConstraint(self.minitaur,
                                self.joint_name_to_id["knee_" + leg_position + "R_link"],
-                               self.minitaur, 
+                               self.minitaur,
                                self.joint_name_to_id["knee_" + leg_position + "L_link"],
-                               p.JOINT_POINT2POINT, 
-                               [0, 0, 0],
-                               self.KNEE_CONSTRAINT_POINT_RIGHT, 
+                               p.JOINT_POINT2POINT, [0, 0, 0], self.KNEE_CONSTRAINT_POINT_RIGHT,
                                self.KNEE_CONSTRAINT_POINT_LEFT)
 
         if self.accurate_motor_model_enabled or self.pd_control_enabled:
             # Disable the default motor in pybullet.
             p.setJointMotorControl2(bodyIndex=self.minitaur,
-                                    jointIndex=(self.joint_name_to_id["motor_" + leg_position + "L_joint"]),
+                                    jointIndex=(self.joint_name_to_id["motor_" + leg_position +
+                                                                      "L_joint"]),
                                     controlMode=p.VELOCITY_CONTROL,
                                     targetVelocity=0,
                                     force=knee_friction_force)
             p.setJointMotorControl2(bodyIndex=self.minitaur,
-                                    jointIndex=(self.joint_name_to_id["motor_" + leg_position + "R_joint"]),
+                                    jointIndex=(self.joint_name_to_id["motor_" + leg_position +
+                                                                      "R_joint"]),
                                     controlMode=p.VELOCITY_CONTROL,
                                     targetVelocity=0,
                                     force=knee_friction_force)
@@ -291,12 +276,14 @@ class MinitaurBase(WalkerBase):
                                              self.motor_direction[2 * leg_id + 1] * half_pi)
 
         p.setJointMotorControl2(bodyIndex=self.minitaur,
-                                jointIndex=(self.joint_name_to_id["knee_" + leg_position + "L_link"]),
+                                jointIndex=(self.joint_name_to_id["knee_" + leg_position +
+                                                                  "L_link"]),
                                 controlMode=p.VELOCITY_CONTROL,
                                 targetVelocity=0,
                                 force=knee_friction_force)
         p.setJointMotorControl2(bodyIndex=self.minitaur,
-                                jointIndex=(self.joint_name_to_id["knee_" + leg_position + "R_link"]),
+                                jointIndex=(self.joint_name_to_id["knee_" + leg_position +
+                                                                  "R_link"]),
                                 controlMode=p.VELOCITY_CONTROL,
                                 targetVelocity=0,
                                 force=knee_friction_force)
@@ -307,8 +294,7 @@ class MinitaurBase(WalkerBase):
         Returns:
           The position of minitaur's base.
         """
-        position, _ = (
-            p.getBasePositionAndOrientation(self.minitaur))
+        position, _ = (p.getBasePositionAndOrientation(self.minitaur))
         return position
 
     def GetBaseOrientation(self):
@@ -317,8 +303,7 @@ class MinitaurBase(WalkerBase):
         Returns:
           The orientation of minitaur's base.
         """
-        _, orientation = (
-            p.getBasePositionAndOrientation(self.minitaur))
+        _, orientation = (p.getBasePositionAndOrientation(self.minitaur))
         return orientation
 
     def GetActionDimension(self):
@@ -337,12 +322,12 @@ class MinitaurBase(WalkerBase):
             of each element of an observation.
         """
         upper_bound = np.array([0.0] * self.GetObservationDimension())
-        upper_bound[0:self.num_motors] = math.pi  # Joint angle.
-        upper_bound[self.num_motors:2 * self.num_motors] = (
-            motor.MOTOR_SPEED_LIMIT)  # Joint velocity.
-        upper_bound[2 * self.num_motors:3 * self.num_motors] = (
-            motor.OBSERVED_TORQUE_LIMIT)  # Joint torque.
-        upper_bound[3 * self.num_motors:] = 1.0  # Quaternion of base orientation.
+        upper_bound[0:self.num_motors] = math.pi    # Joint angle.
+        upper_bound[self.num_motors:2 * self.num_motors] = (motor.MOTOR_SPEED_LIMIT
+                                                            )    # Joint velocity.
+        upper_bound[2 * self.num_motors:3 * self.num_motors] = (motor.OBSERVED_TORQUE_LIMIT
+                                                                )    # Joint torque.
+        upper_bound[3 * self.num_motors:] = 1.0    # Quaternion of base orientation.
         return upper_bound
 
     def GetObservationLowerBound(self):
@@ -394,10 +379,8 @@ class MinitaurBase(WalkerBase):
         #print("motor commands 1", motor_commands)
         if self.motor_velocity_limit < np.inf:
             current_motor_angle = self.GetMotorAngles()
-            motor_commands_max = (
-                current_motor_angle + self.time_step * self.motor_velocity_limit)
-            motor_commands_min = (
-                current_motor_angle - self.time_step * self.motor_velocity_limit)
+            motor_commands_max = (current_motor_angle + self.time_step * self.motor_velocity_limit)
+            motor_commands_min = (current_motor_angle - self.time_step * self.motor_velocity_limit)
             #motor_commands = np.clip(motor_commands, motor_commands_min, motor_commands_max)
         #print("motor commands 2", motor_commands)
         if self.accurate_motor_model_enabled or self.pd_control_enabled:
@@ -416,7 +399,7 @@ class MinitaurBase(WalkerBase):
                     if q[i] > self.qmax[i]:
                         self.qmax[i] = q[i]
                 #print("Q max", self.qmax)
-    
+
                 if self.motor_overheat_protection:
                     for i in range(self.num_motors):
                         if abs(actual_torque[i]) > self.OVERHEAT_SHUTDOWN_TORQUE:
@@ -424,7 +407,7 @@ class MinitaurBase(WalkerBase):
                         else:
                             self._overheat_counter[i] = 0
                         if (self._overheat_counter[i] >
-                            self.OVERHEAT_SHUTDOWN_TIME / self.time_step):
+                                self.OVERHEAT_SHUTDOWN_TIME / self.time_step):
                             self._motor_enabled_list[i] = False
                 # The torque is already in the observation space because we use
                 # GetMotorAngles and GetMotorVelocities.
@@ -432,11 +415,10 @@ class MinitaurBase(WalkerBase):
                 #actual_torque.fill(0.0)
 
                 # Transform into the motor space when applying the torque.
-                self.applied_motor_torques = np.multiply(actual_torque,
-                                                         self.motor_direction)
-                for motor_id, motor_torque, motor_enabled in zip(
-                    self._motor_id_list, self.applied_motor_torques,
-                    self._motor_enabled_list):
+                self.applied_motor_torques = np.multiply(actual_torque, self.motor_direction)
+                for motor_id, motor_torque, motor_enabled in zip(self._motor_id_list,
+                                                                 self.applied_motor_torques,
+                                                                 self._motor_enabled_list):
                     if motor_enabled:
                         self._SetMotorTorqueById(motor_id, motor_torque)
                     else:
@@ -446,7 +428,7 @@ class MinitaurBase(WalkerBase):
                     if motor_commands[i] > self.fmax[i]:
                         self.fmax[i] = motor_commands[i]
                 #print("F max", self.fmax)
-    
+
             else:
                 torque_commands = -self._kp * (q - motor_commands) - self._kd * qdot
 
@@ -456,17 +438,15 @@ class MinitaurBase(WalkerBase):
 
                 # Transform into the motor space when applying the torque.
                 self.applied_motor_torques = np.multiply(self.observed_motor_torques,
-                                                          self.motor_direction)
+                                                         self.motor_direction)
 
-                for motor_id, motor_torque in zip(self._motor_id_list,
-                                                  self.applied_motor_torques):
+                for motor_id, motor_torque in zip(self._motor_id_list, self.applied_motor_torques):
                     self._SetMotorTorqueById(motor_id, motor_torque)
                 print("Apply motor", self.applied_motor_torques)
         else:
-            motor_commands_with_direction = np.multiply(motor_commands,
-                                                      self.motor_direction)
-            for motor_id, motor_command_with_direction in zip(
-                self._motor_id_list, motor_commands_with_direction):
+            motor_commands_with_direction = np.multiply(motor_commands, self.motor_direction)
+            for motor_id, motor_command_with_direction in zip(self._motor_id_list,
+                                                              motor_commands_with_direction):
                 print("command", motor_command_with_direction)
                 self._SetDesiredMotorAngleById(motor_id, motor_command_with_direction)
 
@@ -477,8 +457,7 @@ class MinitaurBase(WalkerBase):
           Motor angles.
         """
         motor_angles = [
-            p.getJointState(self.minitaur, motor_id)[0]
-            for motor_id in self._motor_id_list
+            p.getJointState(self.minitaur, motor_id)[0] for motor_id in self._motor_id_list
         ]
         motor_angles = np.multiply(motor_angles, self.motor_direction)
         return motor_angles
@@ -490,8 +469,7 @@ class MinitaurBase(WalkerBase):
           Velocities of all eight motors.
         """
         motor_velocities = [
-            p.getJointState(self.minitaur, motor_id)[1]
-            for motor_id in self._motor_id_list
+            p.getJointState(self.minitaur, motor_id)[1] for motor_id in self._motor_id_list
         ]
         motor_velocities = np.multiply(motor_velocities, self.motor_direction)
         return motor_velocities
@@ -506,7 +484,8 @@ class MinitaurBase(WalkerBase):
             return self.observed_motor_torques
         else:
             motor_torques = [
-                p.getJointState(self.minitaur, motor_id)[3] for motor_id in self._motor_id_list ]
+                p.getJointState(self.minitaur, motor_id)[3] for motor_id in self._motor_id_list
+            ]
             motor_torques = np.multiply(motor_torques, self.motor_direction)
         return motor_torques
 
@@ -525,13 +504,13 @@ class MinitaurBase(WalkerBase):
         quater_pi = math.pi / 4
         for i in range(self.num_motors):
             action_idx = i // 2
-            forward_backward_component = (-scale_for_singularity * quater_pi * (
-                actions[action_idx + half_num_motors] + offset_for_singularity))
+            forward_backward_component = (
+                -scale_for_singularity * quater_pi *
+                (actions[action_idx + half_num_motors] + offset_for_singularity))
             extension_component = (-1)**i * quater_pi * actions[action_idx]
             if i >= half_num_motors:
                 extension_component = -extension_component
-            motor_angle[i] = (
-                math.pi + forward_backward_component + extension_component)
+            motor_angle[i] = (math.pi + forward_backward_component + extension_component)
         return motor_angle
 
     def GetBaseMassFromURDF(self):
@@ -543,8 +522,7 @@ class MinitaurBase(WalkerBase):
         return self._leg_masses_urdf
 
     def SetBaseMass(self, base_mass):
-        p.changeDynamics(
-            self.minitaur, self.BASE_LINK_ID, mass=base_mass)
+        p.changeDynamics(self.minitaur, self.BASE_LINK_ID, mass=base_mass)
 
     def SetLegMasses(self, leg_masses):
         """Set the mass of the legs.
@@ -558,11 +536,9 @@ class MinitaurBase(WalkerBase):
             leg_masses[1] is the mass of the motor.
         """
         for link_id in self.LEG_LINK_ID:
-            p.changeDynamics(
-                self.minitaur, link_id, mass=leg_masses[0])
+            p.changeDynamics(self.minitaur, link_id, mass=leg_masses[0])
         for link_id in self.MOTOR_LINK_ID:
-            p.changeDynamics(
-                self.minitaur, link_id, mass=leg_masses[1])
+            p.changeDynamics(self.minitaur, link_id, mass=leg_masses[1])
 
     def SetFootFriction(self, foot_friction):
         """Set the lateral friction of the feet.
@@ -572,8 +548,7 @@ class MinitaurBase(WalkerBase):
             shared by all four feet.
         """
         for link_id in self.FOOT_LINK_ID:
-            p.changeDynamics(
-                self.minitaur, link_id, lateralFriction=foot_friction)
+            p.changeDynamics(self.minitaur, link_id, lateralFriction=foot_friction)
 
     def SetBatteryVoltage(self, voltage):
         if self.accurate_motor_model_enabled:
@@ -582,7 +557,6 @@ class MinitaurBase(WalkerBase):
     def SetMotorViscousDamping(self, viscous_damping):
         if self.accurate_motor_model_enabled:
             self._motor_model.set_viscous_damping(viscous_damping)
-
 
 
 class Minitaur(MinitaurBase):
@@ -602,6 +576,7 @@ class Minitaur(MinitaurBase):
         self.calc_state()
         self.addToScene()
     '''
+
     def __init__(self, config, env, pd_control_enabled=True, accurate_motor_model_enabled=True):
         MinitaurBase.__init__(self, config, env, pd_control_enabled, accurate_motor_model_enabled)
 
