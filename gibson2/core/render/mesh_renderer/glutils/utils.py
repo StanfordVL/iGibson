@@ -4,8 +4,12 @@ import OpenGL.GL as GL
 
 colormap = [[1,0,0], [0,1,0], [0,0,1]]
 
-def loadTexture(path):
+def loadTexture(path, scale=1):
     img = Image.open(path).transpose(Image.FLIP_TOP_BOTTOM)
+    w,h = img.size
+
+    img = img.resize((int(w*scale), int(h*scale)), Image.BICUBIC)
+
     img_data = np.frombuffer(img.tobytes(), np.uint8)
     #print(img_data.shape)
     width, height = img.size
