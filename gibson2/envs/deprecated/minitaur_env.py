@@ -19,7 +19,6 @@ Current:
     Action repeat: 4
 '''
 
-
 from gibson2.envs.env_modalities import CameraRobotEnv, BaseRobotEnv
 from gibson2.envs.env_bases import *
 from gibson2.core.physics.drivers.minitaur import Minitaur
@@ -33,18 +32,12 @@ import gibson2
 import numpy as np
 import pybullet
 
-MINITAUR_TIMESTEP  = 1.0/(4 * 22)
+MINITAUR_TIMESTEP = 1.0 / (4 * 22)
 MINITAUR_FRAMESKIP = 4
 
 ACTION_EPS = 0.01
 
-
-tracking_camera = {
-    'yaw': 40,
-    'z_offset': 0.3,
-    'distance': 1,
-    'pitch': -0
-}
+tracking_camera = {'yaw': 40, 'z_offset': 0.3, 'distance': 1, 'pitch': -0}
 
 
 class MinitaurNavigateEnv(CameraRobotEnv):
@@ -67,11 +60,10 @@ class MinitaurNavigateEnv(CameraRobotEnv):
     hard_reset = False
 
     leg_model_enabled = True
-    num_bullet_solver_iterations = 300    
+    num_bullet_solver_iterations = 300
     pd_control_enabled = True
     accurate_motor_model_enabled = True
-    NUM_SUBSTEPS = 5     # PD control needs smaller time step for stability.
-
+    NUM_SUBSTEPS = 5    # PD control needs smaller time step for stability.
 
     def __init__(self, config, gpu_idx=0):
         """Initialize the minitaur gym environment.
@@ -90,17 +82,22 @@ class MinitaurNavigateEnv(CameraRobotEnv):
             env_randomizer: An EnvRandomizer to randomize the physical properties
                 during reset().
         """
-    
-        self.config = self.parse_config(config)
-        assert(self.config["envname"] == self.__class__.__name__ or self.config["envname"] == "TestEnv")
 
-        CameraRobotEnv.__init__(self, self.config, gpu_idx,
+        self.config = self.parse_config(config)
+        assert (self.config["envname"] == self.__class__.__name__
+                or self.config["envname"] == "TestEnv")
+
+        CameraRobotEnv.__init__(self,
+                                self.config,
+                                gpu_idx,
                                 scene_type="building",
                                 tracking_camera=tracking_camera)
 
-        self.robot_introduce(Minitaur(self.config, env=self, 
-                                      pd_control_enabled=self.pd_control_enabled,
-                                      accurate_motor_model_enabled=self.accurate_motor_model_enabled))
+        self.robot_introduce(
+            Minitaur(self.config,
+                     env=self,
+                     pd_control_enabled=self.pd_control_enabled,
+                     accurate_motor_model_enabled=self.accurate_motor_model_enabled))
         self.scene_introduce()
         self.gui = self.config["mode"] == "gui"
         self.total_reward = 0
@@ -118,16 +115,17 @@ class MinitaurNavigateEnv(CameraRobotEnv):
             pybullet.setTimeStep(self.time_step, physicsClientId=self.physicsClientId)
         '''
         pybullet.setPhysicsEngineParameter(physicsClientId=self.physicsClientId,
-              numSolverIterations=int(self.num_bullet_solver_iterations))
+                                           numSolverIterations=int(
+                                               self.num_bullet_solver_iterations))
         self._observation = []
         self._last_base_position = [0, 0, 0]
         self._action_bound = self.action_bound
-        
-        self._env_randomizer = self.env_randomizer        
+
+        self._env_randomizer = self.env_randomizer
         if self._env_randomizer is not None:
             self._env_randomizer.randomize_env(self)
 
-        self._objectives = []        
+        self._objectives = []
         self.viewer = None
         self.Amax = [0] * 8
 
@@ -138,19 +136,18 @@ class MinitaurNavigateEnv(CameraRobotEnv):
         self._args = args
 
     #def _reset(self):
-        #if self._env_randomizer is not None:
-        #    self._env_randomizer.randomize_env(self)
+    #if self._env_randomizer is not None:
+    #    self._env_randomizer.randomize_env(self)
 
-        #self._last_base_position = [0, 0, 0]
-        #self._objectives = []
-        
-        #if not self._torque_control_enabled:
-        #  for _ in range(1 / self.timestep):
-        #    if self._pd_control_enabled or self._accurate_motor_model_enabled:
-        #    self.robot.ApplyAction([math.pi / 2] * 8)
-        #    pybullet.stepSimulation()
-        #return self._noisy_observation()
+    #self._last_base_position = [0, 0, 0]
+    #self._objectives = []
 
+    #if not self._torque_control_enabled:
+    #  for _ in range(1 / self.timestep):
+    #    if self._pd_control_enabled or self._accurate_motor_model_enabled:
+    #    self.robot.ApplyAction([math.pi / 2] * 8)
+    #    pybullet.stepSimulation()
+    #return self._noisy_observation()
 
     def _transform_action_to_motor_command(self, action):
         if self.leg_model_enabled:
@@ -159,7 +156,7 @@ class MinitaurNavigateEnv(CameraRobotEnv):
             #        raise ValueError("{}th action {} out of bounds.".format(i, action_component))
             action = self.robot.ConvertFromLegModel(action)
         return action
-    
+
     def _step(self, action):
         """Step forward the simulation, given the action.
 
@@ -179,7 +176,7 @@ class MinitaurNavigateEnv(CameraRobotEnv):
         #print("Env apply raw action", action)
         action = self._transform_action_to_motor_command(action)
         #print("Env apply action", action)
-    
+
         #for _ in range(self._action_repeat):
         #  self.robot.ApplyAction(action)
         #  pybullet.stepSimulation()
@@ -191,7 +188,7 @@ class MinitaurNavigateEnv(CameraRobotEnv):
             state = CameraRobotEnv._step(self, action)
         return state
 
-    step  = _step
+    step = _step
 
     def calc_rewards_and_done(self, action, state):
         ## TODO (hzyjerry): make use of action, state
@@ -200,7 +197,6 @@ class MinitaurNavigateEnv(CameraRobotEnv):
         #return reward, False
         return rewards, done
 
-
     def get_minitaur_motor_angles(self):
         """Get the minitaur's motor angles.
 
@@ -208,7 +204,7 @@ class MinitaurNavigateEnv(CameraRobotEnv):
           A numpy array of motor angles.
         """
         return self.robot.GetMotorAngles()
-    
+
     def get_minitaur_motor_velocities(self):
         """Get the minitaur's motor velocities.
 
@@ -264,16 +260,14 @@ class MinitaurNavigateEnv(CameraRobotEnv):
         drift_reward = -abs(current_base_position[1] - self._last_base_position[1])
         shake_reward = -abs(current_base_position[2] - self._last_base_position[2])
         self._last_base_position = current_base_position
-        energy_reward = np.abs(
-            np.dot(self.robot.GetMotorTorques(),
-                   self.robot.GetMotorVelocities())) * self.timestep
-        reward = (
-            self.distance_weight * forward_reward -
-            self.energy_weight * energy_reward + self.drift_weight * drift_reward
-            + self.shake_weight * shake_reward)
-        self._objectives.append(
-            [forward_reward, energy_reward, drift_reward, shake_reward])
-        return [reward, ]
+        energy_reward = np.abs(np.dot(self.robot.GetMotorTorques(),
+                                      self.robot.GetMotorVelocities())) * self.timestep
+        reward = (self.distance_weight * forward_reward - self.energy_weight * energy_reward +
+                  self.drift_weight * drift_reward + self.shake_weight * shake_reward)
+        self._objectives.append([forward_reward, energy_reward, drift_reward, shake_reward])
+        return [
+            reward,
+        ]
 
     def get_objectives(self):
         return self._objectives
@@ -286,11 +280,10 @@ class MinitaurNavigateEnv(CameraRobotEnv):
         self._get_observation()
         observation = np.array(self._observation)
         if self.observation_noise_stdev > 0:
-          observation += (np.random.normal(
-              scale=self.observation_noise_stdev, size=observation.shape) *
-                          self.robot.GetObservationUpperBound())
+            observation += (
+                np.random.normal(scale=self.observation_noise_stdev, size=observation.shape) *
+                self.robot.GetObservationUpperBound())
         return observation
-
 
     #==================== Environemnt Randomizer ====================
     ## (hzyjerry) TODO: still under construction, not ready to use
@@ -315,10 +308,8 @@ class MinitaurNavigateEnv(CameraRobotEnv):
         minitaur.SetBaseMass(randomized_base_mass)
 
         leg_masses = minitaur.GetLegMassesFromURDF()
-        leg_masses_lower_bound = np.array(leg_masses) * (
-            1.0 + self._minitaur_leg_mass_err_range[0])
-        leg_masses_upper_bound = np.array(leg_masses) * (
-            1.0 + self._minitaur_leg_mass_err_range[1])
+        leg_masses_lower_bound = np.array(leg_masses) * (1.0 + self._minitaur_leg_mass_err_range[0])
+        leg_masses_upper_bound = np.array(leg_masses) * (1.0 + self._minitaur_leg_mass_err_range[1])
         randomized_leg_masses = [
             np.random.uniform(leg_masses_lower_bound[i], leg_masses_upper_bound[i])
             for i in range(len(leg_masses))

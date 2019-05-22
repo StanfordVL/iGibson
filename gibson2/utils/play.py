@@ -21,12 +21,14 @@ from collections import deque
 #from pygame.locals import HWSURFACE, DOUBLEBUF, RESIZABLE, VIDEORESIZE
 from threading import Thread
 
+
 def display_arr(screen, arr, video_size, transpose):
     arr_min, arr_max = arr.min(), arr.max()
     arr = 255.0 * (arr - arr_min) / (arr_max - arr_min)
     pyg_img = pygame.surfarray.make_surface(arr.swapaxes(0, 1) if transpose else arr)
     pyg_img = pygame.transform.scale(pyg_img, video_size)
-    screen.blit(pyg_img, (0,0))
+    screen.blit(pyg_img, (0, 0))
+
 
 def play(env, transpose=True, zoom=None, callback=None, keys_to_action=None):
     """Allows one to play the game using keyboard.
@@ -92,8 +94,8 @@ def play(env, transpose=True, zoom=None, callback=None, keys_to_action=None):
             keys_to_action = env.get_keys_to_action()
         elif hasattr(env.unwrapped, 'get_keys_to_action'):
             keys_to_action = env.unwrapped.get_keys_to_action()
-    relevant_keys = set(sum(map(list, keys_to_action.keys()),[]))
-    
+    relevant_keys = set(sum(map(list, keys_to_action.keys()), []))
+
     pressed_keys = []
     running = True
     env_done = True
@@ -102,7 +104,7 @@ def play(env, transpose=True, zoom=None, callback=None, keys_to_action=None):
     record_total = 0
     obs = env.reset()
     do_restart = False
-    last_keys = []              ## Prevent overacting
+    last_keys = []    ## Prevent overacting
     while running:
         if do_restart:
             do_restart = False
@@ -147,10 +149,10 @@ def play(env, transpose=True, zoom=None, callback=None, keys_to_action=None):
                 env.robot.move_backward()
             if key not in relevant_keys:
                 continue
-            pressed_keys.append(key) 
-            
+            pressed_keys.append(key)
+
         last_keys = key_codes
-        
+
 
 class PlayPlot(object):
     def __init__(self, callback, horizon_timesteps, plot_names):
@@ -166,7 +168,7 @@ class PlayPlot(object):
             axis.set_title(name)
         self.t = 0
         self.cur_plot = [None for _ in range(num_plots)]
-        self.data     = [deque(maxlen=horizon_timesteps) for _ in range(num_plots)]
+        self.data = [deque(maxlen=horizon_timesteps) for _ in range(num_plots)]
 
     def callback(self, obs_t, obs_tp1, action, rew, done, info):
         points = self.data_callback(obs_t, obs_tp1, action, rew, done, info)
@@ -182,4 +184,3 @@ class PlayPlot(object):
             self.cur_plot[i] = self.ax[i].scatter(range(xmin, xmax), list(self.data[i]))
             self.ax[i].set_xlim(xmin, xmax)
         plt.pause(0.000001)
-

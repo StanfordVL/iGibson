@@ -7,7 +7,6 @@ import sys
 import pybullet as p
 from gibson2.core.physics.scene_stadium import SinglePlayerStadiumScene
 import pybullet_data
-
 """Task specific classes for Ant Environment
 Each class specifies: 
     (1) Target position
@@ -16,20 +15,19 @@ Each class specifies:
     (4) Reset function (e.g. curriculum learning)
 """
 
-tracking_camera = {
-    'yaw': 20,
-    'z_offset': 0.3,
-    'distance': 0.5,
-    'pitch': -20
-}
+tracking_camera = {'yaw': 20, 'z_offset': 0.3, 'distance': 0.5, 'pitch': -20}
+
 
 class AntNavigateEnv(CameraRobotEnv):
     def __init__(self, config, gpu_idx=0):
 
         self.config = self.parse_config(config)
-        assert(self.config["envname"] == self.__class__.__name__ or self.config["envname"] == "TestEnv")
+        assert (self.config["envname"] == self.__class__.__name__
+                or self.config["envname"] == "TestEnv")
 
-        CameraRobotEnv.__init__(self, self.config, gpu_idx,
+        CameraRobotEnv.__init__(self,
+                                self.config,
+                                gpu_idx,
                                 scene_type="building",
                                 tracking_camera=tracking_camera)
 
@@ -47,7 +45,8 @@ class AntNavigateEnv(CameraRobotEnv):
 
         feet_collision_cost = 0.0
         for i, f in enumerate(
-                self.robot.feet):  # TODO: Maybe calculating feet contacts could be done within the robot code
+                self.robot.feet
+        ):    # TODO: Maybe calculating feet contacts could be done within the robot code
             # print(f.contact_list())
             contact_ids = set((x[2], x[4]) for x in f.contact_list())
             # print("CONTACT OF '%d' WITH %d" % (contact_ids, ",".join(contact_names)) )
@@ -59,7 +58,8 @@ class AntNavigateEnv(CameraRobotEnv):
                 self.robot.feet_contact[i] = 0.0
         # print(self.robot.feet_contact)
 
-        electricity_cost  = self.electricity_cost  * float(np.abs(a*self.robot.joint_speeds).mean())  # let's assume we 
+        electricity_cost = self.electricity_cost * float(
+            np.abs(a * self.robot.joint_speeds).mean())    # let's assume we
         electricity_cost += self.stall_torque_cost * float(np.square(a).mean())
 
         joints_at_limit_cost = float(self.joints_at_limit_cost * self.robot.joints_at_limit)
@@ -74,18 +74,18 @@ class AntNavigateEnv(CameraRobotEnv):
             print("feet_collision_cost")
             print(feet_collision_cost)
         return [
-            #alive,
+        #alive,
             progress,
-            #electricity_cost,
-            #joints_at_limit_cost,
-            #feet_collision_cost
-         ]
+        #electricity_cost,
+        #joints_at_limit_cost,
+        #feet_collision_cost
+        ]
 
     def _termination(self, debugmode=False):
         height = self.robot.get_position()[2]
         pitch = self.robot.get_rpy()[1]
         alive = float(self.robot.alive_bonus(height, pitch))
-        
+
         done = self.nframe > 300
         #done = alive < 0
         if (debugmode):
@@ -99,10 +99,16 @@ class AntNavigateEnv(CameraRobotEnv):
 
         self.flag = None
         if self.gui and not self.config["display_ui"]:
-            self.visual_flagId = p.createVisualShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.5, 0.5, 0.5], rgbaColor=[1, 0, 0, 0.7])
-            self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId, baseCollisionShapeIndex=-1, basePosition=[walk_target_x, walk_target_y, 0.5])
-        
-    def  _reset(self):
+            self.visual_flagId = p.createVisualShape(p.GEOM_MESH,
+                                                     fileName=os.path.join(
+                                                         pybullet_data.getDataPath(), 'cube.obj'),
+                                                     meshScale=[0.5, 0.5, 0.5],
+                                                     rgbaColor=[1, 0, 0, 0.7])
+            self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId,
+                                                 baseCollisionShapeIndex=-1,
+                                                 basePosition=[walk_target_x, walk_target_y, 0.5])
+
+    def _reset(self):
         self.total_frame = 0
         self.total_reward = 0
         obs = CameraRobotEnv._reset(self)
@@ -113,9 +119,12 @@ class AntNavigateEnv(CameraRobotEnv):
 class AntClimbEnv(CameraRobotEnv):
     def __init__(self, config, gpu_idx=0):
         self.config = self.parse_config(config)
-        assert(self.config["envname"] == self.__class__.__name__ or self.config["envname"] == "TestEnv")
+        assert (self.config["envname"] == self.__class__.__name__
+                or self.config["envname"] == "TestEnv")
 
-        CameraRobotEnv.__init__(self, self.config, gpu_idx,
+        CameraRobotEnv.__init__(self,
+                                self.config,
+                                gpu_idx,
                                 scene_type="building",
                                 tracking_camera=tracking_camera)
 
@@ -125,7 +134,7 @@ class AntClimbEnv(CameraRobotEnv):
         self.total_reward = 0
         self.total_frame = 0
         self.visual_flagId = None
-        
+
     def _rewards(self, action=None, debugmode=False):
         a = action
         potential_old = self.potential
@@ -134,7 +143,8 @@ class AntClimbEnv(CameraRobotEnv):
 
         feet_collision_cost = 0.0
         for i, f in enumerate(
-                self.robot.feet):  # TODO: Maybe calculating feet contacts could be done within the robot code
+                self.robot.feet
+        ):    # TODO: Maybe calculating feet contacts could be done within the robot code
             # print(f.contact_list())
             contact_ids = set((x[2], x[4]) for x in f.contact_list())
             # print("CONTACT OF '%d' WITH %d" % (contact_ids, ",".join(contact_names)) )
@@ -146,11 +156,12 @@ class AntClimbEnv(CameraRobotEnv):
                 self.robot.feet_contact[i] = 0.0
         # print(self.robot.feet_contact)
 
-        electricity_cost  = self.electricity_cost  * float(np.abs(a*self.robot.joint_speeds).mean())  # let's assume we 
+        electricity_cost = self.electricity_cost * float(
+            np.abs(a * self.robot.joint_speeds).mean())    # let's assume we
         electricity_cost += self.stall_torque_cost * float(np.square(a).mean())
 
         joints_at_limit_cost = float(self.joints_at_limit_cost * self.robot.joints_at_limit)
-        
+
         debugmode = 0
         if (debugmode):
             print("progress")
@@ -163,12 +174,12 @@ class AntClimbEnv(CameraRobotEnv):
             print(feet_collision_cost)
 
         rewards = [
-            #alive,
+        #alive,
             progress,
-            #electricity_cost,
-            #joints_at_limit_cost,
-            #feet_collision_cost
-         ]
+        #electricity_cost,
+        #joints_at_limit_cost,
+        #feet_collision_cost
+        ]
 
         debugmode = 0
         if (debugmode):
@@ -180,17 +191,15 @@ class AntClimbEnv(CameraRobotEnv):
         height = self.robot.get_position()[2]
         pitch = self.robot.get_rpy()[1]
         alive = float(self.robot.alive_bonus(height, pitch))
-        
+
         done = self.nframe > 700 or alive < 0 or height < 0 or self.robot.dist_to_target() < 2
         return done
 
     ## TODO: refactor this function
     def _randomize_target(self):
         if self.config["random"]["random_target_pose"]:
-            delta_x = self.np_random.uniform(low=-self.delta_target[0],
-                                             high=+self.delta_target[0])
-            delta_y = self.np_random.uniform(low=-self.delta_target[1],
-                                             high=+self.delta_target[1])
+            delta_x = self.np_random.uniform(low=-self.delta_target[0], high=+self.delta_target[0])
+            delta_y = self.np_random.uniform(low=-self.delta_target[1], high=+self.delta_target[1])
         else:
             delta_x = 0
             delta_y = 0
@@ -211,9 +220,19 @@ class AntClimbEnv(CameraRobotEnv):
             if self.config["display_ui"]:
                 self.visual_flagId = -1
             else:
-                self.visual_flagId = p.createVisualShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.5, 0.5, 0.5], rgbaColor=[1, 0, 0, 0.7])
-            self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId, baseCollisionShapeIndex=-1, basePosition=[walk_target_x / self.robot.mjcf_scaling, walk_target_y / self.robot.mjcf_scaling, walk_target_z / self.robot.mjcf_scaling])
-
+                self.visual_flagId = p.createVisualShape(p.GEOM_MESH,
+                                                         fileName=os.path.join(
+                                                             pybullet_data.getDataPath(),
+                                                             'cube.obj'),
+                                                         meshScale=[0.5, 0.5, 0.5],
+                                                         rgbaColor=[1, 0, 0, 0.7])
+            self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId,
+                                                 baseCollisionShapeIndex=-1,
+                                                 basePosition=[
+                                                     walk_target_x / self.robot.mjcf_scaling,
+                                                     walk_target_y / self.robot.mjcf_scaling,
+                                                     walk_target_z / self.robot.mjcf_scaling
+                                                 ])
             '''
             for i in range(len(ANT_SENSOR_RESULT)):
                 walk_target_x, walk_target_y, walk_target_z = ANT_SENSOR_RESULT[i]
@@ -227,25 +246,32 @@ class AntClimbEnv(CameraRobotEnv):
             '''
         else:
             last_flagPos, last_flagOrn = p.getBasePositionAndOrientation(self.last_flagId)
-            p.resetBasePositionAndOrientation(self.last_flagId, [walk_target_x  / self.robot.mjcf_scaling, walk_target_y / self.robot.mjcf_scaling, walk_target_z / self.robot.mjcf_scaling], last_flagOrn)
-        
-    def  _reset(self):
+            p.resetBasePositionAndOrientation(self.last_flagId, [
+                walk_target_x / self.robot.mjcf_scaling, walk_target_y / self.robot.mjcf_scaling,
+                walk_target_z / self.robot.mjcf_scaling
+            ], last_flagOrn)
+
+    def _reset(self):
         self.total_frame = 0
         self.total_reward = 0
         self._randomize_target()
         self._flag_reposition()
-        obs = CameraRobotEnv._reset(self)       ## Important: must come after flat_reposition
+        obs = CameraRobotEnv._reset(self)    ## Important: must come after flat_reposition
         return obs
 
 
 class AntFlagRunEnv(CameraRobotEnv):
     """Specfy flagrun reward
     """
+
     def __init__(self, config, gpu_idx=0):
         self.config = self.parse_config(config)
-        assert(self.config["envname"] == self.__class__.__name__ or self.config["envname"] == "TestEnv")
+        assert (self.config["envname"] == self.__class__.__name__
+                or self.config["envname"] == "TestEnv")
 
-        CameraRobotEnv.__init__(self, self.config, gpu_idx,
+        CameraRobotEnv.__init__(self,
+                                self.config,
+                                gpu_idx,
                                 scene_type="building",
                                 tracking_camera=tracking_camera)
 
@@ -257,7 +283,11 @@ class AntFlagRunEnv(CameraRobotEnv):
         self.flag_timeout = 1
 
         if self.gui:
-            self.visualid = p.createVisualShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.5, 0.5, 0.5], rgbaColor=[1, 0, 0, 0.7])
+            self.visualid = p.createVisualShape(p.GEOM_MESH,
+                                                fileName=os.path.join(pybullet_data.getDataPath(),
+                                                                      'cube.obj'),
+                                                meshScale=[0.5, 0.5, 0.5],
+                                                rgbaColor=[1, 0, 0, 0.7])
         self.lastid = None
 
     def _reset(self):
@@ -270,7 +300,7 @@ class AntFlagRunEnv(CameraRobotEnv):
         self.walk_target_y = self.np_random.uniform(low=-self.scene.stadium_halfwidth,
                                                     high=+self.scene.stadium_halfwidth)
 
-        more_compact = 0.5  # set to 1.0 whole football field
+        more_compact = 0.5    # set to 1.0 whole football field
         self.walk_target_x *= more_compact / self.robot.mjcf_scaling
         self.walk_target_y *= more_compact / self.robot.mjcf_scaling
 
@@ -283,7 +313,10 @@ class AntFlagRunEnv(CameraRobotEnv):
             if self.lastid:
                 p.removeBody(self.lastid)
 
-            self.lastid = p.createMultiBody(baseVisualShapeIndex=self.visualid, baseCollisionShapeIndex=-1, basePosition=[self.walk_target_x, self.walk_target_y, 0.5])
+            self.lastid = p.createMultiBody(
+                baseVisualShapeIndex=self.visualid,
+                baseCollisionShapeIndex=-1,
+                basePosition=[self.walk_target_x, self.walk_target_y, 0.5])
 
         self.robot.walk_target_x = self.walk_target_x
         self.robot.walk_target_y = self.walk_target_y
@@ -295,8 +328,9 @@ class AntFlagRunEnv(CameraRobotEnv):
         progress = float(self.potential - potential_old)
 
         if not a is None:
-            electricity_cost = self.electricity_cost * float(np.abs(
-                a * self.robot.joint_speeds).mean())  # let's assume we have DC motor with controller, and reverse current braking
+            electricity_cost = self.electricity_cost * float(
+                np.abs(a * self.robot.joint_speeds).mean()
+            )    # let's assume we have DC motor with controller, and reverse current braking
             electricity_cost += self.stall_torque_cost * float(np.square(a).mean())
         else:
             electricity_cost = 0
@@ -337,17 +371,21 @@ class AntFlagRunEnv(CameraRobotEnv):
         return state, reward, done, meta
 
     ## openai-gym v0.10.5 compatibility
-    step  = _step
+    step = _step
 
 
 class AntGibsonFlagRunEnv(CameraRobotEnv):
     """Specfy flagrun reward
     """
+
     def __init__(self, config, gpu_idx=0):
         self.config = self.parse_config(config)
-        assert(self.config["envname"] == self.__class__.__name__ or self.config["envname"] == "TestEnv")
+        assert (self.config["envname"] == self.__class__.__name__
+                or self.config["envname"] == "TestEnv")
 
-        CameraRobotEnv.__init__(self, self.config, gpu_idx,
+        CameraRobotEnv.__init__(self,
+                                self.config,
+                                gpu_idx,
                                 scene_type="building",
                                 tracking_camera=tracking_camera)
 
@@ -362,9 +400,16 @@ class AntGibsonFlagRunEnv(CameraRobotEnv):
         self.lastid = None
 
         if self.gui:
-            self.visualid = p.createVisualShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.2, 0.2, 0.2], rgbaColor=[1, 0, 0, 0.7])
-        self.colisionid = p.createCollisionShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.2, 0.5, 0.2])
-        
+            self.visualid = p.createVisualShape(p.GEOM_MESH,
+                                                fileName=os.path.join(pybullet_data.getDataPath(),
+                                                                      'cube.obj'),
+                                                meshScale=[0.2, 0.2, 0.2],
+                                                rgbaColor=[1, 0, 0, 0.7])
+        self.colisionid = p.createCollisionShape(p.GEOM_MESH,
+                                                 fileName=os.path.join(
+                                                     pybullet_data.getDataPath(), 'cube.obj'),
+                                                 meshScale=[0.2, 0.5, 0.2])
+
     def _reset(self):
         obs = CameraRobotEnv._reset(self)
         return obs
@@ -374,23 +419,25 @@ class AntGibsonFlagRunEnv(CameraRobotEnv):
         #                                            high=+self.scene.stadium_halflen)
         #self.walk_target_y = self.np_random.uniform(low=-self.scene.stadium_halfwidth,
         #                                            high=+self.scene.stadium_halfwidth)
-        force_x = self.np_random.uniform(-300,300)
+        force_x = self.np_random.uniform(-300, 300)
         force_y = self.np_random.uniform(-300, 300)
 
-        more_compact = 0.5  # set to 1.0 whole football field
+        more_compact = 0.5    # set to 1.0 whole football field
         #self.walk_target_x *= more_compact
         #self.walk_target_y *= more_compact
 
         startx, starty, _ = self.robot.get_position()
-
 
         self.flag = None
         self.flag_timeout = 3000 / self.scene.frame_skip
         if self.lastid:
             p.removeBody(self.lastid)
 
-        self.lastid = p.createMultiBody(baseMass = 1, baseVisualShapeIndex=self.visualid, baseCollisionShapeIndex=self.colisionid, basePosition=[startx, starty, 0.5])
-        p.applyExternalForce(self.lastid, -1, [force_x,force_y,50], [0,0,0], p.LINK_FRAME)
+        self.lastid = p.createMultiBody(baseMass=1,
+                                        baseVisualShapeIndex=self.visualid,
+                                        baseCollisionShapeIndex=self.colisionid,
+                                        basePosition=[startx, starty, 0.5])
+        p.applyExternalForce(self.lastid, -1, [force_x, force_y, 50], [0, 0, 0], p.LINK_FRAME)
 
         ball_xyz, _ = p.getBasePositionAndOrientation(self.lastid)
 
@@ -404,8 +451,9 @@ class AntGibsonFlagRunEnv(CameraRobotEnv):
         progress = float(self.potential - potential_old)
 
         if not a is None:
-            electricity_cost = self.electricity_cost * float(np.abs(
-                a * self.robot.joint_speeds).mean())  # let's assume we have DC motor with controller, and reverse current braking
+            electricity_cost = self.electricity_cost * float(
+                np.abs(a * self.robot.joint_speeds).mean()
+            )    # let's assume we have DC motor with controller, and reverse current braking
             electricity_cost += self.stall_torque_cost * float(np.square(a).mean())
         else:
             electricity_cost = 0
@@ -443,4 +491,4 @@ class AntGibsonFlagRunEnv(CameraRobotEnv):
         return state, reward, done, meta
 
     ## openai-gym v0.10.5 compatibility
-    step  = _step
+    step = _step

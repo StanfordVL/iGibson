@@ -1,4 +1,5 @@
-import tensorflow as tf  # pylint: ignore-module
+import tensorflow as tf    # pylint: ignore-module
+
 
 # TF related
 def make_gpu_session(num_gpu=1):

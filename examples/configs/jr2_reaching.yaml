@@ -22,12 +22,16 @@ is_discrete: false
 additional_states_dim: 6
 
 # reward
-terminal_reward: 5000
-#electricity_cost: -0.02
-#stall_torque_cost: -0.0001
-electricity_cost: 0.0
-stall_torque_cost: 0.0
-collision_cost: 0.0
+success_reward: 10.0
+slack_reward: -0.01
+potential_reward_weight: 30.0
+#electricity_reward_weight: -0.02
+#stall_torque_reward_weight: -0.0001
+electricity_reward_weight: 0.0
+stall_torque_reward_weight: 0.0
+collision_reward_weight: 0.0
+
+# discount factor
 discount_factor: 0.99
 
 # termination condition
