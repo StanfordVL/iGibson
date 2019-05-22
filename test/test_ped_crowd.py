@@ -35,11 +35,11 @@ class ped_crowd:
         init_direction = np.random.uniform(0.0, 2*np.pi, size=(self.num_ped,))
         pref_speed = np.linspace(0.01, 0.05, num=self.num_ped) # ??? scale
         timeStep = 1.0
-        neighborDist = 1.0 # safe-radius to observe states
+        neighborDist = 1.5 # safe-radius to observe states
         maxNeighbors = 8
         timeHorizon = 1.5 #np.linspace(0.5, 2.0, num=self.num_ped)
         timeHorizonObst = timeHorizon
-        radius = 0.05 # size of the agent
+        radius = 0.3 # size of the agent
         maxSpeed = 0.1 # ???
         sim = rvo2.PyRVOSimulator(timeStep, neighborDist, maxNeighbors, timeHorizon, timeHorizonObst, radius, maxSpeed)
 
