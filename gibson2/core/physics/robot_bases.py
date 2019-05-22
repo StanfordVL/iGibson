@@ -307,16 +307,16 @@ class Joint:
         self.body_index = body_index
         self.joint_index = joint_index
         self.joint_name = joint_name
-        _, _, self.jointType, _, _, _, _, _, self.lowerLimit, self.upperLimit, _, _, _, _, _, _, _ = p.getJointInfo(
-            self.bodies[self.body_index], self.joint_index)
+        _, _, self.joint_type, _, _, _, _, _, self.lower_limit, self.upper_limit, _, self.max_velocity, _, _, _, _, _ \
+            = p.getJointInfo(self.bodies[self.body_index], self.joint_index)
         self.power_coeff = 0
         if model_type == "MJCF":
             self.scale = scale
         else:
             self.scale = 1
-        if self.jointType == p.JOINT_PRISMATIC:
-            self.upperLimit *= self.scale
-            self.lowerLimit *= self.scale
+        if self.joint_type == p.JOINT_PRISMATIC:
+            self.upper_limit *= self.scale
+            self.lower_limit *= self.scale
 
     def __str__(self):
         return "idx: {}, name: {}".format(self.joint_index, self.joint_name)
@@ -324,16 +324,16 @@ class Joint:
     def get_state(self):
         """Get state of joint
            Position is defined in real world scale """
-        x, vx, _, _ = p.getJointState(self.bodies[self.body_index], self.joint_index)
-        if self.jointType == p.JOINT_PRISMATIC:
+        x, vx, _, trq = p.getJointState(self.bodies[self.body_index], self.joint_index)
+        if self.joint_type == p.JOINT_PRISMATIC:
             x *= self.scale
             vx *= self.scale
-        return x, vx
+        return x, vx, trq
 
     def set_state(self, x, vx):
-        """Set state of joint
+        """Set state of jointlower_limit
            x is defined in real world scale """
-        if self.jointType == p.JOINT_PRISMATIC:
+        if self.joint_type == p.JOINT_PRISMATIC:
             x /= self.scale
             vx /= self.scale
         p.resetJointState(self.bodies[self.body_index], self.joint_index, x, vx)
@@ -358,7 +358,7 @@ class Joint:
     def set_position(self, position):
         """Set position of joint
            Position is defined in real world scale """
-        if self.jointType == p.JOINT_PRISMATIC:
+        if self.joint_type == p.JOINT_PRISMATIC:
             position = np.array(position) / self.scale
         p.setJointMotorControl2(self.bodies[self.body_index],
                                 self.joint_index,
@@ -368,7 +368,7 @@ class Joint:
     def set_velocity(self, velocity):
         """Set velocity of joint
            Velocity is defined in real world scale """
-        if self.jointType == p.JOINT_PRISMATIC:
+        if self.joint_type == p.JOINT_PRISMATIC:
             velocity = np.array(velocity) / self.scale
         p.setJointMotorControl2(self.bodies[self.body_index],
                                 self.joint_index,

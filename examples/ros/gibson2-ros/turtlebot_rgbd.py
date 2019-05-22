@@ -98,7 +98,7 @@ class SimNode:
             msg.header.frame_id = "camera_depth_optical_frame"
             self.camera_info_pub.publish(msg)
 
-            lidar_points = obs['lidar']
+            lidar_points = obs['scan']
             lidar_header = Header()
             lidar_header.stamp = now
             lidar_header.frame_id = 'scan_link'
@@ -109,8 +109,8 @@ class SimNode:
             self.env.robots[0].calc_state()
 
             odom = [
-                np.array(self.env.robots[0].body_xyz) - np.array(self.env.config["initial_pos"]),
-                np.array(self.env.robots[0].body_rpy)
+                np.array(self.env.robots[0].get_position()) - np.array(self.env.config["initial_pos"]),
+                np.array(self.env.robots[0].get_rpy())
             ]
 
             self.br.sendTransform((odom[0][0], odom[0][1], 0),
@@ -136,14 +136,17 @@ class SimNode:
             gt_odom_msg.header.frame_id = 'ground_truth_odom'
             gt_odom_msg.child_frame_id = 'base_footprint'
 
-            gt_odom_msg.pose.pose.position.x = self.env.robots[0].body_xyz[0]
-            gt_odom_msg.pose.pose.position.y = self.env.robots[0].body_xyz[1]
-            gt_odom_msg.pose.pose.position.z = self.env.robots[0].body_xyz[2]
+            xyz = self.env.robots[0].get_position()
+            rpy = self.env.robots[0].get_rpy()
+
+            gt_odom_msg.pose.pose.position.x = xyz[0]
+            gt_odom_msg.pose.pose.position.y = xyz[1]
+            gt_odom_msg.pose.pose.position.z = xyz[2]
             gt_odom_msg.pose.pose.orientation.x, gt_odom_msg.pose.pose.orientation.y, gt_odom_msg.pose.pose.orientation.z, \
                 gt_odom_msg.pose.pose.orientation.w = tf.transformations.quaternion_from_euler(
-                    self.env.robots[0].body_rpy[0],
-                    self.env.robots[0].body_rpy[1],
-                    self.env.robots[0].body_rpy[2])
+                    rpy[0],
+                    rpy[1],
+                    rpy[2])
 
             gt_odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
             gt_odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
