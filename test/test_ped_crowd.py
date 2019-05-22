@@ -37,7 +37,7 @@ class ped_crowd:
         timeStep = 1.0
         neighborDist = 1.0 # safe-radius to observe states
         maxNeighbors = 8
-        timeHorizon = np.linspace(0.5, 2.0, num=self.num_ped)
+        timeHorizon = 1.5 #np.linspace(0.5, 2.0, num=self.num_ped)
         timeHorizonObst = timeHorizon
         radius = 0.05 # size of the agent
         maxSpeed = 0.1 # ???
