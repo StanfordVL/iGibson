@@ -24,6 +24,7 @@ class ped_crowd:
                      [[-4, -2, 1.01], [0.1, 2, 1]], [[2.5, -4, 1.01], [1.5, 0.1, 1]]]
 
         self._ped_list = []
+        self.init_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
         self._simulator = self.init_rvo_simulator()
         self.num_ped = 5
         self.config = parse_config('test.yaml')
@@ -31,7 +32,6 @@ class ped_crowd:
     def init_rvo_simulator(self):
         # Initializing RVO2 simulator && add agents to self._ped_list
         self.num_ped = 5
-        init_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
         init_direction = np.random.uniform(0.0, 2*np.pi, size=(self.num_ped,))
         pref_speed = np.linspace(0.01, 0.05, num=self.num_ped) # ??? scale
         timeStep = 1.0
@@ -44,7 +44,7 @@ class ped_crowd:
         sim = rvo2.PyRVOSimulator(timeStep, neighborDist, maxNeighbors, timeHorizon, timeHorizonObst, radius, maxSpeed)
 
         for i in range(self.num_ped):
-            ai = sim.addAgent(init_pos[i])
+            ai = sim.addAgent(self.init_pos[i])
             self._ped_list.append(ai)
             vx = pref_speed[i] * np.cos(init_direction[i])
             vy = pref_speed[i] * np.sin(init_direction[i])
@@ -65,7 +65,7 @@ class ped_crowd:
         return sim
 
     def run(self):
-        s = Simulator(mode='gui')
+        s = Simulator(mode='headless')
         scene = StadiumScene()
         s.import_scene(scene)
         print(s.objects)
@@ -87,8 +87,8 @@ class ped_crowd:
         turtlebot1.set_position([6., -6., 0.])
         turtlebot2.set_position([-3., 4., 0.])
 
-
-        peds = [Pedestrian()] * self.num_ped
+        pos_list = [list(pos)+[0.03] for pos in self.init_pos]
+        peds = [Pedestrian(pos = pos_list[i]) for i in range(self.num_ped)] 
         ped_id = [s.import_object(ped) for ped in peds]
 
         prev_ped_pos = [self._simulator.getAgentPosition(agent_no)
