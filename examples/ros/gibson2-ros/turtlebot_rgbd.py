@@ -3,7 +3,7 @@ import argparse
 import os
 import rospy
 from std_msgs.msg import Float32, Int64, Header
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseStamped, Twist
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import CameraInfo, PointCloud2
 from sensor_msgs.msg import Image as ImageMsg
@@ -49,6 +49,9 @@ class SimNode:
 
         obs = self.env.reset()
         rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
+        rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
+
+        self.tp_time = None
 
         # self.add_objects(self.env)
 
@@ -98,12 +101,14 @@ class SimNode:
             msg.header.frame_id = "camera_depth_optical_frame"
             self.camera_info_pub.publish(msg)
 
-            lidar_points = obs['scan']
-            lidar_header = Header()
-            lidar_header.stamp = now
-            lidar_header.frame_id = 'scan_link'
-            lidar_message = pc2.create_cloud_xyz32(lidar_header, lidar_points.tolist())
-            self.lidar_pub.publish(lidar_message)
+            if ((self.tp_time is None) or ((self.tp_time is not None)
+                                           and ((rospy.Time.now() - self.tp_time).to_sec() > 1.))):
+                lidar_points = obs['scan']
+                lidar_header = Header()
+                lidar_header.stamp = now
+                lidar_header.frame_id = 'scan_link'
+                lidar_message = pc2.create_cloud_xyz32(lidar_header, lidar_points.tolist())
+                self.lidar_pub.publish(lidar_message)
 
             # odometry
             self.env.robots[0].calc_state()
@@ -155,6 +160,14 @@ class SimNode:
     def cmd_callback(self, data):
         self.cmdx = data.linear.x / 10.0 - data.angular.z / (10 * 8.695652173913043)
         self.cmdy = data.linear.x / 10.0 + data.angular.z / (10 * 8.695652173913043)
+
+    def tp_robot_callback(self, data):
+        rospy.loginfo('Teleporting robot')
+        position = [data.pose.position.x, data.pose.position.y, data.pose.position.z]
+        orientation = [data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z,
+                       data.pose.orientation.w]
+        self.env.robots[0].reset_new_pose(position, orientation)
+        self.tp_time = rospy.Time.now()
 
 
 if __name__ == '__main__':
