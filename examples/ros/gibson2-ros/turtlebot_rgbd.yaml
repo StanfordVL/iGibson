@@ -22,7 +22,7 @@ discount_factor: 1.0
 
 additional_states_dim: 3
 
-fisheye: true
+fisheye: false
 fov: 1.57
 is_discrete: false
 
