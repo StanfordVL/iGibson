@@ -91,7 +91,7 @@ class ped_crowd:
         objs = [Pedestrian()] * self.num_ped
         ped_id = [s.import_object(obj) for obj in objs]
 
-        prev_ped_pos = [sim.getAgentPosition(agent_no)
+        prev_ped_pos = [self._simulator.getAgentPosition(agent_no)
                  for agent_no in self._ped_list]
 
         prev_x = [[pos[0] for pos in prev_ped_pos]]
@@ -99,9 +99,9 @@ class ped_crowd:
 
         for i in range(1000):
             s.step()
-            sim.doStep()
+            self._simulator.doStep()
 
-            ped_pos = [sim.getAgentPosition(agent_no)
+            ped_pos = [self._simulator.getAgentPosition(agent_no)
                      for agent_no in self._ped_list]
 
             x = [pos[0] for pos in ped_pos]
