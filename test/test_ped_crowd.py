@@ -65,7 +65,7 @@ class ped_crowd:
         return sim
 
     def run(self):
-        s = Simulator(mode='gui')
+        s = Simulator(mode='headless')
         scene = StadiumScene()
         s.import_scene(scene)
         print(s.objects)
