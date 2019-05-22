@@ -11,30 +11,31 @@ import cv2
 
 CALC_OBSTACLE_PENALTY = 0
 
-tracking_camera = {
-    'yaw': 110,
+tracking_camera = {'yaw': 110, 'z_offset': 0.5, 'distance': 1, 'pitch': -20}
+
+tracking_camera_top = {
+    'yaw': 20,    # demo: living room, stairs
     'z_offset': 0.5,
     'distance': 1,
     'pitch': -20
 }
 
-tracking_camera_top = {
-    'yaw': 20,  # demo: living room, stairs
-    'z_offset': 0.5,
-    'distance': 1,
-    'pitch': -20
-}
 
 class HuskyNavigateEnv(CameraRobotEnv):
     """Specfy navigation reward
     """
+
     def __init__(self, config, gpu_idx=0):
         self.config = self.parse_config(config)
-        assert(self.config["envname"] == self.__class__.__name__ or self.config["envname"] == "TestEnv")
+        assert (self.config["envname"] == self.__class__.__name__
+                or self.config["envname"] == "TestEnv")
 
-        CameraRobotEnv.__init__(self, self.config, gpu_idx,
-                                scene_type="stadium" if self.config["model_id"]=="stadium" else "building",
-                                tracking_camera=tracking_camera)
+        CameraRobotEnv.__init__(
+            self,
+            self.config,
+            gpu_idx,
+            scene_type="stadium" if self.config["model_id"] == "stadium" else "building",
+            tracking_camera=tracking_camera)
 
         self.robot_introduce(Husky(self.config, env=self))
         self.scene_introduce()
@@ -43,12 +44,16 @@ class HuskyNavigateEnv(CameraRobotEnv):
 
     def add_text(self, img):
         font = cv2.FONT_HERSHEY_SIMPLEX
-        x,y,z = self.robot.get_position()
-        r,p,ya = self.robot.get_rpy()
-        cv2.putText(img, 'x:{0:.4f} y:{1:.4f} z:{2:.4f}'.format(x,y,z), (10, 20), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(img, 'ro:{0:.4f} pth:{1:.4f} ya:{2:.4f}'.format(r,p,ya), (10, 40), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(img, 'potential:{0:.4f}'.format(self.potential), (10, 60), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(img, 'fps:{0:.4f}'.format(self.fps), (10, 80), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+        x, y, z = self.robot.get_position()
+        r, p, ya = self.robot.get_rpy()
+        cv2.putText(img, 'x:{0:.4f} y:{1:.4f} z:{2:.4f}'.format(x, y, z), (10, 20), font, 0.5,
+                    (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(img, 'ro:{0:.4f} pth:{1:.4f} ya:{2:.4f}'.format(r, p, ya), (10, 40), font, 0.5,
+                    (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(img, 'potential:{0:.4f}'.format(self.potential), (10, 60), font, 0.5,
+                    (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(img, 'fps:{0:.4f}'.format(self.fps), (10, 80), font, 0.5, (255, 255, 255), 1,
+                    cv2.LINE_AA)
         return img
 
     def _rewards(self, action=None, debugmode=False):
@@ -59,7 +64,8 @@ class HuskyNavigateEnv(CameraRobotEnv):
 
         feet_collision_cost = 0.0
         for i, f in enumerate(
-                self.robot.feet):  # TODO: Maybe calculating feet contacts could be done within the robot code
+                self.robot.feet
+        ):    # TODO: Maybe calculating feet contacts could be done within the robot code
             contact_ids = set((x[2], x[4]) for x in f.contact_list())
             #contact_ids = set([x[2] for x in f.contact_list()])
             if (self.ground_ids & contact_ids):
@@ -68,10 +74,9 @@ class HuskyNavigateEnv(CameraRobotEnv):
                 self.robot.feet_contact[i] = 1.0
             else:
                 self.robot.feet_contact[i] = 0.0
-        
-        electricity_cost  = self.electricity_cost  * float(np.abs(a*self.robot.joint_speeds).mean())
-        electricity_cost  += self.stall_torque_cost * float(np.square(a).mean())
 
+        electricity_cost = self.electricity_cost * float(np.abs(a * self.robot.joint_speeds).mean())
+        electricity_cost += self.stall_torque_cost * float(np.square(a).mean())
 
         steering_cost = self.robot.steering_cost(a)
         debugmode = 0
@@ -79,7 +84,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
             print("steering cost", steering_cost)
 
         wall_contact = []
-        
+
         for i, f in enumerate(self.parts):
             if self.parts[f] not in self.robot.feet:
                 wall_contact += [pt for pt in self.robot.parts[f].contact_list() if pt[6][2] > 0.15]
@@ -107,7 +112,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
         height = self.robot.get_position()[2]
         pitch = self.robot.get_rpy()[1]
         alive = float(self.robot.alive_bonus(height, pitch))
-        
+
         debugmode = 0
         if (debugmode):
             #print("Wall contact points", len(wall_contact))
@@ -125,16 +130,16 @@ class HuskyNavigateEnv(CameraRobotEnv):
             #print(feet_collision_cost)
 
         rewards = [
-            #alive,
+        #alive,
             progress,
             wall_collision_cost,
             close_to_target,
             steering_cost,
-            #angle_cost,
-            #obstacle_penalty
-            #electricity_cost,
-            #joints_at_limit_cost,
-            #feet_collision_cost
+        #angle_cost,
+        #obstacle_penalty
+        #electricity_cost,
+        #joints_at_limit_cost,
+        #feet_collision_cost
         ]
         return rewards
 
@@ -154,10 +159,16 @@ class HuskyNavigateEnv(CameraRobotEnv):
 
         self.flag = None
         if self.gui and not self.config["display_ui"]:
-            self.visual_flagId = p.createVisualShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.5, 0.5, 0.5], rgbaColor=[1, 0, 0, 0.7])
-            self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId, baseCollisionShapeIndex=-1, basePosition=[target_pos[0], target_pos[1], 0.5])
+            self.visual_flagId = p.createVisualShape(p.GEOM_MESH,
+                                                     fileName=os.path.join(
+                                                         pybullet_data.getDataPath(), 'cube.obj'),
+                                                     meshScale=[0.5, 0.5, 0.5],
+                                                     rgbaColor=[1, 0, 0, 0.7])
+            self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId,
+                                                 baseCollisionShapeIndex=-1,
+                                                 basePosition=[target_pos[0], target_pos[1], 0.5])
 
-    def  _reset(self):
+    def _reset(self):
         self.total_frame = 0
         self.total_reward = 0
         obs = CameraRobotEnv._reset(self)
@@ -165,22 +176,22 @@ class HuskyNavigateEnv(CameraRobotEnv):
         return obs
 
     ## openai-gym v0.10.5 compatibility
-    step  = CameraRobotEnv._step
-
+    step = CameraRobotEnv._step
 
 
 class HuskyNavigateSpeedControlEnv(HuskyNavigateEnv):
     """Specfy navigation reward
     """
+
     def __init__(self, config, gpu_idx=0):
         #assert(self.config["envname"] == self.__class__.__name__ or self.config["envname"] == "TestEnv")
         HuskyNavigateEnv.__init__(self, config, gpu_idx)
         self.robot.keys_to_action = {
-            (ord('s'), ): [-0.5,0], ## backward
-            (ord('w'), ): [0.5,0], ## forward
-            (ord('d'), ): [0,-0.5], ## turn right
-            (ord('a'), ): [0,0.5], ## turn left
-            (): [0,0]
+            (ord('s'), ): [-0.5, 0],    ## backward
+            (ord('w'), ): [0.5, 0],    ## forward
+            (ord('d'), ): [0, -0.5],    ## turn right
+            (ord('a'), ): [0, 0.5],    ## turn left
+            (): [0, 0]
         }
 
         self.base_action_omage = np.array([-0.001, 0.001, -0.001, 0.001])
@@ -200,7 +211,6 @@ class HuskyNavigateSpeedControlEnv(HuskyNavigateEnv):
         self.de_omega = 0
         self.olde_omage = 0
 
-
     def _step(self, action):
         control_signal, control_signal_omega = action
         self.e = control_signal - self.v
@@ -214,26 +224,30 @@ class HuskyNavigateSpeedControlEnv(HuskyNavigateEnv):
         self.ie_omega += self.e_omega
         pid_omega = self.kp * self.e_omega + self.ki * self.ie_omega + self.kd * self.de_omega
 
-        obs, rew, env_done, info = HuskyNavigateEnv.step(self, pid_v * self.base_action_v + pid_omega * self.base_action_omage)
+        obs, rew, env_done, info = HuskyNavigateEnv.step(
+            self, pid_v * self.base_action_v + pid_omega * self.base_action_omage)
 
         self.v = obs["nonviz_sensor"][3]
         self.omega = obs["nonviz_sensor"][-1]
 
-        return obs,rew,env_done,info
+        return obs, rew, env_done, info
 
     ## openai-gym v0.10.5 compatibility
-    step  = _step
-
+    step = _step
 
 
 class HuskyGibsonFlagRunEnv(CameraRobotEnv):
     """Specfy flagrun reward
     """
+
     def __init__(self, config, gpu_idx=0):
         self.config = self.parse_config(config)
         print(self.config["envname"])
-        assert(self.config["envname"] == self.__class__.__name__ or self.config["envname"] == "TestEnv")
-        CameraRobotEnv.__init__(self, self.config, gpu_idx,
+        assert (self.config["envname"] == self.__class__.__name__
+                or self.config["envname"] == "TestEnv")
+        CameraRobotEnv.__init__(self,
+                                self.config,
+                                gpu_idx,
                                 scene_type="building",
                                 tracking_camera=tracking_camera)
 
@@ -246,14 +260,21 @@ class HuskyGibsonFlagRunEnv(CameraRobotEnv):
         self.visualid = -1
         self.lastid = None
         self.gui = self.config["mode"] == "gui"
-        
+
         if self.gui:
-            self.visualid = p.createVisualShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.2, 0.2, 0.2], rgbaColor=[1, 0, 0, 0.7])
-        self.colisionid = p.createCollisionShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.2, 0.2, 0.2])
+            self.visualid = p.createVisualShape(p.GEOM_MESH,
+                                                fileName=os.path.join(pybullet_data.getDataPath(),
+                                                                      'cube.obj'),
+                                                meshScale=[0.2, 0.2, 0.2],
+                                                rgbaColor=[1, 0, 0, 0.7])
+        self.colisionid = p.createCollisionShape(p.GEOM_MESH,
+                                                 fileName=os.path.join(
+                                                     pybullet_data.getDataPath(), 'cube.obj'),
+                                                 meshScale=[0.2, 0.2, 0.2])
 
         self.lastid = None
         self.obstacle_dist = 100
-        
+
     def _reset(self):
         obs = CameraRobotEnv._reset(self)
         return obs
@@ -263,15 +284,14 @@ class HuskyGibsonFlagRunEnv(CameraRobotEnv):
         #                                            high=+self.scene.stadium_halflen)
         #self.walk_target_y = self.np_random.uniform(low=-self.scene.stadium_halfwidth,
         #                                            high=+self.scene.stadium_halfwidth)
-        force_x = self.np_random.uniform(-300,300)
+        force_x = self.np_random.uniform(-300, 300)
         force_y = self.np_random.uniform(-300, 300)
 
-        more_compact = 0.5  # set to 1.0 whole football field
+        more_compact = 0.5    # set to 1.0 whole football field
         #self.walk_target_x *= more_compact
         #self.walk_target_y *= more_compact
 
         startx, starty, _ = self.robot.get_position()
-
 
         self.flag = None
         #self.flag = self.scene.cpp_world.debug_sphere(self.walk_target_x, self.walk_target_y, 0.2, 0.2, 0xFF8080)
@@ -281,15 +301,18 @@ class HuskyGibsonFlagRunEnv(CameraRobotEnv):
         if self.lastid:
             p.removeBody(self.lastid)
 
-        self.lastid = p.createMultiBody(baseMass = 1, baseVisualShapeIndex=self.visualid, baseCollisionShapeIndex=self.colisionid, basePosition=[startx, starty, 0.5])
-        p.applyExternalForce(self.lastid, -1, [force_x,force_y,50], [0,0,0], p.LINK_FRAME)
+        self.lastid = p.createMultiBody(baseMass=1,
+                                        baseVisualShapeIndex=self.visualid,
+                                        baseCollisionShapeIndex=self.colisionid,
+                                        basePosition=[startx, starty, 0.5])
+        p.applyExternalForce(self.lastid, -1, [force_x, force_y, 50], [0, 0, 0], p.LINK_FRAME)
 
         ball_xyz, _ = p.getBasePositionAndOrientation(self.lastid)
 
         self.robot.walk_target_x = ball_xyz[0]
         self.robot.walk_target_y = ball_xyz[1]
 
-    def _rewards(self, action = None, debugmode=False):
+    def _rewards(self, action=None, debugmode=False):
         a = action
         potential_old = self.potential
         self.potential = self.robot.calc_potential()
@@ -299,8 +322,9 @@ class HuskyGibsonFlagRunEnv(CameraRobotEnv):
             progress = float(self.potential - potential_old)
 
         if not a is None:
-            electricity_cost = self.electricity_cost * float(np.abs(
-                a * self.robot.joint_speeds).mean())  # let's assume we have DC motor with controller, and reverse current braking
+            electricity_cost = self.electricity_cost * float(
+                np.abs(a * self.robot.joint_speeds).mean()
+            )    # let's assume we have DC motor with controller, and reverse current braking
             electricity_cost += self.stall_torque_cost * float(np.square(a).mean())
         else:
             electricity_cost = 0
@@ -323,11 +347,7 @@ class HuskyGibsonFlagRunEnv(CameraRobotEnv):
         if self.obstacle_dist < 0.7:
             obstacle_penalty = self.obstacle_dist - 0.7
 
-        rewards = [
-            alive_score,
-            progress,
-            obstacle_penalty
-        ]
+        rewards = [alive_score, progress, obstacle_penalty]
         return rewards
 
     def _termination(self, debugmode=False):
@@ -341,31 +361,35 @@ class HuskyGibsonFlagRunEnv(CameraRobotEnv):
 
     def _step(self, a):
         state, reward, done, meta = CameraRobotEnv._step(self, a)
-        if self.flag_timeout <= 0 or (self.flag_timeout < 225 and self.robot.walk_target_dist < 0.8):
+        if self.flag_timeout <= 0 or (self.flag_timeout < 225
+                                      and self.robot.walk_target_dist < 0.8):
             self._flag_reposition()
         self.flag_timeout -= 1
 
         if "depth" in self.config["output"]:
             depth_obs = self.get_observations()["depth"]
-            x_start = int(self.windowsz/2-16)
-            x_end   = int(self.windowsz/2+16)
-            y_start = int(self.windowsz/2-16)
-            y_end   = int(self.windowsz/2+16)
+            x_start = int(self.windowsz / 2 - 16)
+            x_end = int(self.windowsz / 2 + 16)
+            y_start = int(self.windowsz / 2 - 16)
+            y_end = int(self.windowsz / 2 + 16)
             self.obstacle_dist = (np.mean(depth_obs[x_start:x_end, y_start:y_end, -1]))
 
         return state, reward, done, meta
 
     ## openai-gym v0.10.5 compatibility
-    step  = _step
+    step = _step
 
 
 class HuskySemanticNavigateEnv(SemanticRobotEnv):
     """Specfy navigation reward
     """
+
     def __init__(self, config, gpu_idx=0):
         #assert(self.config["envname"] == self.__class__.__name__ or self.config["envname"] == "TestEnv")
         self.config = self.parse_config(config)
-        SemanticRobotEnv.__init__(self, self.config, gpu_idx,
+        SemanticRobotEnv.__init__(self,
+                                  self.config,
+                                  gpu_idx,
                                   scene_type="building",
                                   tracking_camera=tracking_camera)
         self.robot_introduce(Husky(self.config, env=self))
@@ -379,8 +403,15 @@ class HuskySemanticNavigateEnv(SemanticRobotEnv):
         self.gui = self.config["mode"] == "gui"
 
         if self.gui:
-            self.visualid = p.createVisualShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.2, 0.2, 0.2], rgbaColor=[1, 0, 0, 0.7])
-        self.colisionid = p.createCollisionShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.2, 0.2, 0.2])
+            self.visualid = p.createVisualShape(p.GEOM_MESH,
+                                                fileName=os.path.join(pybullet_data.getDataPath(),
+                                                                      'cube.obj'),
+                                                meshScale=[0.2, 0.2, 0.2],
+                                                rgbaColor=[1, 0, 0, 0.7])
+        self.colisionid = p.createCollisionShape(p.GEOM_MESH,
+                                                 fileName=os.path.join(
+                                                     pybullet_data.getDataPath(), 'cube.obj'),
+                                                 meshScale=[0.2, 0.2, 0.2])
 
         self.lastid = None
         self.obstacle_dist = 100
@@ -391,20 +422,26 @@ class HuskySemanticNavigateEnv(SemanticRobotEnv):
         if debug_semantic and self.gui:
             for i in range(self.semantic_pos.shape[0]):
                 pos = self.semantic_pos[i]
-                pos[2] += 0.2   # make flag slight above object 
-                visualId = p.createVisualShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.1, 0.1, 0.1], rgbaColor=[1, 0, 0, 0.7])
-                flagId = p.createMultiBody(baseVisualShapeIndex=visualId, baseCollisionShapeIndex=-1, basePosition=pos)
+                pos[2] += 0.2    # make flag slight above object
+                visualId = p.createVisualShape(p.GEOM_MESH,
+                                               fileName=os.path.join(pybullet_data.getDataPath(),
+                                                                     'cube.obj'),
+                                               meshScale=[0.1, 0.1, 0.1],
+                                               rgbaColor=[1, 0, 0, 0.7])
+                flagId = p.createMultiBody(baseVisualShapeIndex=visualId,
+                                           baseCollisionShapeIndex=-1,
+                                           basePosition=pos)
                 self.semantic_flagIds.append(flagId)
 
     def step(self, action):
-        obs, rew, env_done, info = SemanticRobotEnv.step(self,action=action)
-        self.close_semantic_ids = self.get_close_semantic_pos(dist_max=1.0, orn_max=np.pi/5)
+        obs, rew, env_done, info = SemanticRobotEnv.step(self, action=action)
+        self.close_semantic_ids = self.get_close_semantic_pos(dist_max=1.0, orn_max=np.pi / 5)
         for i in self.close_semantic_ids:
             flagId = self.semantic_flagIds[i]
             p.changeVisualShape(flagId, -1, rgbaColor=[0, 1, 0, 1])
-        return obs,rew,env_done,info
+        return obs, rew, env_done, info
 
-    def _rewards(self, action = None, debugmode=False):
+    def _rewards(self, action=None, debugmode=False):
         a = action
         potential_old = self.potential
         self.potential = self.robot.calc_potential()
@@ -414,8 +451,9 @@ class HuskySemanticNavigateEnv(SemanticRobotEnv):
             progress = float(self.potential - potential_old)
 
         if not a is None:
-            electricity_cost = self.electricity_cost * float(np.abs(
-                a * self.robot.joint_speeds).mean())  # let's assume we have DC motor with controller, and reverse current braking
+            electricity_cost = self.electricity_cost * float(
+                np.abs(a * self.robot.joint_speeds).mean()
+            )    # let's assume we have DC motor with controller, and reverse current braking
             electricity_cost += self.stall_torque_cost * float(np.square(a).mean())
         else:
             electricity_cost = 0
@@ -438,11 +476,7 @@ class HuskySemanticNavigateEnv(SemanticRobotEnv):
         if self.obstacle_dist < 0.7:
             obstacle_penalty = self.obstacle_dist - 0.7
 
-        rewards = [
-            alive_score,
-            progress,
-            obstacle_penalty
-        ]
+        rewards = [alive_score, progress, obstacle_penalty]
         return rewards
 
     def _termination(self, debugmode=False):
@@ -463,15 +497,17 @@ class HuskySemanticNavigateEnv(SemanticRobotEnv):
 def get_obstacle_penalty(robot, depth):
     screen_sz = robot.obs_dim[0]
     screen_delta = int(screen_sz / 8)
-    screen_half  = int(screen_sz / 2)
+    screen_half = int(screen_sz / 2)
     height_offset = int(screen_sz / 4)
 
-    obstacle_dist = (np.mean(depth[screen_half  + height_offset - screen_delta : screen_half + height_offset + screen_delta, screen_half - screen_delta : screen_half + screen_delta, -1]))
+    obstacle_dist = (np.mean(
+        depth[screen_half + height_offset - screen_delta:screen_half + height_offset +
+              screen_delta, screen_half - screen_delta:screen_half + screen_delta, -1]))
     obstacle_penalty = 0
     OBSTACLE_LIMIT = 1.5
     if obstacle_dist < OBSTACLE_LIMIT:
-       obstacle_penalty = (obstacle_dist - OBSTACLE_LIMIT)
-    
+        obstacle_penalty = (obstacle_dist - OBSTACLE_LIMIT)
+
     debugmode = 0
     if debugmode:
         #print("Obstacle screen", screen_sz, screen_delta)

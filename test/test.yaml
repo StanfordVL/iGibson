@@ -2,7 +2,6 @@
 scene: stadium
 
 # robot
-
 robot: Turtlebot
 velocity: 0.1
 
@@ -23,9 +22,7 @@ terminal_reward: 5000
 discount_factor: 1.0
 
 fov: 1.57
-is_discrete: false
 fisheye: false
-
 debug: true
 # display
 

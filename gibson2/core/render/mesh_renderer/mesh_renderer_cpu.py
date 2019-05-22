@@ -17,6 +17,7 @@ from gibson2.core.render.mesh_renderer.get_available_devices import get_availabl
 from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTexture
 import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
+import gibson2
 
 
 class VisualObject(object):
@@ -35,7 +36,15 @@ class VisualObject(object):
 
 
 class InstanceGroup(object):
-    def __init__(self, objects, id, link_ids, pybullet_uuid, poses_trans, poses_rot, dynamic, robot=None):
+    def __init__(self,
+                 objects,
+                 id,
+                 link_ids,
+                 pybullet_uuid,
+                 poses_trans,
+                 poses_rot,
+                 dynamic,
+                 robot=None):
         # assert(len(objects) > 0) # no empty instance group
         self.objects = objects
         self.poses_trans = poses_trans
@@ -57,10 +66,10 @@ class InstanceGroup(object):
             return
 
         GL.glUseProgram(self.renderer.shaderProgram)
-        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1, GL.GL_TRUE,
-                              self.renderer.V)
-        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'P'), 1, GL.GL_FALSE,
-                              self.renderer.P)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1,
+                              GL.GL_TRUE, self.renderer.V)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'P'), 1,
+                              GL.GL_FALSE, self.renderer.P)
         GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_position'),
                        *self.renderer.lightpos)
         GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
@@ -69,37 +78,42 @@ class InstanceGroup(object):
         for i, visual_object in enumerate(self.objects):
             for object_idx in visual_object.VAO_ids:
 
-                GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1,
-                                      GL.GL_FALSE,
-                                      self.poses_trans[i])
-                GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
-                                      self.poses_rot[i])
+                GL.glUniformMatrix4fv(
+                    GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1,
+                    GL.GL_FALSE, self.poses_trans[i])
+                GL.glUniformMatrix4fv(
+                    GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
+                    self.poses_rot[i])
 
-                GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
-                               *self.renderer.colors[self.id % 3])
+                GL.glUniform3f(
+                    GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
+                    *self.renderer.colors[self.id % 3])
 
-                GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
-                               *self.renderer.materials_mapping[
-                                    self.renderer.mesh_materials[object_idx]].kd[:3])
-                GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
-                               float(self.renderer.materials_mapping[
-                                         self.renderer.mesh_materials[object_idx]].is_texture()))
+                GL.glUniform3f(
+                    GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
+                    *self.renderer.materials_mapping[
+                        self.renderer.mesh_materials[object_idx]].kd[:3])
+                GL.glUniform1f(
+                    GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
+                    float(self.renderer.materials_mapping[
+                        self.renderer.mesh_materials[object_idx]].is_texture()))
 
                 try:
                     # Activate texture
                     GL.glActiveTexture(GL.GL_TEXTURE0)
 
-                    if self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture():
-                        GL.glBindTexture(GL.GL_TEXTURE_2D,
-                                         self.renderer.materials_mapping[
-                                             self.renderer.mesh_materials[object_idx]].texture_id)
+                    if self.renderer.materials_mapping[
+                            self.renderer.mesh_materials[object_idx]].is_texture():
+                        GL.glBindTexture(
+                            GL.GL_TEXTURE_2D, self.renderer.materials_mapping[
+                                self.renderer.mesh_materials[object_idx]].texture_id)
 
                     GL.glUniform1i(self.renderer.texUnitUniform, 0)
                     # Activate array
                     GL.glBindVertexArray(self.renderer.VAOs[object_idx])
                     # draw triangles
-                    GL.glDrawElements(GL.GL_TRIANGLES, self.renderer.faces[object_idx].size, GL.GL_UNSIGNED_INT,
-                                      self.renderer.faces[object_idx])
+                    GL.glDrawElements(GL.GL_TRIANGLES, self.renderer.faces[object_idx].size,
+                                      GL.GL_UNSIGNED_INT, self.renderer.faces[object_idx])
                 finally:
                     GL.glBindVertexArray(0)
         GL.glUseProgram(0)
@@ -116,16 +130,20 @@ class InstanceGroup(object):
         self.pose_rot = np.ascontiguousarray(quat2rotmat(rot))
 
     def __str__(self):
-        return "InstanceGroup({}) -> Objects({})".format(self.id, ",".join([str(object.id) for object in self.objects]))
+        return "InstanceGroup({}) -> Objects({})".format(
+            self.id, ",".join([str(object.id) for object in self.objects]))
 
     def __repr__(self):
         return self.__str__()
 
+
 class Robot(InstanceGroup):
     def __init__(self, *args, **kwargs):
         super(Robot, self).__init__(*args, **kwargs)
+
     def __str__(self):
-        return "Robot({}) -> Objects({})".format(self.id, ",".join([str(object.id) for object in self.objects]))
+        return "Robot({}) -> Objects({})".format(
+            self.id, ",".join([str(object.id) for object in self.objects]))
 
 
 class Instance(object):
@@ -143,14 +161,14 @@ class Instance(object):
             return
 
         GL.glUseProgram(self.renderer.shaderProgram)
-        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1, GL.GL_TRUE,
-                              self.renderer.V)
-        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'P'), 1, GL.GL_FALSE,
-                              self.renderer.P)
-        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1, GL.GL_FALSE,
-                              self.pose_trans)
-        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
-                              self.pose_rot)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'V'), 1,
+                              GL.GL_TRUE, self.renderer.V)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'P'), 1,
+                              GL.GL_FALSE, self.renderer.P)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_trans'), 1,
+                              GL.GL_FALSE, self.pose_trans)
+        GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1,
+                              GL.GL_TRUE, self.pose_rot)
         GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_position'),
                        *self.renderer.lightpos)
         GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
@@ -160,28 +178,30 @@ class Instance(object):
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
                            *self.renderer.colors[self.id % 3])
 
-            GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
-                           *self.renderer.materials_mapping[
-                               self.renderer.mesh_materials[object_idx]].kd)
-            GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
-                           float(
-                               self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
+            GL.glUniform3f(
+                GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
+                *self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd)
+            GL.glUniform1f(
+                GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
+                float(self.renderer.materials_mapping[
+                    self.renderer.mesh_materials[object_idx]].is_texture()))
 
             try:
                 # Activate texture
                 GL.glActiveTexture(GL.GL_TEXTURE0)
 
-                if self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture():
-                    GL.glBindTexture(GL.GL_TEXTURE_2D,
-                                     self.renderer.materials_mapping[
-                                         self.renderer.mesh_materials[object_idx]].texture_id)
+                if self.renderer.materials_mapping[
+                        self.renderer.mesh_materials[object_idx]].is_texture():
+                    GL.glBindTexture(
+                        GL.GL_TEXTURE_2D, self.renderer.materials_mapping[
+                            self.renderer.mesh_materials[object_idx]].texture_id)
 
                 GL.glUniform1i(self.renderer.texUnitUniform, 0)
                 # Activate array
                 GL.glBindVertexArray(self.renderer.VAOs[object_idx])
                 # draw triangles
-                GL.glDrawElements(GL.GL_TRIANGLES, self.renderer.faces[object_idx].size, GL.GL_UNSIGNED_INT,
-                                  self.renderer.faces[object_idx])
+                GL.glDrawElements(GL.GL_TRIANGLES, self.renderer.faces[object_idx].size,
+                                  GL.GL_UNSIGNED_INT, self.renderer.faces[object_idx])
 
             finally:
                 GL.glBindVertexArray(0)
@@ -216,7 +236,8 @@ class Material:
         return self.type == 'texture'
 
     def __str__(self):
-        return "Material(type: {}, texture_id: {}, color: {})".format(self.type, self.texture_id, self.kd)
+        return "Material(type: {}, texture_id: {}, color: {})".format(self.type, self.texture_id,
+                                                                      self.kd)
 
     def __repr__(self):
         return self.__str__()
@@ -257,20 +278,29 @@ class MeshRenderer:
 
         if self.fisheye:
             vertexShader = self.shaders.compileShader(
-                "".join(open(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/fisheye_vert.shader')).readlines()).replace("FISHEYE_SIZE", str(self.width/2)),
-                GL.GL_VERTEX_SHADER)
+                "".join(
+                    open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                     'shaders/fisheye_vert.shader')).readlines()).replace(
+                                         "FISHEYE_SIZE", str(self.width / 2)), GL.GL_VERTEX_SHADER)
             fragmentShader = self.shaders.compileShader(
-                "".join(open(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/fisheye_frag.shader')).readlines()).replace("FISHEYE_SIZE", str(self.width/2)),
+                "".join(
+                    open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                     'shaders/fisheye_frag.shader')).readlines()).replace(
+                                         "FISHEYE_SIZE", str(self.width / 2)),
                 GL.GL_FRAGMENT_SHADER)
         else:
             vertexShader = self.shaders.compileShader(
-                "".join(open(os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                          'shaders/vert.shader')).readlines()),
-                GL.GL_VERTEX_SHADER)
+                "".join(
+                    open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                     'shaders/vert.shader')).readlines()), GL.GL_VERTEX_SHADER)
             fragmentShader = self.shaders.compileShader(
-                "".join(open(os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                          'shaders/frag.shader')).readlines()),
-                GL.GL_FRAGMENT_SHADER)
+                "".join(
+                    open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                     'shaders/frag.shader')).readlines()), GL.GL_FRAGMENT_SHADER)
         self.shaderProgram = self.shaders.compileProgram(vertexShader, fragmentShader)
         self.texUnitUniform = GL.glGetUniformLocation(self.shaderProgram, 'texUnit')
 
@@ -281,9 +311,7 @@ class MeshRenderer:
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
         P = perspective(self.fov, float(self.width) / float(self.height), 0.01, 100)
-        V = lookat(
-            self.camera,
-            self.target, up=self.up)
+        V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
         self.P = np.ascontiguousarray(P, np.float32)
@@ -299,45 +327,53 @@ class MeshRenderer:
         self.depth_tex = GL.glGenTextures(1)
 
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_rgb)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0, GL.GL_RGBA,
+                        GL.GL_UNSIGNED_BYTE, None)
 
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_normal)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0, GL.GL_RGBA,
+                        GL.GL_UNSIGNED_BYTE, None)
 
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_semantics)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.width, self.height, 0, GL.GL_RGBA,
+                        GL.GL_UNSIGNED_BYTE, None)
 
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.color_tex_3d)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA32F, self.width, self.height, 0,
-                        GL.GL_RGBA, GL.GL_FLOAT, None)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA32F, self.width, self.height, 0, GL.GL_RGBA,
+                        GL.GL_FLOAT, None)
 
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.depth_tex)
 
-        GL.glTexImage2D.wrappedOperation(
-            GL.GL_TEXTURE_2D, 0, GL.GL_DEPTH24_STENCIL8, self.width, self.height, 0,
-            GL.GL_DEPTH_STENCIL, GL.GL_UNSIGNED_INT_24_8, None)
+        GL.glTexImage2D.wrappedOperation(GL.GL_TEXTURE_2D, 0, GL.GL_DEPTH24_STENCIL8, self.width,
+                                         self.height, 0, GL.GL_DEPTH_STENCIL,
+                                         GL.GL_UNSIGNED_INT_24_8, None)
 
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fbo)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0,
-                                  GL.GL_TEXTURE_2D, self.color_tex_rgb, 0)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT1,
-                                  GL.GL_TEXTURE_2D, self.color_tex_normal, 0)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT2,
-                                  GL.GL_TEXTURE_2D, self.color_tex_semantics, 0)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT3,
-                                  GL.GL_TEXTURE_2D, self.color_tex_3d, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_TEXTURE_2D,
+                                  self.color_tex_rgb, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT1, GL.GL_TEXTURE_2D,
+                                  self.color_tex_normal, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT2, GL.GL_TEXTURE_2D,
+                                  self.color_tex_semantics, 0)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT3, GL.GL_TEXTURE_2D,
+                                  self.color_tex_3d, 0)
         GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_DEPTH_STENCIL_ATTACHMENT,
                                   GL.GL_TEXTURE_2D, self.depth_tex, 0)
         GL.glViewport(0, 0, self.width, self.height)
-        GL.glDrawBuffers(4, [GL.GL_COLOR_ATTACHMENT0, GL.GL_COLOR_ATTACHMENT1,
-                             GL.GL_COLOR_ATTACHMENT2, GL.GL_COLOR_ATTACHMENT3])
+        GL.glDrawBuffers(4, [
+            GL.GL_COLOR_ATTACHMENT0, GL.GL_COLOR_ATTACHMENT1, GL.GL_COLOR_ATTACHMENT2,
+            GL.GL_COLOR_ATTACHMENT3
+        ])
 
         assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
 
-    def load_object(self, obj_path, scale=np.array([1,1,1]), transform_orn=None, transform_pos=None, input_kd=None):
+    def load_object(self,
+                    obj_path,
+                    scale=np.array([1, 1, 1]),
+                    transform_orn=None,
+                    transform_pos=None,
+                    input_kd=None,
+                    texture_scale=1.0):
 
         scene = load(obj_path)
         material_count = len(self.materials_mapping)
@@ -350,7 +386,7 @@ class MeshRenderer:
                 if k == 'file':
                     materials_fn[i + material_count] = v
                     dir = os.path.dirname(obj_path)
-                    texture = loadTexture(os.path.join(dir, v))
+                    texture = loadTexture(os.path.join(dir, v), scale=texture_scale)
                     material = Material('texture', texture_id=texture)
                     self.materials_mapping[i + material_count] = material
                     self.textures.append(texture)
@@ -361,8 +397,9 @@ class MeshRenderer:
             if not is_texture:
                 self.materials_mapping[i + material_count] = Material('color', kd=kd)
 
-        if not input_kd is None:  # urdf material
-            self.materials_mapping[len(scene.materials) + material_count] = Material('color', kd=input_kd)
+        if not input_kd is None:    # urdf material
+            self.materials_mapping[len(scene.materials) + material_count] = Material('color',
+                                                                                     kd=input_kd)
 
         VAO_ids = []
 
@@ -372,15 +409,18 @@ class MeshRenderer:
             if mesh.normals.shape[0] == 0:
                 mesh.normals = np.zeros(mesh.vertices.shape, dtype=mesh.vertices.dtype)
             if mesh.texturecoords.shape[0] == 0:
-                mesh.texturecoords = np.zeros((1, mesh.vertices.shape[0], mesh.vertices.shape[1]), dtype=mesh.vertices.dtype)
+                mesh.texturecoords = np.zeros((1, mesh.vertices.shape[0], mesh.vertices.shape[1]),
+                                              dtype=mesh.vertices.dtype)
 
-            vertices = np.concatenate([mesh.vertices * scale, mesh.normals, mesh.texturecoords[0, :, :2]], axis=-1)
+            vertices = np.concatenate(
+                [mesh.vertices * scale, mesh.normals, mesh.texturecoords[0, :, :2]], axis=-1)
 
             if not transform_orn is None:
-                orn = quat2rotmat([transform_orn[-1], transform_orn[0], transform_orn[1], transform_orn[2]])
-                vertices[:,:3] = vertices[:,:3].dot(orn[:3, :3].T)
+                orn = quat2rotmat(
+                    [transform_orn[-1], transform_orn[0], transform_orn[1], transform_orn[2]])
+                vertices[:, :3] = vertices[:, :3].dot(orn[:3, :3].T)
             if not transform_pos is None:
-                vertices[:,:3] += np.array(transform_pos)
+                vertices[:, :3] += np.array(transform_pos)
 
             vertexData = vertices.astype(np.float32)
 
@@ -390,8 +430,7 @@ class MeshRenderer:
             # Need VBO for triangle vertices and texture UV coordinates
             VBO = GL.glGenBuffers(1)
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, VBO)
-            GL.glBufferData(GL.GL_ARRAY_BUFFER, vertexData.nbytes, vertexData,
-                            GL.GL_STATIC_DRAW)
+            GL.glBufferData(GL.GL_ARRAY_BUFFER, vertexData.nbytes, vertexData, GL.GL_STATIC_DRAW)
 
             # enable array and set up data
             positionAttrib = GL.glGetAttribLocation(self.shaderProgram, 'position')
@@ -402,8 +441,7 @@ class MeshRenderer:
             GL.glEnableVertexAttribArray(1)
             GL.glEnableVertexAttribArray(2)
 
-            GL.glVertexAttribPointer(positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 32,
-                                     None)
+            GL.glVertexAttribPointer(positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 32, None)
             GL.glVertexAttribPointer(normalAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 32,
                                      ctypes.c_void_p(12))
             # the last parameter is a pointer
@@ -417,7 +455,7 @@ class MeshRenderer:
             self.VBOs.append(VBO)
             self.faces.append(faces)
             self.objects.append(obj_path)
-            if mesh.materialindex == 0:  # if there is no material, use urdf color as material
+            if mesh.materialindex == 0:    # if there is no material, use urdf color as material
                 self.mesh_materials.append(len(scene.materials) + material_count)
             else:
                 self.mesh_materials.append(mesh.materialindex + material_count)
@@ -429,35 +467,61 @@ class MeshRenderer:
         self.visual_objects.append(new_obj)
         return VAO_ids
 
-    def add_instance(self, object_id, pybullet_uuid=None, pose_rot=np.eye(4), pose_trans=np.eye(4), dynamic=False):
-        instance = Instance(self.visual_objects[object_id], id=len(self.instances), pybullet_uuid=pybullet_uuid,
+    def add_instance(self,
+                     object_id,
+                     pybullet_uuid=None,
+                     pose_rot=np.eye(4),
+                     pose_trans=np.eye(4),
+                     dynamic=False):
+        instance = Instance(self.visual_objects[object_id],
+                            id=len(self.instances),
+                            pybullet_uuid=pybullet_uuid,
                             pose_trans=pose_trans,
-                            pose_rot=pose_rot, dynamic=dynamic)
+                            pose_rot=pose_rot,
+                            dynamic=dynamic)
         self.instances.append(instance)
 
-    def add_instance_group(self, object_ids, link_ids, poses_rot, poses_trans, pybullet_uuid=None, dynamic=False,
+    def add_instance_group(self,
+                           object_ids,
+                           link_ids,
+                           poses_rot,
+                           poses_trans,
+                           pybullet_uuid=None,
+                           dynamic=False,
                            robot=None):
         instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids],
                                        id=len(self.instances),
-                                       link_ids=link_ids, pybullet_uuid=pybullet_uuid, poses_trans=poses_trans,
-                                       poses_rot=poses_rot, dynamic=dynamic, robot=robot)
+                                       link_ids=link_ids,
+                                       pybullet_uuid=pybullet_uuid,
+                                       poses_trans=poses_trans,
+                                       poses_rot=poses_rot,
+                                       dynamic=dynamic,
+                                       robot=robot)
         self.instances.append(instance_group)
 
-    def add_robot(self, object_ids, link_ids, poses_rot, poses_trans, pybullet_uuid=None, dynamic=False,
-                           robot=None):
+    def add_robot(self,
+                  object_ids,
+                  link_ids,
+                  poses_rot,
+                  poses_trans,
+                  pybullet_uuid=None,
+                  dynamic=False,
+                  robot=None):
         robot = Robot([self.visual_objects[object_id] for object_id in object_ids],
-                                       id=len(self.instances),
-                                       link_ids=link_ids, pybullet_uuid=pybullet_uuid, poses_trans=poses_trans,
-                                       poses_rot=poses_rot, dynamic=dynamic, robot=robot)
+                      id=len(self.instances),
+                      link_ids=link_ids,
+                      pybullet_uuid=pybullet_uuid,
+                      poses_trans=poses_trans,
+                      poses_rot=poses_rot,
+                      dynamic=dynamic,
+                      robot=robot)
         self.instances.append(robot)
 
     def set_camera(self, camera, target, up):
         self.camera = camera
         self.target = target
         self.up = up
-        V = lookat(
-            self.camera,
-            self.target, up=self.up)
+        V = lookat(self.camera, self.target, up=self.up)
         self.V = np.ascontiguousarray(V, np.float32)
 
     def set_fov(self, fov):
@@ -468,6 +532,25 @@ class MeshRenderer:
 
     def set_light_color(self, color):
         self.lightcolor = color
+
+    def get_intrinsics(self):
+        P = self.P
+        w, h = self.width, self.height
+        znear, zfar = 0.01, 100.0
+        a = (2.0 * znear) / P[0, 0]
+        b = P[2, 0] * a
+        right = (a + b) / 2.0
+        left = b - right
+        c = (2.0 * znear) / P[1, 1]
+        d = P[3, 1] * c
+        top = (c + d) / 2.0
+        bottom = d - top
+        fu = w * znear / (right - left)
+        fv = h * znear / (top - bottom)
+
+        u0 = w - right * fu / znear
+        v0 = h - top * fv / znear
+        return np.array([[fu, 0, u0], [0, fv, v0], [0, 0, 1]])
 
     def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d')):
         results = []
@@ -498,7 +581,7 @@ class MeshRenderer:
 
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden = ()):
+    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
         GL.glClearColor(0, 0, 0, 1)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         GL.glEnable(GL.GL_DEPTH_TEST)
@@ -526,8 +609,10 @@ class MeshRenderer:
         self.r.release()
 
     def clean(self):
-        GL.glDeleteTextures(
-            [self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d, self.depth_tex])
+        GL.glDeleteTextures([
+            self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
+            self.depth_tex
+        ])
         self.color_tex_rgb = None
         self.color_tex_normal = None
         self.color_tex_semantics = None
@@ -541,8 +626,8 @@ class MeshRenderer:
         self.VBOs = []
         GL.glDeleteTextures(self.textures)
         self.textures = []
-        self.objects = []  # GC should free things here
-        self.faces = []  # GC should free things here
+        self.objects = []    # GC should free things here
+        self.faces = []    # GC should free things here
         self.visual_objects = []
         self.instances = []
 
@@ -591,7 +676,8 @@ if __name__ == '__main__':
     model_path = sys.argv[1]
     renderer = MeshRenderer(width=256, height=256)
     renderer.load_object(model_path)
-    renderer.load_object('/home/fei/Downloads/models/011_banana/textured_simple.obj')
+    renderer.load_object(
+        os.path.join(gibson2.assets_path, 'models/ycb/011_banana/textured_simple.obj'))
 
     renderer.add_instance(0)
     renderer.add_instance(1)
@@ -608,13 +694,12 @@ if __name__ == '__main__':
     view_direction = np.array([1, 0, 0])
     renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
     renderer.set_fov(90)
-
+    print(renderer.get_intrinsics())
     px = 0
     py = 0
 
     _mouse_ix, _mouse_iy = -1, -1
     down = False
-
 
     def change_dir(event, x, y, flags, param):
         global _mouse_ix, _mouse_iy, down, view_direction
@@ -627,12 +712,13 @@ if __name__ == '__main__':
                 dy = (y - _mouse_iy) / 100.0
                 _mouse_ix = x
                 _mouse_iy = y
-                r1 = np.array([[np.cos(dy), 0, np.sin(dy)], [0, 1, 0], [-np.sin(dy), 0, np.cos(dy)]])
-                r2 = np.array([[np.cos(-dx), -np.sin(-dx), 0], [np.sin(-dx), np.cos(-dx), 0], [0, 0, 1]])
+                r1 = np.array([[np.cos(dy), 0, np.sin(dy)], [0, 1, 0], [-np.sin(dy), 0,
+                                                                        np.cos(dy)]])
+                r2 = np.array([[np.cos(-dx), -np.sin(-dx), 0], [np.sin(-dx),
+                                                                np.cos(-dx), 0], [0, 0, 1]])
                 view_direction = r1.dot(r2).dot(view_direction)
         elif event == cv2.EVENT_LBUTTONUP:
             down = False
-
 
     cv2.namedWindow('test')
     cv2.setMouseCallback('test', change_dir)

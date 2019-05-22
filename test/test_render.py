@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import gibson2
 import GPUtil
 
-
 dir = os.path.join(gibson2.assets_path, 'test')
+
 
 def test_render_loading_cleaning():
     renderer = MeshRenderer(width=800, height=600)
@@ -23,7 +23,9 @@ def test_render_rendering():
     rgb, _, seg, _ = renderer.render()
     #plt.imshow(np.concatenate([rgb, seg], axis=1)) # uncomment these two lines to show the rendering results
     #plt.show()
-    assert (np.allclose(np.mean(rgb, axis=(0, 1)), np.array([0.51661223, 0.5035339, 0.4777793, 1.]), rtol=1e-3))
+    assert (np.allclose(np.mean(rgb, axis=(0, 1)),
+                        np.array([0.51661223, 0.5035339, 0.4777793, 1.]),
+                        rtol=1e-3))
     renderer.release()
 
 
@@ -35,10 +37,13 @@ def test_render_rendering_cleaning():
         renderer.set_camera([0, 0, 1.2], [0, 1, 1.2], [0, 1, 0])
         renderer.set_fov(90)
         rgb, _, seg, _ = renderer.render()
-        assert (np.allclose(np.mean(rgb, axis=(0, 1)), np.array([0.51661223, 0.5035339, 0.4777793, 1.]), rtol=1e-3))
+        assert (np.allclose(np.mean(rgb, axis=(0, 1)),
+                            np.array([0.51661223, 0.5035339, 0.4777793, 1.]),
+                            rtol=1e-3))
         GPUtil.showUtilization()
         renderer.release()
         GPUtil.showUtilization()
+
 
 '''
 def test_tensor_render_rendering():

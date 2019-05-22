@@ -1,0 +1,72 @@
+# scene
+scene: stadium
+#scene: building
+#model_id: Ohoopee
+
+# robot
+robot: Turtlebot
+velocity: 0.1
+
+# task, observation and action
+task: pointgoal # pointgoal|objectgoal|areagoal|reaching
+fisheye: false
+
+initial_pos: [-1.0, -1.0, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
+
+target_pos: [1.0, 1.0, 0.0]
+target_orn: [0.0, 0.0, 0.0]
+
+is_discrete: true
+additional_states_dim: 3
+
+# reward
+success_reward: 10.0
+slack_reward: -0.01
+potential_reward_weight: 30.0
+#electricity_reward_weight: -0.02
+#stall_torque_reward_weight: -0.0001
+electricity_reward_weight: 0.0
+stall_torque_reward_weight: 0.0
+collision_reward_weight: 0.0
+
+# discount factor
+discount_factor: 0.99
+
+# termination condition
+dist_tol: 0.2
+max_step: 500
+
+# sensor
+output: [sensor, rgb, depth]
+resolution: 64
+fov: 1.57
+
+# display
+use_filler: true
+display_ui: false
+show_diagnostics: false
+ui_num: 2
+ui_components: [RGB_FILLED, DEPTH]
+random:
+  random_initial_pose: false
+  random_target_pose: false
+  random_init_x_range: [-0.1, 0.1]
+  random_init_y_range: [-0.1, 0.1]
+  random_init_z_range: [-0.1, 0.1]
+  random_init_rot_range: [-0.1, 0.1]
+
+speed:
+  timestep: 0.001
+  frameskip: 10
+
+mode: web_ui #gui|headless
+verbose: false
+fast_lq_render: true
+
+# visual objects
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: true
+
+# debug
+debug: false

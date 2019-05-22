@@ -4,6 +4,7 @@ from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import *
 from gibson2.core.physics.interactive_objects import *
 from gibson2.core.simulator import Simulator
 
+
 def test_simulator():
     s = Simulator(mode='headless')
     scene = StadiumScene()
