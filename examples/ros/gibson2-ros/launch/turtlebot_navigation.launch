@@ -32,12 +32,13 @@
  <include file="$(find turtlebot_teleop)/launch/ps3_teleop.launch">
  </include>
 
-  <arg name="map_file" default="$(find gibson2-ros)/map/gibson2-area1.yaml"/>
+  <arg name="map_file" default="$(find gibson2-ros)/map/graphnav/area_1.yaml"/>
  <node pkg="map_server" type="map_server"  name="map_server" args="$(arg map_file)" />
- <node pkg="amcl" type="amcl"  name="amcl">
-   <param name="min_particles" value="500"/>
+ <node pkg="amcl" type="amcl"  name="amcl" output="screen">
+  <param name="min_particles" value="500"/>
   <param name="kld_err" value="0.05"/>
   <param name="initial_cov_aa" value="1.57"/>
+  <remap from="scan" to="/gibson_ros/laserscan"/>
  </node>
 
 
@@ -74,6 +75,22 @@
 
   <node pkg="nodelet" type="nodelet" args="manager"
         name="record_player_manager" output="screen"/>
+
+  <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan"  output="screen">
+    <param name="scan_height" value="2"/>
+    <param name="output_frame_id" value="/camera_depth_frame"/>
+    <param name="range_min" value="0.45"/>
+    <remap from="image" to="/gibson_ros/camera/depth/image"/>
+    <remap from="scan" to="/gibson_ros/laserscan"/>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="cloudify"
+        args="load depth_image_proc/point_cloud_xyzrgb record_player_manager --no-bond" output="screen">
+    <remap from="depth_registered/image_rect" to="/gibson_ros/camera/depth/image"/>
+    <remap from="depth_registered/points" to="/gibson_ros/camera/depth_registered/points"/>
+    <remap from="rgb/image_rect_color" to="/gibson_ros/camera/rgb/image"/>
+    <remap from="rgb/camera_info" to="/gibson_ros/camera/depth/camera_info"/>
+  </node>
 
 
 </launch>
