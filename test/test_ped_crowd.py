@@ -37,8 +37,8 @@ class ped_crowd:
         timeStep = 1.0
         neighborDist = 1.5 # safe-radius to observe states
         maxNeighbors = 8
-        timeHorizon = 1.5 #np.linspace(0.5, 2.0, num=self.num_ped)
-        timeHorizonObst = timeHorizon
+        timeHorizon = 0.5 #np.linspace(0.5, 2.0, num=self.num_ped)
+        timeHorizonObst = 0.5
         radius = 0.3 # size of the agent
         maxSpeed = 0.1 # ???
         sim = rvo2.PyRVOSimulator(timeStep, neighborDist, maxNeighbors, timeHorizon, timeHorizonObst, radius, maxSpeed)
@@ -65,7 +65,7 @@ class ped_crowd:
         return sim
 
     def run(self):
-        s = Simulator(mode='headless')
+        s = Simulator(mode='gui')
         scene = StadiumScene()
         s.import_scene(scene)
         print(s.objects)
@@ -97,12 +97,16 @@ class ped_crowd:
         prev_x = [[pos[0] for pos in prev_ped_pos]]
         prev_y = [[pos[1] for pos in prev_ped_pos]]
 
-        for i in range(1000):
+        for i in range(10000000):
             s.step()
+            # turtlebot1.apply_action(0)
             self._simulator.doStep()
 
             ped_pos = [self._simulator.getAgentPosition(agent_no)
                      for agent_no in self._ped_list]
+
+            if i%10 == 0:
+                print(ped_pos)
 
             x = [pos[0] for pos in ped_pos]
             y = [pos[1] for pos in ped_pos]
