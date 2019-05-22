@@ -57,11 +57,11 @@ class ShapeNetObject(object):
 
 class Pedestrian(object):
     def __init__(self, style='standing', pos=[0, 0, 0]):
-#         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
-#                                                'person_{}'.format(style), 'meshes',
-#                                                'person_vhacd.obj')
-#         self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
-#                                             'person_{}'.format(style), 'meshes', 'person.obj')
+        self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
+                                               'person_{}'.format(style), 'meshes',
+                                               'person_vhacd.obj')
+        self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
+                                            'person_{}'.format(style), 'meshes', 'person.obj')
         self.body_id = None
         self.cid = None
 
@@ -69,11 +69,11 @@ class Pedestrian(object):
 
     def load(self):
         
-        collision_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.25, 0.1, 1])
-        visual_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.25, 0.1, 1])
+#         collision_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.25, 0.1, 1])
+#         visual_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.25, 0.1, 1])
         
-#         collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename)
-#         visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
+        collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename)
+        visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
         body_id = p.createMultiBody(basePosition=[0, 0, 0],
                                     baseMass=60,
                                     baseCollisionShapeIndex=collision_id,
