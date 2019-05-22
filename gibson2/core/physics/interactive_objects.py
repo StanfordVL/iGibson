@@ -131,6 +131,36 @@ class BoxShape(object):
     def set_position(self, pos):
         _, org_orn = p.getBasePositionAndOrientation(self.body_id)
         p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
+        
+ class VisualBoxShape(object):
+    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3]):
+        self.basePos = pos
+        self.dimension = dim
+
+    def load(self):
+#         mass = 200
+        # basePosition = [1,2,2]
+        baseOrientation = [0, 0, 0, 1]
+
+#         colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
+        visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension)
+        
+        self.body_id = p.createMultiBody(baseVisualShapeIndex=visualShapeId, 
+                                         baseCollisionShapeIndex=-1, 
+                                         basePosition=self.basePos,
+                                         baseOrientation=baseOrientation)
+
+#         self.body_id = p.createMultiBody(baseMass=mass,
+#                                          baseCollisionShapeIndex=colBoxId,
+#                                          baseVisualShapeIndex=visualShapeId,
+#                                          basePosition=self.basePos,
+#                                          baseOrientation=baseOrientation)
+
+        return self.body_id
+
+    def set_position(self, pos):
+        _, org_orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
 
 
 class InteractiveObj(object):
