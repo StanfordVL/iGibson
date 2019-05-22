@@ -132,7 +132,7 @@ class BoxShape(object):
         _, org_orn = p.getBasePositionAndOrientation(self.body_id)
         p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
         
- class VisualBoxShape(object):
+class VisualBoxShape(object):
     def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3]):
         self.basePos = pos
         self.dimension = dim
