@@ -89,7 +89,7 @@ class ped_crowd:
 
 
         peds = [Pedestrian()] * self.num_ped
-        ped_id = [s.import_object(obj) for obj in objs]
+        ped_id = [s.import_object(ped) for ped in peds]
 
         prev_ped_pos = [self._simulator.getAgentPosition(agent_no)
                  for agent_no in self._ped_list]
