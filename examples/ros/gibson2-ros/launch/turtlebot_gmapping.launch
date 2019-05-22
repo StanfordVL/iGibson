@@ -35,7 +35,7 @@
     <param name="output_frame_id" value="/camera_depth_frame"/>
     <param name="range_min" value="0.45"/>
     <remap from="image" to="/gibson_ros/camera/depth/image"/>
-    <remap from="scan" to="/scan"/>
+    <remap from="scan" to="/gibson_ros/laserscan"/>
   </node>
 
  <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" />

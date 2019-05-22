@@ -20,7 +20,7 @@ As a starter, we provide an example of integrating Gibson with ROS. This is a ro
 Environment Setup
 ============
 
-Here is all the steps you need to perform to install gibson and ros. Note that here you will need to install __from source__ and use __python2.7__. If you did it differntly when installing Gibson, you will need to do it again. python3 is known to not being able to work with ros.
+Here is all the steps you need to perform to install gibson and ros. Note that here you will need to install using `pip install -e .` and use __python2.7__. If you did it differntly when installing Gibson, you will need to do it again. python3 is known to not being able to work with ros.
 
 ## Preparation
  
@@ -37,9 +37,9 @@ Here is all the steps you need to perform to install gibson and ros. Note that h
 ln -s $PWD/examples/ros/gibson-ros/ ~/catkin_ws/src/
 cd ~/catkin_ws && catkin_make && cd -
 ```
-5. Install `gibson-ros` dependencies:
+5. Install `gibson2-ros` dependencies:
 ```bash
-rosdep install gibson-ros
+rosdep install gibson2-ros
 ```
 
 ## Sanity check 
@@ -61,10 +61,17 @@ source <catkin-workspace-root>/catkin_ws/devel/setup.bash
 2. Repeat step 3 from Preparation, sanitize `PATH` and `PYTHONPATH`
 3. Here are some of the examples that you can run, including gmapping, hector mapping and navigation.
 ```bash
-roslaunch gibson-ros turtlebot_gmapping.launch #Run gmapping
-roslaunch gibson-ros turtlebot_hector_mapping.launch #Run hector mapping
-roslaunch gibson-ros turtlebot_navigation.launch #Run the navigation stack, we have provided the map
+roslaunch gibson2-ros turtlebot_rgbd.launch #Bare minimal bringup example
+roslaunch gibson2-ros turtlebot_gmapping.launch #Run gmapping
+roslaunch gibson2-ros turtlebot_hector_mapping.launch #Run hector mapping
+roslaunch gibson2-ros turtlebot_navigation.launch #Run the navigation stack, we have provided the map
+roslaunch gibson2-ros turtlebot_gt_navigation.launch #Run the navigation stack with ground truth localization
 ```
+
+
+The following screenshot is captured when running the bare minimal bringup example.
+
+![](misc/sensing.png)
 
 The following screenshot is captured when running the gmapping example.
 
@@ -74,17 +81,8 @@ The following screenshot is captured when running the gmapping example.
 Topics
 ========
 
-Here are all the topics that `turtlebot_rgbd.py` and `simulation_clock.py` publishes and subscribes.
+Here are all the topics that `turtlebot_rgbd.py` publishes and subscribes.
 
-- `simulation_clock.py` 
-
-Publishes:
-
-| Topic name        | Type           | Usage|
-|:------------------:|:---------------------------:|:---:|
-|`/gibson_ros/sim_clock`|`std_msgs/Int64`|Controls the simulation clock, everytime `turtlebot_rgbd.py` receives this message it will tick the simulation.
-
-Subscribes: None
 
 - `turtlebot_rgbd.py`
 
@@ -99,13 +97,11 @@ Publishes:
 |`/odom`|`nav_msgs/Odometry` |odometry from `odom` frame to `base_footprint`, generated with groudtruth pose in Gibson|
 
 
-
 Subscribes:
 
 
 | Topic name        | Type           | Usage|
 |:------------------:|:---------------------------:|:---:|
-|`/gibson_ros/sim_clock`|`std_msgs/Int64`|Controls the simulation clock, everytime `turtlebot_rgbd.py` receives this message it will tick the simulation.
 |`/mobile_base/commands/velocity`|`geometry_msgs/Twist` |Velocity command for turtlebot, `msg.linear.x` is the forward velocity, `msg.angular.z` is the angular velocity|
 
 

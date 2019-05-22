@@ -17,18 +17,10 @@ class Simulator:
         self.gravity = gravity
         self.timestep = timestep
         self.mode = mode
-
         # renderer
-        self.renderer = MeshRenderer(width=resolution,
-                                     height=resolution,
-                                     device_idx=device_idx,
-                                     use_fisheye=use_fisheye)
         self.resolution = resolution
         self.device_idx = device_idx
-
-        if self.mode == 'gui':
-            self.viewer = Viewer()
-
+        self.use_fisheye = use_fisheye
         self.load()
 
     def set_timestep(self, timestep):
@@ -54,7 +46,8 @@ class Simulator:
 
         self.renderer = MeshRenderer(width=self.resolution,
                                      height=self.resolution,
-                                     device_idx=self.device_idx)
+                                     device_idx=self.device_idx,
+                                     use_fisheye=self.use_fisheye)
         self.renderer.set_fov(90)
 
         if self.mode == 'gui':

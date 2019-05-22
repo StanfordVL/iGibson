@@ -276,6 +276,8 @@ class MeshRenderer:
         self.colors = colormap
         self.lightcolor = [1, 1, 1]
 
+        print("fisheye", self.fisheye)
+
         if self.fisheye:
             vertexShader = self.shaders.compileShader(
                 "".join(

@@ -36,6 +36,9 @@
     <remap from="scan" to="/gibson_ros/laserscan"/>
   </node>
 
+  <node pkg="nodelet" type="nodelet" args="manager"
+        name="record_player_manager" output="screen"/>
+        
   <node pkg="nodelet" type="nodelet" name="cloudify"
         args="load depth_image_proc/point_cloud_xyzrgb record_player_manager --no-bond" output="screen">
     <remap from="depth_registered/image_rect" to="/gibson_ros/camera/depth/image"/>

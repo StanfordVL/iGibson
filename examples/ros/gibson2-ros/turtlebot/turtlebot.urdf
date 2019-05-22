@@ -9,7 +9,7 @@
     - 3d Sensor : kinect
 -->
 <robot name="turtlebot" xmlns:controller="http://playerstage.sourceforge.net/gazebo/xmlschema/#controller" xmlns:interface="http://playerstage.sourceforge.net/gazebo/xmlschema/#interface" xmlns:sensor="http://playerstage.sourceforge.net/gazebo/xmlschema/#sensor" xmlns:xacro="http://ros.org/wiki/xacro">
- 
+
  <link name="base_footprint"/>
   <joint name="base_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0.0102"/>
@@ -780,7 +780,7 @@
     </inertial>
   </link>
   <joint name="camera_rgb_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0.1233 0.0 0.565"/>
+    <origin rpy="0 0 0" xyz="-0.087 -0.0125 0.287"/>
     <parent link="base_link"/>
     <child link="camera_rgb_frame"/>
   </joint>

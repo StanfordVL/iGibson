@@ -39,7 +39,7 @@
     <param name="output_frame_id" value="/camera_depth_frame"/>
     <param name="range_min" value="0.45"/>
     <remap from="image" to="/gibson_ros/camera/depth/image"/>
-    <remap from="scan" to="/scan"/>
+    <remap from="scan" to="/gibson_ros/laserscan"/>
   </node>
 
   <arg name="map_file" default="$(find gibson2-ros)/map/gibson2-area1.yaml"/>
@@ -55,7 +55,7 @@
   <arg name="base_frame_id"   default="base_footprint"/>
   <arg name="global_frame_id" default="map"/>
   <arg name="odom_topic" default="odom" />
-  <arg name="laser_topic" default="scan" />
+  <arg name="laser_topic" default="gibson_ros/laserscan" />
   <arg name="custom_param_file" default="$(find gibson2-ros)/param/dummy.yaml"/>
 
   <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
