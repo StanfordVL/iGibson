@@ -40,7 +40,7 @@ class NavigateEnv(BaseEnv):
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
 
     def load(self):
-        super().load()
+        super(NavigateEnv, self).load()
         self.initial_pos = np.array(self.config.get('initial_pos', [0, 0, 0]))
         self.initial_orn = np.array(self.config.get('initial_orn', [0, 0, 0]))
 
@@ -124,7 +124,7 @@ class NavigateEnv(BaseEnv):
                 self.target_pos_vis_obj.load()
 
     def reload(self, config_file):
-        super().reload(config_file)
+        super(NavigateEnv, self).reload(config_file)
         self.initial_pos = np.array(self.config.get('initial_pos', [0, 0, 0]))
         self.initial_orn = np.array(self.config.get('initial_orn', [0, 0, 0]))
 

@@ -99,12 +99,12 @@ def test_import_box():
 
     for i in range(len(wall)):
         curr = wall[i]
-        obj = Box(curr[0], curr[1])
+        obj = BoxShape(curr[0], curr[1])
         s.import_object(obj)
 
     for i in range(len(obstacles)):
         curr = obstacles[i]
-        obj = Box(curr[0], curr[1])
+        obj = BoxShape(curr[0], curr[1])
         s.import_object(obj)
 
     turtlebot1 = Turtlebot(config)
