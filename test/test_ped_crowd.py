@@ -88,7 +88,7 @@ class ped_crowd:
         turtlebot2.set_position([-3., 4., 0.])
 
 
-        objs = [Pedestrian()] * self.num_ped
+        peds = [Pedestrian()] * self.num_ped
         ped_id = [s.import_object(obj) for obj in objs]
 
         prev_ped_pos = [self._simulator.getAgentPosition(agent_no)
@@ -124,7 +124,7 @@ class ped_crowd:
 
             for j in range(self.num_ped):
                 direction = p.getQuaternionFromEuler([0, 0, angle[j]])
-                obj.reset_position_orientation([x[j], y[j], 0.03], direction)
+                peds[j].reset_position_orientation([x[j], y[j], 0.03], direction)
 
 crowd_sim = ped_crowd()
 crowd_sim.run()
