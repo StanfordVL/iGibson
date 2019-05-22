@@ -245,8 +245,7 @@ class NavigateEnv(BaseEnv):
             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
         if 'depth' in self.output:
             depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            state['depth'] = np.clip(
-                depth, 0.0, 5.0) / 5.0    # clip between 0.0 and 5.0 and normalized to [0.0, 1.0]
+            state['depth'] = depth
         if 'normal' in self.output:
             state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
         if 'seg' in self.output:
