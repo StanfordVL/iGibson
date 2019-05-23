@@ -1,9 +1,14 @@
 from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import *
-from gibson2.core.physics.interactive_objects import *
+from gibson2.core.physics.scene import BuildingScene, StadiumScene
+from gibson2.core.physics.interactive_objects import Pedestrian
 import networkx as nx
 import matplotlib.pyplot as plt
 import cv2
+import gibson2
+from PIL import Image
+import numpy as np
+import os
+import pybullet as p
 
 s = Simulator(mode='gui', resolution=512)
 scene = BuildingScene("Maugansville")

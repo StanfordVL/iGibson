@@ -1,9 +1,12 @@
 import yaml
-from gibson2.core.physics.robot_locomotors import *
+from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Quadrotor
 from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import *
+from gibson2.core.physics.scene import BuildingScene, StadiumScene
 from gibson2.utils.utils import parse_config
 import pytest
+import pybullet as p
+import numpy as np
+
 config = parse_config('test.yaml')
 
 

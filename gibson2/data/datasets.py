@@ -14,7 +14,7 @@ import cv2
 import numpy as np
 import ctypes as ct
 import sys
-from tqdm import *
+from tqdm import tqdm
 import torchvision.transforms as transforms
 import argparse
 import json
