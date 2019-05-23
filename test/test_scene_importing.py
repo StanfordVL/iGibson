@@ -1,7 +1,6 @@
 from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import *
-from gibson2.core.physics.robot_locomotors import *
-from gibson2.core.physics.interactive_objects import *
+from gibson2.core.physics.scene import BuildingScene, StadiumScene
+from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
 import yaml
 
 

@@ -1,7 +1,11 @@
 from gibson2.core.physics.scene import StadiumScene
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import *
-from gibson2.core.physics.interactive_objects import *
+from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat, xyz2mat
+from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject, RBOObject, Pedestrian, ShapeNetObject, BoxShape
 from gibson2.core.render.viewer import Viewer
+import pybullet as p
+import gibson2
+import os
+import numpy as np
 
 
 class Simulator:

@@ -1,10 +1,13 @@
 import yaml
-from gibson2.core.physics.robot_locomotors import *
+from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
 from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import *
+from gibson2.core.physics.scene import BuildingScene, StadiumScene
 from gibson2.utils.utils import parse_config
 from gibson2.core.physics.interactive_objects import InteractiveObj
-from gibson2.envs.locomotor_env import *
+from gibson2.envs.locomotor_env import NavigateEnv, NavigateRandomEnv, InteractiveNavigateEnv
+import os
+import gibson2
+
 config = parse_config('test.yaml')
 
 

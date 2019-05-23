@@ -1,12 +1,9 @@
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import *
-from gibson2.core.physics.robot_locomotors import *
-from gibson2.core.physics.interactive_objects import *
-import yaml
 import gibson2
 from time import time
 from gibson2.envs.locomotor_env import NavigateEnv
 import cv2
+import numpy as np
+import os
 
 
 def test_env():

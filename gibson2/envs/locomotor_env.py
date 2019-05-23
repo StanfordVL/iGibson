@@ -1,7 +1,3 @@
-from gibson2.core.physics.robot_locomotors import *
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import *
-
 from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj
 import gibson2
 from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
@@ -13,6 +9,11 @@ from gibson2.learn.completion import CompletionNet, identity_init, Perceptual
 import torch.nn as nn
 import torch
 from torchvision import datasets, transforms
+from transforms3d.quaternions import quat2mat, qmult
+import gym
+import numpy as np
+import os
+import pybullet as p
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
 # arXiv preprint arXiv:1807.06757 (2018).

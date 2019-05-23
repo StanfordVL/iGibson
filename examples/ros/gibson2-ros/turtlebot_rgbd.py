@@ -12,7 +12,7 @@ import rospkg
 import numpy as np
 from cv_bridge import CvBridge
 import tf
-from gibson2.envs.locomotor_env import *
+from gibson2.envs.locomotor_env import NavigateEnv, NavigateRandomEnv
 import matplotlib.pyplot as plt
 
 
@@ -101,8 +101,8 @@ class SimNode:
             msg.header.frame_id = "camera_depth_optical_frame"
             self.camera_info_pub.publish(msg)
 
-            if ((self.tp_time is None) or ((self.tp_time is not None)
-                                           and ((rospy.Time.now() - self.tp_time).to_sec() > 1.))):
+            if ((self.tp_time is None) or ((self.tp_time is not None) and
+                                           ((rospy.Time.now() - self.tp_time).to_sec() > 1.))):
                 lidar_points = obs['scan']
                 lidar_header = Header()
                 lidar_header.stamp = now
@@ -114,7 +114,8 @@ class SimNode:
             self.env.robots[0].calc_state()
 
             odom = [
-                np.array(self.env.robots[0].get_position()) - np.array(self.env.config["initial_pos"]),
+                np.array(self.env.robots[0].get_position()) -
+                np.array(self.env.config["initial_pos"]),
                 np.array(self.env.robots[0].get_rpy())
             ]
 
@@ -164,8 +165,10 @@ class SimNode:
     def tp_robot_callback(self, data):
         rospy.loginfo('Teleporting robot')
         position = [data.pose.position.x, data.pose.position.y, data.pose.position.z]
-        orientation = [data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z,
-                       data.pose.orientation.w]
+        orientation = [
+            data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z,
+            data.pose.orientation.w
+        ]
         self.env.robots[0].reset_new_pose(position, orientation)
         self.tp_time = rospy.Time.now()
 

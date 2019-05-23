@@ -8,7 +8,7 @@ import gibson2.core.render.mesh_renderer.glutils.glcontext as glcontext
 import OpenGL.GL as GL
 import cv2
 import numpy as np
-from pyassimp import *
+from pyassimp import load, release
 from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
@@ -18,6 +18,7 @@ from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTextur
 import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
 import gibson2
+import os
 
 
 class VisualObject(object):

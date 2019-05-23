@@ -1,7 +1,9 @@
-from gibson2.envs.locomotor_env import *
+from gibson2.envs.locomotor_env import NavigateEnv, NavigateRandomEnv
 from time import time
 import numpy as np
 from time import time
+import gibson2
+import os
 
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__),
