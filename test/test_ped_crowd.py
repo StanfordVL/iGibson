@@ -26,6 +26,7 @@ class ped_crowd:
         self._ped_list = []
         self.init_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
         self._simulator = self.init_rvo_simulator()
+        self.pref_speed = np.linspace(0.01, 0.05, num=self.num_ped) # ??? scale
         self.num_ped = 5
         self.config = parse_config('test.yaml')
 
@@ -33,7 +34,7 @@ class ped_crowd:
         # Initializing RVO2 simulator && add agents to self._ped_list
         self.num_ped = 5
         init_direction = np.random.uniform(0.0, 2*np.pi, size=(self.num_ped,))
-        pref_speed = np.linspace(0.01, 0.05, num=self.num_ped) # ??? scale
+        
         timeStep = 1.0
         neighborDist = 1.5 # safe-radius to observe states
         maxNeighbors = 8
@@ -46,8 +47,8 @@ class ped_crowd:
         for i in range(self.num_ped):
             ai = sim.addAgent(self.init_pos[i])
             self._ped_list.append(ai)
-            vx = pref_speed[i] * np.cos(init_direction[i])
-            vy = pref_speed[i] * np.sin(init_direction[i])
+            vx = self.pref_speed[i] * np.cos(init_direction[i])
+            vy = self.pref_speed[i] * np.sin(init_direction[i])
             sim.setAgentPrefVelocity(ai, (vx, vy))
 
         for i in range(len(self.wall)):
@@ -63,6 +64,24 @@ class ped_crowd:
 
         # print('navRVO2: Initialized environment with %f RVO2-agents.', self._num_ped)
         return sim
+
+    def dist(self, x1, y1, x2, y2, eps = 0.01):
+        return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
+
+
+    def update_simulator(self, x, y, old_x, old_y, eps = 0.01):
+        # self._simulator.setAgentPosition(ai, (self._ped_states[ai,0], self._ped_states[ai,1]))
+        for i in range(self.num_ped):
+            if(self.dist(x[i], y[i], old_x[i], old_y[i]) < eps):
+                ai = self._ped_list[i]
+                assig_speed = np.random.uniform(0.02, 0.04)
+                assig_direc = np.random.uniform(0.0, 2*np.pi)
+                vx = assig_speed * np.cos(assig_direc)
+                vy = assig_speed * np.sin(assig_direc)
+                self._simulator.setAgentPrefVelocity(ai, (vx, vy))
+                self._simulator.setAgentVelocity(ai, (vx, vy))
+
+
 
     def run(self):
         s = Simulator(mode='gui')
@@ -118,11 +137,11 @@ class ped_crowd:
             prev_x.append(x)
             prev_y.append(y)
 
-            if len(prev_y) > 5:
-                prev_y.pop(0)
 
             if len(prev_x) > 5:
+                self.update_simulator(x, y, prev_x[2], prev_y[2])
                 prev_x.pop(0)
+                prev_y.pop(0)
 
             angle = np.arctan2(y - prev_y_mean, x - prev_x_mean)
 
