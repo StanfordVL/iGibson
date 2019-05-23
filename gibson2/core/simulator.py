@@ -21,6 +21,10 @@ class Simulator:
         self.resolution = resolution
         self.device_idx = device_idx
         self.use_fisheye = use_fisheye
+
+        if self.mode == 'gui':
+            self.viewer = Viewer()
+
         self.load()
 
     def set_timestep(self, timestep):
