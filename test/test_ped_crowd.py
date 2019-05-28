@@ -5,6 +5,7 @@ from gibson2.core.physics.robot_locomotors import *
 import yaml
 import rvo2
 import numpy as np
+import pybullet as p
 
 
 def parse_config(config):
@@ -26,7 +27,7 @@ class ped_crowd:
         self._ped_list = []
         self.init_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
         self._simulator = self.init_rvo_simulator()
-        self.pref_speed = np.linspace(0.01, 0.05, num=self.num_ped) # ??? scale
+        
         self.num_ped = 5
         self.config = parse_config('test.yaml')
 
@@ -34,7 +35,7 @@ class ped_crowd:
         # Initializing RVO2 simulator && add agents to self._ped_list
         self.num_ped = 5
         init_direction = np.random.uniform(0.0, 2*np.pi, size=(self.num_ped,))
-        
+        pref_speed = np.linspace(0.01, 0.05, num=self.num_ped) # ??? scale
         timeStep = 1.0
         neighborDist = 1.5 # safe-radius to observe states
         maxNeighbors = 8
@@ -47,8 +48,8 @@ class ped_crowd:
         for i in range(self.num_ped):
             ai = sim.addAgent(self.init_pos[i])
             self._ped_list.append(ai)
-            vx = self.pref_speed[i] * np.cos(init_direction[i])
-            vy = self.pref_speed[i] * np.sin(init_direction[i])
+            vx = pref_speed[i] * np.cos(init_direction[i])
+            vy = pref_speed[i] * np.sin(init_direction[i])
             sim.setAgentPrefVelocity(ai, (vx, vy))
 
         for i in range(len(self.wall)):
@@ -89,6 +90,8 @@ class ped_crowd:
         s.import_scene(scene)
         print(s.objects)
 
+        # p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "racecar.mp4")
+
         for i in range(len(self.wall)):
             curr = self.wall[i]
             obj = VisualBoxShape(curr[0], curr[1])
@@ -124,8 +127,8 @@ class ped_crowd:
             ped_pos = [self._simulator.getAgentPosition(agent_no)
                      for agent_no in self._ped_list]
 
-            if i%10 == 0:
-                print(ped_pos)
+            # if i%10 == 0:
+            #     print(ped_pos)
 
             x = [pos[0] for pos in ped_pos]
             y = [pos[1] for pos in ped_pos]
@@ -139,7 +142,7 @@ class ped_crowd:
 
 
             if len(prev_x) > 5:
-                self.update_simulator(x, y, prev_x[2], prev_y[2])
+                self.update_simulator(x, y, prev_x[0], prev_y[0])
                 prev_x.pop(0)
                 prev_y.pop(0)
 
