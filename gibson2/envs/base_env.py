@@ -68,12 +68,12 @@ class BaseEnv(gym.Env):
 
         for i in range(len(wall)):
             curr = wall[i]
-            obj = CollisionObject(curr[0], curr[1])
+            obj = BoxShape(curr[0], curr[1])
             self.simulator.import_object(obj)
 
         for i in range(len(obstacles)):
             curr = obstacles[i]
-            obj = CollisionObject(curr[0], curr[1])
+            obj = BoxShape(curr[0], curr[1])
             self.simulator.import_object(obj)
 
     def clean(self):
