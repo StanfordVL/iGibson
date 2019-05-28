@@ -355,6 +355,34 @@ class NavigateRandomEnv(NavigateEnv):
             _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
             dist = l2_distance(self.initial_pos, self.target_pos)
 
+class NavigateAssignedPointsEnv(NavigateEnv):
+    def __init__(self,
+                 config_file,
+                 mode='headless',
+                 action_timestep=1 / 10.0,
+                 physics_timestep=1 / 240.0,
+                 automatic_reset=False,
+                 device_idx=0,
+                 scene='stadium', 
+                 ): # scene='building'
+        super(NavigateAssignedPointsEnv, self).__init__(config_file,
+                                                mode=mode,
+                                                action_timestep=action_timestep,
+                                                physics_timestep=physics_timestep,
+                                                automatic_reset=automatic_reset,
+                                                device_idx=device_idx)
+
+        if scene=='stadium':
+            self.poss_target = [[1,-2],[5,4],[-5,-6],[-5.5,-1],[-5.5,2],[-1,0],[1,5],[-2,6],[5,1],[-3,4]]
+        else:
+            raise NameError('locomotor_env.py: Only statium is ready so far')
+
+    def reset_initial_and_target_pos(self):
+        self.robots[0].set_position(pos=self.initial_pos)
+        self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
+
+        self.target_pos = self.poss_target[np.random.randint(0, 10)]+[0]
+
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
