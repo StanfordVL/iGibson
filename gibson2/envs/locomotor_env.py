@@ -287,7 +287,7 @@ class NavigateEnv(BaseEnv):
 
     def prevent_stuck_at_corners(self, x, y, old_x, old_y, eps = 0.01):
         # self.rvo_simulator.setAgentPosition(ai, (self._ped_states[ai,0], self._ped_states[ai,1]))
-        def dist(self, x1, y1, x2, y2, eps = 0.01):
+        def dist(x1, y1, x2, y2, eps = 0.01):
             return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
 
         for i in range(self.num_ped):
