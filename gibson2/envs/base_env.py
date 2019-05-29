@@ -111,7 +111,7 @@ class BaseEnv(gym.Env):
 
 
     def import_stadium_obstacle(self):
-        wall = [[[0,7,1.01],[9.99,0.2,1]],
+        self.wall = [[[0,7,1.01],[9.99,0.2,1]],
                 [[0,-7,1.01],[6.89,0.1,1]],
                 [[7,-1.5,1.01],[0.1,5.5,1]],
                 [[-7,-1,1.01],[0.1,6,1]],
@@ -120,18 +120,18 @@ class BaseEnv(gym.Env):
                 [[10.2,5.5,1.01],[0.2,1.5,1]], # make the maze closed
                 [[-10.2,6,1.01],[0.2,1,1]]] # make the maze closed
 
-        obstacles = [[[-0.5,2,1.01],[3.5,0.1,1]],
+        self.obstacles = [[[-0.5,2,1.01],[3.5,0.1,1]],
                 [[4.5,-1,1.01],[1.5,0.1,1]],
                 [[-4,-2,1.01],[0.1,2,1]],
                 [[2.5,-4,1.01],[1.5,0.1,1]]]
 
-        for i in range(len(wall)):
-            curr = wall[i]
+        for i in range(len(self.wall)):
+            curr = self.wall[i]
             obj = BoxShape(curr[0], curr[1])
             self.simulator.import_object(obj)
 
-        for i in range(len(obstacles)):
-            curr = obstacles[i]
+        for i in range(len(self.obstacles)):
+            curr = self.obstacles[i]
             obj = BoxShape(curr[0], curr[1])
             self.simulator.import_object(obj)
 
