@@ -273,6 +273,10 @@ class NavigateEnv(BaseEnv):
         self.prev_ped_x.append(x)
         self.prev_ped_x.append(y)
 
+        print("x: ")
+        print(x)
+        print(self.prev_ped_x)
+
         if len(self.prev_ped_x) > 5:
             self.prevent_stuck_at_corners(x, y, self.prev_ped_x[0], self.prev_ped_y[0])
             self.prev_ped_x.pop(0)
