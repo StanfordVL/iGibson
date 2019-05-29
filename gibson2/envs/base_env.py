@@ -70,7 +70,7 @@ class BaseEnv(gym.Env):
         pos_list = [list(pos)+[0.03] for pos in self.init_ped_pos]
         angleToQuat = [p.getQuaternionFromEuler([0, 0, angle]) for angle in self.init_ped_angle]
         self.peds = [Pedestrian(pos = pos_list[i], orn = angleToQuat[i]) for i in range(self.num_ped)] 
-        ped_id = [self.simulator.import_object(ped) for ped in peds]
+        ped_id = [self.simulator.import_object(ped) for ped in self.peds]
 
 
         self.prev_ped_x = [[pos[0] for pos in self.init_ped_pos]]
