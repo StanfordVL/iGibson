@@ -56,7 +56,7 @@ class ShapeNetObject(object):
 
 
 class Pedestrian(object):
-    def __init__(self, style='standing', pos=[0, 0, 0]):
+    def __init__(self, style='standing', pos=[0, 0, 0], orn = [-0.5, -0.5, -0.5, 0.5]):
         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
                                                'person_{}'.format(style), 'meshes',
                                                'person_vhacd.obj')
@@ -66,6 +66,7 @@ class Pedestrian(object):
         self.cid = None
 
         self.pos = pos
+        self.orn = orn  # default facing x axis
 
     def load(self):
         
@@ -80,7 +81,7 @@ class Pedestrian(object):
                                     baseVisualShapeIndex=visual_id)
         self.body_id = body_id
 
-        p.resetBasePositionAndOrientation(self.body_id, self.pos, [-0.5, -0.5, -0.5, 0.5])
+        p.resetBasePositionAndOrientation(self.body_id, self.pos, self.orn)
 
         self.cid = p.createConstraint(self.body_id,
                                       -1,
@@ -88,8 +89,7 @@ class Pedestrian(object):
                                       -1,
                                       p.JOINT_FIXED, [0, 0, 0], [0, 0, 0],
                                       self.pos,
-                                      parentFrameOrientation=[-0.5, -0.5, -0.5,
-                                                              0.5])    # facing x axis
+                                      parentFrameOrientation=self.orn)  
         return body_id
 
     def reset_position_orientation(self, pos, orn):
