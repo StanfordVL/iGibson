@@ -17,7 +17,7 @@ class BaseEnv(gym.Env):
         self.simulator = Simulator(mode=mode,
                                    resolution=self.config['resolution'],
                                    device_idx=device_idx)
-        self.has_pedestrian = config.get("pedestrian", True)  # should set default to False
+        self.has_pedestrian = self.config.get("pedestrian", True)  # should set default to False
         self.load()
 
     def reload(self, config_file):
