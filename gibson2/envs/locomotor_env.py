@@ -14,6 +14,7 @@ import torch
 from torchvision import datasets, transforms
 
 
+
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
 # arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
@@ -102,6 +103,11 @@ class NavigateEnv(BaseEnv):
                                             shape=(self.config['scan_beams']*self.config['scan_vertical_beams'],),
                                             dtype=np.float32)
             observation_space['scan'] = self.scan_space
+        if 'pedestrian' in self.output:
+            self.pedestrian_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+                                            shape=(self.num_ped*2,),  # num_ped * len([x_pos, y+pos])
+                                            dtype=np.float32)
+            observation_space['pedestrian'] = self.pedestrian_space
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
@@ -121,6 +127,7 @@ class NavigateEnv(BaseEnv):
                 self.simulator.import_object(self.target_pos_vis_obj)
             else:
                 self.target_pos_vis_obj.load()
+
 
     def get_additional_states(self):
         relative_position = self.target_pos - self.robots[0].get_position()
@@ -222,15 +229,78 @@ class NavigateEnv(BaseEnv):
             # xyz = xyz.reshape(xyz.shape[0] // 3, -1)
             state['scan'] = dist # normalized value
 
+        if 'pedestrian' in self.output:
+            ped_pos = self.get_ped_states()
+            rob_pos = self.robots[0].get_position()
+            ped_robot_relative_pos = [[ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1]] for i in range(self.num_ped)]
+            ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
+            state['pedestrian'] = ped_robot_relative_pos
+
         return state
+
+    def get_ped_states(self):
+        return [self.rvo_simulator.getAgentPosition(agent_no)
+                 for agent_no in self._ped_list]
+
+
+        relative_position = self.target_pos - self.robots[0].get_position()
 
     def run_simulation(self):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
+
+            if self.has_pedestrian:
+                self.update_pedestrian()
+
             collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
         collision_links = np.unique(collision_links)
         return collision_links
+
+    def update_pedestrian(self):
+        self.rvo_simulator.doStep()
+
+        ped_pos = self.get_ped_states()
+
+        # if i%10 == 0:
+        #     print(ped_pos)
+        x = [pos[0] for pos in ped_pos]
+        y = [pos[1] for pos in ped_pos]
+
+        prev_x_mean = np.mean(self.prev_ped_x, axis = 0)
+        prev_y_mean = np.mean(self.prev_ped_y, axis = 0)
+
+        self.prev_ped_x.append(x)
+        self.prev_ped_x.append(y)
+
+        if len(self.prev_ped_x) > 5:
+            self.prevent_stuck_at_corners(x, y, self.prev_ped_x[0], self.prev_ped_y[0])
+            self.prev_ped_x.pop(0)
+            self.prev_ped_y.pop(0)
+
+        angle = np.arctan2(y - prev_y_mean, x - prev_x_mean)
+
+        for j in range(self.num_ped):
+            direction = p.getQuaternionFromEuler([0, 0, angle[j]])
+            self.peds[j].reset_position_orientation([x[j], y[j], 0.03], direction)
+
+
+    def prevent_stuck_at_corners(self, x, y, old_x, old_y, eps = 0.01):
+        # self.rvo_simulator.setAgentPosition(ai, (self._ped_states[ai,0], self._ped_states[ai,1]))
+        def dist(self, x1, y1, x2, y2, eps = 0.01):
+            return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
+
+        for i in range(self.num_ped):
+            if(dist(x[i], y[i], old_x[i], old_y[i]) < eps):
+                ai = self._ped_list[i]
+                assig_speed = np.random.uniform(0.02, 0.04)
+                assig_direc = np.random.uniform(0.0, 2*np.pi)
+                vx = assig_speed * np.cos(assig_direc)
+                vy = assig_speed * np.sin(assig_direc)
+                self.rvo_simulator.setAgentPrefVelocity(ai, (vx, vy))
+                self.rvo_simulator.setAgentVelocity(ai, (vx, vy))
+
+
 
     def get_position_of_interest(self):
         if self.config['task'] == 'pointgoal':
