@@ -25,15 +25,15 @@ class ped_crowd:
                      [[-4, -2, 1.01], [0.1, 2, 1]], [[2.5, -4, 1.01], [1.5, 0.1, 1]]]
 
         self._ped_list = []
+        self.num_ped = 5
         self.init_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
         self._simulator = self.init_rvo_simulator()
         
-        self.num_ped = 5
+     
         self.config = parse_config('test.yaml')
 
     def init_rvo_simulator(self):
         # Initializing RVO2 simulator && add agents to self._ped_list
-        self.num_ped = 5
         init_direction = np.random.uniform(0.0, 2*np.pi, size=(self.num_ped,))
         pref_speed = np.linspace(0.01, 0.05, num=self.num_ped) # ??? scale
         timeStep = 1.0
