@@ -94,6 +94,7 @@ class BaseEnv(gym.Env):
             vx = self.pref_ped_speed[i] * np.cos(self.init_ped_angle[i])
             vy = self.pref_ped_speed[i] * np.sin(self.init_ped_angle[i])
             sim.setAgentPrefVelocity(ai, (vx, vy))
+        self.rvo_robot_id = sim.addAgent(tuple(self.config['initial_pos'][:2]))
 
         for i in range(len(self.wall)):
             x, y, _ = self.wall[i][0] # pos = [x, y, z]
