@@ -84,7 +84,7 @@ class Simulator:
                     self.renderer.load_object(filename)
                     self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
-                                               pybullet_uuid=new_object,
+                                               new_object,
                                                dynamic=True)
                 else:
                     self.renderer.add_instance(self.visual_objects[filename],
@@ -92,11 +92,35 @@ class Simulator:
                                                dynamic=True)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
-                self.renderer.load_object(filename, input_kd=color[:3],
-                                          scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
+                self.renderer.load_object(
+                    filename,
+                    input_kd=color[:3],
+                    scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
                 self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                            pybullet_uuid=new_object,
                                            dynamic=True)
+            elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
+                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                self.renderer.load_object(
+                    filename,
+                    transform_orn=rel_orn,
+                    transform_pos=rel_pos,
+                    input_kd=color[:3],
+                    scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
+                self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                                           pybullet_uuid=new_object,
+                                           dynamic=True)
+            elif type == p.GEOM_BOX:
+                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                self.renderer.load_object(filename,
+                                          transform_orn=rel_orn,
+                                          transform_pos=rel_pos,
+                                          input_kd=color[:3],
+                                          scale=[dimensions[0], dimensions[1], dimensions[2]])
+                self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                                           pybullet_uuid=new_object,
+                                           dynamic=True)
+
         return new_object
 
     def import_robot(self, robot):
