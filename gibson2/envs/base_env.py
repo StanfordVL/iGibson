@@ -65,11 +65,11 @@ class BaseEnv(gym.Env):
         self.num_ped = 5
         self.init_ped_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
         self.init_ped_angle = np.random.uniform(0.0, 2*np.pi, size=(self.num_ped,))
-        self.pref_ped_speed = np.linspace(0.01, 0.05, num=self.num_ped) # ??? scale
+        self.pref_ped_speed = np.linspace(0.01, 0.03, num=self.num_ped) # ??? scale
 
         pos_list = [list(pos)+[0.03] for pos in self.init_ped_pos]
-        angleToQuat = [p.getQuaternionFromEuler([0, 0, angle]) for angle in self.init_ped_angle]
-        self.peds = [Pedestrian(pos = pos_list[i], orn = angleToQuat[i]) for i in range(self.num_ped)] 
+        # angleToQuat = [p.getQuaternionFromEuler([0, 0, angle]) for angle in self.init_ped_angle]
+        self.peds = [Pedestrian(pos = pos_list[i]) for i in range(self.num_ped)] 
         ped_id = [self.simulator.import_object(ped) for ped in self.peds]
 
 
@@ -85,7 +85,7 @@ class BaseEnv(gym.Env):
         timeHorizon = 0.5 #np.linspace(0.5, 2.0, num=self.num_ped)
         timeHorizonObst = 0.5
         radius = 0.3 # size of the agent
-        maxSpeed = 0.1 # ???
+        maxSpeed = 0.05 # ???
         sim = rvo2.PyRVOSimulator(timeStep, neighborDist, maxNeighbors, timeHorizon, timeHorizonObst, radius, maxSpeed)
 
         for i in range(self.num_ped):
@@ -112,7 +112,7 @@ class BaseEnv(gym.Env):
 
     def import_stadium_obstacle(self):
         self.wall = [[[0,7,1.01],[9.99,0.2,1]],
-                [[0,-7,1.01],[6.89,0.1,1]],
+                [[0,-7,1.01],[6.89,0.2,1]],
                 [[7,-1.5,1.01],[0.1,5.5,1]],
                 [[-7,-1,1.01],[0.1,6,1]],
                 [[-8.55,5,1.01],[1.44,0.1,1]],
