@@ -242,9 +242,6 @@ class NavigateEnv(BaseEnv):
         return [self.rvo_simulator.getAgentPosition(agent_no)
                  for agent_no in self._ped_list]
 
-
-        relative_position = self.target_pos - self.robots[0].get_position()
-
     def run_simulation(self):
         collision_links = []
         for _ in range(self.simulator_loop):
@@ -259,6 +256,8 @@ class NavigateEnv(BaseEnv):
 
     def update_pedestrian(self):
         self.rvo_simulator.doStep()
+        
+        self.rvo_simulator.setAgentPosition(self.rvo_robot_id, tuple(self.robots[0].get_position()[:2]))
 
         ped_pos = self.get_ped_states()
 
