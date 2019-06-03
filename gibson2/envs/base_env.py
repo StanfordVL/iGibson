@@ -26,18 +26,18 @@ class BaseEnv(gym.Env):
         self.load()
 
     def load(self):
-        if self.config['scene'] == 'stadium' or self.config['scene'] == 'stadium_obstacle':
+        if self.config['scene'][:7] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
             scene = BuildingScene(self.config['model_id'])
 
         self.simulator.import_scene(scene)
-        if self.config['scene'] == 'stadium_obstacle':
-            self.import_stadium_obstacle()
+        if self.config['scene'][:8] == 'stadium_':
+            self.import_stadium_obstacle(self.config['scene'])
             
             # load pedestrians and rvo simulator
             if self.has_pedestrian:
-                self.init_pedestrian()
+                self.init_pedestrian(self.config['scene'])
                 self.rvo_simulator = self.init_rvo_simulator()
 
         if self.config['robot'] == 'Turtlebot':
@@ -60,12 +60,20 @@ class BaseEnv(gym.Env):
         for robot in self.robots:
             self.simulator.import_robot(robot)
 
-    def init_pedestrian(self):
+    def init_pedestrian(self, scene_mode):
         self._ped_list = []
         self.num_ped = 5
-        self.init_ped_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
+        
         self.init_ped_angle = np.random.uniform(0.0, 2*np.pi, size=(self.num_ped,))
         self.pref_ped_speed = np.linspace(0.01, 0.03, num=self.num_ped) # ??? scale
+        
+        if scene_mode == 'stadium_obstacle':
+            self.init_ped_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
+        elif scene_mode == 'stadium_congested': 
+            self.init_ped_pos = [(2.0, -2.0), (1.0, -3.0), (2.0, -6.0), (4.0, -6.0), (5.0, -3.0)]
+        else:
+            raise Exception('scene_mode is neither stadium_obstacle or stadium_congested?!')
+            
 
         pos_list = [list(pos)+[0.03] for pos in self.init_ped_pos]
         # angleToQuat = [p.getQuaternionFromEuler([0, 0, angle]) for angle in self.init_ped_angle]
@@ -111,20 +119,32 @@ class BaseEnv(gym.Env):
         return sim
 
 
-    def import_stadium_obstacle(self):
-        self.wall = [[[0,7,1.01],[9.99,0.2,1]],
-                [[0,-7,1.01],[6.89,0.2,1]],
-                [[7,-1.5,1.01],[0.1,5.5,1]],
-                [[-7,-1,1.01],[0.1,6,1]],
-                [[-8.55,5,1.01],[1.44,0.1,1]],
-                [[8.55,4,1.01],[1.44,0.1,1]],
-                [[10.2,5.5,1.01],[0.2,1.5,1]], # make the maze closed
-                [[-10.2,6,1.01],[0.2,1,1]]] # make the maze closed
+    def import_stadium_obstacle(self, scene_mode):
+        if scene_mode == 'stadium_congested':
+            self.wall = [[[0,-7.2,1.01],[6.99,0.2,1]],
+                    [[3.5,-1,1.01],[3.49,0.1,1]],
+                    [[-0.2,-3.5,1.01],[0.2,-3.49,1]],
+                    [[7.2,-1.5,1.01],[0.2,6,1]]]
+            self.obstacles = [[[3, -2.5,1.01],[0.1,1.39,1]],
+                    [[2.5,-4,1.01],[1.5,0.1,1]]]
+            
+        elif scene_mode == 'stadium_obstacle': 
+            self.wall = [[[0,7,1.01],[9.99,0.2,1]],
+                    [[0,-7,1.01],[6.89,0.2,1]],
+                    [[7,-1.5,1.01],[0.1,5.5,1]],
+                    [[-7,-1,1.01],[0.1,6,1]],
+                    [[-8.55,5,1.01],[1.44,0.1,1]],
+                    [[8.55,4,1.01],[1.44,0.1,1]],
+                    [[10.2,5.5,1.01],[0.2,1.5,1]], # make the maze closed
+                    [[-10.2,6,1.01],[0.2,1,1]]] # make the maze closed
 
-        self.obstacles = [[[-0.5,2,1.01],[3.5,0.1,1]],
-                [[4.5,-1,1.01],[1.5,0.1,1]],
-                [[-4,-2,1.01],[0.1,2,1]],
-                [[2.5,-4,1.01],[1.5,0.1,1]]]
+            self.obstacles = [[[-0.5,2,1.01],[3.5,0.1,1]],
+                    [[4.5,-1,1.01],[1.5,0.1,1]],
+                    [[-4,-2,1.01],[0.1,2,1]],
+                    [[2.5,-4,1.01],[1.5,0.1,1]]]
+        else:
+            raise Exception('scene_mode is neither stadium_obstacle or stadium_congested?!')
+                
 
         for i in range(len(self.wall)):
             curr = self.wall[i]
