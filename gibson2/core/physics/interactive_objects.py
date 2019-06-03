@@ -129,6 +129,13 @@ class BoxShape(object):
                                          baseVisualShapeIndex=visualShapeId,
                                          basePosition=self.basePos,
                                          baseOrientation=baseOrientation)
+        self.cid = p.createConstraint(self.body_id,
+                                      -1,
+                                      -1,
+                                      -1,
+                                      p.JOINT_FIXED, [0, 0, 0], [0, 0, 0],
+                                      self.basePos,
+                                      parentFrameOrientation=baseOrientation)  
 
         return self.body_id
 
