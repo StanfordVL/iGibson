@@ -171,7 +171,7 @@ class BaseEnv(gym.Env):
                             
     def compute_a_star(self, scene_mode):
         assert(scene_mode == 'stadium_difficult')
-        trav_map = construct_trav_map()
+        trav_map = self.construct_trav_map()
         x_len, y_len = trav_map.shape
         g = nx.Graph()
         for i in range(1, x_len):
