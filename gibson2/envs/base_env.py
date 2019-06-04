@@ -190,7 +190,7 @@ class BaseEnv(gym.Env):
 
         path = np.array(nx.astar_path(g, source, target, heuristic=dist))
         ind = np.linspace(0, path.shape[0]-1, num=self.config['waypoints'], dtype = 'int')
-        path = path[ind].flatten() * 0.1
+        path = path[ind] * 0.1 # (128, 2)
         return path
                             
     def construct_trav_map(self):                
