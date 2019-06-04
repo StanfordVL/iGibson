@@ -171,6 +171,10 @@ class BaseEnv(gym.Env):
                             
     def compute_a_star(self, scene_mode):
         assert(scene_mode == 'stadium_difficult')
+        def dist(a, b):
+            (x1, y1) = a
+            (x2, y2) = b
+            return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
         trav_map = self.construct_trav_map()
         x_len, y_len = trav_map.shape
         g = nx.Graph()
@@ -194,10 +198,6 @@ class BaseEnv(gym.Env):
         return path
                             
     def construct_trav_map(self):                
-        def dist(a, b):
-            (x1, y1) = a
-            (x2, y2) = b
-            return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
         x_len = 70
         y_len = 60
         white_val = 255
