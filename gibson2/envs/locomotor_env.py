@@ -108,6 +108,11 @@ class NavigateEnv(BaseEnv):
                                             shape=(self.num_ped*2,),  # num_ped * len([x_pos, y+pos])
                                             dtype=np.float32)
             observation_space['pedestrian'] = self.pedestrian_space
+        if 'waypoints' in self.output:
+            self.waypoints_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+                                            shape=(self.config['waypoints']*2,),  # waypoints * len([x_pos, y+pos])
+                                            dtype=np.float32)
+            observation_space['waypoints'] = self.waypoints_space
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
@@ -235,7 +240,10 @@ class NavigateEnv(BaseEnv):
             ped_robot_relative_pos = [[ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1]] for i in range(self.num_ped)]
             ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
             state['pedestrian'] = ped_robot_relative_pos
-
+            
+        if 'waypoints' in self.output:
+            state['waypoints'] = self.compute_a_star(self.config['scene'])
+         
         return state
 
     def get_ped_states(self):
