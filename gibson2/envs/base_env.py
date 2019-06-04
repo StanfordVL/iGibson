@@ -219,7 +219,7 @@ class BaseEnv(gym.Env):
             for j in np.arange(0, y_len, dtype = 'int'):
                 trav_map[i,j] = black_val
                             
-        for i in range(len(obstacles)):
+        for i in range(len(self.obstacles)):
             pos_i = self.obstacles[i][0] # size of 3
             dim_i = self.obstacles[i][1]
             min_x = (pos_i[0] - dim_i[0] - erode_width) * 10
