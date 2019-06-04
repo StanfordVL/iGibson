@@ -5,6 +5,7 @@ from gibson2.core.physics.interactive_objects import *
 import gibson2
 from gibson2.utils.utils import parse_config
 import rvo2
+import networkx as nx
 
 
 class BaseEnv(gym.Env):
@@ -71,10 +72,11 @@ class BaseEnv(gym.Env):
             self.init_ped_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
         elif scene_mode == 'stadium_congested': 
             self.init_ped_pos = [(2.0, -2.0), (1.0, -3.0), (2.0, -6.0), (4.0, -6.0), (5.0, -3.0)]
+        elif scene_mode == 'stadium_difficult': 
+            self.init_ped_pos = [(6.0, 4.0), (6.0, 2.5), (1.0, 1.0), (3.0, 3.0), (4.0, 4.0)]
         else:
-            raise Exception('scene_mode is neither stadium_obstacle or stadium_congested?!')
+            raise Exception('scene_mode is {}, which cannot be identified'.format(scene_mode))
             
-
         pos_list = [list(pos)+[0.03] for pos in self.init_ped_pos]
         # angleToQuat = [p.getQuaternionFromEuler([0, 0, angle]) for angle in self.init_ped_angle]
         self.peds = [Pedestrian(pos = pos_list[i]) for i in range(self.num_ped)] 
@@ -117,6 +119,7 @@ class BaseEnv(gym.Env):
 
         # print('navRVO2: Initialized environment with %f RVO2-agents.', self._num_ped)
         return sim
+    
 
 
     def import_stadium_obstacle(self, scene_mode):
@@ -127,7 +130,6 @@ class BaseEnv(gym.Env):
                     [[7.2,-1.5,1.01],[0.2,6,1]]]
             self.obstacles = [[[3, -2.5,1.01],[0.1,1.39,1]],
                     [[2.5,-4,1.01],[1.5,0.1,1]]]
-            
         elif scene_mode == 'stadium_obstacle': 
             self.wall = [[[0,7,1.01],[9.99,0.2,1]],
                     [[0,-7,1.01],[6.89,0.2,1]],
@@ -137,13 +139,22 @@ class BaseEnv(gym.Env):
                     [[8.55,4,1.01],[1.44,0.1,1]],
                     [[10.2,5.5,1.01],[0.2,1.5,1]], # make the maze closed
                     [[-10.2,6,1.01],[0.2,1,1]]] # make the maze closed
-
             self.obstacles = [[[-0.5,2,1.01],[3.5,0.1,1]],
                     [[4.5,-1,1.01],[1.5,0.1,1]],
                     [[-4,-2,1.01],[0.1,2,1]],
                     [[2.5,-4,1.01],[1.5,0.1,1]]]
+        elif scene_mode == 'stadium_difficult':
+            self.wall = [[[3.5,6.2,1.01],[3.7,0.2,1]],
+                    [[3.5,-0.2,1.01],[3.7,0.2,1]],
+                    [[-0.2,3.0,1.01],[0.2,2.99,1]],
+                    [[7.2,3.0,1.01],[0.2,2.99,1]]]
+            self.obstacles = [[[3.5,2,1.01],[1.5,0.1,1]],
+                    [[5,3.5,1.01],[0.1,1.39, 1]],
+                    [[2,3,1.01],[0.1,0.89, 1]],
+                    [[2.5,4,1.01],[0.5,0.1, 1]],
+                    [[5,5,1.01],[1, 0.1, 1]]]
         else:
-            raise Exception('scene_mode is neither stadium_obstacle or stadium_congested?!')
+            raise Exception('scene_mode is {}, which cannot be identified'.format(scene_mode))
                 
 
         for i in range(len(self.wall)):
@@ -155,10 +166,76 @@ class BaseEnv(gym.Env):
             curr = self.obstacles[i]
             obj = BoxShape(curr[0], curr[1])
             self.simulator.import_object(obj)
+           
+                            
+    def compute_a_star(self, scene_mode):
+        assert(scene_mode == 'stadium_difficult')
+        trav_map = construct_trav_map()
+        x_len, y_len = trav_map.shape
+        g = nx.Graph()
+        for i in range(1, x_len):
+            for j in range(1, y_len):
+                if trav_map[i, j] > 0:
+                    g.add_node((i, j))
+                    if trav_map[i - 1, j] > 0:
+                        g.add_edge((i - 1, j), (i, j))
+                    if trav_map[i, j - 1] > 0:
+                        g.add_edge((i, j - 1), (i, j))
+        source = tuple(np.asarray([10*x for x in self.config['initial_pos']][:2], dtype = 'int'))
+        target = tuple(np.asarray([10*x for x in self.config['target_pos']][:2], dtype = 'int'))
+        node_list = list(g.nodes)
+        if source not in node_list or target not in node_list:
+            raise Exception('either init or target position is not in node_list to compute A*')
+
+        path = np.array(nx.astar_path(g, source, target, heuristic=dist))
+        ind = np.linspace(0, path.shape[0]-1, num=self.config['waypoints'], dtype = 'int')
+        path = path[ind].flatten() * 0.1
+        return path
+                            
+    def construct_trav_map(self):                
+        def dist(a, b):
+            (x1, y1) = a
+            (x2, y2) = b
+            return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
+        x_len = 70
+        y_len = 60
+        white_val = 255
+        black_val = 0
+        trav_map = np.ones((x_len,y_len)) * white_val # default to black: not traversable
+        erode_width = 0.4
+        erode_pixel = erode_width * 10
+
+        for i in np.arange(0,x_len, dtype = 'int'):
+            for j in np.arange(0,erode_pixel, dtype = 'int'):
+                trav_map[i,j] = black_val
+        for i in np.arange(0,x_len, dtype = 'int'):
+            for j in np.arange(y_len - erode_pixel, y_len, dtype = 'int'):
+                trav_map[i,j] = black_val
+        for i in np.arange(0,erode_pixel, dtype = 'int'):
+            for j in np.arange(0, y_len, dtype = 'int'):
+                trav_map[i,j] = black_val
+        for i in np.arange(x_len - erode_pixel, x_len, dtype = 'int'):
+            for j in np.arange(0, y_len, dtype = 'int'):
+                trav_map[i,j] = black_val
+                            
+        for i in range(len(obstacles)):
+            pos_i = self.obstacles[i][0] # size of 3
+            dim_i = self.obstacles[i][1]
+            min_x = (pos_i[0] - dim_i[0] - erode_width) * 10
+            max_x = (pos_i[0] + dim_i[0] + erode_width) * 10
+            min_y = (pos_i[1] - dim_i[1] - erode_width) * 10
+            max_y = (pos_i[1] + dim_i[1] + erode_width) * 10
+
+            for i in np.arange(min_x+1, max_x, dtype = 'int'):
+                for j in np.arange(min_y+1, max_y, dtype = 'int'):
+                    trav_map[i,j] = black_val
+        return trav_map
+                            
 
     def clean(self):
         if not self.simulator is None:
             self.simulator.disconnect()
+                            
 
     def simulator_step(self):
         self.simulator.step()
