@@ -242,8 +242,11 @@ class NavigateEnv(BaseEnv):
             state['pedestrian'] = ped_robot_relative_pos
             
         if 'waypoints' in self.output:
-            state['waypoints'] = self.compute_a_star(self.config['scene'])
-         
+            path = self.compute_a_star(self.config['scene']) # (128, 2)
+            rob_pos = self.robots[0].get_position()
+            path_robot_relative_pos = [[path[i][0] - rob_pos[0], path[i][1] - rob_pos[1]] for i in range(self.config['waypoints'])]
+            path_robot_relative_pos = np.asarray(path_robot_relative_pos).flatten()
+            state['waypoints'] = path_robot_relative_pos
         return state
 
     def get_ped_states(self):
