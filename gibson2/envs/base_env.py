@@ -6,6 +6,7 @@ import gibson2
 from gibson2.utils.utils import parse_config
 import rvo2
 import networkx as nx
+import numpy as np
 
 
 class BaseEnv(gym.Env):
