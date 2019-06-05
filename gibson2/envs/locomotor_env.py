@@ -268,7 +268,7 @@ class NavigateEnv(BaseEnv):
     def update_pedestrian(self):
         self.rvo_simulator.doStep()
         
-        self.rvo_simulator.setAgentPosition(self.rvo_robot_id, tuple(self.robots[0].get_position()[:2]))
+        # self.rvo_simulator.setAgentPosition(self.rvo_robot_id, tuple(self.robots[0].get_position()[:2]))
 
         ped_pos = self.get_ped_states()
 

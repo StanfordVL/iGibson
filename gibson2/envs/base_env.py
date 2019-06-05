@@ -67,21 +67,27 @@ class BaseEnv(gym.Env):
         self.num_ped = 5
         
         self.init_ped_angle = np.random.uniform(0.0, 2*np.pi, size=(self.num_ped,))
-        self.pref_ped_speed = np.linspace(0.01, 0.03, num=self.num_ped) # ??? scale
+        self.pref_ped_speed = np.linspace(0.01, 0.02, num=self.num_ped) # ??? scale
         
         if scene_mode == 'stadium_obstacle':
             self.init_ped_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
         elif scene_mode == 'stadium_congested': 
             self.init_ped_pos = [(2.0, -2.0), (1.0, -3.0), (2.0, -6.0), (4.0, -6.0), (5.0, -3.0)]
         elif scene_mode == 'stadium_difficult': 
-            self.init_ped_pos = [(6.0, 4.0), (6.0, 2.5), (1.0, 1.0), (3.0, 3.0), (4.0, 4.0)]
+            # self.init_ped_pos = [(6.0, 4.0), (6.0, 2.5), (1.0, 1.0), (3.0, 3.0), (4.0, 4.0)]
+            self.init_ped_pos = [(1.0, 4.5), (3.0, 5.5), (1.0, 1.2), (3.0, 0.3), (5.0, 1.2)]
         else:
             raise Exception('scene_mode is {}, which cannot be identified'.format(scene_mode))
             
         pos_list = [list(pos)+[0.03] for pos in self.init_ped_pos]
-        # angleToQuat = [p.getQuaternionFromEuler([0, 0, angle]) for angle in self.init_ped_angle]
+        angleToQuat = [p.getQuaternionFromEuler([0, 0, angle]) for angle in self.init_ped_angle]
         self.peds = [Pedestrian(pos = pos_list[i]) for i in range(self.num_ped)] 
+
         ped_id = [self.simulator.import_object(ped) for ped in self.peds]
+
+        for i in range(self.num_ped):
+            self.peds[i].reset_position_orientation(pos_list [i], angleToQuat[i])
+        # self.peds[0].reset_position_orientation([9.0 ,0.0, 0.03], [0,0,0,1])
 
 
         self.prev_ped_x = [[pos[0] for pos in self.init_ped_pos]]
@@ -96,7 +102,7 @@ class BaseEnv(gym.Env):
         timeHorizon = 0.5 #np.linspace(0.5, 2.0, num=self.num_ped)
         timeHorizonObst = 0.5
         radius = 0.3 # size of the agent
-        maxSpeed = 0.05 # ???
+        maxSpeed = 0.02 # ???
         sim = rvo2.PyRVOSimulator(timeStep, neighborDist, maxNeighbors, timeHorizon, timeHorizonObst, radius, maxSpeed)
 
         for i in range(self.num_ped):
@@ -105,7 +111,7 @@ class BaseEnv(gym.Env):
             vx = self.pref_ped_speed[i] * np.cos(self.init_ped_angle[i])
             vy = self.pref_ped_speed[i] * np.sin(self.init_ped_angle[i])
             sim.setAgentPrefVelocity(ai, (vx, vy))
-        self.rvo_robot_id = sim.addAgent(tuple(self.config['initial_pos'][:2]))
+        # self.rvo_robot_id = sim.addAgent(tuple(self.config['initial_pos'][:2]))
 
         for i in range(len(self.wall)):
             x, y, _ = self.wall[i][0] # pos = [x, y, z]
@@ -127,10 +133,10 @@ class BaseEnv(gym.Env):
         if scene_mode == 'stadium_congested':
             self.wall = [[[0,-7.2,1.01],[6.99,0.2,1]],
                     [[3.5,-1,1.01],[3.49,0.1,1]],
-                    [[-0.2,-3.5,1.01],[0.2,-3.49,1]],
+                    [[-0.2,-3.5,1.01],[0.2,3.49,1]],
                     [[7.2,-1.5,1.01],[0.2,6,1]]]
             self.obstacles = [[[3, -2.5,1.01],[0.1,1.39,1]],
-                    [[2.5,-4,1.01],[1.5,0.1,1]]]
+                    [[3.5,-4,1.01],[1.5,0.1,1]]]
         elif scene_mode == 'stadium_obstacle': 
             self.wall = [[[0,7,1.01],[9.99,0.2,1]],
                     [[0,-7,1.01],[6.89,0.2,1]],

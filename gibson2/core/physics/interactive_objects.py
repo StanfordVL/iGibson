@@ -56,6 +56,7 @@ class ShapeNetObject(object):
 
 
 class Pedestrian(object):
+    # [-0.5, -0.5, -0.5, 0.5]
     def __init__(self, style='standing', pos=[0, 0, 0], orn = [-0.5, -0.5, -0.5, 0.5]):
         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
                                                'person_{}'.format(style), 'meshes',
@@ -65,7 +66,9 @@ class Pedestrian(object):
         self.body_id = None
         self.cid = None
 
+        # self.pos = [xyz*10 for xyz in pos] # try initializing a position 10 times away
         self.pos = pos
+        self.pos[2] = 3.0
         self.orn = orn  # default facing x axis
 
     def load(self):
