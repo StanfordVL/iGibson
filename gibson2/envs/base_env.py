@@ -198,9 +198,9 @@ class BaseEnv(gym.Env):
         if source not in node_list or target not in node_list:
             raise Exception('either init or target position is not in node_list to compute A*')
 
-        path = np.array(nx.astar_path(g, source, target, heuristic=dist))
-        ind = np.linspace(0, path.shape[0]-1, num=self.config['waypoints'], dtype = 'int')
-        path = path[ind] * 0.1 # (128, 2)
+        path = np.array(nx.astar_path(g, source, target, heuristic=dist)) * 0.1
+        # ind = np.linspace(0, path.shape[0]-1, num=self.config['waypoints'], dtype = 'int')
+        # path = path[ind] # (128, 2)
         return path
                             
     def construct_trav_map(self):                
