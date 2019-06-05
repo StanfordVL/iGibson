@@ -245,9 +245,10 @@ class NavigateEnv(BaseEnv):
             path = self.compute_a_star(self.config['scene']) # (107, 2)
             rob_pos = self.robots[0].get_position()
             path_robot_relative_pos = [[path[i][0] - rob_pos[0], path[i][1] - rob_pos[1]] for i in range(path.shape[0])]
+            path_robot_relative_pos = np.asarray(path_robot_relative_pos)
             # path_robot_relative_pos = np.asarray(path_robot_relative_pos).flatten()
             # state['waypoints'] = path_robot_relative_pos
-            path_point_ind = np.argmin(np.linalg.norm(np.asarray(path_robot_relative_pos) , axis=1))
+            path_point_ind = np.argmin(np.linalg.norm(path_robot_relative_pos , axis=1))
             # state['waypoints'] = np.asarray(path_robot_relative_pos[path_point_ind:path_point_ind+5]).flatten()
             curr_points_num = path.shape[0] - path_point_ind
             if curr_points_num > self.config['waypoints']:
