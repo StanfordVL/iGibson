@@ -242,13 +242,23 @@ class NavigateEnv(BaseEnv):
             state['pedestrian'] = ped_robot_relative_pos
             
         if 'waypoints' in self.output:
-            path = self.compute_a_star(self.config['scene']) # (128, 2)
+            path = self.compute_a_star(self.config['scene']) # (107, 2)
             rob_pos = self.robots[0].get_position()
-            path_robot_relative_pos = [[path[i][0] - rob_pos[0], path[i][1] - rob_pos[1]] for i in range(self.config['waypoints'])]
-            path_robot_relative_pos = np.asarray(path_robot_relative_pos).flatten()
-            state['waypoints'] = path_robot_relative_pos
+            path_robot_relative_pos = [[path[i][0] - rob_pos[0], path[i][1] - rob_pos[1]] for i in range(path.shape[0])]
+            # path_robot_relative_pos = np.asarray(path_robot_relative_pos).flatten()
+            # state['waypoints'] = path_robot_relative_pos
+            path_point_ind = np.argmin(np.linalg.norm(np.asarray(path_robot_relative_pos) , axis=1))
+            # state['waypoints'] = np.asarray(path_robot_relative_pos[path_point_ind:path_point_ind+5]).flatten()
+            curr_points_num = path.shape[0] - path_point_ind
+            if curr_points_num > self.config['waypoints']:
+                out = path_robot_relative_pos[path_point_ind:path_point_ind+5]
+            else:
+                curr_waypoints = path_robot_relative_pos[path_point_ind:]
+                end_point = np.repeat(path_robot_relative_pos[path.shape[0]-1].reshape(1,2), (self.config['waypoints']-curr_points_num), axis=0)
+                out = np.vstack((curr_waypoints, end_point))
+            state['waypoints'] = out.flatten()
         return state
-
+   
     def get_ped_states(self):
         return [self.rvo_simulator.getAgentPosition(agent_no)
                  for agent_no in self._ped_list]
