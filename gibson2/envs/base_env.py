@@ -67,7 +67,7 @@ class BaseEnv(gym.Env):
         self.num_ped = 5
         
         self.init_ped_angle = np.random.uniform(0.0, 2*np.pi, size=(self.num_ped,))
-        self.pref_ped_speed = np.linspace(0.01, 0.02, num=self.num_ped) # ??? scale
+        self.pref_ped_speed = np.linspace(0.01, 0.02, num=self.num_ped) 
         
         if scene_mode == 'stadium_obstacle':
             self.init_ped_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
@@ -86,9 +86,7 @@ class BaseEnv(gym.Env):
         ped_id = [self.simulator.import_object(ped) for ped in self.peds]
 
         for i in range(self.num_ped):
-            self.peds[i].reset_position_orientation(pos_list [i], angleToQuat[i])
-        # self.peds[0].reset_position_orientation([9.0 ,0.0, 0.03], [0,0,0,1])
-
+            self.peds[i].reset_position_orientation(pos_list[i], angleToQuat[i])
 
         self.prev_ped_x = [[pos[0] for pos in self.init_ped_pos]]
         self.prev_ped_y = [[pos[1] for pos in self.init_ped_pos]]
@@ -102,7 +100,7 @@ class BaseEnv(gym.Env):
         timeHorizon = 0.5 #np.linspace(0.5, 2.0, num=self.num_ped)
         timeHorizonObst = 0.5
         radius = 0.3 # size of the agent
-        maxSpeed = 0.02 # ???
+        maxSpeed = 0.02 
         sim = rvo2.PyRVOSimulator(timeStep, neighborDist, maxNeighbors, timeHorizon, timeHorizonObst, radius, maxSpeed)
 
         for i in range(self.num_ped):
@@ -111,7 +109,9 @@ class BaseEnv(gym.Env):
             vx = self.pref_ped_speed[i] * np.cos(self.init_ped_angle[i])
             vy = self.pref_ped_speed[i] * np.sin(self.init_ped_angle[i])
             sim.setAgentPrefVelocity(ai, (vx, vy))
-        # self.rvo_robot_id = sim.addAgent(tuple(self.config['initial_pos'][:2]))
+            
+        if self.config['pedestrian_can_see_robot']:
+            self.rvo_robot_id = sim.addAgent(tuple(self.config['initial_pos'][:2]))
 
         for i in range(len(self.wall)):
             x, y, _ = self.wall[i][0] # pos = [x, y, z]
@@ -123,12 +123,8 @@ class BaseEnv(gym.Env):
             dx, dy, _ = self.obstacles[i][1] # dim = [dx, dy, dz]
             sim.addObstacle([(x+dx, y+dy), (x-dx, y+dy), (x-dx, y-dy), (x+dx, y-dy)])
         sim.processObstacles()
-
-        # print('navRVO2: Initialized environment with %f RVO2-agents.', self._num_ped)
         return sim
     
-
-
     def import_stadium_obstacle(self, scene_mode):
         if scene_mode == 'stadium_congested':
             self.wall = [[[0,-7.2,1.01],[6.99,0.2,1]],
@@ -163,7 +159,6 @@ class BaseEnv(gym.Env):
         else:
             raise Exception('scene_mode is {}, which cannot be identified'.format(scene_mode))
                 
-
         for i in range(len(self.wall)):
             curr = self.wall[i]
             obj = BoxShape(curr[0], curr[1])
@@ -192,25 +187,31 @@ class BaseEnv(gym.Env):
                         g.add_edge((i - 1, j), (i, j))
                     if trav_map[i, j - 1] > 0:
                         g.add_edge((i, j - 1), (i, j))
-        source = tuple(np.asarray([10*x for x in self.config['initial_pos']][:2], dtype = 'int'))
-        target = tuple(np.asarray([10*x for x in self.config['target_pos']][:2], dtype = 'int'))
+        source = tuple(np.asarray([self.map_to_real_ratio*x for x in self.config['initial_pos']][:2], dtype = 'int'))
+        target = tuple(np.asarray([self.map_to_real_ratio*x for x in self.config['target_pos']][:2], dtype = 'int'))
         node_list = list(g.nodes)
         if source not in node_list or target not in node_list:
             raise Exception('either init or target position is not in node_list to compute A*')
 
-        path = np.array(nx.astar_path(g, source, target, heuristic=dist)) * 0.1
+        path = np.array(nx.astar_path(g, source, target, heuristic=dist)) * (1.0/self.map_to_real_ratio)
         # ind = np.linspace(0, path.shape[0]-1, num=self.config['waypoints'], dtype = 'int')
         # path = path[ind] # (128, 2)
         return path
                             
-    def construct_trav_map(self):                
-        x_len = 70
+    def construct_trav_map(self):    
+        """
+        The trav_map is constructed specifically for stadium_difficult scene. It takes into account the rectangle space
+        defined by (0,0) to (7,6) excluding obstacles. It mimics the black-and-white picture where white is free space 
+        and black is occupid. One coordinate position (pixel) apart is equivalent to 0.1 meters apart in real world.
+        """
+        x_len = 70 # these numbers are based on the dimension of the surrounding walls of stadium_difficult scene
         y_len = 60
         white_val = 255
         black_val = 0
         trav_map = np.ones((x_len,y_len)) * white_val # default to black: not traversable
         erode_width = 0.4
-        erode_pixel = erode_width * 10
+        self.map_to_real_ratio = 10 # trav_map is in pixels. 1 pixel means 0.1 meter in stadium scene
+        erode_pixel = erode_width * map_to_real_ratio
 
         for i in np.arange(0,x_len, dtype = 'int'):
             for j in np.arange(0,erode_pixel, dtype = 'int'):
@@ -228,10 +229,10 @@ class BaseEnv(gym.Env):
         for i in range(len(self.obstacles)):
             pos_i = self.obstacles[i][0] # size of 3
             dim_i = self.obstacles[i][1]
-            min_x = (pos_i[0] - dim_i[0] - erode_width) * 10
-            max_x = (pos_i[0] + dim_i[0] + erode_width) * 10
-            min_y = (pos_i[1] - dim_i[1] - erode_width) * 10
-            max_y = (pos_i[1] + dim_i[1] + erode_width) * 10
+            min_x = (pos_i[0] - dim_i[0] - erode_width) * self.map_to_real_ratio
+            max_x = (pos_i[0] + dim_i[0] + erode_width) * self.map_to_real_ratio
+            min_y = (pos_i[1] - dim_i[1] - erode_width) * self.map_to_real_ratio
+            max_y = (pos_i[1] + dim_i[1] + erode_width) * self.map_to_real_ratio
 
             for i in np.arange(min_x+1, max_x, dtype = 'int'):
                 for j in np.arange(min_y+1, max_y, dtype = 'int'):
