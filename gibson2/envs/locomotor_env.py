@@ -410,6 +410,10 @@ class NavigateRandomEnv(NavigateEnv):
             dist = l2_distance(self.initial_pos, self.target_pos)
 
 class NavigateAssignedPointsEnv(NavigateEnv):
+    """
+    This class is used to test the robustness of learning by specifying 10 possible target locations.
+    Each parallel environment is randomly initialized to one of these 10 target locations.
+    """
     def __init__(self,
                  config_file,
                  mode='headless',
@@ -427,6 +431,7 @@ class NavigateAssignedPointsEnv(NavigateEnv):
                                                 device_idx=device_idx)
 
         if scene=='stadium':
+            # 10 possible target locations
             self.poss_target = [[1,-2],[5,4],[-5,-6],[-5.5,-1],[-5.5,2],[-1,0],[1,5],[-2,6],[5,1],[-3,4]]
         else:
             raise NameError('locomotor_env.py: Only statium is ready so far')
