@@ -105,12 +105,12 @@ class NavigateEnv(BaseEnv):
             observation_space['scan'] = self.scan_space
         if 'pedestrian' in self.output:
             self.pedestrian_space = gym.spaces.Box(low=-np.inf, high=np.inf,
-                                            shape=(self.num_ped*2,),  # num_ped * len([x_pos, y+pos])
+                                            shape=(self.num_ped*2,),  # num_ped * len([x_pos, y_pos])
                                             dtype=np.float32)
             observation_space['pedestrian'] = self.pedestrian_space
         if 'waypoints' in self.output:
             self.waypoints_space = gym.spaces.Box(low=-np.inf, high=np.inf,
-                                            shape=(self.config['waypoints']*2,),  # waypoints * len([x_pos, y+pos])
+                                            shape=(self.config['waypoints']*2,),  # waypoints * len([x_pos, y_pos])
                                             dtype=np.float32)
             observation_space['waypoints'] = self.waypoints_space
 
@@ -118,8 +118,6 @@ class NavigateEnv(BaseEnv):
         self.action_space = self.robots[0].action_space
 
         # variable initialization
-        # self.potential = 1.0
-        # self.current_step = 0
         self.current_episode = 0
 
         # add visual objects
@@ -146,26 +144,6 @@ class NavigateEnv(BaseEnv):
         assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
 
         return additional_states
-
-        """
-        relative_position = self.target_pos - self.robots[0].get_position()
-        # rotate relative position back to body point of view
-        relative_position_odom = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
-        # the angle between the direction the agent is facing and the direction to the target position
-        delta_yaw = np.arctan2(relative_position_odom[1], relative_position_odom[0])
-        additional_states = np.concatenate((relative_position,
-                                            relative_position_odom,
-                                            [np.sin(delta_yaw), np.cos(delta_yaw)]))
-        if self.config['task'] == 'reaching':
-            # get end effector information
-
-            end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
-            end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
-            additional_states = np.concatenate((additional_states, end_effector_pos))
-
-        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
-        return additional_states
-        """
 
     def get_state(self, collision_links=[]):
         # calculate state
@@ -227,32 +205,25 @@ class NavigateEnv(BaseEnv):
             dist[dist < min_distance / max_distance] = min_distance / max_distance
             dist[hit == self.robots[0].robot_ids[0]] = 0 # hit itself
             dist[hit == -1] = max_distance # did not hit anything
-            # dist *= max_distance 
-            # xyz = dist[:, np.newaxis] * orig_offset
-            # xyz = np.linalg.norm(xyz, axis=1)
-            # xyz = xyz[np.equal(np.isnan(xyz), False)]  # Remove nans
-            # xyz = xyz.reshape(xyz.shape[0] // 3, -1)
-            state['scan'] = dist # normalized value
+            state['scan'] = dist # normalized value 
 
         if 'pedestrian' in self.output:
             ped_pos = self.get_ped_states()
             rob_pos = self.robots[0].get_position()
             ped_robot_relative_pos = [[ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1]] for i in range(self.num_ped)]
             ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
-            state['pedestrian'] = ped_robot_relative_pos
+            state['pedestrian'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
             
         if 'waypoints' in self.output:
-            path = self.compute_a_star(self.config['scene']) # (107, 2)
+            path = self.compute_a_star(self.config['scene']) # current dim is (107, 2), varying by scene and start/end points
             rob_pos = self.robots[0].get_position()
             path_robot_relative_pos = [[path[i][0] - rob_pos[0], path[i][1] - rob_pos[1]] for i in range(path.shape[0])]
             path_robot_relative_pos = np.asarray(path_robot_relative_pos)
-            # path_robot_relative_pos = np.asarray(path_robot_relative_pos).flatten()
-            # state['waypoints'] = path_robot_relative_pos
             path_point_ind = np.argmin(np.linalg.norm(path_robot_relative_pos , axis=1))
-            # state['waypoints'] = np.asarray(path_robot_relative_pos[path_point_ind:path_point_ind+5]).flatten()
             curr_points_num = path.shape[0] - path_point_ind
+            # keep the dimenstion based on the number of waypoints specified in the config file
             if curr_points_num > self.config['waypoints']:
-                out = path_robot_relative_pos[path_point_ind:path_point_ind+5]
+                out = path_robot_relative_pos[path_point_ind:path_point_ind+self.config['waypoints']]
             else:
                 curr_waypoints = path_robot_relative_pos[path_point_ind:]
                 end_point = np.repeat(path_robot_relative_pos[path.shape[0]-1].reshape(1,2), (self.config['waypoints']-curr_points_num), axis=0)
@@ -268,23 +239,18 @@ class NavigateEnv(BaseEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-
             if self.has_pedestrian:
                 self.update_pedestrian()
-
+            # when pedestrians can see the robot, they are very unlikely to collide with the robot
             collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
         collision_links = np.unique(collision_links)
         return collision_links
 
     def update_pedestrian(self):
         self.rvo_simulator.doStep()
-        
-        # self.rvo_simulator.setAgentPosition(self.rvo_robot_id, tuple(self.robots[0].get_position()[:2]))
-
+        if self.config['pedestrian_can_see_robot']:
+            self.rvo_simulator.setAgentPosition(self.rvo_robot_id, tuple(self.robots[0].get_position()[:2]))
         ped_pos = self.get_ped_states()
-
-        # if i%10 == 0:
-        #     print(ped_pos)
         x = [pos[0] for pos in ped_pos]
         y = [pos[1] for pos in ped_pos]
 
@@ -293,22 +259,17 @@ class NavigateEnv(BaseEnv):
 
         self.prev_ped_x.append(x)
         self.prev_ped_y.append(y)
-
-        # print("x: ")
-        # print(x)
-        # print(self.prev_ped_x)
-
+        
+        # keep track of pedestrian trajectory for up to 5 timesteps
         if len(self.prev_ped_x) > 5:
             self.prevent_stuck_at_corners(x, y, self.prev_ped_x[0], self.prev_ped_y[0])
             self.prev_ped_x.pop(0)
             self.prev_ped_y.pop(0)
 
         angle = np.arctan2(y - prev_y_mean, x - prev_x_mean)
-
         for j in range(self.num_ped):
             direction = p.getQuaternionFromEuler([0, 0, angle[j]])
             self.peds[j].reset_position_orientation([x[j], y[j], 0.03], direction)
-
 
     def prevent_stuck_at_corners(self, x, y, old_x, old_y, eps = 0.01):
         # self.rvo_simulator.setAgentPosition(ai, (self._ped_states[ai,0], self._ped_states[ai,1]))
@@ -324,8 +285,6 @@ class NavigateEnv(BaseEnv):
                 vy = assig_speed * np.sin(assig_direc)
                 self.rvo_simulator.setAgentPrefVelocity(ai, (vx, vy))
                 self.rvo_simulator.setAgentVelocity(ai, (vx, vy))
-
-
 
     def get_position_of_interest(self):
         if self.config['task'] == 'pointgoal':
