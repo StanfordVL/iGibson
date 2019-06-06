@@ -56,7 +56,12 @@ class ShapeNetObject(object):
 
 
 class Pedestrian(object):
-    # [-0.5, -0.5, -0.5, 0.5]
+    """
+    Pedestrian can be initialized at any position but has to have an orientation of orn = [-0.5, -0.5, -0.5, 0.5]
+    to be consistent with collision checking. Otherwise, 'person_vhacd.obj' and/or 'person.obj' needs to be revised.
+    To avoid the pedestrian interacting with other obstacles in initialization, it is initialized in the air and then
+    its position and orientation can be reset as needed. 
+    """
     def __init__(self, style='standing', pos=[0, 0, 0], orn = [-0.5, -0.5, -0.5, 0.5]):
         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
                                                'person_{}'.format(style), 'meshes',
@@ -66,26 +71,19 @@ class Pedestrian(object):
         self.body_id = None
         self.cid = None
 
-        # self.pos = [xyz*10 for xyz in pos] # try initializing a position 10 times away
         self.pos = pos
-        self.pos[2] = 3.0
+        self.pos[2] = 3.0 # initialize in the air
         self.orn = orn  # default facing x axis
 
     def load(self):
-        
-#         collision_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.25, 0.1, 1])
-#         visual_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.25, 0.1, 1])
-        
         collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename)
         visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
-        body_id = p.createMultiBody(basePosition=[0, 0, 0],
+        body_id = p.createMultiBody(basePosition=self.pos,
                                     baseMass=60,
                                     baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=visual_id)
         self.body_id = body_id
-
         p.resetBasePositionAndOrientation(self.body_id, self.pos, self.orn)
-
         self.cid = p.createConstraint(self.body_id,
                                       -1,
                                       -1,
@@ -115,6 +113,9 @@ class VisualObject(object):
 
 
 class BoxShape(object):
+    """
+    This class is used to create walls in the stadium scene, or any other scene if applicable
+    """
     def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3]):
         self.basePos = pos
         self.dimension = dim
@@ -132,6 +133,7 @@ class BoxShape(object):
                                          baseVisualShapeIndex=visualShapeId,
                                          basePosition=self.basePos,
                                          baseOrientation=baseOrientation)
+        # fix the walls to the world frame so that nothing can crash them down
         self.cid = p.createConstraint(self.body_id,
                                       -1,
                                       -1,
@@ -152,24 +154,15 @@ class VisualBoxShape(object):
         self.dimension = dim
 
     def load(self):
-#         mass = 200
         # basePosition = [1,2,2]
         baseOrientation = [0, 0, 0, 1]
 
-#         colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
         visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension)
         
         self.body_id = p.createMultiBody(baseVisualShapeIndex=visualShapeId, 
                                          baseCollisionShapeIndex=-1, 
                                          basePosition=self.basePos,
                                          baseOrientation=baseOrientation)
-
-#         self.body_id = p.createMultiBody(baseMass=mass,
-#                                          baseCollisionShapeIndex=colBoxId,
-#                                          baseVisualShapeIndex=visualShapeId,
-#                                          basePosition=self.basePos,
-#                                          baseOrientation=baseOrientation)
-
         return self.body_id
 
     def set_position(self, pos):
