@@ -71,8 +71,6 @@ class SimNode:
             obs, _, _, _ = self.env.step([self.cmdx, self.cmdy])
             rgb = (obs["rgb"] * 255).astype(np.uint8)
             depth = obs["depth"].astype(np.float32)
-            depth[depth > 10] = np.nan
-            depth[depth < 0.45] = np.nan
             image_message = self.bridge.cv2_to_imgmsg(rgb, encoding="rgb8")
             depth_raw_image = (obs["depth"] * 1000).astype(np.uint16)
             depth_raw_message = self.bridge.cv2_to_imgmsg(depth_raw_image, encoding="passthrough")
