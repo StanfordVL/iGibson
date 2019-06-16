@@ -84,6 +84,14 @@ assets_path: assets #put either absolute path or relative to current directory
 dataset_path: assets/dataset
 ```
 
+#### Download sample scenes
+
+```
+wget https://storage.googleapis.com/gibsonassets/gibson_mesh/Ohopee.tar.gz
+```
+Put the downloaded `Ohopee` scene into `dataset_path` and you should be able to run all the tests and some examples. Full dataset will be realeased soon, check back soon!
+
+
 Uninstalling
 ----
 
