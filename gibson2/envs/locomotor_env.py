@@ -455,10 +455,10 @@ class InteractiveNavigateEnv(NavigateEnv):
                                                      physics_timestep=physics_timestep,
                                                      automatic_reset=automatic_reset,
                                                      device_idx=device_idx)
-        door = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components',
+        self.door = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components',
                                            'realdoor.urdf'),
                               scale=1.35)
-        self.simulator.import_interactive_object(door)
+        self.simulator.import_interactive_object(self.door)
 
         wall1 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components',
                                             'walls.urdf'),
@@ -471,7 +471,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                                scale=1)
         self.simulator.import_interactive_object(wall2)
         wall2.set_position_rotation([0, 1.5, 1], [0, 0, 0, 1])
-        door.set_position_rotation([0, 0, -0.02], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+        self.door.set_position_rotation([0, 0, -0.02], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
 
     def reset_initial_and_target_pos(self):
         collision_links = [-1]
@@ -490,6 +490,25 @@ class InteractiveNavigateEnv(NavigateEnv):
             self.initial_pos = pos
         self.target_pos = [np.random.uniform(-5, -4), 0, 0]
 
+
+    def step(self, action):
+
+        dist = np.linalg.norm(
+            np.array(p.getLinkState(self.door.body_id, 2)[0]) - np.array(p.getLinkState(self.robots[0].robot_ids[0], 34)[0]))
+        print(dist)
+
+        if dist < 0.2:
+            if self.cid is None:
+                self.cid = p.createConstraint(self.robots[0].robot_ids[0], 34, self.door.body_id, 2, p.JOINT_POINT2POINT, [0, 0, 0],
+                                         [0, 0.0, 0], [0, 0, 0])
+                p.changeConstraint(self.cid, maxForce=500)
+
+        #from IPython import embed; embed()
+
+        if p.getJointState(self.door, 1)[0] < -1.57: #door open > 90 degree
+            p.removeConstraint(self.cid)
+
+        return super(InteractiveNavigateEnv, self).step(action)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
