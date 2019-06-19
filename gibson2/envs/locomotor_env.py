@@ -14,6 +14,7 @@ import gym
 import numpy as np
 import os
 import pybullet as p
+from IPython import embed
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
 # arXiv preprint arXiv:1807.06757 (2018).
@@ -39,6 +40,8 @@ class NavigateEnv(BaseEnv):
         self.physics_timestep = physics_timestep
         self.simulator.set_timestep(physics_timestep)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
+        # self.reward_stats = []
+        # self.state_stats = {'auxiliary_sensor': []}
 
     def load(self):
         super(NavigateEnv, self).load()
@@ -48,7 +51,12 @@ class NavigateEnv(BaseEnv):
         self.target_pos = np.array(self.config.get('target_pos', [5, 5, 0]))
         self.target_orn = np.array(self.config.get('target_orn', [0, 0, 0]))
 
-        self.additional_states_dim = self.config['additional_states_dim']
+        self.additional_states_dim = self.config.get('additional_states_dim', 0)
+        self.auxiliary_sensor_dim = self.config.get('auxiliary_sensor_dim', 0)
+        self.normalize_observation = self.config.get('normalize_observation', False)
+        self.observation_normalizer = self.config.get('observation_normalizer', {})
+        for key in self.observation_normalizer:
+            self.observation_normalizer[key] = np.array(self.observation_normalizer[key])
 
         # termination condition
         self.dist_tol = self.config.get('dist_tol', 0.2)
@@ -63,25 +71,32 @@ class NavigateEnv(BaseEnv):
         self.electricity_reward_weight = self.config.get('electricity_reward_weight', 0.0)
         self.stall_torque_reward_weight = self.config.get('stall_torque_reward_weight', 0.0)
         self.collision_reward_weight = self.config.get('collision_reward_weight', 0.0)
+        self.collision_links = set(self.config.get('collision_links', [-1]))
 
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
         self.output = self.config['output']
 
-        self.sensor_dim = self.robots[0].sensor_dim + self.additional_states_dim
+        self.sensor_dim = self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
 
         observation_space = OrderedDict()
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf,
                                                high=np.inf,
-                                               shape=(self.sensor_dim, ),
+                                               shape=(self.sensor_dim,),
                                                dtype=np.float32)
             observation_space['sensor'] = self.sensor_space
+        if 'auxiliary_sensor' in self.output:
+            self.auxiliary_sensor_space = gym.spaces.Box(low=-np.inf,
+                                                         high=np.inf,
+                                                         shape=(self.auxiliary_sensor_dim,),
+                                                         dtype=np.float32)
+            observation_space['auxiliary_sensor'] = self.auxiliary_sensor_space
         if 'pointgoal' in self.output:
             self.pointgoal_space = gym.spaces.Box(low=-np.inf,
                                                   high=np.inf,
-                                                  shape=(2, ),
+                                                  shape=(2,),
                                                   dtype=np.float32)
             observation_space['pointgoal'] = self.pointgoal_space
         if 'rgb' in self.output:
@@ -98,7 +113,7 @@ class NavigateEnv(BaseEnv):
                                                      self.config['resolution'], 1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
-        if 'rgb_filled' in self.output:    # use filler
+        if 'rgb_filled' in self.output:  # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
             self.comp.load_state_dict(
@@ -132,7 +147,12 @@ class NavigateEnv(BaseEnv):
         self.target_pos = np.array(self.config.get('target_pos', [5, 5, 0]))
         self.target_orn = np.array(self.config.get('target_orn', [0, 0, 0]))
 
-        self.additional_states_dim = self.config['additional_states_dim']
+        self.additional_states_dim = self.config.get('additional_states_dim', 0)
+        self.auxiliary_sensor_dim = self.config.get('auxiliary_sensor_dim', 0)
+        self.normalize_observation = self.config.get('normalize_observation', False)
+        self.observation_normalizer = self.config.get('observation_normalizer', {})
+        for key in self.observation_normalizer:
+            self.observation_normalizer[key] = np.array(self.observation_normalizer[key])
 
         # termination condition
         self.dist_tol = self.config.get('dist_tol', 0.5)
@@ -154,9 +174,15 @@ class NavigateEnv(BaseEnv):
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf,
                                                high=np.inf,
-                                               shape=(self.sensor_dim, ),
+                                               shape=(self.sensor_dim,),
                                                dtype=np.float32)
             observation_space['sensor'] = self.sensor_space
+        if 'auxiliary_sensor' in self.output:
+            self.auxiliary_sensor_space = gym.spaces.Box(low=-np.inf,
+                                                         high=np.inf,
+                                                         shape=(self.auxiliary_sensor_dim,),
+                                                         dtype=np.float32)
+            observation_space['auxiliary_sensor'] = self.auxiliary_sensor_space
         if 'rgb' in self.output:
             self.rgb_space = gym.spaces.Box(low=0.0,
                                             high=1.0,
@@ -171,7 +197,7 @@ class NavigateEnv(BaseEnv):
                                                      self.config['resolution'], 1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
-        if 'rgb_filled' in self.output:    # use filler
+        if 'rgb_filled' in self.output:  # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
             self.comp.load_state_dict(
@@ -180,7 +206,7 @@ class NavigateEnv(BaseEnv):
         if 'pointgoal' in self.output:
             observation_space['pointgoal'] = gym.spaces.Box(low=-np.inf,
                                                             high=np.inf,
-                                                            shape=(2, ),
+                                                            shape=(2,),
                                                             dtype=np.float32)
 
         self.observation_space = gym.spaces.Dict(observation_space)
@@ -207,8 +233,7 @@ class NavigateEnv(BaseEnv):
             ) - self.robots[0].get_position()
             end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
             additional_states = np.concatenate((additional_states, end_effector_pos))
-        assert len(
-            additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
+        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
 
         return additional_states
         """
@@ -231,15 +256,21 @@ class NavigateEnv(BaseEnv):
         return additional_states
         """
 
+    def get_auxiliary_sensor(self):
+        raise np.array([])
+
     def get_state(self, collision_links=[]):
         # calculate state
         # sensor_state = self.robots[0].calc_state()
         # sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
         sensor_state = self.get_additional_states()
+        auxiliary_sensor = self.get_auxiliary_sensor()
 
         state = OrderedDict()
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
+        if 'auxiliary_sensor' in self.output:
+            state['auxiliary_sensor'] = auxiliary_sensor
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
         if 'rgb' in self.output:
@@ -257,8 +288,7 @@ class NavigateEnv(BaseEnv):
                 rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
                 state['rgb_filled'] = rgb_filled
         if 'bump' in self.output:
-            state[
-                'bump'] = -1 in collision_links    # check collision for baselink, it might vary for different robots
+            state['bump'] = -1 in collision_links  # check collision for baselink, it might vary for diauxiliary_sensorsfferent robots
 
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
@@ -266,13 +296,13 @@ class NavigateEnv(BaseEnv):
         if 'scan' in self.output:
             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
             pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            n_rays_per_horizontal = 128    # Number of rays along one horizontal scan/slice
+            n_rays_per_horizontal = 128  # Number of rays along one horizontal scan/slice
 
             n_vertical_beams = 9
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
             elev_bottom_angle = -30. * np.pi / 180.
             elev_top_angle = 10. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,get_state
                                    (elev_top_angle - elev_bottom_angle) / float(n_vertical_beams))
             orig_offset = np.vstack([
                 np.vstack([np.cos(angle),
@@ -296,8 +326,8 @@ class NavigateEnv(BaseEnv):
             dist *= 30
 
             xyz = dist[:, np.newaxis] * orig_offset
-            xyz = xyz[np.equal(np.isnan(xyz), False)]    # Remove nans
-            #print(xyz.shape)
+            xyz = xyz[np.equal(np.isnan(xyz), False)]  # Remove nans
+            # print(xyz.shape)
             xyz = xyz.reshape(xyz.shape[0] // 3, -1)
             state['scan'] = xyz
 
@@ -307,10 +337,7 @@ class NavigateEnv(BaseEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += [
-                item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])
-            ]
-        collision_links = np.unique(collision_links)
+            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
         return collision_links
 
     def get_position_of_interest(self):
@@ -323,28 +350,29 @@ class NavigateEnv(BaseEnv):
         return l2_distance(self.target_pos, self.get_position_of_interest())
 
     def get_reward(self, collision_links):
-        reward = self.slack_reward    # |slack_reward| = 0.01 per step
+        reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
         new_normalized_potential = self.get_potential() / self.initial_potential
 
         potential_reward = self.normalized_potential - new_normalized_potential
-        reward += potential_reward * self.potential_reward_weight    # |potential_reward| ~= 0.1 per step
+        reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
         self.normalized_potential = new_normalized_potential
 
         # electricity_reward = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
         electricity_reward = 0.0
-        reward += electricity_reward * self.electricity_reward_weight    # |electricity_reward| ~= 0.05 per step
+        reward += electricity_reward * self.electricity_reward_weight  # |electricity_reward| ~= 0.05 per step
 
         # stall_torque_reward = np.square(self.robots[0].joint_torque).mean()
         stall_torque_reward = 0.0
-        reward += stall_torque_reward * self.stall_torque_reward_weight    # |stall_torque_reward| ~= 0.05 per step
+        reward += stall_torque_reward * self.stall_torque_reward_weight  # |stall_torque_reward| ~= 0.05 per step
 
-        collision_reward = -1.0 if -1 in collision_links else 0.0
-        reward += collision_reward * self.collision_reward_weight    # |collision_reward| ~= 1.0 per step if collision
+        collision_link_ids = set([elem[3] for elem in collision_links])
+        collision_reward = float(len(collision_link_ids & self.collision_links) != 0)
+        reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
 
         # goal reached
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
-            reward += self.success_reward    # |success_reward| = 10.0 per step
+            reward += self.success_reward  # |success_reward| = 10.0 per step
 
         return reward
 
@@ -359,7 +387,7 @@ class NavigateEnv(BaseEnv):
             info['success'] = True
         # robot flips over
         elif self.robots[0].get_position()[2] > 0.1:
-            # print('death')
+            print('death')
             done = True
             info['success'] = False
         # time out
@@ -367,6 +395,9 @@ class NavigateEnv(BaseEnv):
             # print('timeout')
             done = True
             info['success'] = False
+
+        if done:
+            info['episode_length'] = self.current_step
 
         return done, info
 
@@ -422,7 +453,7 @@ class NavigateRandomEnv(NavigateEnv):
 
     def reset_initial_and_target_pos(self):
         collision_links = [-1]
-        while -1 in collision_links:    # if collision happens, reinitialize
+        while -1 in collision_links:  # if collision happens, reinitialize
             floor, pos = self.scene.get_random_point()
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_orientation(
@@ -436,7 +467,7 @@ class NavigateRandomEnv(NavigateEnv):
             collision_links = np.unique(collision_links)
             self.initial_pos = pos
         dist = 0.0
-        while dist < 1.0:    # if initial and target positions are < 1 meter away from each other, reinitialize
+        while dist < 1.0:  # if initial and target positions are < 1 meter away from each other, reinitialize
             _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
             dist = l2_distance(self.initial_pos, self.target_pos)
 
@@ -455,31 +486,60 @@ class InteractiveNavigateEnv(NavigateEnv):
                                                      physics_timestep=physics_timestep,
                                                      automatic_reset=automatic_reset,
                                                      device_idx=device_idx)
-        self.door = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components',
-                                           'realdoor.urdf'),
-                              scale=1.35)
+        self.door = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
+                                   scale=1.35)
         self.simulator.import_interactive_object(self.door)
+        self.door.set_position_rotation([0, 0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+        self.door_angle = self.config.get('door_angle', 90)
+        self.door_angle = -(self.door_angle / 180.0) * np.pi
+        self.door_handle_link_id = 2
+        self.door_axis_link_id = 1
+        self.jr_end_effector_link_id = 34
 
-        wall1 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components',
-                                            'walls.urdf'),
-                               scale=1)
-        self.simulator.import_interactive_object(wall1)
-        wall1.set_position_rotation([0, -1.5, 1], [0, 0, 0, 1])
+        self.wall1 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                    scale=1)
+        self.simulator.import_interactive_object(self.wall1)
+        self.wall1.set_position_rotation([0, -1.0, 1], [0, 0, 0, 1])
 
-        wall2 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components',
-                                            'walls.urdf'),
-                               scale=1)
-        self.simulator.import_interactive_object(wall2)
-        wall2.set_position_rotation([0, 1.5, 1], [0, 0, 0, 1])
-        self.door.set_position_rotation([0, 0, -0.02], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+        self.wall2 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                    scale=1)
+        self.simulator.import_interactive_object(self.wall2)
+        self.wall2.set_position_rotation([0, 1.0, 1], [0, 0, 0, 1])
+
+        self.wall3 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                    scale=1)
+        self.simulator.import_interactive_object(self.wall3)
+        self.wall3.set_position_rotation([-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+
+        self.wall4 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                    scale=1)
+        self.simulator.import_interactive_object(self.wall4)
+        self.wall4.set_position_rotation([3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+
+        # dense reward
+        self.stage = 0
+        self.prev_stage = self.stage
+        self.stage_get_to_door_handle = 0
+        self.stage_open_door = 1
+        self.stage_get_to_target_pos = 2
+
+        # attaching JR's arm to the door handle
+        self.cid = None
+
+    def reset_interactive_objects(self):
+        p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
+        if self.cid is not None:
+            p.removeConstraint(self.cid)
+            self.cid = None
 
     def reset_initial_and_target_pos(self):
         collision_links = [-1]
-        while (-1 in collision_links):    # if collision happens restart
-            pos = [np.random.uniform(4, 5), 0, 0]
+        while -1 in collision_links:  # if collision happens restart
+            pos = [np.random.uniform(1, 2), np.random.uniform(-0.5, 0.5), 0]
+            # pos = [1.0, 0.0, 0]
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
-            self.robots[0].set_orientation(
-                orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+            self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+            # self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
             collision_links = []
             for _ in range(self.simulator_loop):
                 self.simulator_step()
@@ -488,27 +548,134 @@ class InteractiveNavigateEnv(NavigateEnv):
                 ]
             collision_links = np.unique(collision_links)
             self.initial_pos = pos
-        self.target_pos = [np.random.uniform(-5, -4), 0, 0]
+        self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-0.5, 0.5), 0]
+        # self.target_pos = np.array([-1.0, 0.0, 0])
 
+    def reset(self):
+        self.reset_interactive_objects()
+        self.stage = 0
+        self.prev_stage = self.stage
+        return super(InteractiveNavigateEnv, self).reset()
+
+    def get_state(self, collision_links=[]):
+        state = super(InteractiveNavigateEnv, self).get_state()
+        # self.state_stats['auxiliary_sensor'].append(state['auxiliary_sensor'])
+        if self.normalize_observation:
+            for key in state:
+                obs_min = self.observation_normalizer[key][0]
+                obs_max = self.observation_normalizer[key][1]
+                obs_avg = (self.observation_normalizer[key][1] + self.observation_normalizer[key][0]) / 2.0
+                obs_mag = (self.observation_normalizer[key][1] - self.observation_normalizer[key][0]) / 2.0
+                state[key] = (np.clip(state[key], obs_min, obs_max) - obs_avg) / obs_mag  # normalize to [-1, 1]
+        # self.state_stats['rgb'].append(state['rgb'])
+        # self.state_stats['depth'].append(state['depth'])
+        return state
+
+    def get_additional_states(self):
+        robot_position = self.robots[0].get_position()[:2]  # z is not controllable by the agent
+        end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
+        end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
+        _, _, yaw = self.robots[0].get_rpy()
+        door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+        additional_states = np.concatenate([robot_position, end_effector_pos, [yaw, door_angle]])
+        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
+        return additional_states
+
+    def get_auxiliary_sensor(self):
+        auxiliary_sensor = self.robots[0].calc_state()
+        r, p, yaw = self.robots[0].get_rpy()
+        cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
+        has_door_handle_in_hand = 1.0 if self.stage == self.stage_open_door else -1.0
+        door_pos = np.array([0, 0, -0.02])
+        target_pos = self.target_pos
+        robot_pos = self.robots[0].get_position()
+        door_pos_local = rotate_vector_3d(door_pos - robot_pos, r, p, yaw)
+        target_pos_local = rotate_vector_3d(target_pos - robot_pos, r, p, yaw)
+        return np.concatenate([auxiliary_sensor,
+                               [cos_yaw, sin_yaw, has_door_handle_in_hand],
+                               target_pos,
+                               door_pos_local,
+                               target_pos_local])
 
     def step(self, action):
-
         dist = np.linalg.norm(
-            np.array(p.getLinkState(self.door.body_id, 2)[0]) - np.array(p.getLinkState(self.robots[0].robot_ids[0], 34)[0]))
-        print(dist)
+            np.array(p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]) -
+            np.array(p.getLinkState(self.robots[0].robot_ids[0], self.jr_end_effector_link_id)[0])
+        )
+        # print(dist)
+        self.prev_stage = self.stage
+        if self.stage == self.stage_get_to_door_handle and dist < 0.2:
+            assert self.cid is None
+            self.cid = p.createConstraint(self.robots[0].robot_ids[0], self.jr_end_effector_link_id,
+                                          self.door.body_id, self.door_handle_link_id,
+                                          p.JOINT_POINT2POINT, [0, 0, 0],
+                                          [0, 0.0, 0], [0, 0, 0])
+            p.changeConstraint(self.cid, maxForce=500)
+            self.stage = self.stage_open_door
+            print("stage open_door")
 
-        if dist < 0.2:
-            if self.cid is None:
-                self.cid = p.createConstraint(self.robots[0].robot_ids[0], 34, self.door.body_id, 2, p.JOINT_POINT2POINT, [0, 0, 0],
-                                         [0, 0.0, 0], [0, 0, 0])
-                p.changeConstraint(self.cid, maxForce=500)
-
-        #from IPython import embed; embed()
-
-        if p.getJointState(self.door, 1)[0] < -1.57: #door open > 90 degree
+        if self.stage == self.stage_open_door and p.getJointState(self.door.body_id, 1)[0] < self.door_angle:  # door open > 45/60/90 degree
+            assert self.cid is not None
             p.removeConstraint(self.cid)
-
+            self.cid = None
+            self.stage = self.stage_get_to_target_pos
+            print("stage get to target pos")
+        # print("door info", p.getJointInfo(self.door.body_id, 1))
+        # print("door angle", p.getJointState(self.door.body_id, 1)[0])
         return super(InteractiveNavigateEnv, self).step(action)
+
+    def get_potential(self):
+        door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+        door_handle_pos = p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]
+        if self.stage == self.stage_get_to_door_handle:
+            potential = l2_distance(door_handle_pos, self.robots[0].get_end_effector_position())
+        elif self.stage == self.stage_open_door:
+            potential = np.abs(door_angle + np.pi)
+        elif self.stage == self.stage_get_to_target_pos:
+            potential = l2_distance(self.target_pos, self.robots[0].get_position())
+        # print("get_potential (stage %d): %f" % (self.stage, potential))
+        return potential
+
+    def get_reward(self, collision_links):
+        reward = 0.0
+        if self.stage != self.prev_stage:
+            # advance to the next stage
+            self.initial_potential = self.get_potential()
+            self.normalized_potential = 1.0
+            reward += self.success_reward / 2.0
+        else:
+            new_normalized_potential = self.get_potential() / self.initial_potential
+            potential_reward = self.normalized_potential - new_normalized_potential
+            reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+            # self.reward_stats.append(np.abs(potential_reward * self.potential_reward_weight))
+            self.normalized_potential = new_normalized_potential
+
+        electricity_reward = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
+        # electricity_reward = 0.0
+        reward += np.clip(electricity_reward * self.electricity_reward_weight, -0.005, 0)  # |electricity_reward| ~= 0.005 per step
+        # self.reward_stats.append(np.abs(electricity_reward * self.electricity_reward_weight))
+
+        stall_torque_reward = np.square(self.robots[0].joint_torque).mean()
+        # stall_torque_reward = 0.0
+        reward += np.clip(stall_torque_reward * self.stall_torque_reward_weight, -0.005, 0)  # |stall_torque_reward| ~= 0.005 per step
+
+        collision_link_ids = set([elem[3] for elem in collision_links
+                                  if not (elem[2] == self.door.body_id and elem[4] == self.door_handle_link_id)])
+        collision_reward = float(len(collision_link_ids & self.collision_links) != 0)
+        reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
+        # self.reward_stats.append(np.abs(collision_reward * self.collision_reward_weight))
+
+        # goal reached
+        if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
+            reward += self.success_reward  # |success_reward| = 10.0
+
+        # death penalty
+        if self.robots[0].get_position()[2] > 0.1:
+            reward -= self.success_reward / 10.0
+
+        # print("get_reward (stage %d): %f" % (self.stage, reward))
+        return reward
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -559,10 +726,24 @@ if __name__ == '__main__':
     for episode in range(10):
         print('Episode: {}'.format(episode))
         nav_env.reset()
-        for i in range(300):    # 300 steps, 30s world time
+        for i in range(500):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
+            # action[0:2] = 0.05
             state, reward, done, _ = nav_env.step(action)
+            # print(reward)
+            # print(nav_env.stage)
+            # embed()
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
                 break
+        # print('len', len(nav_env.reward_stats))
+        # print('mean', np.mean(nav_env.reward_stats))
+        # print('median', np.median(nav_env.reward_stats))
+        # print('max', np.max(nav_env.reward_stats))
+        # print('min', np.min(nav_env.reward_stats))
+        # print('std', np.std(nav_env.reward_stats))
+        # print('95 percentile', np.percentile(nav_env.reward_stats, 95))
+        # print('99 percentile', np.percentile(nav_env.reward_stats, 99))
+    # embed()
+
     nav_env.clean()
