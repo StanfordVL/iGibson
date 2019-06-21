@@ -7,6 +7,7 @@ from gibson2.core.physics.interactive_objects import InteractiveObj
 from gibson2.envs.locomotor_env import NavigateEnv, NavigateRandomEnv, InteractiveNavigateEnv
 import os
 import gibson2
+import pybullet as p
 
 config = parse_config('test.yaml')
 
@@ -18,13 +19,25 @@ def test_jr2():
                                      mode='gui',
                                      action_timestep=1.0 / 10.0,
                                      physics_timestep=1 / 40.0)
+    
+
+    #from IPython import embed; embed()
+
+
     try:
         nav_env.reset()
-        for i in range(10):    # 300 steps, 30s world time
+        for i in range(10000):    # 300 steps, 30s world time
             action = nav_env.action_space.sample()
             state, reward, done, _ = nav_env.step(action)
-            if done:
-                print('Episode finished after {} timesteps'.format(i + 1))
+
+            #for item in p.getContactPoints():
+            #    flag, bA, bB, lA, lB = item[:5]
+            #    if bA == bB:
+            #        print(bA, bB, lA, lB)
+            #        print(p.getJointInfo(bA, lA)[1], p.getJointInfo(bA, lB)[1])
+
+            #if done:
+            #    print('Episode finished after {} timesteps'.format(i + 1))
     finally:
         nav_env.clean()
 

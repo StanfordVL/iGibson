@@ -21,7 +21,7 @@ class BaseRobot:
     Handles object loading
     """
 
-    def __init__(self, model_file, robot_name, scale=1):
+    def __init__(self, model_file, robot_name, scale=1, self_collision=False):
         self.parts = None
         self.jdict = None
         self.ordered_joints = None
@@ -40,6 +40,7 @@ class BaseRobot:
             self.model_type = 'MJCF'
         self.config = None
         self.np_random = None
+        self.self_collision = self_collision
 
     def load(self):
         ids = self._load_model()
@@ -121,13 +122,17 @@ class BaseRobot:
         return parts, joints, ordered_joints, self.robot_body
 
     def _load_model(self):
+        if self.self_collision:
+            flags = p.URDF_USE_SELF_COLLISION + p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT
+        else:
+            flags = 0
+
         if self.model_type == "MJCF":
             self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file),
-                                        flags=p.URDF_USE_SELF_COLLISION +
-                                        p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS)
+                                        flags=flags)
         if self.model_type == "URDF":
             self.robot_ids = (p.loadURDF(os.path.join(self.physics_model_dir, self.model_file),
-                                         globalScaling=self.scale), )
+                                         globalScaling=self.scale, flags=flags), )
 
         self.parts, self.jdict, self.ordered_joints, self.robot_body = self.addToScene(
             self.robot_ids)
