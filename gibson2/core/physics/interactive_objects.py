@@ -93,18 +93,24 @@ class Pedestrian(object):
 
 
 class VisualObject(object):
-    def __init__(self, rgba_color=[1, 0, 0, 0.5], radius=1.0):
+    def __init__(self, visual_shape=p.GEOM_SPHERE, rgba_color=[1, 0, 0, 0.5], radius=1.0, half_extents=[1, 1, 1]):
+        self.visual_shape = visual_shape
         self.rgba_color = rgba_color
         self.radius = radius
+        self.half_extents = half_extents
 
     def load(self):
-        shape = p.createVisualShape(p.GEOM_SPHERE, rgbaColor=self.rgba_color, radius=self.radius)
+        if self.visual_shape == p.GEOM_BOX:
+            shape = p.createVisualShape(self.visual_shape, rgbaColor=self.rgba_color, halfExtents=self.half_extents)
+        else:
+            shape = p.createVisualShape(self.visual_shape, rgbaColor=self.rgba_color, radius=self.radius)
         self.body_id = p.createMultiBody(baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1)
         return self.body_id
 
-    def set_position(self, pos):
-        _, org_orn = p.getBasePositionAndOrientation(self.body_id)
-        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
+    def set_position(self, pos, new_orn=None):
+        if new_orn is None:
+            _, new_orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, new_orn)
 
 
 class BoxShape(object):

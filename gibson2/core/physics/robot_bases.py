@@ -331,7 +331,7 @@ class Joint:
         return x, vx, trq
 
     def set_state(self, x, vx):
-        """Set state of jointlower_limit
+        """Set state of joint
            x is defined in real world scale """
         if self.joint_type == p.JOINT_PRISMATIC:
             x /= self.scale

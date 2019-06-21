@@ -28,11 +28,13 @@ class WalkerBase(BaseRobot):
             resolution=512,
             control='torque',
             is_discrete=True,
+            clip_state=True,
     ):
         BaseRobot.__init__(self, filename, robot_name, scale)
         self.control = control
         self.resolution = resolution
         self.is_discrete = is_discrete
+        self.clip_state = clip_state
 
         assert type(action_dim) == int, "Action dimension must be int, got {}".format(
             type(action_dim))
@@ -116,6 +118,7 @@ class WalkerBase(BaseRobot):
         return self.robot_body.get_rpy()
 
     def apply_real_action(self, action):
+        print("real action", action)
         if self.control == 'torque':
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_torque(self.power * j.power_coef * float(np.clip(action[n], -1, +1)))
@@ -166,7 +169,10 @@ class WalkerBase(BaseRobot):
         vx, vy, vz = rotate_vector_3d(self.robot_body.velocity(), r, p, yaw)
         more = np.array([z, vx, vy, vz, r, p, yaw], dtype=np.float32)
 
-        return np.clip(np.concatenate([more] + [j]), -5, +5)
+        state = np.concatenate([more] + [j])
+        if self.clip_state:
+            state = np.clip(state, -5, +5)
+        return state
 
 
 class Ant(WalkerBase):
@@ -577,12 +583,12 @@ class JR2_Kinova(WalkerBase):
         idx: 2, name: right_wheel
         idx: 15, name: pan_joint
         idx: 16, name: tilt_joint
-        idx: 25, name: m1n6s200_joint_1
-        idx: 26, name: m1n6s200_joint_2
-        idx: 27, name: m1n6s200_joint_3
-        idx: 28, name: m1n6s200_joint_4
-        idx: 29, name: m1n6s200_joint_5
-        idx: 30, name: m1n6s200_joint_6
+        idx: 25, name: m1n6s200_joint_1          [-6.28318530718, 6.28318530718]
+        idx: 26, name: m1n6s200_joint_2          [0.872664625997, 5.41052068118]
+        idx: 27, name: m1n6s200_joint_3          [0.610865238198, 5.67232006898]
+        idx: 28, name: m1n6s200_joint_4          [-6.28318530718, 6.28318530718]
+        idx: 29, name: m1n6s200_joint_5          [-6.28318530718, 6.28318530718]
+        idx: 30, name: m1n6s200_joint_6          [-6.28318530718, 6.28318530718]
         idx: 32, name: m1n6s200_joint_finger_1
         idx: 34, name: m1n6s200_joint_finger_2
         '''
@@ -591,7 +597,9 @@ class JR2_Kinova(WalkerBase):
         self.wheel_dim = 2
         self.cam_dim = 2
         self.arm_velocity = config.get('arm_velocity', 0.01)
-        self.arm_dim = 8
+        self.arm_dim = 5
+        self.finger_dim = 3
+
         WalkerBase.__init__(self,
                             "jr2_urdf/jr2_kinova.urdf",
                             "base_link",
@@ -601,12 +609,15 @@ class JR2_Kinova(WalkerBase):
                             scale=config.get("robot_scale", self.default_scale),
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", True),
-                            control='velocity')
+                            control='velocity',
+                            clip_state=False)
 
     def set_up_continuous_action_space(self):
-        self.action_high = np.array([self.wheel_velocity] * 2 + [self.arm_velocity] * 8)
+        self.action_high = np.array([self.wheel_velocity] * self.wheel_dim + [self.arm_velocity] * self.arm_dim)
         self.action_low = -self.action_high
-        self.action_space = gym.spaces.Box(shape=(self.wheel_dim + self.arm_dim, ),
+        # self.action_high = np.array([np.pi] * (self.wheel_dim + self.arm_dim))
+        # self.action_low = -self.action_high
+        self.action_space = gym.spaces.Box(shape=(self.wheel_dim + self.arm_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
@@ -619,7 +630,8 @@ class JR2_Kinova(WalkerBase):
         denormalized_action = self.action_high * action
         real_action = np.zeros(self.action_dim)
         real_action[:self.wheel_dim] = denormalized_action[:self.wheel_dim]
-        real_action[(self.wheel_dim + self.cam_dim):] = denormalized_action[self.wheel_dim:]
+        real_action[(self.wheel_dim + self.cam_dim):(self.wheel_dim + self.cam_dim + self.arm_dim)] = \
+            denormalized_action[self.wheel_dim:]
         self.apply_real_action(real_action)
 
     def calc_state(self):
@@ -629,3 +641,11 @@ class JR2_Kinova(WalkerBase):
 
     def get_end_effector_position(self):
         return self.parts['m1n6s200_link_finger_1'].get_position()
+
+    def robot_specific_reset(self):
+        super(JR2_Kinova, self).robot_specific_reset()
+        self.ordered_joints[4].set_position(-np.pi / 2.0)
+        self.ordered_joints[5].set_position(np.pi / 2.0)
+        self.ordered_joints[6].set_position(np.pi / 2.0)
+        self.ordered_joints[7].set_position(0.0)
+        self.ordered_joints[8].set_position(0.0)

@@ -41,7 +41,7 @@ class NavigateEnv(BaseEnv):
         self.simulator.set_timestep(physics_timestep)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         # self.reward_stats = []
-        # self.state_stats = {'auxiliary_sensor': []}
+        # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
 
     def load(self):
         super(NavigateEnv, self).load()
@@ -409,6 +409,7 @@ class NavigateEnv(BaseEnv):
         done, info = self.get_termination()
 
         if done and self.automatic_reset:
+            info['last_observation'] = state
             state = self.reset()
         return state, reward, done, info
 
@@ -489,22 +490,24 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.door = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
                                    scale=1.35)
         self.simulator.import_interactive_object(self.door)
-        self.door.set_position_rotation([0, 0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+        # TODO: door pos
+        self.door.set_position_rotation([100, 100, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
         self.door_angle = self.config.get('door_angle', 90)
         self.door_angle = -(self.door_angle / 180.0) * np.pi
         self.door_handle_link_id = 2
         self.door_axis_link_id = 1
         self.jr_end_effector_link_id = 34
 
+        # TODO: wall
         self.wall1 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
                                     scale=1)
         self.simulator.import_interactive_object(self.wall1)
-        self.wall1.set_position_rotation([0, -1.0, 1], [0, 0, 0, 1])
+        self.wall1.set_position_rotation([0, -3, 1], [0, 0, 0, 1])
 
         self.wall2 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
                                     scale=1)
         self.simulator.import_interactive_object(self.wall2)
-        self.wall2.set_position_rotation([0, 1.0, 1], [0, 0, 0, 1])
+        self.wall2.set_position_rotation([0, 3, 1], [0, 0, 0, 1])
 
         self.wall3 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
                                     scale=1)
@@ -515,6 +518,16 @@ class InteractiveNavigateEnv(NavigateEnv):
                                     scale=1)
         self.simulator.import_interactive_object(self.wall4)
         self.wall4.set_position_rotation([3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+        #
+        # self.wall5 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+        #                             scale=1)
+        # self.simulator.import_interactive_object(self.wall5)
+        # self.wall5.set_position_rotation([0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+        #
+        # self.wall6 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+        #                             scale=1)
+        # self.simulator.import_interactive_object(self.wall6)
+        # self.wall6.set_position_rotation([0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
 
         # dense reward
         self.stage = 0
@@ -526,6 +539,30 @@ class InteractiveNavigateEnv(NavigateEnv):
         # attaching JR's arm to the door handle
         self.cid = None
 
+        # visualize subgoal
+        self.subgoal_base = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0, 1, 0, 0.5], half_extents=[0.4] * 3)
+        self.subgoal_base.load()
+        self.subgoal_end_effector = VisualObject(rgba_color=[1, 1, 0, 0.5], radius=0.2)
+        self.subgoal_end_effector.load()
+
+    def set_subgoal(self, ideal_next_state):
+        obs_avg = (self.observation_normalizer['sensor'][1] + self.observation_normalizer['sensor'][0]) / 2.0
+        obs_mag = (self.observation_normalizer['sensor'][1] - self.observation_normalizer['sensor'][0]) / 2.0
+        ideal_next_state = (ideal_next_state * obs_mag) + obs_avg
+
+        base_pos = np.zeros(3)
+        base_pos[:2] = ideal_next_state[:2]
+        base_pos[2] = 0.4
+
+        yaw = ideal_next_state[5]
+        new_orn = quatToXYZW(euler2quat(0, 0, yaw), 'wxyz')
+
+        end_effector_pos = ideal_next_state[2:5]
+        end_effector_pos = rotate_vector_3d(end_effector_pos, 0, 0, -yaw)
+
+        self.subgoal_base.set_position(base_pos, new_orn=new_orn)
+        self.subgoal_end_effector.set_position(base_pos + end_effector_pos - 0.4)
+
     def reset_interactive_objects(self):
         p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
         if self.cid is not None:
@@ -535,8 +572,8 @@ class InteractiveNavigateEnv(NavigateEnv):
     def reset_initial_and_target_pos(self):
         collision_links = [-1]
         while -1 in collision_links:  # if collision happens restart
-            pos = [np.random.uniform(1, 2), np.random.uniform(-0.5, 0.5), 0]
-            # pos = [1.0, 0.0, 0]
+            # pos = [np.random.uniform(1, 2), np.random.uniform(-0.5, 0.5), 0]
+            pos = [0.0, 0.0, 0]
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
             # self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
@@ -548,7 +585,14 @@ class InteractiveNavigateEnv(NavigateEnv):
                 ]
             collision_links = np.unique(collision_links)
             self.initial_pos = pos
-        self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-0.5, 0.5), 0]
+
+        # wait for the base to fall down to the ground and for the arm to move to its initial position
+        for _ in range(int(0.5 / self.physics_timestep)):
+            self.simulator_step()
+
+        # self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-0.5, 0.5), 0]
+        # TODO: target pos
+        self.target_pos = [-100, -100, 0]
         # self.target_pos = np.array([-1.0, 0.0, 0])
 
     def reset(self):
@@ -557,8 +601,13 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.prev_stage = self.stage
         return super(InteractiveNavigateEnv, self).reset()
 
+    def wrap_to_pi(self, states, indices):
+        states[indices] = states[indices] - np.pi * 2 * np.floor((states[indices] + np.pi) / (np.pi * 2))
+        return states
+
     def get_state(self, collision_links=[]):
         state = super(InteractiveNavigateEnv, self).get_state()
+        # self.state_stats['sensor'].append(state['sensor'])
         # self.state_stats['auxiliary_sensor'].append(state['auxiliary_sensor'])
         if self.normalize_observation:
             for key in state:
@@ -578,11 +627,21 @@ class InteractiveNavigateEnv(NavigateEnv):
         _, _, yaw = self.robots[0].get_rpy()
         door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
         additional_states = np.concatenate([robot_position, end_effector_pos, [yaw, door_angle]])
+        additional_states = self.wrap_to_pi(additional_states, np.array([5, 6]))
         assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
         return additional_states
 
     def get_auxiliary_sensor(self):
-        auxiliary_sensor = self.robots[0].calc_state()
+        auxiliary_sensor = np.zeros(self.auxiliary_sensor_dim)
+        robot_state = self.robots[0].calc_state()
+        assert self.auxiliary_sensor_dim == 42
+        assert robot_state.shape[0] == 46
+
+        auxiliary_sensor[:6] = robot_state[:6]        # z, vx, vy, vz, roll, pitch
+        auxiliary_sensor[6:12] = robot_state[7:13]    # wheel 1, 2
+        auxiliary_sensor[12:27] = robot_state[19:34]  # arm joint 1, 2, 3, 4, 5
+        auxiliary_sensor[27:30] = robot_state[43:46]  # v_roll, v_pitch, v_yaw
+
         r, p, yaw = self.robots[0].get_rpy()
         cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
         has_door_handle_in_hand = 1.0 if self.stage == self.stage_open_door else -1.0
@@ -591,11 +650,14 @@ class InteractiveNavigateEnv(NavigateEnv):
         robot_pos = self.robots[0].get_position()
         door_pos_local = rotate_vector_3d(door_pos - robot_pos, r, p, yaw)
         target_pos_local = rotate_vector_3d(target_pos - robot_pos, r, p, yaw)
-        return np.concatenate([auxiliary_sensor,
-                               [cos_yaw, sin_yaw, has_door_handle_in_hand],
-                               target_pos,
-                               door_pos_local,
-                               target_pos_local])
+
+        auxiliary_sensor[30:33] = np.array([cos_yaw, sin_yaw, has_door_handle_in_hand])
+        auxiliary_sensor[33:36] = target_pos
+        auxiliary_sensor[36:39] = door_pos_local
+        auxiliary_sensor[39:42] = target_pos_local
+
+        auxiliary_sensor = self.wrap_to_pi(auxiliary_sensor, np.arange(12, 27, 3))
+        return auxiliary_sensor
 
     def step(self, action):
         dist = np.linalg.norm(
@@ -671,7 +733,7 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # death penalty
         if self.robots[0].get_position()[2] > 0.1:
-            reward -= self.success_reward / 10.0
+            reward -= self.success_reward
 
         # print("get_reward (stage %d): %f" % (self.stage, reward))
         return reward
@@ -723,7 +785,17 @@ if __name__ == '__main__':
                                          action_timestep=1.0 / 10.0,
                                          physics_timestep=1 / 40.0)
 
-    for episode in range(10):
+    # debug_params = [p.addUserDebugParameter('link%d' % i, -1.0, 1.0, 0) for i in range(1, 6)]
+    # nav_env.reset()
+    # for i in range(1000000):  # 500 steps, 50s world time
+    #     debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
+    #     action = np.zeros(nav_env.action_space.shape)
+    #     action[2:] = np.array(debug_param_values)
+    #     print(action)
+    #     nav_env.step(action)
+    # assert False
+
+    for episode in range(20):
         print('Episode: {}'.format(episode))
         nav_env.reset()
         for i in range(500):  # 500 steps, 50s world time
@@ -744,6 +816,6 @@ if __name__ == '__main__':
         # print('std', np.std(nav_env.reward_stats))
         # print('95 percentile', np.percentile(nav_env.reward_stats, 95))
         # print('99 percentile', np.percentile(nav_env.reward_stats, 99))
-    # embed()
+    embed()
 
     nav_env.clean()
