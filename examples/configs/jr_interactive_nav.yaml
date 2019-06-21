@@ -21,6 +21,7 @@ target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
 additional_states_dim: 7
+
 auxiliary_sensor_dim: 42
 
 normalize_observation: true
@@ -59,7 +60,7 @@ observation_normalizer: {'sensor':[[-3.0, -3.0,                                 
                                                1.0, 1.0, 1.0,                    # cos(theta), sin(theta), has_door_handle_in_hand
                                                3.0, 3.0, 0.01,                   # target_pos
                                                3.0, 3.0, -0.01,                  # door_pos_local
-                                               6.0, 6.0, 0.02]],                 # target_pos_local
+                                               6.0, 6.0, 0.02]],                 # target_pos_loca
                          'rgb': [0.0, 1.0],
                          'depth': [0.0, 5.0]
 }
