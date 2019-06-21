@@ -56,6 +56,8 @@ Installation
 Gibson v2 can be installed as a python package:
 
 ```bash
+
+sudo apt-get install libx11-dev #dependency
 git clone https://github.com/fxia22/gibsonv2 --recursive
 cd gibsonv2
 

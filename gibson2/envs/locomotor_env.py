@@ -721,7 +721,8 @@ if __name__ == '__main__':
         nav_env = InteractiveNavigateEnv(config_file=config_filename,
                                          mode=args.mode,
                                          action_timestep=1.0 / 10.0,
-                                         physics_timestep=1 / 40.0)
+                                         physics_timestep=1 / 40.0,
+                                         device_idx=1)
 
     for episode in range(10):
         print('Episode: {}'.format(episode))
