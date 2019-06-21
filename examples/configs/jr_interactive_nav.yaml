@@ -21,9 +21,9 @@ target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
 additional_states_dim: 7
-auxiliary_sensor_dim: 58
+auxiliary_sensor_dim: 52
 
-normalize_observation: true
+normalize_observation: false
 observation_normalizer: {'sensor':[[-3.0, -1.0, -0.3, -1.0, 0.0, -3.141592653589793, -3.141592653589793],
                                    [3.0, 1.0, 1.0, 0.3, 1.2, 3.141592653589793, 0]],
                          'auxiliary_sensor': [[-0.01, -1.0, -1.0, -0.2, -0.025, -0.025, -3.141592653589793, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -0.5, -0.5, -4.0, -1.0, -1.0, -1.0, -3.0, -1.0, -0.01, -6.0, -6.0, -0.1, -6.0, -6.0, -0.1],
@@ -61,7 +61,7 @@ max_step: 500
 # sensor
 #output: [sensor, auxiliary_sensor, rgb, depth]
 output: [sensor, auxiliary_sensor]
-resolution: 64
+resolution: 256
 fov: 1.57
 
 # display

@@ -28,8 +28,9 @@ class WalkerBase(BaseRobot):
             resolution=512,
             control='torque',
             is_discrete=True,
+            self_collision=False,
     ):
-        BaseRobot.__init__(self, filename, robot_name, scale)
+        BaseRobot.__init__(self, filename, robot_name, scale, self_collision)
         self.control = control
         self.resolution = resolution
         self.is_discrete = is_discrete
@@ -575,8 +576,8 @@ class JR2_Kinova(WalkerBase):
         '''
         idx: 1, name: left_wheel
         idx: 2, name: right_wheel
-        idx: 15, name: pan_joint
-        idx: 16, name: tilt_joint
+        #idx: 15, name: pan_joint
+        #idx: 16, name: tilt_joint
         idx: 25, name: m1n6s200_joint_1
         idx: 26, name: m1n6s200_joint_2
         idx: 27, name: m1n6s200_joint_3
@@ -589,19 +590,20 @@ class JR2_Kinova(WalkerBase):
         self.config = config
         self.wheel_velocity = config.get('wheel_velocity', 0.1)
         self.wheel_dim = 2
-        self.cam_dim = 2
+        self.cam_dim = 0
         self.arm_velocity = config.get('arm_velocity', 0.01)
         self.arm_dim = 8
         WalkerBase.__init__(self,
                             "jr2_urdf/jr2_kinova.urdf",
                             "base_link",
-                            action_dim=12,
+                            action_dim=10,
                             sensor_dim=46,
                             power=2.5,
                             scale=config.get("robot_scale", self.default_scale),
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", True),
-                            control='velocity')
+                            control='velocity',
+                            self_collision=True)
 
     def set_up_continuous_action_space(self):
         self.action_high = np.array([self.wheel_velocity] * 2 + [self.arm_velocity] * 8)
@@ -629,3 +631,20 @@ class JR2_Kinova(WalkerBase):
 
     def get_end_effector_position(self):
         return self.parts['m1n6s200_link_finger_1'].get_position()
+
+    def load(self):
+        ids = self._load_model()
+        self.eyes = self.parts["eyes"]
+
+        robot_id = ids[0]
+
+        for joint in range(1,p.getNumJoints(robot_id)):
+            info = p.getJointInfo(robot_id,joint)
+            parent_id = info[-1]
+            p.setCollisionFilterPair(robot_id,robot_id,joint, parent_id, 0) # disable collision for immediate parent
+
+        for joint in range(1,p.getNumJoints(robot_id)):
+            for j in range(14,23):
+                p.setCollisionFilterPair(robot_id,robot_id,joint, j, 0)
+
+        return ids
