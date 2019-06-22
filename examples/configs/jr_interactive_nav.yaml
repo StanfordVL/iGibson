@@ -26,22 +26,22 @@ auxiliary_sensor_dim: 42
 
 normalize_observation: true
 observation_normalizer: {'sensor':[[-3.0, -3.0,                                  # x, y
-                                    -0.5, -1.0, 0.0,                             # arm_x, arm_y_ arm_z
+                                    -0.1, -0.5, 0.2                              # arm_x, arm_y_ arm_z
                                     -3.141592653589793, -3.141592653589793],     # theta, door_angle
                                    [3.0, 3.0,                                    # x, y
-                                    1.0, 0.5, 1.2,                               # arm_x, arm_y_ arm_z
+                                    0.75, 0.0, 1.15,                             # arm_x, arm_y_ arm_z
                                     3.141592653589793, 3.141592653589793]],      # theta, door_angle
                          'auxiliary_sensor': [[-0.001,                           # z
                                                -0.6, -0.1, -0.05,                # vx, vy, vz
                                                -0.005, -0.005,                   # roll, pitch
                                                -10.0, -0.6, -150.0,              # wheel 1
                                                -10.0, -0.6, -150.0,              # wheel 2
-                                               -3.141592653589793, -2.5, -10.0,  # arm joint 1
-                                               -3.141592653589793, -2.5, -50.0,  # arm joint 2
-                                               -3.141592653589793, -2.5, -10.0,  # arm joint 3
-                                               -3.141592653589793, -2.5, -2.5,   # arm joint 4
-                                               -3.141592653589793, -2.5, -1.2,   # arm joint 5
-                                               -0.15, -0.15, -2.0,               # v_roll, v_pitch, v_yaw
+                                               -3.141592653589793, -1.0, -100.0, # arm joint 1
+                                               -3.141592653589793, -1.2, -20.0,  # arm joint 2
+                                               -3.141592653589793, -1.2, -7.0,   # arm joint 3
+                                               -3.141592653589793, -1.5, -2.5,   # arm joint 4
+                                               -3.141592653589793, -1.3, -1.3,   # arm joint 5
+                                               -0.15, -0.15, -1.5,               # v_roll, v_pitch, v_yaw
                                                -1.0, -1.0, -1.0,                 # cos(theta), sin(theta), has_door_handle_in_hand
                                                -3.0, -3.0, -0.01,                # target_pos
                                                -3.0, -3.0, -0.03,                # door_pos_local
@@ -51,12 +51,12 @@ observation_normalizer: {'sensor':[[-3.0, -3.0,                                 
                                                0.005, 0.005,                     # roll, pitch
                                                10.0, 0.6, 150.0,                 # wheel 1
                                                10.0, 0.6, 150.0,                 # wheel 2
-                                               3.141592653589793, 2.5, 10.0,     # arm joint 1
-                                               3.141592653589793, 2.5, 10.0,     # arm joint 2
-                                               3.141592653589793, 2.5, 6.0,      # arm joint 3
-                                               3.141592653589793, 2.5, 2.5,      # arm joint 4
-                                               3.141592653589793, 2.5, 1.2,      # arm joint 5
-                                               0.15, 0.15, 2,                    # v_roll, v_pitch, v_yaw
+                                               3.141592653589793, 1.0, 100.0,    # arm joint 1
+                                               3.141592653589793, 1.2, 10.0,     # arm joint 2
+                                               3.141592653589793, 1.2, 7.0,      # arm joint 3
+                                               3.141592653589793, 1.5, 2.5,      # arm joint 4
+                                               3.141592653589793, 1.3, 1.3,      # arm joint 5
+                                               0.15, 0.15, 1.5,                  # v_roll, v_pitch, v_yaw
                                                1.0, 1.0, 1.0,                    # cos(theta), sin(theta), has_door_handle_in_hand
                                                3.0, 3.0, 0.01,                   # target_pos
                                                3.0, 3.0, -0.01,                  # door_pos_local

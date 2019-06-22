@@ -132,7 +132,7 @@ class BaseRobot:
                                         flags=flags)
         if self.model_type == "URDF":
             self.robot_ids = (p.loadURDF(os.path.join(self.physics_model_dir, self.model_file),
-                                         globalScaling=self.scale, flags=flags))
+                                         globalScaling=self.scale, flags=flags),)
 
         self.parts, self.jdict, self.ordered_joints, self.robot_body = self.addToScene(
             self.robot_ids)
