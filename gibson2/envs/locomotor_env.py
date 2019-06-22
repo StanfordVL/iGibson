@@ -574,7 +574,8 @@ class InteractiveNavigateEnv(NavigateEnv):
         while -1 in collision_links:  # if collision happens restart
             # pos = [np.random.uniform(1, 2), np.random.uniform(-0.5, 0.5), 0]
             pos = [0.0, 0.0, 0]
-            self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
+            # self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
+            self.robots[0].set_position(pos=[pos[0], pos[1], pos[2]])
             self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
             # self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
             collision_links = []
@@ -586,9 +587,9 @@ class InteractiveNavigateEnv(NavigateEnv):
             collision_links = np.unique(collision_links)
             self.initial_pos = pos
 
-        # wait for the base to fall down to the ground and for the arm to move to its initial position
-        for _ in range(int(0.5 / self.physics_timestep)):
-            self.simulator_step()
+        # # wait for the base to fall down to the ground and for the arm to move to its initial position
+        # for _ in range(int(0.5 / self.physics_timestep)):
+        #     self.simulator_step()
 
         # self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-0.5, 0.5), 0]
         # TODO: target pos
@@ -635,12 +636,11 @@ class InteractiveNavigateEnv(NavigateEnv):
         auxiliary_sensor = np.zeros(self.auxiliary_sensor_dim)
         robot_state = self.robots[0].calc_state()
         assert self.auxiliary_sensor_dim == 42
-        assert robot_state.shape[0] == 46
+        assert robot_state.shape[0] == 40
 
         auxiliary_sensor[:6] = robot_state[:6]        # z, vx, vy, vz, roll, pitch
-        auxiliary_sensor[6:12] = robot_state[7:13]    # wheel 1, 2
-        auxiliary_sensor[12:27] = robot_state[19:34]  # arm joint 1, 2, 3, 4, 5
-        auxiliary_sensor[27:30] = robot_state[43:46]  # v_roll, v_pitch, v_yaw
+        auxiliary_sensor[6:27] = robot_state[7:28]    # wheel 1, 2, arm joint 1, 2, 3, 4, 5
+        auxiliary_sensor[27:30] = robot_state[37:40]  # v_roll, v_pitch, v_yaw
 
         r, p, yaw = self.robots[0].get_rpy()
         cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
@@ -785,7 +785,13 @@ if __name__ == '__main__':
                                          action_timestep=1.0 / 10.0,
                                          physics_timestep=1 / 40.0)
 
-    # debug_params = [p.addUserDebugParameter('link%d' % i, -1.0, 1.0, 0) for i in range(1, 6)]
+    # debug_params = [
+    #     p.addUserDebugParameter('link1', -1.0, 1.0, -0.5),
+    #     p.addUserDebugParameter('link2', -1.0, 1.0, 0.5),
+    #     p.addUserDebugParameter('link3', -1.0, 1.0, 0.5),
+    #     p.addUserDebugParameter('link4', -1.0, 1.0, 0.5),
+    #     p.addUserDebugParameter('link5', -1.0, 1.0, 0.0),
+    # ]
     # nav_env.reset()
     # for i in range(1000000):  # 500 steps, 50s world time
     #     debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
@@ -795,7 +801,7 @@ if __name__ == '__main__':
     #     nav_env.step(action)
     # assert False
 
-    for episode in range(20):
+    for episode in range(10):
         print('Episode: {}'.format(episode))
         nav_env.reset()
         for i in range(500):  # 500 steps, 50s world time
