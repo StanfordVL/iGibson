@@ -63,6 +63,9 @@ class NavigateEnv(BaseEnv):
         self.max_step = self.config.get('max_step', float('inf'))
 
         # reward
+        self.reward_type = self.config.get('reward_type', 'dense')
+        assert self.reward_type in ['dense', 'approx', 'sparse']
+
         self.success_reward = self.config.get('success_reward', 10.0)
         self.slack_reward = self.config.get('slack_reward', -0.01)
 
@@ -131,8 +134,8 @@ class NavigateEnv(BaseEnv):
             'visual_object_at_initial_target_pos', False)
 
         if self.visual_object_at_initial_target_pos:
-            self.initial_pos_vis_obj = VisualObject(rgba_color=[1, 0, 0, 0.5])
-            self.target_pos_vis_obj = VisualObject(rgba_color=[0, 0, 1, 0.5])
+            self.initial_pos_vis_obj = VisualObject(rgba_color=[1, 0, 0, 0.5], radius=0.2)
+            self.target_pos_vis_obj = VisualObject(rgba_color=[0, 0, 1, 0.5], radius=0.2)
             self.initial_pos_vis_obj.load()
             if self.config.get('target_visual_object_visible_to_agent', False):
                 self.simulator.import_object(self.target_pos_vis_obj)
@@ -159,7 +162,6 @@ class NavigateEnv(BaseEnv):
         self.max_step = self.config.get('max_step', float('inf'))
 
         # reward
-        self.terminal_reward = self.config.get('terminal_reward', 0.0)
         self.electricity_cost = self.config.get('electricity_cost', 0.0)
         self.stall_torque_cost = self.config.get('stall_torque_cost', 0.0)
         self.collision_cost = self.config.get('collision_cost', 0.0)
@@ -302,7 +304,7 @@ class NavigateEnv(BaseEnv):
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
             elev_bottom_angle = -30. * np.pi / 180.
             elev_top_angle = 10. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,get_state
+            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
                                    (elev_top_angle - elev_bottom_angle) / float(n_vertical_beams))
             orig_offset = np.vstack([
                 np.vstack([np.cos(angle),
@@ -349,7 +351,7 @@ class NavigateEnv(BaseEnv):
     def get_potential(self):
         return l2_distance(self.target_pos, self.get_position_of_interest())
 
-    def get_reward(self, collision_links):
+    def get_reward(self, collision_links=[], action=None):
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
         new_normalized_potential = self.get_potential() / self.initial_potential
@@ -382,12 +384,12 @@ class NavigateEnv(BaseEnv):
 
         # goal reached
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
-            # print('goal')
+            print('GOAL')
             done = True
             info['success'] = True
         # robot flips over
         elif self.robots[0].get_position()[2] > 0.1:
-            print('death')
+            print('DEATH')
             done = True
             info['success'] = False
         # time out
@@ -398,6 +400,7 @@ class NavigateEnv(BaseEnv):
 
         if done:
             info['episode_length'] = self.current_step
+            info['collision_step'] = self.collision_step
 
         return done, info
 
@@ -405,7 +408,7 @@ class NavigateEnv(BaseEnv):
         self.robots[0].apply_action(action)
         collision_links = self.run_simulation()
         state = self.get_state(collision_links)
-        reward = self.get_reward(collision_links)
+        reward = self.get_reward(collision_links, action)
         done, info = self.get_termination()
 
         if done and self.automatic_reset:
@@ -422,7 +425,12 @@ class NavigateEnv(BaseEnv):
         self.reset_initial_and_target_pos()
         self.initial_potential = self.get_potential()
         self.normalized_potential = 1.0
+        if self.reward_type == 'approx':
+            self.initial_approx_potential = self.get_approx_potential()
+            self.normalized_approx_potential = 1.0
+
         self.current_step = 0
+        self.collision_step = 0
 
         # set position for visual objects
         if self.visual_object_at_initial_target_pos:
@@ -473,6 +481,16 @@ class NavigateRandomEnv(NavigateEnv):
             dist = l2_distance(self.initial_pos, self.target_pos)
 
 
+# Change door position
+# Change wall width
+# Add two more walls
+# Change agent initial pos
+# Change agent initial ori
+# Change target position
+# Change jr_interactive_nav.yaml for wall width (1m <-> 3m)
+
+ONLY_LL = False
+
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
                  config_file,
@@ -491,43 +509,68 @@ class InteractiveNavigateEnv(NavigateEnv):
                                    scale=1.35)
         self.simulator.import_interactive_object(self.door)
         # TODO: door pos
-        self.door.set_position_rotation([100, 100, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+        if ONLY_LL:
+            self.door.set_position_rotation([100.0, 100.0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+        else:
+            self.door.set_position_rotation([0.0, 0.0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
         self.door_angle = self.config.get('door_angle', 90)
         self.door_angle = -(self.door_angle / 180.0) * np.pi
         self.door_handle_link_id = 2
         self.door_axis_link_id = 1
-        self.jr_end_effector_link_id = 34
+        self.jr_end_effector_link_id = 35  # 'm1n6s200_link_finger_1'
 
-        # TODO: wall
-        self.wall1 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                    scale=1)
-        self.simulator.import_interactive_object(self.wall1)
-        self.wall1.set_position_rotation([0, -3, 1], [0, 0, 0, 1])
+        if ONLY_LL:
+            # TODO: wall
+            self.wall1 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                        scale=1)
+            self.simulator.import_interactive_object(self.wall1)
+            self.wall1.set_position_rotation([0, -3, 1], [0, 0, 0, 1])
 
-        self.wall2 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                    scale=1)
-        self.simulator.import_interactive_object(self.wall2)
-        self.wall2.set_position_rotation([0, 3, 1], [0, 0, 0, 1])
+            self.wall2 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                        scale=1)
+            self.simulator.import_interactive_object(self.wall2)
+            self.wall2.set_position_rotation([0, 3, 1], [0, 0, 0, 1])
 
-        self.wall3 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                    scale=1)
-        self.simulator.import_interactive_object(self.wall3)
-        self.wall3.set_position_rotation([-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+            self.wall3 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                        scale=1)
+            self.simulator.import_interactive_object(self.wall3)
+            self.wall3.set_position_rotation([-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
 
-        self.wall4 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                    scale=1)
-        self.simulator.import_interactive_object(self.wall4)
-        self.wall4.set_position_rotation([3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
-        #
-        # self.wall5 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-        #                             scale=1)
-        # self.simulator.import_interactive_object(self.wall5)
-        # self.wall5.set_position_rotation([0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
-        #
-        # self.wall6 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-        #                             scale=1)
-        # self.simulator.import_interactive_object(self.wall6)
-        # self.wall6.set_position_rotation([0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+            self.wall4 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                        scale=1)
+            self.simulator.import_interactive_object(self.wall4)
+            self.wall4.set_position_rotation([3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+        else:
+            # TODO: wall
+            self.wall1 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                        scale=1)
+            self.simulator.import_interactive_object(self.wall1)
+            self.wall1.set_position_rotation([0, -1, 1], [0, 0, 0, 1])
+
+            self.wall2 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                        scale=1)
+            self.simulator.import_interactive_object(self.wall2)
+            self.wall2.set_position_rotation([0, 1, 1], [0, 0, 0, 1])
+
+            self.wall3 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                        scale=1)
+            self.simulator.import_interactive_object(self.wall3)
+            self.wall3.set_position_rotation([-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+
+            self.wall4 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                        scale=1)
+            self.simulator.import_interactive_object(self.wall4)
+            self.wall4.set_position_rotation([3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+
+            self.wall5 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                        scale=1)
+            self.simulator.import_interactive_object(self.wall5)
+            self.wall5.set_position_rotation([0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+
+            self.wall6 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                        scale=1)
+            self.simulator.import_interactive_object(self.wall6)
+            self.wall6.set_position_rotation([0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
 
         # dense reward
         self.stage = 0
@@ -537,6 +580,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.stage_get_to_target_pos = 2
 
         # attaching JR's arm to the door handle
+        self.door_handle_dist_thresh = 0.2
         self.cid = None
 
         # visualize subgoal
@@ -545,23 +589,40 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.subgoal_end_effector = VisualObject(rgba_color=[1, 1, 0, 0.5], radius=0.2)
         self.subgoal_end_effector.load()
 
+        self.door_handle_vis = VisualObject(rgba_color=[1, 0, 0, 0.5], radius=self.door_handle_dist_thresh)
+        self.door_handle_vis.load()
+        self.door_vis = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0, 1, 1, 0.5], half_extents=[0.05, 0.5, 2.7])
+        self.door_vis.load()
+
     def set_subgoal(self, ideal_next_state):
         obs_avg = (self.observation_normalizer['sensor'][1] + self.observation_normalizer['sensor'][0]) / 2.0
         obs_mag = (self.observation_normalizer['sensor'][1] - self.observation_normalizer['sensor'][0]) / 2.0
         ideal_next_state = (ideal_next_state * obs_mag) + obs_avg
+        ideal_next_state = self.wrap_to_pi(ideal_next_state, np.array([5, 6]))
 
         base_pos = np.zeros(3)
+        z = self.robots[0].get_position()[2]
         base_pos[:2] = ideal_next_state[:2]
-        base_pos[2] = 0.4
+        base_pos[2] = z
 
         yaw = ideal_next_state[5]
         new_orn = quatToXYZW(euler2quat(0, 0, yaw), 'wxyz')
 
         end_effector_pos = ideal_next_state[2:5]
-        end_effector_pos = rotate_vector_3d(end_effector_pos, 0, 0, -yaw)
+        roll, pitch, _ = self.robots[0].get_rpy()
+        end_effector_pos = rotate_vector_3d(end_effector_pos, -roll, -pitch, -yaw)
+        # end_effector_pos = rotate_vector_3d(end_effector_pos, 0, 0, -yaw)
+        # print("end effector pos", end_effector_pos)
 
-        self.subgoal_base.set_position(base_pos, new_orn=new_orn)
-        self.subgoal_end_effector.set_position(base_pos + end_effector_pos - 0.4)
+        self.subgoal_base.set_position(np.array([base_pos[0], base_pos[1], base_pos[2] + 0.4]), new_orn=new_orn)
+        self.subgoal_end_effector.set_position(base_pos + end_effector_pos)
+
+        door_angle = ideal_next_state[6]
+        door_width = 0.5
+        door_x = -np.sin(door_angle) * door_width
+        door_y = (np.cos(door_angle) - 1) * door_width
+        door_orn = quatToXYZW(euler2quat(0, 0, door_angle), 'wxyz')
+        self.door_vis.set_position(np.array([door_x, door_y, 0.0]), new_orn=door_orn)
 
     def reset_interactive_objects(self):
         p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
@@ -573,11 +634,19 @@ class InteractiveNavigateEnv(NavigateEnv):
         collision_links = [-1]
         while -1 in collision_links:  # if collision happens restart
             # pos = [np.random.uniform(1, 2), np.random.uniform(-0.5, 0.5), 0]
-            pos = [0.0, 0.0, 0]
+            if ONLY_LL:
+                pos = [0.0, 0.0, 0.0]
+            else:
+                pos = [1.0, 0.0, 0.0]
+            # pos = [0.0, 0.0, 0.0]
             # self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2]])
-            self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-            # self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
+
+            if ONLY_LL:
+                self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+            else:
+                self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
+
             collision_links = []
             for _ in range(self.simulator_loop):
                 self.simulator_step()
@@ -593,8 +662,12 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-0.5, 0.5), 0]
         # TODO: target pos
-        self.target_pos = [-100, -100, 0]
-        # self.target_pos = np.array([-1.0, 0.0, 0])
+        if ONLY_LL:
+            self.target_pos = [-100, -100, 0]
+        else:
+            self.target_pos = np.array([-1.0, 0.0, 0])
+
+        self.door_handle_vis.set_position(pos=np.array(p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]))
 
     def reset(self):
         self.reset_interactive_objects()
@@ -616,6 +689,9 @@ class InteractiveNavigateEnv(NavigateEnv):
                 obs_max = self.observation_normalizer[key][1]
                 obs_avg = (self.observation_normalizer[key][1] + self.observation_normalizer[key][0]) / 2.0
                 obs_mag = (self.observation_normalizer[key][1] - self.observation_normalizer[key][0]) / 2.0
+                # clipped = np.clip(state[key], obs_min, obs_max)
+                # if np.sum(state[key] == clipped) / float(state[key].shape[0]) < 0.8:
+                #     print("WARNING: more than 20% of the observations are clipped for key: {}".format(key))
                 state[key] = (np.clip(state[key], obs_min, obs_max) - obs_avg) / obs_mag  # normalize to [-1, 1]
         # self.state_stats['rgb'].append(state['rgb'])
         # self.state_stats['depth'].append(state['depth'])
@@ -625,6 +701,8 @@ class InteractiveNavigateEnv(NavigateEnv):
         robot_position = self.robots[0].get_position()[:2]  # z is not controllable by the agent
         end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
         end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
+        # print("end_effector_pos", end_effector_pos)
+        # print("joint", p.getJointState(self.robots[0].robot_ids[0], 27)[0])
         _, _, yaw = self.robots[0].get_rpy()
         door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
         additional_states = np.concatenate([robot_position, end_effector_pos, [yaw, door_angle]])
@@ -635,28 +713,47 @@ class InteractiveNavigateEnv(NavigateEnv):
     def get_auxiliary_sensor(self):
         auxiliary_sensor = np.zeros(self.auxiliary_sensor_dim)
         robot_state = self.robots[0].calc_state()
-        assert self.auxiliary_sensor_dim == 42
+        # assert self.auxiliary_sensor_dim == 44
+        assert self.auxiliary_sensor_dim == 58
         assert robot_state.shape[0] == 40
 
-        auxiliary_sensor[:6] = robot_state[:6]        # z, vx, vy, vz, roll, pitch
-        auxiliary_sensor[6:27] = robot_state[7:28]    # wheel 1, 2, arm joint 1, 2, 3, 4, 5
-        auxiliary_sensor[27:30] = robot_state[37:40]  # v_roll, v_pitch, v_yaw
+        robot_state = self.wrap_to_pi(robot_state, np.arange(7, 28, 3))  # wrap wheel and arm joint pos to [-pi, pi]
 
-        r, p, yaw = self.robots[0].get_rpy()
+        auxiliary_sensor[:6] = robot_state[:6]                   # z, vx, vy, vz, roll, pitch
+        auxiliary_sensor[6:41:5] = robot_state[7:28:3]           # pos for wheel 1, 2, arm joint 1, 2, 3, 4, 5
+        auxiliary_sensor[7:42:5] = robot_state[8:29:3]           # vel for wheel 1, 2, arm joint 1, 2, 3, 4, 5
+        auxiliary_sensor[8:43:5] = robot_state[9:30:3]           # trq for wheel 1, 2, arm joint 1, 2, 3, 4, 5
+        auxiliary_sensor[9:44:5] = np.cos(robot_state[7:28:3])   # cos(pos) for wheel 1, 2, arm joint 1, 2, 3, 4, 5
+        auxiliary_sensor[10:45:5] = np.sin(robot_state[7:28:3])  # sin(pos) for wheel 1, 2, arm joint 1, 2, 3, 4, 5
+        auxiliary_sensor[41:44] = robot_state[37:40]             # v_roll, v_pitch, v_yaw
+
+        # auxiliary_sensor[:6] = robot_state[:6]        # z, vx, vy, vz, roll, pitch
+        # auxiliary_sensor[6:27] = robot_state[7:28]    # wheel 1, 2, arm joint 1, 2, 3, 4, 5
+        # auxiliary_sensor[27:30] = robot_state[37:40]  # v_roll, v_pitch, v_yaw
+
+        roll, pitch, yaw = self.robots[0].get_rpy()
         cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
+        door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+        cos_door_angle, sin_door_angle = np.cos(door_angle), np.sin(door_angle)
         has_door_handle_in_hand = 1.0 if self.stage == self.stage_open_door else -1.0
         door_pos = np.array([0, 0, -0.02])
         target_pos = self.target_pos
         robot_pos = self.robots[0].get_position()
-        door_pos_local = rotate_vector_3d(door_pos - robot_pos, r, p, yaw)
-        target_pos_local = rotate_vector_3d(target_pos - robot_pos, r, p, yaw)
+        door_pos_local = rotate_vector_3d(door_pos - robot_pos, roll, pitch, yaw)
+        target_pos_local = rotate_vector_3d(target_pos - robot_pos, roll, pitch, yaw)
 
-        auxiliary_sensor[30:33] = np.array([cos_yaw, sin_yaw, has_door_handle_in_hand])
-        auxiliary_sensor[33:36] = target_pos
-        auxiliary_sensor[36:39] = door_pos_local
-        auxiliary_sensor[39:42] = target_pos_local
+        # auxiliary_sensor[30:32] = np.array([cos_yaw, sin_yaw])
+        # auxiliary_sensor[32:35] = np.array([cos_door_angle, sin_door_angle, has_door_handle_in_hand])self.initial_potential =
+        # auxiliary_sensor[35:38] = target_pos
+        # auxiliary_sensor[38:41] = door_pos_local
+        # auxiliary_sensor[41:44] = target_pos_local
 
-        auxiliary_sensor = self.wrap_to_pi(auxiliary_sensor, np.arange(12, 27, 3))
+        auxiliary_sensor[44:46] = np.array([cos_yaw, sin_yaw])
+        auxiliary_sensor[46:49] = np.array([cos_door_angle, sin_door_angle, has_door_handle_in_hand])
+        auxiliary_sensor[49:52] = target_pos
+        auxiliary_sensor[52:55] = door_pos_local
+        auxiliary_sensor[55:58] = target_pos_local
+
         return auxiliary_sensor
 
     def step(self, action):
@@ -664,9 +761,10 @@ class InteractiveNavigateEnv(NavigateEnv):
             np.array(p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]) -
             np.array(p.getLinkState(self.robots[0].robot_ids[0], self.jr_end_effector_link_id)[0])
         )
-        # print(dist)
+        # print('dist', dist)
+
         self.prev_stage = self.stage
-        if self.stage == self.stage_get_to_door_handle and dist < 0.2:
+        if self.stage == self.stage_get_to_door_handle and dist < self.door_handle_dist_thresh:
             assert self.cid is None
             self.cid = p.createConstraint(self.robots[0].robot_ids[0], self.jr_end_effector_link_id,
                                           self.door.body_id, self.door_handle_link_id,
@@ -698,32 +796,48 @@ class InteractiveNavigateEnv(NavigateEnv):
         # print("get_potential (stage %d): %f" % (self.stage, potential))
         return potential
 
-    def get_reward(self, collision_links):
+    def get_approx_potential(self):
+        return l2_distance(self.target_pos, self.robots[0].get_position())
+
+    def get_reward(self, collision_links=[], action=None):
         reward = 0.0
-        if self.stage != self.prev_stage:
-            # advance to the next stage
-            self.initial_potential = self.get_potential()
-            self.normalized_potential = 1.0
-            reward += self.success_reward / 2.0
-        else:
-            new_normalized_potential = self.get_potential() / self.initial_potential
-            potential_reward = self.normalized_potential - new_normalized_potential
-            reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
-            # self.reward_stats.append(np.abs(potential_reward * self.potential_reward_weight))
-            self.normalized_potential = new_normalized_potential
 
-        electricity_reward = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
-        # electricity_reward = 0.0
-        reward += np.clip(electricity_reward * self.electricity_reward_weight, -0.005, 0)  # |electricity_reward| ~= 0.005 per step
-        # self.reward_stats.append(np.abs(electricity_reward * self.electricity_reward_weight))
+        if self.reward_type == 'dense':
+            if self.stage != self.prev_stage:
+                # advance to the next stage
+                self.initial_potential = self.get_potential()
+                self.normalized_potential = 1.0
+                reward += self.success_reward / 2.0
+            else:
+                new_normalized_potential = self.get_potential() / self.initial_potential
+                potential_reward = self.normalized_potential - new_normalized_potential
+                reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+                # self.reward_stats.append(np.abs(potential_reward * self.potential_reward_weight))
+                self.normalized_potential = new_normalized_potential
+        elif self.reward_type == 'approx':
+            new_normalized_approx_potential = self.get_approx_potential() / self.initial_approx_potential
+            potential_reward = self.normalized_approx_potential - new_normalized_approx_potential
+            reward += potential_reward * self.potential_reward_weight
+            self.normalized_approx_potential = new_normalized_approx_potential
 
-        stall_torque_reward = np.square(self.robots[0].joint_torque).mean()
-        # stall_torque_reward = 0.0
-        reward += np.clip(stall_torque_reward * self.stall_torque_reward_weight, -0.005, 0)  # |stall_torque_reward| ~= 0.005 per step
+        base_moving = np.any(action[:2] != 0.0)
+        arm_moving = np.any(action[2:] != 0.0)
+        electricity_reward = float(base_moving) + float(arm_moving)
+        reward += electricity_reward * self.electricity_reward_weight
+
+        # electricity_reward = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
+        # # electricity_reward = 0.0
+        # reward += np.clip(electricity_reward * self.electricity_reward_weight, -0.005, 0)  # |electricity_reward| ~= 0.005 per step
+        # # self.reward_stats.append(np.abs(electricity_reward * self.electricity_reward_weight))
+        #
+        # stall_torque_reward = np.square(self.robots[0].joint_torque).mean()
+        # # stall_torque_reward = 0.0
+        # reward += np.clip(stall_torque_reward * self.stall_torque_reward_weight, -0.005, 0)  # |stall_torque_reward| ~= 0.005 per step
 
         collision_link_ids = set([elem[3] for elem in collision_links
                                   if not (elem[2] == self.door.body_id and elem[4] == self.door_handle_link_id)])
         collision_reward = float(len(collision_link_ids & self.collision_links) != 0)
+        self.collision_step += int(collision_reward)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
         # self.reward_stats.append(np.abs(collision_reward * self.collision_reward_weight))
 
@@ -733,7 +847,7 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # death penalty
         if self.robots[0].get_position()[2] > 0.1:
-            reward -= self.success_reward
+            reward -= self.success_reward * 0.0
 
         # print("get_reward (stage %d): %f" % (self.stage, reward))
         return reward
@@ -801,12 +915,14 @@ if __name__ == '__main__':
     #     nav_env.step(action)
     # assert False
 
-    for episode in range(10):
+    for episode in range(50):
         print('Episode: {}'.format(episode))
         nav_env.reset()
         for i in range(500):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
-            # action[0:2] = 0.05
+            action[:] = 0
+            # action[0] = 0.1
+            # action[1] = -0.1
             state, reward, done, _ = nav_env.step(action)
             # print(reward)
             # print(nav_env.stage)
