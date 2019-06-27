@@ -579,24 +579,18 @@ class JR2_Kinova(WalkerBase):
 
     def __init__(self, config):
         '''
-        idx: 1, name: left_wheel
-        idx: 2, name: right_wheel
-        # idx: 15, name: pan_joint
-        # idx: 16, name: tilt_joint
-        idx: 25, name: m1n6s200_joint_1          [-6.28318530718, 6.28318530718]
-        idx: 26, name: m1n6s200_joint_2          [0.872664625997, 5.41052068118]
-        idx: 27, name: m1n6s200_joint_3          [0.610865238198, 5.67232006898]
-        idx: 28, name: m1n6s200_joint_4          [-6.28318530718, 6.28318530718]
-        idx: 29, name: m1n6s200_joint_5          [-6.28318530718, 6.28318530718]
-        idx: 30, name: m1n6s200_joint_6          [-6.28318530718, 6.28318530718]
-        idx: 25, name: m1n6s200_joint_1
-        idx: 26, name: m1n6s200_joint_2
-        idx: 27, name: m1n6s200_joint_3
-        idx: 28, name: m1n6s200_joint_4
-        idx: 29, name: m1n6s200_joint_5
-        idx: 30, name: m1n6s200_joint_6
-        idx: 32, name: m1n6s200_joint_finger_1
-        idx: 34, name: m1n6s200_joint_finger_2
+        idx: 2, name: left_wheel
+        idx: 3, name: right_wheel
+        # idx: 16, name: pan_joint
+        # idx: 17, name: tilt_joint
+        idx: 26, name: m1n6s200_joint_1          [-6.28318530718, 6.28318530718]
+        idx: 27, name: m1n6s200_joint_2          [0.872664625997, 5.41052068118]
+        idx: 28, name: m1n6s200_joint_3          [0.610865238198, 5.67232006898]
+        idx: 29, name: m1n6s200_joint_4          [-6.28318530718, 6.28318530718]
+        idx: 30, name: m1n6s200_joint_5          [-6.28318530718, 6.28318530718]
+        idx: 31, name: m1n6s200_joint_6          [-6.28318530718, 6.28318530718]
+        idx: 33, name: m1n6s200_joint_finger_1
+        idx: 35, name: m1n6s200_joint_finger_2
         '''
         self.config = config
         self.wheel_velocity = config.get('wheel_velocity', 0.1)
@@ -607,7 +601,7 @@ class JR2_Kinova(WalkerBase):
         self.finger_dim = 3
 
         WalkerBase.__init__(self,
-                            "jr2_urdf/jr2_kinova.urdf",
+                            "jr2_urdf_v3/jr2_kinova.urdf",
                             "base_link",
                             action_dim=10,
                             sensor_dim=46,
@@ -642,7 +636,22 @@ class JR2_Kinova(WalkerBase):
         self.apply_real_action(real_action)
 
     def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
+        j = np.array([j.get_state() for j in self.ordered_joints], dtype=np.float32).flatten()
+        self.joint_speeds = j[1::3]
+        self.joint_torque = j[2::3]
+        self.joints_at_limit = np.count_nonzero(np.abs(j[0::3]) > 0.99)
+
+        z = self.robot_body.get_position()[2]
+        r, p, yaw = self.robot_body.get_rpy()
+
+        # rotate speed back to body point of view
+        vx, vy, vz = rotate_vector_3d(self.robot_body.velocity(), r, p, yaw)
+        more = np.array([z, vx, vy, vz, r, p, yaw], dtype=np.float32)
+
+        base_state = np.concatenate([more] + [j])
+        if self.clip_state:
+            base_state = np.clip(base_state, -5, +5)
+
         angular_velocity = self.robot_body.angular_velocity()
         return np.concatenate((base_state, np.array(angular_velocity)))
 
@@ -669,7 +678,7 @@ class JR2_Kinova(WalkerBase):
             p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)  # disable collision for immediate parent
 
         for joint in range(p.getNumJoints(robot_id)):
-            for j in range(14, 23):
+            for j in range(15, 27):
                 p.setCollisionFilterPair(robot_id, robot_id, joint, j, 0)  # disable collision in the head / camera region
 
         return ids
