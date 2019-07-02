@@ -656,7 +656,7 @@ class JR2_Kinova(WalkerBase):
         return np.concatenate((base_state, np.array(angular_velocity)))
 
     def get_end_effector_position(self):
-        return self.parts['m1n6s200_link_finger_1'].get_position()
+        return self.parts['m1n6s200_end_effector'].get_position()
 
     def robot_specific_reset(self):
         super(JR2_Kinova, self).robot_specific_reset()
