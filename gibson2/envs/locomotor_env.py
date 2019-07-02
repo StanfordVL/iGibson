@@ -660,7 +660,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         # self.door_vis.load()
 
         self.id_to_name = {}
-        self.id_to_name[self.door.body_id] = {"name": "door", "links": {0: "door_leaf", 1: "door_knob"}}
+        self.id_to_name[self.door.body_id] = {"name": "door", "links": {0: "base", 1: "door_leaf", 2: "door_knob"}}
         for i, wall in enumerate([self.wall1, self.wall2, self.wall3, self.wall4, self.wall5, self.wall6]):
             self.id_to_name[wall.body_id] = {"name": "wall%d" % (i+1), "links": {0: "wall"}}
         self.id_to_name[self.robots[0].robot_ids[0]] = {"name": "robot", "links": {
