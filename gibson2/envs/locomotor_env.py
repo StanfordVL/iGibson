@@ -64,7 +64,7 @@ class NavigateEnv(BaseEnv):
 
         # reward
         self.reward_type = self.config.get('reward_type', 'dense')
-        assert self.reward_type in ['dense', 'sparse', 'normalized_l2', 'l2']
+        assert self.reward_type in ['dense', 'sparse', 'normalized_l2', 'l2', 'stage_sparse']
 
         self.success_reward = self.config.get('success_reward', 10.0)
         self.slack_reward = self.config.get('slack_reward', -0.01)
@@ -379,9 +379,14 @@ class NavigateEnv(BaseEnv):
 
         return reward
 
-    def get_termination(self):
+    def get_termination(self, collision_links):
         self.current_step += 1
         done, info = False, {}
+
+        collision_links = [elem for elem in collision_links if elem[3] in self.collision_links]
+        max_force = max([elem[9] for elem in collision_links] + [0])  # normalForce
+        door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+
         # print("z", self.robots[0].get_position()[2])
         # goal reached
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
@@ -398,7 +403,7 @@ class NavigateEnv(BaseEnv):
             # print('timeout')
             done = True
             info['success'] = False
-        elif p.getJointState(self.door.body_id, self.door_axis_link_id)[0] > (10.0 / 180.0 * np.pi):
+        elif door_angle > (10.0 / 180.0 * np.pi):
             # # if door opens in the wrong way, reset it to neutral (closed)
             # p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
             #                         jointIndex=self.door_axis_link_id,
@@ -408,6 +413,10 @@ class NavigateEnv(BaseEnv):
             print('WRONG PUSH')
             done = True
             info['success'] = False
+        # elif max_force > 500:
+        #     print("TOO MUCH FORCE")
+        #     done = True
+        #     info['success'] = False
 
         if done:
             info['episode_length'] = self.current_step
@@ -421,7 +430,7 @@ class NavigateEnv(BaseEnv):
         collision_links = self.run_simulation()
         state = self.get_state(collision_links)
         reward = self.get_reward(collision_links, action)
-        done, info = self.get_termination()
+        done, info = self.get_termination(collision_links)
 
         if done and self.automatic_reset:
             info['last_observation'] = state
@@ -895,6 +904,9 @@ class InteractiveNavigateEnv(NavigateEnv):
             potential_reward = self.l2_potential - new_l2_potential
             reward += potential_reward * self.potential_reward_weight
             self.l2_potential = new_l2_potential
+        elif self.reward_type == 'stage_sparse':
+            if self.stage != self.prev_stage:
+                reward += self.success_reward / 2.0
 
         base_moving = np.any(action[:2] != 0.0)
         arm_moving = np.any(action[2:] != 0.0)
@@ -1003,12 +1015,12 @@ if __name__ == '__main__':
         for i in range(500):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             action[:] = 0
-            # action[:2] = 1.0
+            action[:2] = 1.0
             # if nav_env.stage == 1:
             #     action[:2] = -0.1
 
             state, reward, done, _ = nav_env.step(action)
-            print(reward)
+            # print(reward)
             # print(nav_env.stage)
             # embed()
             if done:
