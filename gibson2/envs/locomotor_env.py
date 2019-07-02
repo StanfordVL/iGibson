@@ -399,6 +399,12 @@ class NavigateEnv(BaseEnv):
             done = True
             info['success'] = False
         elif p.getJointState(self.door.body_id, self.door_axis_link_id)[0] > (10.0 / 180.0 * np.pi):
+            # # if door opens in the wrong way, reset it to neutral (closed)
+            # p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
+            #                         jointIndex=self.door_axis_link_id,
+            #                         controlMode=p.POSITION_CONTROL,
+            #                         targetPosition=0.0,
+            #                         force=500)
             print('WRONG PUSH')
             done = True
             info['success'] = False
@@ -659,7 +665,8 @@ class InteractiveNavigateEnv(NavigateEnv):
                 # pos = [0.0, 0.0, 0.0]
                 pos = [np.random.uniform(-2, 2), np.random.uniform(-2, 2), 0]
             else:
-                pos = [1.5, 0.0, 0.0]
+                # pos = [1.5, 0.0, 0.0]
+                pos = [np.random.uniform(1, 2), np.random.uniform(-2, 2), 0]
             # pos = [0.0, 0.0, 0.0]
             # self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2]])
@@ -667,7 +674,8 @@ class InteractiveNavigateEnv(NavigateEnv):
             if ONLY_LL:
                 self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
             else:
-                self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
+                # self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
+                self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
 
             collision_links = []
             for _ in range(self.simulator_loop):
@@ -688,7 +696,8 @@ class InteractiveNavigateEnv(NavigateEnv):
             # self.target_pos = [-100, -100, 0]
             self.target_pos = [np.random.uniform(-2, 2), np.random.uniform(-2, 2), 0.0]
         else:
-            self.target_pos = np.array([-1.5, 0.0, 0.0])
+            # self.target_pos = np.array([-1.5, 0.0, 0.0])
+            self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-2, 2), 0.0]
 
         self.door_handle_vis.set_position(pos=np.array(p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]))
 
@@ -847,7 +856,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         if self.stage == self.stage_get_to_door_handle:
             potential = l2_distance(door_handle_pos, self.robots[0].get_end_effector_position())
         elif self.stage == self.stage_open_door:
-            potential = np.abs(door_angle + np.pi)
+            potential = door_angle
         elif self.stage == self.stage_get_to_target_pos:
             potential = l2_distance(self.target_pos, self.get_position_of_interest())
         # print("get_potential (stage %d): %f" % (self.stage, potential))
@@ -994,6 +1003,7 @@ if __name__ == '__main__':
         for i in range(500):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             action[:] = 0
+            # action[:2] = 1.0
             # if nav_env.stage == 1:
             #     action[:2] = -0.1
 
