@@ -659,7 +659,12 @@ class InteractiveNavigateEnv(NavigateEnv):
         # self.door_vis = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0, 1, 1, 0.5], half_extents=[0.05, 0.5, 2.7])
         # self.door_vis.load()
 
-        self.id_to_name = {}
+        self.id_to_name = {
+            0: {"name": "ground", "links": {0: "ground"}},
+            1: {"name": "ground", "links": {0: "ground"}},
+            2: {"name": "ground", "links": {0: "ground"}},
+            3: {"name": "ground", "links": {0: "ground"}},
+        }
         self.id_to_name[self.door.body_id] = {"name": "door", "links": {0: "base", 1: "door_leaf", 2: "door_knob"}}
         for i, wall in enumerate([self.wall1, self.wall2, self.wall3, self.wall4, self.wall5, self.wall6]):
             self.id_to_name[wall.body_id] = {"name": "wall%d" % (i+1), "links": {0: "wall"}}
@@ -1000,11 +1005,15 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         collision_link_ids = set([elem[3] for elem in collision_links
                                   if not (elem[2] == self.door.body_id and elem[4] == self.door_handle_link_id)])
+
         # collisions = [[elem[3], elem[2], elem[4]] for elem in collision_links
         #               if elem[3] in self.collision_links and not (elem[2] == self.door.body_id and elem[4] == self.door_handle_link_id)]
         # print('-' * 30)
         # for col in collisions:
-        #     print('link a', col[0], 'body b', col[1], 'link b', col[2])
+        #     print('link a', self.id_to_name[self.robots[0].robot_ids[0]]["links"][col[0]],
+        #           'body b', self.id_to_name[col[1]]["name"],
+        #           'link b', self.id_to_name[col[1]]["links"][col[2]])
+
         collision_reward = float(len(collision_link_ids & self.collision_links) != 0)
         self.collision_step += int(collision_reward)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
