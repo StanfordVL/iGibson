@@ -162,7 +162,7 @@ observation_normalizer: {'sensor':[[-3.0, -3.0, 0.0],                           
 #####
 
 # reward
-reward_type: dense
+reward_type: stage_sparse
 success_reward: 30.0
 slack_reward: -0.01
 potential_reward_weight: 2.0
@@ -172,18 +172,18 @@ electricity_reward_weight: -0.001
 stall_torque_reward_weight: 0.0
 collision_reward_weight: -0.01
 #collision_reward_weight: 0.0
-collision_links: [-1, 0, 1, 4, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]
+collision_links: [-1, 0, 1, 4, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
 
 # discount factor
 discount_factor: 0.99
 
 # termination condition
-dist_tol: 0.2
+dist_tol: 0.5
 max_step: 1000
 
 # sensor
 #output: [sensor, auxiliary_sensor, rgb, depth]
-output: [sensor, auxiliary_sensor]
+output: [sensor, auxiliary_sensor, depth]
 resolution: 64
 fov: 1.57
 
