@@ -369,8 +369,8 @@ class NavigateEnv(BaseEnv):
         stall_torque_reward = 0.0
         reward += stall_torque_reward * self.stall_torque_reward_weight  # |stall_torque_reward| ~= 0.05 per step
 
-        collision_link_ids = set([elem[3] for elem in collision_links])
-        collision_reward = float(len(collision_link_ids & self.collision_links) != 0)
+        collision_links = [elem for elem in collision_links if elem[3] in self.collision_links]
+        collision_reward = float(len(collision_links) != 0)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
 
         # goal reached
@@ -428,7 +428,7 @@ class NavigateEnv(BaseEnv):
     def step(self, action):
         self.robots[0].apply_action(action)
         collision_links = self.run_simulation()
-        state = self.get_state(collision_links)
+        state = self.get_state()
         reward = self.get_reward(collision_links, action)
         done, info = self.get_termination(collision_links)
 
@@ -660,15 +660,16 @@ class InteractiveNavigateEnv(NavigateEnv):
         # self.door_vis.load()
 
         self.id_to_name = {
-            0: {"name": "ground", "links": {0: "ground"}},
-            1: {"name": "ground", "links": {0: "ground"}},
-            2: {"name": "ground", "links": {0: "ground"}},
-            3: {"name": "ground", "links": {0: "ground"}},
+            0: {"name": "ground", "links": {-1: "base", 0: "ground"}},
+            1: {"name": "ground", "links": {-1: "base", 0: "ground"}},
+            2: {"name": "ground", "links": {-1: "base", 0: "ground"}},
+            3: {"name": "ground", "links": {-1: "base", 0: "ground"}},
         }
-        self.id_to_name[self.door.body_id] = {"name": "door", "links": {0: "base", 1: "door_leaf", 2: "door_knob"}}
+        self.id_to_name[self.door.body_id] = {"name": "door", "links": {-1: "world", 0: "base", 1: "door_leaf", 2: "door_knob"}}
         for i, wall in enumerate([self.wall1, self.wall2, self.wall3, self.wall4, self.wall5, self.wall6]):
-            self.id_to_name[wall.body_id] = {"name": "wall%d" % (i+1), "links": {0: "wall"}}
+            self.id_to_name[wall.body_id] = {"name": "wall%d" % (i+1), "links": {-1: "world", 0: "wall"}}
         self.id_to_name[self.robots[0].robot_ids[0]] = {"name": "robot", "links": {
+            -1: "base",
             0: "base_chassis",
             1: "jr2_fixed_body (wrapper)",
             2: "left wheel",
@@ -798,7 +799,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         states[indices] = states[indices] - np.pi * 2 * np.floor((states[indices] + np.pi) / (np.pi * 2))
         return states
 
-    def get_state(self, collision_links=[]):
+    def get_state(self):
         state = super(InteractiveNavigateEnv, self).get_state()
         # self.state_stats['sensor'].append(state['sensor'])
         # self.state_stats['auxiliary_sensor'].append(state['auxiliary_sensor'])
@@ -1003,9 +1004,8 @@ class InteractiveNavigateEnv(NavigateEnv):
         # # stall_torque_reward = 0.0
         # reward += np.clip(stall_torque_reward * self.stall_torque_reward_weight, -0.005, 0)  # |stall_torque_reward| ~= 0.005 per step
 
-        collision_link_ids = set([elem[3] for elem in collision_links
-                                  if not (elem[2] == self.door.body_id and elem[4] == self.door_handle_link_id)])
-
+        collision_links = [elem for elem in collision_links if (elem[3] in self.collision_links) and
+                           (not (elem[2] == self.door.body_id and elem[3] in [31, 32]))]  # excluding collision between hand and door
         # collisions = [[elem[3], elem[2], elem[4]] for elem in collision_links
         #               if elem[3] in self.collision_links and not (elem[2] == self.door.body_id and elem[4] == self.door_handle_link_id)]
         # print('-' * 30)
@@ -1014,7 +1014,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         #           'body b', self.id_to_name[col[1]]["name"],
         #           'link b', self.id_to_name[col[1]]["links"][col[2]])
 
-        collision_reward = float(len(collision_link_ids & self.collision_links) != 0)
+        collision_reward = float(len(collision_links) != 0)
         self.collision_step += int(collision_reward)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
         # self.reward_stats.append(np.abs(collision_reward * self.collision_reward_weight))
