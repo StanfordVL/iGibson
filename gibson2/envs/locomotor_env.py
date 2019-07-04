@@ -520,7 +520,9 @@ class NavigateRandomEnv(NavigateEnv):
 # Change target position
 # Change jr_interactive_nav.yaml for wall width (1m <-> 3m)
 
-ONLY_LL = False
+#ARENA = "only_ll"
+#ARENA = "simple_hl_ll"
+ARENA = "complex_hl_ll"
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
@@ -541,7 +543,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                                    scale=1.35)
         self.simulator.import_interactive_object(self.door)
         # TODO: door pos
-        if ONLY_LL:
+        if ARENA == "only_ll":
             self.door.set_position_rotation([100.0, 100.0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
         else:
             self.door.set_position_rotation([0.0, 0.0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
@@ -552,97 +554,58 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.jr_end_effector_link_id = 32  # 'm1n6s200_end_effector'
         self.random_position = random_position
 
-        if ONLY_LL:
-            # TODO: wall
-            # self.wall1 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-            #                             scale=1)
-            # self.simulator.import_interactive_object(self.wall1)
-            # self.wall1.set_position_rotation([0, -3, 1], [0, 0, 0, 1])
-            #
-            # self.wall2 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-            #                             scale=1)
-            # self.simulator.import_interactive_object(self.wall2)
-            # self.wall2.set_position_rotation([0, 3, 1], [0, 0, 0, 1])
-            self.wall1 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                        scale=1)
-            self.simulator.import_interactive_object(self.wall1)
-            self.wall1.set_position_rotation([0, -3, 1], [0, 0, 0, 1])
+        if ARENA == "only_ll":
 
-            self.wall2 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                        scale=1)
-            self.simulator.import_interactive_object(self.wall2)
-            self.wall2.set_position_rotation([0, 3, 1], [0, 0, 0, 1])
+            self.wall_poses = [[[0, -3, 1], [0, 0, 0, 1]],
+                [[0, 3, 1], [0, 0, 0, 1]],
+                [[-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                [[3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                ]
 
-            self.wall3 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+            self.walls = []
+            for wall_pose in self.wall_poses:
+                wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
                                         scale=1)
-            self.simulator.import_interactive_object(self.wall3)
-            self.wall3.set_position_rotation([-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+                self.simulator.import_interactive_object(wall)
+                wall.set_position_rotation(wall_pose[0], wall_pose[1])
+                self.walls += [wall]
+        elif ARENA == "simple_hl_ll":
+            self.wall_poses = [[[0, -3, 1], [0, 0, 0, 1]],
+                [[0, 3, 1], [0, 0, 0, 1]],
+                [[-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                [[3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                [[0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                [[0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                ]
 
-            self.wall4 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+            self.walls = []
+            for wall_pose in self.wall_poses:
+                wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
                                         scale=1)
-            self.simulator.import_interactive_object(self.wall4)
-            self.wall4.set_position_rotation([3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+                self.simulator.import_interactive_object(wall)
+                wall.set_position_rotation(wall_pose[0], wall_pose[1])
+                self.walls += [wall]
+
+        elif ARENA == "complex_hl_ll":
+
+            self.wall_poses = [[[0, -3, 1], [0, 0, 0, 1]],
+                [[0, 3, 1], [0, 0, 0, 1]],
+                [[-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                [[3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                [[0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                [[0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                ]
+
+            self.walls = []
+            for wall_pose in self.wall_poses:
+                wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+                                        scale=1)
+                self.simulator.import_interactive_object(wall)
+                wall.set_position_rotation(wall_pose[0], wall_pose[1])
+                self.walls += [wall]
         else:
-            # TODO: wall
-            self.wall1 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                        scale=1)
-            self.simulator.import_interactive_object(self.wall1)
-            self.wall1.set_position_rotation([0, -3, 1], [0, 0, 0, 1])
-
-            self.wall2 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                        scale=1)
-            self.simulator.import_interactive_object(self.wall2)
-            self.wall2.set_position_rotation([0, 3, 1], [0, 0, 0, 1])
-
-            self.wall3 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                        scale=1)
-            self.simulator.import_interactive_object(self.wall3)
-            self.wall3.set_position_rotation([-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
-
-            self.wall4 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                        scale=1)
-            self.simulator.import_interactive_object(self.wall4)
-            self.wall4.set_position_rotation([3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
-
-            # self.wall1 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-            #                             scale=1)
-            # self.simulator.import_interactive_object(self.wall1)
-            # self.wall1.set_position_rotation([7, -3, 1], [0, 0, 0, 1])
-            #
-            # self.wall2 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-            #                             scale=1)
-            # self.simulator.import_interactive_object(self.wall2)
-            # self.wall2.set_position_rotation([7, 3, 1], [0, 0, 0, 1])
-            #
-            # self.wall7 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-            #                             scale=1)
-            # self.simulator.import_interactive_object(self.wall7)
-            # self.wall7.set_position_rotation([-7, -3, 1], [0, 0, 0, 1])
-            #
-            # self.wall8 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-            #                             scale=1)
-            # self.simulator.import_interactive_object(self.wall8)
-            # self.wall8.set_position_rotation([-7, 3, 1], [0, 0, 0, 1])
-
-            # self.wall3 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-            #                             scale=1)
-            # self.simulator.import_interactive_object(self.wall3)
-            # self.wall3.set_position_rotation([-14, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
-            #
-            # self.wall4 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-            #                             scale=1)
-            # self.simulator.import_interactive_object(self.wall4)
-            # self.wall4.set_position_rotation([14, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
-
-            self.wall5 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                        scale=1)
-            self.simulator.import_interactive_object(self.wall5)
-            self.wall5.set_position_rotation([0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
-
-            self.wall6 = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                        scale=1)
-            self.simulator.import_interactive_object(self.wall6)
-            self.wall6.set_position_rotation([0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+            print("Wrong arena!")
+            exit(-1)
 
         # dense reward
         self.stage = 0
@@ -673,7 +636,7 @@ class InteractiveNavigateEnv(NavigateEnv):
             3: {"name": "ground", "links": {-1: "base", 0: "ground"}},
         }
         self.id_to_name[self.door.body_id] = {"name": "door", "links": {-1: "world", 0: "base", 1: "door_leaf", 2: "door_knob"}}
-        for i, wall in enumerate([self.wall1, self.wall2, self.wall3, self.wall4, self.wall5, self.wall6]):
+        for i, wall in enumerate(self.walls):
             self.id_to_name[wall.body_id] = {"name": "wall%d" % (i+1), "links": {-1: "world", 0: "wall"}}
         self.id_to_name[self.robots[0].robot_ids[0]] = {"name": "robot", "links": {
             -1: "base",
@@ -753,7 +716,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         collision_links = [-1]
         while -1 in collision_links:  # if collision happens restart
             # pos = [np.random.uniform(1, 2), np.random.uniform(-0.5, 0.5), 0]
-            if ONLY_LL:
+            if ARENA == "only_ll":
                 # pos = [0.0, 0.0, 0.0]
                 pos = [np.random.uniform(-2, 2), np.random.uniform(-2, 2), 0]
             else:
@@ -767,7 +730,7 @@ class InteractiveNavigateEnv(NavigateEnv):
             # self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2]])
 
-            if ONLY_LL:
+            if ARENA == "only_ll":
                 self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
             else:
                 if self.random_position:
@@ -790,7 +753,7 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-0.5, 0.5), 0]
         # TODO: target pos
-        if ONLY_LL:
+        if ARENA == "only_ll":
             # self.target_pos = [-100, -100, 0]
             self.target_pos = [np.random.uniform(-2, 2), np.random.uniform(-2, 2), 0.0]
         else:
@@ -968,10 +931,29 @@ class InteractiveNavigateEnv(NavigateEnv):
         #                             controlMode=p.TORQUE_CONTROL,
         #                             force=0.0)
 
-        if door_angle > 0.0:
-            p.resetJointState(bodyUniqueId=self.door.body_id,
+        if door_angle > 0.01:
+            # p.resetJointState(bodyUniqueId=self.door.body_id,
+            #                   jointIndex=self.door_axis_link_id,
+            #                   targetValue=0.0)
+            maxForce = 10000
+            p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
                               jointIndex=self.door_axis_link_id,
-                              targetValue=0.0)
+                                controlMode=p.POSITION_CONTROL,
+                                targetPosition = 0.0,
+                                positionGain = 1,
+                                force = maxForce)
+        else:
+            maxForce = 0
+            p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
+                              jointIndex=self.door_axis_link_id,
+                                controlMode=p.POSITION_CONTROL,
+                                targetPosition = door_angle,
+                                positionGain = 0,
+                                velocityGain = 0,
+                                force = maxForce)
+
+
+
 
         # print("door info", p.getJointInfo(self.door.body_id, 1))
         # print("door angle", p.getJointState(self.door.body_id, 1)[0])
