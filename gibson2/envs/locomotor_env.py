@@ -587,21 +587,45 @@ class InteractiveNavigateEnv(NavigateEnv):
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
-
         elif ARENA == "complex_hl_ll":
             self.wall_poses = [
                 [[0, -3, 1], [0, 0, 0, 1]],
-                [[0, 3, 1], [0, 0, 0, 1]],
+                [[0, 6, 1], [0, 0, 0, 1]],
+                [[0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
-                [[0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+
+                ]
+
+            self.half_wall_poses = [
+                [[1.5, 3, 1], [0, 0, 0, 1]],
+
+                ]
+
+            self.quarter_wall_poses = [
+
                 [[0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
             ]
+
 
             self.walls = []
             for wall_pose in self.wall_poses:
                 wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
                                       scale=1)
+                self.simulator.import_interactive_object(wall)
+                wall.set_position_rotation(wall_pose[0], wall_pose[1])
+                self.walls += [wall]
+
+            for wall_pose in self.half_wall_poses:
+                wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_half.urdf'),
+                                        scale=1)
+                self.simulator.import_interactive_object(wall)
+                wall.set_position_rotation(wall_pose[0], wall_pose[1])
+                self.walls += [wall]
+
+            for wall_pose in self.quarter_wall_poses:
+                wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_quarter.urdf'),
+                                        scale=1)
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
