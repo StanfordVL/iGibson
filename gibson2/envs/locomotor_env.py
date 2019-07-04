@@ -547,60 +547,61 @@ class InteractiveNavigateEnv(NavigateEnv):
         if ARENA == "only_ll":
             self.door.set_position_rotation([100.0, 100.0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
         else:
-            self.door.set_position_rotation([0.0, 0.0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+            self.door.set_position_rotation([0.0, 0.0, -0.02], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz'))
         self.door_angle = self.config.get('door_angle', 90)
-        self.door_angle = -(self.door_angle / 180.0) * np.pi
+        self.door_angle = (self.door_angle / 180.0) * np.pi
         self.door_handle_link_id = 2
         self.door_axis_link_id = 1
         self.jr_end_effector_link_id = 32  # 'm1n6s200_end_effector'
         self.random_position = random_position
 
         if ARENA == "only_ll":
-
-            self.wall_poses = [[[0, -3, 1], [0, 0, 0, 1]],
+            self.wall_poses = [
+                [[0, -3, 1], [0, 0, 0, 1]],
                 [[0, 3, 1], [0, 0, 0, 1]],
                 [[-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
-                ]
+            ]
 
             self.walls = []
             for wall_pose in self.wall_poses:
                 wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                        scale=1)
+                                      scale=1)
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
         elif ARENA == "simple_hl_ll":
-            self.wall_poses = [[[0, -3, 1], [0, 0, 0, 1]],
+            self.wall_poses = [
+                [[0, -3, 1], [0, 0, 0, 1]],
                 [[0, 3, 1], [0, 0, 0, 1]],
                 [[-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
-                ]
+            ]
 
             self.walls = []
             for wall_pose in self.wall_poses:
                 wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                        scale=1)
+                                      scale=1)
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
 
         elif ARENA == "complex_hl_ll":
-
-            self.wall_poses = [[[0, -3, 1], [0, 0, 0, 1]],
+            self.wall_poses = [
+                [[0, -3, 1], [0, 0, 0, 1]],
                 [[0, 3, 1], [0, 0, 0, 1]],
                 [[-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
-                ]
+            ]
 
             self.walls = []
             for wall_pose in self.wall_poses:
                 wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                        scale=1)
+                                      scale=1)
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
@@ -905,7 +906,7 @@ class InteractiveNavigateEnv(NavigateEnv):
             self.stage = self.stage_open_door
             print("stage open_door")
 
-        if self.stage == self.stage_open_door and p.getJointState(self.door.body_id, 1)[0] < self.door_angle:  # door open > 45/60/90 degree
+        if self.stage == self.stage_open_door and p.getJointState(self.door.body_id, 1)[0] > self.door_angle:  # door open > 45/60/90 degree
             assert self.cid is not None
             p.removeConstraint(self.cid)
             self.cid = None
@@ -914,47 +915,34 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
 
-        # if door_angle > 0.0:
-        #     print("reset")
-        #     # if door opens in the wrong way, reset it to neutral (closed)
-        #     p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
-        #                             jointIndex=self.door_axis_link_id,
-        #                             controlMode=p.POSITION_CONTROL,
-        #                             targetPosition=0.0,
-        #                             force=500)
-        # else:
-        #     print("free")
-        #     # p.resetJointState(bodyUniqueId=self.door.body_id,
-        #     #                   jointIndex=self.door_axis_link_id,
-        #     #                   targetValue=door_angle)
-        #     p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
-        #                             jointIndex=self.door_axis_link_id,
-        #                             controlMode=p.TORQUE_CONTROL,
-        #                             force=0.0)
-
-        if door_angle > 0.01:
-            # p.resetJointState(bodyUniqueId=self.door.body_id,
-            #                   jointIndex=self.door_axis_link_id,
-            #                   targetValue=0.0)
-            maxForce = 10000
+        if door_angle < -0.01:
+            max_force = 10000
             p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
-                              jointIndex=self.door_axis_link_id,
-                                controlMode=p.POSITION_CONTROL,
-                                targetPosition = 0.0,
-                                positionGain = 1,
-                                force = maxForce)
+                                    jointIndex=self.door_axis_link_id,
+                                    controlMode=p.POSITION_CONTROL,
+                                    targetPosition=0.0,
+                                    positionGain=1,
+                                    force=max_force)
         else:
-            maxForce = 0
+            max_force = 0
             p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
-                              jointIndex=self.door_axis_link_id,
-                                controlMode=p.POSITION_CONTROL,
-                                targetPosition = door_angle,
-                                positionGain = 0,
-                                velocityGain = 0,
-                                force = maxForce)
+                                    jointIndex=self.door_axis_link_id,
+                                    controlMode=p.POSITION_CONTROL,
+                                    targetPosition=door_angle,
+                                    positionGain=0,
+                                    velocityGain=0,
+                                    force=max_force)
 
-
-
+        if self.stage == self.stage_get_to_target_pos:
+            max_force = 100
+            p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
+                                    jointIndex=self.door_axis_link_id,
+                                    controlMode=p.POSITION_CONTROL,
+                                    targetPosition=door_angle,
+                                    targetVelocity=0.0,
+                                    positionGain=0,
+                                    velocityGain=1,
+                                    force=max_force)
 
         # print("door info", p.getJointInfo(self.door.body_id, 1))
         # print("door angle", p.getJointState(self.door.body_id, 1)[0])
@@ -966,7 +954,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         if self.stage == self.stage_get_to_door_handle:
             potential = l2_distance(door_handle_pos, self.robots[0].get_end_effector_position())
         elif self.stage == self.stage_open_door:
-            potential = door_angle
+            potential = -door_angle
         elif self.stage == self.stage_get_to_target_pos:
             potential = l2_distance(self.target_pos, self.get_position_of_interest())
             # print("current_distance", potential)
@@ -1126,7 +1114,7 @@ if __name__ == '__main__':
         nav_env.reset()
         for i in range(500):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
-            # action[:] = 0
+            action[:] = 0
             # if nav_env.stage == 0:
             #     action[:2] = 0.5
             # elif nav_env.stage == 1:
