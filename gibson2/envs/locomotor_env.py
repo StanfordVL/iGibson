@@ -427,6 +427,7 @@ class NavigateEnv(BaseEnv):
             info['episode_length'] = self.current_step
             info['collision_step'] = self.collision_step
             info['energy_cost'] = self.energy_cost
+            info['stage'] = self.stage
 
         return done, info
 
