@@ -598,7 +598,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 ]
 
             self.half_wall_poses = [
-                [[1.5, 3, 1], [0, 0, 0, 1]],
+                [[1.3, 3, 1], [0, 0, 0, 1]],
 
                 ]
 
@@ -745,11 +745,16 @@ class InteractiveNavigateEnv(NavigateEnv):
             if ARENA == "only_ll":
                 # pos = [0.0, 0.0, 0.0]
                 pos = [np.random.uniform(-2, 2), np.random.uniform(-2, 2), 0]
-            else:
+            elif ARENA == "simple_hl_ll":
                 if self.random_position:
                     pos = [np.random.uniform(1, 2), np.random.uniform(-2, 2), 0]
                 else:
                     pos = [1.5, 0.0, 0.0]
+            elif ARENA == "complex_hl_ll":
+                if self.random_position:
+                    pos = [np.random.uniform(-2, -1.7), np.random.uniform(4.5, 5), 0]                    
+                else:
+                    pos = [-2, 5, 0.0]
                 # pos = [np.random.uniform(11, 13), np.random.uniform(-2, 2), 0]
 
             # pos = [0.0, 0.0, 0.0]
