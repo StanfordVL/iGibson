@@ -109,7 +109,8 @@ observation_normalizer: {'sensor':[[-3.0, -3.0, 0.0],                           
                                                3.0, 3.0, -0.01,                               # door_pos_local
                                                6.0, 6.0, 0.02]],                               # target_pos_local
                          'rgb': [0.0, 1.0],
-                         'depth': [0.0, 5.0]
+                         'depth': [0.0, 5.0],
+                         'scan': [0.0, 5.0]
 }
 
 #observation_normalizer: {'sensor':[[-3.0, -3.0,                                               # x, y
@@ -183,9 +184,10 @@ max_step: 1000
 
 # sensor
 #output: [sensor, auxiliary_sensor, rgb, depth]
-output: [sensor, auxiliary_sensor, depth]
+output: [sensor, auxiliary_sensor, depth, scan]
 resolution: 64
 fov: 150
+n_rays_per_horizontal: 128
 
 # display
 use_filler: true

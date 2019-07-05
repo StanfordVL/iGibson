@@ -83,6 +83,7 @@ class NavigateEnv(BaseEnv):
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
         self.output = self.config['output']
+        self.n_rays_per_horizontal = self.config.get('n_rays_per_horizontal', 128)
 
         self.sensor_dim = self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
@@ -107,19 +108,25 @@ class NavigateEnv(BaseEnv):
                                                   dtype=np.float32)
             observation_space['pointgoal'] = self.pointgoal_space
         if 'rgb' in self.output:
-            self.rgb_space = gym.spaces.Box(low=0.0,
-                                            high=1.0,
+            self.rgb_space = gym.spaces.Box(low=-np.inf,
+                                            high=np.inf,
                                             shape=(self.config['resolution'],
                                                    self.config['resolution'], 3),
                                             dtype=np.float32)
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
-            self.depth_space = gym.spaces.Box(low=0.0,
-                                              high=1.0,
+            self.depth_space = gym.spaces.Box(low=-np.inf,
+                                              high=np.inf,
                                               shape=(self.config['resolution'],
                                                      self.config['resolution'], 1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
+        if 'scan' in self.output:
+            self.scan_space = gym.spaces.Box(low=-np.inf,
+                                             high=np.inf,
+                                             shape=(self.n_rays_per_horizontal,),
+                                             dtype=np.float32)
+            # self.scan_display = cv2.namedWindow('scan', cv2.WINDOW_NORMAL)
         if 'rgb_filled' in self.output:  # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
@@ -301,14 +308,12 @@ class NavigateEnv(BaseEnv):
         if 'scan' in self.output:
             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
             pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            n_rays_per_horizontal = 128  # Number of rays along one horizontal scan/slice
 
-            n_vertical_beams = 9
-            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
-            elev_bottom_angle = -30. * np.pi / 180.
-            elev_top_angle = 10. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-                                   (elev_top_angle - elev_bottom_angle) / float(n_vertical_beams))
+            n_vertical_beams = 1
+            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_rays_per_horizontal))
+            elev_bottom_angle = 0
+            elev_top_angle = 0
+            elev_angle = [0]
             orig_offset = np.vstack([
                 np.vstack([np.cos(angle),
                            np.sin(angle),
@@ -317,24 +322,25 @@ class NavigateEnv(BaseEnv):
             transform_matrix = quat2mat(
                 [pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
             offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-            pose_camera = pose_camera[None, :3].repeat(n_rays_per_horizontal * n_vertical_beams,
+            pose_camera = pose_camera[None, :3].repeat(self.n_rays_per_horizontal * n_vertical_beams,
                                                        axis=0)
 
             results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
             hit = np.array([item[0] for item in results])
             dist = np.array([item[2] for item in results])
-            dist[dist >= 1 - 1e-5] = np.nan
-            dist[dist < 0.1 / 30] = np.nan
-
-            dist[hit == self.robots[0].robot_ids[0]] = np.nan
-            dist[hit == -1] = np.nan
+            #dist[dist >= 1 - 1e-5] = np.nan
+            #dist[dist < 0.1 / 30] = np.nan
             dist *= 30
+            dist[hit == self.robots[0].robot_ids[0]] = -1
+            #dist[hit == -1] = np.nan
 
-            xyz = dist[:, np.newaxis] * orig_offset
-            xyz = xyz[np.equal(np.isnan(xyz), False)]  # Remove nans
+            #xyz = dist[:, np.newaxis] * orig_offset
+            #xyz = xyz[np.equal(np.isnan(xyz), False)]  # Remove nans
             # print(xyz.shape)
-            xyz = xyz.reshape(xyz.shape[0] // 3, -1)
-            state['scan'] = xyz
+            #xyz = xyz.reshape(xyz.shape[0] // 3, -1)
+            state['scan'] = dist
+            # dist = np.clip(dist, 0.0, 5.0) / 5.0
+            # cv2.imshow('scan', dist)
 
         return state
 
@@ -601,7 +607,7 @@ class InteractiveNavigateEnv(NavigateEnv):
             ]
 
             self.half_wall_poses = [
-                [[1.5, 3, 1], [0, 0, 0, 1]],
+                [[1.3, 3, 1], [0, 0, 0, 1]],
             ]
 
             self.quarter_wall_poses = [
@@ -748,12 +754,17 @@ class InteractiveNavigateEnv(NavigateEnv):
             if ARENA == "only_ll":
                 # pos = [0.0, 0.0, 0.0]
                 pos = [np.random.uniform(-2, 2), np.random.uniform(-2, 2), 0]
-            else:
+            elif ARENA == "simple_hl_ll":
                 if self.random_position:
                     pos = [np.random.uniform(1, 2), np.random.uniform(-2, 2), 0]
                     # pos = [np.random.uniform(0.5, 1.5), np.random.uniform(1.5, 2.5), 0]
                 else:
                     pos = [1.0, 0.0, 0.0]
+            elif ARENA == "complex_hl_ll":
+                if self.random_position:
+                    pos = [np.random.uniform(-2, -1.7), np.random.uniform(4.5, 5), 0]                    
+                else:
+                    pos = [-2, 5, 0.0]
                 # pos = [np.random.uniform(11, 13), np.random.uniform(-2, 2), 0]
 
             # pos = [0.0, 0.0, 0.0]
