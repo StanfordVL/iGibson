@@ -162,7 +162,7 @@ observation_normalizer: {'sensor':[[-3.0, -3.0, 0.0],                           
 #####
 
 # reward
-reward_type: stage_sparse
+reward_type: dense
 success_reward: 30.0
 slack_reward: -0.01
 potential_reward_weight: 2.0
@@ -185,7 +185,7 @@ max_step: 1000
 #output: [sensor, auxiliary_sensor, rgb, depth]
 output: [sensor, auxiliary_sensor, depth]
 resolution: 64
-fov: 1.57
+fov: 150
 
 # display
 use_filler: true
@@ -211,7 +211,7 @@ fast_lq_render: true
 
 # visual objects
 visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: true
+target_visual_object_visible_to_agent: false
 
 # debug
 debug: false
