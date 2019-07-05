@@ -17,6 +17,7 @@ class BaseEnv(gym.Env):
         self.simulator = Simulator(mode=mode,
                                    use_fisheye=self.config.get('fisheye', False),
                                    resolution=self.config['resolution'],
+                                   fov=self.config['fov'],
                                    device_idx=device_idx)
         self.load()
 

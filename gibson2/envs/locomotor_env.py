@@ -15,6 +15,8 @@ import numpy as np
 import os
 import pybullet as p
 from IPython import embed
+import cv2
+import time
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
 # arXiv preprint arXiv:1807.06757 (2018).
@@ -81,6 +83,7 @@ class NavigateEnv(BaseEnv):
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
         self.output = self.config['output']
+        self.n_rays_per_horizontal = self.config.get('n_rays_per_horizontal', 128)
 
         self.sensor_dim = self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
@@ -105,19 +108,25 @@ class NavigateEnv(BaseEnv):
                                                   dtype=np.float32)
             observation_space['pointgoal'] = self.pointgoal_space
         if 'rgb' in self.output:
-            self.rgb_space = gym.spaces.Box(low=0.0,
-                                            high=1.0,
+            self.rgb_space = gym.spaces.Box(low=-np.inf,
+                                            high=np.inf,
                                             shape=(self.config['resolution'],
                                                    self.config['resolution'], 3),
                                             dtype=np.float32)
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
-            self.depth_space = gym.spaces.Box(low=0.0,
-                                              high=1.0,
+            self.depth_space = gym.spaces.Box(low=-np.inf,
+                                              high=np.inf,
                                               shape=(self.config['resolution'],
                                                      self.config['resolution'], 1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
+        if 'scan' in self.output:
+            self.scan_space = gym.spaces.Box(low=-np.inf,
+                                             high=np.inf,
+                                             shape=(self.n_rays_per_horizontal,),
+                                             dtype=np.float32)
+            # self.scan_display = cv2.namedWindow('scan', cv2.WINDOW_NORMAL)
         if 'rgb_filled' in self.output:  # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
@@ -299,10 +308,9 @@ class NavigateEnv(BaseEnv):
         if 'scan' in self.output:
             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
             pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            n_rays_per_horizontal = 128  # Number of rays along one horizontal scan/slice
 
             n_vertical_beams = 1
-            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
+            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_rays_per_horizontal))
             elev_bottom_angle = 0
             elev_top_angle = 0
             elev_angle = [0]
@@ -314,7 +322,7 @@ class NavigateEnv(BaseEnv):
             transform_matrix = quat2mat(
                 [pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
             offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-            pose_camera = pose_camera[None, :3].repeat(n_rays_per_horizontal * n_vertical_beams,
+            pose_camera = pose_camera[None, :3].repeat(self.n_rays_per_horizontal * n_vertical_beams,
                                                        axis=0)
 
             results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
@@ -331,6 +339,8 @@ class NavigateEnv(BaseEnv):
             # print(xyz.shape)
             #xyz = xyz.reshape(xyz.shape[0] // 3, -1)
             state['scan'] = dist
+            # dist = np.clip(dist, 0.0, 5.0) / 5.0
+            # cv2.imshow('scan', dist)
 
         return state
 
@@ -406,6 +416,8 @@ class NavigateEnv(BaseEnv):
             # print('timeout')
             done = True
             info['success'] = False
+        elif door_angle < (-10.0 / 180.0 * np.pi):
+            print('WRONG PUSH')
         # elif door_angle > (10.0 / 180.0 * np.pi):
         #     # # if door opens in the wrong way, reset it to neutral (closed)
         #     # p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
@@ -591,20 +603,16 @@ class InteractiveNavigateEnv(NavigateEnv):
                 [[0, 6, 1], [0, 0, 0, 1]],
                 [[0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
-                [[3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
-
-                ]
+                [[3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]]
+            ]
 
             self.half_wall_poses = [
                 [[1.3, 3, 1], [0, 0, 0, 1]],
-
-                ]
-
-            self.quarter_wall_poses = [
-
-                [[0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
             ]
 
+            self.quarter_wall_poses = [
+                [[0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+            ]
 
             self.walls = []
             for wall_pose in self.wall_poses:
@@ -615,15 +623,17 @@ class InteractiveNavigateEnv(NavigateEnv):
                 self.walls += [wall]
 
             for wall_pose in self.half_wall_poses:
-                wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_half.urdf'),
-                                        scale=1)
+                wall = InteractiveObj(
+                    os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_half.urdf'),
+                    scale=1)
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
 
             for wall_pose in self.quarter_wall_poses:
-                wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_quarter.urdf'),
-                                        scale=1)
+                wall = InteractiveObj(
+                    os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_quarter.urdf'),
+                    scale=1)
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
@@ -731,6 +741,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.subgoal_end_effector.set_position(ideal_next_state)
 
     def reset_interactive_objects(self):
+        # p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=(100.0 / 180.0 * np.pi), targetVelocity=0.0)
         p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
         if self.cid is not None:
             p.removeConstraint(self.cid)
@@ -746,8 +757,9 @@ class InteractiveNavigateEnv(NavigateEnv):
             elif ARENA == "simple_hl_ll":
                 if self.random_position:
                     pos = [np.random.uniform(1, 2), np.random.uniform(-2, 2), 0]
+                    # pos = [np.random.uniform(0.5, 1.5), np.random.uniform(1.5, 2.5), 0]
                 else:
-                    pos = [1.5, 0.0, 0.0]
+                    pos = [1.0, 0.0, 0.0]
             elif ARENA == "complex_hl_ll":
                 if self.random_position:
                     pos = [np.random.uniform(-2, -1.7), np.random.uniform(4.5, 5), 0]                    
@@ -797,6 +809,7 @@ class InteractiveNavigateEnv(NavigateEnv):
     def reset(self):
         self.reset_interactive_objects()
         self.stage = 0
+        # self.stage = self.stage_get_to_target_pos
         self.prev_stage = self.stage
         return super(InteractiveNavigateEnv, self).reset()
 
@@ -951,25 +964,25 @@ class InteractiveNavigateEnv(NavigateEnv):
                                     positionGain=1,
                                     force=max_force)
         else:
-            max_force = 0
-            p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
-                                    jointIndex=self.door_axis_link_id,
-                                    controlMode=p.POSITION_CONTROL,
-                                    targetPosition=door_angle,
-                                    positionGain=0,
-                                    velocityGain=0,
-                                    force=max_force)
-
-        if self.stage == self.stage_get_to_target_pos:
-            max_force = 100
-            p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
-                                    jointIndex=self.door_axis_link_id,
-                                    controlMode=p.POSITION_CONTROL,
-                                    targetPosition=door_angle,
-                                    targetVelocity=0.0,
-                                    positionGain=0,
-                                    velocityGain=1,
-                                    force=max_force)
+            if self.stage != self.stage_get_to_target_pos:
+                max_force = 0
+                p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
+                                        jointIndex=self.door_axis_link_id,
+                                        controlMode=p.POSITION_CONTROL,
+                                        targetPosition=door_angle,
+                                        positionGain=0,
+                                        velocityGain=0,
+                                        force=max_force)
+            else:
+                max_force = 100
+                p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
+                                        jointIndex=self.door_axis_link_id,
+                                        controlMode=p.POSITION_CONTROL,
+                                        targetPosition=door_angle,
+                                        targetVelocity=0.0,
+                                        positionGain=0,
+                                        velocityGain=1,
+                                        force=max_force)
 
         # print("door info", p.getJointInfo(self.door.body_id, 1))
         # print("door angle", p.getJointState(self.door.body_id, 1)[0])
@@ -1117,7 +1130,7 @@ if __name__ == '__main__':
         nav_env = InteractiveNavigateEnv(config_file=config_filename,
                                          mode=args.mode,
                                          action_timestep=1.0 / 10.0,
-                                         random_position=False,
+                                         random_position=True,
                                          physics_timestep=1 / 40.0)
 
     # debug_params = [
@@ -1138,8 +1151,9 @@ if __name__ == '__main__':
 
     for episode in range(50):
         print('Episode: {}'.format(episode))
+        start = time.time()
         nav_env.reset()
-        for i in range(500):  # 500 steps, 50s world time
+        for i in range(1000):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             action[:] = 0
             # if nav_env.stage == 0:
@@ -1156,6 +1170,7 @@ if __name__ == '__main__':
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
                 break
+        print("episode time", time.time() - start)
         # print('len', len(nav_env.reward_stats))
         # print('mean', np.mean(nav_env.reward_stats))
         # print('median', np.median(nav_env.reward_stats))
