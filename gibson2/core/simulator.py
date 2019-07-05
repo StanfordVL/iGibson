@@ -47,6 +47,13 @@ class Simulator:
         self.load()
 
     def load(self):
+        self.renderer = MeshRenderer(width=self.resolution,
+                                     height=self.resolution,
+                                     device_idx=self.device_idx,
+                                     use_fisheye=self.use_fisheye)
+        self.renderer.set_fov(self.fov)
+
+        
         if self.mode == 'gui':
             self.cid = p.connect(p.GUI)
         else:
@@ -54,11 +61,6 @@ class Simulator:
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
 
-        self.renderer = MeshRenderer(width=self.resolution,
-                                     height=self.resolution,
-                                     device_idx=self.device_idx,
-                                     use_fisheye=self.use_fisheye)
-        self.renderer.set_fov(self.fov)
 
         if self.mode == 'gui':
             self.viewer.renderer = self.renderer
