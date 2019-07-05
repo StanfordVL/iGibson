@@ -112,6 +112,9 @@ class VisualObject(object):
             _, new_orn = p.getBasePositionAndOrientation(self.body_id)
         p.resetBasePositionAndOrientation(self.body_id, pos, new_orn)
 
+    def set_color(self, color):
+        p.changeVisualShape(self.body_id,-1,rgbaColor=color)
+
 
 class BoxShape(object):
     def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3]):
