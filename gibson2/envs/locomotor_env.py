@@ -78,7 +78,7 @@ class NavigateEnv(BaseEnv):
         self.electricity_reward_weight = self.config.get('electricity_reward_weight', 0.0)
         self.stall_torque_reward_weight = self.config.get('stall_torque_reward_weight', 0.0)
         self.collision_reward_weight = self.config.get('collision_reward_weight', 0.0)
-        self.collision_links = set(self.config.get('collision_links', [-1]))
+        self.collision_ignore_body_ids = set(self.config.get('collision_ignore_body_ids', []))
 
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
@@ -126,6 +126,7 @@ class NavigateEnv(BaseEnv):
                                              high=np.inf,
                                              shape=(self.n_rays_per_horizontal,),
                                              dtype=np.float32)
+            observation_space['scan'] = self.scan_space
             # self.scan_display = cv2.namedWindow('scan', cv2.WINDOW_NORMAL)
         if 'rgb_filled' in self.output:  # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
@@ -152,6 +153,8 @@ class NavigateEnv(BaseEnv):
                 self.simulator.import_object(self.target_pos_vis_obj)
             else:
                 self.target_pos_vis_obj.load()
+
+
 
     def reload(self, config_file):
         super(NavigateEnv, self).reload(config_file)
@@ -276,7 +279,7 @@ class NavigateEnv(BaseEnv):
         # sensor_state = self.robots[0].calc_state()
         # sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
         sensor_state = self.get_additional_states()
-        auxiliary_sensor = self.get_auxiliary_sensor()
+        auxiliary_sensor = self.get_auxiliary_sensor(collision_links)
 
         state = OrderedDict()
         if 'sensor' in self.output:
@@ -377,7 +380,7 @@ class NavigateEnv(BaseEnv):
         stall_torque_reward = 0.0
         reward += stall_torque_reward * self.stall_torque_reward_weight  # |stall_torque_reward| ~= 0.05 per step
 
-        collision_links = [elem for elem in collision_links if elem[3] in self.collision_links]
+        collision_links = [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
         collision_reward = float(len(collision_links) != 0)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
 
@@ -390,8 +393,7 @@ class NavigateEnv(BaseEnv):
     def get_termination(self, collision_links):
         self.current_step += 1
         done, info = False, {}
-
-        collision_links = [elem for elem in collision_links if elem[3] in self.collision_links]
+        collision_links = [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
         max_force = max([elem[9] for elem in collision_links] + [0])  # normalForce
         door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
         # for elem in collision_links:
@@ -444,7 +446,7 @@ class NavigateEnv(BaseEnv):
     def step(self, action):
         self.robots[0].apply_action(action)
         collision_links = self.run_simulation()
-        state = self.get_state()
+        state = self.get_state(collision_links)
         reward = self.get_reward(collision_links, action)
         done, info = self.get_termination(collision_links)
 
@@ -532,8 +534,8 @@ class NavigateRandomEnv(NavigateEnv):
 # Change jr_interactive_nav.yaml for wall width (1m <-> 3m)
 
 #ARENA = "only_ll"
-#ARENA = "simple_hl_ll"
-ARENA = "complex_hl_ll"
+ARENA = "simple_hl_ll"
+# ARENA = "complex_hl_ll"
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
@@ -562,7 +564,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.door_angle = (self.door_angle / 180.0) * np.pi
         self.door_handle_link_id = 2
         self.door_axis_link_id = 1
-        self.jr_end_effector_link_id = 32  # 'm1n6s200_end_effector'
+        self.jr_end_effector_link_id = 33  # 'm1n6s200_end_effector'
         self.random_position = random_position
 
         if ARENA == "only_ll":
@@ -689,24 +691,25 @@ class InteractiveNavigateEnv(NavigateEnv):
             12: "occam",
             13: "occam_omni_optical",
             14: "upper_velodyne_frame",
-            15: "gps_frame",
-            16: "pan",
-            17: "tilt",
-            18: "camera",
-            19: "camera_rgb_frame",
-            20: "camera_rgb_optical_frame",
-            21: "camera_depth_frame",
-            22: "camera_depth_optical_frame",
-            23: "eyes",
-            24: "right_arm_attach",
-            25: "m1n6s200_link_base",
-            26: "m1n6s200_link_1 (shoulder)",
-            27: "m1n6s200_link_2 (arm)",
-            28: "m1n6s200_link_3 (elbow)",
-            29: "m1n6s200_link_4 (forearm)",
-            30: "m1n6s200_link_5 (wrist)",
-            31: "m1n6s200_link_6 (hand)",
-            32: "end_effector",
+            15: "scan",
+            16: "gps_frame",
+            17: "pan",
+            18: "tilt",
+            19: "camera",
+            20: "camera_rgb_frame",
+            21: "camera_rgb_optical_frame",
+            22: "camera_depth_frame",
+            23: "camera_depth_optical_frame",
+            24: "eyes",
+            25: "right_arm_attach",
+            26: "m1n6s200_link_base",
+            27: "m1n6s200_link_1 (shoulder)",
+            28: "m1n6s200_link_2 (arm)",
+            29: "m1n6s200_link_3 (elbow)",
+            30: "m1n6s200_link_4 (forearm)",
+            31: "m1n6s200_link_5 (wrist)",
+            32: "m1n6s200_link_6 (hand)",
+            33: "end_effector",
         }}
 
     def set_subgoal(self, ideal_next_state):
@@ -817,8 +820,8 @@ class InteractiveNavigateEnv(NavigateEnv):
         states[indices] = states[indices] - np.pi * 2 * np.floor((states[indices] + np.pi) / (np.pi * 2))
         return states
 
-    def get_state(self):
-        state = super(InteractiveNavigateEnv, self).get_state()
+    def get_state(self, collision_links=[]):
+        state = super(InteractiveNavigateEnv, self).get_state(collision_links)
         # self.state_stats['sensor'].append(state['sensor'])
         # self.state_stats['auxiliary_sensor'].append(state['auxiliary_sensor'])
         if self.normalize_observation:
@@ -852,12 +855,12 @@ class InteractiveNavigateEnv(NavigateEnv):
         assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
         return additional_states
 
-    def get_auxiliary_sensor(self):
+    def get_auxiliary_sensor(self, collision_links=[]):
         auxiliary_sensor = np.zeros(self.auxiliary_sensor_dim)
         robot_state = self.robots[0].calc_state()
         # assert self.auxiliary_sensor_dim == 44
         # assert self.auxiliary_sensor_dim == 58
-        assert self.auxiliary_sensor_dim == 65
+        assert self.auxiliary_sensor_dim == 66
         assert robot_state.shape[0] == 31
 
         robot_state = self.wrap_to_pi(robot_state, np.arange(7, 28, 3))  # wrap wheel and arm joint pos to [-pi, pi]
@@ -919,12 +922,15 @@ class InteractiveNavigateEnv(NavigateEnv):
         robot_pos = self.robots[0].get_position()
         door_pos_local = rotate_vector_3d(door_pos - robot_pos, roll, pitch, yaw)
         target_pos_local = rotate_vector_3d(target_pos - robot_pos, roll, pitch, yaw)
+        collision_links = [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
+        has_collision = 1.0 if len(collision_links) != 0 else -1.0
 
         auxiliary_sensor[49:52] = np.array([yaw, cos_yaw, sin_yaw])
         auxiliary_sensor[52:56] = np.array([door_angle, cos_door_angle, sin_door_angle, has_door_handle_in_hand])
         auxiliary_sensor[56:59] = target_pos
         auxiliary_sensor[59:62] = door_pos_local
         auxiliary_sensor[62:65] = target_pos_local
+        auxiliary_sensor[65] = has_collision
 
         return auxiliary_sensor
 
@@ -1054,8 +1060,8 @@ class InteractiveNavigateEnv(NavigateEnv):
         # # stall_torque_reward = 0.0
         # reward += np.clip(stall_torque_reward * self.stall_torque_reward_weight, -0.005, 0)  # |stall_torque_reward| ~= 0.005 per step
 
-        collision_links = [elem for elem in collision_links if (elem[3] in self.collision_links) and
-                           (not (elem[2] == self.door.body_id and elem[3] in [31, 32]))]  # excluding collision between hand and door
+        collision_links = [elem for elem in collision_links if (elem[2] not in self.collision_ignore_body_ids) and
+                           (not (elem[2] == self.door.body_id and elem[3] in [32, 33]))]  # excluding collision between hand and door
         # collisions = [[elem[3], elem[2], elem[4]] for elem in collision_links
         #               if elem[3] in self.collision_links and not (elem[2] == self.door.body_id and elem[4] == self.door_handle_link_id)]
         # print('-' * 30)
@@ -1065,6 +1071,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         #           'link b', self.id_to_name[col[1]]["links"][col[2]])
 
         collision_reward = float(len(collision_links) != 0)
+        # print('collision_reward', collision_reward)
         self.collision_step += int(collision_reward)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
         # self.reward_stats.append(np.abs(collision_reward * self.collision_reward_weight))
@@ -1164,7 +1171,7 @@ if __name__ == '__main__':
             #     action[:2] = -0.1
 
             state, reward, done, _ = nav_env.step(action)
-            # print(reward)
+            print(reward)
             # print(nav_env.stage)
             # embed()
             if done:
