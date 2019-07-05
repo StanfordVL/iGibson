@@ -301,12 +301,11 @@ class NavigateEnv(BaseEnv):
             pose_camera = self.robots[0].parts['scan_link'].get_pose()
             n_rays_per_horizontal = 128  # Number of rays along one horizontal scan/slice
 
-            n_vertical_beams = 9
+            n_vertical_beams = 1
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
-            elev_bottom_angle = -30. * np.pi / 180.
-            elev_top_angle = 10. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-                                   (elev_top_angle - elev_bottom_angle) / float(n_vertical_beams))
+            elev_bottom_angle = 0
+            elev_top_angle = 0
+            elev_angle = [0]
             orig_offset = np.vstack([
                 np.vstack([np.cos(angle),
                            np.sin(angle),
@@ -321,18 +320,17 @@ class NavigateEnv(BaseEnv):
             results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
             hit = np.array([item[0] for item in results])
             dist = np.array([item[2] for item in results])
-            dist[dist >= 1 - 1e-5] = np.nan
-            dist[dist < 0.1 / 30] = np.nan
-
-            dist[hit == self.robots[0].robot_ids[0]] = np.nan
-            dist[hit == -1] = np.nan
+            #dist[dist >= 1 - 1e-5] = np.nan
+            #dist[dist < 0.1 / 30] = np.nan
             dist *= 30
+            dist[hit == self.robots[0].robot_ids[0]] = -1
+            #dist[hit == -1] = np.nan
 
-            xyz = dist[:, np.newaxis] * orig_offset
-            xyz = xyz[np.equal(np.isnan(xyz), False)]  # Remove nans
+            #xyz = dist[:, np.newaxis] * orig_offset
+            #xyz = xyz[np.equal(np.isnan(xyz), False)]  # Remove nans
             # print(xyz.shape)
-            xyz = xyz.reshape(xyz.shape[0] // 3, -1)
-            state['scan'] = xyz
+            #xyz = xyz.reshape(xyz.shape[0] // 3, -1)
+            state['scan'] = dist
 
         return state
 
