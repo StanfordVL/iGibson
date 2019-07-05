@@ -743,6 +743,9 @@ class InteractiveNavigateEnv(NavigateEnv):
         # self.door_vis.set_position(np.array([door_x, door_y, 0.0]), new_orn=door_orn)
         self.subgoal_end_effector.set_position(ideal_next_state)
 
+    def set_subgoal_color(self,rgba_color=[1, 0, 0, 0.5] ):
+        self.subgoal_end_effector.set_color(rgba_color)
+
     def reset_interactive_objects(self):
         p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=(100.0 / 180.0 * np.pi), targetVelocity=0.0)
         # p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
@@ -1087,7 +1090,7 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # death penalty
         if self.robots[0].get_position()[2] > self.death_z_thresh:
-            reward -= self.success_reward * 1.0
+            reward -= self.success_reward * 0.25
 
         # push door the wrong way
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
