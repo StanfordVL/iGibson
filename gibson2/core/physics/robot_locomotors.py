@@ -678,7 +678,7 @@ class JR2_Kinova(WalkerBase):
             p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)  # disable collision for immediate parent
 
         for joint in range(p.getNumJoints(robot_id)):
-            for j in range(15, 27):
+            for j in range(16, 28):
                 p.setCollisionFilterPair(robot_id, robot_id, joint, j, 0)  # disable collision in the head / camera region
 
         return ids
