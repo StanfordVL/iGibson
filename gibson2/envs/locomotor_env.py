@@ -126,6 +126,7 @@ class NavigateEnv(BaseEnv):
                                              high=np.inf,
                                              shape=(self.n_rays_per_horizontal,),
                                              dtype=np.float32)
+            observation_space['scan'] = self.scan_space
             # self.scan_display = cv2.namedWindow('scan', cv2.WINDOW_NORMAL)
         if 'rgb_filled' in self.output:  # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
@@ -739,6 +740,9 @@ class InteractiveNavigateEnv(NavigateEnv):
         # door_orn = quatToXYZW(euler2quat(0, 0, door_angle), 'wxyz')
         # self.door_vis.set_position(np.array([door_x, door_y, 0.0]), new_orn=door_orn)
         self.subgoal_end_effector.set_position(ideal_next_state)
+
+    def set_subgoal_color(self,rgba_color=[1, 0, 0, 0.5] ):
+        self.subgoal_end_effector.set_color(rgba_color)
 
     def reset_interactive_objects(self):
         # p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=(100.0 / 180.0 * np.pi), targetVelocity=0.0)
