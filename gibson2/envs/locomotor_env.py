@@ -540,8 +540,8 @@ class NavigateRandomEnv(NavigateEnv):
 # Change jr_interactive_nav.yaml for wall width (1m <-> 3m)
 
 #ARENA = "only_ll"
-ARENA = "simple_hl_ll"
-# ARENA = "complex_hl_ll"
+# ARENA = "simple_hl_ll"
+ARENA = "complex_hl_ll"
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
@@ -773,12 +773,11 @@ class InteractiveNavigateEnv(NavigateEnv):
                 else:
                     pos = [1.0, 0.0, 0.0]
                     # pos = [1.0, 2.0, 0.0]
-
             elif ARENA == "complex_hl_ll":
                 if self.random_position:
                     pos = [np.random.uniform(-2, -1.7), np.random.uniform(4.5, 5), 0]                    
                 else:
-                    pos = [-2, 5, 0.0]
+                    pos = [-2, 4, 0.0]
                 # pos = [np.random.uniform(11, 13), np.random.uniform(-2, 2), 0]
 
             # pos = [0.0, 0.0, 0.0]
@@ -787,12 +786,18 @@ class InteractiveNavigateEnv(NavigateEnv):
 
             if ARENA == "only_ll":
                 self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-            else:
+            elif ARENA == "simple_hl_ll":
                 if self.random_position:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
                 else:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
                     # self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, -np.pi / 2), 'wxyz'))
+            elif ARENA == "complex_hl_ll":
+                self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+                # if self.random_position:
+                #     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+                # else:
+                #     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, 0), 'wxyz'))
 
             collision_links = []
             for _ in range(self.simulator_loop):
@@ -1149,7 +1154,7 @@ if __name__ == '__main__':
         nav_env = InteractiveNavigateEnv(config_file=config_filename,
                                          mode=args.mode,
                                          action_timestep=1.0 / 10.0,
-                                         random_position=True,
+                                         random_position=False,
                                          physics_timestep=1 / 40.0)
 
     # debug_params = [
