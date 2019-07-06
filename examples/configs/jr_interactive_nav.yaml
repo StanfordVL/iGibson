@@ -168,7 +168,7 @@ observation_normalizer: {'sensor':[[-3.0, -3.0, 0.0],                           
 
 # reward
 reward_type: dense
-success_reward: 500.0
+success_reward: 30.0
 slack_reward: -0.01
 potential_reward_weight: 2.0
 electricity_reward_weight: -0.001
@@ -184,7 +184,7 @@ discount_factor: 0.99
 
 # termination condition
 dist_tol: 0.5
-max_step: 512
+max_step: 1000
 
 # sensor
 #output: [sensor, auxiliary_sensor, rgb, depth]
