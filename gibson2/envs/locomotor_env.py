@@ -414,7 +414,7 @@ class NavigateEnv(BaseEnv):
         # goal reached
         string_to_print = 'Process {pid}, timestep {ts:>4}: '.format(
             pid = id(multiprocessing.current_process()) ,
-            ts = self.current_step, 
+            ts = self.current_step,
             )
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
             string_to_print += " GOAL"
@@ -654,8 +654,8 @@ class InteractiveNavigateEnv(NavigateEnv):
             ]
 
             self.quarter_wall_poses = [
-                [[0, 7.68, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
-                [[0, 2.45, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                [[0.0, 7.68, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                [[0.0, 2.45, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
             ]
 
             self.walls = []
@@ -697,8 +697,8 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.cid = None
 
         # visualize subgoal
-        self.subgoal_base = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0, 1, 0, 0.5], half_extents=[0.4] * 3)
-        self.subgoal_base.load()
+        # self.subgoal_base = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0, 1, 0, 0.5], half_extents=[0.4] * 3)
+        # self.subgoal_base.load()
         self.subgoal_end_effector = VisualObject(rgba_color=[1, 0, 0, 0.5], radius=0.2)
         self.subgoal_end_effector.load()
 
@@ -811,7 +811,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                     # pos = [1.0, 2.0, 0.0]
             elif ARENA == "complex_hl_ll":
                 if self.random_position:
-                    pos = [np.random.uniform(-2, -1.7), np.random.uniform(4.5, 5), 0]                    
+                    pos = [np.random.uniform(-2, -1.7), np.random.uniform(4.5, 5), 0]
                 else:
                     pos = [-2, 4, 0.0]
                 # pos = [np.random.uniform(11, 13), np.random.uniform(-2, 2), 0]
@@ -873,8 +873,8 @@ class InteractiveNavigateEnv(NavigateEnv):
 
     def reset(self):
         string_to_print = 'RESET Process {pid}, timestep {ts:>4}: '.format(
-            pid = id(multiprocessing.current_process()) ,
-            ts = self.current_step, 
+            pid=id(multiprocessing.current_process()),
+            ts=self.current_step,
             )
         print(string_to_print)
         self.reset_interactive_objects()
@@ -1072,7 +1072,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         if self.stage == self.stage_get_to_door_handle:
             potential = l2_distance(door_handle_pos, self.robots[0].get_end_effector_position())
         elif self.stage == self.stage_open_door:
-            potential = -door_angle*10
+            potential = -door_angle * 10.0
 
         elif self.stage == self.stage_get_to_target_pos:
             potential = l2_distance(self.target_pos, self.get_position_of_interest())
@@ -1100,7 +1100,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 # # self.reward_stats.append(np.abs(potential_reward * self.potential_reward_weight))
                 # self.normalized_potential = new_normalized_potential
                 new_potential = self.get_potential()
-                
+
                 potential_reward = self.potential - new_potential
                 # print("potential reward", potential_reward)
                 reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
