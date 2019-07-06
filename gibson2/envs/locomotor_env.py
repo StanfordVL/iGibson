@@ -1002,6 +1002,11 @@ class InteractiveNavigateEnv(NavigateEnv):
         )
         # print('dist', dist)
 
+        string_to_print = 'Process {pid}, timestep {ts:>4}: '.format(
+            pid = id(multiprocessing.current_process()) ,
+            ts = self.current_step, 
+            )
+
         self.prev_stage = self.stage
         if self.stage == self.stage_get_to_door_handle and dist < self.door_handle_dist_thresh:
             assert self.cid is None
@@ -1011,14 +1016,14 @@ class InteractiveNavigateEnv(NavigateEnv):
                                           [0, 0.0, 0], [0, 0, 0])
             p.changeConstraint(self.cid, maxForce=500)
             self.stage = self.stage_open_door
-            print("stage open_door")
+            print("stage open_door " + string_to_print)
 
         if self.stage == self.stage_open_door and p.getJointState(self.door.body_id, 1)[0] > self.door_angle:  # door open > 45/60/90 degree
             assert self.cid is not None
             p.removeConstraint(self.cid)
             self.cid = None
             self.stage = self.stage_get_to_target_pos
-            print("stage get to target pos")
+            print("stage get to target pos " + string_to_print)
 
         door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
 
