@@ -395,7 +395,13 @@ class NavigateEnv(BaseEnv):
         done, info = False, {}
         collision_links = [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
         max_force = max([elem[9] for elem in collision_links] + [0])  # normalForce
+
+        collision_links = [elem for elem in collision_links if not (elem[2] == self.door.body_id and elem[3] in [32, 33])]  # excluding collision between hand and door
+        collision_reward = float(len(collision_links) != 0)
+        info['collision_reward'] = collision_reward * self.collision_reward_weight
+
         door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+
         # for elem in collision_links:
         #     if elem[9] > 500:
         #         print("collision between " + self.id_to_name[self.robots[0].robot_ids[0]]["links"][elem[3]]
@@ -743,12 +749,12 @@ class InteractiveNavigateEnv(NavigateEnv):
         # self.door_vis.set_position(np.array([door_x, door_y, 0.0]), new_orn=door_orn)
         self.subgoal_end_effector.set_position(ideal_next_state)
 
-    def set_subgoal_color(self,rgba_color=[1, 0, 0, 0.5] ):
+    def set_subgoal_color(self, rgba_color=[1, 0, 0, 0.5]):
         self.subgoal_end_effector.set_color(rgba_color)
 
     def reset_interactive_objects(self):
-        p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=(100.0 / 180.0 * np.pi), targetVelocity=0.0)
-        # p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
+        # p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=(100.0 / 180.0 * np.pi), targetVelocity=0.0)
+        p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
         if self.cid is not None:
             p.removeConstraint(self.cid)
             self.cid = None
@@ -762,11 +768,11 @@ class InteractiveNavigateEnv(NavigateEnv):
                 pos = [np.random.uniform(-2, 2), np.random.uniform(-2, 2), 0]
             elif ARENA == "simple_hl_ll":
                 if self.random_position:
-                    # pos = [np.random.uniform(1, 2), np.random.uniform(-2, 2), 0]
-                    pos = [np.random.uniform(0.5, 1.5), np.random.uniform(1.5, 2.0), 0]
+                    pos = [np.random.uniform(1, 2), np.random.uniform(-2, 2), 0]
+                    # pos = [np.random.uniform(0.5, 1.5), np.random.uniform(1.5, 2.0), 0]
                 else:
-                    # pos = [1.0, 0.0, 0.0]
-                    pos = [1.0, 2.0, 0.0]
+                    pos = [1.0, 0.0, 0.0]
+                    # pos = [1.0, 2.0, 0.0]
 
             elif ARENA == "complex_hl_ll":
                 if self.random_position:
@@ -785,8 +791,8 @@ class InteractiveNavigateEnv(NavigateEnv):
                 if self.random_position:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
                 else:
-                    # self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
-                    self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, -np.pi / 2), 'wxyz'))
+                    self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
+                    # self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, -np.pi / 2), 'wxyz'))
 
             collision_links = []
             for _ in range(self.simulator_loop):
@@ -817,8 +823,8 @@ class InteractiveNavigateEnv(NavigateEnv):
 
     def reset(self):
         self.reset_interactive_objects()
-        # self.stage = 0
-        self.stage = self.stage_get_to_target_pos
+        self.stage = 0
+        # self.stage = self.stage_get_to_target_pos
         self.prev_stage = self.stage
         return super(InteractiveNavigateEnv, self).reset()
 
@@ -933,12 +939,10 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         auxiliary_sensor[49:52] = np.array([yaw, cos_yaw, sin_yaw])
         auxiliary_sensor[52:56] = np.array([door_angle, cos_door_angle, sin_door_angle, has_door_handle_in_hand])
-        print('target pos', target_pos)
         auxiliary_sensor[56:59] = target_pos
         auxiliary_sensor[59:62] = door_pos_local
         auxiliary_sensor[62:65] = target_pos_local
         auxiliary_sensor[65] = has_collision
-        print('has_collision', has_collision)
 
         return auxiliary_sensor
 
@@ -1053,8 +1057,8 @@ class InteractiveNavigateEnv(NavigateEnv):
             if self.stage != self.prev_stage:
                 reward += self.success_reward / 2.0
 
-        base_moving = np.any(action[:2] != 0.0)
-        arm_moving = np.any(action[2:] != 0.0)
+        base_moving = np.any(np.abs(action[:2]) >= 0.01)
+        arm_moving = np.any(np.abs(action[2:]) >= 0.01)
         electricity_reward = float(base_moving) + float(arm_moving)
         self.energy_cost += electricity_reward
         reward += electricity_reward * self.electricity_reward_weight
@@ -1090,7 +1094,7 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # death penalty
         if self.robots[0].get_position()[2] > self.death_z_thresh:
-            reward -= self.success_reward * 0.25
+            reward -= self.success_reward * 1.0
 
         # push door the wrong way
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
