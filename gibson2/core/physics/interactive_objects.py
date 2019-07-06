@@ -122,7 +122,7 @@ class BoxShape(object):
         self.dimension = dim
 
     def load(self):
-        mass = 200
+        mass = 1000
         # basePosition = [1,2,2]
         baseOrientation = [0, 0, 0, 1]
 
