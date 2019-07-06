@@ -1,4 +1,4 @@
-from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj
+from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape
 import gibson2
 from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
@@ -17,6 +17,7 @@ import pybullet as p
 from IPython import embed
 import cv2
 import time
+import multiprocessing
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
 # arXiv preprint arXiv:1807.06757 (2018).
@@ -42,6 +43,7 @@ class NavigateEnv(BaseEnv):
         self.physics_timestep = physics_timestep
         self.simulator.set_timestep(physics_timestep)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
+        self.current_step = 0
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
 
@@ -404,13 +406,19 @@ class NavigateEnv(BaseEnv):
 
         # print("z", self.robots[0].get_position()[2])
         # goal reached
+        string_to_print = 'Process {pid}, timestep {ts:>4}: '.format(
+            pid = id(multiprocessing.current_process()) ,
+            ts = self.current_step, 
+            )
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
-            print('GOAL')
+            string_to_print += " GOAL"
+            print(string_to_print)
             done = True
             info['success'] = True
         # robot flips over
         elif self.robots[0].get_position()[2] > self.death_z_thresh:
-            print('DEATH')
+            string_to_print += " DEATH"
+            print(string_to_print)
             done = True
             info['success'] = False
         # time out
@@ -419,7 +427,8 @@ class NavigateEnv(BaseEnv):
             done = True
             info['success'] = False
         elif door_angle < (-10.0 / 180.0 * np.pi):
-            print('WRONG PUSH')
+            string_to_print += " WRONG PUSH"
+            print(string_to_print)
         # elif door_angle > (10.0 / 180.0 * np.pi):
         #     # # if door opens in the wrong way, reset it to neutral (closed)
         #     # p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
@@ -534,8 +543,9 @@ class NavigateRandomEnv(NavigateEnv):
 # Change jr_interactive_nav.yaml for wall width (1m <-> 3m)
 
 #ARENA = "only_ll"
-ARENA = "simple_hl_ll"
-# ARENA = "complex_hl_ll"
+#ARENA = "only_ll_obstacles"
+#ARENA = "simple_hl_ll"
+ARENA = "complex_hl_ll"
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
@@ -556,7 +566,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                                    scale=1.35)
         self.simulator.import_interactive_object(self.door)
         # TODO: door pos
-        if ARENA == "only_ll":
+        if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
             self.door.set_position_rotation([100.0, 100.0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
         else:
             self.door.set_position_rotation([0.0, 0.0, -0.02], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz'))
@@ -567,7 +577,32 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.jr_end_effector_link_id = 33  # 'm1n6s200_end_effector'
         self.random_position = random_position
 
-        if ARENA == "only_ll":
+        if ARENA == "only_ll_obstacles":
+            self.box_poses = [
+                [[np.random.uniform(-4, 4), np.random.uniform(-4, -1), 1], [0, 0, 0, 1]],
+                [[np.random.uniform(-4, 4), np.random.uniform(-4, -1), 1], [0, 0, 0, 1]],
+                [[np.random.uniform(-4, 4), np.random.uniform(-4, -1), 1], [0, 0, 0, 1]],
+
+                [[np.random.uniform(-4, 4), np.random.uniform(1, 4), 1], [0, 0, 0, 1]],
+                [[np.random.uniform(-4, 4), np.random.uniform(1, 4), 1], [0, 0, 0, 1]],
+                [[np.random.uniform(-4, 4), np.random.uniform(1, 4), 1], [0, 0, 0, 1]],
+
+                [[np.random.uniform(-4, -1), np.random.uniform(-4, 4), 1], [0, 0, 0, 1]],
+                [[np.random.uniform(-4, -1), np.random.uniform(-4, 4), 1], [0, 0, 0, 1]],
+                [[np.random.uniform(-4, -1), np.random.uniform(-4, 4), 1], [0, 0, 0, 1]],
+
+                [[np.random.uniform(1, 4), np.random.uniform(-4, 4), 1], [0, 0, 0, 1]],
+                [[np.random.uniform(1, 4), np.random.uniform(-4, 4), 1], [0, 0, 0, 1]],
+                [[np.random.uniform(1, 4), np.random.uniform(-4, 4), 1], [0, 0, 0, 1]],
+            ]
+
+            self.walls = []
+            for box_pose in self.box_poses:
+                box = BoxShape(pos=box_pose[0], dim=[0.5,0.5,1])
+                self.simulator.import_interactive_object(box)
+                self.walls += [box]
+
+        elif ARENA == "only_ll":
             self.wall_poses = [
                 [[0, -3, 1], [0, 0, 0, 1]],
                 [[0, 3, 1], [0, 0, 0, 1]],
@@ -582,6 +617,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
+
         elif ARENA == "simple_hl_ll":
             self.wall_poses = [
                 [[0, -3, 1], [0, 0, 0, 1]],
@@ -757,9 +793,9 @@ class InteractiveNavigateEnv(NavigateEnv):
         collision_links = [-1]
         while -1 in collision_links:  # if collision happens restart
             # pos = [np.random.uniform(1, 2), np.random.uniform(-0.5, 0.5), 0]
-            if ARENA == "only_ll":
+            if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
                 # pos = [0.0, 0.0, 0.0]
-                pos = [np.random.uniform(-2, 2), np.random.uniform(-2, 2), 0]
+                pos = [np.random.uniform(-0.1, 0.1), np.random.uniform(-0.1, 0.1), 0]
             elif ARENA == "simple_hl_ll":
                 if self.random_position:
                     pos = [np.random.uniform(1, 2), np.random.uniform(-2, 2), 0]
@@ -772,18 +808,24 @@ class InteractiveNavigateEnv(NavigateEnv):
                 else:
                     pos = [-2, 5, 0.0]
                 # pos = [np.random.uniform(11, 13), np.random.uniform(-2, 2), 0]
+            else:
+                print("Wrong ARENA name")
+                exit(-1)
 
             # pos = [0.0, 0.0, 0.0]
             # self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2]])
 
-            if ARENA == "only_ll":
+            if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
                 self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-            else:
+            elif ARENA == "simple_hl_ll" or ARENA == "complex_hl_ll":
                 if self.random_position:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
                 else:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
+            else:
+                print("Wrong ARENA name")
+                exit(-1)
 
             collision_links = []
             for _ in range(self.simulator_loop):
@@ -800,19 +842,27 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-0.5, 0.5), 0]
         # TODO: target pos
-        if ARENA == "only_ll":
+        if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
             # self.target_pos = [-100, -100, 0]
-            self.target_pos = [np.random.uniform(-2, 2), np.random.uniform(-2, 2), 0.0]
-        else:
+            self.target_pos = [np.random.uniform(-200, -199), np.random.uniform(-2, 2), 0.0]
+        elif ARENA == "simple_hl_ll" or ARENA == "complex_hl_ll":
             if self.random_position:
                 self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-2, 2), 0.0]
             else:
                 self.target_pos = np.array([-1.5, 0.0, 0.0])
             # self.target_pos = [np.random.uniform(-13, -11), np.random.uniform(-2, 2), 0.0]
+        else:
+                print("Wrong ARENA name")
+                exit(-1)
 
         self.door_handle_vis.set_position(pos=np.array(p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]))
 
     def reset(self):
+        string_to_print = 'RESET Process {pid}, timestep {ts:>4}: '.format(
+            pid = id(multiprocessing.current_process()) ,
+            ts = self.current_step, 
+            )
+        print(string_to_print)
         self.reset_interactive_objects()
         self.stage = 0
         # self.stage = self.stage_get_to_target_pos
