@@ -645,7 +645,6 @@ class InteractiveNavigateEnv(NavigateEnv):
             self.wall_poses = [
                 [[0, -3, 1], [0, 0, 0, 1]],
                 [[0, 6, 1], [0, 0, 0, 1]],
-                [[0, -7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[-3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
                 [[3, 0, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]]
             ]
@@ -655,7 +654,8 @@ class InteractiveNavigateEnv(NavigateEnv):
             ]
 
             self.quarter_wall_poses = [
-                [[0, 7.8, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                [[0, 7.68, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
+                [[0, 2.45, 1], [0, 0, np.sqrt(0.5), np.sqrt(0.5)]],
             ]
 
             self.walls = []
@@ -1066,7 +1066,8 @@ class InteractiveNavigateEnv(NavigateEnv):
         if self.stage == self.stage_get_to_door_handle:
             potential = l2_distance(door_handle_pos, self.robots[0].get_end_effector_position())
         elif self.stage == self.stage_open_door:
-            potential = -door_angle
+            potential = -door_angle*10
+
         elif self.stage == self.stage_get_to_target_pos:
             potential = l2_distance(self.target_pos, self.get_position_of_interest())
             # print("current_distance", potential)
@@ -1093,6 +1094,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 # # self.reward_stats.append(np.abs(potential_reward * self.potential_reward_weight))
                 # self.normalized_potential = new_normalized_potential
                 new_potential = self.get_potential()
+                
                 potential_reward = self.potential - new_potential
                 # print("potential reward", potential_reward)
                 reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
@@ -1148,7 +1150,7 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # death penalty
         if self.robots[0].get_position()[2] > self.death_z_thresh:
-            reward -= self.success_reward * 1.0
+            reward -= self.success_reward * 0.25
 
         # push door the wrong way
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
