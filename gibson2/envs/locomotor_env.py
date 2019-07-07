@@ -1119,8 +1119,8 @@ class InteractiveNavigateEnv(NavigateEnv):
 
                 
                 reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
-                if self.stage == self.stage_open_door:
-                    print("Door stage reward ", reward)
+                # if self.stage == self.stage_open_door:
+                #     print("Door stage reward ", reward)
                 self.potential = new_potential
         elif self.reward_type == 'normalized_l2':
             new_normalized_l2_potential = self.get_l2_potential() / self.initial_l2_potential
