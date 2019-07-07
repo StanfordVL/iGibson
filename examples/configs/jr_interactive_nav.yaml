@@ -168,14 +168,14 @@ observation_normalizer: {'sensor':[[-3.0, -3.0, 0.0],                           
 
 # reward
 reward_type: dense
-success_reward: 30.0
+success_reward: 500.0
 slack_reward: -0.01
 potential_reward_weight: 2.0
 electricity_reward_weight: -0.001
 #electricity_reward_weight: 0.0
 #stall_torque_reward_weight: -0.000001
 stall_torque_reward_weight: 0.0
-collision_reward_weight: -0.01
+collision_reward_weight: -1.5
 #collision_reward_weight: 0.0
 collision_ignore_body_ids: [0, 1, 2, 3]
 
@@ -184,7 +184,7 @@ discount_factor: 0.99
 
 # termination condition
 dist_tol: 0.5
-max_step: 1000
+max_step: 10000
 
 # sensor
 #output: [sensor, auxiliary_sensor, rgb, depth]
@@ -217,7 +217,7 @@ fast_lq_render: true
 
 # visual objects
 visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: false
+target_visual_object_visible_to_agent: true
 
 # debug
 debug: false

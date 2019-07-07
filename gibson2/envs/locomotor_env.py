@@ -148,8 +148,9 @@ class NavigateEnv(BaseEnv):
             'visual_object_at_initial_target_pos', False)
 
         if self.visual_object_at_initial_target_pos:
-            self.initial_pos_vis_obj = VisualObject(rgba_color=[1, 0, 0, 0.5], radius=0.2)
-            self.target_pos_vis_obj = VisualObject(rgba_color=[0, 0, 1, 0.5], radius=0.2)
+            cyl_length = 3
+            self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER, rgba_color=[1, 0, 0, 0.95], radius=0.2, length=cyl_length, initial_offset=[0,0,cyl_length/2])
+            self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER, rgba_color=[0, 0, 1, 0.95], radius=0.5, length=cyl_length, initial_offset=[0,0,cyl_length/2])
             self.initial_pos_vis_obj.load()
             if self.config.get('target_visual_object_visible_to_agent', False):
                 self.simulator.import_object(self.target_pos_vis_obj)
@@ -699,10 +700,13 @@ class InteractiveNavigateEnv(NavigateEnv):
         # visualize subgoal
         # self.subgoal_base = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0, 1, 0, 0.5], half_extents=[0.4] * 3)
         # self.subgoal_base.load()
-        self.subgoal_end_effector = VisualObject(rgba_color=[1, 0, 0, 0.5], radius=0.2)
+        self.subgoal_end_effector = VisualObject(rgba_color=[0, 0, 0, 0.8], radius=0.06, initial_offset=[2,1,1])
         self.subgoal_end_effector.load()
 
-        self.door_handle_vis = VisualObject(rgba_color=[1, 0, 0, 0.5], radius=self.door_handle_dist_thresh)
+        self.subgoal_end_effector_base = VisualObject(visual_shape=p.GEOM_CYLINDER, rgba_color=[1, 1, 0, 0.8], radius=0.05, length=3, initial_offset=[2,1,3/2])
+        self.subgoal_end_effector_base.load()
+
+        self.door_handle_vis = VisualObject(rgba_color=[1, 0, 0, 0.0], radius=self.door_handle_dist_thresh)
         self.door_handle_vis.load()
         # self.door_vis = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0, 1, 1, 0.5], half_extents=[0.05, 0.5, 2.7])
         # self.door_vis.load()
@@ -784,9 +788,17 @@ class InteractiveNavigateEnv(NavigateEnv):
         # door_orn = quatToXYZW(euler2quat(0, 0, door_angle), 'wxyz')
         # self.door_vis.set_position(np.array([door_x, door_y, 0.0]), new_orn=door_orn)
         self.subgoal_end_effector.set_position(ideal_next_state)
+        self.subgoal_end_effector_base.set_position([ideal_next_state[0], ideal_next_state[1],0])
 
     def set_subgoal_color(self, rgba_color=[1, 0, 0, 0.5]):
         self.subgoal_end_effector.set_color(rgba_color)
+
+    def set_subgoal_type(self, only_base=True):
+        if only_base:
+            # Make the marker for the end effector completely transparent
+            self.subgoal_end_effector.set_color([0, 0, 0, 0.0])
+        else:
+            self.subgoal_end_effector.set_color([0, 0, 0, 0.8])
 
     def reset_interactive_objects(self):
         # p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=(100.0 / 180.0 * np.pi), targetVelocity=0.0)
@@ -1102,8 +1114,11 @@ class InteractiveNavigateEnv(NavigateEnv):
                 new_potential = self.get_potential()
 
                 potential_reward = self.potential - new_potential
-                # print("potential reward", potential_reward)
+
+                
                 reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+                if self.stage == self.stage_open_door:
+                    print("Door stage reward ", reward)
                 self.potential = new_potential
         elif self.reward_type == 'normalized_l2':
             new_normalized_l2_potential = self.get_l2_potential() / self.initial_l2_potential
