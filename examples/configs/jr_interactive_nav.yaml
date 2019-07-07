@@ -184,7 +184,7 @@ discount_factor: 0.99
 
 # termination condition
 dist_tol: 0.5
-max_step: 10000
+max_step: 256
 
 # sensor
 #output: [sensor, auxiliary_sensor, rgb, depth]
@@ -217,7 +217,7 @@ fast_lq_render: true
 
 # visual objects
 visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: true
+target_visual_object_visible_to_agent: false
 
 # debug
 debug: false
