@@ -550,9 +550,9 @@ class NavigateRandomEnv(NavigateEnv):
 # Change jr_interactive_nav.yaml for wall width (1m <-> 3m)
 
 # ARENA = "only_ll"
-# ARENA = "only_ll_obstacles"
+ARENA = "only_ll_obstacles"
 # ARENA = "simple_hl_ll"
-ARENA = "complex_hl_ll"
+# ARENA = "complex_hl_ll"
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
@@ -562,7 +562,8 @@ class InteractiveNavigateEnv(NavigateEnv):
                  physics_timestep=1 / 240.0,
                  random_position=False,
                  device_idx=0,
-                 automatic_reset=False):
+                 automatic_reset=False,
+                 arena=ARENA):
         super(InteractiveNavigateEnv, self).__init__(config_file,
                                                      mode=mode,
                                                      action_timestep=action_timestep,
@@ -571,9 +572,10 @@ class InteractiveNavigateEnv(NavigateEnv):
                                                      device_idx=device_idx)
         self.door = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
                                    scale=1.35)
+        self.arena = arena
         self.simulator.import_interactive_object(self.door)
         # TODO: door pos
-        if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
+        if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
             self.door.set_position_rotation([100.0, 100.0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
         else:
             self.door.set_position_rotation([0.0, 0.0, -0.02], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz'))
@@ -584,7 +586,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.jr_end_effector_link_id = 33  # 'm1n6s200_end_effector'
         self.random_position = random_position
 
-        if ARENA == "only_ll_obstacles":
+        if self.arena == "only_ll_obstacles":
             self.box_poses = [
                 [[np.random.uniform(-4, 4), np.random.uniform(-4, -1), 1], [0, 0, 0, 1]],
                 [[np.random.uniform(-4, 4), np.random.uniform(-4, -1), 1], [0, 0, 0, 1]],
@@ -609,7 +611,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 self.simulator.import_interactive_object(box)
                 self.walls += [box]
 
-        elif ARENA == "only_ll":
+        elif self.arena == "only_ll":
             self.wall_poses = [
                 [[0, -3, 1], [0, 0, 0, 1]],
                 [[0, 3, 1], [0, 0, 0, 1]],
@@ -625,7 +627,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
 
-        elif ARENA == "simple_hl_ll":
+        elif self.arena == "simple_hl_ll":
             self.wall_poses = [
                 [[0, -3, 1], [0, 0, 0, 1]],
                 [[0, 3, 1], [0, 0, 0, 1]],
@@ -642,7 +644,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
-        elif ARENA == "complex_hl_ll":
+        elif self.arena == "complex_hl_ll":
             self.wall_poses = [
                 [[0, -3, 1], [0, 0, 0, 1]],
                 [[0, 6, 1], [0, 0, 0, 1]],
@@ -811,17 +813,17 @@ class InteractiveNavigateEnv(NavigateEnv):
         collision_links = [-1]
         while -1 in collision_links:  # if collision happens restart
             # pos = [np.random.uniform(1, 2), np.random.uniform(-0.5, 0.5), 0]
-            if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
+            if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
                 # pos = [0.0, 0.0, 0.0]
                 pos = [np.random.uniform(-0.1, 0.1), np.random.uniform(-0.1, 0.1), 0]
-            elif ARENA == "simple_hl_ll":
+            elif self.arena == "simple_hl_ll":
                 if self.random_position:
                     pos = [np.random.uniform(1, 2), np.random.uniform(-2, 2), 0]
                     # pos = [np.random.uniform(0.5, 1.5), np.random.uniform(1.5, 2.0), 0]
                 else:
                     pos = [1.0, 0.0, 0.0]
                     # pos = [1.0, 2.0, 0.0]
-            elif ARENA == "complex_hl_ll":
+            elif self.arena == "complex_hl_ll":
                 if self.random_position:
                     pos = [np.random.uniform(-2, -1.7), np.random.uniform(4.5, 5), 0]
                 else:
@@ -835,15 +837,15 @@ class InteractiveNavigateEnv(NavigateEnv):
             # self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2]])
 
-            if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
+            if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
                 self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-            elif ARENA == "simple_hl_ll":
+            elif self.arena == "simple_hl_ll":
                 if self.random_position:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
                 else:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
                     # self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, -np.pi / 2), 'wxyz'))
-            elif ARENA == "complex_hl_ll":
+            elif self.arena == "complex_hl_ll":
                 self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
                 # if self.random_position:
                 #     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
@@ -868,10 +870,10 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-0.5, 0.5), 0]
         # TODO: target pos
-        if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
+        if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
             # self.target_pos = [-100, -100, 0]
             self.target_pos = [np.random.uniform(-200, -199), np.random.uniform(-2, 2), 0.0]
-        elif ARENA == "simple_hl_ll" or ARENA == "complex_hl_ll":
+        elif self.arena == "simple_hl_ll" or self.arena == "complex_hl_ll":
             if self.random_position:
                 self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-2, 2), 0.0]
             else:
