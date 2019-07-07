@@ -702,10 +702,10 @@ class InteractiveNavigateEnv(NavigateEnv):
         # visualize subgoal
         # self.subgoal_base = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0, 1, 0, 0.5], half_extents=[0.4] * 3)
         # self.subgoal_base.load()
-        self.subgoal_end_effector = VisualObject(rgba_color=[0, 0, 0, 0.8], radius=0.06, initial_offset=[2,1,1])
+        self.subgoal_end_effector = VisualObject(rgba_color=[0, 0, 0, 0.8], radius=0.06)
         self.subgoal_end_effector.load()
 
-        self.subgoal_end_effector_base = VisualObject(visual_shape=p.GEOM_CYLINDER, rgba_color=[1, 1, 0, 0.8], radius=0.05, length=3, initial_offset=[2,1,3/2])
+        self.subgoal_end_effector_base = VisualObject(visual_shape=p.GEOM_CYLINDER, rgba_color=[1, 1, 0, 0.8], radius=0.05, length=3, initial_offset=[0,0,3/2])
         self.subgoal_end_effector_base.load()
 
         self.door_handle_vis = VisualObject(rgba_color=[1, 0, 0, 0.0], radius=self.door_handle_dist_thresh)
