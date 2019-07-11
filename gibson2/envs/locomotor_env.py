@@ -412,19 +412,21 @@ class NavigateEnv(BaseEnv):
 
         # print("z", self.robots[0].get_position()[2])
         # goal reached
-        string_to_print = 'Process {pid}, timestep {ts:>4}: '.format(
-            pid = id(multiprocessing.current_process()) ,
-            ts = self.current_step,
-            )
+        # string_to_print = 'Process {pid}, timestep {ts:>4}: '.format(
+        #     pid=id(multiprocessing.current_process()) ,
+        #     ts=self.current_step,
+        #     )
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
-            string_to_print += " GOAL"
-            print(string_to_print)
+            print("GOAL")
+            # string_to_print += " GOAL"
+            # print(string_to_print)
             done = True
             info['success'] = True
         # robot flips over
         elif self.robots[0].get_position()[2] > self.death_z_thresh:
-            string_to_print += " DEATH"
-            print(string_to_print)
+            print("DEATH")
+            # string_to_print += " DEATH"
+            # print(string_to_print)
             done = True
             info['success'] = False
         # time out
@@ -433,8 +435,9 @@ class NavigateEnv(BaseEnv):
             done = True
             info['success'] = False
         elif door_angle < (-10.0 / 180.0 * np.pi):
-            string_to_print += " WRONG PUSH"
-            print(string_to_print)
+            print("WRONG PUSH")
+            # string_to_print += " WRONG PUSH"
+            # print(string_to_print)
         # elif door_angle > (10.0 / 180.0 * np.pi):
         #     # # if door opens in the wrong way, reset it to neutral (closed)
         #     # p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
@@ -872,11 +875,11 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.door_handle_vis.set_position(pos=np.array(p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]))
 
     def reset(self):
-        string_to_print = 'RESET Process {pid}, timestep {ts:>4}: '.format(
-            pid=id(multiprocessing.current_process()),
-            ts=self.current_step,
-            )
-        print(string_to_print)
+        # string_to_print = 'RESET Process {pid}, timestep {ts:>4}: '.format(
+        #     pid=id(multiprocessing.current_process()),
+        #     ts=self.current_step,
+        #     )
+        # print(string_to_print)
         self.reset_interactive_objects()
         self.stage = 0
         # self.stage = self.stage_get_to_target_pos
@@ -1008,10 +1011,10 @@ class InteractiveNavigateEnv(NavigateEnv):
         )
         # print('dist', dist)
 
-        string_to_print = 'Process {pid}, timestep {ts:>4}: '.format(
-            pid = id(multiprocessing.current_process()),
-            ts=self.current_step,
-            )
+        # string_to_print = 'Process {pid}, timestep {ts:>4}: '.format(
+        #     pid = id(multiprocessing.current_process()),
+        #     ts=self.current_step,
+        #     )
 
         self.prev_stage = self.stage
         if self.stage == self.stage_get_to_door_handle and dist < self.door_handle_dist_thresh:
@@ -1022,14 +1025,16 @@ class InteractiveNavigateEnv(NavigateEnv):
                                           [0, 0.0, 0], [0, 0, 0])
             p.changeConstraint(self.cid, maxForce=500)
             self.stage = self.stage_open_door
-            print("stage open_door " + string_to_print)
+            print("stage open_door")
+            # print("stage open_door " + string_to_print)
 
         if self.stage == self.stage_open_door and p.getJointState(self.door.body_id, 1)[0] > self.door_angle:  # door open > 45/60/90 degree
             assert self.cid is not None
             p.removeConstraint(self.cid)
             self.cid = None
             self.stage = self.stage_get_to_target_pos
-            print("stage get to target pos " + string_to_print)
+            print("stage get to target pos")
+            # print("stage get to target pos " + string_to_print)
 
         door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
 
@@ -1072,7 +1077,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         if self.stage == self.stage_get_to_door_handle:
             potential = l2_distance(door_handle_pos, self.robots[0].get_end_effector_position())
         elif self.stage == self.stage_open_door:
-            potential = -door_angle * 10.0
+            potential = -door_angle
 
         elif self.stage == self.stage_get_to_target_pos:
             potential = l2_distance(self.target_pos, self.get_position_of_interest())
@@ -1156,7 +1161,7 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # death penalty
         if self.robots[0].get_position()[2] > self.death_z_thresh:
-            reward -= self.success_reward * 0.25
+            reward -= self.success_reward * 1.0
 
         # push door the wrong way
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
