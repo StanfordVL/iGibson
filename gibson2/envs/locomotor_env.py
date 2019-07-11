@@ -148,8 +148,9 @@ class NavigateEnv(BaseEnv):
             'visual_object_at_initial_target_pos', False)
 
         if self.visual_object_at_initial_target_pos:
-            self.initial_pos_vis_obj = VisualObject(rgba_color=[1, 0, 0, 0.5], radius=0.2)
-            self.target_pos_vis_obj = VisualObject(rgba_color=[0, 0, 1, 0.5], radius=0.2)
+            cyl_length = 3
+            self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER, rgba_color=[1, 0, 0, 0.95], radius=0.2, length=cyl_length, initial_offset=[0,0,cyl_length/2])
+            self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER, rgba_color=[0, 0, 1, 0.95], radius=0.5, length=cyl_length, initial_offset=[0,0,cyl_length/2])
             self.initial_pos_vis_obj.load()
             if self.config.get('target_visual_object_visible_to_agent', False):
                 self.simulator.import_object(self.target_pos_vis_obj)
@@ -552,9 +553,9 @@ class NavigateRandomEnv(NavigateEnv):
 # Change jr_interactive_nav.yaml for wall width (1m <-> 3m)
 
 # ARENA = "only_ll"
-# ARENA = "only_ll_obstacles"
+ARENA = "only_ll_obstacles"
 # ARENA = "simple_hl_ll"
-ARENA = "complex_hl_ll"
+# ARENA = "complex_hl_ll"
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
@@ -564,7 +565,8 @@ class InteractiveNavigateEnv(NavigateEnv):
                  physics_timestep=1 / 240.0,
                  random_position=False,
                  device_idx=0,
-                 automatic_reset=False):
+                 automatic_reset=False,
+                 arena=ARENA):
         super(InteractiveNavigateEnv, self).__init__(config_file,
                                                      mode=mode,
                                                      action_timestep=action_timestep,
@@ -573,9 +575,10 @@ class InteractiveNavigateEnv(NavigateEnv):
                                                      device_idx=device_idx)
         self.door = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
                                    scale=1.35)
+        self.arena = arena
         self.simulator.import_interactive_object(self.door)
         # TODO: door pos
-        if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
+        if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
             self.door.set_position_rotation([100.0, 100.0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
         else:
             self.door.set_position_rotation([0.0, 0.0, -0.02], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz'))
@@ -586,7 +589,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.jr_end_effector_link_id = 33  # 'm1n6s200_end_effector'
         self.random_position = random_position
 
-        if ARENA == "only_ll_obstacles":
+        if self.arena == "only_ll_obstacles":
             self.box_poses = [
                 [[np.random.uniform(-4, 4), np.random.uniform(-4, -1), 1], [0, 0, 0, 1]],
                 [[np.random.uniform(-4, 4), np.random.uniform(-4, -1), 1], [0, 0, 0, 1]],
@@ -611,7 +614,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 self.simulator.import_interactive_object(box)
                 self.walls += [box]
 
-        elif ARENA == "only_ll":
+        elif self.arena == "only_ll":
             self.wall_poses = [
                 [[0, -3, 1], [0, 0, 0, 1]],
                 [[0, 3, 1], [0, 0, 0, 1]],
@@ -627,7 +630,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
 
-        elif ARENA == "simple_hl_ll":
+        elif self.arena == "simple_hl_ll":
             self.wall_poses = [
                 [[0, -3, 1], [0, 0, 0, 1]],
                 [[0, 3, 1], [0, 0, 0, 1]],
@@ -644,7 +647,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
-        elif ARENA == "complex_hl_ll":
+        elif self.arena == "complex_hl_ll":
             self.wall_poses = [
                 [[0, -3, 1], [0, 0, 0, 1]],
                 [[0, 6, 1], [0, 0, 0, 1]],
@@ -702,10 +705,13 @@ class InteractiveNavigateEnv(NavigateEnv):
         # visualize subgoal
         # self.subgoal_base = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0, 1, 0, 0.5], half_extents=[0.4] * 3)
         # self.subgoal_base.load()
-        self.subgoal_end_effector = VisualObject(rgba_color=[1, 0, 0, 0.5], radius=0.2)
+        self.subgoal_end_effector = VisualObject(rgba_color=[0, 0, 0, 0.8], radius=0.06)
         self.subgoal_end_effector.load()
 
-        self.door_handle_vis = VisualObject(rgba_color=[1, 0, 0, 0.5], radius=self.door_handle_dist_thresh)
+        self.subgoal_end_effector_base = VisualObject(visual_shape=p.GEOM_CYLINDER, rgba_color=[1, 1, 0, 0.8], radius=0.05, length=3, initial_offset=[0,0,3/2])
+        self.subgoal_end_effector_base.load()
+
+        self.door_handle_vis = VisualObject(rgba_color=[1, 0, 0, 0.0], radius=self.door_handle_dist_thresh)
         self.door_handle_vis.load()
         # self.door_vis = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0, 1, 1, 0.5], half_extents=[0.05, 0.5, 2.7])
         # self.door_vis.load()
@@ -787,9 +793,17 @@ class InteractiveNavigateEnv(NavigateEnv):
         # door_orn = quatToXYZW(euler2quat(0, 0, door_angle), 'wxyz')
         # self.door_vis.set_position(np.array([door_x, door_y, 0.0]), new_orn=door_orn)
         self.subgoal_end_effector.set_position(ideal_next_state)
+        self.subgoal_end_effector_base.set_position([ideal_next_state[0], ideal_next_state[1],0])
 
     def set_subgoal_color(self, rgba_color=[1, 0, 0, 0.5]):
         self.subgoal_end_effector.set_color(rgba_color)
+
+    def set_subgoal_type(self, only_base=True):
+        if only_base:
+            # Make the marker for the end effector completely transparent
+            self.subgoal_end_effector.set_color([0, 0, 0, 0.0])
+        else:
+            self.subgoal_end_effector.set_color([0, 0, 0, 0.8])
 
     def reset_interactive_objects(self):
         # p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=(100.0 / 180.0 * np.pi), targetVelocity=0.0)
@@ -802,17 +816,17 @@ class InteractiveNavigateEnv(NavigateEnv):
         collision_links = [-1]
         while -1 in collision_links:  # if collision happens restart
             # pos = [np.random.uniform(1, 2), np.random.uniform(-0.5, 0.5), 0]
-            if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
+            if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
                 # pos = [0.0, 0.0, 0.0]
                 pos = [np.random.uniform(-0.1, 0.1), np.random.uniform(-0.1, 0.1), 0]
-            elif ARENA == "simple_hl_ll":
+            elif self.arena == "simple_hl_ll":
                 if self.random_position:
                     pos = [np.random.uniform(1, 2), np.random.uniform(-2, 2), 0]
                     # pos = [np.random.uniform(0.5, 1.5), np.random.uniform(1.5, 2.0), 0]
                 else:
                     pos = [1.0, 0.0, 0.0]
                     # pos = [1.0, 2.0, 0.0]
-            elif ARENA == "complex_hl_ll":
+            elif self.arena == "complex_hl_ll":
                 if self.random_position:
                     pos = [np.random.uniform(-2, -1.7), np.random.uniform(4.5, 5), 0]
                 else:
@@ -826,15 +840,15 @@ class InteractiveNavigateEnv(NavigateEnv):
             # self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2]])
 
-            if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
+            if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
                 self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-            elif ARENA == "simple_hl_ll":
+            elif self.arena == "simple_hl_ll":
                 if self.random_position:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
                 else:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
                     # self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, -np.pi / 2), 'wxyz'))
-            elif ARENA == "complex_hl_ll":
+            elif self.arena == "complex_hl_ll":
                 self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
                 # if self.random_position:
                 #     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
@@ -859,10 +873,10 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-0.5, 0.5), 0]
         # TODO: target pos
-        if ARENA == "only_ll" or ARENA == "only_ll_obstacles":
+        if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
             # self.target_pos = [-100, -100, 0]
             self.target_pos = [np.random.uniform(-200, -199), np.random.uniform(-2, 2), 0.0]
-        elif ARENA == "simple_hl_ll" or ARENA == "complex_hl_ll":
+        elif self.arena == "simple_hl_ll" or self.arena == "complex_hl_ll":
             if self.random_position:
                 self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-2, 2), 0.0]
             else:
@@ -1107,8 +1121,11 @@ class InteractiveNavigateEnv(NavigateEnv):
                 new_potential = self.get_potential()
 
                 potential_reward = self.potential - new_potential
-                # print("potential reward", potential_reward)
+
+                
                 reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+                # if self.stage == self.stage_open_door:
+                #     print("Door stage reward ", reward)
                 self.potential = new_potential
         elif self.reward_type == 'normalized_l2':
             new_normalized_l2_potential = self.get_l2_potential() / self.initial_l2_potential
