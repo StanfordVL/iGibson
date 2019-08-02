@@ -129,7 +129,6 @@ class NavigateEnv(BaseEnv):
                                              shape=(self.n_rays_per_horizontal,),
                                              dtype=np.float32)
             observation_space['scan'] = self.scan_space
-            # self.scan_display = cv2.namedWindow('scan', cv2.WINDOW_NORMAL)
         if 'rgb_filled' in self.output:  # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
@@ -149,8 +148,16 @@ class NavigateEnv(BaseEnv):
 
         if self.visual_object_at_initial_target_pos:
             cyl_length = 3
-            self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER, rgba_color=[1, 0, 0, 0.95], radius=0.2, length=cyl_length, initial_offset=[0,0,cyl_length/2])
-            self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER, rgba_color=[0, 0, 1, 0.95], radius=0.5, length=cyl_length, initial_offset=[0,0,cyl_length/2])
+            self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
+                                                    rgba_color=[1, 0, 0, 0.95],
+                                                    radius=0.5,
+                                                    length=cyl_length,
+                                                    initial_offset=[0, 0, cyl_length / 2.0])
+            self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
+                                                   rgba_color=[0, 0, 1, 0.95],
+                                                   radius=0.5,
+                                                   length=cyl_length,
+                                                   initial_offset=[0, 0, cyl_length / 2.0])
             self.initial_pos_vis_obj.load()
             if self.config.get('target_visual_object_visible_to_agent', False):
                 self.simulator.import_object(self.target_pos_vis_obj)
@@ -283,6 +290,14 @@ class NavigateEnv(BaseEnv):
         # sensor_state = np.concatenate((sensor_state, self.get_additional_states()))
         sensor_state = self.get_additional_states()
         auxiliary_sensor = self.get_auxiliary_sensor(collision_links)
+
+        # rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+        # rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
+        # depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+        # depth = np.clip(depth, 0.0, 5.0) / 5.0
+        # depth = 1.0 - depth  # flip black/white
+        # cv2.imshow('rgb', rgb)
+        # cv2.imshow('depth', depth)
 
         state = OrderedDict()
         if 'sensor' in self.output:
@@ -419,26 +434,19 @@ class NavigateEnv(BaseEnv):
         #     )
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
             print("GOAL")
-            # string_to_print += " GOAL"
-            # print(string_to_print)
             done = True
             info['success'] = True
         # robot flips over
         elif self.robots[0].get_position()[2] > self.death_z_thresh:
             print("DEATH")
-            # string_to_print += " DEATH"
-            # print(string_to_print)
             done = True
             info['success'] = False
         # time out
         elif self.current_step >= self.max_step:
-            # print('timeout')
             done = True
             info['success'] = False
         elif door_angle < (-10.0 / 180.0 * np.pi):
             print("WRONG PUSH")
-            # string_to_print += " WRONG PUSH"
-            # print(string_to_print)
         # elif door_angle > (10.0 / 180.0 * np.pi):
         #     # # if door opens in the wrong way, reset it to neutral (closed)
         #     # p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
@@ -479,6 +487,7 @@ class NavigateEnv(BaseEnv):
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
 
     def reset(self):
+        self.current_episode += 1
         self.robots[0].robot_specific_reset()
         self.reset_initial_and_target_pos()
         self.initial_potential = self.get_potential()
@@ -544,19 +553,6 @@ class NavigateRandomEnv(NavigateEnv):
             dist = l2_distance(self.initial_pos, self.target_pos)
 
 
-# Change door position
-# Change wall width
-# Add two more walls
-# Change agent initial pos
-# Change agent initial ori
-# Change target position
-# Change jr_interactive_nav.yaml for wall width (1m <-> 3m)
-
-# ARENA = "only_ll"
-ARENA = "only_ll_obstacles"
-# ARENA = "simple_hl_ll"
-# ARENA = "complex_hl_ll"
-
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
                  config_file,
@@ -566,22 +562,28 @@ class InteractiveNavigateEnv(NavigateEnv):
                  random_position=False,
                  device_idx=0,
                  automatic_reset=False,
-                 arena=ARENA):
+                 arena="simple_hl_ll"):
         super(InteractiveNavigateEnv, self).__init__(config_file,
                                                      mode=mode,
                                                      action_timestep=action_timestep,
                                                      physics_timestep=physics_timestep,
                                                      automatic_reset=automatic_reset,
                                                      device_idx=device_idx)
+
+        self.floor = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0.643, 0.643, 0.788, 0.0], half_extents=[20, 20, 0.02], initial_offset=[0, 0, -0.03])
+        self.floor.load()
+        self.floor.set_position([0, 0, 0])
+        self.simulator.import_object(self.floor)
+
         self.door = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
                                    scale=1.35)
         self.arena = arena
         self.simulator.import_interactive_object(self.door)
         # TODO: door pos
         if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
-            self.door.set_position_rotation([100.0, 100.0, -0.02], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+            self.door.set_position_rotation([100.0, 100.0, -0.03], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
         else:
-            self.door.set_position_rotation([0.0, 0.0, -0.02], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz'))
+            self.door.set_position_rotation([0.0, 0.0, -0.03], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz'))
         self.door_angle = self.config.get('door_angle', 90)
         self.door_angle = (self.door_angle / 180.0) * np.pi
         self.door_handle_link_id = 2
@@ -589,6 +591,12 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.jr_end_effector_link_id = 33  # 'm1n6s200_end_effector'
         self.random_position = random_position
 
+        assert self.arena in [
+            "only_ll_obstacles",
+            "only_ll",
+            "simple_hl_ll",
+            "complex_hl_ll"
+        ], "Wrong arena"
         if self.arena == "only_ll_obstacles":
             self.box_poses = [
                 [[np.random.uniform(-4, 4), np.random.uniform(-4, -1), 1], [0, 0, 0, 1]],
@@ -647,6 +655,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
+
         elif self.arena == "complex_hl_ll":
             self.wall_poses = [
                 [[0, -3, 1], [0, 0, 0, 1]],
@@ -687,8 +696,9 @@ class InteractiveNavigateEnv(NavigateEnv):
                 self.simulator.import_interactive_object(wall)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
+
         else:
-            print("Wrong arena!")
+            print("Wrong arena")
             exit(-1)
 
         # dense reward
@@ -708,7 +718,11 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.subgoal_end_effector = VisualObject(rgba_color=[0, 0, 0, 0.8], radius=0.06)
         self.subgoal_end_effector.load()
 
-        self.subgoal_end_effector_base = VisualObject(visual_shape=p.GEOM_CYLINDER, rgba_color=[1, 1, 0, 0.8], radius=0.05, length=3, initial_offset=[0,0,3/2])
+        self.subgoal_end_effector_base = VisualObject(visual_shape=p.GEOM_CYLINDER,
+                                                      rgba_color=[1, 1, 0, 0.8],
+                                                      radius=0.05,
+                                                      length=3,
+                                                      initial_offset=[0, 0, 3.0 / 2])
         self.subgoal_end_effector_base.load()
 
         self.door_handle_vis = VisualObject(rgba_color=[1, 0, 0, 0.0], radius=self.door_handle_dist_thresh)
@@ -793,7 +807,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         # door_orn = quatToXYZW(euler2quat(0, 0, door_angle), 'wxyz')
         # self.door_vis.set_position(np.array([door_x, door_y, 0.0]), new_orn=door_orn)
         self.subgoal_end_effector.set_position(ideal_next_state)
-        self.subgoal_end_effector_base.set_position([ideal_next_state[0], ideal_next_state[1],0])
+        self.subgoal_end_effector_base.set_position([ideal_next_state[0], ideal_next_state[1], 0])
 
     def set_subgoal_color(self, rgba_color=[1, 0, 0, 0.5]):
         self.subgoal_end_effector.set_color(rgba_color)
@@ -882,18 +896,10 @@ class InteractiveNavigateEnv(NavigateEnv):
             else:
                 self.target_pos = np.array([-1.5, 0.0, 0.0])
             # self.target_pos = [np.random.uniform(-13, -11), np.random.uniform(-2, 2), 0.0]
-        else:
-                print("Wrong ARENA name")
-                exit(-1)
 
         self.door_handle_vis.set_position(pos=np.array(p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]))
 
     def reset(self):
-        # string_to_print = 'RESET Process {pid}, timestep {ts:>4}: '.format(
-        #     pid=id(multiprocessing.current_process()),
-        #     ts=self.current_step,
-        #     )
-        # print(string_to_print)
         self.reset_interactive_objects()
         self.stage = 0
         # self.stage = self.stage_get_to_target_pos
@@ -1025,11 +1031,6 @@ class InteractiveNavigateEnv(NavigateEnv):
         )
         # print('dist', dist)
 
-        # string_to_print = 'Process {pid}, timestep {ts:>4}: '.format(
-        #     pid = id(multiprocessing.current_process()),
-        #     ts=self.current_step,
-        #     )
-
         self.prev_stage = self.stage
         if self.stage == self.stage_get_to_door_handle and dist < self.door_handle_dist_thresh:
             assert self.cid is None
@@ -1040,7 +1041,6 @@ class InteractiveNavigateEnv(NavigateEnv):
             p.changeConstraint(self.cid, maxForce=500)
             self.stage = self.stage_open_door
             print("stage open_door")
-            # print("stage open_door " + string_to_print)
 
         if self.stage == self.stage_open_door and p.getJointState(self.door.body_id, 1)[0] > self.door_angle:  # door open > 45/60/90 degree
             assert self.cid is not None
@@ -1048,10 +1048,10 @@ class InteractiveNavigateEnv(NavigateEnv):
             self.cid = None
             self.stage = self.stage_get_to_target_pos
             print("stage get to target pos")
-            # print("stage get to target pos " + string_to_print)
 
         door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
 
+        # door is pushed in the wrong direction, gradually reset it back to the neutral state
         if door_angle < -0.01:
             max_force = 10000
             p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
@@ -1060,7 +1060,9 @@ class InteractiveNavigateEnv(NavigateEnv):
                                     targetPosition=0.0,
                                     positionGain=1,
                                     force=max_force)
+        # door is pushed in the correct direction
         else:
+            # if the door has not been opened, overwrite the previous position control with a trivial one
             if self.stage != self.stage_get_to_target_pos:
                 max_force = 0
                 p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
@@ -1070,6 +1072,9 @@ class InteractiveNavigateEnv(NavigateEnv):
                                         positionGain=0,
                                         velocityGain=0,
                                         force=max_force)
+
+            # if the door has already been opened, try to set velocity to 0 so that it's more difficult for
+            # the agent to move the door on its way to the target position
             else:
                 max_force = 100
                 p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
@@ -1081,8 +1086,6 @@ class InteractiveNavigateEnv(NavigateEnv):
                                         velocityGain=1,
                                         force=max_force)
 
-        # print("door info", p.getJointInfo(self.door.body_id, 1))
-        # print("door angle", p.getJointState(self.door.body_id, 1)[0])
         return super(InteractiveNavigateEnv, self).step(action)
 
     def get_potential(self):
@@ -1092,11 +1095,8 @@ class InteractiveNavigateEnv(NavigateEnv):
             potential = l2_distance(door_handle_pos, self.robots[0].get_end_effector_position())
         elif self.stage == self.stage_open_door:
             potential = -door_angle
-
         elif self.stage == self.stage_get_to_target_pos:
             potential = l2_distance(self.target_pos, self.get_position_of_interest())
-            # print("current_distance", potential)
-        # print("get_potential (stage %d): %f" % (self.stage, potential))
         return potential
 
     def get_l2_potential(self):
@@ -1119,10 +1119,8 @@ class InteractiveNavigateEnv(NavigateEnv):
                 # # self.reward_stats.append(np.abs(potential_reward * self.potential_reward_weight))
                 # self.normalized_potential = new_normalized_potential
                 new_potential = self.get_potential()
-
                 potential_reward = self.potential - new_potential
 
-                
                 reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
                 # if self.stage == self.stage_open_door:
                 #     print("Door stage reward ", reward)
@@ -1256,7 +1254,7 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         nav_env.reset()
-        for i in range(1000):  # 500 steps, 50s world time
+        for i in range(500):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             action[:] = 0
             # if nav_env.stage == 0:
