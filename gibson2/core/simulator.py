@@ -53,7 +53,6 @@ class Simulator:
                                      use_fisheye=self.use_fisheye)
         self.renderer.set_fov(self.fov)
 
-        
         if self.mode == 'gui':
             self.cid = p.connect(p.GUI)
         else:
