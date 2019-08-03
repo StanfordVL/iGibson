@@ -99,6 +99,7 @@ setup(
             'tqdm == 4.19.9',
             'Pillow>=4.2.1',
             'matplotlib>=2.1.0',
+            'mpi4py>=2.0.0',
             'cloudpickle>=0.4.1',
             'pygame>=1.9.3',
             'opencv-python',

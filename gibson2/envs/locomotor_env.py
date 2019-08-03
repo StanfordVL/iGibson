@@ -165,8 +165,7 @@ class NavigateEnv(BaseEnv):
             else:
                 self.target_pos_vis_obj.load()
 
-
-
+    # TODO: call super().reload()
     def reload(self, config_file):
         super(NavigateEnv, self).reload(config_file)
         self.initial_pos = np.array(self.config.get('initial_pos', [0, 0, 0]))
@@ -720,6 +719,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         # self.door_vis = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0, 1, 1, 0.5], half_extents=[0.05, 0.5, 2.7])
         # self.door_vis.load()
 
+        # TODO: move robot joint id and name mapping to robot_locomotors.py
         self.id_to_name = {
             0: {"name": "ground", "links": {-1: "base", 0: "ground"}},
             1: {"name": "ground", "links": {-1: "base", 0: "ground"}},

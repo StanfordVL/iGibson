@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(CppMeshRenderer)
-set (USE_GLAD True)
+set (USE_GLAD TRUE)
 
 include_directories(glad)
 
