@@ -578,27 +578,12 @@ class JR2_Kinova(WalkerBase):
     default_scale = 1
 
     def __init__(self, config):
-        '''
-        idx: 2, name: left_wheel
-        idx: 3, name: right_wheel
-        # idx: 16, name: pan_joint
-        # idx: 17, name: tilt_joint
-        idx: 26, name: m1n6s200_joint_1          [-6.28318530718, 6.28318530718]
-        idx: 27, name: m1n6s200_joint_2          [0.872664625997, 5.41052068118]
-        idx: 28, name: m1n6s200_joint_3          [0.610865238198, 5.67232006898]
-        idx: 29, name: m1n6s200_joint_4          [-6.28318530718, 6.28318530718]
-        idx: 30, name: m1n6s200_joint_5          [-6.28318530718, 6.28318530718]
-        idx: 31, name: m1n6s200_joint_6          [-6.28318530718, 6.28318530718]
-        idx: 33, name: m1n6s200_joint_finger_1
-        idx: 35, name: m1n6s200_joint_finger_2
-        '''
         self.config = config
         self.wheel_velocity = config.get('wheel_velocity', 0.1)
         self.wheel_dim = 2
         self.cam_dim = 0
         self.arm_velocity = config.get('arm_velocity', 0.01)
         self.arm_dim = 5
-        self.finger_dim = 3
 
         WalkerBase.__init__(self,
                             "jr2_urdf/jr2_kinova.urdf",
@@ -635,6 +620,9 @@ class JR2_Kinova(WalkerBase):
             denormalized_action[self.wheel_dim:]
         self.apply_real_action(real_action)
 
+    # Different from calc_state of WalkerBase, j.get_state() is called instead of j.get_relative_state()
+    # TODO: decide whether to change to get_state() for all robots
+    # TODO: set up joint id and name mapping
     def calc_state(self):
         j = np.array([j.get_state() for j in self.ordered_joints], dtype=np.float32).flatten()
         self.joint_speeds = j[1::3]
@@ -658,6 +646,7 @@ class JR2_Kinova(WalkerBase):
     def get_end_effector_position(self):
         return self.parts['m1n6s200_end_effector'].get_position()
 
+    # initialize JR's arm to almost the same height as the door handle to ease exploration
     def robot_specific_reset(self):
         super(JR2_Kinova, self).robot_specific_reset()
         self.ordered_joints[2].reset_joint_state(-np.pi / 2.0, 0.0)
@@ -672,13 +661,15 @@ class JR2_Kinova(WalkerBase):
 
         robot_id = ids[0]
 
+        # disable collision for immediate parent
         for joint in range(p.getNumJoints(robot_id)):
             info = p.getJointInfo(robot_id, joint)
             parent_id = info[-1]
-            p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)  # disable collision for immediate parent
+            p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)
 
+        # disable collision in the head / camera region
         for joint in range(p.getNumJoints(robot_id)):
             for j in range(16, 28):
-                p.setCollisionFilterPair(robot_id, robot_id, joint, j, 0)  # disable collision in the head / camera region
+                p.setCollisionFilterPair(robot_id, robot_id, joint, j, 0)
 
         return ids

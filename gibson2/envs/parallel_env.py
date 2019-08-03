@@ -102,12 +102,6 @@ class ParallelNavEnvironment(NavigateEnv):
             time_steps = [promise() for promise in time_steps]
         return time_steps
 
-    def set_subgoal_color(self,rgba_colors):
-        time_steps = [env.set_subgoal_color(np.array(color), self._blocking) for env, color in zip(self._envs, rgba_colors)]
-        if not self._blocking:
-            time_steps = [promise() for promise in time_steps]
-        return time_steps
-
     def set_subgoal_type(self,sg_types):
         time_steps = [env.set_subgoal_type(np.array(sg_type), self._blocking) for env, sg_type in zip(self._envs, sg_types)]
         if not self._blocking:
@@ -290,13 +284,6 @@ class ProcessPyEnvironment(object):
         else:
             return promise
 
-    def set_subgoal_color(self, subgoal_color, blocking=True):
-        promise = self.call('set_subgoal_color', subgoal_color)
-        if blocking:
-            return promise()
-        else:
-            return promise
-
     def set_subgoal_type(self, subgoal_type, blocking=True):
         promise = self.call('set_subgoal_type', subgoal_type)
         if blocking:
@@ -358,7 +345,7 @@ class ProcessPyEnvironment(object):
                     continue
                 if message == self._CALL:
                     name, args, kwargs = payload
-                    if name == 'step' or name == 'reset' or name == 'set_subgoal' or name == 'set_subgoal_color' or name == 'set_subgoal_type':
+                    if name == 'step' or name == 'reset' or name == 'set_subgoal' or name == 'set_subgoal_type':
                         result = getattr(env, name)(*args, **kwargs)
                     #result = []
                     #if flatten and name == 'step' or name == 'reset':
