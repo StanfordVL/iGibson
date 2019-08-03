@@ -60,7 +60,6 @@ class Simulator:
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
 
-
         if self.mode == 'gui':
             self.viewer.renderer = self.renderer
 
