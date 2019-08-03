@@ -601,7 +601,7 @@ class JR2_Kinova(WalkerBase):
         self.finger_dim = 3
 
         WalkerBase.__init__(self,
-                            "jr2_urdf_v3/jr2_kinova.urdf",
+                            "jr2_urdf/jr2_kinova.urdf",
                             "base_link",
                             action_dim=10,
                             sensor_dim=46,

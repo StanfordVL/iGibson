@@ -80,6 +80,7 @@ class NavigateEnv(BaseEnv):
         self.electricity_reward_weight = self.config.get('electricity_reward_weight', 0.0)
         self.stall_torque_reward_weight = self.config.get('stall_torque_reward_weight', 0.0)
         self.collision_reward_weight = self.config.get('collision_reward_weight', 0.0)
+        # ignore the agent's collision with these body ids, typically ids of the ground
         self.collision_ignore_body_ids = set(self.config.get('collision_ignore_body_ids', []))
 
         # discount factor
@@ -281,8 +282,8 @@ class NavigateEnv(BaseEnv):
         return additional_states
         """
 
-    def get_auxiliary_sensor(self):
-        raise np.array([])
+    def get_auxiliary_sensor(self, collision_links=[]):
+        return np.array([])
 
     def get_state(self, collision_links=[]):
         # calculate state
@@ -320,8 +321,6 @@ class NavigateEnv(BaseEnv):
                 tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
                 rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
                 state['rgb_filled'] = rgb_filled
-        if 'bump' in self.output:
-            state['bump'] = -1 in collision_links  # check collision for baselink, it might vary for diauxiliary_sensorsfferent robots
 
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
@@ -370,7 +369,10 @@ class NavigateEnv(BaseEnv):
         for _ in range(self.simulator_loop):
             self.simulator_step()
             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-        return collision_links
+        return self.filter_collision_links(collision_links)
+
+    def filter_collision_links(self, collision_links):
+        return [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
 
     def get_position_of_interest(self):
         if self.config['task'] == 'pointgoal':
@@ -381,7 +383,7 @@ class NavigateEnv(BaseEnv):
     def get_potential(self):
         return l2_distance(self.target_pos, self.get_position_of_interest())
 
-    def get_reward(self, collision_links=[], action=None):
+    def get_reward(self, collision_links=[], action=None, info={}):
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
         new_normalized_potential = self.get_potential() / self.initial_potential
@@ -398,65 +400,45 @@ class NavigateEnv(BaseEnv):
         stall_torque_reward = 0.0
         reward += stall_torque_reward * self.stall_torque_reward_weight  # |stall_torque_reward| ~= 0.05 per step
 
-        collision_links = [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
-        collision_reward = float(len(collision_links) != 0)
+        collision_reward = float(len(collision_links) > 0)
+        info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
 
         # goal reached
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
             reward += self.success_reward  # |success_reward| = 10.0 per step
 
-        return reward
+        return reward, info
 
-    def get_termination(self, collision_links):
+    def get_termination(self, collision_links=[], info={}):
         self.current_step += 1
-        done, info = False, {}
-        collision_links = [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
-        max_force = max([elem[9] for elem in collision_links] + [0])  # normalForce
-
-        collision_links = [elem for elem in collision_links if not (elem[2] == self.door.body_id and elem[3] in [32, 33])]  # excluding collision between hand and door
-        collision_reward = float(len(collision_links) != 0)
-        info['collision_reward'] = collision_reward * self.collision_reward_weight
-
-        door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+        done = False
 
         # for elem in collision_links:
         #     if elem[9] > 500:
         #         print("collision between " + self.id_to_name[self.robots[0].robot_ids[0]]["links"][elem[3]]
         #               + " and " + self.id_to_name[elem[2]]["links"][elem[4]])
-        # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
 
-        # print("z", self.robots[0].get_position()[2])
-        # goal reached
-        # string_to_print = 'Process {pid}, timestep {ts:>4}: '.format(
-        #     pid=id(multiprocessing.current_process()) ,
-        #     ts=self.current_step,
-        #     )
+        # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+        # max_force = max([elem[9] for elem in collision_links]) if len(collision_links) > 0 else 0
+
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
             print("GOAL")
             done = True
             info['success'] = True
-        # robot flips over
+
         elif self.robots[0].get_position()[2] > self.death_z_thresh:
             print("DEATH")
             done = True
             info['success'] = False
-        # time out
+
         elif self.current_step >= self.max_step:
             done = True
             info['success'] = False
-        elif door_angle < (-10.0 / 180.0 * np.pi):
-            print("WRONG PUSH")
-        # elif door_angle > (10.0 / 180.0 * np.pi):
-        #     # # if door opens in the wrong way, reset it to neutral (closed)
-        #     # p.setJointMotorControl2(bodyUniqueId=self.door.body_id,
-        #     #                         jointIndex=self.door_axis_link_id,
-        #     #                         controlMode=p.POSITION_CONTROL,
-        #     #                         targetPosition=0.0,
-        #     #                         force=500)
-        #     print('WRONG PUSH')
-        #     done = True
-        #     info['success'] = False
+
+        # elif door_angle < (-10.0 / 180.0 * np.pi):
+        #     print("WRONG PUSH")
+
         # elif max_force > 500:
         #     print("TOO MUCH FORCE")
         #     done = True
@@ -474,8 +456,9 @@ class NavigateEnv(BaseEnv):
         self.robots[0].apply_action(action)
         collision_links = self.run_simulation()
         state = self.get_state(collision_links)
-        reward = self.get_reward(collision_links, action)
-        done, info = self.get_termination(collision_links)
+        info = {}
+        reward, info = self.get_reward(collision_links, action, info)
+        done, info = self.get_termination(collision_links, info)
 
         if done and self.automatic_reset:
             info['last_observation'] = state
@@ -533,20 +516,28 @@ class NavigateRandomEnv(NavigateEnv):
         self.random_height = random_height
 
     def reset_initial_and_target_pos(self):
-        collision_links = [-1]
-        while -1 in collision_links:  # if collision happens, reinitialize
+        num_trials = 0
+        max_trials = 10
+        while True:  # if collision happens, reinitialize
             floor, pos = self.scene.get_random_point()
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_orientation(
                 orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+
             collision_links = []
             for _ in range(self.simulator_loop):
                 self.simulator_step()
-                collision_links += [
-                    item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])
-                ]
-            collision_links = np.unique(collision_links)
+                collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links = self.filter_collision_links(collision_links)
             self.initial_pos = pos
+
+            if len(collision_links) == 0:
+                break
+
+            num_trials += 1
+            if num_trials == max_trials:
+                raise Exception("Failed to initialize agent's position: collision occurs for %d times." % (max_trials))
+
         dist = 0.0
         while dist < 1.0:  # if initial and target positions are < 1 meter away from each other, reinitialize
             _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
@@ -579,7 +570,6 @@ class InteractiveNavigateEnv(NavigateEnv):
                                    scale=1.35)
         self.arena = arena
         self.simulator.import_interactive_object(self.door)
-        # TODO: door pos
         if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
             self.door.set_position_rotation([100.0, 100.0, -0.03], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
         else:
@@ -827,8 +817,10 @@ class InteractiveNavigateEnv(NavigateEnv):
             self.cid = None
 
     def reset_initial_and_target_pos(self):
-        collision_links = [-1]
-        while -1 in collision_links:  # if collision happens restart
+        num_trials = 0
+        max_trials = 10
+
+        while True:  # if collision happens, reinitialize
             # pos = [np.random.uniform(1, 2), np.random.uniform(-0.5, 0.5), 0]
             if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
                 # pos = [0.0, 0.0, 0.0]
@@ -850,7 +842,6 @@ class InteractiveNavigateEnv(NavigateEnv):
                 print("Wrong ARENA name")
                 exit(-1)
 
-            # pos = [0.0, 0.0, 0.0]
             # self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2]])
 
@@ -875,18 +866,21 @@ class InteractiveNavigateEnv(NavigateEnv):
             collision_links = []
             for _ in range(self.simulator_loop):
                 self.simulator_step()
-                collision_links += [
-                    item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])
-                ]
-            collision_links = np.unique(collision_links)
+                collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links = self.filter_collision_links(collision_links)
             self.initial_pos = pos
+
+            if len(collision_links) == 0:
+                break
+
+            num_trials += 1
+            if num_trials == max_trials:
+                raise Exception("Failed to initialize agent's position: collision occurs for %d times." % (max_trials))
 
         # # wait for the base to fall down to the ground and for the arm to move to its initial position
         # for _ in range(int(0.5 / self.physics_timestep)):
         #     self.simulator_step()
 
-        # self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-0.5, 0.5), 0]
-        # TODO: target pos
         if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
             # self.target_pos = [-100, -100, 0]
             self.target_pos = [np.random.uniform(-200, -199), np.random.uniform(-2, 2), 0.0]
@@ -895,7 +889,6 @@ class InteractiveNavigateEnv(NavigateEnv):
                 self.target_pos = [np.random.uniform(-2, -1), np.random.uniform(-2, 2), 0.0]
             else:
                 self.target_pos = np.array([-1.5, 0.0, 0.0])
-            # self.target_pos = [np.random.uniform(-13, -11), np.random.uniform(-2, 2), 0.0]
 
         self.door_handle_vis.set_position(pos=np.array(p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]))
 
@@ -1012,8 +1005,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         robot_pos = self.robots[0].get_position()
         door_pos_local = rotate_vector_3d(door_pos - robot_pos, roll, pitch, yaw)
         target_pos_local = rotate_vector_3d(target_pos - robot_pos, roll, pitch, yaw)
-        collision_links = [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
-        has_collision = 1.0 if len(collision_links) != 0 else -1.0
+        has_collision = 1.0 if len(collision_links) > 0 else -1.0
 
         auxiliary_sensor[49:52] = np.array([yaw, cos_yaw, sin_yaw])
         auxiliary_sensor[52:56] = np.array([door_angle, cos_door_angle, sin_door_angle, has_door_handle_in_hand])
@@ -1023,6 +1015,13 @@ class InteractiveNavigateEnv(NavigateEnv):
         auxiliary_sensor[65] = has_collision
 
         return auxiliary_sensor
+
+    def filter_collision_links(self, collision_links):
+        collision_links = [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
+        # ignore collision between hand and door
+        collision_links = [elem for elem in collision_links if
+                           not (elem[2] == self.door.body_id and elem[3] in [32, 33])]
+        return collision_links
 
     def step(self, action):
         dist = np.linalg.norm(
@@ -1102,7 +1101,7 @@ class InteractiveNavigateEnv(NavigateEnv):
     def get_l2_potential(self):
         return l2_distance(self.target_pos, self.get_position_of_interest())
 
-    def get_reward(self, collision_links=[], action=None):
+    def get_reward(self, collision_links=[], action=None, info={}):
         reward = 0.0
 
         if self.reward_type == 'dense':
@@ -1154,8 +1153,6 @@ class InteractiveNavigateEnv(NavigateEnv):
         # # stall_torque_reward = 0.0
         # reward += np.clip(stall_torque_reward * self.stall_torque_reward_weight, -0.005, 0)  # |stall_torque_reward| ~= 0.005 per step
 
-        collision_links = [elem for elem in collision_links if (elem[2] not in self.collision_ignore_body_ids) and
-                           (not (elem[2] == self.door.body_id and elem[3] in [32, 33]))]  # excluding collision between hand and door
         # collisions = [[elem[3], elem[2], elem[4]] for elem in collision_links
         #               if elem[3] in self.collision_links and not (elem[2] == self.door.body_id and elem[4] == self.door_handle_link_id)]
         # print('-' * 30)
@@ -1164,10 +1161,12 @@ class InteractiveNavigateEnv(NavigateEnv):
         #           'body b', self.id_to_name[col[1]]["name"],
         #           'link b', self.id_to_name[col[1]]["links"][col[2]])
 
-        collision_reward = float(len(collision_links) != 0)
+        collision_reward = float(len(collision_links) > 0)
         # print('collision_reward', collision_reward)
         self.collision_step += int(collision_reward)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
+        info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
+
         # self.reward_stats.append(np.abs(collision_reward * self.collision_reward_weight))
 
         # goal reached
@@ -1184,7 +1183,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         #     reward -= self.success_reward * 1.0
 
         # print("get_reward (stage %d): %f" % (self.stage, reward))
-        return reward
+        return reward, info
 
 
 if __name__ == '__main__':
