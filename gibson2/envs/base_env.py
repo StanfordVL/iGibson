@@ -1,4 +1,4 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
+from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, HuskyLidar
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import BuildingScene, StadiumScene
 import gibson2
@@ -36,6 +36,8 @@ class BaseEnv(gym.Env):
             robot = Turtlebot(self.config)
         elif self.config['robot'] == 'Husky':
             robot = Husky(self.config)
+        elif self.config['robot'] == 'HuskyLidar':
+            robot = HuskyLidar(self.config)
         elif self.config['robot'] == 'Ant':
             robot = Ant(self.config)
         elif self.config['robot'] == 'Humanoid':

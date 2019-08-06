@@ -405,6 +405,71 @@ class Husky(WalkerBase):
         angular_velocity = self.robot_body.angular_velocity()
         return np.concatenate((base_state, np.array(angular_velocity)))
 
+class HuskyLidar(WalkerBase):
+    mjcf_scaling = 1
+    model_type = "URDF"
+    default_scale = 1
+
+    def __init__(self, config):
+        self.config = config
+        self.torque = config.get("torque", 0.03)
+        WalkerBase.__init__(self,
+                            "husky_lidar.urdf",
+                            "base_link",
+                            action_dim=4,
+                            sensor_dim=17,
+                            power=2.5,
+                            scale=config.get("robot_scale", self.default_scale),
+                            resolution=config.get("resolution", 64),
+                            is_discrete=config.get("is_discrete", True),
+                            control="torque")
+
+    def set_up_continuous_action_space(self):
+        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
+        self.action_high = self.torque * np.ones([self.action_dim])
+        self.action_low = -self.action_high
+
+    def set_up_discrete_action_space(self):
+        self.action_list = [[self.torque, self.torque, self.torque, self.torque],
+                            [-self.torque, -self.torque, -self.torque, -self.torque],
+                            [self.torque, -self.torque, self.torque, -self.torque],
+                            [-self.torque, self.torque, -self.torque, self.torque], [0, 0, 0, 0]]
+        self.action_space = gym.spaces.Discrete(len(self.action_list))
+        self.setup_keys_to_action()
+
+    def steering_cost(self, action):
+        if not self.is_discrete:
+            return 0
+        if action == 2 or action == 3:
+            return -0.1
+        else:
+            return 0
+
+    def robot_specific_reset(self):
+        WalkerBase.robot_specific_reset(self)
+
+    def alive_bonus(self, z, pitch):
+        top_xyz = self.parts["top_bumper_link"].get_position()
+        bottom_xyz = self.parts["base_link"].get_position()
+        alive = top_xyz[2] > bottom_xyz[2]
+        return +1 if alive else -100    # 0.25 is central sphere rad, die if it scrapes the ground
+
+    def setup_keys_to_action(self):
+        self.keys_to_action = {
+            (ord('w'), ): 0,    ## forward
+            (ord('s'), ): 1,    ## backward
+            (ord('d'), ): 2,    ## turn right
+            (ord('a'), ): 3,    ## turn left
+            (): 4
+        }
+
+    def calc_state(self):
+        base_state = WalkerBase.calc_state(self)
+        angular_velocity = self.robot_body.angular_velocity()
+        return np.concatenate((base_state, np.array(angular_velocity)))
 
 class Quadrotor(WalkerBase):
     model_type = "URDF"

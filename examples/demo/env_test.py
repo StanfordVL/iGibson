@@ -1,4 +1,5 @@
 from gibson2.envs.locomotor_env import NavigateEnv, NavigateRandomEnv
+import pdb
 from time import time
 import numpy as np
 from time import time
@@ -7,16 +8,19 @@ import os
 
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__),
-                                   '../examples/configs/turtlebot_p2p_nav_space.yaml')
+                                   '../examples/configs/husky_p2p_nav_house.yaml')
     nav_env = NavigateRandomEnv(config_file=config_filename, mode='gui')
     for j in range(2):
         nav_env.reset()
-        for i in range(300):    # 300 steps, 30s world time
+        for i in range(30000):    # 300 steps, 30s world time
             s = time()
             action = nav_env.action_space.sample()
             ts = nav_env.step(action)
-            print(ts, 1 / (time() - s))
-            if ts[2]:
-                print("Episode finished after {} timesteps".format(i + 1))
+            # print(ts, 1 / (time() - s))
+            scan = ts[0]['scan']
+            sensor = ts[0]['sensor']
+            print(scan.shape)
+            if False:
+                print(time(), "-Episode finished after {} timesteps".format(i + 1))
                 break
     nav_env.clean()

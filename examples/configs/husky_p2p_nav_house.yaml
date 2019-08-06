@@ -3,7 +3,7 @@ scene: building
 model_id: Ohoopee
 
 # robot
-robot: Turtlebot
+robot: HuskyLidar
 velocity: 0.1
 
 # task, observation and action
@@ -39,7 +39,7 @@ max_step: 500
 # sensor
 output: [sensor, rgb, depth, scan]
 resolution: 256
-fov: 1.57
+fov: 1.00
 
 # display
 use_filler: true

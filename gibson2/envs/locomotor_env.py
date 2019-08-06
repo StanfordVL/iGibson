@@ -272,8 +272,9 @@ class NavigateEnv(BaseEnv):
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
             elev_bottom_angle = -30. * np.pi / 180.
             elev_top_angle = 10. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-                                   (elev_top_angle - elev_bottom_angle) / float(n_vertical_beams))
+            # elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+            #                        (elev_top_angle - elev_bottom_angle) / float(n_vertical_beams))
+            elev_angle = np.array([0])
             orig_offset = np.vstack([
                 np.vstack([np.cos(angle),
                            np.sin(angle),
