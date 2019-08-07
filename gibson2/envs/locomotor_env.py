@@ -272,9 +272,8 @@ class NavigateEnv(BaseEnv):
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(n_rays_per_horizontal))
             elev_bottom_angle = -30. * np.pi / 180.
             elev_top_angle = 10. * np.pi / 180.
-            # elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-            #                        (elev_top_angle - elev_bottom_angle) / float(n_vertical_beams))
-            elev_angle = np.array([0])
+            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+                                   (elev_top_angle - elev_bottom_angle) / float(n_vertical_beams))
             orig_offset = np.vstack([
                 np.vstack([np.cos(angle),
                            np.sin(angle),
@@ -286,8 +285,8 @@ class NavigateEnv(BaseEnv):
             pose_camera = pose_camera[None, :3].repeat(n_rays_per_horizontal * n_vertical_beams,
                                                        axis=0)
 
-            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-            hit = np.array([item[0] for item in results])
+            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30) #list of (objectUniqueId, linkIndex, hitFraction/Dist, hitPosition, hitNormal)
+            hit = np.array([item[0] for item in results]) #if objectUniqueId == -1, then no intersection 
             dist = np.array([item[2] for item in results])
             dist[dist >= 1 - 1e-5] = np.nan
             dist[dist < 0.1 / 30] = np.nan
