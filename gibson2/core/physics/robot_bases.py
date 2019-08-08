@@ -63,7 +63,6 @@ class BaseRobot:
             ordered_joints = self.ordered_joints
         else:
             ordered_joints = []
-
         part_name, robot_name = p.getBodyInfo(bodies[0])
         part_name = part_name.decode("utf8")
         parts[part_name] = BodyPart(part_name,
@@ -117,6 +116,7 @@ class BaseRobot:
 
         if self.robot_body is None:
             raise Exception('robot body not initialized.')
+
 
         return parts, joints, ordered_joints, self.robot_body
 
