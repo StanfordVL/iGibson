@@ -245,7 +245,7 @@ class NavigateEnv(BaseEnv):
             dist = np.array([item[2] for item in results])
 
             valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-            dist[~valid_pts] = 0.0  # zero out
+            dist[~valid_pts] = 0.0  # zero out invalid pts
             dist *= 30
 
             xyz = np.expand_dims(dist, 1) * orig_offset
@@ -1015,6 +1015,7 @@ if __name__ == '__main__':
                                          physics_timestep=1 / 40.0,
                                          arena='only_ll_obstacles')
 
+    # # Sample code: manually set action using slide bar UI
     # debug_params = [
     #     p.addUserDebugParameter('link1', -1.0, 1.0, -0.5),
     #     p.addUserDebugParameter('link2', -1.0, 1.0, 0.5),
@@ -1022,14 +1023,6 @@ if __name__ == '__main__':
     #     p.addUserDebugParameter('link4', -1.0, 1.0, 0.5),
     #     p.addUserDebugParameter('link5', -1.0, 1.0, 0.0),
     # ]
-    # nav_env.reset()
-    # for i in range(1000000):  # 500 steps, 50s world time
-    #     debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
-    #     action = np.zeros(nav_env.action_space.shape)
-    #     action[2:] = np.array(debug_param_values)
-    #     print(action)
-    #     nav_env.step(action)
-    # assert False
 
     for episode in range(50):
         print('Episode: {}'.format(episode))
@@ -1037,14 +1030,19 @@ if __name__ == '__main__':
         nav_env.reset()
         for i in range(500):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
+
             # action[:] = 0
             # if nav_env.stage == 0:
             #     action[:2] = 0.5
             # elif nav_env.stage == 1:
             #     action[:2] = -0.5
 
+            # action = np.zeros(nav_env.action_space.shape)
+            # debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
+            # action[2:] = np.array(debug_param_values)
+
             state, reward, done, _ = nav_env.step(action)
-            print(reward)
+            # print(reward)
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
                 break
