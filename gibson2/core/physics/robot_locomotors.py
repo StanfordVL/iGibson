@@ -28,6 +28,7 @@ class WalkerBase(BaseRobot):
             resolution=512,
             control='torque',
             is_discrete=True,
+            normalize_state=True,
             clip_state=True,
             self_collision=False
     ):
@@ -35,6 +36,7 @@ class WalkerBase(BaseRobot):
         self.control = control
         self.resolution = resolution
         self.is_discrete = is_discrete
+        self.normalize_state = normalize_state
         self.clip_state = clip_state
 
         assert type(action_dim) == int, "Action dimension must be int, got {}".format(
@@ -156,8 +158,8 @@ class WalkerBase(BaseRobot):
         self.apply_real_action(real_action)
 
     def calc_state(self):
-        j = np.array([j.get_joint_relative_state() for j in self.ordered_joints],
-                     dtype=np.float32).flatten()
+        j = np.array([j.get_joint_relative_state() if self.normalize_state else j.get_state()
+                      for j in self.ordered_joints], dtype=np.float32).flatten()
         self.joint_speeds = j[1::3]
         self.joint_torque = j[2::3]
         self.joints_at_limit = np.count_nonzero(np.abs(j[0::3]) > 0.99)
@@ -167,9 +169,11 @@ class WalkerBase(BaseRobot):
 
         # rotate speed back to body point of view
         vx, vy, vz = rotate_vector_3d(self.robot_body.velocity(), r, p, yaw)
+        angular_velocity = self.robot_body.angular_velocity()
+
         more = np.array([z, vx, vy, vz, r, p, yaw], dtype=np.float32)
 
-        state = np.concatenate([more] + [j])
+        state = np.concatenate([more, j, angular_velocity])
         if self.clip_state:
             state = np.clip(state, -5, +5)
         return state
@@ -406,11 +410,6 @@ class Husky(WalkerBase):
             (): 4
         }
 
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-        angular_velocity = self.robot_body.angular_velocity()
-        return np.concatenate((base_state, np.array(angular_velocity)))
-
 
 class Quadrotor(WalkerBase):
     model_type = "URDF"
@@ -516,11 +515,6 @@ class Turtlebot(WalkerBase):
             (): 4  # stay still
         }
 
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-        angular_velocity = self.robot_body.angular_velocity()
-        return np.concatenate((base_state, np.array(angular_velocity)))
-
 
 class JR2(WalkerBase):
     mjcf_scaling = 1
@@ -566,12 +560,8 @@ class JR2(WalkerBase):
             (): 4
         }
 
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-        angular_velocity = self.robot_body.angular_velocity()
-        return np.concatenate((base_state, np.array(angular_velocity)))
 
-
+# TODO: set up joint id and name mapping
 class JR2_Kinova(WalkerBase):
     mjcf_scaling = 1
     model_type = "URDF"
@@ -595,6 +585,7 @@ class JR2_Kinova(WalkerBase):
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", True),
                             control='velocity',
+                            normalize_state=False,
                             clip_state=False,
                             self_collision=True)
 
@@ -619,29 +610,6 @@ class JR2_Kinova(WalkerBase):
         real_action[(self.wheel_dim + self.cam_dim):(self.wheel_dim + self.cam_dim + self.arm_dim)] = \
             denormalized_action[self.wheel_dim:]
         self.apply_real_action(real_action)
-
-    # Different from calc_state of WalkerBase, j.get_state() is called instead of j.get_relative_state()
-    # TODO: decide whether to change to get_state() for all robots
-    # TODO: set up joint id and name mapping
-    def calc_state(self):
-        j = np.array([j.get_state() for j in self.ordered_joints], dtype=np.float32).flatten()
-        self.joint_speeds = j[1::3]
-        self.joint_torque = j[2::3]
-        self.joints_at_limit = np.count_nonzero(np.abs(j[0::3]) > 0.99)
-
-        z = self.robot_body.get_position()[2]
-        r, p, yaw = self.robot_body.get_rpy()
-
-        # rotate speed back to body point of view
-        vx, vy, vz = rotate_vector_3d(self.robot_body.velocity(), r, p, yaw)
-        more = np.array([z, vx, vy, vz, r, p, yaw], dtype=np.float32)
-
-        base_state = np.concatenate([more] + [j])
-        if self.clip_state:
-            base_state = np.clip(base_state, -5, +5)
-
-        angular_velocity = self.robot_body.angular_velocity()
-        return np.concatenate((base_state, np.array(angular_velocity)))
 
     def get_end_effector_position(self):
         return self.parts['m1n6s200_end_effector'].get_position()

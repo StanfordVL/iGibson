@@ -20,56 +20,8 @@ target_pos: [0, 5, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
-#additional_states_dim: 7
 additional_states_dim: 3
-
-#auxiliary_sensor_dim: 58
-#auxiliary_sensor_dim: 44
 auxiliary_sensor_dim: 66
-
-#normalize_observation: true
-#observation_normalizer: {'sensor':[[-3.0, -1.0,                                               # x, y
-#                                    -0.2, -0.6, 0.15,                                         # arm_x, arm_y_ arm_z   [0.61, -0.25, 0.86]
-#                                    -3.141592653589793, -3.141592653589793],                  # theta, door_angle
-#                                   [3.0, 1.0,                                                 # x, y
-#                                    0.8, 0.05, 1.15,                                          # arm_x, arm_y_ arm_z
-#                                    3.141592653589793, 3.141592653589793]],                   # theta, door_angle
-#                         'auxiliary_sensor': [[-0.001,                                        # z
-#                                               -0.6, -0.12, -0.05,                            # vx, vy, vz
-#                                               -0.005, -0.005,                                # roll, pitch
-#                                               -3.141592653589793, -6.0, -130.0, -1.0, -1.0,  # wheel 1
-#                                               -3.141592653589793, -6.0, -130.0, -1.0, -1.0,  # wheel 2
-#                                               -3.141592653589793, -1.0, -100.0, -1.0, -1.0,  # arm joint 1
-#                                               -3.141592653589793, -1.2, -45.0, -1.0, -1.0,   # arm joint 2
-#                                               -3.141592653589793, -1.2, -10.0, -1.0, -1.0,   # arm joint 3
-#                                               -3.141592653589793, -1.5, -2.5, -1.0, -1.0,    # arm joint 4
-#                                               -3.141592653589793, -1.3, -1.5, -1.0, -1.0,    # arm joint 5
-#                                               -0.15, -0.15, -1.5,                            # v_roll, v_pitch, v_yaw
-#                                               -1.0, -1.0,                                    # cos(theta), sin(theta)
-#                                               -1.0, -1.0, -1.0,                              # cos(door_angle), sin(door_angle), has_door_handle_in_hand
-#                                               -3.0, -1.0, -0.01,                             # target_pos
-#                                               -3.0, -3.0, -0.03,                             # door_pos_local
-#                                               -6.0, -6.0, -0.02],                            # target_pos_local
-#                                              [0.001,                                         # z
-#                                               0.6, 0.12, 0.05,                               # vx, vy, vz
-#                                               0.005, 0.005,                                  # roll, pitch
-#                                               3.141592653589793, 6.0, 130.0, 1.0, 1.0,       # wheel 1
-#                                               3.141592653589793, 6.0, 130.0, 1.0, 1.0,       # wheel 2
-#                                               3.141592653589793, 1.0, 100.0, 1.0, 1.0,       # arm joint 1
-#                                               3.141592653589793, 1.2, 10.0, 1.0, 1.0,        # arm joint 2
-#                                               3.141592653589793, 1.2, 10.0, 1.0, 1.0,        # arm joint 3
-#                                               3.141592653589793, 1.5, 2.5, 1.0, 1.0,         # arm joint 4
-#                                               3.141592653589793, 1.3, 1.5, 1.0, 1.0,         # arm joint 5
-#                                               0.15, 0.15, 1.5,                               # v_roll, v_pitch, v_yaw
-#                                               1.0, 1.0,                                      # cos(theta), sin(theta)
-#                                               1.0, 1.0, 1.0,                                 # cos(door_angle), sin(door_angle), has_door_handle_in_hand
-#                                               3.0, 1.0, 0.01,                                # target_pos
-#                                               3.0, 3.0, -0.01,                               # door_pos_local
-#                                               6.0, 6.0, 0.02]],                              # target_pos_local
-#                         'rgb': [0.0, 1.0],
-#                         'depth': [0.0, 5.0]
-#}
-
 
 normalize_observation: true
 observation_normalizer: {'sensor':[[-3.0, -3.0, 0.0],                                         # arm_x, arm_y, arm_z (world)
@@ -117,67 +69,15 @@ observation_normalizer: {'sensor':[[-3.0, -3.0, 0.0],                           
                          'scan': [0.0, 5.0]
 }
 
-#observation_normalizer: {'sensor':[[-3.0, -3.0,                                               # x, y
-#                                    -0.2, -0.6, 0.15,                                         # arm_x, arm_y_ arm_z   [0.61, -0.25, 0.86]
-#                                    -3.141592653589793, -3.141592653589793],                  # theta, door_angle
-#                                   [3.0, 3.0,                                                 # x, y
-#                                    0.8, 0.05, 1.15,                                          # arm_x, arm_y_ arm_z
-#                                    3.141592653589793, 3.141592653589793]],                   # theta, door_angle
-#                         'auxiliary_sensor': [[-0.001,                                        # z
-#                                               -0.6, -0.12, -0.05,                            # vx, vy, vz
-#                                               -0.005, -0.005,                                # roll, pitch
-#                                               -3.141592653589793, -6.0, -130.0,              # wheel 1
-#                                               -3.141592653589793, -6.0, -130.0,              # wheel 2
-#                                               -3.141592653589793, -1.0, -100.0,              # arm joint 1
-#                                               -3.141592653589793, -1.2, -45.0,               # arm joint 2
-#                                               -3.141592653589793, -1.2, -10.0,               # arm joint 3
-#                                               -3.141592653589793, -1.5, -2.5,                # arm joint 4
-#                                               -3.141592653589793, -1.3, -1.5,                # arm joint 5
-#                                               -0.15, -0.15, -1.5,                            # v_roll, v_pitch, v_yaw
-#                                               -1.0, -1.0,                                    # cos(theta), sin(theta)
-#                                               -1.0, -1.0, -1.0,                              # cos(door_angle), sin(door_angle), has_door_handle_in_hand
-#                                               -3.0, -3.0, -0.01,                             # target_pos
-#                                               -3.0, -3.0, -0.03,                             # door_pos_local
-#                                               -6.0, -6.0, -0.02],                            # target_pos_local
-#                                              [0.001,                                         # z
-#                                               0.6, 0.12, 0.05,                               # vx, vy, vz
-#                                               0.005, 0.005,                                  # roll, pitch
-#                                               3.141592653589793, 6.0, 130.0,                 # wheel 1
-#                                               3.141592653589793, 6.0, 130.0,                 # wheel 2
-#                                               3.141592653589793, 1.0, 100.0,                 # arm joint 1
-#                                               3.141592653589793, 1.2, 10.0,                  # arm joint 2
-#                                               3.141592653589793, 1.2, 10.0,                  # arm joint 3
-#                                               3.141592653589793, 1.5, 2.5,                   # arm joint 4
-#                                               3.141592653589793, 1.3, 1.5,                   # arm joint 5
-#                                               0.15, 0.15, 1.5,                               # v_roll, v_pitch, v_yaw
-#                                               1.0, 1.0,                                      # cos(theta), sin(theta)
-#                                               1.0, 1.0, 1.0,                                 # cos(door_angle), sin(door_angle), has_door_handle_in_hand
-#                                               3.0, 3.0, 0.01,                                # target_pos
-#                                               3.0, 3.0, -0.01,                               # door_pos_local
-#                                               6.0, 6.0, 0.02]],                              # target_pos_local
-#                         'rgb': [0.0, 1.0],
-#                         'depth': [0.0, 5.0]
-#}
-
-#####
-# sensor: [agent_x, agent_y, arm_x, arm_y, arm_z, theta, door_angle]
-# auxiliary_sensor: [agent_z, vx, vy, vz, roll, pitch, yaw] (0:7) + [joint_pos, joint_vel, joint_torque] * 12 (7:43)
-# + [roll_vel, pitch_vel, yaw_vel] (43:46) + [cos(theta), sin(theta), has_door_handle_in_hand] (46:49)
-# + target_pos (49:52) + door_pos_local (52:55) + target_pos_local (55:58)
-#####
-
 # reward
 reward_type: dense
 success_reward: 500.0
 slack_reward: -0.01
 potential_reward_weight: 2.0
 electricity_reward_weight: -0.001
-#electricity_reward_weight: 0.0
-#stall_torque_reward_weight: -0.000001
 stall_torque_reward_weight: 0.0
 collision_reward_weight: -1.5
-#collision_reward_weight: 0.0
-collision_ignore_body_ids: [0, 1, 2, 3]
+collision_ignore_body_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
 
 # discount factor
 discount_factor: 0.99
@@ -187,7 +87,6 @@ dist_tol: 0.5
 max_step: 256
 
 # sensor
-#output: [sensor, auxiliary_sensor, rgb, depth]
 output: [sensor, auxiliary_sensor, depth]
 resolution: 64
 fov: 150
