@@ -348,8 +348,9 @@ class Joint:
 
         # normalize position to [-1, 1]
         if self.lower_limit < self.upper_limit:
-            pos = 2 * (pos - 0.5 * (self.lower_limit + self.upper_limit)) / (self.upper_limit -
-                                                                             self.lower_limit)
+            mean = (self.lower_limit + self.upper_limit) / 2.0
+            magnitude = (self.upper_limit - self.lower_limit) / 2.0
+            pos = (pos - mean) / magnitude
 
         # (try to) normalize velocity to [-1, 1]
         if self.max_velocity > 0:
