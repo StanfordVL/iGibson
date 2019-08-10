@@ -19,20 +19,25 @@ class WalkerBase(BaseRobot):
 
     def __init__(
             self,
-            filename,    # robot file name
-            robot_name,    # robot name
-            action_dim,    # action dimension
+            filename,  # robot file name
+            robot_name,  # robot name
+            action_dim,  # action dimension
             power,
             scale,
             sensor_dim=None,
             resolution=512,
             control='torque',
             is_discrete=True,
+            normalize_state=True,
+            clip_state=True,
+            self_collision=False
     ):
-        BaseRobot.__init__(self, filename, robot_name, scale)
+        BaseRobot.__init__(self, filename, robot_name, scale, self_collision)
         self.control = control
         self.resolution = resolution
         self.is_discrete = is_discrete
+        self.normalize_state = normalize_state
+        self.clip_state = clip_state
 
         assert type(action_dim) == int, "Action dimension must be int, got {}".format(
             type(action_dim))
@@ -126,7 +131,7 @@ class WalkerBase(BaseRobot):
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_position(action[n])
         elif type(self.control) is list or type(
-                self.control) is tuple:    # if control is a tuple, set different control
+                self.control) is tuple:  # if control is a tuple, set different control
             # type for each joint
             for n, j in enumerate(self.ordered_joints):
                 if self.control[n] == 'torque':
@@ -153,8 +158,8 @@ class WalkerBase(BaseRobot):
         self.apply_real_action(real_action)
 
     def calc_state(self):
-        j = np.array([j.get_joint_relative_state() for j in self.ordered_joints],
-                     dtype=np.float32).flatten()
+        j = np.array([j.get_joint_relative_state() if self.normalize_state else j.get_state()
+                      for j in self.ordered_joints], dtype=np.float32).flatten()
         self.joint_speeds = j[1::3]
         self.joint_torque = j[2::3]
         self.joints_at_limit = np.count_nonzero(np.abs(j[0::3]) > 0.99)
@@ -164,9 +169,14 @@ class WalkerBase(BaseRobot):
 
         # rotate speed back to body point of view
         vx, vy, vz = rotate_vector_3d(self.robot_body.velocity(), r, p, yaw)
+        angular_velocity = self.robot_body.angular_velocity()
+
         more = np.array([z, vx, vy, vz, r, p, yaw], dtype=np.float32)
 
-        return np.clip(np.concatenate([more] + [j]), -5, +5)
+        state = np.concatenate([more, j, angular_velocity])
+        if self.clip_state:
+            state = np.clip(state, -5, +5)
+        return state
 
 
 class Ant(WalkerBase):
@@ -190,7 +200,7 @@ class Ant(WalkerBase):
         )
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
@@ -221,22 +231,22 @@ class Ant(WalkerBase):
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('1'), ): 0,
-            (ord('2'), ): 1,
-            (ord('3'), ): 2,
-            (ord('4'), ): 3,
-            (ord('5'), ): 4,
-            (ord('6'), ): 5,
-            (ord('7'), ): 6,
-            (ord('8'), ): 7,
-            (ord('9'), ): 8,
-            (ord('0'), ): 9,
-            (ord('q'), ): 10,
-            (ord('w'), ): 11,
-            (ord('e'), ): 12,
-            (ord('r'), ): 13,
-            (ord('t'), ): 14,
-            (ord('y'), ): 15,
+            (ord('1'),): 0,
+            (ord('2'),): 1,
+            (ord('3'),): 2,
+            (ord('4'),): 3,
+            (ord('5'),): 4,
+            (ord('6'),): 5,
+            (ord('7'),): 6,
+            (ord('8'),): 7,
+            (ord('9'),): 8,
+            (ord('0'),): 9,
+            (ord('q'),): 10,
+            (ord('w'),): 11,
+            (ord('e'),): 12,
+            (ord('r'),): 13,
+            (ord('t'),): 14,
+            (ord('y'),): 15,
             (): 4
         }
 
@@ -265,7 +275,7 @@ class Humanoid(WalkerBase):
         )
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
@@ -336,7 +346,7 @@ class Humanoid(WalkerBase):
                 m.set_motor_torque(float(force_gain * power * self.power * real_action[i]))
 
     def setup_keys_to_action(self):
-        self.keys_to_action = {(ord('w'), ): 0, (): 1}
+        self.keys_to_action = {(ord('w'),): 0, (): 1}
 
 
 class Husky(WalkerBase):
@@ -359,7 +369,7 @@ class Husky(WalkerBase):
                             control="torque")
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
@@ -389,21 +399,16 @@ class Husky(WalkerBase):
         top_xyz = self.parts["top_bumper_link"].get_position()
         bottom_xyz = self.parts["base_link"].get_position()
         alive = top_xyz[2] > bottom_xyz[2]
-        return +1 if alive else -100    # 0.25 is central sphere rad, die if it scrapes the ground
+        return +1 if alive else -100  # 0.25 is central sphere rad, die if it scrapes the ground
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'), ): 0,    ## forward
-            (ord('s'), ): 1,    ## backward
-            (ord('d'), ): 2,    ## turn right
-            (ord('a'), ): 3,    ## turn left
+            (ord('w'),): 0,  ## forward
+            (ord('s'),): 1,  ## backward
+            (ord('d'),): 2,  ## turn right
+            (ord('a'),): 3,  ## turn left
             (): 4
         }
-
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-        angular_velocity = self.robot_body.angular_velocity()
-        return np.concatenate((base_state, np.array(angular_velocity)))
 
 
 class Quadrotor(WalkerBase):
@@ -426,7 +431,7 @@ class Quadrotor(WalkerBase):
                             control="torque")
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
@@ -457,12 +462,12 @@ class Quadrotor(WalkerBase):
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'), ): 0,    ## +x
-            (ord('s'), ): 1,    ## -x
-            (ord('d'), ): 2,    ## +y
-            (ord('a'), ): 3,    ## -y
-            (ord('z'), ): 4,    ## +z
-            (ord('x'), ): 5,    ## -z
+            (ord('w'),): 0,  ## +x
+            (ord('s'),): 1,  ## -x
+            (ord('d'),): 2,  ## +y
+            (ord('a'),): 3,  ## -y
+            (ord('z'),): 4,  ## +z
+            (ord('x'),): 5,  ## -z
             (): 6
         }
 
@@ -487,7 +492,7 @@ class Turtlebot(WalkerBase):
                             control="velocity")
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
@@ -503,17 +508,12 @@ class Turtlebot(WalkerBase):
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'), ): 0,    # forward
-            (ord('s'), ): 1,    # backward
-            (ord('d'), ): 2,    # turn right
-            (ord('a'), ): 3,    # turn left
-            (): 4    # stay still
+            (ord('w'),): 0,  # forward
+            (ord('s'),): 1,  # backward
+            (ord('d'),): 2,  # turn right
+            (ord('a'),): 3,  # turn left
+            (): 4  # stay still
         }
-
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-        angular_velocity = self.robot_body.angular_velocity()
-        return np.concatenate((base_state, np.array(angular_velocity)))
 
 
 class JR2(WalkerBase):
@@ -536,7 +536,7 @@ class JR2(WalkerBase):
                             control='velocity')
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
@@ -553,60 +553,48 @@ class JR2(WalkerBase):
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'), ): 0,    ## forward
-            (ord('s'), ): 1,    ## backward
-            (ord('d'), ): 2,    ## turn right
-            (ord('a'), ): 3,    ## turn left
+            (ord('w'),): 0,  ## forward
+            (ord('s'),): 1,  ## backward
+            (ord('d'),): 2,  ## turn right
+            (ord('a'),): 3,  ## turn left
             (): 4
         }
 
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-        angular_velocity = self.robot_body.angular_velocity()
-        return np.concatenate((base_state, np.array(angular_velocity)))
 
-
+# TODO: set up joint id and name mapping
 class JR2_Kinova(WalkerBase):
     mjcf_scaling = 1
     model_type = "URDF"
     default_scale = 1
 
     def __init__(self, config):
-        '''
-        idx: 1, name: left_wheel
-        idx: 2, name: right_wheel
-        idx: 15, name: pan_joint
-        idx: 16, name: tilt_joint
-        idx: 25, name: m1n6s200_joint_1
-        idx: 26, name: m1n6s200_joint_2
-        idx: 27, name: m1n6s200_joint_3
-        idx: 28, name: m1n6s200_joint_4
-        idx: 29, name: m1n6s200_joint_5
-        idx: 30, name: m1n6s200_joint_6
-        idx: 32, name: m1n6s200_joint_finger_1
-        idx: 34, name: m1n6s200_joint_finger_2
-        '''
         self.config = config
         self.wheel_velocity = config.get('wheel_velocity', 0.1)
         self.wheel_dim = 2
-        self.cam_dim = 2
+        self.cam_dim = 0
         self.arm_velocity = config.get('arm_velocity', 0.01)
-        self.arm_dim = 8
+        self.arm_dim = 5
+
         WalkerBase.__init__(self,
                             "jr2_urdf/jr2_kinova.urdf",
                             "base_link",
-                            action_dim=12,
+                            action_dim=10,
                             sensor_dim=46,
                             power=2.5,
                             scale=config.get("robot_scale", self.default_scale),
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", True),
-                            control='velocity')
+                            control='velocity',
+                            normalize_state=False,
+                            clip_state=False,
+                            self_collision=True)
 
     def set_up_continuous_action_space(self):
-        self.action_high = np.array([self.wheel_velocity] * 2 + [self.arm_velocity] * 8)
+        self.action_high = np.array([self.wheel_velocity] * self.wheel_dim + [self.arm_velocity] * self.arm_dim)
         self.action_low = -self.action_high
-        self.action_space = gym.spaces.Box(shape=(self.wheel_dim + self.arm_dim, ),
+        # self.action_high = np.array([np.pi] * (self.wheel_dim + self.arm_dim))
+        # self.action_low = -self.action_high
+        self.action_space = gym.spaces.Box(shape=(self.wheel_dim + self.arm_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
@@ -619,13 +607,37 @@ class JR2_Kinova(WalkerBase):
         denormalized_action = self.action_high * action
         real_action = np.zeros(self.action_dim)
         real_action[:self.wheel_dim] = denormalized_action[:self.wheel_dim]
-        real_action[(self.wheel_dim + self.cam_dim):] = denormalized_action[self.wheel_dim:]
+        real_action[(self.wheel_dim + self.cam_dim):(self.wheel_dim + self.cam_dim + self.arm_dim)] = \
+            denormalized_action[self.wheel_dim:]
         self.apply_real_action(real_action)
 
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-        angular_velocity = self.robot_body.angular_velocity()
-        return np.concatenate((base_state, np.array(angular_velocity)))
-
     def get_end_effector_position(self):
-        return self.parts['m1n6s200_link_finger_1'].get_position()
+        return self.parts['m1n6s200_end_effector'].get_position()
+
+    # initialize JR's arm to almost the same height as the door handle to ease exploration
+    def robot_specific_reset(self):
+        super(JR2_Kinova, self).robot_specific_reset()
+        self.ordered_joints[2].reset_joint_state(-np.pi / 2.0, 0.0)
+        self.ordered_joints[3].reset_joint_state(np.pi / 2.0, 0.0)
+        self.ordered_joints[4].reset_joint_state(np.pi / 2.0, 0.0)
+        self.ordered_joints[5].reset_joint_state(np.pi / 2.0, 0.0)
+        self.ordered_joints[6].reset_joint_state(0.0, 0.0)
+
+    def load(self):
+        ids = self._load_model()
+        self.eyes = self.parts["eyes"]
+
+        robot_id = ids[0]
+
+        # disable collision for immediate parent
+        for joint in range(p.getNumJoints(robot_id)):
+            info = p.getJointInfo(robot_id, joint)
+            parent_id = info[-1]
+            p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)
+
+        # disable collision in the head / camera region
+        for joint in range(p.getNumJoints(robot_id)):
+            for j in range(16, 28):
+                p.setCollisionFilterPair(robot_id, robot_id, joint, j, 0)
+
+        return ids
