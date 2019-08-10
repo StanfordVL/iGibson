@@ -71,12 +71,12 @@ observation_normalizer: {'sensor':[[-3.0, -3.0, 0.0],                           
 
 # reward
 reward_type: dense
-success_reward: 50.0
+success_reward: 500.0
 slack_reward: -0.01
 potential_reward_weight: 2.0
 electricity_reward_weight: -0.001
 stall_torque_reward_weight: 0.0
-collision_reward_weight: -0.01
+collision_reward_weight: -1.5
 collision_ignore_body_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
 
 # discount factor
@@ -84,14 +84,13 @@ discount_factor: 0.99
 
 # termination condition
 dist_tol: 0.5
-max_step: 1000
+max_step: 256
 
 # sensor
 output: [sensor, auxiliary_sensor, depth]
 resolution: 64
 fov: 150
-n_horizontal_rays: 128
-n_vertical_beams: 1
+n_rays_per_horizontal: 128
 
 # display
 use_filler: true

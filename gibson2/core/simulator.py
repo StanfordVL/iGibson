@@ -15,6 +15,7 @@ class Simulator:
                  use_fisheye=False,
                  mode='gui',
                  resolution=256,
+                 fov=90,
                  device_idx=0):
 
         # physics simulator
@@ -23,6 +24,7 @@ class Simulator:
         self.mode = mode
         # renderer
         self.resolution = resolution
+        self.fov = fov
         self.device_idx = device_idx
         self.use_fisheye = use_fisheye
 
@@ -49,7 +51,7 @@ class Simulator:
                                      height=self.resolution,
                                      device_idx=self.device_idx,
                                      use_fisheye=self.use_fisheye)
-        self.renderer.set_fov(90)
+        self.renderer.set_fov(self.fov)
 
         if self.mode == 'gui':
             self.cid = p.connect(p.GUI)
@@ -57,7 +59,6 @@ class Simulator:
             self.cid = p.connect(p.DIRECT)
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
-
 
         if self.mode == 'gui':
             self.viewer.renderer = self.renderer
