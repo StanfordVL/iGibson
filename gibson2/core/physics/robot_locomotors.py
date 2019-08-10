@@ -515,6 +515,96 @@ class Turtlebot(WalkerBase):
             (): 4  # stay still
         }
 
+    def calc_state(self):
+        base_state = WalkerBase.calc_state(self)
+        angular_velocity = self.robot_body.angular_velocity()
+        return np.concatenate((base_state, np.array(angular_velocity)))
+
+class Freight(WalkerBase):
+    mjcf_scaling = 1
+    model_type = "URDF"
+    default_scale = 1
+
+    def __init__(self, config):
+        self.config = config
+        self.velocity = config.get("velocity", 1.0)
+        WalkerBase.__init__(self,
+                            "fetch/freight.urdf",
+                            "base_link",
+                            action_dim=2,
+                            sensor_dim=16,
+                            power=2.5,
+                            scale=config.get("robot_scale", self.default_scale),
+                            resolution=config.get("resolution", 64),
+                            is_discrete=config.get("is_discrete", True),
+                            control="velocity")
+
+    def set_up_continuous_action_space(self):
+        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
+        self.action_high = self.velocity * np.ones([self.action_dim])
+        self.action_low = -self.action_high
+
+    def set_up_discrete_action_space(self):
+        self.action_list = [[self.velocity, self.velocity], [-self.velocity, -self.velocity],
+                            [self.velocity * 0.5, -self.velocity * 0.5],
+                            [-self.velocity * 0.5, self.velocity * 0.5], [0, 0]]
+        self.action_space = gym.spaces.Discrete(len(self.action_list))
+        self.setup_keys_to_action()
+
+    def setup_keys_to_action(self):
+        self.keys_to_action = {
+            (ord('w'), ): 0,    # forward
+            (ord('s'), ): 1,    # backward
+            (ord('d'), ): 2,    # turn right
+            (ord('a'), ): 3,    # turn left
+            (): 4    # stay still
+        }
+
+    def calc_state(self):
+        base_state = WalkerBase.calc_state(self)
+        angular_velocity = self.robot_body.angular_velocity()
+        return np.concatenate((base_state, np.array(angular_velocity)))
+
+
+class Fetch(WalkerBase):
+    mjcf_scaling = 1
+    model_type = "URDF"
+    default_scale = 1
+
+    def __init__(self, config):
+        self.config = config
+        self.velocity = config.get("velocity", 1.0)
+        WalkerBase.__init__(self,
+                            "fetch/fetch.urdf",
+                            "base_link",
+                            action_dim=15,
+                            sensor_dim=55,
+                            power=2.5,
+                            scale=config.get("robot_scale", self.default_scale),
+                            resolution=config.get("resolution", 64),
+                            is_discrete=config.get("is_discrete", True),
+                            control="velocity")
+
+    def set_up_continuous_action_space(self):
+        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
+        self.action_high = self.velocity * np.ones([self.action_dim])
+        self.action_low = -self.action_high
+
+    def set_up_discrete_action_space(self):
+       self.action_list = []
+       self.action_space = gym.spaces.Discrete(len(self.action_list))
+
+    def calc_state(self):
+        base_state = WalkerBase.calc_state(self)
+        angular_velocity = self.robot_body.angular_velocity()
+        print(len(base_state), len(angular_velocity))
+        return np.concatenate((base_state, np.array(angular_velocity)))
 
 class JR2(WalkerBase):
     mjcf_scaling = 1
@@ -639,5 +729,4 @@ class JR2_Kinova(WalkerBase):
         for joint in range(p.getNumJoints(robot_id)):
             for j in range(16, 28):
                 p.setCollisionFilterPair(robot_id, robot_id, joint, j, 0)
-
         return ids
