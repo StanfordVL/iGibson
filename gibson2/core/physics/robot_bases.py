@@ -64,7 +64,6 @@ class BaseRobot:
             ordered_joints = self.ordered_joints
         else:
             ordered_joints = []
-
         part_name, robot_name = p.getBodyInfo(bodies[0])
         part_name = part_name.decode("utf8")
         parts[part_name] = BodyPart(part_name,
