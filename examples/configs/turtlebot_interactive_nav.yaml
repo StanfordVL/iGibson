@@ -1,0 +1,78 @@
+# scene
+scene: building
+model_id: Norvelt
+
+# robot
+robot: Turtlebot
+wheel_velocity: 0.025
+arm_velocity: 0.005
+
+# task, observation and action
+task: pointgoal # pointgoal|objectgoal|areagoal|reaching
+fisheye: false
+door_angle: 90
+
+initial_pos: [0, 0, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
+
+target_pos: [0, 2, 0.0]
+target_orn: [0.0, 0.0, 0.0]
+
+is_discrete: false
+additional_states_dim: 3
+auxiliary_sensor_dim: 66
+
+normalize_observation: false
+
+# reward
+reward_type: dense
+success_reward: 50.0
+slack_reward: -0.01
+potential_reward_weight: 2.0
+electricity_reward_weight: -0.001
+stall_torque_reward_weight: 0.0
+collision_reward_weight: -0.01
+collision_ignore_body_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
+
+# discount factor
+discount_factor: 0.99
+
+# termination condition
+dist_tol: 0.5
+max_step: 1000
+
+# sensor
+output: [sensor, auxiliary_sensor, depth]
+resolution: 256
+fov: 90
+n_horizontal_rays: 128
+n_vertical_beams: 1
+
+# display
+use_filler: true
+display_ui: false
+show_diagnostics: false
+ui_num: 2
+ui_components: [RGB_FILLED, DEPTH]
+random:
+  random_initial_pose: false
+  random_target_pose: false
+  random_init_x_range: [-0.1, 0.1]
+  random_init_y_range: [-0.1, 0.1]
+  random_init_z_range: [-0.1, 0.1]
+  random_init_rot_range: [-0.1, 0.1]
+
+speed:
+  timestep: 0.001
+  frameskip: 10
+
+mode: web_ui #gui|headless
+verbose: false
+fast_lq_render: true
+
+# visual objects
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: false
+
+# debug
+debug: false
