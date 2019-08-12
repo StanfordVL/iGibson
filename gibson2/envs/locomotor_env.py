@@ -44,6 +44,7 @@ class NavigateEnv(BaseEnv):
         self.simulator.set_timestep(physics_timestep)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.current_step = 0
+        self.stage = None
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
 
@@ -431,6 +432,52 @@ class NavigateRandomEnv(NavigateEnv):
         while dist < 1.0:  # if initial and target positions are < 1 meter away from each other, reinitialize
             _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
             dist = l2_distance(self.initial_pos, self.target_pos)
+
+class InteractiveGibsonNavigateEnv(NavigateEnv):
+    def __init__(self,
+                 config_file,
+                 mode='headless',
+                 action_timestep=1 / 10.0,
+                 physics_timestep=1 / 240.0,
+                 random_position=False,
+                 device_idx=0,
+                 automatic_reset=False,
+                 ):
+        super(InteractiveGibsonNavigateEnv, self).__init__(config_file,
+                                                     mode=mode,
+                                                     action_timestep=action_timestep,
+                                                     physics_timestep=physics_timestep,
+                                                     automatic_reset=automatic_reset,
+                                                     device_idx=device_idx)
+
+
+        urdf_models = ['object_2eZY2JqYPQE.urdf',  'object_lGzQi2Pk5uC.urdf',  'object_ZU6u5fvE8Z1.urdf', 
+        'object_H3ygj6efM8V.urdf', 'object_RcqC01G24pR.urdf']
+
+        self.interactive_objects = []
+        self.interactive_objects_pos = []
+
+
+        
+        for j in range(3):
+            i = -0.6
+            for urdf_model in urdf_models:
+                obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
+                self.simulator.import_object(obj)
+                pos = [i,1 + 0.3*j,0.1]
+                obj.set_position(pos)
+                i += 0.2
+
+            self.interactive_objects.append(obj)
+            self.interactive_objects_pos.append(pos)
+
+    def reset_interactive_objects(self):
+        for i in range(len(self.interactive_objects)):
+            self.interactive_objects[i].set_position(self.interactive_objects_pos[i])
+
+    def reset(self):
+        self.reset_interactive_objects()
+        return super(InteractiveGibsonNavigateEnv, self).reset()
 
 
 class InteractiveNavigateEnv(NavigateEnv):
@@ -984,9 +1031,9 @@ if __name__ == '__main__':
                         default='headless',
                         help='which mode for simulation (default: headless)')
     parser.add_argument('--env_type',
-                        choices=['deterministic', 'random', 'interactive'],
+                        choices=['deterministic', 'random', 'interactive', 'ig'],
                         default='deterministic',
-                        help='which environment type (deterministic | random | interactive')
+                        help='which environment type (deterministic | random | interactive | ig')
     args = parser.parse_args()
 
     if args.robot == 'turtlebot':
@@ -1007,6 +1054,11 @@ if __name__ == '__main__':
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
                                     physics_timestep=1 / 40.0)
+    elif args.env_type == 'ig':
+        nav_env = InteractiveGibsonNavigateEnv(config_file=config_filename,
+                                    mode=args.mode,
+                                    action_timestep=1.0 / 30.0,
+                                    physics_timestep=1 / 120.0)
     else:
         nav_env = InteractiveNavigateEnv(config_file=config_filename,
                                          mode=args.mode,
