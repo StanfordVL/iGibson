@@ -709,12 +709,15 @@ class InteractiveNavigateEnv(NavigateEnv):
                 else:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
             elif self.arena == "complex_hl_ll":
-                if self.random_position:
-                    self.robots[0].set_orientation(
-                        orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz')
-                    )
-                else:
-                    self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, 0), 'wxyz'))
+                self.robots[0].set_orientation(
+                    orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz')
+                )
+                # if self.random_position:
+                #     self.robots[0].set_orientation(
+                #         orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz')
+                #     )
+                # else:
+                #     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, 0), 'wxyz'))
 
             collision_links = []
             for _ in range(self.simulator_loop):
@@ -1013,7 +1016,7 @@ if __name__ == '__main__':
                                          action_timestep=1.0 / 10.0,
                                          random_position=False,
                                          physics_timestep=1 / 40.0,
-                                         arena='only_ll_obstacles')
+                                         arena='complex_hl_ll')
 
     # # Sample code: manually set action using slide bar UI
     # debug_params = [
