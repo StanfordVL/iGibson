@@ -4,13 +4,11 @@ model_id: Norvelt
 
 # robot
 robot: Turtlebot
-wheel_velocity: 0.025
-arm_velocity: 0.005
+velocity: 0.1
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 fisheye: false
-door_angle: 90
 
 initial_pos: [0, 0, 0.0]
 initial_orn: [0.0, 0.0, 0.0]
@@ -20,18 +18,15 @@ target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
 additional_states_dim: 3
-auxiliary_sensor_dim: 66
-
-normalize_observation: false
 
 # reward
 reward_type: dense
-success_reward: 50.0
-slack_reward: -0.01
-potential_reward_weight: 2.0
-electricity_reward_weight: -0.001
+success_reward: 10.0
+slack_reward: 0.0
+potential_reward_weight: 1.0
+electricity_reward_weight: 0.0
 stall_torque_reward_weight: 0.0
-collision_reward_weight: -0.01
+collision_reward_weight: 0.0
 collision_ignore_body_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
 
 # discount factor
@@ -39,14 +34,12 @@ discount_factor: 0.99
 
 # termination condition
 dist_tol: 0.5
-max_step: 1000
+max_step: 500
 
 # sensor
-output: [sensor, auxiliary_sensor, depth]
+output: [sensor]
 resolution: 256
 fov: 90
-n_horizontal_rays: 128
-n_vertical_beams: 1
 
 # display
 use_filler: true

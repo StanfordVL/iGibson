@@ -17,6 +17,7 @@ import pybullet as p
 from IPython import embed
 import cv2
 import time
+import collections
 
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
@@ -146,6 +147,7 @@ class NavigateEnv(BaseEnv):
 
         # variable initialization
         self.current_episode = 0
+        self.successes = collections.deque(maxlen=100)
 
         # add visual objects
         self.visual_object_at_initial_target_pos = self.config.get(
@@ -339,8 +341,15 @@ class NavigateEnv(BaseEnv):
             info['collision_step'] = self.collision_step
             info['energy_cost'] = self.energy_cost
             info['stage'] = self.stage
+            self.successes.append(float(info['success']))
 
         return done, info
+
+    def get_success_rate(self):
+        if len(self.successes) == 0:
+            return 0.0
+        else:
+            return sum(self.successes) / len(self.successes)
 
     def step(self, action):
         self.robots[0].apply_action(action)
@@ -433,38 +442,37 @@ class NavigateRandomEnv(NavigateEnv):
             _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
             dist = l2_distance(self.initial_pos, self.target_pos)
 
-class InteractiveGibsonNavigateEnv(NavigateEnv):
+
+class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
     def __init__(self,
                  config_file,
                  mode='headless',
                  action_timestep=1 / 10.0,
                  physics_timestep=1 / 240.0,
-                 random_position=False,
                  device_idx=0,
                  automatic_reset=False,
                  ):
         super(InteractiveGibsonNavigateEnv, self).__init__(config_file,
-                                                     mode=mode,
-                                                     action_timestep=action_timestep,
-                                                     physics_timestep=physics_timestep,
-                                                     automatic_reset=automatic_reset,
-                                                     device_idx=device_idx)
+                                                           mode=mode,
+                                                           action_timestep=action_timestep,
+                                                           physics_timestep=physics_timestep,
+                                                           automatic_reset=automatic_reset,
+                                                           random_height=False,
+                                                           device_idx=device_idx)
 
-
-        urdf_models = ['object_2eZY2JqYPQE.urdf',  'object_lGzQi2Pk5uC.urdf',  'object_ZU6u5fvE8Z1.urdf', 
-        'object_H3ygj6efM8V.urdf', 'object_RcqC01G24pR.urdf']
+        urdf_models = ['object_2eZY2JqYPQE.urdf', 'object_lGzQi2Pk5uC.urdf', 'object_ZU6u5fvE8Z1.urdf',
+                       'object_H3ygj6efM8V.urdf', 'object_RcqC01G24pR.urdf']
 
         self.interactive_objects = []
         self.interactive_objects_pos = []
 
 
-        
         for j in range(3):
             i = -0.6
             for urdf_model in urdf_models:
                 obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
                 self.simulator.import_object(obj)
-                pos = [i,1 + 0.3*j,0.1]
+                pos = [i, 1 + 0.3 * j, 0.1]
                 obj.set_position(pos)
                 i += 0.2
 
@@ -505,11 +513,11 @@ class InteractiveNavigateEnv(NavigateEnv):
             "complex_hl_ll"
         ], "Wrong arena"
 
-        self.floor = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0.643, 0.643, 0.788, 0.0], half_extents=[20, 20, 0.02], initial_offset=[0, 0, -0.03])
+        self.floor = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0.643, 0.643, 0.788, 0.0],
+                                  half_extents=[20, 20, 0.02], initial_offset=[0, 0, -0.03])
         self.floor.load()
         self.floor.set_position([0, 0, 0])
         self.simulator.import_object(self.floor)
-
 
         self.door = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
                                    scale=1.35)
@@ -660,7 +668,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.id_to_name[self.door.body_id] = {"name": "door",
                                               "links": {-1: "world", 0: "base", 1: "door_leaf", 2: "door_knob"}}
         for i, wall in enumerate(self.walls):
-            self.id_to_name[wall.body_id] = {"name": "wall%d" % (i+1), "links": {-1: "world", 0: "wall"}}
+            self.id_to_name[wall.body_id] = {"name": "wall%d" % (i + 1), "links": {-1: "world", 0: "wall"}}
         self.id_to_name[self.robots[0].robot_ids[0]] = {"name": "robot", "links": {
             -1: "base",
             0: "base_chassis",
@@ -835,15 +843,15 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
         end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
-        auxiliary_sensor[:3] = self.robots[0].get_position()     # x, y, z
-        auxiliary_sensor[3:6] = end_effector_pos                 # arm_x, arm_y_ arm_z (local)
-        auxiliary_sensor[6:11] = robot_state[1:6]                # vx, vy, vz, roll, pitch
-        auxiliary_sensor[11:46:5] = robot_state[7:28:3]          # pos for wheel 1, 2, arm joint 1, 2, 3, 4, 5
-        auxiliary_sensor[12:47:5] = robot_state[8:29:3]          # vel for wheel 1, 2, arm joint 1, 2, 3, 4, 5
-        auxiliary_sensor[13:48:5] = robot_state[9:30:3]          # trq for wheel 1, 2, arm joint 1, 2, 3, 4, 5
+        auxiliary_sensor[:3] = self.robots[0].get_position()  # x, y, z
+        auxiliary_sensor[3:6] = end_effector_pos  # arm_x, arm_y_ arm_z (local)
+        auxiliary_sensor[6:11] = robot_state[1:6]  # vx, vy, vz, roll, pitch
+        auxiliary_sensor[11:46:5] = robot_state[7:28:3]  # pos for wheel 1, 2, arm joint 1, 2, 3, 4, 5
+        auxiliary_sensor[12:47:5] = robot_state[8:29:3]  # vel for wheel 1, 2, arm joint 1, 2, 3, 4, 5
+        auxiliary_sensor[13:48:5] = robot_state[9:30:3]  # trq for wheel 1, 2, arm joint 1, 2, 3, 4, 5
         auxiliary_sensor[14:49:5] = np.cos(robot_state[7:28:3])  # cos(pos) for wheel 1, 2, arm joint 1, 2, 3, 4, 5
         auxiliary_sensor[15:50:5] = np.sin(robot_state[7:28:3])  # sin(pos) for wheel 1, 2, arm joint 1, 2, 3, 4, 5
-        auxiliary_sensor[46:49] = robot_state[28:31]             # v_roll, v_pitch, v_yaw
+        auxiliary_sensor[46:49] = robot_state[28:31]  # v_roll, v_pitch, v_yaw
 
         roll, pitch, yaw = self.robots[0].get_rpy()
         cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
@@ -891,7 +899,7 @@ class InteractiveNavigateEnv(NavigateEnv):
             self.stage = self.stage_open_door
             print("stage open_door")
 
-        if self.stage == self.stage_open_door and p.getJointState(self.door.body_id, 1)[0] > self.door_angle:  # door open > 45/60/90 degree
+        if self.stage == self.stage_open_door and p.getJointState(self.door.body_id, 1)[0] > self.door_angle:
             assert self.cid is not None
             p.removeConstraint(self.cid)
             self.cid = None
@@ -1048,23 +1056,24 @@ if __name__ == '__main__':
         nav_env = NavigateEnv(config_file=config_filename,
                               mode=args.mode,
                               action_timestep=1.0 / 10.0,
-                              physics_timestep=1 / 40.0)
+                              physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random':
         nav_env = NavigateRandomEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
-                                    physics_timestep=1 / 40.0)
+                                    physics_timestep=1.0 / 40.0)
     elif args.env_type == 'ig':
         nav_env = InteractiveGibsonNavigateEnv(config_file=config_filename,
-                                    mode=args.mode,
-                                    action_timestep=1.0 / 30.0,
-                                    physics_timestep=1 / 120.0)
+                                               mode=args.mode,
+                                               action_timestep=1.0 / 10.0,
+                                               physics_timestep=1.0 / 120.0,
+                                               )
     else:
         nav_env = InteractiveNavigateEnv(config_file=config_filename,
                                          mode=args.mode,
                                          action_timestep=1.0 / 10.0,
                                          random_position=False,
-                                         physics_timestep=1 / 40.0,
+                                         physics_timestep=1.0 / 40.0,
                                          arena='only_ll_obstacles')
 
     # # Sample code: manually set action using slide bar UI
