@@ -108,7 +108,7 @@ class BuildingScene(Scene):
                 trav = np.array(
                     Image.open(
                         os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(i))))
-                self.max_length = trav.shape[0] / 200
+                self.max_length = trav.shape[0] / 200.0
 
                 self.floor_map.append(trav)
 
