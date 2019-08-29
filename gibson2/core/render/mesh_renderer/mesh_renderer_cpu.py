@@ -88,7 +88,7 @@ class InstanceGroup(object):
 
                 GL.glUniform3f(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
-                    *self.renderer.colors[self.id % 3])
+                    *self.renderer.colors[self.id > 0])
 
                 GL.glUniform3f(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
@@ -177,7 +177,7 @@ class Instance(object):
 
         for object_idx in self.object.VAO_ids:
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
-                           *self.renderer.colors[self.id % 3])
+                           *self.renderer.colors[self.id > 0])
 
             GL.glUniform3f(
                 GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
