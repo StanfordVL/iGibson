@@ -459,7 +459,7 @@ class InteractiveGibsonNavigateEnv(NavigateEnv):
 
 
         
-        for j in range(3):
+        for j in range(1):
             i = -0.6
             for urdf_model in urdf_models:
                 obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
@@ -467,13 +467,12 @@ class InteractiveGibsonNavigateEnv(NavigateEnv):
                 pos = [i,1 + 0.3*j,0.1]
                 obj.set_position(pos)
                 i += 0.2
-
-            self.interactive_objects.append(obj)
-            self.interactive_objects_pos.append(pos)
+                self.interactive_objects.append(obj)
+                self.interactive_objects_pos.append(pos)
 
     def reset_interactive_objects(self):
         for i in range(len(self.interactive_objects)):
-            self.interactive_objects[i].set_position(self.interactive_objects_pos[i])
+            self.interactive_objects[i].set_position_rotation(self.interactive_objects_pos[i], [0,0,0,1])
 
     def reset(self):
         self.reset_interactive_objects()
@@ -1058,7 +1057,7 @@ if __name__ == '__main__':
         nav_env = InteractiveGibsonNavigateEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 30.0,
-                                    physics_timestep=1 / 120.0)
+                                    physics_timestep=1 / 240.0)
     else:
         nav_env = InteractiveNavigateEnv(config_file=config_filename,
                                          mode=args.mode,
