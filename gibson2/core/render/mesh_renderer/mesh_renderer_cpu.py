@@ -8,7 +8,7 @@ import gibson2.core.render.mesh_renderer.glutils.glcontext as glcontext
 import OpenGL.GL as GL
 import cv2
 import numpy as np
-from pyassimp import load, release
+#from pyassimp import load, release
 from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
@@ -19,6 +19,7 @@ import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
 import gibson2
 import os
+import tinyobjloader
 
 
 class VisualObject(object):
@@ -376,48 +377,110 @@ class MeshRenderer:
                     transform_orn=None,
                     transform_pos=None,
                     input_kd=None,
-                    texture_scale=1.0):
+                    texture_scale=1.0,
+                    load_texture=True):
 
-        scene = load(obj_path)
+        reader = tinyobjloader.ObjReader()
+        ret = reader.ParseFromFile(obj_path)
+
+        if ret == False:
+            print("Warn:", reader.Warning())
+            pint("Err:", reader.Error())
+            print("Failed to load : ", filename)
+
+            sys.exit(-1)
+
+        if reader.Warning():
+            print("Warn:", reader.Warning())
+
+        attrib = reader.GetAttrib()
+        print("attrib.vertices = ", len(attrib.vertices))
+        print("attrib.normals = ", len(attrib.normals))
+        print("attrib.texcoords = ", len(attrib.texcoords))
+
+        materials = reader.GetMaterials()
+        print("Num materials: ", len(materials))
+        for m in materials:
+            print(m.name)
+            print(m.diffuse)
+
+        shapes = reader.GetShapes()
+        print("Num shapes: ", len(shapes))
+       
         material_count = len(self.materials_mapping)
         materials_fn = {}
 
-        for i, item in enumerate(scene.materials):
+        for i, item in enumerate(materials):
             is_texture = False
-            kd = [0.5, 0.5, 0.5]
-            for k, v in item.properties.items():
-                if k == 'file':
-                    materials_fn[i + material_count] = v
-                    dir = os.path.dirname(obj_path)
-                    texture = loadTexture(os.path.join(dir, v), scale=texture_scale)
-                    material = Material('texture', texture_id=texture)
-                    self.materials_mapping[i + material_count] = material
-                    self.textures.append(texture)
-                    is_texture = True
+            kd = item.diffuse
 
-                if k == 'diffuse':
-                    kd = v
+            if item.diffuse_texname != '':
+                is_texture = True
+                if load_texture:
+                    materials_fn[i + material_count] = item.diffuse_texname
+                    dir = os.path.dirname(obj_path)
+                    texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
+                    material = Material('texture', texture_id=texture)
+                    self.textures.append(texture)
+                else:
+                    material = Material('color', kd=kd)
+                
+                self.materials_mapping[i + material_count] = material
+                
+
             if not is_texture:
                 self.materials_mapping[i + material_count] = Material('color', kd=kd)
 
         if not input_kd is None:    # urdf material
-            self.materials_mapping[len(scene.materials) + material_count] = Material('color',
-                                                                                     kd=input_kd)
+            self.materials_mapping[len(materials) + material_count] = Material('color',
+                                                                                kd=input_kd)
 
+        print(self.materials_mapping)
         VAO_ids = []
 
-        for mesh in scene.meshes:
-            faces = mesh.faces
+        vertex_position = np.array(attrib.vertices).reshape((len(attrib.vertices)//3, 3))
+        vertex_normal = np.array(attrib.normals).reshape((len(attrib.normals)//3, 3))
+        vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
+        print(vertex_position.shape, vertex_normal.shape, vertex_texcoord.shape)
 
-            if mesh.normals.shape[0] == 0:
-                mesh.normals = np.zeros(mesh.vertices.shape, dtype=mesh.vertices.dtype)
-            if mesh.texturecoords.shape[0] == 0:
-                mesh.texturecoords = np.zeros((1, mesh.vertices.shape[0], mesh.vertices.shape[1]),
-                                              dtype=mesh.vertices.dtype)
+
+        for shape in shapes:
+            print(shape.name)
+            material_id = shape.mesh.material_ids[0] # assume one shape only have one material
+            print("material_id = {}".format(material_id))
+            print("num_indices = {}".format(len(shape.mesh.indices)))
+            n_indices = len(shape.mesh.indices)
+            np_indices = shape.mesh.numpy_indices().reshape((n_indices,3))
+
+            shape_vertex_index = np_indices[:,0]
+            shape_normal_index = np_indices[:,1]
+            shape_texcoord_index = np_indices[:,2]
+
+            shape_vertex = vertex_position[shape_vertex_index]
+            shape_normal = vertex_normal[shape_normal_index]
+            shape_texcoord = vertex_texcoord[shape_texcoord_index]
+
+            #from IPython import embed; embed()
+            #for (i, idx) in enumerate(shape.mesh.indices):
+            #    print("[{}] v_idx {}".format(i, idx.vertex_index))
+            #    print("[{}] vn_idx {}".format(i, idx.normal_index))
+            #    print("[{}] vt_idx {}".format(i, idx.texcoord_index))
+
+        #exit()
+
+        #for mesh in scene.meshes:
+        #    faces = mesh.faces
+        #
+        #    if mesh.normals.shape[0] == 0:
+        #        mesh.normals = np.zeros(mesh.vertices.shape, dtype=mesh.vertices.dtype)
+        #    if mesh.texturecoords.shape[0] == 0:
+        #        mesh.texturecoords = np.zeros((1, mesh.vertices.shape[0], mesh.vertices.shape[1]),
+        #                                      dtype=mesh.vertices.dtype)
 
             vertices = np.concatenate(
-                [mesh.vertices * scale, mesh.normals, mesh.texturecoords[0, :, :2]], axis=-1)
+                [shape_vertex * scale, shape_normal, shape_texcoord], axis=-1)
 
+            faces = np.array(range(len(vertices))).reshape((len(vertices)//3, 3))
             if not transform_orn is None:
                 orn = quat2rotmat(
                     [transform_orn[-1], transform_orn[0], transform_orn[1], transform_orn[2]])
@@ -458,13 +521,15 @@ class MeshRenderer:
             self.VBOs.append(VBO)
             self.faces.append(faces)
             self.objects.append(obj_path)
-            if mesh.materialindex == 0:    # if there is no material, use urdf color as material
-                self.mesh_materials.append(len(scene.materials) + material_count)
+            if material_id == -1:    # if there is no material, use urdf color as material
+                self.mesh_materials.append(len(materials) + material_count)
             else:
-                self.mesh_materials.append(mesh.materialindex + material_count)
+                self.mesh_materials.append(material_id + material_count)
+
+            print('mesh_materials', self.mesh_materials)
             VAO_ids.append(self.get_num_objects() - 1)
 
-        release(scene)
+        #release(scene)
 
         new_obj = VisualObject(obj_path, VAO_ids, len(self.visual_objects), self)
         self.visual_objects.append(new_obj)
@@ -678,7 +743,7 @@ class MeshRenderer:
 if __name__ == '__main__':
     model_path = sys.argv[1]
     renderer = MeshRenderer(width=256, height=256)
-    renderer.load_object(model_path)
+    renderer.load_object(model_path, load_texture=False)
     renderer.load_object(os.path.join(gibson2.assets_path, 'models/ycb/011_banana/textured_simple.obj'))
 
     renderer.add_instance(0)
