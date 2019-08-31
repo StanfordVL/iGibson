@@ -46,6 +46,9 @@ class NavigateEnv(BaseEnv):
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.current_step = 0
         self.stage = None
+        self.current_episode = 0
+        self.floor_num = 0
+        self.successes = collections.deque(maxlen=100)
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
 
@@ -70,7 +73,7 @@ class NavigateEnv(BaseEnv):
 
         # reward
         self.reward_type = self.config.get('reward_type', 'dense')
-        assert self.reward_type in ['dense', 'sparse', 'normalized_l2', 'l2', 'stage_sparse']
+        assert self.reward_type in ['dense', 'sparse', 'l2', 'stage_sparse']
 
         self.success_reward = self.config.get('success_reward', 10.0)
         self.slack_reward = self.config.get('slack_reward', -0.01)
@@ -82,7 +85,8 @@ class NavigateEnv(BaseEnv):
         self.stall_torque_reward_weight = self.config.get('stall_torque_reward_weight', 0.0)
         self.collision_reward_weight = self.config.get('collision_reward_weight', 0.0)
         # ignore the agent's collision with these body ids, typically ids of the ground
-        self.collision_ignore_body_ids = set(self.config.get('collision_ignore_body_ids', []))
+        self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', []))
+        self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
 
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
@@ -118,15 +122,15 @@ class NavigateEnv(BaseEnv):
         if 'rgb' in self.output:
             self.rgb_space = gym.spaces.Box(low=-np.inf,
                                             high=np.inf,
-                                            shape=(self.config['resolution'],
-                                                   self.config['resolution'], 3),
+                                            shape=(self.config.get('resolution', 64),
+                                                   self.config.get('resolution', 64), 3),
                                             dtype=np.float32)
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
             self.depth_space = gym.spaces.Box(low=-np.inf,
                                               high=np.inf,
-                                              shape=(self.config['resolution'],
-                                                     self.config['resolution'], 1),
+                                              shape=(self.config.get('resolution', 64),
+                                                     self.config.get('resolution', 64), 1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
         if 'scan' in self.output:
@@ -145,23 +149,18 @@ class NavigateEnv(BaseEnv):
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
 
-        # variable initialization
-        self.current_episode = 0
-        self.successes = collections.deque(maxlen=100)
-
         # add visual objects
-        self.visual_object_at_initial_target_pos = self.config.get(
-            'visual_object_at_initial_target_pos', False)
+        self.visual_object_at_initial_target_pos = self.config.get('visual_object_at_initial_target_pos', False)
 
         if self.visual_object_at_initial_target_pos:
             cyl_length = 3.0
             self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
-                                                    rgba_color=[1, 0, 0, 0.95],
+                                                    rgba_color=[1, 0, 0, 0.3],
                                                     radius=0.5,
                                                     length=cyl_length,
                                                     initial_offset=[0, 0, cyl_length / 2.0])
             self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
-                                                   rgba_color=[0, 0, 1, 0.95],
+                                                   rgba_color=[0, 0, 1, 0.3],
                                                    radius=0.5,
                                                    length=cyl_length,
                                                    initial_offset=[0, 0, cyl_length / 2.0])
@@ -264,7 +263,7 @@ class NavigateEnv(BaseEnv):
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
-        return [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
+        return [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_b_ids]
 
     def get_position_of_interest(self):
         if self.config['task'] == 'pointgoal':
@@ -275,14 +274,19 @@ class NavigateEnv(BaseEnv):
     def get_potential(self):
         return l2_distance(self.target_pos, self.get_position_of_interest())
 
+    def get_l2_potential(self):
+        return l2_distance(self.target_pos, self.get_position_of_interest())
+
     def get_reward(self, collision_links=[], action=None, info={}):
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
-        new_normalized_potential = self.get_potential() / self.initial_potential
-
-        potential_reward = self.normalized_potential - new_normalized_potential
+        if self.reward_type == 'l2':
+            new_potential = self.get_l2_potential()
+        elif self.reward_type == 'dense':
+            new_potential = self.get_potential()
+        potential_reward = self.potential - new_potential
         reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
-        self.normalized_potential = new_normalized_potential
+        self.potential = new_potential
 
         # electricity_reward = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
         electricity_reward = 0.0
@@ -303,7 +307,6 @@ class NavigateEnv(BaseEnv):
         return reward, info
 
     def get_termination(self, collision_links=[], info={}):
-        self.current_step += 1
         done = False
 
         # for elem in collision_links:
@@ -352,6 +355,7 @@ class NavigateEnv(BaseEnv):
             return sum(self.successes) / len(self.successes)
 
     def step(self, action):
+        self.current_step += 1
         self.robots[0].apply_action(action)
         collision_links = self.run_simulation()
         state = self.get_state(collision_links)
@@ -372,13 +376,10 @@ class NavigateEnv(BaseEnv):
         self.current_episode += 1
         self.robots[0].robot_specific_reset()
         self.reset_initial_and_target_pos()
-        self.initial_potential = self.get_potential()
-        self.normalized_potential = 1.0
-        if self.reward_type == 'normalized_l2':
-            self.initial_l2_potential = self.get_l2_potential()
-            self.normalized_l2_potential = 1.0
-        elif self.reward_type == 'l2':
-            self.l2_potential = self.get_l2_potential()
+        state = self.get_state()
+
+        if self.reward_type == 'l2':
+            self.potential = self.get_l2_potential()
         elif self.reward_type == 'dense':
             self.potential = self.get_potential()
 
@@ -391,7 +392,6 @@ class NavigateEnv(BaseEnv):
             self.initial_pos_vis_obj.set_position(self.initial_pos)
             self.target_pos_vis_obj.set_position(self.target_pos)
 
-        state = self.get_state()
         return state
 
 
@@ -437,10 +437,12 @@ class NavigateRandomEnv(NavigateEnv):
             if num_trials == max_trials:
                 raise Exception("Failed to initialize agent's position: collision occurs for %d times." % (max_trials))
 
-        dist = 0.0
-        while dist < 1.0:  # if initial and target positions are < 1 meter away from each other, reinitialize
+        while True:  # if initial and target positions are < 1 meter away from each other, reinitialize
             _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
             dist = l2_distance(self.initial_pos, self.target_pos)
+            if dist > 1.0:
+                break
+        self.floor_num = floor
 
 
 class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
@@ -466,7 +468,7 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         self.interactive_objects = []
         self.interactive_objects_pos = []
 
-        for j in range(1):
+        for j in range(0):
             i = -0.6
             for urdf_model in urdf_models:
                 obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
@@ -477,11 +479,37 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
                 self.interactive_objects.append(obj)
                 self.interactive_objects_pos.append(pos)
 
+    def global_to_local(self, pos):
+        return rotate_vector_3d(pos - self.robots[0].get_position(), *self.robots[0].get_rpy())
+
+    def get_additional_states(self):
+        target_pos_local_xy = self.global_to_local(self.target_pos)[:2]
+        source = self.robots[0].get_position()[:2]
+        target = self.target_pos[:2]
+        shortest_path, geodesic_dist = self.scene.get_shortest_path(self.floor_num, source, target)
+        robot_z = self.robots[0].get_position()[2]
+        waypoints_local_xy = np.array([self.global_to_local(np.concatenate((waypoint, [robot_z])))[:2]
+                                       for waypoint in shortest_path]).flatten()
+        additional_states = np.concatenate((waypoints_local_xy, target_pos_local_xy))
+        # cache results for reward calculation
+        self.new_potential = geodesic_dist
+
+        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
+        return additional_states
+
+    def get_potential(self):
+        return self.new_potential
+
+    def filter_collision_links(self, collision_links):
+        collision_links = [elem for elem in collision_links if elem[3] not in self.collision_ignore_link_a_ids]
+        return collision_links
+
     def reset_interactive_objects(self):
         for i in range(len(self.interactive_objects)):
             self.interactive_objects[i].set_position_rotation(self.interactive_objects_pos[i], [0, 0, 0, 1])
 
     def reset(self):
+        self.new_potential = None
         self.reset_interactive_objects()
         return super(InteractiveGibsonNavigateEnv, self).reset()
 
@@ -873,13 +901,15 @@ class InteractiveNavigateEnv(NavigateEnv):
         return auxiliary_sensor
 
     def filter_collision_links(self, collision_links):
-        collision_links = [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
+        collision_links = [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_b_ids]
         # ignore collision between hand and door
         collision_links = [elem for elem in collision_links if
                            not (elem[2] == self.door.body_id and elem[3] in [32, 33])]
         return collision_links
 
     def step(self, action):
+        self.current_step += 1
+
         dist = np.linalg.norm(
             np.array(p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]) -
             np.array(p.getLinkState(self.robots[0].robot_ids[0], self.jr_end_effector_link_id)[0])
@@ -954,39 +984,24 @@ class InteractiveNavigateEnv(NavigateEnv):
             potential = l2_distance(self.target_pos, self.get_position_of_interest())
         return potential
 
-    def get_l2_potential(self):
-        return l2_distance(self.target_pos, self.get_position_of_interest())
-
     def get_reward(self, collision_links=[], action=None, info={}):
         reward = 0.0
 
         if self.reward_type == 'dense':
             if self.stage != self.prev_stage:
                 # advance to the next stage
-                # self.initial_potential = self.get_potential()
-                # self.normalized_potential = 1.0
                 self.potential = self.get_potential()
                 reward += self.success_reward / 2.0
             else:
-                # new_normalized_potential = self.get_potential() / self.initial_potential
-                # potential_reward = self.normalized_potential - new_normalized_potential
-                # reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
-                # # self.reward_stats.append(np.abs(potential_reward * self.potential_reward_weight))
-                # self.normalized_potential = new_normalized_potential
                 new_potential = self.get_potential()
                 potential_reward = self.potential - new_potential
                 reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
                 self.potential = new_potential
-        elif self.reward_type == 'normalized_l2':
-            new_normalized_l2_potential = self.get_l2_potential() / self.initial_l2_potential
-            potential_reward = self.normalized_l2_potential - new_normalized_l2_potential
-            reward += potential_reward * self.potential_reward_weight
-            self.normalized_l2_potential = new_normalized_l2_potential
         elif self.reward_type == "l2":
-            new_l2_potential = self.get_l2_potential()
-            potential_reward = self.l2_potential - new_l2_potential
+            new_potential = self.get_l2_potential()
+            potential_reward = self.potential - new_potential
             reward += potential_reward * self.potential_reward_weight
-            self.l2_potential = new_l2_potential
+            self.potential = new_potential
         elif self.reward_type == 'stage_sparse':
             if self.stage != self.prev_stage:
                 reward += self.success_reward / 2.0
@@ -1063,8 +1078,8 @@ if __name__ == '__main__':
     elif args.env_type == 'ig':
         nav_env = InteractiveGibsonNavigateEnv(config_file=config_filename,
                                                mode=args.mode,
-                                               action_timestep=1.0 / 30.0,
-                                               physics_timestep=1 / 240.0)
+                                               action_timestep=1.0 / 10.0,
+                                               physics_timestep=1 / 40.0)
     else:
         nav_env = InteractiveNavigateEnv(config_file=config_filename,
                                          mode=args.mode,
@@ -1082,13 +1097,13 @@ if __name__ == '__main__':
     #     p.addUserDebugParameter('link5', -1.0, 1.0, 0.0),
     # ]
 
-    for episode in range(50):
+    start = time.time()
+    for episode in range(10):
         print('Episode: {}'.format(episode))
-        start = time.time()
         nav_env.reset()
-        for i in range(500):  # 500 steps, 50s world time
+        for i in range(50):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
-
+            action[:] = 1.0
             # action[:] = 0
             # if nav_env.stage == 0:
             #     action[:2] = 0.5
@@ -1100,9 +1115,10 @@ if __name__ == '__main__':
             # action[2:] = np.array(debug_param_values)
 
             state, reward, done, _ = nav_env.step(action)
-            # print(reward)
+            # print('reward', reward)
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
                 break
+    print("time", (time.time() - start) / 10)
 
     nav_env.clean()

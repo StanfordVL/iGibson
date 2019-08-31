@@ -49,9 +49,9 @@ class Simulator:
     def load(self):
         self.renderer = MeshRenderer(width=self.resolution,
                                      height=self.resolution,
+                                     fov=self.fov,
                                      device_idx=self.device_idx,
                                      use_fisheye=self.use_fisheye)
-        self.renderer.set_fov(self.fov)
 
         if self.mode == 'gui':
             self.cid = p.connect(p.GUI)
@@ -68,7 +68,7 @@ class Simulator:
         self.scene = None
         self.objects = []
 
-    def import_scene(self, scene, texture_scale=1.0):
+    def import_scene(self, scene, texture_scale=1.0, load_texture=True):
         new_objects = scene.load()
         for item in new_objects:
             self.objects.append(item)
@@ -78,7 +78,9 @@ class Simulator:
                 if type == p.GEOM_MESH:
                     filename = filename.decode('utf-8')
                     if not filename in self.visual_objects.keys():
-                        self.renderer.load_object(filename, texture_scale=texture_scale)
+                        self.renderer.load_object(filename,
+                                                  texture_scale=texture_scale,
+                                                  load_texture=load_texture)
                         self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                         self.renderer.add_instance(
                             len(self.renderer.visual_objects) - 1, new_object)
