@@ -1,6 +1,8 @@
 # scene
 scene: building
 model_id: Norvelt
+build_graph: true
+load_texture: false
 
 # robot
 robot: Turtlebot
@@ -17,7 +19,7 @@ target_pos: [0, 2, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
-additional_states_dim: 3
+additional_states_dim: 22
 
 # reward
 reward_type: dense
@@ -27,7 +29,8 @@ potential_reward_weight: 1.0
 electricity_reward_weight: 0.0
 stall_torque_reward_weight: 0.0
 collision_reward_weight: 0.0
-collision_ignore_body_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
+collision_ignore_body_b_ids: []  # ignore collision with these body B ids (e.g. ground)
+collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collision with these agent's link ids
 
 # discount factor
 discount_factor: 0.99
@@ -37,8 +40,8 @@ dist_tol: 0.5
 max_step: 500
 
 # sensor
-output: [sensor]
-resolution: 256
+output: [sensor, depth]
+resolution: 64
 fov: 90
 
 # display

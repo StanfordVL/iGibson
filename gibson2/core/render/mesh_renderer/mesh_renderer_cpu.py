@@ -246,7 +246,7 @@ class Material:
 
 
 class MeshRenderer:
-    def __init__(self, width=512, height=512, device_idx=0, use_fisheye=False):
+    def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False):
         self.shaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
@@ -310,7 +310,7 @@ class MeshRenderer:
 
         self.lightpos = [0, 0, 0]
         self.setup_framebuffer()
-        self.fov = 20
+        self.fov = fov
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
@@ -385,8 +385,8 @@ class MeshRenderer:
 
         if ret == False:
             print("Warn:", reader.Warning())
-            pint("Err:", reader.Error())
-            print("Failed to load : ", filename)
+            print("Err:", reader.Error())
+            print("Failed to load : ", obj_path)
 
             sys.exit(-1)
 

@@ -16,8 +16,8 @@ class BaseEnv(gym.Env):
         self.config = parse_config(config_file)
         self.simulator = Simulator(mode=mode,
                                    use_fisheye=self.config.get('fisheye', False),
-                                   resolution=self.config['resolution'],
-                                   fov=self.config['fov'],
+                                   resolution=self.config.get('resolution', 64),
+                                   fov=self.config.get('fov', 90),
                                    device_idx=device_idx)
         self.load()
 
@@ -30,9 +30,9 @@ class BaseEnv(gym.Env):
         if self.config['scene'] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
-            scene = BuildingScene(self.config['model_id'])
-
-        self.simulator.import_scene(scene)
+            scene = BuildingScene(self.config['model_id'],
+                                  build_graph=self.config.get('build_graph', False))
+        self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))
         if self.config['robot'] == 'Turtlebot':
             robot = Turtlebot(self.config)
         elif self.config['robot'] == 'Husky':
@@ -54,7 +54,7 @@ class BaseEnv(gym.Env):
             self.simulator.import_robot(robot)
 
     def clean(self):
-        if not self.simulator is None:
+        if self.simulator is not None:
             self.simulator.disconnect()
 
     def simulator_step(self):
