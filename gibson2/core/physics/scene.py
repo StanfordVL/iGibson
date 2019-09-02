@@ -82,7 +82,7 @@ class BuildingScene(Scene):
         self.trav_map_resolution = trav_map_resolution
         self.trav_map_original_size = None
         self.trav_map_size = None
-        self.trav_map_erosion = 3
+        self.trav_map_erosion = 2
         self.build_graph = build_graph
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
@@ -137,7 +137,6 @@ class BuildingScene(Scene):
                 obstacle_map = np.array(obstacle_map.resize((self.trav_map_size, self.trav_map_size)))
                 trav_map[obstacle_map == 0] = 0
                 trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
-                self.floor_map.append(trav_map)
 
                 if self.build_graph:
                     g = nx.Graph()
@@ -151,7 +150,18 @@ class BuildingScene(Scene):
                                     if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and \
                                             trav_map[n[0], n[1]] > 0:
                                         g.add_edge(n, (i, j), weight=self.l2_distance(n, (i, j)))
+
+                    # only take the largest connected component
+                    largest_cc = max(nx.connected_components(g), key=len)
+                    g = nx.subgraph(g, largest_cc)
                     self.floor_graph.append(g)
+
+                    # update trav_map accordingly
+                    trav_map[:, :] = 0
+                    for node in largest_cc:
+                        trav_map[node[0], node[1]] = 255
+
+                self.floor_map.append(trav_map)
 
         return [boundaryUid] + [item for item in self.ground_plane_mjcf]
 
