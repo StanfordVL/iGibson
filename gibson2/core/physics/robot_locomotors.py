@@ -145,7 +145,7 @@ class WalkerBase(BaseRobot):
         else:
             pass
 
-    def apply_action(self, action):
+    def action_to_real_action(self, action):
         if self.is_discrete:
             if isinstance(action, (list, np.ndarray)):
                 assert len(action) == 1 and isinstance(action[0], (np.int64, int)), \
@@ -153,8 +153,16 @@ class WalkerBase(BaseRobot):
                 action = action[0]
             real_action = self.action_list[action]
         else:
+            # self.action_space is usually [-1, 1]
             action = np.clip(action, self.action_space.low, self.action_space.high)
-            real_action = self.action_high * action
+
+            # scale action to appropriate, robot specific scale
+            real_action = (self.action_high - self.action_low) / 2.0 * action + \
+                          (self.action_high + self.action_low) / 2.0
+        return real_action
+
+    def apply_action(self, action):
+        real_action = self.action_to_real_action(action)
         self.apply_real_action(real_action)
 
     def calc_state(self):
@@ -331,16 +339,10 @@ class Humanoid(WalkerBase):
         self.motors = [self.jdict[n] for n in self.motor_names]
 
     def apply_action(self, action):
+        real_action = self.action_to_real_action(action)
         if self.is_discrete:
-            if isinstance(action, (list, np.ndarray)):
-                assert len(action) == 1 and isinstance(action[0], (np.int64, int)), \
-                    "discrete action has incorrect format"
-                action = action[0]
-            real_action = self.action_list[action]
             self.apply_real_action(real_action)
         else:
-            action = np.clip(action, self.action_space.low, self.action_space.high)
-            real_action = self.action_high * action
             force_gain = 1
             for i, m, power in zip(range(17), self.motors, self.motor_power):
                 m.set_motor_torque(float(force_gain * power * self.power * real_action[i]))
@@ -447,16 +449,7 @@ class Quadrotor(WalkerBase):
         self.setup_keys_to_action()
 
     def apply_action(self, action):
-        if self.is_discrete:
-            if isinstance(action, (list, np.ndarray)):
-                assert len(action) == 1 and isinstance(action[0], (np.int64, int)), \
-                    "discrete action has incorrect format"
-                action = action[0]
-            real_action = self.action_list[action]
-        else:
-            action = np.clip(action, self.action_space.low, self.action_space.high)
-            real_action = self.action_high * action
-
+        real_action = self.action_to_real_action(action)
         p.setGravity(0, 0, 0)
         p.resetBaseVelocity(self.robot_ids[0], real_action[:3], real_action[3:])
 
@@ -480,8 +473,64 @@ class Turtlebot(WalkerBase):
     def __init__(self, config):
         self.config = config
         self.velocity = config.get("velocity", 1.0)
+        self.action_high = config.get("action_high", None)
+        self.action_low = config.get("action_low", None)
         WalkerBase.__init__(self,
                             "turtlebot/turtlebot.urdf",
+                            "base_link",
+                            action_dim=2,
+                            sensor_dim=16,
+                            power=2.5,
+                            scale=config.get("robot_scale", self.default_scale),
+                            resolution=config.get("resolution", 64),
+                            is_discrete=config.get("is_discrete", True),
+                            control="velocity")
+
+    def set_up_continuous_action_space(self):
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
+
+        if self.action_high is not None and self.action_low is not None:
+            self.action_high = np.full(shape=self.action_dim, fill_value=self.action_high)
+            self.action_low = np.full(shape=self.action_dim, fill_value=self.action_low)
+        else:
+            self.action_high = np.full(shape=self.action_dim, fill_value=self.velocity)
+            self.action_low = -self.action_high
+
+    def set_up_discrete_action_space(self):
+        self.action_list = [[self.velocity, self.velocity], [-self.velocity, -self.velocity],
+                            [self.velocity * 0.5, -self.velocity * 0.5],
+                            [-self.velocity * 0.5, self.velocity * 0.5], [0, 0]]
+        self.action_space = gym.spaces.Discrete(len(self.action_list))
+        self.setup_keys_to_action()
+
+    def setup_keys_to_action(self):
+        self.keys_to_action = {
+            (ord('w'),): 0,  # forward
+            (ord('s'),): 1,  # backward
+            (ord('d'),): 2,  # turn right
+            (ord('a'),): 3,  # turn left
+            (): 4  # stay still
+        }
+
+    def calc_state(self):
+        base_state = WalkerBase.calc_state(self)
+        angular_velocity = self.robot_body.angular_velocity()
+        return np.concatenate((base_state, np.array(angular_velocity)))
+
+
+class Freight(WalkerBase):
+    mjcf_scaling = 1
+    model_type = "URDF"
+    default_scale = 1
+
+    def __init__(self, config):
+        self.config = config
+        self.velocity = config.get("velocity", 1.0)
+        WalkerBase.__init__(self,
+                            "fetch/freight.urdf",
                             "base_link",
                             action_dim=2,
                             sensor_dim=16,
@@ -520,54 +569,6 @@ class Turtlebot(WalkerBase):
         angular_velocity = self.robot_body.angular_velocity()
         return np.concatenate((base_state, np.array(angular_velocity)))
 
-class Freight(WalkerBase):
-    mjcf_scaling = 1
-    model_type = "URDF"
-    default_scale = 1
-
-    def __init__(self, config):
-        self.config = config
-        self.velocity = config.get("velocity", 1.0)
-        WalkerBase.__init__(self,
-                            "fetch/freight.urdf",
-                            "base_link",
-                            action_dim=2,
-                            sensor_dim=16,
-                            power=2.5,
-                            scale=config.get("robot_scale", self.default_scale),
-                            resolution=config.get("resolution", 64),
-                            is_discrete=config.get("is_discrete", True),
-                            control="velocity")
-
-    def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
-                                           low=-1.0,
-                                           high=1.0,
-                                           dtype=np.float32)
-        self.action_high = self.velocity * np.ones([self.action_dim])
-        self.action_low = -self.action_high
-
-    def set_up_discrete_action_space(self):
-        self.action_list = [[self.velocity, self.velocity], [-self.velocity, -self.velocity],
-                            [self.velocity * 0.5, -self.velocity * 0.5],
-                            [-self.velocity * 0.5, self.velocity * 0.5], [0, 0]]
-        self.action_space = gym.spaces.Discrete(len(self.action_list))
-        self.setup_keys_to_action()
-
-    def setup_keys_to_action(self):
-        self.keys_to_action = {
-            (ord('w'), ): 0,    # forward
-            (ord('s'), ): 1,    # backward
-            (ord('d'), ): 2,    # turn right
-            (ord('a'), ): 3,    # turn left
-            (): 4    # stay still
-        }
-
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-        angular_velocity = self.robot_body.angular_velocity()
-        return np.concatenate((base_state, np.array(angular_velocity)))
-
 
 class Fetch(WalkerBase):
     mjcf_scaling = 1
@@ -589,7 +590,7 @@ class Fetch(WalkerBase):
                             control="velocity")
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim, ),
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
@@ -597,14 +598,15 @@ class Fetch(WalkerBase):
         self.action_low = -self.action_high
 
     def set_up_discrete_action_space(self):
-       self.action_list = []
-       self.action_space = gym.spaces.Discrete(len(self.action_list))
+        self.action_list = []
+        self.action_space = gym.spaces.Discrete(len(self.action_list))
 
     def calc_state(self):
         base_state = WalkerBase.calc_state(self)
         angular_velocity = self.robot_body.angular_velocity()
         print(len(base_state), len(angular_velocity))
         return np.concatenate((base_state, np.array(angular_velocity)))
+
 
 class JR2(WalkerBase):
     mjcf_scaling = 1
@@ -693,8 +695,7 @@ class JR2_Kinova(WalkerBase):
         assert False, "JR2_Kinova does not support discrete actions"
 
     def apply_action(self, action):
-        action = np.clip(action, self.action_space.low, self.action_space.high)
-        denormalized_action = self.action_high * action
+        denormalized_action = self.action_to_real_action(action)
         real_action = np.zeros(self.action_dim)
         real_action[:self.wheel_dim] = denormalized_action[:self.wheel_dim]
         real_action[(self.wheel_dim + self.cam_dim):(self.wheel_dim + self.cam_dim + self.arm_dim)] = \

@@ -47,7 +47,7 @@ class NavigateEnv(BaseEnv):
         self.current_step = 0
         self.stage = None
         self.current_episode = 0
-        self.floor_num = 0
+        self.floor_num = None
         self.successes = collections.deque(maxlen=100)
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
@@ -123,16 +123,26 @@ class NavigateEnv(BaseEnv):
             self.rgb_space = gym.spaces.Box(low=-np.inf,
                                             high=np.inf,
                                             shape=(self.config.get('resolution', 64),
-                                                   self.config.get('resolution', 64), 3),
+                                                   self.config.get('resolution', 64),
+                                                   3),
                                             dtype=np.float32)
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
             self.depth_space = gym.spaces.Box(low=-np.inf,
                                               high=np.inf,
                                               shape=(self.config.get('resolution', 64),
-                                                     self.config.get('resolution', 64), 1),
+                                                     self.config.get('resolution', 64),
+                                                     1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
+        if 'seg' in self.output:
+            self.seg_space = gym.spaces.Box(low=0.0,
+                                            high=1.0,
+                                            shape=(self.config.get('resolution', 64),
+                                                   self.config.get('resolution', 64),
+                                                   3),
+                                            dtype=np.float32)
+            observation_space['seg'] = self.seg_space
         if 'scan' in self.output:
             self.scan_space = gym.spaces.Box(low=-np.inf,
                                              high=np.inf,
@@ -196,8 +206,10 @@ class NavigateEnv(BaseEnv):
         # depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
         # depth = np.clip(depth, 0.0, 5.0) / 5.0
         # depth = 1.0 - depth  # flip black/white
+        # seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, :3]
         # cv2.imshow('rgb', rgb)
         # cv2.imshow('depth', depth)
+        # cv2.imshow('seg', seg)
 
         state = OrderedDict()
         if 'sensor' in self.output:
@@ -214,7 +226,7 @@ class NavigateEnv(BaseEnv):
         if 'normal' in self.output:
             state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
         if 'seg' in self.output:
-            state['seg'] = self.simulator.renderer.render_robot_cameras(modes='seg')
+            state['seg'] = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, :3]
         if 'rgb_filled' in self.output:
             with torch.no_grad():
                 tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
@@ -413,35 +425,46 @@ class NavigateRandomEnv(NavigateEnv):
                                                 automatic_reset=automatic_reset,
                                                 device_idx=device_idx)
         self.random_height = random_height
+        self.random_init_max_trials = self.config.get('random_init_max_trials', 10)
+        self.random_init_z_offset = self.config.get('random_init_z_offset', 0.1)
+
+    def test_valid_position(self, pos):
+        self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + self.random_init_z_offset])
+        self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+
+        collision_links = []
+        for _ in range(self.simulator_loop):
+            self.simulator_step()
+            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+        collision_links = self.filter_collision_links(collision_links)
+        return len(collision_links) == 0
 
     def reset_initial_and_target_pos(self):
         num_trials = 0
-        max_trials = 10
-        while True:  # if collision happens, reinitialize
-            floor, pos = self.scene.get_random_point()
-            self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
-            self.robots[0].set_orientation(
-                orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-
-            collision_links = []
-            for _ in range(self.simulator_loop):
-                self.simulator_step()
-                collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-            collision_links = self.filter_collision_links(collision_links)
-            self.initial_pos = pos
-
-            if len(collision_links) == 0:
+        while True:
+            floor, self.initial_pos = self.scene.get_random_point()
+            if self.test_valid_position(self.initial_pos):
                 break
-
             num_trials += 1
-            if num_trials == max_trials:
-                raise Exception("Failed to initialize agent's position: collision occurs for %d times." % (max_trials))
+            if num_trials == self.random_init_max_trials:
+                raise Exception("Failed to initialize agent's position: collision occurs for %d times."
+                                % self.random_init_max_trials)
 
-        while True:  # if initial and target positions are < 1 meter away from each other, reinitialize
+        num_trials = 0
+        while True:
             _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
             dist = l2_distance(self.initial_pos, self.target_pos)
-            if dist > 1.0:
+            if dist > 1.0 and self.test_valid_position(self.target_pos):
                 break
+            num_trials += 1
+            if num_trials == self.random_init_max_trials:
+                raise Exception("Failed to initialize agent's position: collision occurs for %d times."
+                                % self.random_init_max_trials)
+
+        self.robots[0].set_position(pos=[self.initial_pos[0],
+                                         self.initial_pos[1],
+                                         self.initial_pos[2] + self.random_init_z_offset])
+        self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
         self.floor_num = floor
 
 
@@ -466,31 +489,46 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
                        'object_H3ygj6efM8V.urdf', 'object_RcqC01G24pR.urdf']
 
         self.interactive_objects = []
-        self.interactive_objects_pos = []
-
-        for j in range(0):
-            i = -0.6
+        for _ in range(2):
             for urdf_model in urdf_models:
                 obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
                 self.simulator.import_object(obj)
-                pos = [i, 1 + 0.3 * j, 0.1]
-                obj.set_position(pos)
-                i += 0.2
                 self.interactive_objects.append(obj)
-                self.interactive_objects_pos.append(pos)
+
+        self.visualize_waypoints = False
+        if self.visualize_waypoints:
+            self.waypoints_vis = [VisualObject(visual_shape=p.GEOM_CYLINDER,
+                                               rgba_color=[0, 1, 0, 0.3],
+                                               radius=0.1,
+                                               length=1.0,
+                                               initial_offset=[0, 0, 0.5]) for _ in range(10)]
+            for waypoint in self.waypoints_vis:
+                waypoint.load()
 
     def global_to_local(self, pos):
         return rotate_vector_3d(pos - self.robots[0].get_position(), *self.robots[0].get_rpy())
 
     def get_additional_states(self):
-        target_pos_local_xy = self.global_to_local(self.target_pos)[:2]
+        target_pos_local = self.global_to_local(self.target_pos)
+        linear_velocity_local = rotate_vector_3d(self.robots[0].robot_body.velocity(),
+                                                 *self.robots[0].get_rpy())
+        angular_velocity_local = rotate_vector_3d(self.robots[0].robot_body.angular_velocity(),
+                                                  *self.robots[0].get_rpy())
+
         source = self.robots[0].get_position()[:2]
         target = self.target_pos[:2]
         shortest_path, geodesic_dist = self.scene.get_shortest_path(self.floor_num, source, target)
+
         robot_z = self.robots[0].get_position()[2]
+        if self.visualize_waypoints:
+            for i in range(10):
+                self.waypoints_vis[i].set_position(pos=np.array([shortest_path[i][0], shortest_path[i][1], robot_z]))
         waypoints_local_xy = np.array([self.global_to_local(np.concatenate((waypoint, [robot_z])))[:2]
                                        for waypoint in shortest_path]).flatten()
-        additional_states = np.concatenate((waypoints_local_xy, target_pos_local_xy))
+        additional_states = np.concatenate((waypoints_local_xy,
+                                            target_pos_local,
+                                            linear_velocity_local,
+                                            angular_velocity_local))
         # cache results for reward calculation
         self.new_potential = geodesic_dist
 
@@ -505,13 +543,29 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         return collision_links
 
     def reset_interactive_objects(self):
-        for i in range(len(self.interactive_objects)):
-            self.interactive_objects[i].set_position_rotation(self.interactive_objects_pos[i], [0, 0, 0, 1])
+        for obj in self.interactive_objects:
+            while True:
+                _, pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
+                obj.set_position_rotation([pos[0], pos[1], pos[2] + self.random_init_z_offset],
+                                          quatToXYZW(euler2quat(0.0, 0.0, 0.0), 'wxyz'))
+                has_collision = False
+                for _ in range(self.simulator_loop):
+                    self.simulator_step()
+                    if len(p.getContactPoints(bodyA=obj.body_id)) > 0:
+                        has_collision = True
+                        break
+                if not has_collision:
+                    break
+
+    def reset_floor(self):
+        self.scene.reset_floor(self.floor_num, additional_elevation=0.05)
 
     def reset(self):
+        state = super(InteractiveGibsonNavigateEnv, self).reset()
         self.new_potential = None
+        self.reset_floor()
         self.reset_interactive_objects()
-        return super(InteractiveGibsonNavigateEnv, self).reset()
+        return state
 
 
 class InteractiveNavigateEnv(NavigateEnv):
@@ -1023,7 +1077,8 @@ class InteractiveNavigateEnv(NavigateEnv):
             reward += self.success_reward  # |success_reward| = 10.0
 
         # death penalty
-        if self.robots[0].get_position()[2] > self.death_z_thresh:
+        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
+        if self.robots[0].get_position()[2] > floor_height + self.death_z_thresh:
             reward -= self.success_reward * 1.0
 
         # push door the wrong way
@@ -1097,14 +1152,14 @@ if __name__ == '__main__':
     #     p.addUserDebugParameter('link5', -1.0, 1.0, 0.0),
     # ]
 
-    start = time.time()
     for episode in range(10):
         print('Episode: {}'.format(episode))
+        start = time.time()
         nav_env.reset()
-        for i in range(50):  # 500 steps, 50s world time
+        for step in range(500):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
-            action[:] = 1.0
-            # action[:] = 0
+            # action[:] = -1.0
+            action[:] = -1.0 / 3
             # if nav_env.stage == 0:
             #     action[:2] = 0.5
             # elif nav_env.stage == 1:
@@ -1117,8 +1172,7 @@ if __name__ == '__main__':
             state, reward, done, _ = nav_env.step(action)
             # print('reward', reward)
             if done:
-                print('Episode finished after {} timesteps'.format(i + 1))
+                print('Episode finished after {} timesteps'.format(step + 1))
                 break
-    print("time", (time.time() - start) / 10)
-
+        print(time.time() - start)
     nav_env.clean()
