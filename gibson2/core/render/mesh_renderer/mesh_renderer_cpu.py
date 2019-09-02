@@ -43,6 +43,7 @@ class InstanceGroup(object):
                  id,
                  link_ids,
                  pybullet_uuid,
+                 class_id,
                  poses_trans,
                  poses_rot,
                  dynamic,
@@ -53,6 +54,7 @@ class InstanceGroup(object):
         self.poses_rot = poses_rot
         self.id = id
         self.link_ids = link_ids
+        self.class_id = class_id
         self.robot = robot
         if len(objects) > 0:
             self.renderer = objects[0].renderer
@@ -89,7 +91,7 @@ class InstanceGroup(object):
 
                 GL.glUniform3f(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
-                    *self.renderer.colors[self.id > 0])
+                    float(self.class_id) / 255.0, 0, 0)
 
                 GL.glUniform3f(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
@@ -149,11 +151,12 @@ class Robot(InstanceGroup):
 
 
 class Instance(object):
-    def __init__(self, object, id, pybullet_uuid, pose_trans, pose_rot, dynamic):
+    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic):
         self.object = object
         self.pose_trans = pose_trans
         self.pose_rot = pose_rot
         self.id = id
+        self.class_id = class_id
         self.renderer = object.renderer
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
@@ -178,7 +181,7 @@ class Instance(object):
 
         for object_idx in self.object.VAO_ids:
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
-                           *self.renderer.colors[self.id > 0])
+                           float(self.class_id) / 255.0, 0, 0)
 
             GL.glUniform3f(
                 GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
@@ -538,12 +541,14 @@ class MeshRenderer:
     def add_instance(self,
                      object_id,
                      pybullet_uuid=None,
+                     class_id=0,
                      pose_rot=np.eye(4),
                      pose_trans=np.eye(4),
                      dynamic=False):
         instance = Instance(self.visual_objects[object_id],
                             id=len(self.instances),
                             pybullet_uuid=pybullet_uuid,
+                            class_id=class_id,
                             pose_trans=pose_trans,
                             pose_rot=pose_rot,
                             dynamic=dynamic)
@@ -554,6 +559,7 @@ class MeshRenderer:
                            link_ids,
                            poses_rot,
                            poses_trans,
+                           class_id=0,
                            pybullet_uuid=None,
                            dynamic=False,
                            robot=None):
@@ -561,6 +567,7 @@ class MeshRenderer:
                                        id=len(self.instances),
                                        link_ids=link_ids,
                                        pybullet_uuid=pybullet_uuid,
+                                       class_id=class_id,
                                        poses_trans=poses_trans,
                                        poses_rot=poses_rot,
                                        dynamic=dynamic,
@@ -570,6 +577,7 @@ class MeshRenderer:
     def add_robot(self,
                   object_ids,
                   link_ids,
+                  class_id,
                   poses_rot,
                   poses_trans,
                   pybullet_uuid=None,
@@ -579,6 +587,7 @@ class MeshRenderer:
                       id=len(self.instances),
                       link_ids=link_ids,
                       pybullet_uuid=pybullet_uuid,
+                      class_id=class_id,
                       poses_trans=poses_trans,
                       poses_rot=poses_rot,
                       dynamic=dynamic,
@@ -743,13 +752,13 @@ class MeshRenderer:
 if __name__ == '__main__':
     model_path = sys.argv[1]
     renderer = MeshRenderer(width=256, height=256)
-    renderer.load_object(model_path, load_texture=False)
+    renderer.load_object(model_path, load_texture=True)
     renderer.load_object(os.path.join(gibson2.assets_path, 'models/ycb/011_banana/textured_simple.obj'))
 
-    renderer.add_instance(0)
-    renderer.add_instance(1)
-    renderer.add_instance(1)
-    renderer.add_instance(1)
+    renderer.add_instance(0, class_id=255)
+    renderer.add_instance(1, class_id=127)
+    renderer.add_instance(1, class_id=0)
+    renderer.add_instance(1, class_id=0)
 
     renderer.instances[1].set_position([1, 0, 0.3])
     renderer.instances[2].set_position([1, 0, 0.5])

@@ -68,7 +68,7 @@ class Simulator:
         self.scene = None
         self.objects = []
 
-    def import_scene(self, scene, texture_scale=1.0, load_texture=True):
+    def import_scene(self, scene, texture_scale=1.0, load_texture=True, class_id=0):
         new_objects = scene.load()
         for item in new_objects:
             self.objects.append(item)
@@ -82,15 +82,18 @@ class Simulator:
                                                   texture_scale=texture_scale,
                                                   load_texture=load_texture)
                         self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                        self.renderer.add_instance(
-                            len(self.renderer.visual_objects) - 1, new_object)
+                        self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                                                   pybullet_uuid=new_object,
+                                                   class_id=class_id)
 
                     else:
-                        self.renderer.add_instance(self.visual_objects[filename], new_object)
+                        self.renderer.add_instance(self.visual_objects[filename],
+                                                   pybullet_uuid=new_object,
+                                                   class_id=class_id)
         self.scene = scene
         return new_objects
 
-    def import_object(self, object):
+    def import_object(self, object, class_id=0):
         new_object = object.load()
         self.objects.append(new_object)
         for shape in p.getVisualShapeData(new_object):
@@ -102,11 +105,13 @@ class Simulator:
                     self.renderer.load_object(filename)
                     self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
-                                               new_object,
+                                               pybullet_uuid=new_object,
+                                               class_id=class_id,
                                                dynamic=True)
                 else:
                     self.renderer.add_instance(self.visual_objects[filename],
                                                pybullet_uuid=new_object,
+                                               class_id=class_id,
                                                dynamic=True)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
@@ -116,6 +121,7 @@ class Simulator:
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
                 self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                            pybullet_uuid=new_object,
+                                           class_id=class_id,
                                            dynamic=True)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
@@ -127,6 +133,7 @@ class Simulator:
                     scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
                 self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                            pybullet_uuid=new_object,
+                                           class_id=class_id,
                                            dynamic=True)
             elif type == p.GEOM_BOX:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
@@ -137,11 +144,12 @@ class Simulator:
                                           scale=[dimensions[0], dimensions[1], dimensions[2]])
                 self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                            pybullet_uuid=new_object,
+                                           class_id=class_id,
                                            dynamic=True)
 
         return new_object
 
-    def import_robot(self, robot):
+    def import_robot(self, robot, class_id=0):
         ids = robot.load()
         visual_objects = []
         link_ids = []
@@ -175,9 +183,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
-
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
-                #self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
@@ -188,7 +194,6 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
-
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
@@ -201,7 +206,6 @@ class Simulator:
                                           scale=[dimensions[0], dimensions[1], dimensions[2]])
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
                 link_ids.append(link_id)
-
             if link_id == -1:
                 pos, orn = p.getBasePositionAndOrientation(id)
             else:
@@ -212,6 +216,7 @@ class Simulator:
         self.renderer.add_robot(object_ids=visual_objects,
                                 link_ids=link_ids,
                                 pybullet_uuid=ids[0],
+                                class_id=class_id,
                                 poses_rot=poses_rot,
                                 poses_trans=poses_trans,
                                 dynamic=True,
@@ -219,7 +224,7 @@ class Simulator:
 
         return ids
 
-    def import_interactive_object(self, obj):
+    def import_interactive_object(self, obj, class_id=0):
         ids = obj.load()
         visual_objects = []
         link_ids = []
@@ -287,6 +292,7 @@ class Simulator:
         self.renderer.add_instance_group(object_ids=visual_objects,
                                          link_ids=link_ids,
                                          pybullet_uuid=ids,
+                                         class_id=class_id,
                                          poses_rot=poses_rot,
                                          poses_trans=poses_trans,
                                          dynamic=True,
@@ -320,7 +326,7 @@ class Simulator:
                 poses_rot.append(
                     np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
                 poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
-                #print(instance.pybullet_uuid, link_id, pos, orn)
+                # print(instance.pybullet_uuid, link_id, pos, orn)
 
             instance.poses_rot = poses_rot
             instance.poses_trans = poses_trans
