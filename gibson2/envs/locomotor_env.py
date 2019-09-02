@@ -48,6 +48,7 @@ class NavigateEnv(BaseEnv):
         self.stage = None
         self.current_episode = 0
         self.floor_num = None
+        self.num_object_classes = None
         self.successes = collections.deque(maxlen=100)
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
@@ -140,9 +141,17 @@ class NavigateEnv(BaseEnv):
                                             high=1.0,
                                             shape=(self.config.get('resolution', 64),
                                                    self.config.get('resolution', 64),
-                                                   3),
+                                                   1),
                                             dtype=np.float32)
             observation_space['seg'] = self.seg_space
+        if 'depth_seg' in self.output:
+            self.depth_seg_space = gym.spaces.Box(low=0.0,
+                                                  high=1.0,
+                                                  shape=(self.config.get('resolution', 64),
+                                                         self.config.get('resolution', 64),
+                                                         2),
+                                                  dtype=np.float32)
+            observation_space['depth_seg'] = self.depth_seg_space
         if 'scan' in self.output:
             self.scan_space = gym.spaces.Box(low=-np.inf,
                                              high=np.inf,
@@ -176,7 +185,7 @@ class NavigateEnv(BaseEnv):
                                                    initial_offset=[0, 0, cyl_length / 2.0])
             self.initial_pos_vis_obj.load()
             if self.config.get('target_visual_object_visible_to_agent', False):
-                self.simulator.import_object(self.target_pos_vis_obj)
+                self.simulator.import_object(self.target_pos_vis_obj, class_id=255)
             else:
                 self.target_pos_vis_obj.load()
 
@@ -204,9 +213,11 @@ class NavigateEnv(BaseEnv):
         # rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
         # rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
         # depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-        # depth = np.clip(depth, 0.0, 5.0) / 5.0
+        # depth = np.clip(depth / 5.0, 0.0, 1.0)
         # depth = 1.0 - depth  # flip black/white
-        # seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, :3]
+        # seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
+        # if self.num_object_classes is not None:
+        #     seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
         # cv2.imshow('rgb', rgb)
         # cv2.imshow('depth', depth)
         # cv2.imshow('seg', seg)
@@ -226,7 +237,18 @@ class NavigateEnv(BaseEnv):
         if 'normal' in self.output:
             state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
         if 'seg' in self.output:
-            state['seg'] = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, :3]
+            seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
+            if self.num_object_classes is not None:
+                seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
+            state['seg'] = seg
+        if 'depth_seg' in self.output:
+            depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+            depth = np.clip(depth / 5.0, 0.0, 1.0)
+            seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
+            if self.num_object_classes is not None:
+                seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
+            depth_seg = np.concatenate((depth, seg), axis=2)
+            state['depth_seg'] = depth_seg
         if 'rgb_filled' in self.output:
             with torch.no_grad():
                 tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
@@ -425,7 +447,7 @@ class NavigateRandomEnv(NavigateEnv):
                                                 automatic_reset=automatic_reset,
                                                 device_idx=device_idx)
         self.random_height = random_height
-        self.random_init_max_trials = self.config.get('random_init_max_trials', 10)
+        self.random_init_max_trials = self.config.get('random_init_max_trials', 1000)
         self.random_init_z_offset = self.config.get('random_init_z_offset', 0.1)
 
     def test_valid_position(self, pos):
@@ -488,11 +510,14 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         urdf_models = ['object_2eZY2JqYPQE.urdf', 'object_lGzQi2Pk5uC.urdf', 'object_ZU6u5fvE8Z1.urdf',
                        'object_H3ygj6efM8V.urdf', 'object_RcqC01G24pR.urdf']
 
+        # 0 and 1 are reserved for scene and robot
+        self.num_object_classes = len(urdf_models) + 2
+
         self.interactive_objects = []
         for _ in range(2):
-            for urdf_model in urdf_models:
+            for i, urdf_model in enumerate(urdf_models):
                 obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
-                self.simulator.import_object(obj)
+                self.simulator.import_object(obj, class_id=(i + 2))
                 self.interactive_objects.append(obj)
 
         self.visualize_waypoints = False
@@ -597,11 +622,11 @@ class InteractiveNavigateEnv(NavigateEnv):
                                   half_extents=[20, 20, 0.02], initial_offset=[0, 0, -0.03])
         self.floor.load()
         self.floor.set_position([0, 0, 0])
-        self.simulator.import_object(self.floor)
+        self.simulator.import_object(self.floor, class_id=0)
 
         self.door = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
                                    scale=1.35)
-        self.simulator.import_interactive_object(self.door)
+        self.simulator.import_interactive_object(self.door, class_id=2)
         if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
             self.door.set_position_rotation([100.0, 100.0, -0.03], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
         else:
@@ -635,7 +660,7 @@ class InteractiveNavigateEnv(NavigateEnv):
             self.walls = []
             for box_pose in self.box_poses:
                 box = BoxShape(pos=box_pose[0], dim=[0.5, 0.5, 1])
-                self.simulator.import_interactive_object(box)
+                self.simulator.import_object(box, class_id=3)
                 self.walls += [box]
 
         elif self.arena == "only_ll":
@@ -650,7 +675,7 @@ class InteractiveNavigateEnv(NavigateEnv):
             for wall_pose in self.wall_poses:
                 wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
                                       scale=1)
-                self.simulator.import_interactive_object(wall)
+                self.simulator.import_object(wall, class_id=3)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
 
@@ -668,7 +693,7 @@ class InteractiveNavigateEnv(NavigateEnv):
             for wall_pose in self.wall_poses:
                 wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
                                       scale=1)
-                self.simulator.import_interactive_object(wall)
+                self.simulator.import_object(wall, class_id=3)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
 
@@ -693,7 +718,7 @@ class InteractiveNavigateEnv(NavigateEnv):
             for wall_pose in self.wall_poses:
                 wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
                                       scale=1)
-                self.simulator.import_interactive_object(wall)
+                self.simulator.import_object(wall, class_id=3)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
 
@@ -701,7 +726,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 wall = InteractiveObj(
                     os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_half.urdf'),
                     scale=1)
-                self.simulator.import_interactive_object(wall)
+                self.simulator.import_object(wall, class_id=3)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
 
@@ -709,7 +734,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 wall = InteractiveObj(
                     os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_quarter.urdf'),
                     scale=1)
-                self.simulator.import_interactive_object(wall)
+                self.simulator.import_object(wall, class_id=3)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
 
@@ -786,6 +811,7 @@ class InteractiveNavigateEnv(NavigateEnv):
             32: "m1n6s200_link_6 (hand)",
             33: "end_effector",
         }}
+        self.num_object_classes = 4
 
     def set_subgoal(self, ideal_next_state):
         obs_avg = (self.observation_normalizer['sensor'][1] + self.observation_normalizer['sensor'][0]) / 2.0

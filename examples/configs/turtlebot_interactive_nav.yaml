@@ -38,12 +38,13 @@ collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collision with these agent's
 discount_factor: 0.99
 
 # termination condition
+death_z_thresh: 0.2
 dist_tol: 0.5
 max_step: 500
 
 # sensor
-output: [sensor, depth, seg]
-resolution: 128
+output: [sensor, depth_seg]
+resolution: 64
 fov: 120
 
 # display
