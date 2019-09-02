@@ -6,7 +6,9 @@ load_texture: false
 
 # robot
 robot: Turtlebot
-velocity: 0.1
+#velocity: 0.1
+action_high: 0.1
+action_low: -0.05
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -19,7 +21,7 @@ target_pos: [0, 2, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
-additional_states_dim: 22
+additional_states_dim: 29
 
 # reward
 reward_type: dense
@@ -40,9 +42,9 @@ dist_tol: 0.5
 max_step: 500
 
 # sensor
-output: [sensor, depth]
-resolution: 64
-fov: 90
+output: [sensor, depth, seg]
+resolution: 128
+fov: 120
 
 # display
 use_filler: true

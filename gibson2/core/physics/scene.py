@@ -72,7 +72,7 @@ class StadiumSceneInteractive(Scene):
 class BuildingScene(Scene):
     def __init__(self,
                  model_id,
-                 trav_map_resolution=0.05,
+                 trav_map_resolution=0.1,
                  build_graph=False,
                  num_waypoints=10,
                  waypoint_resolution=0.2,
@@ -201,3 +201,11 @@ class BuildingScene(Scene):
             remaining_waypoints = np.tile(target_world, (num_remaining_waypoints, 1))
             path_world = np.concatenate((path_world, remaining_waypoints), axis=0)
         return path_world, geodesic_distance
+
+    def reset_floor(self, floor, additional_elevation=0.05):
+        p.resetBasePositionAndOrientation(self.ground_plane_mjcf[0],
+                                          posObj=[0, 0, self.floors[floor] + additional_elevation],
+                                          ornObj=[0, 0, 0, 1])
+
+    def get_floor_height(self, floor):
+        return self.floors[floor]
