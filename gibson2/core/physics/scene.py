@@ -153,7 +153,7 @@ class BuildingScene(Scene):
 
                     # only take the largest connected component
                     largest_cc = max(nx.connected_components(g), key=len)
-                    g = nx.subgraph(g, largest_cc)
+                    g = g.subgraph(largest_cc).copy()
                     self.floor_graph.append(g)
 
                     # update trav_map accordingly
