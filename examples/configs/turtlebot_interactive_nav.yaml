@@ -30,7 +30,7 @@ slack_reward: 0.0
 potential_reward_weight: 1.0
 electricity_reward_weight: 0.0
 stall_torque_reward_weight: 0.0
-collision_reward_weight: 0.0
+collision_reward_weight: -1.0
 collision_ignore_body_b_ids: []  # ignore collision with these body B ids (e.g. ground)
 collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collision with these agent's link ids
 
