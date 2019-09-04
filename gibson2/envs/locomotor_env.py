@@ -45,11 +45,13 @@ class NavigateEnv(BaseEnv):
         self.simulator.set_timestep(physics_timestep)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.current_step = 0
+        self.path_length = 0.0
         self.stage = None
         self.current_episode = 0
         self.floor_num = None
         self.num_object_classes = None
-        self.successes = collections.deque(maxlen=100)
+        self.running_average = {key: collections.deque(maxlen=100)
+                                for key in ['success', 'collision_step', 'path_length']}
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
 
@@ -331,6 +333,7 @@ class NavigateEnv(BaseEnv):
         reward += stall_torque_reward * self.stall_torque_reward_weight  # |stall_torque_reward| ~= 0.05 per step
 
         collision_reward = float(len(collision_links) > 0)
+        self.collision_step += int(len(collision_links) > 0)
         info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
 
@@ -375,23 +378,26 @@ class NavigateEnv(BaseEnv):
 
         if done:
             info['episode_length'] = self.current_step
+            info['path_length'] = self.path_length
             info['collision_step'] = self.collision_step
             info['energy_cost'] = self.energy_cost
             info['stage'] = self.stage
-            self.successes.append(float(info['success']))
+            self.running_average['success'].append(float(info['success']))
+            self.running_average['collision_step'].append(self.collision_step)
+            self.running_average['path_length'].append(self.path_length)
 
         return done, info
 
-    def get_success_rate(self):
-        if len(self.successes) == 0:
-            return 0.0
-        else:
-            return sum(self.successes) / len(self.successes)
+    def get_running_average(self):
+        return {key: np.mean(val) if len(val) > 0 else 0.0 for key, val in self.running_average.items()}
 
     def step(self, action):
         self.current_step += 1
         self.robots[0].apply_action(action)
+        prev_position = self.robots[0].get_position()
         collision_links = self.run_simulation()
+        next_position = self.robots[0].get_position()
+        self.path_length += np.linalg.norm(next_position - prev_position)
         state = self.get_state(collision_links)
         info = {}
         reward, info = self.get_reward(collision_links, action, info)
@@ -419,6 +425,7 @@ class NavigateEnv(BaseEnv):
 
         self.current_step = 0
         self.collision_step = 0
+        self.path_length = 0.0
         self.energy_cost = 0.0
 
         # set position for visual objects
@@ -520,8 +527,8 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
                 self.simulator.import_object(obj, class_id=(i + 2))
                 self.interactive_objects.append(obj)
 
-        self.visualize_waypoints = False
-        if self.visualize_waypoints:
+        self.visualize_waypoints = True
+        if self.visualize_waypoints and self.mode == 'gui':
             self.waypoints_vis = [VisualObject(visual_shape=p.GEOM_CYLINDER,
                                                rgba_color=[0, 1, 0, 0.3],
                                                radius=0.1,
@@ -545,7 +552,7 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         shortest_path, geodesic_dist = self.scene.get_shortest_path(self.floor_num, source, target)
 
         robot_z = self.robots[0].get_position()[2]
-        if self.visualize_waypoints:
+        if self.visualize_waypoints and self.mode == 'gui':
             for i in range(10):
                 self.waypoints_vis[i].set_position(pos=np.array([shortest_path[i][0], shortest_path[i][1], robot_z]))
         waypoints_local_xy = np.array([self.global_to_local(np.concatenate((waypoint, [robot_z])))[:2]
