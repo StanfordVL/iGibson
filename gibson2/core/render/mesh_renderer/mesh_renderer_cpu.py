@@ -460,8 +460,16 @@ class MeshRenderer:
             shape_texcoord_index = np_indices[:,2]
 
             shape_vertex = vertex_position[shape_vertex_index]
-            shape_normal = vertex_normal[shape_normal_index]
-            shape_texcoord = vertex_texcoord[shape_texcoord_index]
+
+            if len(vertex_normal) == 0:
+                shape_normal = np.zeros((shape_vertex.shape[0], 3)) #dummy normal if normal is not available
+            else:
+                shape_normal = vertex_normal[shape_normal_index]
+            
+            if len(vertex_texcoord) == 0:
+                shape_texcoord = np.zeros((shape_vertex.shape[0], 2)) #dummy texcoord if texcoord is not available
+            else:
+                shape_texcoord = vertex_texcoord[shape_texcoord_index]
 
             #from IPython import embed; embed()
             #for (i, idx) in enumerate(shape.mesh.indices):
