@@ -1,4 +1,4 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
+from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import BuildingScene, StadiumScene
 import gibson2
@@ -12,8 +12,14 @@ class BaseEnv(gym.Env):
     a basic environment, step, observation and reward not implemented
     '''
 
-    def __init__(self, config_file, mode='headless', device_idx=0):
+    def __init__(self,
+                 config_file,
+                 model_id=None,
+                 mode='headless',
+                 device_idx=0):
         self.config = parse_config(config_file)
+        if model_id is not None:
+            self.config['model_id'] = model_id
         self.simulator = Simulator(mode=mode,
                                    use_fisheye=self.config.get('fisheye', False),
                                    resolution=self.config.get('resolution', 64),
@@ -49,6 +55,10 @@ class BaseEnv(gym.Env):
             robot = JR2(self.config)
         elif self.config['robot'] == 'JR2_Kinova':
             robot = JR2_Kinova(self.config)
+        elif self.config['robot'] == 'Freight':
+            robot = Freight(self.config)
+        elif self.config['robot'] == 'Fetch':
+            robot = Fetch(self.config)
         else:
             raise Exception('unknown robot type: {}'.format(self.config['robot']))
 

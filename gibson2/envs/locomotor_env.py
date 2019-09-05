@@ -29,13 +29,17 @@ class NavigateEnv(BaseEnv):
     def __init__(
             self,
             config_file,
+            model_id=None,
             mode='headless',
             action_timestep=1 / 10.0,
             physics_timestep=1 / 240.0,
             automatic_reset=False,
             device_idx=0,
     ):
-        super(NavigateEnv, self).__init__(config_file=config_file, mode=mode, device_idx=device_idx)
+        super(NavigateEnv, self).__init__(config_file=config_file,
+                                          model_id=model_id,
+                                          mode=mode,
+                                          device_idx=device_idx)
         self.automatic_reset = automatic_reset
 
         # simulation
@@ -174,15 +178,15 @@ class NavigateEnv(BaseEnv):
         self.visual_object_at_initial_target_pos = self.config.get('visual_object_at_initial_target_pos', False)
 
         if self.visual_object_at_initial_target_pos:
-            cyl_length = 3.0
+            cyl_length = 0.2
             self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
                                                     rgba_color=[1, 0, 0, 0.3],
-                                                    radius=0.5,
+                                                    radius=self.dist_tol,
                                                     length=cyl_length,
                                                     initial_offset=[0, 0, cyl_length / 2.0])
             self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
                                                    rgba_color=[0, 0, 1, 0.3],
-                                                   radius=0.5,
+                                                   radius=self.dist_tol,
                                                    length=cyl_length,
                                                    initial_offset=[0, 0, cyl_length / 2.0])
             self.initial_pos_vis_obj.load()
@@ -299,7 +303,9 @@ class NavigateEnv(BaseEnv):
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
-        return [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_b_ids]
+        return [elem for elem in collision_links
+                if elem[2] not in self.collision_ignore_body_b_ids and
+                elem[3] not in self.collision_ignore_link_a_ids]
 
     def get_position_of_interest(self):
         if self.config['task'] == 'pointgoal':
@@ -354,12 +360,13 @@ class NavigateEnv(BaseEnv):
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
         # max_force = max([elem[9] for elem in collision_links]) if len(collision_links) > 0 else 0
 
+        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
             print("GOAL")
             done = True
             info['success'] = True
 
-        elif self.robots[0].get_position()[2] > self.death_z_thresh:
+        elif self.robots[0].get_position()[2] > floor_height + self.death_z_thresh:
             print("DEATH")
             done = True
             info['success'] = False
@@ -440,6 +447,7 @@ class NavigateRandomEnv(NavigateEnv):
     def __init__(
             self,
             config_file,
+            model_id=None,
             mode='headless',
             action_timestep=1 / 10.0,
             physics_timestep=1 / 240.0,
@@ -448,6 +456,7 @@ class NavigateRandomEnv(NavigateEnv):
             device_idx=0,
     ):
         super(NavigateRandomEnv, self).__init__(config_file,
+                                                model_id=model_id,
                                                 mode=mode,
                                                 action_timestep=action_timestep,
                                                 physics_timestep=physics_timestep,
@@ -500,6 +509,7 @@ class NavigateRandomEnv(NavigateEnv):
 class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
     def __init__(self,
                  config_file,
+                 model_id=None,
                  mode='headless',
                  action_timestep=1 / 10.0,
                  physics_timestep=1 / 240.0,
@@ -507,6 +517,7 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
                  automatic_reset=False,
                  ):
         super(InteractiveGibsonNavigateEnv, self).__init__(config_file,
+                                                           model_id=model_id,
                                                            mode=mode,
                                                            action_timestep=action_timestep,
                                                            physics_timestep=physics_timestep,
@@ -529,11 +540,12 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
 
         self.visualize_waypoints = True
         if self.visualize_waypoints and self.mode == 'gui':
+            cyl_length = 0.2
             self.waypoints_vis = [VisualObject(visual_shape=p.GEOM_CYLINDER,
                                                rgba_color=[0, 1, 0, 0.3],
                                                radius=0.1,
-                                               length=1.0,
-                                               initial_offset=[0, 0, 0.5]) for _ in range(10)]
+                                               length=cyl_length,
+                                               initial_offset=[0, 0, cyl_length / 2.0]) for _ in range(10)]
             for waypoint in self.waypoints_vis:
                 waypoint.load()
 
@@ -570,10 +582,6 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
     def get_potential(self):
         return self.new_potential
 
-    def filter_collision_links(self, collision_links):
-        collision_links = [elem for elem in collision_links if elem[3] not in self.collision_ignore_link_a_ids]
-        return collision_links
-
     def reset_interactive_objects(self):
         for obj in self.interactive_objects:
             while True:
@@ -589,13 +597,11 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
                 if not has_collision:
                     break
 
-    def reset_floor(self):
-        self.scene.reset_floor(self.floor_num, additional_elevation=0.05)
-
     def reset(self):
+        self.scene.reset_floor(height=-100.0)
         state = super(InteractiveGibsonNavigateEnv, self).reset()
         self.new_potential = None
-        self.reset_floor()
+        self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.05)
         self.reset_interactive_objects()
         return state
 
@@ -988,7 +994,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         return auxiliary_sensor
 
     def filter_collision_links(self, collision_links):
-        collision_links = [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_b_ids]
+        collision_links = super(InteractiveNavigateEnv, self).filter_collision_links(collision_links)
         # ignore collision between hand and door
         collision_links = [elem for elem in collision_links if
                            not (elem[2] == self.door.body_id and elem[3] in [32, 33])]
@@ -1185,14 +1191,14 @@ if __name__ == '__main__':
     #     p.addUserDebugParameter('link5', -1.0, 1.0, 0.0),
     # ]
 
-    for episode in range(10):
+    for episode in range(100):
         print('Episode: {}'.format(episode))
         start = time.time()
         nav_env.reset()
-        for step in range(500):  # 500 steps, 50s world time
+        for step in range(50):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             # action[:] = -1.0
-            action[:] = -1.0 / 3
+            # action[:] = -1.0 / 3
             # if nav_env.stage == 0:
             #     action[:2] = 0.5
             # elif nav_env.stage == 1:

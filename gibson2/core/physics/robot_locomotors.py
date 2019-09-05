@@ -578,10 +578,13 @@ class Fetch(WalkerBase):
     def __init__(self, config):
         self.config = config
         self.velocity = config.get("velocity", 1.0)
+        self.wheel_dim = 2
+        self.action_high = config.get("action_high", None)
+        self.action_low = config.get("action_low", None)
         WalkerBase.__init__(self,
                             "fetch/fetch.urdf",
                             "base_link",
-                            action_dim=15,
+                            action_dim=6,
                             sensor_dim=55,
                             power=2.5,
                             scale=config.get("robot_scale", self.default_scale),
@@ -590,16 +593,31 @@ class Fetch(WalkerBase):
                             control="velocity")
 
     def set_up_continuous_action_space(self):
-        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
+        if self.action_high is not None and self.action_low is not None:
+            self.action_high = np.full(shape=self.wheel_dim, fill_value=self.action_high)
+            self.action_low = np.full(shape=self.wheel_dim, fill_value=self.action_low)
+        else:
+            self.action_high = np.full(shape=self.wheel_dim, fill_value=self.velocity)
+            self.action_low = -self.action_high
+        self.action_space = gym.spaces.Box(shape=(self.wheel_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
-        self.action_high = self.velocity * np.ones([self.action_dim])
-        self.action_low = -self.action_high
 
     def set_up_discrete_action_space(self):
-        self.action_list = []
-        self.action_space = gym.spaces.Discrete(len(self.action_list))
+        assert False, "Fetch does not support discrete actions"
+
+    def robot_specific_reset(self):
+        super(Fetch, self).robot_specific_reset()
+        # roll the arm to its body
+        for i in range(2, 6):
+            self.ordered_joints[i].reset_joint_state(np.pi / 2.0, 0.0)
+
+    def apply_action(self, action):
+        denormalized_action = self.action_to_real_action(action)
+        real_action = np.zeros(self.action_dim)
+        real_action[:self.wheel_dim] = denormalized_action
+        self.apply_real_action(real_action)
 
     def calc_state(self):
         base_state = WalkerBase.calc_state(self)
