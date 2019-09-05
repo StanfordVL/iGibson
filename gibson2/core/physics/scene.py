@@ -212,9 +212,10 @@ class BuildingScene(Scene):
             path_world = np.concatenate((path_world, remaining_waypoints), axis=0)
         return path_world, geodesic_distance
 
-    def reset_floor(self, floor, additional_elevation=0.05):
+    def reset_floor(self, floor=0, additional_elevation=0.05, height=None):
+        height = height if height is not None else self.floors[floor] + additional_elevation
         p.resetBasePositionAndOrientation(self.ground_plane_mjcf[0],
-                                          posObj=[0, 0, self.floors[floor] + additional_elevation],
+                                          posObj=[0, 0, height],
                                           ornObj=[0, 0, 0, 1])
 
     def get_floor_height(self, floor):

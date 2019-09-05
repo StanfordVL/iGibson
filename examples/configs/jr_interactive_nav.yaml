@@ -77,7 +77,7 @@ potential_reward_weight: 2.0
 electricity_reward_weight: -0.001
 stall_torque_reward_weight: 0.0
 collision_reward_weight: -0.01
-collision_ignore_body_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
+collision_ignore_body_b_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
 
 # discount factor
 discount_factor: 0.99
