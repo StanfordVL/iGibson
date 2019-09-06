@@ -73,6 +73,7 @@ class BuildingScene(Scene):
     def __init__(self,
                  model_id,
                  trav_map_resolution=0.1,
+                 trav_map_erosion=2,
                  build_graph=False,
                  num_waypoints=10,
                  waypoint_resolution=0.2,
@@ -82,7 +83,7 @@ class BuildingScene(Scene):
         self.trav_map_resolution = trav_map_resolution
         self.trav_map_original_size = None
         self.trav_map_size = None
-        self.trav_map_erosion = 2
+        self.trav_map_erosion = trav_map_erosion
         self.build_graph = build_graph
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)

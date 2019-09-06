@@ -54,8 +54,17 @@ class NavigateEnv(BaseEnv):
         self.current_episode = 0
         self.floor_num = None
         self.num_object_classes = None
+        metrics = [
+            'success',
+            'collision_step',
+            'path_length',
+            'spl',
+            'kinematic_disturbance',
+            'dynamic_disturbance_a',
+            'dynamic_disturbance_b',
+        ]
         self.running_average = {key: collections.deque(maxlen=100)
-                                for key in ['success', 'collision_step', 'path_length']}
+                                for key in metrics}
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
 
@@ -299,13 +308,14 @@ class NavigateEnv(BaseEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
-        return [elem for elem in collision_links
-                if elem[2] not in self.collision_ignore_body_b_ids and
-                elem[3] not in self.collision_ignore_link_a_ids]
+        return [[item for item in collision_per_sim_step
+                 if item[2] not in self.collision_ignore_body_b_ids and
+                 item[3] not in self.collision_ignore_link_a_ids]
+                for collision_per_sim_step in collision_links]
 
     def get_position_of_interest(self):
         if self.config['task'] == 'pointgoal':
@@ -320,6 +330,7 @@ class NavigateEnv(BaseEnv):
         return l2_distance(self.target_pos, self.get_position_of_interest())
 
     def get_reward(self, collision_links=[], action=None, info={}):
+        collision_links_flatten = [item for sublist in collision_links for item in sublist]
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
         if self.reward_type == 'l2':
@@ -338,8 +349,8 @@ class NavigateEnv(BaseEnv):
         stall_torque_reward = 0.0
         reward += stall_torque_reward * self.stall_torque_reward_weight  # |stall_torque_reward| ~= 0.05 per step
 
-        collision_reward = float(len(collision_links) > 0)
-        self.collision_step += int(len(collision_links) > 0)
+        collision_reward = float(len(collision_links_flatten) > 0)
+        self.collision_step += int(len(collision_links_flatten) > 0)
         info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
 
@@ -351,14 +362,13 @@ class NavigateEnv(BaseEnv):
 
     def get_termination(self, collision_links=[], info={}):
         done = False
-
-        # for elem in collision_links:
-        #     if elem[9] > 500:
-        #         print("collision between " + self.id_to_name[self.robots[0].robot_ids[0]]["links"][elem[3]]
-        #               + " and " + self.id_to_name[elem[2]]["links"][elem[4]])
+        # for item in collision_links_flatten:
+        #     if item[9] > 500:
+        #         print("collision between " + self.id_to_name[self.robots[0].robot_ids[0]]["links"][item[3]]
+        #               + " and " + self.id_to_name[item[2]]["links"][item[4]])
 
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
-        # max_force = max([elem[9] for elem in collision_links]) if len(collision_links) > 0 else 0
+        # max_force = max([item[9] for item in collision_links_flatten]) if len(collision_links_flatten) > 0 else 0
 
         floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
@@ -389,22 +399,40 @@ class NavigateEnv(BaseEnv):
             info['collision_step'] = self.collision_step
             info['energy_cost'] = self.energy_cost
             info['stage'] = self.stage
+
+            _, geodesic_dist = self.scene.get_shortest_path(self.floor_num, self.initial_pos[:2], self.target_pos[:2])
             self.running_average['success'].append(float(info['success']))
             self.running_average['collision_step'].append(self.collision_step)
             self.running_average['path_length'].append(self.path_length)
-
+            spl = float(info['success']) * min(1.0, self.path_length / geodesic_dist)
+            self.running_average['spl'].append(spl)
+            min_kin_dist = self.path_length * self.robots[0].robot_mass
+            kinematic_disturbance = min_kin_dist / (min_kin_dist + self.kinematic_disturbance)
+            self.running_average['kinematic_disturbance'].append(kinematic_disturbance)
+            min_dyn_dist = self.current_step * self.robots[0].robot_mass * 9.8
+            dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
+            self.running_average['dynamic_disturbance_a'].append(dynamic_disturbance_a)
+            dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
+            self.running_average['dynamic_disturbance_b'].append(dynamic_disturbance_b)
         return done, info
 
     def get_running_average(self):
         return {key: np.mean(val) if len(val) > 0 else 0.0 for key, val in self.running_average.items()}
 
+    def before_simulation(self):
+        return None
+
+    def after_simulation(self, cache, collision_links):
+        return
+
     def step(self, action):
         self.current_step += 1
         self.robots[0].apply_action(action)
-        prev_position = self.robots[0].get_position()
+
+        cache = self.before_simulation()
         collision_links = self.run_simulation()
-        next_position = self.robots[0].get_position()
-        self.path_length += np.linalg.norm(next_position - prev_position)
+        self.after_simulation(cache, collision_links)
+
         state = self.get_state(collision_links)
         info = {}
         reward, info = self.get_reward(collision_links, action, info)
@@ -432,6 +460,9 @@ class NavigateEnv(BaseEnv):
 
         self.current_step = 0
         self.collision_step = 0
+        self.kinematic_disturbance = 0.0
+        self.dynamic_disturbance_a = 0.0
+        self.dynamic_disturbance_b = 0.0
         self.path_length = 0.0
         self.energy_cost = 0.0
 
@@ -469,13 +500,9 @@ class NavigateRandomEnv(NavigateEnv):
     def test_valid_position(self, pos):
         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + self.random_init_z_offset])
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-
-        collision_links = []
-        for _ in range(self.simulator_loop):
-            self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-        collision_links = self.filter_collision_links(collision_links)
-        return len(collision_links) == 0
+        collision_links = self.run_simulation()
+        collision_links_flatten = [item for sublist in collision_links for item in sublist]
+        return len(collision_links_flatten) == 0
 
     def reset_initial_and_target_pos(self):
         num_trials = 0
@@ -603,7 +630,31 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         self.new_potential = None
         self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.05)
         self.reset_interactive_objects()
+        # let robot and objects fall down
+        for _ in range(int(0.5 / self.physics_timestep)):
+            self.simulator_step()
         return state
+
+    def before_simulation(self):
+        robot_position = self.robots[0].get_position()
+        object_positions = [obj.get_position() for obj in self.interactive_objects]
+        return robot_position, object_positions
+
+    def after_simulation(self, cache, collision_links):
+        robot_position, object_positions = cache
+        self.path_length += np.linalg.norm(self.robots[0].get_position() - robot_position)
+        self.kinematic_disturbance += np.sum([
+            obj.mass * np.linalg.norm(np.array(obj.get_position()) - np.array(prev_pos))
+            for obj, prev_pos in zip(self.interactive_objects, object_positions)
+        ])
+        collision_links_flatten = [item for sublist in collision_links for item in sublist]
+        if len(collision_links_flatten) > 0:
+            self.dynamic_disturbance_a += np.mean([
+                np.linalg.norm(
+                    np.sum([elem[9] * np.array(elem[7]) for elem in sublist], axis=0)  # sum of all forces
+                )
+                for sublist in collision_links])
+            self.dynamic_disturbance_b += len(np.unique([col[2] for col in collision_links_flatten]))
 
 
 class InteractiveNavigateEnv(NavigateEnv):
@@ -890,14 +941,11 @@ class InteractiveNavigateEnv(NavigateEnv):
                 else:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, 0), 'wxyz'))
 
-            collision_links = []
-            for _ in range(self.simulator_loop):
-                self.simulator_step()
-                collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-            collision_links = self.filter_collision_links(collision_links)
+            collision_links = self.run_simulation()
+            collision_links_flatten = [item for sublist in collision_links for item in sublist]
             self.initial_pos = pos
 
-            if len(collision_links) == 0:
+            if len(collision_links_flatten) == 0:
                 break
 
             num_trials += 1
@@ -982,7 +1030,8 @@ class InteractiveNavigateEnv(NavigateEnv):
         robot_pos = self.robots[0].get_position()
         door_pos_local = rotate_vector_3d(door_pos - robot_pos, roll, pitch, yaw)
         target_pos_local = rotate_vector_3d(target_pos - robot_pos, roll, pitch, yaw)
-        has_collision = 1.0 if len(collision_links) > 0 else -1.0
+        collision_links_flatten = [item for sublist in collision_links for item in sublist]
+        has_collision = 1.0 if len(collision_links_flatten) > 0 else -1.0
 
         auxiliary_sensor[49:52] = np.array([yaw, cos_yaw, sin_yaw])
         auxiliary_sensor[52:56] = np.array([door_angle, cos_door_angle, sin_door_angle, has_door_handle_in_hand])
@@ -996,8 +1045,9 @@ class InteractiveNavigateEnv(NavigateEnv):
     def filter_collision_links(self, collision_links):
         collision_links = super(InteractiveNavigateEnv, self).filter_collision_links(collision_links)
         # ignore collision between hand and door
-        collision_links = [elem for elem in collision_links if
-                           not (elem[2] == self.door.body_id and elem[3] in [32, 33])]
+        collision_links = [[item for item in sublist
+                            if not (item[2] == self.door.body_id and item[3] in [32, 33])]
+                           for sublist in collision_links]
         return collision_links
 
     def step(self, action):
@@ -1105,8 +1155,9 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.energy_cost += electricity_reward
         reward += electricity_reward * self.electricity_reward_weight
 
-        collision_reward = float(len(collision_links) > 0)
-        self.collision_step += int(collision_reward)
+        collision_links_flatten = [item for sublist in collision_links for item in sublist]
+        collision_reward = float(len(collision_links_flatten) > 0)
+        self.collision_step += int(len(collision_links_flatten) > 0)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
         info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
         # self.reward_stats.append(np.abs(collision_reward * self.collision_reward_weight))

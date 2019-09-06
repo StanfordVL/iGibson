@@ -169,7 +169,12 @@ class InteractiveObj(object):
 
     def load(self):
         self.body_id = p.loadURDF(self.filename, globalScaling=self.scale)
+        self.mass = p.getDynamicsInfo(self.body_id, -1)[0]
         return self.body_id
+
+    def get_position(self):
+        pos, _ = p.getBasePositionAndOrientation(self.body_id)
+        return pos
 
     def set_position(self, pos):
         org_pos, org_orn = p.getBasePositionAndOrientation(self.body_id)
