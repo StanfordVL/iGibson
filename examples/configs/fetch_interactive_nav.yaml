@@ -1,7 +1,7 @@
 # scene
 scene: building
-model_id: Norvelt
-#model_id: Albertville
+#model_id: Norvelt
+model_id: Albertville
 build_graph: true
 load_texture: false
 
