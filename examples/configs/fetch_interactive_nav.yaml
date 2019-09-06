@@ -4,6 +4,7 @@ scene: building
 model_id: Albertville
 build_graph: true
 load_texture: false
+trav_map_erosion: 3
 
 # robot
 robot: Fetch
@@ -39,7 +40,7 @@ discount_factor: 0.99
 
 # termination condition
 death_z_thresh: 0.2
-dist_tol: 0.5
+dist_tol: 0.5  # diameter of Fetch
 max_step: 500
 
 # sensor

@@ -36,8 +36,11 @@ class BaseEnv(gym.Env):
         if self.config['scene'] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
-            scene = BuildingScene(self.config['model_id'],
-                                  build_graph=self.config.get('build_graph', False))
+            scene = BuildingScene(
+                self.config['model_id'],
+                build_graph=self.config.get('build_graph', False),
+                trav_map_erosion=self.config.get('trav_map_erosion', 2)
+            )
 
         # scene: class_id = 0
         # robot: class_id = 1
