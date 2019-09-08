@@ -75,6 +75,7 @@ class BuildingScene(Scene):
                  trav_map_resolution=0.1,
                  trav_map_erosion=2,
                  build_graph=False,
+                 should_load_replaced_objects=False,
                  num_waypoints=10,
                  waypoint_resolution=0.2,
                  ):
@@ -85,6 +86,7 @@ class BuildingScene(Scene):
         self.trav_map_size = None
         self.trav_map_erosion = trav_map_erosion
         self.build_graph = build_graph
+        self.should_load_replaced_objects = should_load_replaced_objects
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
 
@@ -96,7 +98,10 @@ class BuildingScene(Scene):
         if os.path.isfile(filename):
             print('Using down-sampled mesh!')
         else:
-            filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
+            if self.should_load_replaced_objects:
+                filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_cleaned.obj")
+            else:
+                filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
         scaling = [1, 1, 1]
         collisionId = p.createCollisionShape(p.GEOM_MESH,
                                              fileName=filename,
@@ -171,6 +176,9 @@ class BuildingScene(Scene):
                 self.floor_map.append(trav_map)
 
         return [boundaryUid] + [item for item in self.ground_plane_mjcf]
+
+    def get_random_floor(self):
+        return np.random.randint(0, high=len(self.floors))
 
     def get_random_point(self):
         floor = np.random.randint(0, high=len(self.floors))

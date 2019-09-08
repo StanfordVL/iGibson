@@ -1,9 +1,12 @@
 # scene
 scene: building
+model_id: Kerrtown
 #model_id: Norvelt
-model_id: Albertville
+#model_id: Albertville
 build_graph: true
 load_texture: false
+should_load_replaced_objects: true
+should_load_additional_objects: true
 trav_map_erosion: 3
 
 # robot
@@ -40,12 +43,12 @@ discount_factor: 0.99
 
 # termination condition
 death_z_thresh: 0.2
-dist_tol: 0.5  # diameter of Fetch
+dist_tol: 0.5  # body width
 max_step: 500
 
 # sensor
 output: [sensor, depth_seg]
-resolution: 64
+resolution: 68
 fov: 120
 
 # display
