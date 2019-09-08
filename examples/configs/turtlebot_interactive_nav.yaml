@@ -1,6 +1,6 @@
 # scene
 scene: building
-model_id: Norvelt
+model_id: Kerrtown
 #model_id: Albertville
 build_graph: true
 load_texture: false
