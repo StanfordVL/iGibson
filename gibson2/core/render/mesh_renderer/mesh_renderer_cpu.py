@@ -182,7 +182,6 @@ class Instance(object):
         for object_idx in self.object.VAO_ids:
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
                            float(self.class_id) / 255.0, 0, 0)
-
             GL.glUniform3f(
                 GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
                 *self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd)
@@ -429,14 +428,14 @@ class MeshRenderer:
                     material = Material('color', kd=kd)
                 
                 self.materials_mapping[i + material_count] = material
-                
 
             if not is_texture:
                 self.materials_mapping[i + material_count] = Material('color', kd=kd)
 
-        if not input_kd is None:    # urdf material
-            self.materials_mapping[len(materials) + material_count] = Material('color',
-                                                                                kd=input_kd)
+        if input_kd is not None:  # urdf material
+            self.materials_mapping[len(materials) + material_count] = Material('color', kd=input_kd)
+        elif len(materials) == 0:  # urdf material not specified, but it is required
+            self.materials_mapping[len(materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5])
 
         print(self.materials_mapping)
         VAO_ids = []
@@ -532,7 +531,7 @@ class MeshRenderer:
             self.VBOs.append(VBO)
             self.faces.append(faces)
             self.objects.append(obj_path)
-            if material_id == -1:    # if there is no material, use urdf color as material
+            if material_id == -1:  # if no material, use urdf color as material
                 self.mesh_materials.append(len(materials) + material_count)
             else:
                 self.mesh_materials.append(material_id + material_count)

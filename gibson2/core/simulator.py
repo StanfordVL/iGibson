@@ -75,7 +75,6 @@ class Simulator:
         for new_object in new_objects:
             for shape in p.getVisualShapeData(new_object):
                 id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
-                print('scene component type', type)
                 if type == p.GEOM_MESH:
                     filename = filename.decode('utf-8')
                     if not filename in self.visual_objects.keys():
