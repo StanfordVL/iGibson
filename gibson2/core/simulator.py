@@ -74,7 +74,8 @@ class Simulator:
             self.objects.append(item)
         for new_object in new_objects:
             for shape in p.getVisualShapeData(new_object):
-                id, _, type, _, filename = shape[:5]
+                id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
+                print('scene component type', type)
                 if type == p.GEOM_MESH:
                     filename = filename.decode('utf-8')
                     if not filename in self.visual_objects.keys():
@@ -90,6 +91,20 @@ class Simulator:
                         self.renderer.add_instance(self.visual_objects[filename],
                                                    pybullet_uuid=new_object,
                                                    class_id=class_id)
+        
+
+                elif type == p.GEOM_PLANE:
+                    filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                    self.renderer.load_object(filename,
+                                              transform_orn=rel_orn,
+                                              transform_pos=rel_pos,
+                                              input_kd=color[:3],
+                                              scale=[100, 100, 0.01])
+                    self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                                               pybullet_uuid=new_object,
+                                               class_id=class_id,
+                                               dynamic=True)
+
         self.scene = scene
         return new_objects
 

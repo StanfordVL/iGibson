@@ -533,6 +533,7 @@ class NavigateRandomEnv(NavigateEnv):
         self.floor_num = floor
 
 
+
 class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
     def __init__(self,
                  config_file,
@@ -552,18 +553,16 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
                                                            random_height=False,
                                                            device_idx=device_idx)
 
-        urdf_models = ['object_2eZY2JqYPQE.urdf', 'object_lGzQi2Pk5uC.urdf', 'object_ZU6u5fvE8Z1.urdf',
-                       'object_H3ygj6efM8V.urdf', 'object_RcqC01G24pR.urdf']
-
-        # 0 and 1 are reserved for scene and robot
-        self.num_object_classes = len(urdf_models) + 2
-
+        
         self.interactive_objects = []
-        for _ in range(2):
-            for i, urdf_model in enumerate(urdf_models):
-                obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
-                self.simulator.import_object(obj, class_id=(i + 2))
-                self.interactive_objects.append(obj)
+        self.replaced_objects = []
+        self.replaced_objects_pos = []
+
+        self.class_map = {}
+        self.num_object_classes = 2
+        
+        self.load_replaced_objects()
+        self.load_additional_objects()
 
         self.visualize_waypoints = True
         if self.visualize_waypoints and self.mode == 'gui':
@@ -575,6 +574,46 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
                                                initial_offset=[0, 0, cyl_length / 2.0]) for _ in range(10)]
             for waypoint in self.waypoints_vis:
                 waypoint.load()
+    
+
+    def load_additional_objects(self):
+        urdf_models = ['object_2eZY2JqYPQE.urdf', 'object_lGzQi2Pk5uC.urdf', 'object_ZU6u5fvE8Z1.urdf',
+                       'object_H3ygj6efM8V.urdf', 'object_RcqC01G24pR.urdf']
+        # 0 and 1 are reserved for scene and robot
+        self.num_object_classes  += len(urdf_models)
+
+        for _ in range(2):
+            for i, urdf_model in enumerate(urdf_models):
+                obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
+                self.simulator.import_object(obj, class_id=(i + 2))
+                self.interactive_objects.append(obj)
+
+    def load_replaced_objects(self):
+        scene_path = os.path.join(gibson2.assets_path, 'dataset', self.scene.model_id)
+        urdf_files = [item for item in os.listdir(scene_path) if item[-4:] == 'urdf']
+
+        position_files = [item[:-4].replace('alignment_centered', 'pos') + 'txt' for item in urdf_files]
+        
+        urdf_files_filtered = []
+        for i,position_file in enumerate(position_files):
+             with open(os.path.join(scene_path, position_file)) as f:
+                pos = np.array([float(item) for item in f.readlines()[0].strip().split(' ')])
+                if len(self.replaced_objects_pos) == 0 or np.min(np.linalg.norm(np.array(self.replaced_objects_pos) - pos, axis=1)) > 0.5:
+                    self.replaced_objects_pos.append(pos)
+                    urdf_files_filtered.append(urdf_files[i])
+
+        class_ids = [item.split('.')[0].split('_')[-1] for item in urdf_files_filtered] 
+        for class_id in class_ids:
+            if not class_id in self.class_map:
+                self.class_map[class_id] = self.num_object_classes 
+                self.num_object_classes += 1
+
+        for urdf_model, class_id in zip(urdf_files_filtered, class_ids):
+            obj = InteractiveObj(os.path.join(scene_path, urdf_model))
+            self.simulator.import_object(obj, class_id=self.class_map[class_id])
+            self.replaced_objects.append(obj)
+           
+        #from IPython import embed; embed()
 
     def global_to_local(self, pos):
         return rotate_vector_3d(pos - self.robots[0].get_position(), *self.robots[0].get_rpy())
@@ -624,12 +663,21 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
                 if not has_collision:
                     break
 
+    def reset_replaced_objects(self):
+        for i,obj in enumerate(self.replaced_objects):
+            pos = self.replaced_objects_pos[i]
+            obj.set_position_rotation([pos[0], pos[1], pos[2] + self.random_init_z_offset],
+                                      quatToXYZW(euler2quat(0.0, 0.0, 0.0), 'wxyz'))
+               
+
     def reset(self):
         self.scene.reset_floor(height=-100.0)
         state = super(InteractiveGibsonNavigateEnv, self).reset()
         self.new_potential = None
         self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.05)
         self.reset_interactive_objects()
+        self.reset_replaced_objects()
+
         # let robot and objects fall down
         for _ in range(int(0.5 / self.physics_timestep)):
             self.simulator_step()
