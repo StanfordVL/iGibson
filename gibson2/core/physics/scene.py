@@ -209,7 +209,11 @@ class BuildingScene(Scene):
 
         g = self.floor_graph[floor]
 
-        assert g.has_node(target_map), 'target not in graph'
+        if not g.has_node(target_map):
+            nodes = np.array(g.nodes)
+            closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - target_map, axis=1))])
+            g.add_edge(closest_node, target_map, weight=self.l2_distance(closest_node, target_map))
+
         if not g.has_node(source_map):
             nodes = np.array(g.nodes)
             closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - source_map, axis=1))])
