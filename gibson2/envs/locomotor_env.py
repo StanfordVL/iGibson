@@ -536,6 +536,7 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
     def __init__(self,
                  config_file,
                  model_id=None,
+                 collision_reward_weight=0.0,
                  mode='headless',
                  action_timestep=1 / 10.0,
                  physics_timestep=1 / 240.0,
@@ -550,6 +551,8 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
                                                            automatic_reset=automatic_reset,
                                                            random_height=False,
                                                            device_idx=device_idx)
+        self.collision_reward_weight = collision_reward_weight
+
         self.replaced_objects = []
         self.replaced_objects_pos = []
         self.additional_objects = []
@@ -695,7 +698,6 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         state = super(InteractiveGibsonNavigateEnv, self).reset()
         self.reset_additional_objects()
         self.new_potential = None
-
         # let robot and objects fall down
         for _ in range(int(0.5 / self.physics_timestep)):
             self.simulator_step()
