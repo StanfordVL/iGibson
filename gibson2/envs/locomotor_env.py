@@ -742,8 +742,8 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         self.reset_additional_objects()
         self.new_potential = None
         # let robot and objects fall down
-        for _ in range(int(0.5 / self.physics_timestep)):
-            self.simulator_step()
+        # for _ in range(int(0.5 / self.physics_timestep)):
+        #     self.simulator_step()
         return state
 
     def before_simulation(self):
