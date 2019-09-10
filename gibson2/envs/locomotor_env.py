@@ -24,6 +24,24 @@ import collections
 # arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
 
+Episode = collections.namedtuple('Episode',
+                                 ['env',
+                                  'agent',
+                                  'initial_pos',
+                                  'target_pos',
+                                  'geodesic_distance',
+                                  'shortest_path',
+                                  'agent_trajectory',
+                                  'object_files',
+                                  'object_trajectory',
+                                  'success',
+                                  'path_efficiency',
+                                  'kinematic_disturbance',
+                                  'dynamic_disturbance_a',
+                                  'dynamic_disturbance_b',
+                                  'collision_step',
+                                  ])
+
 
 class NavigateEnv(BaseEnv):
     def __init__(
@@ -50,21 +68,13 @@ class NavigateEnv(BaseEnv):
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.current_step = 0
         self.path_length = 0.0
+        self.agent_trajectory = []
         self.stage = None
         self.current_episode = 0
         self.floor_num = None
         self.num_object_classes = None
-        metrics = [
-            'success',
-            'collision_step',
-            'path_length',
-            'spl',
-            'kinematic_disturbance',
-            'dynamic_disturbance_a',
-            'dynamic_disturbance_b',
-        ]
-        self.running_average = {key: collections.deque(maxlen=100)
-                                for key in metrics}
+        self.stored_episodes = collections.deque(maxlen=100)
+        self.interactive_objects = []
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
 
@@ -400,24 +410,55 @@ class NavigateEnv(BaseEnv):
             info['energy_cost'] = self.energy_cost
             info['stage'] = self.stage
 
-            _, geodesic_dist = self.scene.get_shortest_path(self.floor_num, self.initial_pos[:2], self.target_pos[:2])
-            self.running_average['success'].append(float(info['success']))
-            self.running_average['collision_step'].append(self.collision_step)
-            self.running_average['path_length'].append(self.path_length)
-            spl = float(info['success']) * min(1.0, self.path_length / geodesic_dist)
-            self.running_average['spl'].append(spl)
+            # Episode = collections.namedtuple('Episode',
+            #                                  ['initial_pos',
+            #                                   'target_pos',
+            #                                   'geodesic_distance',
+            #                                   'shortest_path',
+            #                                   'trajectory',
+            #                                   'success',
+            #                                   'path_efficiency',
+            #                                   'kinematic_disturbance',
+            #                                   'dynamic_disturbance_a',
+            #                                   'dynamic_disturbance_b',
+            #                                   'collision_step',
+            #                                   ])
+
+            shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
+                                                                            self.initial_pos[:2],
+                                                                            self.target_pos[:2],
+                                                                            entire_path=True)
+            floor_height = self.scene.get_floor_height(self.floor_num)
+            shortest_path = np.array([np.array([path[0], path[1], floor_height]) for path in shortest_path])
             min_kin_dist = self.path_length * self.robots[0].robot_mass
             kinematic_disturbance = min_kin_dist / (min_kin_dist + self.kinematic_disturbance)
-            self.running_average['kinematic_disturbance'].append(kinematic_disturbance)
             min_dyn_dist = self.current_step * self.robots[0].robot_mass * 9.8
             dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
-            self.running_average['dynamic_disturbance_a'].append(dynamic_disturbance_a)
             dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
-            self.running_average['dynamic_disturbance_b'].append(dynamic_disturbance_b)
+            object_files = [obj.filename for obj in self.interactive_objects]
+            episode = Episode(
+                env=self.scene.model_id,
+                agent=self.robots[0].model_file,
+                initial_pos=self.initial_pos,
+                target_pos=self.target_pos,
+                geodesic_distance=geodesic_distance,
+                shortest_path=shortest_path,
+                agent_trajectory=np.array(self.agent_trajectory),
+                object_files=object_files,
+                object_trajectory=np.array(self.object_trajectory),
+                success=float(info['success']),
+                path_efficiency=min(1.0, geodesic_distance / self.path_length),
+                kinematic_disturbance=kinematic_disturbance,
+                dynamic_disturbance_a=dynamic_disturbance_a,
+                dynamic_disturbance_b=dynamic_disturbance_b,
+                collision_step=self.collision_step,
+            )
+            self.stored_episodes.append(episode)
+
         return done, info
 
-    def get_running_average(self):
-        return {key: np.mean(val) if len(val) > 0 else 0.0 for key, val in self.running_average.items()}
+    def get_stored_episodes(self):
+        return self.stored_episodes
 
     def before_simulation(self):
         return None
@@ -464,6 +505,9 @@ class NavigateEnv(BaseEnv):
         self.dynamic_disturbance_a = 0.0
         self.dynamic_disturbance_b = 0.0
         self.path_length = 0.0
+        self.agent_trajectory = []
+        self.object_trajectory = []
+        self.interactive_objects_collided = set()
         self.energy_cost = 0.0
 
         # set position for visual objects
@@ -565,7 +609,6 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         self.load_replaced_objects()
         self.load_additional_objects()
         self.interactive_objects = self.replaced_objects + self.additional_objects
-
         self.new_potential = None
 
         self.visualize_waypoints = True
@@ -710,11 +753,7 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
 
     def after_simulation(self, cache, collision_links):
         robot_position, object_positions = cache
-        self.path_length += np.linalg.norm(self.robots[0].get_position() - robot_position)
-        self.kinematic_disturbance += np.sum([
-            obj.mass * np.linalg.norm(np.array(obj.get_position()) - np.array(prev_pos))
-            for obj, prev_pos in zip(self.interactive_objects, object_positions)
-        ])
+
         collision_links_flatten = [item for sublist in collision_links for item in sublist]
         if len(collision_links_flatten) > 0:
             self.dynamic_disturbance_a += np.mean([
@@ -722,7 +761,19 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
                     np.sum([elem[9] * np.array(elem[7]) for elem in sublist], axis=0)  # sum of all forces
                 )
                 for sublist in collision_links])
-            self.dynamic_disturbance_b += len(np.unique([col[2] for col in collision_links_flatten]))
+            collision_objects = set([col[2] for col in collision_links_flatten])
+            self.dynamic_disturbance_b += len(collision_objects)
+            self.interactive_objects_collided |= collision_objects
+
+        self.agent_trajectory.append(np.concatenate((self.robots[0].get_position(), self.robots[0].get_orientation())))
+        self.object_trajectory.append([np.concatenate((obj.get_position(), obj.get_orientation()))
+                                       for obj in self.interactive_objects])
+        self.path_length += np.linalg.norm(self.robots[0].get_position() - robot_position)
+        self.kinematic_disturbance += np.sum([
+            obj.mass * np.linalg.norm(np.array(obj.get_position()) - np.array(prev_pos))
+            for obj, prev_pos in zip(self.interactive_objects, object_positions)
+            if obj.body_id in self.interactive_objects_collided
+        ])
 
 
 class InteractiveNavigateEnv(NavigateEnv):
