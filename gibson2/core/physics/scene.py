@@ -79,6 +79,7 @@ class BuildingScene(Scene):
                  num_waypoints=10,
                  waypoint_resolution=0.2,
                  ):
+        print("building scene: %s" % model_id)
         self.model_id = model_id
         self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
         self.trav_map_resolution = trav_map_resolution
