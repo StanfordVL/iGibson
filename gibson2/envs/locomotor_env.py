@@ -485,13 +485,14 @@ class NavigateEnv(BaseEnv):
         return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
+        self.robots[0].robot_specific_reset()
         self.robots[0].set_position(pos=self.initial_pos)
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
 
     def reset(self):
         self.current_episode += 1
-        self.robots[0].robot_specific_reset()
         self.reset_initial_and_target_pos()
+        self.robots[0].robot_specific_reset()
         state = self.get_state()
 
         if self.reward_type == 'l2':
@@ -542,6 +543,7 @@ class NavigateRandomEnv(NavigateEnv):
         self.random_init_z_offset = self.config.get('random_init_z_offset', 0.1)
 
     def test_valid_position(self, pos):
+        self.robots[0].robot_specific_reset()
         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + self.random_init_z_offset])
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
         collision_links = self.run_simulation()
@@ -738,12 +740,9 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         self.floor_num = self.scene.get_random_floor()
         self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.05)
         self.reset_replaced_objects()
-        state = super(InteractiveGibsonNavigateEnv, self).reset()
         self.reset_additional_objects()
+        state = super(InteractiveGibsonNavigateEnv, self).reset()
         self.new_potential = None
-        # let robot and objects fall down
-        # for _ in range(int(0.5 / self.physics_timestep)):
-        #     self.simulator_step()
         return state
 
     def before_simulation(self):
@@ -1060,6 +1059,7 @@ class InteractiveNavigateEnv(NavigateEnv):
                 else:
                     self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, 0), 'wxyz'))
 
+            self.robots[0].robot_specific_reset()
             collision_links = self.run_simulation()
             collision_links_flatten = [item for sublist in collision_links for item in sublist]
             self.initial_pos = pos
