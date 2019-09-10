@@ -77,7 +77,7 @@ class WalkerBase(BaseRobot):
 
     def robot_specific_reset(self):
         for j in self.ordered_joints:
-            j.reset_joint_state(np.random.uniform(low=-0.1, high=0.1), 0)
+            j.reset_joint_state(0.0, 0.0)
 
     def get_position(self):
         '''Get current robot position
