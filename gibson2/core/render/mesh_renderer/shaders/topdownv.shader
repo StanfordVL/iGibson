@@ -19,10 +19,10 @@ out vec3 Instance_color;
 out vec3 Pos_cam;
 out vec3 Diffuse_color;
 void main() {
-    //gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1);
-    gl_Position.x = position.x / max_length;
-    gl_Position.y = -position.y / max_length;
-    gl_Position.z = - position.z + z_offset;
+    vec4 temp_pos =  V * pose_trans * pose_rot * vec4(position, 1);
+    gl_Position.x = temp_pos.x / max_length;
+    gl_Position.y = -temp_pos.y / max_length;
+    gl_Position.z = - temp_pos.z + z_offset;
 
 
     vec4 world_position4 = pose_trans * pose_rot * vec4(position, 1);
