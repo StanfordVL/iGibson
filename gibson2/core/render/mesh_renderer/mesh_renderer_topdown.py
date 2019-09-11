@@ -428,7 +428,7 @@ class MeshRenderer:
                     material = Material('texture', texture_id=texture)
                     self.textures.append(texture)
                 else:
-                    material = Material('color', kd=kd)
+                    material = Material('color', kd=input_kd)
                 
                 self.materials_mapping[i + material_count] = material
 

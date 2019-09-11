@@ -742,6 +742,7 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         self.reset_replaced_objects()
         self.reset_additional_objects()
         state = super(InteractiveGibsonNavigateEnv, self).reset()
+
         self.new_potential = None
         return state
 
