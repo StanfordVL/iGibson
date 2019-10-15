@@ -574,6 +574,7 @@ class JR2_Kinova(WalkerBase):
         self.cam_dim = 0
         self.arm_velocity = config.get('arm_velocity', 0.01)
         self.arm_dim = 5
+        self.arm_reset_noise = config.get('arm_reset_noise_in_pi', 0.0) * np.pi
 
         WalkerBase.__init__(self,
                             "jr2_urdf/jr2_kinova.urdf",
@@ -616,11 +617,14 @@ class JR2_Kinova(WalkerBase):
 
     # initialize JR's arm to almost the same height as the door handle to ease exploration
     def robot_specific_reset(self):
+        def random_reset(mean):
+            return np.random.uniform(mean - self.arm_reset_noise, mean + self.arm_reset_noise)
+
         super(JR2_Kinova, self).robot_specific_reset()
-        self.ordered_joints[2].reset_joint_state(-np.pi / 2.0, 0.0)
-        self.ordered_joints[3].reset_joint_state(np.pi / 2.0, 0.0)
-        self.ordered_joints[4].reset_joint_state(np.pi / 2.0, 0.0)
-        self.ordered_joints[5].reset_joint_state(np.pi / 2.0, 0.0)
+        self.ordered_joints[2].reset_joint_state(random_reset(-np.pi / 2.0 - self.arm_reset_noise), 0.0)
+        self.ordered_joints[3].reset_joint_state(random_reset(np.pi / 2.0), 0.0)
+        self.ordered_joints[4].reset_joint_state(random_reset(np.pi / 2.0), 0.0)
+        self.ordered_joints[5].reset_joint_state(random_reset(np.pi / 2.0), 0.0)
         self.ordered_joints[6].reset_joint_state(0.0, 0.0)
 
     def load(self):
