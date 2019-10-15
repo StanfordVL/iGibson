@@ -37,8 +37,8 @@ class StadiumScene(Scene):
 
         return [item for item in self.stadium] + [item for item in self.ground_plane_mjcf]
 
-    def get_random_point(self):
-        return self.get_random_point_floor(0)
+    def get_random_point(self, random_height=False):
+        return self.get_random_point_floor(0, random_height)
 
     def get_random_point_floor(self, floor, random_height=False):
         del floor
@@ -181,18 +181,19 @@ class BuildingScene(Scene):
     def get_random_floor(self):
         return np.random.randint(0, high=len(self.floors))
 
-    def get_random_point(self):
-        floor = np.random.randint(0, high=len(self.floors))
-        return self.get_random_point_floor(floor)
+    def get_random_point(self, random_height=False):
+        floor = self.get_random_floor()
+        return self.get_random_point_floor(floor, random_height)
 
     def get_random_point_floor(self, floor, random_height=False):
-        del random_height
         trav = self.floor_map[floor]
         trav_space = np.where(trav == 255)
         idx = np.random.randint(0, high=trav_space[0].shape[0])
         xy_map = np.array([trav_space[0][idx], trav_space[1][idx]])
         x, y = self.map_to_world(xy_map)
         z = self.floors[floor]
+        if random_height:
+            z += np.random.uniform(0.4, 0.8)
         return floor, np.array([x, y, z])
 
     def map_to_world(self, xy):

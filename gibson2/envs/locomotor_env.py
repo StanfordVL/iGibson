@@ -469,7 +469,6 @@ class NavigateEnv(BaseEnv):
     def step(self, action):
         self.current_step += 1
         self.robots[0].apply_action(action)
-
         cache = self.before_simulation()
         collision_links = self.run_simulation()
         self.after_simulation(cache, collision_links)
@@ -484,15 +483,27 @@ class NavigateEnv(BaseEnv):
             state = self.reset()
         return state, reward, done, info
 
+    def reset_agent(self):
+        max_trials = 100
+        for _ in range(max_trials):
+            self.robots[0].robot_specific_reset()
+            self.reset_initial_and_target_pos()
+            if self.test_valid_position():
+                return
+        raise Exception("Failed to reset robot without collision")
+
     def reset_initial_and_target_pos(self):
-        self.robots[0].robot_specific_reset()
         self.robots[0].set_position(pos=self.initial_pos)
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
 
+    def test_valid_position(self):
+        collision_links = self.run_simulation()
+        collision_links_flatten = [item for sublist in collision_links for item in sublist]
+        return len(collision_links_flatten) == 0
+
     def reset(self):
         self.current_episode += 1
-        self.reset_initial_and_target_pos()
-        self.robots[0].robot_specific_reset()
+        self.reset_agent()
         state = self.get_state()
 
         if self.reward_type == 'l2':
@@ -539,43 +550,29 @@ class NavigateRandomEnv(NavigateEnv):
                                                 automatic_reset=automatic_reset,
                                                 device_idx=device_idx)
         self.random_height = random_height
-        self.random_init_max_trials = self.config.get('random_init_max_trials', 1000)
         self.random_init_z_offset = self.config.get('random_init_z_offset', 0.1)
 
-    def test_valid_position(self, pos):
-        self.robots[0].robot_specific_reset()
-        self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + self.random_init_z_offset])
-        self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-        collision_links = self.run_simulation()
-        collision_links_flatten = [item for sublist in collision_links for item in sublist]
-        return len(collision_links_flatten) == 0
-
     def reset_initial_and_target_pos(self):
-        num_trials = 0
-        while True:
-            floor, self.initial_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
-            if self.test_valid_position(self.initial_pos):
-                break
-            num_trials += 1
-            if num_trials == self.random_init_max_trials:
-                raise Exception("Failed to initialize agent's position: collision occurs for %d times."
-                                % self.random_init_max_trials)
-
-        num_trials = 0
-        while True:
+        floor, self.initial_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
+        max_trials = 100
+        dist = 0.0
+        for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
             _, self.target_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
             dist = l2_distance(self.initial_pos, self.target_pos)
-            if dist > 1.0 and self.test_valid_position(self.target_pos):
+            if dist > 1.0:
                 break
-            num_trials += 1
-            if num_trials == self.random_init_max_trials:
-                raise Exception("Failed to initialize agent's position: collision occurs for %d times."
-                                % self.random_init_max_trials)
-
+        if dist < 1.0:
+            raise Exception("Failed to find initial and target pos that are >1m apart")
         self.robots[0].set_position(pos=[self.initial_pos[0],
                                          self.initial_pos[1],
                                          self.initial_pos[2] + self.random_init_z_offset])
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+
+    def reset(self):
+        self.floor_num = self.scene.get_random_floor()
+        self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.05)
+        state = super(NavigateRandomEnv, self).reset()
+        return state
 
 
 class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
@@ -741,8 +738,8 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.05)
         self.reset_replaced_objects()
         self.reset_additional_objects()
-        state = super(InteractiveGibsonNavigateEnv, self).reset()
         self.new_potential = None
+        state = NavigateEnv.reset(self)
         return state
 
     def before_simulation(self):
@@ -1017,59 +1014,44 @@ class InteractiveNavigateEnv(NavigateEnv):
             self.cid = None
 
     def reset_initial_and_target_pos(self):
-        num_trials = 0
-        max_trials = 10
+        if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
+            if self.random_position:
+                pos = [np.random.uniform(-0.5, 0.5), np.random.uniform(-0.5, 0.5), 0]
+            else:
+                pos = [0.0, 0.0, 0.0]
+        elif self.arena == "simple_hl_ll":
+            if self.random_position:
+                pos = [np.random.uniform(1, 2), np.random.uniform(-2, 2), 0]
+            else:
+                pos = [1.0, 0.0, 0.0]
+        elif self.arena == "complex_hl_ll":
+            if self.random_position:
+                pos = [np.random.uniform(-2, -1.7), np.random.uniform(4.5, 5), 0]
+            else:
+                pos = [-2, 4, 0.0]
 
-        while True:  # if collision happens, reinitialize
-            if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
-                if self.random_position:
-                    pos = [np.random.uniform(-0.5, 0.5), np.random.uniform(-0.5, 0.5), 0]
-                else:
-                    pos = [0.0, 0.0, 0.0]
-            elif self.arena == "simple_hl_ll":
-                if self.random_position:
-                    pos = [np.random.uniform(1, 2), np.random.uniform(-2, 2), 0]
-                else:
-                    pos = [1.0, 0.0, 0.0]
-            elif self.arena == "complex_hl_ll":
-                if self.random_position:
-                    pos = [np.random.uniform(-2, -1.7), np.random.uniform(4.5, 5), 0]
-                else:
-                    pos = [-2, 4, 0.0]
+        # self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
+        self.robots[0].set_position(pos=[pos[0], pos[1], pos[2]])
+        self.initial_pos = pos
 
-            # self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
-            self.robots[0].set_position(pos=[pos[0], pos[1], pos[2]])
-
-            if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
+        if self.arena == "only_ll" or self.arena == "only_ll_obstacles":
+            self.robots[0].set_orientation(
+                orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz')
+            )
+        elif self.arena == "simple_hl_ll":
+            if self.random_position:
                 self.robots[0].set_orientation(
                     orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz')
                 )
-            elif self.arena == "simple_hl_ll":
-                if self.random_position:
-                    self.robots[0].set_orientation(
-                        orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz')
-                    )
-                else:
-                    self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
-            elif self.arena == "complex_hl_ll":
-                if self.random_position:
-                    self.robots[0].set_orientation(
-                        orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz')
-                    )
-                else:
-                    self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, 0), 'wxyz'))
-
-            self.robots[0].robot_specific_reset()
-            collision_links = self.run_simulation()
-            collision_links_flatten = [item for sublist in collision_links for item in sublist]
-            self.initial_pos = pos
-
-            if len(collision_links_flatten) == 0:
-                break
-
-            num_trials += 1
-            if num_trials == max_trials:
-                raise Exception("Failed to initialize agent's position: collision occurs for %d times." % (max_trials))
+            else:
+                self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
+        elif self.arena == "complex_hl_ll":
+            if self.random_position:
+                self.robots[0].set_orientation(
+                    orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz')
+                )
+            else:
+                self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, 0), 'wxyz'))
 
         # # wait for the base to fall down to the ground and for the arm to move to its initial position
         # for _ in range(int(0.5 / self.physics_timestep)):
@@ -1367,6 +1349,7 @@ if __name__ == '__main__':
         nav_env.reset()
         for step in range(50):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
+            # action[:] = 0.5
             # action[:] = -1.0
             # action[:] = -1.0 / 3
             # if nav_env.stage == 0:
