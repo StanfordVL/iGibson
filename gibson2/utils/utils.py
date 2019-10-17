@@ -20,20 +20,20 @@ def rotate_vector_3d(v, r, p, y):
 
 def l2_distance(v1, v2):
     """Returns the L2 distance between vector v1 and v2."""
-    return np.sqrt(np.sum((v1 - v2)**2))
+    return np.linalg.norm(v1 - v2)
 
 
-def quatFromXYZW(xyzw, seq='xyzw'):
-    """Convert quaternion from arbitrary sequence to XYZW (pybullet convention)."""
-    assert len(seq) == 4 and 'x' in seq and 'y' in seq and 'z' in seq and 'w' in seq, \
-        "Quaternion sequence {} is not valid, please double check.".format(seq)
-    inds = [seq.index('x'), seq.index('y'), seq.index('z'), seq.index('w')]
-    return xyzw[inds]
-
-
-def quatToXYZW(orn, seq='xyzw'):
+def quatFromXYZW(xyzw, seq):
     """Convert quaternion from XYZW (pybullet convention) to arbitrary sequence."""
     assert len(seq) == 4 and 'x' in seq and 'y' in seq and 'z' in seq and 'w' in seq, \
         "Quaternion sequence {} is not valid, please double check.".format(seq)
-    inds = [seq.index('x'), seq.index('y'), seq.index('z'), seq.index('w')]
+    inds = ['xyzw'.index(axis) for axis in seq]
+    return xyzw[inds]
+
+
+def quatToXYZW(orn, seq):
+    """Convert quaternion from arbitrary sequence to XYZW (pybullet convention)."""
+    assert len(seq) == 4 and 'x' in seq and 'y' in seq and 'z' in seq and 'w' in seq, \
+        "Quaternion sequence {} is not valid, please double check.".format(seq)
+    inds = [seq.index(axis) for axis in 'xyzw']
     return orn[inds]
