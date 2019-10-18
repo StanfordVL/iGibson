@@ -66,12 +66,12 @@ class Viewer:
         elif q == ord('z'):
             self.pz += 0.05
         elif q == ord('x'):
-            self.pz -= 0.05    
+            self.pz -= 0.05
         elif q == ord('q'):
             exit()
 
         if not self.renderer is None:
-            frames = self.renderer.render_robot_cameras()
+            frames = self.renderer.render_robot_cameras(modes=('rgb', 'seg'))
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
                 cv2.imshow('robots', frame)

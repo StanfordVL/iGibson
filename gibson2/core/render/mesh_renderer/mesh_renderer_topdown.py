@@ -102,6 +102,12 @@ class InstanceGroup(object):
                     float(self.renderer.materials_mapping[
                         self.renderer.mesh_materials[object_idx]].is_texture()))
 
+                GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'max_length'), 
+                    float(self.renderer.max_length))
+
+                GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'z_offset'), self.renderer.z)
+
+
                 try:
                     # Activate texture
                     GL.glActiveTexture(GL.GL_TEXTURE0)
@@ -189,6 +195,10 @@ class Instance(object):
                 GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
                 float(self.renderer.materials_mapping[
                     self.renderer.mesh_materials[object_idx]].is_texture()))
+            GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'max_length'), 
+                    float(self.renderer.max_length))
+
+            GL.glUniform1f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'z_offset'), self.renderer.z)
 
             try:
                 # Activate texture
@@ -282,31 +292,18 @@ class MeshRenderer:
 
         print("fisheye", self.fisheye)
 
-        if self.fisheye:
-            vertexShader = self.shaders.compileShader(
-                "".join(
-                    open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders/fisheye_vert.shader')).readlines()).replace(
-                                         "FISHEYE_SIZE", str(self.width / 2)), GL.GL_VERTEX_SHADER)
-            fragmentShader = self.shaders.compileShader(
-                "".join(
-                    open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders/fisheye_frag.shader')).readlines()).replace(
-                                         "FISHEYE_SIZE", str(self.width / 2)),
-                GL.GL_FRAGMENT_SHADER)
-        else:
-            vertexShader = self.shaders.compileShader(
-                "".join(
-                    open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders/vert.shader')).readlines()), GL.GL_VERTEX_SHADER)
-            fragmentShader = self.shaders.compileShader(
-                "".join(
-                    open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders/frag.shader')).readlines()), GL.GL_FRAGMENT_SHADER)
+        
+        vertexShader = self.shaders.compileShader(
+            "".join(
+                open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                 'shaders/topdownv.shader')).readlines()), GL.GL_VERTEX_SHADER)
+        fragmentShader = self.shaders.compileShader(
+            "".join(
+                open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                 'shaders/topdownf.shader')).readlines()), GL.GL_FRAGMENT_SHADER)
+
         self.shaderProgram = self.shaders.compileProgram(vertexShader, fragmentShader)
         self.texUnitUniform = GL.glGetUniformLocation(self.shaderProgram, 'texUnit')
 
@@ -323,6 +320,12 @@ class MeshRenderer:
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
         self.mesh_materials = []
+
+        self.max_length = 20
+        self.z = 1
+
+    def set_max_length(self, max_length):
+        self.max_length = max_length
 
     def setup_framebuffer(self):
         self.fbo = GL.glGenFramebuffers(1)
@@ -425,7 +428,7 @@ class MeshRenderer:
                     material = Material('texture', texture_id=texture)
                     self.textures.append(texture)
                 else:
-                    material = Material('color', kd=kd)
+                    material = Material('color', kd=input_kd)
                 
                 self.materials_mapping[i + material_count] = material
 
@@ -608,6 +611,9 @@ class MeshRenderer:
         V = lookat(self.camera, self.target, up=self.up)
         self.V = np.ascontiguousarray(V, np.float32)
 
+    def set_z(self, z):
+        self.z = z
+
     def set_fov(self, fov):
         self.fov = fov
         # this is vertical fov
@@ -666,7 +672,7 @@ class MeshRenderer:
         return results
 
     def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
-        GL.glClearColor(0, 0, 0, 1)
+        GL.glClearColor(1,1,1,1)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         GL.glEnable(GL.GL_DEPTH_TEST)
 
@@ -758,18 +764,9 @@ class MeshRenderer:
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
-    renderer = MeshRenderer(width=256, height=256)
+    renderer = MeshRenderer(width=1024, height=1024)
     renderer.load_object(model_path, load_texture=True)
-    renderer.load_object(os.path.join(gibson2.assets_path, 'models/ycb/011_banana/textured_simple.obj'))
-
     renderer.add_instance(0, class_id=255)
-    renderer.add_instance(1, class_id=127)
-    renderer.add_instance(1, class_id=0)
-    renderer.add_instance(1, class_id=0)
-
-    renderer.instances[1].set_position([1, 0, 0.3])
-    renderer.instances[2].set_position([1, 0, 0.5])
-    renderer.instances[3].set_position([1, 0, 0.7])
 
     print(renderer.visual_objects, renderer.instances)
     print(renderer.materials_mapping, renderer.mesh_materials)
@@ -778,8 +775,8 @@ if __name__ == '__main__':
     renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
     renderer.set_fov(90)
     print(renderer.get_intrinsics())
-    px = 0
-    py = 0
+
+    z = 0
 
     _mouse_ix, _mouse_iy = -1, -1
     down = False
@@ -808,20 +805,15 @@ if __name__ == '__main__':
 
     for i in range(10000):
         print(i)
-        frame = renderer.render()
+        frame = renderer.render(modes='rgb')
         cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
         q = cv2.waitKey(1)
         if q == ord('w'):
-            px += 0.05
+            z += 0.05
         elif q == ord('s'):
-            px -= 0.05
-        elif q == ord('a'):
-            py += 0.05
-        elif q == ord('d'):
-            py -= 0.05
+            z -= 0.05
         elif q == ord('q'):
             break
-        camera_pose = np.array([px, py, 1.2])
-        renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
 
+        renderer.set_z(z)
     renderer.release()
