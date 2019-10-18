@@ -7,6 +7,7 @@ class Viewer:
     def __init__(self):
         self.px = 0
         self.py = 0
+        self.pz = 0
         self._mouse_ix, self._mouse_iy = -1, -1
         self.down = False
         self.view_direction = np.array([1, 0, 0])
@@ -36,12 +37,12 @@ class Viewer:
             self.down = False
 
     def update(self):
-        camera_pose = np.array([self.px, self.py, 1.2])
+        camera_pose = np.array([self.px, self.py, self.pz])
         if not self.renderer is None:
             self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, [0, 0, 1])
 
         if not self.renderer is None:
-            frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=("rgb")), axis=1),
+            frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=('rgb', 'normal', 'seg', '3d')), axis=1),
                                  cv2.COLOR_RGB2BGR)
         else:
             frame = np.zeros((300, 300, 3)).astype(np.uint8)
@@ -62,6 +63,10 @@ class Viewer:
             self.py += 0.05
         elif q == ord('d'):
             self.py -= 0.05
+        elif q == ord('z'):
+            self.pz += 0.05
+        elif q == ord('x'):
+            self.pz -= 0.05    
         elif q == ord('q'):
             exit()
 
