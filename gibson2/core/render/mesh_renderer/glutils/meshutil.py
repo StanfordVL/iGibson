@@ -54,6 +54,11 @@ def lookat(eye, target=[0, 0, 0], up=[0, 1, 0]):
     M[:3, 3] = -R.dot(eye)
     return M
 
+def get_params(M):
+    R = M[:3, :3]
+    side, up, forward = R[0], R[1], -R[2]
+    eye = -np.linalg.inv(R).dot(M[:3,3])
+    return eye, eye + forward, up
 
 def sample_view(min_dist, max_dist=None):
     '''Sample random camera position.

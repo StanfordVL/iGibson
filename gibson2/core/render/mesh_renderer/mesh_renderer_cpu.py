@@ -9,7 +9,7 @@ import OpenGL.GL as GL
 import cv2
 import numpy as np
 #from pyassimp import load, release
-from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
+from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat, get_params
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
 from gibson2.core.render.mesh_renderer import CppMeshRenderer
@@ -607,6 +607,10 @@ class MeshRenderer:
         self.up = up
         V = lookat(self.camera, self.target, up=self.up)
         self.V = np.ascontiguousarray(V, np.float32)
+
+
+    def get_camera(self):
+        return get_params(self.V)
 
     def set_fov(self, fov):
         self.fov = fov
