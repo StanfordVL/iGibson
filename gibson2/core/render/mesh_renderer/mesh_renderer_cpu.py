@@ -758,6 +758,30 @@ class MeshRenderer:
                 for item in self.render(modes=modes, hidden=[instance]):
                     frames.append(item)
         return frames
+    def export_scene(self, filename):
+        eye,target,up = self.get_camera()
+        with open(filename, 'w') as f:
+            f.write('properties \n{\n')
+            f.write('\t width {}\n'.format(self.width))
+            f.write('\t height {}\n'.format(self.height))
+            f.write('\t up {} {} {}\n'.format(*up))
+            f.write('\t eye {} {} {}\n'.format(*eye))
+            f.write('\t look {} {} {}\n'.format(*target))
+            f.write('}\n')
+
+            for item in self.instances:
+                mesh = item.objects[0].filename
+                trans = item.poses_trans[0][3,:3]
+                rot = item.poses_rot[0][:3,:3]
+                print(mesh, trans, rot)
+                f.write('mesh\n')
+                f.write('{\n')
+                f.write('\t file {}\n'.format(mesh))
+                f.write('\t material cream \n')
+                f.write('\t translate {} {} {} \n'.format(trans[0], trans[1], trans[2]))
+                f.write('\t rotate {} {} {} {} {} {} {} {} {}\n'.format(rot[0,0], rot[0,1], rot[0,2], rot[1,0], rot[1,1]
+                    ,rot[1,2], rot[2,0], rot[2,1], rot[2,2]))
+                f.write('}\n')
 
 
 if __name__ == '__main__':

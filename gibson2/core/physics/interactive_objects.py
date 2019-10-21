@@ -21,6 +21,25 @@ class YCBObject(object):
         return body_id
 
 
+class GeneralObject(object):
+    def __init__(self, name, vhacd_name, scale=1):
+        self.visual_filename = name
+        self.vhacd_name = vhacd_name
+        self.scale = scale
+
+    def load(self):
+        collision_id = p.createCollisionShape(p.GEOM_MESH,
+                                              fileName=self.vhacd_name,
+                                              meshScale=self.scale)
+        visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
+
+        body_id = p.createMultiBody(basePosition=[0, 0, 0],
+                                    baseMass=0.1,
+                                    baseCollisionShapeIndex=collision_id,
+                                    baseVisualShapeIndex=visual_id)
+        return body_id
+
+
 class ShapeNetObject(object):
     def __init__(self, path, scale=1., position=[0, 0, 0], orientation=[0, 0, 0]):
         self.filename = path

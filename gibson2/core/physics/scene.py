@@ -17,7 +17,6 @@ class Scene:
     def load(self):
         raise (NotImplementedError())
 
-
 class StadiumScene(Scene):
     zero_at_running_strip_start_line = True    # if False, center of coordinates (0,0,0) will be at the middle of the stadium
     stadium_halflen = 105 * 0.25    # FOOBALL_FIELD_HALFLEN
