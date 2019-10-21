@@ -169,6 +169,9 @@ class Simulator:
         link_ids = []
         poses_rot = []
         poses_trans = []
+        poses_rot_init = []
+        poses_trans_init = []
+
         self.robots.append(robot)
 
         for shape in p.getVisualShapeData(ids[0]):
@@ -226,6 +229,8 @@ class Simulator:
                 _, _, _, _, pos, orn = p.getLinkState(id, link_id)
             poses_rot.append(np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
             poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+            poses_rot_init.append(np.ascontiguousarray(quat2rotmat([rel_orn[-1], rel_orn[0], rel_orn[1], rel_orn[2]])))
+            poses_trans_init.append(np.ascontiguousarray(xyz2mat(rel_pos)))
 
         self.renderer.add_robot(object_ids=visual_objects,
                                 link_ids=link_ids,
@@ -233,6 +238,8 @@ class Simulator:
                                 class_id=class_id,
                                 poses_rot=poses_rot,
                                 poses_trans=poses_trans,
+                                poses_rot_init=poses_rot_init,
+                                poses_trans_init=poses_trans_init,
                                 dynamic=True,
                                 robot=robot)
 
@@ -244,6 +251,8 @@ class Simulator:
         link_ids = []
         poses_rot = []
         poses_trans = []
+        poses_rot_init = []
+        poses_trans_init = []
 
         for shape in p.getVisualShapeData(ids):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
@@ -302,6 +311,8 @@ class Simulator:
                 _, _, _, _, pos, orn = p.getLinkState(id, link_id)
             poses_rot.append(np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
             poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+            poses_rot_init.append(np.ascontiguousarray(quat2rotmat([rel_orn[-1], rel_orn[0], rel_orn[1], rel_orn[2]])))
+            poses_trans_init.append(np.ascontiguousarray(xyz2mat(rel_pos)))
 
         self.renderer.add_instance_group(object_ids=visual_objects,
                                          link_ids=link_ids,
@@ -309,6 +320,8 @@ class Simulator:
                                          class_id=class_id,
                                          poses_rot=poses_rot,
                                          poses_trans=poses_trans,
+                                         poses_rot_init=poses_rot_init,
+                                         poses_trans_init=poses_trans_init,
                                          dynamic=True,
                                          robot=None)
 

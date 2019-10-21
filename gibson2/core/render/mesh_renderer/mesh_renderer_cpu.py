@@ -21,7 +21,6 @@ import gibson2
 import os
 import tinyobjloader
 
-
 class VisualObject(object):
     def __init__(self, filename, VAO_ids, id, renderer):
         self.VAO_ids = VAO_ids
@@ -36,7 +35,6 @@ class VisualObject(object):
     def __repr__(self):
         return self.__str__()
 
-
 class InstanceGroup(object):
     def __init__(self,
                  objects,
@@ -46,12 +44,16 @@ class InstanceGroup(object):
                  class_id,
                  poses_trans,
                  poses_rot,
+                 poses_trans_init,
+                 poses_rot_init,
                  dynamic,
                  robot=None):
         # assert(len(objects) > 0) # no empty instance group
         self.objects = objects
         self.poses_trans = poses_trans
         self.poses_rot = poses_rot
+        self.poses_trans_init = poses_trans_init
+        self.poses_rot_init = poses_rot_init
         self.id = id
         self.link_ids = link_ids
         self.class_id = class_id
@@ -140,7 +142,6 @@ class InstanceGroup(object):
     def __repr__(self):
         return self.__str__()
 
-
 class Robot(InstanceGroup):
     def __init__(self, *args, **kwargs):
         super(Robot, self).__init__(*args, **kwargs)
@@ -149,15 +150,14 @@ class Robot(InstanceGroup):
         return "Robot({}) -> Objects({})".format(
             self.id, ",".join([str(object.id) for object in self.objects]))
 
-
 class Instance(object):
-    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic):
-        self.object = object
+    def __init__(self, input_object, input_id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic):
+        self.object = input_object
         self.pose_trans = pose_trans
         self.pose_rot = pose_rot
-        self.id = id
+        self.id = input_id
         self.class_id = class_id
-        self.renderer = object.renderer
+        self.renderer = input_object.renderer
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
 
@@ -279,7 +279,10 @@ class MeshRenderer:
         self.shaders = shaders
         self.colors = colormap
         self.lightcolor = [1, 1, 1]
-
+        self.material_string=""
+        self.mmap = {}
+        self.light_string=""
+        
         print("fisheye", self.fisheye)
 
         if self.fisheye:
@@ -553,7 +556,7 @@ class MeshRenderer:
                      pose_trans=np.eye(4),
                      dynamic=False):
         instance = Instance(self.visual_objects[object_id],
-                            id=len(self.instances),
+                            input_id=len(self.instances),
                             pybullet_uuid=pybullet_uuid,
                             class_id=class_id,
                             pose_trans=pose_trans,
@@ -566,6 +569,8 @@ class MeshRenderer:
                            link_ids,
                            poses_rot,
                            poses_trans,
+                           poses_rot_init,
+                           poses_trans_init,
                            class_id=0,
                            pybullet_uuid=None,
                            dynamic=False,
@@ -577,6 +582,8 @@ class MeshRenderer:
                                        class_id=class_id,
                                        poses_trans=poses_trans,
                                        poses_rot=poses_rot,
+                                       poses_rot_init=poses_rot_init,
+                                       poses_trans_init=poses_trans_init,
                                        dynamic=dynamic,
                                        robot=robot)
         self.instances.append(instance_group)
@@ -587,6 +594,8 @@ class MeshRenderer:
                   class_id,
                   poses_rot,
                   poses_trans,
+                  poses_rot_init,
+                  poses_trans_init,
                   pybullet_uuid=None,
                   dynamic=False,
                   robot=None):
@@ -597,6 +606,8 @@ class MeshRenderer:
                       class_id=class_id,
                       poses_trans=poses_trans,
                       poses_rot=poses_rot,
+                      poses_rot_init=poses_rot_init,
+                      poses_trans_init=poses_trans_init,
                       dynamic=dynamic,
                       robot=robot)
         self.instances.append(robot)
@@ -769,20 +780,39 @@ class MeshRenderer:
             f.write('\t look {} {} {}\n'.format(*target))
             f.write('}\n')
 
-            for item in self.instances:
-                mesh = item.objects[0].filename
-                trans = item.poses_trans[0][3,:3]
-                rot = item.poses_rot[0][:3,:3]
-                print(mesh, trans, rot)
-                f.write('mesh\n')
-                f.write('{\n')
-                f.write('\t file {}\n'.format(mesh))
-                f.write('\t material cream \n')
-                f.write('\t translate {} {} {} \n'.format(trans[0], trans[1], trans[2]))
-                f.write('\t rotate {} {} {} {} {} {} {} {} {}\n'.format(rot[0,0], rot[0,1], rot[0,2], rot[1,0], rot[1,1]
-                    ,rot[1,2], rot[2,0], rot[2,1], rot[2,2]))
-                f.write('}\n')
+            f.write(self.material_string)
 
+            for item in self.instances:
+
+                if isinstance(item, Instance):
+                    mesh = item.object.filename
+                    trans = item.pose_trans[3,:3]
+                    rot = item.pose_rot[:3,:3]
+                    print(mesh, trans, rot)
+                    f.write('mesh\n')
+                    f.write('{\n')
+                    f.write('\t file {}\n'.format(mesh))
+                    f.write('\t material {} \n'.format(self.mmap[mesh]))
+                    f.write('\t translate {} {} {} \n'.format(trans[0], trans[1], trans[2]))
+                    f.write('\t rotate {} {} {} {} {} {} {} {} {}\n'.format(rot[0,0], rot[0,1], rot[0,2], rot[1,0], rot[1,1]
+                        ,rot[1,2], rot[2,0], rot[2,1], rot[2,2]))
+                    f.write('}\n')
+
+                elif isinstance(item, InstanceGroup):
+                    for i in range(len(item.objects)):
+                        mesh = item.objects[i].filename
+                        rot = item.poses_rot[i][:3,:3]
+                        trans = item.poses_trans[i][3,:3] + rot.dot(item.poses_trans_init[i][3,:3])
+                        print(mesh, trans, rot)
+                        f.write('mesh\n')
+                        f.write('{\n')
+                        f.write('\t file {}\n'.format(mesh))
+                        f.write('\t material {} \n'.format(self.mmap[mesh]))
+                        f.write('\t translate {} {} {} \n'.format(trans[0], trans[1], trans[2]))
+                        f.write('\t rotate {} {} {} {} {} {} {} {} {}\n'.format(rot[0,0], rot[0,1], rot[0,2], rot[1,0], rot[1,1]
+                            ,rot[1,2], rot[2,0], rot[2,1], rot[2,2]))
+                        f.write('}\n')
+            f.write(self.light_string)
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
