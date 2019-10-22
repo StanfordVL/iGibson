@@ -63,6 +63,7 @@ class NavigateEnv(BaseEnv):
             self.observation_normalizer[key] = np.array(self.observation_normalizer[key])
 
         # termination condition
+        self.stage = 0
         self.dist_tol = self.config.get('dist_tol', 0.2)
         self.max_step = self.config.get('max_step', float('inf'))
 
@@ -358,6 +359,14 @@ class NavigateEnv(BaseEnv):
         self.robots[0].set_position(pos=self.initial_pos)
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
 
+        collision_links = []
+        for _ in range(self.simulator_loop):
+            self.simulator_step()
+            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+        collision_links = self.filter_collision_links(collision_links)
+        no_collision = len(collision_links) == 0
+        return no_collision
+
     def reset_agent(self):
         max_trials = 100
         for _ in range(max_trials):
@@ -427,7 +436,6 @@ class NavigateRandomEnv(NavigateEnv):
                 break
         if dist < 1.0:
             raise Exception("Failed to find initial and target pos that are >1m apart")
-
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
@@ -583,7 +591,6 @@ class InteractiveNavigateEnv(NavigateEnv):
                 self.walls += [wall]
 
         # dense reward
-        self.stage = 0
         self.prev_stage = self.stage
         self.stage_get_to_door_handle = 0
         self.stage_open_door = 1
