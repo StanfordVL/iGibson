@@ -444,6 +444,65 @@ class NavigateRandomEnv(NavigateEnv):
         no_collision = len(collision_links) == 0
         return no_collision
 
+class NavigateObstaclesEnv(NavigateEnv):
+    def __init__(
+            self,
+            config_file,
+            mode='headless',
+            action_timestep=1 / 10.0,
+            physics_timestep=1 / 240.0,
+            automatic_reset=False,
+            random_height=False,
+            device_idx=0,
+    ):
+        super(NavigateObstaclesEnv, self).__init__(config_file,
+                                                mode=mode,
+                                                action_timestep=action_timestep,
+                                                physics_timestep=physics_timestep,
+                                                automatic_reset=automatic_reset,
+                                                device_idx=device_idx)
+        self.random_height = random_height
+
+        self.floor = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0.643, 0.643, 0.788, 0.0], half_extents=[20, 20, 0.02], initial_offset=[0, 0, -0.03])
+        self.floor.load()
+        self.floor.set_position([0, 0, 0])
+        self.simulator.import_object(self.floor)
+
+        self.box_poses = [
+            [[np.random.uniform(-2, 1), np.random.uniform(-2, -1), 0], [0, 0, 0, 1]],
+            [[np.random.uniform(2, 1), np.random.uniform(2, -1), 0], [0, 0, 0, 1]],
+            [[np.random.uniform(1, 1), np.random.uniform(-1, -1), 0], [0, 0, 0, 1]]
+            ]
+
+        self.walls = []
+        for box_pose in self.box_poses:
+            box = BoxShape(pos=box_pose[0], dim=[0.2, 0.3, 0.3])
+            self.simulator.import_interactive_object(box)
+            self.walls += [box]
+        
+    def reset_initial_and_target_pos(self):
+        floor, pos = self.scene.get_random_point()
+        self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
+        self.robots[0].set_orientation(
+            orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+        self.initial_pos = pos
+
+        max_trials = 100
+        dist = 0.0
+        for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
+            _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
+            dist = l2_distance(self.initial_pos, self.target_pos)
+            if dist > 1.0:
+                break
+        if dist < 1.0:
+            raise Exception("Failed to find initial and target pos that are >1m apart")
+        collision_links = []
+        for _ in range(self.simulator_loop):
+            self.simulator_step()
+            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+        collision_links = self.filter_collision_links(collision_links)
+        no_collision = len(collision_links) == 0
+        return no_collision
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
@@ -986,7 +1045,7 @@ if __name__ == '__main__':
                         default='headless',
                         help='which mode for simulation (default: headless)')
     parser.add_argument('--env_type',
-                        choices=['deterministic', 'random', 'interactive'],
+                        choices=['deterministic', 'random', 'obstacles', 'interactive'],
                         default='deterministic',
                         help='which environment type (deterministic | random | interactive')
     args = parser.parse_args()
@@ -1006,6 +1065,11 @@ if __name__ == '__main__':
                               physics_timestep=1 / 40.0)
     elif args.env_type == 'random':
         nav_env = NavigateRandomEnv(config_file=config_filename,
+                                    mode=args.mode,
+                                    action_timestep=1.0 / 10.0,
+                                    physics_timestep=1 / 40.0)
+    elif args.env_type == 'obstacles':
+        nav_env = NavigateObstaclesEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
                                     physics_timestep=1 / 40.0)
