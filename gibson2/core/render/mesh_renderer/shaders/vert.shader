@@ -6,9 +6,13 @@ uniform mat4 pose_trans;
 uniform vec3 instance_color;
 uniform vec3 diffuse_color;
 
+uniform mat4 next_pose_rot;
+uniform mat4 next_pose_trans;
+
 layout (location=0) in vec3 position;
 layout (location=1) in vec3 normal;
 layout (location=2) in vec2 texCoords;
+
 out vec2 theCoords;
 out vec3 Normal;
 out vec3 FragPos;
@@ -16,6 +20,8 @@ out vec3 Normal_cam;
 out vec3 Instance_color;
 out vec3 Pos_cam;
 out vec3 Diffuse_color;
+out vec3 scene_flow;
+
 void main() {
     gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1);
     vec4 world_position4 = pose_trans * pose_rot * vec4(position, 1);
@@ -23,7 +29,12 @@ void main() {
     Normal = normalize(mat3(pose_rot) * normal); // in world coordinate
     Normal_cam = normalize(mat3(V) * mat3(pose_rot) * normal); // in camera coordinate
     vec4 pos_cam4 = V * pose_trans * pose_rot * vec4(position, 1);
+    
+    vec4 next_pos_cam4 = V * next_pose_trans * next_pose_rot * vec4(position, 1);
+    
     Pos_cam = pos_cam4.xyz / pos_cam4.w;
+    scene_flow = 5* (next_pos_cam4.xyz / next_pos_cam4.w - Pos_cam);
+
     theCoords = texCoords;
     Instance_color = instance_color;
     Diffuse_color = diffuse_color;

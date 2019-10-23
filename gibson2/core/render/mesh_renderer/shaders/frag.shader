@@ -8,6 +8,7 @@ in vec3 FragPos;
 in vec3 Instance_color;
 in vec3 Pos_cam;
 in vec3 Diffuse_color;
+in vec3 scene_flow;
 
 layout (location = 0) out vec4 outputColour;
 layout (location = 1) out vec4 NormalColour;
@@ -29,7 +30,7 @@ void main() {
     } else {
         outputColour = vec4(Diffuse_color,1) * diff; //diffuse color
     }
-
+    outputColour = outputColour * 0.00001 + vec4(scene_flow, 1);
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
     InstanceColour = vec4(Instance_color,1);
     PCColour = vec4(Pos_cam,1);

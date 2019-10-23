@@ -147,27 +147,36 @@ light
             p.changeDynamics(body_id, -1, restitution=0.95)
             p.resetBasePositionAndOrientation(body_id, [positions[i][2],positions[i][0],positions[i][1]+offset], [0.5, 0.5, 0.5, 0.5])
 
-
             #if 'floor' in files[i]:
             #    p.createConstraint(ground_plane_mjcf[0],-1, body_id, -1, p.JOINT_FIXED, [0,0,1], [0,0,0], [0,0,0])
             #if 'plate' in files[i]:
             #    p.createConstraint(ground_plane_mjcf[0],-1, body_id, -1, p.JOINT_FIXED, [0,0,1], [0,0,0], [0,0,0])
 
-        for step in range(170):
+        s.step()
+        
+
+        for step in range(200):
             s.step()
 
             instances = [instance.objects[0].filename for instance in s.viewer.renderer.instances]
             poses_trans = [instance.poses_trans[0] for instance in s.viewer.renderer.instances]
             poses_rot = [instance.poses_rot[0] for instance in s.viewer.renderer.instances]
-
+            if step % 2 == 0:
+                s.viewer.renderer.save_pose()
+            
             print(instances)
             print(poses_trans)
             print(poses_rot)
             s.viewer.renderer.export_scene('test_{:04d}.scene'.format(step))
+            
+            if step % 2 == 1:
+                s.viewer.renderer.load_pose()
+                Image.fromarray((255*s.viewer.renderer.render(modes=('rgb'))[0][:,:,:3]).astype(np.uint8)).save('test_rgb_{:04d}.png'.format(step))
+                Image.fromarray((255*s.viewer.renderer.render(modes=('normal'))[0][:,:,:3]).astype(np.uint8)).save('test_normal_{:04d}.png'.format(step))
 
-            Image.fromarray((255*s.viewer.renderer.render(modes=('rgb'))[0][:,:,:3]).astype(np.uint8)).save('test_rgb_{:04d}.png'.format(step))
-            Image.fromarray((255*s.viewer.renderer.render(modes=('normal'))[0][:,:,:3]).astype(np.uint8)).save('test_normal_{:04d}.png'.format(step))
-
+            
+        #Image.fromarray((255*s.viewer.renderer.render(modes=('rgb'))[0][:,:,:3]).astype(np.uint8)).save('restored.png')
+        #Image.fromarray((255*s.viewer.renderer.render(modes=('normal'))[0][:,:,:3]).astype(np.uint8)).save('restored_normal.png'.format(step))
 
     finally:
         s.disconnect()

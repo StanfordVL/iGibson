@@ -67,6 +67,9 @@ class InstanceGroup(object):
         self.dynamic = dynamic
         self.tf_tree = None
 
+        self.next_poses_trans = []
+        self.next_poses_rot = []
+        
     def render(self):
         if self.renderer is None:
             return
@@ -90,6 +93,21 @@ class InstanceGroup(object):
                 GL.glUniformMatrix4fv(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
                     self.poses_rot[i])
+
+                if len(self.next_poses_trans) > 0:
+                    GL.glUniformMatrix4fv(
+                        GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_trans'), 1,
+                        GL.GL_FALSE, self.next_poses_trans[i])
+                    GL.glUniformMatrix4fv(
+                        GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_rot'), 1, GL.GL_TRUE,
+                        self.next_poses_rot[i])
+                else:
+                    GL.glUniformMatrix4fv(
+                        GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_trans'), 1,
+                        GL.GL_FALSE, self.poses_trans[i])
+                    GL.glUniformMatrix4fv(
+                        GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_rot'), 1, GL.GL_TRUE,
+                        self.poses_rot[i])
 
                 GL.glUniform3f(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
@@ -160,6 +178,8 @@ class Instance(object):
         self.renderer = input_object.renderer
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
+        self.next_pose_trans = None
+        self.next_pose_rot = None
 
     def render(self):
         if self.renderer is None:
@@ -174,6 +194,16 @@ class Instance(object):
                               GL.GL_FALSE, self.pose_trans)
         GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1,
                               GL.GL_TRUE, self.pose_rot)
+        if self.next_pose_trans is not None:
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_trans'), 1,
+                                  GL.GL_FALSE, self.next_pose_trans)
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_rot'), 1,
+                                  GL.GL_TRUE, self.next_pose_rot)
+        else:
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_trans'), 1,
+                                  GL.GL_FALSE, self.pose_trans)
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_rot'), 1,
+                                  GL.GL_TRUE, self.pose_rot)
         GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_position'),
                        *self.renderer.lightpos)
         GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
@@ -189,7 +219,6 @@ class Instance(object):
                 GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
                 float(self.renderer.materials_mapping[
                     self.renderer.mesh_materials[object_idx]].is_texture()))
-
             try:
                 # Activate texture
                 GL.glActiveTexture(GL.GL_TEXTURE0)
@@ -820,6 +849,27 @@ material cream
                             ,rot[1,2], rot[2,0], rot[2,1], rot[2,2]))
                         f.write('}\n')
             f.write(self.light_string)
+    
+    def save_pose(self):
+        self.saved_instance_poses = []
+        self.saved_instance_group_poses = []
+        for item in self.instances:
+            if isinstance(item, Instance):
+                self.saved_instance_poses.append((item.pose_trans, item.pose_rot))
+            elif isinstance(item, InstanceGroup):
+                self.saved_instance_group_poses.append((item.poses_trans, item.poses_rot))
+
+    def load_pose(self):
+        for item in self.instances:
+            if isinstance(item, Instance):
+                item.next_pose_trans = np.copy(item.pose_trans)
+                item.next_pose_rot = np.copy(item.pose_rot)
+                item.pose_trans, item.pose_rot = self.saved_instance_poses.pop(0)
+
+            elif isinstance(item, InstanceGroup):
+                item.next_poses_trans = np.copy(item.poses_trans)
+                item.next_poses_rot = np.copy(item.poses_rot)
+                item.poses_trans, item.poses_rot = self.saved_instance_group_poses.pop(0)
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
