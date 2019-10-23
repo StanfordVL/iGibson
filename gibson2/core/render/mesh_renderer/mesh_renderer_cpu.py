@@ -279,10 +279,17 @@ class MeshRenderer:
         self.shaders = shaders
         self.colors = colormap
         self.lightcolor = [1, 1, 1]
-        self.material_string=""
+        self.material_string="""
+material cream
+{
+    color 1.0 0.94 0.8
+    roughness 1.0
+    specular 0.5
+}
+"""       
         self.mmap = {}
         self.light_string=""
-        
+
         print("fisheye", self.fisheye)
 
         if self.fisheye:
@@ -792,7 +799,7 @@ class MeshRenderer:
                     f.write('mesh\n')
                     f.write('{\n')
                     f.write('\t file {}\n'.format(mesh))
-                    f.write('\t material {} \n'.format(self.mmap[mesh]))
+                    f.write('\t material {} \n'.format(self.mmap.get(mesh, 'cream')))
                     f.write('\t translate {} {} {} \n'.format(trans[0], trans[1], trans[2]))
                     f.write('\t rotate {} {} {} {} {} {} {} {} {}\n'.format(rot[0,0], rot[0,1], rot[0,2], rot[1,0], rot[1,1]
                         ,rot[1,2], rot[2,0], rot[2,1], rot[2,2]))
@@ -807,7 +814,7 @@ class MeshRenderer:
                         f.write('mesh\n')
                         f.write('{\n')
                         f.write('\t file {}\n'.format(mesh))
-                        f.write('\t material {} \n'.format(self.mmap[mesh]))
+                        f.write('\t material {} \n'.format(self.mmap.get(mesh, 'cream')))
                         f.write('\t translate {} {} {} \n'.format(trans[0], trans[1], trans[2]))
                         f.write('\t rotate {} {} {} {} {} {} {} {} {}\n'.format(rot[0,0], rot[0,1], rot[0,2], rot[1,0], rot[1,1]
                             ,rot[1,2], rot[2,0], rot[2,1], rot[2,2]))
