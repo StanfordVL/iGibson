@@ -446,14 +446,14 @@ class NavigateRandomEnv(NavigateEnv):
 
 class NavigateObstaclesEnv(NavigateEnv):
     def __init__(
-            self,
-            config_file,
-            mode='headless',
-            action_timestep=1 / 10.0,
-            physics_timestep=1 / 240.0,
-            automatic_reset=False,
-            random_height=False,
-            device_idx=0,
+             self,
+             config_file,
+             mode='headless',
+             action_timestep=1 / 10.0,
+             physics_timestep=1 / 240.0,
+             automatic_reset=False,
+             random_height=False,
+             device_idx=0,
     ):
         super(NavigateObstaclesEnv, self).__init__(config_file,
                                                 mode=mode,
@@ -463,17 +463,24 @@ class NavigateObstaclesEnv(NavigateEnv):
                                                 device_idx=device_idx)
         self.random_height = random_height
 
-        self.floor = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0.643, 0.643, 0.788, 0.0], half_extents=[20, 20, 0.02], initial_offset=[0, 0, -0.03])
-        self.floor.load()
-        self.floor.set_position([0, 0, 0])
-        self.simulator.import_object(self.floor)
-
+#         self.floor = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0.643, 0.643, 0.788, 0.0], half_extents=[20, 20, 0.02], initial_offset=[0, 0, -0.03])
+#         self.floor.load()
+#         self.floor.set_position([0, 0, 0])
+#         self.simulator.import_object(self.floor)
+    
+#         self.box_poses = [
+#             [[np.random.uniform(-2, 1), np.random.uniform(-2, -1), 0], [0, 0, 0, 1]],
+#             [[np.random.uniform(2, 1), np.random.uniform(2, -1), 0], [0, 0, 0, 1]],
+#             [[np.random.uniform(4, 1), np.random.uniform(-1, -1), 0], [0, 0, 0, 1]]
+#             ]
+        
         self.box_poses = [
-            [[np.random.uniform(-2, 1), np.random.uniform(-2, -1), 0], [0, 0, 0, 1]],
-            [[np.random.uniform(2, 1), np.random.uniform(2, -1), 0], [0, 0, 0, 1]],
-            [[np.random.uniform(1, 1), np.random.uniform(-1, -1), 0], [0, 0, 0, 1]]
+            [[0, -1.5, 0], [0, 0, 0, 1]],
+            [[0, 1.5, 0], [0, 0, 0, 1]],
+            [[1.5, 0, 0], [0, 0, 0, 1]],
+            [[-1.5, 0, 0], [0, 0, 0, 1]]
             ]
-
+    
         self.walls = []
         for box_pose in self.box_poses:
             box = BoxShape(pos=box_pose[0], dim=[0.2, 0.3, 0.3])
@@ -1045,9 +1052,9 @@ if __name__ == '__main__':
                         default='headless',
                         help='which mode for simulation (default: headless)')
     parser.add_argument('--env_type',
-                        choices=['deterministic', 'random', 'obstacles', 'interactive'],
+                        choices=['deterministic', 'random', 'fixed_obstacles', 'interactive'],
                         default='deterministic',
-                        help='which environment type (deterministic | random | interactive')
+                        help='which environment type (deterministic | random |  fixed_obstacles | interactive')
     args = parser.parse_args()
 
     if args.robot == 'turtlebot':
@@ -1068,7 +1075,7 @@ if __name__ == '__main__':
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
                                     physics_timestep=1 / 40.0)
-    elif args.env_type == 'obstacles':
+    elif args.env_type == 'fixed_obstacles':
         nav_env = NavigateObstaclesEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
