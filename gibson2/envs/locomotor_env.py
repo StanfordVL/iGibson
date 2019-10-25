@@ -300,23 +300,24 @@ class NavigateEnv(BaseEnv):
         return [self.rvo_simulator.getAgentPosition(agent_no)
                  for agent_no in self._ped_list]
 
-    def run_simulation(self):
-        collision_links = []
-        for _ in range(self.simulator_loop):
-            self.simulator_step()
-            if self.has_pedestrian:
-                self.update_pedestrian()
-            # when pedestrians can see the robot, they are very unlikely to collide with the robot
-            collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
-        collision_links = np.unique(collision_links)
-        return collision_links    
-
     # def run_simulation(self):
     #     collision_links = []
     #     for _ in range(self.simulator_loop):
     #         self.simulator_step()
-    #         collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-    #     return self.filter_collision_links(collision_links)
+    #         self.has_pedestrian = False
+    #         if self.has_pedestrian:
+    #             self.update_pedestrian()
+    #         # when pedestrians can see the robot, they are very unlikely to collide with the robot
+    #         collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
+    #     collision_links = np.unique(collision_links)
+    #     return collision_links    
+
+    def run_simulation(self):
+        collision_links = []
+        for _ in range(self.simulator_loop):
+            self.simulator_step()
+            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+        return self.filter_collision_links(collision_links)
 
     def update_pedestrian(self):
         self.rvo_simulator.doStep()
