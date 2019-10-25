@@ -246,14 +246,12 @@ class NavigateEnv(BaseEnv):
             dist = np.array([item[2] for item in results])
 
             valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-            dist[~valid_pts] = 0.0  # zero out invalid pts
+            dist[~valid_pts] = 1.0  # zero out invalid pts
             dist *= 30
 
             xyz = np.expand_dims(dist, 1) * orig_offset
             state['scan'] = xyz
             
-        #print(state)
-
         return state
 
     def run_simulation(self):
