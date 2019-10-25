@@ -66,7 +66,8 @@ verbose: false
 fast_lq_render: true
 
 # visual objects
-visual_object_at_initial_target_pos: true
+visual_object_at_initial_pos: false
+visual_object_at_target_pos: true
 target_visual_object_visible_to_agent: true
 
 # debug
