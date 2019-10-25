@@ -94,7 +94,7 @@ class NavigateEnv(BaseEnv):
         # subgoals for the next T time steps, e.g. agent pose in global frame
         self.sensor_dim = self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
-
+        
         observation_space = OrderedDict()
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf,
@@ -152,14 +152,14 @@ class NavigateEnv(BaseEnv):
             'visual_object_at_initial_target_pos', False)
 
         if self.visual_object_at_initial_target_pos:
-            cyl_length = 3.0
+            cyl_length = 1.5
             self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
-                                                    rgba_color=[1, 0, 0, 0.95],
+                                                    rgba_color=[1, 0, 0, 0.4],
                                                     radius=0.5,
                                                     length=cyl_length,
                                                     initial_offset=[0, 0, cyl_length / 2.0])
             self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
-                                                   rgba_color=[0, 0, 1, 0.95],
+                                                   rgba_color=[0, 0, 1, 0.4],
                                                    radius=0.5,
                                                    length=cyl_length,
                                                    initial_offset=[0, 0, cyl_length / 2.0])
@@ -170,7 +170,7 @@ class NavigateEnv(BaseEnv):
                 self.target_pos_vis_obj.load()
 
     def get_additional_states(self):
-        relative_position = self.target_pos - self.robots[0].get_position()
+        relative_position = self.current_target_position - self.robots[0].get_position()
         # rotate relative position back to body point of view
         additional_states = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
 
@@ -251,6 +251,8 @@ class NavigateEnv(BaseEnv):
 
             xyz = np.expand_dims(dist, 1) * orig_offset
             state['scan'] = xyz
+            
+        #print(state)
 
         return state
 
@@ -271,9 +273,9 @@ class NavigateEnv(BaseEnv):
             return self.robots[0].get_end_effector_position()
 
     def get_potential(self):
-        return l2_distance(self.target_pos, self.get_position_of_interest())
+        return l2_distance(self.current_target_position, self.get_position_of_interest())
 
-    def get_reward(self, collision_links=[], action=None, info={}):
+    def get_reward(self, collision_links=[], action=None, info={}):        
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
         new_normalized_potential = self.get_potential() / self.initial_potential
@@ -291,11 +293,15 @@ class NavigateEnv(BaseEnv):
         reward += stall_torque_reward * self.stall_torque_reward_weight  # |stall_torque_reward| ~= 0.05 per step
 
         collision_reward = float(len(collision_links) > 0)
-        info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
-        reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
-
+        if collision_reward > 0:
+            self.collision = True
+            info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
+            reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
+        else:
+            self.collision = False
+            
         # goal reached
-        if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
+        if l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
             reward += self.success_reward  # |success_reward| = 10.0 per step
 
         return reward, info
@@ -312,7 +318,12 @@ class NavigateEnv(BaseEnv):
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
         # max_force = max([elem[9] for elem in collision_links]) if len(collision_links) > 0 else 0
 
-        if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
+        if self.collision:
+            print("COLLISION!")
+            done = True
+            info['success'] = False
+            
+        elif l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
             print("GOAL")
             done = True
             info['success'] = True
@@ -395,7 +406,7 @@ class NavigateEnv(BaseEnv):
         # set position for visual objects
         if self.visual_object_at_initial_target_pos:
             self.initial_pos_vis_obj.set_position(self.initial_pos)
-            self.target_pos_vis_obj.set_position(self.target_pos)
+            self.target_pos_vis_obj.set_position(self.current_target_position)
 
         state = self.get_state()
         return state
@@ -421,7 +432,7 @@ class NavigateRandomEnv(NavigateEnv):
         self.random_height = random_height
 
     def reset_initial_and_target_pos(self):
-        floor, pos = self.scene.get_random_point()
+        floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
         self.robots[0].set_orientation(
             orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
@@ -430,8 +441,8 @@ class NavigateRandomEnv(NavigateEnv):
         max_trials = 100
         dist = 0.0
         for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
-            _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
-            dist = l2_distance(self.initial_pos, self.target_pos)
+            _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
+            dist = l2_distance(self.initial_pos, self.current_target_position)
             if dist > 1.0:
                 break
         if dist < 1.0:
@@ -488,17 +499,17 @@ class NavigateObstaclesEnv(NavigateEnv):
             self.walls += [box]
         
     def reset_initial_and_target_pos(self):
-        floor, pos = self.scene.get_random_point()
+        floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
         self.robots[0].set_orientation(
             orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
         self.initial_pos = pos
-
+        
         max_trials = 100
         dist = 0.0
         for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
-            _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
-            dist = l2_distance(self.initial_pos, self.target_pos)
+            _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
+            dist = l2_distance(self.initial_pos, self.current_target_position)
             if dist > 1.0:
                 break
         if dist < 1.0:

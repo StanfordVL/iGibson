@@ -34,15 +34,15 @@ class StadiumScene(Scene):
 
         return [item for item in self.stadium] + [item for item in self.ground_plane_mjcf]
 
-    def get_random_point(self):
-        return self.get_random_point_floor(0)
+    def get_random_point(self, min_xy=-5, max_xy=5, min_z=0.4, max_z=0.8, random_height=False):
+        return self.get_random_point_floor(0, min_xy=min_xy, max_xy=max_xy, min_z=min_z, max_z=max_z, random_height=random_height)
 
-    def get_random_point_floor(self, floor, random_height=False):
+    def get_random_point_floor(self, floor, min_xy=-5, max_xy=5, min_z=0.4, max_z=0.8, random_height=False):
         del floor
         return 0, np.array([
-            np.random.uniform(-5, 5),
-            np.random.uniform(-5, 5),
-            np.random.uniform(0.4, 0.8) if random_height else 0.0
+            np.random.uniform(min_xy, max_xy),
+            np.random.uniform(min_xy, max_xy),
+            np.random.uniform(min_z, max_z) if random_height else 0.0
         ])
 
 
