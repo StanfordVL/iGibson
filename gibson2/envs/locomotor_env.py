@@ -141,6 +141,18 @@ class NavigateEnv(BaseEnv):
                 torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
 
+        if 'pedestrian' in self.output:
+            self.pedestrian_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+                                                   shape=(self.num_ped*2,),  # num_ped * len([x_pos, y_pos])
+                                                   dtype=np.float32)
+            observation_space['pedestrian'] = self.pedestrian_space
+            
+        if 'waypoints' in self.output:
+            self.waypoints_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+                                                  shape=(self.config['waypoints']*2,),  # waypoints * len([x_pos, y_pos])
+                                                  dtype=np.float32)
+            observation_space['waypoints'] = self.waypoints_space
+
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
 
@@ -148,22 +160,29 @@ class NavigateEnv(BaseEnv):
         self.current_episode = 0
 
         # add visual objects
-        self.visual_object_at_initial_target_pos = self.config.get(
-            'visual_object_at_initial_target_pos', False)
+        self.visual_object_at_initial_pos = self.config.get(
+            'visual_object_at_initial_pos', False)
 
-        if self.visual_object_at_initial_target_pos:
+        self.visual_object_at_target_pos = self.config.get(
+            'visual_object_at_target_pos', False)
+
+        if self.visual_object_at_initial_pos:
             cyl_length = 1.5
             self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
                                                     rgba_color=[1, 0, 0, 0.4],
                                                     radius=0.5,
                                                     length=cyl_length,
                                                     initial_offset=[0, 0, cyl_length / 2.0])
+            self.initial_pos_vis_obj.load()            
+
+        if self.visual_object_at_target_pos:
+            cyl_length = 1.5            
             self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
-                                                   rgba_color=[0, 0, 1, 0.4],
+                                                   rgba_color=[1, 1, 0, 0.4],
                                                    radius=0.5,
                                                    length=cyl_length,
                                                    initial_offset=[0, 0, cyl_length / 2.0])
-            self.initial_pos_vis_obj.load()
+
             if self.config.get('target_visual_object_visible_to_agent', False):
                 self.simulator.import_object(self.target_pos_vis_obj)
             else:
@@ -251,15 +270,93 @@ class NavigateEnv(BaseEnv):
 
             xyz = np.expand_dims(dist, 1) * orig_offset
             state['scan'] = xyz
+
+        if 'pedestrian' in self.output:
+            ped_pos = self.get_ped_states()
+            rob_pos = self.robots[0].get_position()
+            ped_robot_relative_pos = [[ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1]] for i in range(self.num_ped)]
+            ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
+            state['pedestrian'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
+            
+        if 'waypoints' in self.output:
+            path = self.compute_a_star(self.config['scene']) # current dim is (107, 2), varying by scene and start/end points
+            rob_pos = self.robots[0].get_position()
+            path_robot_relative_pos = [[path[i][0] - rob_pos[0], path[i][1] - rob_pos[1]] for i in range(path.shape[0])]
+            path_robot_relative_pos = np.asarray(path_robot_relative_pos)
+            path_point_ind = np.argmin(np.linalg.norm(path_robot_relative_pos , axis=1))
+            curr_points_num = path.shape[0] - path_point_ind
+            # keep the dimenstion based on the number of waypoints specified in the config file
+            if curr_points_num > self.config['waypoints']:
+                out = path_robot_relative_pos[path_point_ind:path_point_ind+self.config['waypoints']]
+            else:
+                curr_waypoints = path_robot_relative_pos[path_point_ind:]
+                end_point = np.repeat(path_robot_relative_pos[path.shape[0]-1].reshape(1,2), (self.config['waypoints']-curr_points_num), axis=0)
+                out = np.vstack((curr_waypoints, end_point))
+            state['waypoints'] = out.flatten()            
             
         return state
+
+    def get_ped_states(self):
+        return [self.rvo_simulator.getAgentPosition(agent_no)
+                 for agent_no in self._ped_list]
 
     def run_simulation(self):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-        return self.filter_collision_links(collision_links)
+            if self.has_pedestrian:
+                self.update_pedestrian()
+            # when pedestrians can see the robot, they are very unlikely to collide with the robot
+            collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
+        collision_links = np.unique(collision_links)
+        return collision_links    
+
+    # def run_simulation(self):
+    #     collision_links = []
+    #     for _ in range(self.simulator_loop):
+    #         self.simulator_step()
+    #         collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+    #     return self.filter_collision_links(collision_links)
+
+    def update_pedestrian(self):
+        self.rvo_simulator.doStep()
+        if self.config['pedestrian_can_see_robot']:
+            self.rvo_simulator.setAgentPosition(self.rvo_robot_id, tuple(self.robots[0].get_position()[:2]))
+        ped_pos = self.get_ped_states()
+        x = [pos[0] for pos in ped_pos]
+        y = [pos[1] for pos in ped_pos]
+
+        prev_x_mean = np.mean(self.prev_ped_x, axis = 0)
+        prev_y_mean = np.mean(self.prev_ped_y, axis = 0)
+
+        self.prev_ped_x.append(x)
+        self.prev_ped_y.append(y)
+        
+        # keep track of pedestrian trajectory for up to 5 timesteps
+        if len(self.prev_ped_x) > 5:
+            self.prevent_stuck_at_corners(x, y, self.prev_ped_x[0], self.prev_ped_y[0])
+            self.prev_ped_x.pop(0)
+            self.prev_ped_y.pop(0)
+
+        angle = np.arctan2(y - prev_y_mean, x - prev_x_mean)
+        for j in range(self.num_ped):
+            direction = p.getQuaternionFromEuler([0, 0, angle[j]])
+            self.peds[j].reset_position_orientation([x[j], y[j], 0.03], direction)
+
+    def prevent_stuck_at_corners(self, x, y, old_x, old_y, eps = 0.01):
+        # self.rvo_simulator.setAgentPosition(ai, (self._ped_states[ai,0], self._ped_states[ai,1]))
+        def dist(x1, y1, x2, y2, eps = 0.01):
+            return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
+
+        for i in range(self.num_ped):
+            if(dist(x[i], y[i], old_x[i], old_y[i]) < eps):
+                ai = self._ped_list[i]
+                assig_speed = np.random.uniform(0.02, 0.04)
+                assig_direc = np.random.uniform(0.0, 2*np.pi)
+                vx = assig_speed * np.cos(assig_direc)
+                vy = assig_speed * np.sin(assig_direc)
+                self.rvo_simulator.setAgentPrefVelocity(ai, (vx, vy))
+                self.rvo_simulator.setAgentVelocity(ai, (vx, vy))
 
     def filter_collision_links(self, collision_links):
         return [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
@@ -402,8 +499,9 @@ class NavigateEnv(BaseEnv):
         self.energy_cost = 0.0
 
         # set position for visual objects
-        if self.visual_object_at_initial_target_pos:
+        if self.visual_object_at_initial_pos:
             self.initial_pos_vis_obj.set_position(self.initial_pos)
+        if self.visual_object_at_target_pos:            
             self.target_pos_vis_obj.set_position(self.current_target_position)
 
         state = self.get_state()
