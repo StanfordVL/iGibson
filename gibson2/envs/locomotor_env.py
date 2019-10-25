@@ -1,6 +1,6 @@
 from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape
 import gibson2
-from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
+from gibson2.utils.utils import parse_config, rotate_vector_3d, rotate_vector_2d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -18,29 +18,30 @@ from IPython import embed
 import cv2
 import time
 import collections
-
+import matplotlib.pyplot as plt
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
 # arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
 
 Episode = collections.namedtuple('Episode',
-                                 ['env',
-                                  'agent',
-                                  'initial_pos',
-                                  'target_pos',
-                                  'geodesic_distance',
-                                  'shortest_path',
-                                  'agent_trajectory',
-                                  'object_files',
-                                  'object_trajectory',
-                                  'success',
-                                  'path_efficiency',
-                                  'kinematic_disturbance',
-                                  'dynamic_disturbance_a',
-                                  'dynamic_disturbance_b',
-                                  'collision_step',
-                                  ])
+                                 [
+                                     # 'env',
+                                     # 'agent',
+                                     # 'initial_pos',
+                                     # 'target_pos',
+                                     # 'geodesic_distance',
+                                     # 'shortest_path',
+                                     # 'agent_trajectory',
+                                     # 'object_files',
+                                     # 'object_trajectory',
+                                     'success',
+                                     # 'path_efficiency',
+                                     # 'kinematic_disturbance',
+                                     # 'dynamic_disturbance_a',
+                                     # 'dynamic_disturbance_b',
+                                     # 'collision_step',
+                                 ])
 
 
 class NavigateEnv(BaseEnv):
@@ -424,34 +425,34 @@ class NavigateEnv(BaseEnv):
             #                                   'collision_step',
             #                                   ])
 
-            shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
-                                                                            self.initial_pos[:2],
-                                                                            self.target_pos[:2],
-                                                                            entire_path=True)
-            floor_height = self.scene.get_floor_height(self.floor_num)
-            shortest_path = np.array([np.array([path[0], path[1], floor_height]) for path in shortest_path])
-            min_kin_dist = self.path_length * self.robots[0].robot_mass
-            kinematic_disturbance = min_kin_dist / (min_kin_dist + self.kinematic_disturbance)
-            min_dyn_dist = self.current_step * self.robots[0].robot_mass * 9.8
-            dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
-            dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
-            object_files = [obj.filename for obj in self.interactive_objects]
+            # shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
+            #                                                                 self.initial_pos[:2],
+            #                                                                 self.target_pos[:2],
+            #                                                                 entire_path=True)
+            # floor_height = self.scene.get_floor_height(self.floor_num)
+            # shortest_path = np.array([np.array([path[0], path[1], floor_height]) for path in shortest_path])
+            # min_kin_dist = self.path_length * self.robots[0].robot_mass
+            # kinematic_disturbance = min_kin_dist / (min_kin_dist + self.kinematic_disturbance)
+            # min_dyn_dist = self.current_step * self.robots[0].robot_mass * 9.8
+            # dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
+            # dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
+            # object_files = [obj.filename for obj in self.interactive_objects]
             episode = Episode(
-                env=self.scene.model_id,
-                agent=self.robots[0].model_file,
-                initial_pos=self.initial_pos,
-                target_pos=self.target_pos,
-                geodesic_distance=geodesic_distance,
-                shortest_path=shortest_path,
-                agent_trajectory=np.array(self.agent_trajectory),
-                object_files=object_files,
-                object_trajectory=np.array(self.object_trajectory),
+                # env=self.scene.model_id,
+                # agent=self.robots[0].model_file,
+                # initial_pos=self.initial_pos,
+                # target_pos=self.target_pos,
+                # geodesic_distance=geodesic_distance,
+                # shortest_path=shortest_path,
+                # agent_trajectory=np.array(self.agent_trajectory),
+                # object_files=object_files,
+                # object_trajectory=np.array(self.object_trajectory),
                 success=float(info['success']),
-                path_efficiency=min(1.0, geodesic_distance / self.path_length),
-                kinematic_disturbance=kinematic_disturbance,
-                dynamic_disturbance_a=dynamic_disturbance_a,
-                dynamic_disturbance_b=dynamic_disturbance_b,
-                collision_step=self.collision_step,
+                # path_efficiency=min(1.0, geodesic_distance / self.path_length),
+                # kinematic_disturbance=kinematic_disturbance,
+                # dynamic_disturbance_a=dynamic_disturbance_a,
+                # dynamic_disturbance_b=dynamic_disturbance_b,
+                # collision_step=self.collision_step,
             )
             self.stored_episodes.append(episode)
 
@@ -501,9 +502,13 @@ class NavigateEnv(BaseEnv):
         collision_links_flatten = [item for sublist in collision_links for item in sublist]
         return len(collision_links_flatten) == 0
 
+    def after_reset_agent(self):
+        return
+
     def reset(self):
         self.current_episode += 1
         self.reset_agent()
+        self.after_reset_agent()
         state = self.get_state()
 
         if self.reward_type == 'l2':
@@ -770,6 +775,268 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
             for obj, prev_pos in zip(self.interactive_objects, object_positions)
             if obj.body_id in self.interactive_objects_collided
         ])
+
+
+class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
+    def __init__(self,
+                 config_file,
+                 model_id=None,
+                 collision_reward_weight=0.0,
+                 mode='headless',
+                 action_timestep=1 / 10.0,
+                 physics_timestep=1 / 240.0,
+                 device_idx=0,
+                 automatic_reset=False,
+                 ):
+        super(InteractiveGibsonNavigateSim2RealEnv, self).__init__(config_file,
+                                                                   model_id=model_id,
+                                                                   mode=mode,
+                                                                   action_timestep=action_timestep,
+                                                                   physics_timestep=physics_timestep,
+                                                                   automatic_reset=automatic_reset,
+                                                                   random_height=False,
+                                                                   device_idx=device_idx)
+        self.collision_reward_weight = collision_reward_weight
+
+        self.replaced_objects = []
+        self.replaced_objects_pos = []
+        self.additional_objects = []
+        self.class_map = {}
+
+        self.should_load_replaced_objects = self.config.get('should_load_replaced_objects', False)
+        self.should_load_additional_objects = self.config.get('should_load_additional_objects', False)
+
+        self.build_class_map()
+        self.load_replaced_objects()
+        self.load_additional_objects()
+        self.interactive_objects = self.replaced_objects + self.additional_objects
+        self.new_potential = None
+
+        self.gt_pos = []
+        self.ns_pos = []
+
+        # self.eyes_vis = VisualObject(rgba_color=[1, 0, 0, 1.0], radius=0.03)
+        # self.eyes_vis.load()
+        resolution = self.config.get('resolution', 64)
+        width = resolution
+        height = int(width * (480.0 / 640.0))
+        self.observation_space.spaces['depth'] = gym.spaces.Box(low=-np.inf,
+                                                                high=np.inf,
+                                                                shape=(height, width, 1),
+                                                                dtype=np.float32)
+        self.visualize_waypoints = True
+        if self.visualize_waypoints and self.mode == 'gui':
+            cyl_length = 0.2
+            self.waypoints_vis = [VisualObject(visual_shape=p.GEOM_CYLINDER,
+                                               rgba_color=[0, 1, 0, 0.3],
+                                               radius=0.1,
+                                               length=cyl_length,
+                                               initial_offset=[0, 0, cyl_length / 2.0]) for _ in range(1000)]
+            for waypoint in self.waypoints_vis:
+                waypoint.load()
+
+    def build_class_map(self):
+        # 0 and 1 are reserved for mesh and robot
+        init_class_id = 2
+
+        if self.should_load_replaced_objects:
+            self.replaced_object_classes = [
+                '03001627',  # chair
+                '04256520',  # couch
+                '04379243',  # table / desk
+                '00000001',  # door
+            ]
+            for item in self.replaced_object_classes:
+                self.class_map[item] = init_class_id
+                init_class_id += 1
+
+        if self.should_load_additional_objects:
+            self.additional_objects_path = [
+                'object_2eZY2JqYPQE.urdf',
+                'object_lGzQi2Pk5uC.urdf',
+                'object_ZU6u5fvE8Z1.urdf',
+                'object_H3ygj6efM8V.urdf',
+                'object_RcqC01G24pR.urdf'
+            ]
+
+            for item in self.additional_objects_path:
+                self.class_map[item] = init_class_id
+                init_class_id += 1
+
+        self.num_object_classes = init_class_id
+
+    def load_replaced_objects(self):
+        if not self.should_load_replaced_objects:
+            return
+        scene_path = os.path.join(gibson2.assets_path, 'dataset', self.scene.model_id)
+        urdf_files = [item for item in os.listdir(scene_path) if item[-4:] == 'urdf']
+        position_files = [item[:-4].replace('alignment_centered', 'pos') + 'txt' for item in urdf_files]
+
+        for urdf_file, position_file in zip(urdf_files, position_files):
+            with open(os.path.join(scene_path, position_file)) as f:
+                pos = np.array([float(item) for item in f.readlines()[0].strip().split()])
+                # filter out duplicate annotations for the same object
+                if len(self.replaced_objects_pos) == 0 or \
+                        np.min(np.linalg.norm(np.array(self.replaced_objects_pos) - pos, axis=1)) > 0.5:
+                    class_id = urdf_file.split('.')[0].split('_')[-1]
+                    obj = InteractiveObj(os.path.join(scene_path, urdf_file))
+                    self.simulator.import_object(obj, class_id=self.class_map[class_id])
+                    self.replaced_objects.append(obj)
+                    self.replaced_objects_pos.append(pos)
+
+    def load_additional_objects(self):
+        if not self.should_load_additional_objects:
+            return
+        num_dupicates = 2
+        for _ in range(num_dupicates):
+            for urdf_model in self.additional_objects_path:
+                obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
+                self.simulator.import_object(obj, class_id=self.class_map[urdf_model])
+                self.additional_objects.append(obj)
+
+    def global_to_local(self, pos, cur_pos, cur_rot):
+        return rotate_vector_3d(pos - cur_pos, *cur_rot)
+
+    def get_additional_states(self):
+        pos_noise = 0.0
+        cur_pos = self.robots[0].get_position()
+        cur_pos[:2] += np.random.normal(0, pos_noise, 2)
+        # self.gt_pos.append(self.robots[0].get_position())
+        # self.ns_pos.append(cur_pos)
+
+        rot_noise = 0.0 / 180.0 * np.pi
+        cur_rot = self.robots[0].get_rpy()
+        cur_rot = (cur_rot[0], cur_rot[1], cur_rot[2] + np.random.normal(0, rot_noise))
+
+        target_pos_local = self.global_to_local(self.target_pos, cur_pos, cur_rot)[:2]
+        linear_velocity_local = rotate_vector_3d(self.robots[0].robot_body.velocity(), *cur_rot)[:2]
+        angular_velocity_local = rotate_vector_3d(self.robots[0].robot_body.angular_velocity(), *cur_rot)[:2]
+
+        gt_pos = self.robots[0].get_position()[:2]
+        source = gt_pos
+        target = self.target_pos[:2]
+        _, geodesic_dist = self.scene.get_shortest_path(self.floor_num, source, target)
+        # geodesic_dist = 0.0
+
+        robot_z = self.robots[0].get_position()[2]
+        if self.visualize_waypoints and self.mode == 'gui':
+            for i in range(1000):
+                self.waypoints_vis[i].set_position(pos=np.array([0.0, 0.0, 0.0]))
+            for i in range(min(1000, self.shortest_path.shape[0])):
+                self.waypoints_vis[i].set_position(pos=np.array([self.shortest_path[i][0],
+                                                                 self.shortest_path[i][1],
+                                                                 robot_z]))
+        # self.eyes_vis.set_position(pos=self.robots[0].eyes.get_position())
+
+        closest_idx = np.argmin(np.linalg.norm(cur_pos[:2] - self.shortest_path, axis=1))
+        shortest_path = self.shortest_path[closest_idx:closest_idx + self.scene.num_waypoints]
+        num_remaining_waypoints = self.scene.num_waypoints - shortest_path.shape[0]
+        if num_remaining_waypoints > 0:
+            remaining_waypoints = np.tile(self.target_pos[:2], (num_remaining_waypoints, 1))
+            shortest_path = np.concatenate((shortest_path, remaining_waypoints), axis=0)
+
+        shortest_path = np.concatenate((shortest_path, robot_z * np.ones((shortest_path.shape[0], 1))), axis=1)
+
+        waypoints_local_xy = np.array([self.global_to_local(waypoint, cur_pos, cur_rot)[:2]
+                                       for waypoint in shortest_path]).flatten()
+        additional_states = np.concatenate((waypoints_local_xy,
+                                            target_pos_local,
+                                            linear_velocity_local,
+                                            angular_velocity_local))
+        # cache results for reward calculation
+        self.new_potential = geodesic_dist
+        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
+        return additional_states
+
+    def get_state(self, collision_links=[]):
+        state = super(InteractiveGibsonNavigateSim2RealEnv, self).get_state(collision_links)
+        depth = state['depth']
+        width = depth.shape[0]
+        height = int(width * (480.0 / 640.0))
+        half_diff = int((width - height) / 2)
+        depth = depth[half_diff:half_diff+height, :]
+        # cv2.imshow('depth', depth)
+        depth[depth < 0.6] = -1.0
+        depth[depth > 4.0] = -1.0
+        state['depth'] = depth
+        return state
+
+    def get_potential(self):
+        return self.new_potential
+
+    def reset_additional_objects(self):
+        for obj in self.additional_objects:
+            while True:
+                _, pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
+                obj.set_position_rotation([pos[0], pos[1], pos[2] + self.random_init_z_offset],
+                                          quatToXYZW(euler2quat(0.0, 0.0, 0.0), 'wxyz'))
+                has_collision = False
+                for _ in range(self.simulator_loop):
+                    self.simulator_step()
+                    if len(p.getContactPoints(bodyA=obj.body_id)) > 0:
+                        has_collision = True
+                        break
+                if not has_collision:
+                    break
+
+    def reset_replaced_objects(self):
+        for obj, pos in zip(self.replaced_objects, self.replaced_objects_pos):
+            obj.set_position_rotation([pos[0], pos[1], pos[2] + self.random_init_z_offset],
+                                      quatToXYZW(euler2quat(0.0, 0.0, 0.0), 'wxyz'))
+
+    def reset(self):
+        self.floor_num = self.scene.get_random_floor()
+        self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.05)
+        self.reset_replaced_objects()
+        self.reset_additional_objects()
+        self.new_potential = None
+        # if len(self.gt_pos) > 0:
+        #     self.gt_pos = np.array(self.gt_pos)
+        #     self.ns_pos = np.array(self.ns_pos)
+        #     plt.figure()
+        #     plt.scatter(self.gt_pos[:, 0], self.gt_pos[:, 1], c='r')
+        #     plt.scatter(self.ns_pos[:, 0], self.ns_pos[:, 1], c='b')
+        #     plt.show()
+        #     self.gt_pos = []
+        #     self.ns_pos = []
+
+        state = NavigateEnv.reset(self)
+        return state
+
+    def after_reset_agent(self):
+        source = self.robots[0].get_position()[:2]
+        target = self.target_pos[:2]
+        shortest_path, _ = self.scene.get_shortest_path(self.floor_num, source, target, entire_path=True)
+        self.shortest_path = shortest_path
+
+    # def before_simulation(self):
+    #     robot_position = self.robots[0].get_position()
+    #     object_positions = [obj.get_position() for obj in self.interactive_objects]
+    #     return robot_position, object_positions
+    #
+    # def after_simulation(self, cache, collision_links):
+    #     robot_position, object_positions = cache
+    #
+    #     collision_links_flatten = [item for sublist in collision_links for item in sublist]
+    #     if len(collision_links_flatten) > 0:
+    #         self.dynamic_disturbance_a += np.mean([
+    #             np.linalg.norm(
+    #                 np.sum([elem[9] * np.array(elem[7]) for elem in sublist], axis=0)  # sum of all forces
+    #             )
+    #             for sublist in collision_links])
+    #         collision_objects = set([col[2] for col in collision_links_flatten])
+    #         self.dynamic_disturbance_b += len(collision_objects)
+    #         self.interactive_objects_collided |= collision_objects
+    #
+    #     self.agent_trajectory.append(np.concatenate((self.robots[0].get_position(), self.robots[0].get_orientation())))
+    #     self.object_trajectory.append([np.concatenate((obj.get_position(), obj.get_orientation()))
+    #                                    for obj in self.interactive_objects])
+    #     self.path_length += np.linalg.norm(self.robots[0].get_position() - robot_position)
+    #     self.kinematic_disturbance += np.sum([
+    #         obj.mass * np.linalg.norm(np.array(obj.get_position()) - np.array(prev_pos))
+    #         for obj, prev_pos in zip(self.interactive_objects, object_positions)
+    #         if obj.body_id in self.interactive_objects_collided
+    #     ])
 
 
 class InteractiveNavigateEnv(NavigateEnv):
@@ -1283,51 +1550,40 @@ class InteractiveNavigateEnv(NavigateEnv):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--robot',
-                        '-r',
-                        choices=['turtlebot', 'jr'],
-                        required=True,
-                        help='which robot [turtlebot|jr]')
-    parser.add_argument(
-        '--config',
-        '-c',
-        help='which config file to use [default: use yaml files in examples/configs]')
-    parser.add_argument('--mode',
-                        '-m',
+    parser.add_argument('--config', '-c',
+                        help='which config file to use [default: use yaml files in examples/configs]', required=True)
+    parser.add_argument('--env_type',
+                        choices=['deterministic', 'random', 'interactive', 'ig', 'ig_s2r'],
+                        default='deterministic',
+                        help='which environment type (deterministic | random | interactive | ig', required=True)
+    parser.add_argument('--mode', '-m',
                         choices=['headless', 'gui'],
                         default='headless',
                         help='which mode for simulation (default: headless)')
-    parser.add_argument('--env_type',
-                        choices=['deterministic', 'random', 'interactive', 'ig'],
-                        default='deterministic',
-                        help='which environment type (deterministic | random | interactive | ig')
     args = parser.parse_args()
 
-    if args.robot == 'turtlebot':
-        config_filename = os.path.join(os.path.dirname(gibson2.__file__),
-                                       '../examples/configs/turtlebot_p2p_nav_discrete.yaml') \
-            if args.config is None else args.config
-    elif args.robot == 'jr':
-        config_filename = os.path.join(os.path.dirname(gibson2.__file__),
-                                       '../examples/configs/jr2_reaching.yaml') \
-            if args.config is None else args.config
     if args.env_type == 'deterministic':
-        nav_env = NavigateEnv(config_file=config_filename,
+        nav_env = NavigateEnv(config_file=args.config,
                               mode=args.mode,
                               action_timestep=1.0 / 10.0,
                               physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random':
-        nav_env = NavigateRandomEnv(config_file=config_filename,
+        nav_env = NavigateRandomEnv(config_file=args.config,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
                                     physics_timestep=1.0 / 40.0)
     elif args.env_type == 'ig':
-        nav_env = InteractiveGibsonNavigateEnv(config_file=config_filename,
+        nav_env = InteractiveGibsonNavigateEnv(config_file=args.config,
                                                mode=args.mode,
                                                action_timestep=1.0 / 10.0,
-                                               physics_timestep=1 / 40.0)
-    else:
-        nav_env = InteractiveNavigateEnv(config_file=config_filename,
+                                               physics_timestep=1.0 / 40.0)
+    elif args.env_type == 'ig_s2r':
+        nav_env = InteractiveGibsonNavigateSim2RealEnv(config_file=args.config,
+                                                       mode=args.mode,
+                                                       action_timestep=1.0 / 10.0,
+                                                       physics_timestep=1.0 / 40.0)
+    elif args.env_type == 'interactive':
+        nav_env = InteractiveNavigateEnv(config_file=args.config,
                                          mode=args.mode,
                                          action_timestep=1.0 / 10.0,
                                          random_position=False,
@@ -1347,7 +1603,7 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         nav_env.reset()
-        for step in range(50):  # 500 steps, 50s world time
+        for step in range(500):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             # action[:] = 0.5
             # action[:] = -1.0
