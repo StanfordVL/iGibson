@@ -140,15 +140,15 @@ class BuildingScene(Scene):
                 print('floors', self.floors)
             for f in range(len(self.floors)):
                 trav_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(f)))
-                obstacle_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f)))
+                # obstacle_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f)))
                 if self.trav_map_original_size is None:
                     width, height = trav_map.size
                     assert width == height, 'trav map is not a square'
                     self.trav_map_original_size = height
                     self.trav_map_size = int(self.trav_map_original_size * self.trav_map_default_resolution / self.trav_map_resolution)
                 trav_map = np.array(trav_map.resize((self.trav_map_size, self.trav_map_size)))
-                obstacle_map = np.array(obstacle_map.resize((self.trav_map_size, self.trav_map_size)))
-                trav_map[obstacle_map == 0] = 0
+                # obstacle_map = np.array(obstacle_map.resize((self.trav_map_size, self.trav_map_size)))
+                # trav_map[obstacle_map == 0] = 0
                 trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
 
                 if self.build_graph:
