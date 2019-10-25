@@ -11,8 +11,8 @@ class Viewer:
         self.down = False
         self.view_direction = np.array([1, 0, 0])
 
-        cv2.namedWindow('test')
-        cv2.namedWindow('robots')
+        cv2.namedWindow('test', cv2.WINDOW_NORMAL)
+        cv2.namedWindow('robot_rgb_view', cv2.WINDOW_NORMAL)
         cv2.setMouseCallback('test', self.change_dir)
 
         self.renderer = None
@@ -69,7 +69,7 @@ class Viewer:
             frames = self.renderer.render_robot_cameras()
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
-                cv2.imshow('robots', frame)
+                cv2.imshow('robot_rgb_view', frame)
 
 
 if __name__ == '__main__':
