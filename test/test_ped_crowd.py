@@ -1,6 +1,6 @@
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import *
-from gibson2.core.physics.interactive_objects import *
+from gibson2.core.physics.interactive_objects import BoxShape, Pedestrian
 from gibson2.core.physics.robot_locomotors import *
 import yaml
 import rvo2
@@ -17,14 +17,20 @@ class ped_crowd:
     def __init__(self):
 
         # wall = [pos, dim]
-        self.wall = [[[0, 7, 1.01], [10, 0.2, 1]], [[0, -7, 1.01], [6.89, 0.1, 1]],
-                [[7, -1.5, 1.01], [0.1, 5.5, 1]], [[-7, -1, 1.01], [0.1, 6, 1]],
-                [[-8.55, 5, 1.01], [1.44, 0.1, 1]], [[8.55, 4, 1.01], [1.44, 0.1, 1]],
-                [[10.2,5.5,1.01],[0.2,1.5,1]], [[-10.2,6,1.01],[0.2,1,1]]]
+        self.walls = [[[0, 7, 1.01], [10, 0.2, 1]],
+                     [[0, -7, 1.01], [6.89, 0.1, 1]],
+                     [[7, -1.5, 1.01], [0.1, 5.5, 1]],
+                     [[-7, -1, 1.01], [0.1, 6, 1]],
+                     [[-8.55, 5, 1.01], [1.44, 0.1, 1]],
+                     [[8.55, 4, 1.01], [1.44, 0.1, 1]],
+                     [[10.2,5.5,1.01],[0.2,1.5,1]],
+                     [[-10.2,6,1.01],[0.2,1,1]]]
 
-        self.obstacles = [[[-0.5, 2, 1.01], [3.5, 0.1, 1]], [[4.5, -1, 1.01], [1.5, 0.1, 1]],
-                     [[-4, -2, 1.01], [0.1, 2, 1]], [[2.5, -4, 1.01], [1.5, 0.1, 1]]]
-
+        self.obstacles = [[[-0.5, 2, 1.01], [3.5, 0.1, 1]],
+                          [[4.5, -1, 1.01], [1.5, 0.1, 1]],
+                          [[-4, -2, 1.01], [0.1, 2, 1]],
+                          [[2.5, -4, 1.01], [1.5, 0.1, 1]]]
+        
         self._ped_list = []
         self.num_ped = 5
         self.init_pos = [(3.0, -5.5), (-5.0, -5.0), (0.0, 0.0), (4.0, 5.0), (-5.0, 5.0)]
@@ -53,15 +59,16 @@ class ped_crowd:
             vy = pref_speed[i] * np.sin(init_direction[i])
             sim.setAgentPrefVelocity(ai, (vx, vy))
 
-        for i in range(len(self.wall)):
-            x, y, _ = self.wall[i][0] # pos = [x, y, z]
-            dx, dy, _ = self.wall[i][1] # dim = [dx, dy, dz]
+        for i in range(len(self.walls)):
+            x, y, _ = self.walls[i][0] # pos = [x, y, z]
+            dx, dy, _ = self.walls[i][1] # dim = [dx, dy, dz]
             sim.addObstacle([(x+dx, y+dy), (x-dx, y+dy), (x-dx, y-dy), (x+dx, y-dy)])
 
         for i in range(len(self.obstacles)):
             x, y, _ = self.obstacles[i][0] # pos = [x, y, z]
             dx, dy, _ = self.obstacles[i][1] # dim = [dx, dy, dz]
             sim.addObstacle([(x+dx, y+dy), (x-dx, y+dy), (x-dx, y-dy), (x+dx, y-dy)])
+            
         sim.processObstacles()
 
         # print('navRVO2: Initialized environment with %f RVO2-agents.', self._num_ped)
@@ -93,24 +100,24 @@ class ped_crowd:
 
         # p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "racecar.mp4")
 
-#         for i in range(len(self.wall)):
-#             curr = self.wall[i]
-# #            obj = VisualBoxShape(curr[0], curr[1])
-#             box = BoxShape(pos=[curr[0], curr[1], 0], dim=[0.2, 0.3, 0.3])            
-#             s.import_object(box)
+        for i in range(len(self.walls)):
+            wall = self.walls[i]
+#            obj = VisualBoxShape(curr[0], curr[1])
+            box = BoxShape(pos=[wall[0][0], wall[0][1], wall[0][2]], dim=[wall[1][0], wall[1][1], wall[1][2]])            
+            s.import_object(box)
 
-#         for i in range(len(self.obstacles)):
-#             curr = self.obstacles[i]
-#             #obj = VisualBoxShape(curr[0], curr[1])
-#             box = BoxShape(pos=[curr[0], curr[1], 0], dim=[0.2, 0.3, 0.3])                        
-#             s.import_object(box)
+        for i in range(len(self.obstacles)):
+            obstacle = self.obstacles[i]
+            #obj = VisualBoxShape(curr[0], curr[1])
+            box = BoxShape(pos=[obstacle[0][0], obstacle[0][1], obstacle[0][2]], dim=[obstacle[1][0], obstacle[1][1], obstacle[1][2]])                        
+            s.import_object(box)
 
         turtlebot1 = Turtlebot(self.config)
-        turtlebot2 = Turtlebot(self.config)
+        #turtlebot2 = Turtlebot(self.config)
         s.import_robot(turtlebot1)
-        s.import_robot(turtlebot2)
+        #s.import_robot(turtlebot2)
         turtlebot1.set_position([6., -6., 0.])
-        turtlebot2.set_position([-3., 4., 0.])
+        #turtlebot2.set_position([-3., 4., 0.])
 
         pos_list = [list(pos)+[0.03] for pos in self.init_pos]
         peds = [Pedestrian(pos = pos_list[i]) for i in range(self.num_ped)] 
