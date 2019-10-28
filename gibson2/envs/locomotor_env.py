@@ -154,12 +154,12 @@ class NavigateEnv(BaseEnv):
         if self.visual_object_at_initial_target_pos:
             cyl_length = 3.0
             self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
-                                                    rgba_color=[1, 0, 0, 0.95],
+                                                    rgba_color=[1, 0, 0, 0.4],
                                                     radius=0.5,
                                                     length=cyl_length,
                                                     initial_offset=[0, 0, cyl_length / 2.0])
             self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
-                                                   rgba_color=[0, 0, 1, 0.95],
+                                                   rgba_color=[0, 0, 1, 0.4],
                                                    radius=0.5,
                                                    length=cyl_length,
                                                    initial_offset=[0, 0, cyl_length / 2.0])
@@ -258,6 +258,33 @@ class NavigateEnv(BaseEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
+            # personalize keyboard event; might cause problem
+            # TODO:aha delete the code at some point
+            """
+            keyboard_event = p.getKeyboardEvents()
+            if len(keyboard_event) > 0:
+                camera_info = p.getDebugVisualizerCamera()
+                yaw, pitch, dist, target = camera_info[-4:]
+                # print('yaw: {}, pitch: {}, dist: {}, target: {}'.format(yaw, pitch, dist, target))
+                if p.B3G_LEFT_ARROW in keyboard_event and keyboard_event[p.B3G_LEFT_ARROW] == p.KEY_IS_DOWN:
+                    target = (target[0], target[1] - 0.02, target[2])
+                elif p.B3G_RIGHT_ARROW in keyboard_event and keyboard_event[p.B3G_RIGHT_ARROW] == p.KEY_IS_DOWN:
+                    target = (target[0], target[1] + 0.02, target[2])
+                elif p.B3G_UP_ARROW in keyboard_event and keyboard_event[p.B3G_UP_ARROW] == p.KEY_IS_DOWN:
+                    target = (target[0] - 0.02, target[1], target[2])
+                elif p.B3G_DOWN_ARROW in keyboard_event and keyboard_event[p.B3G_DOWN_ARROW] == p.KEY_IS_DOWN:
+                    target = (target[0] + 0.02, target[1], target[2])
+                # print("keyboard: {}".format(keyboard_event))
+                if ord('e') in keyboard_event and keyboard_event[ord('e')] == p.KEY_IS_DOWN:
+                    dist -= 0.05
+                elif ord('d') in keyboard_event and keyboard_event[ord('d')] == p.KEY_IS_DOWN:
+                    dist += 0.05
+                if ord('s') in keyboard_event and keyboard_event[ord('s')] == p.KEY_IS_DOWN:
+                    yaw -= 0.2
+                elif ord('f') in keyboard_event and keyboard_event[ord('f')] == p.KEY_IS_DOWN:
+                    yaw += 0.2 
+                p.resetDebugVisualizerCamera(dist, yaw, pitch, target)
+            """
             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
         return self.filter_collision_links(collision_links)
 
