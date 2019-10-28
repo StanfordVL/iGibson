@@ -13,7 +13,7 @@ from transforms3d.quaternions import quat2mat, qmult
 import gym
 import numpy as np
 import os
-import pybullet as p
+import pybullet as pybullet
 import rvo2
 from IPython import embed
 import cv2
@@ -172,7 +172,7 @@ class NavigateEnv(BaseEnv):
 
         if self.visual_object_at_initial_pos:
             cyl_length = 1.5
-            self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
+            self.initial_pos_vis_obj = VisualObject(visual_shape=pybullet.GEOM_CYLINDER,
                                                     rgba_color=[1, 0, 0, 0.4],
                                                     radius=0.5,
                                                     length=cyl_length,
@@ -181,7 +181,7 @@ class NavigateEnv(BaseEnv):
 
         if self.visual_object_at_target_pos:
             cyl_length = 1.5            
-            self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
+            self.target_pos_vis_obj = VisualObject(visual_shape=pybullet.GEOM_CYLINDER,
                                                    rgba_color=[1, 1, 0, 0.4],
                                                    radius=0.5,
                                                    length=cyl_length,
@@ -264,7 +264,7 @@ class NavigateEnv(BaseEnv):
             offset = orig_offset.dot(np.linalg.inv(transform_matrix))
             pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
 
-            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            results = pybullet.rayTestBatch(pose_camera, pose_camera + offset * 30)
             hit = np.array([item[0] for item in results])
             dist = np.array([item[2] for item in results])
 
@@ -339,24 +339,28 @@ class NavigateEnv(BaseEnv):
     def get_ped_states(self):
         return [self.pedestrian_simulator.getAgentPosition(pedestrian_id) for pedestrian_id in self.pedestrian_ids]
 
+#     def run_simulation(self):
+#         collision_links = []
+#         for _ in range(self.simulator_loop):
+#             self.simulator_step()
+#             if self.has_pedestrians:
+#                 self.update_pedestrian()
+#             # when pedestrians can see the robot, they are very unlikely to collide with the robot
+#             #collision_links += [item[3] for item in pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
+#             collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+# 
+#         #collision_links = np.unique(collision_links)
+#         print("LINKS!!!!!!!", collision_links)
+#         return collision_links    
+
     def run_simulation(self):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
             if self.has_pedestrians:
                 self.update_pedestrian()
-            # when pedestrians can see the robot, they are very unlikely to collide with the robot
-            collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
-            collision_links = []
-        collision_links = np.unique(collision_links)
-        return collision_links    
-
-#     def run_simulation(self):
-#         collision_links = []
-#         for _ in range(self.simulator_loop):
-#             self.simulator_step()
-#             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-#         return self.filter_collision_links(collision_links)
+            collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+        return self.filter_collision_links(collision_links)
 
     def update_pedestrian(self):
         self.pedestrian_simulator.doStep()
@@ -380,7 +384,7 @@ class NavigateEnv(BaseEnv):
 
         angle = np.arctan2(y - prev_y_mean, x - prev_x_mean)
         for j in range(self.num_pedestrians):
-            direction = p.getQuaternionFromEuler([0, 0, angle[j]])
+            direction = pybullet.getQuaternionFromEuler([0, 0, angle[j]])
             self.pedestrians[j].reset_position_orientation([x[j], y[j], 0.03], direction)
 
     def prevent_stuck_at_corners(self, x, y, old_x, old_y, eps = 0.01):
@@ -450,7 +454,7 @@ class NavigateEnv(BaseEnv):
         #         print("collision between " + self.id_to_name[self.robots[0].robot_ids[0]]["links"][elem[3]]
         #               + " and " + self.id_to_name[elem[2]]["links"][elem[4]])
 
-        # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+        # door_angle = pybullet.getJointState(self.door.body_id, self.door_axis_link_id)[0]
         # max_force = max([elem[9] for elem in collision_links]) if len(collision_links) > 0 else 0
 
         if self.collision:
@@ -508,13 +512,13 @@ class NavigateEnv(BaseEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
         return no_collision
 
     def reset_agent(self):
-        max_trials = 10000
+        max_trials = 1000
         for _ in range(max_trials):
             self.robots[0].robot_specific_reset()
             if self.reset_initial_and_target_pos():
@@ -586,7 +590,7 @@ class NavigateRandomEnv(NavigateEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
         return no_collision
@@ -635,6 +639,7 @@ class NavigateObstaclesEnv(NavigateEnv):
             self.walls += [box]
         
     def reset_initial_and_target_pos(self):
+        print("HELLO!!!!!!!!!!!!")
         floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
         self.robots[0].set_orientation(
@@ -653,7 +658,7 @@ class NavigateObstaclesEnv(NavigateEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
         return no_collision
@@ -714,7 +719,7 @@ class NavigatePedestriansEnv(NavigateEnv):
             
             self.pedestrian_ids = []
         
-            self.initial_pedestrian_positions = [(3.0, -5.5, 0.03), (-5.0, -5.0, 0.03), (2.0, -2.0, 0.03)]
+            self.initial_pedestrian_positions = [(3.0, -5.5, 0.03), (-5.0, -5.0, 0.03), (2.0, -2.0, 0.03), (4.5, -4.5, 0.03), (3.5, 5.0, 0.03)]
         
             self.pedestrians = [Pedestrian(pos = self.initial_pedestrian_positions[i]) for i in range(self.num_pedestrians)]
             self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
@@ -762,7 +767,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
         return no_collision
@@ -1057,12 +1062,12 @@ class InteractiveNavigateEnv(NavigateEnv):
             else:
                 self.target_pos = np.array([-1.5, 0.0, 0.0])
 
-        self.door_handle_vis.set_position(pos=np.array(p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]))
+        self.door_handle_vis.set_position(pos=np.array(pybullet.getLinkState(self.door.body_id, self.door_handle_link_id)[0]))
 
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
         return no_collision
@@ -1123,7 +1128,7 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         roll, pitch, yaw = self.robots[0].get_rpy()
         cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
-        door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+        door_angle = pybullet.getJointState(self.door.body_id, self.door_axis_link_id)[0]
         cos_door_angle, sin_door_angle = np.cos(door_angle), np.sin(door_angle)
         has_door_handle_in_hand = 1.0 if self.stage == self.stage_open_door else -1.0
         door_pos = np.array([0, 0, -0.02])
@@ -1152,8 +1157,8 @@ class InteractiveNavigateEnv(NavigateEnv):
 
     def step(self, action):
         dist = np.linalg.norm(
-            np.array(p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]) -
-            np.array(p.getLinkState(self.robots[0].robot_ids[0], self.jr_end_effector_link_id)[0])
+            np.array(pybullet.getLinkState(self.door.body_id, self.door_handle_link_id)[0]) -
+            np.array(pybullet.getLinkState(self.robots[0].robot_ids[0], self.jr_end_effector_link_id)[0])
         )
         # print('dist', dist)
 
@@ -1168,14 +1173,14 @@ class InteractiveNavigateEnv(NavigateEnv):
             self.stage = self.stage_open_door
             print("stage open_door")
 
-        if self.stage == self.stage_open_door and p.getJointState(self.door.body_id, 1)[0] > self.door_angle:  # door open > 45/60/90 degree
+        if self.stage == self.stage_open_door and pybullet.getJointState(self.door.body_id, 1)[0] > self.door_angle:  # door open > 45/60/90 degree
             assert self.cid is not None
             p.removeConstraint(self.cid)
             self.cid = None
             self.stage = self.stage_get_to_target_pos
             print("stage get to target pos")
 
-        door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+        door_angle = pybullet.getJointState(self.door.body_id, self.door_axis_link_id)[0]
 
         # door is pushed in the wrong direction, gradually reset it back to the neutral state
         if door_angle < -0.01:
@@ -1215,8 +1220,8 @@ class InteractiveNavigateEnv(NavigateEnv):
         return super(InteractiveNavigateEnv, self).step(action)
 
     def get_potential(self):
-        door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
-        door_handle_pos = p.getLinkState(self.door.body_id, self.door_handle_link_id)[0]
+        door_angle = pybullet.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+        door_handle_pos = pybullet.getLinkState(self.door.body_id, self.door_handle_link_id)[0]
         if self.stage == self.stage_get_to_door_handle:
             potential = l2_distance(door_handle_pos, self.robots[0].get_end_effector_position())
         elif self.stage == self.stage_open_door:
@@ -1283,7 +1288,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         #     reward -= self.success_reward * 1.0
 
         # push door the wrong way
-        # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+        # door_angle = pybullet.getJointState(self.door.body_id, self.door_axis_link_id)[0]
         # if door_angle > (10.0 / 180.0 * np.pi):
         #     reward -= self.success_reward * 1.0
 
