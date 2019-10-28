@@ -11,10 +11,10 @@ velocity: 0.1
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 fisheye: false
 
-initial_pos: [-0.5, -0.5, 0.0]
+initial_pos: [-3.0, 3.0, 0.0]
 initial_orn: [0.0, 0.0, 0.0]
 
-target_pos: [1.0, 1.0, 0.0]
+target_pos: [-3.0, 3.0, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
@@ -28,8 +28,8 @@ potential_reward_weight: 30.0
 #stall_torque_reward_weight: -0.0001
 electricity_reward_weight: 0.0
 stall_torque_reward_weight: 0.0
-collision_reward_weight: 0.0
-collision_ignore_body_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
+collision_reward_weight: -1.0
+collision_ignore_body_ids: [0, 1, 3, 4]  # ignore the agent's collision with these body ids
 
 # discount factor
 discount_factor: 0.99
@@ -66,7 +66,8 @@ verbose: false
 fast_lq_render: true
 
 # visual objects
-visual_object_at_initial_target_pos: true
+visual_object_at_initial_pos: false
+visual_object_at_target_pos: true
 target_visual_object_visible_to_agent: true
 
 # debug

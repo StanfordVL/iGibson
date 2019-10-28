@@ -72,3 +72,6 @@ gibson/assets
 .cache
 notebook
 build
+
+#emacs backup files
+*~

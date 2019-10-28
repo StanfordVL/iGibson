@@ -94,7 +94,7 @@ class NavigateEnv(BaseEnv):
         # subgoals for the next T time steps, e.g. agent pose in global frame
         self.sensor_dim = self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
-
+        
         observation_space = OrderedDict()
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf,
@@ -141,6 +141,18 @@ class NavigateEnv(BaseEnv):
                 torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
 
+        if 'pedestrian' in self.output:
+            self.pedestrian_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+                                                   shape=(self.num_ped*2,),  # num_ped * len([x_pos, y_pos])
+                                                   dtype=np.float32)
+            observation_space['pedestrian'] = self.pedestrian_space
+            
+        if 'waypoints' in self.output:
+            self.waypoints_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+                                                  shape=(self.config['waypoints']*2,),  # waypoints * len([x_pos, y_pos])
+                                                  dtype=np.float32)
+            observation_space['waypoints'] = self.waypoints_space
+
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
 
@@ -148,29 +160,36 @@ class NavigateEnv(BaseEnv):
         self.current_episode = 0
 
         # add visual objects
-        self.visual_object_at_initial_target_pos = self.config.get(
-            'visual_object_at_initial_target_pos', False)
+        self.visual_object_at_initial_pos = self.config.get(
+            'visual_object_at_initial_pos', False)
 
-        if self.visual_object_at_initial_target_pos:
-            cyl_length = 3.0
+        self.visual_object_at_target_pos = self.config.get(
+            'visual_object_at_target_pos', False)
+
+        if self.visual_object_at_initial_pos:
+            cyl_length = 1.5
             self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
                                                     rgba_color=[1, 0, 0, 0.4],
                                                     radius=0.5,
                                                     length=cyl_length,
                                                     initial_offset=[0, 0, cyl_length / 2.0])
+            self.initial_pos_vis_obj.load()            
+
+        if self.visual_object_at_target_pos:
+            cyl_length = 1.5            
             self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
                                                    rgba_color=[0, 0, 1, 0.4],
                                                    radius=0.5,
                                                    length=cyl_length,
                                                    initial_offset=[0, 0, cyl_length / 2.0])
-            self.initial_pos_vis_obj.load()
+
             if self.config.get('target_visual_object_visible_to_agent', False):
                 self.simulator.import_object(self.target_pos_vis_obj)
             else:
                 self.target_pos_vis_obj.load()
 
     def get_additional_states(self):
-        relative_position = self.target_pos - self.robots[0].get_position()
+        relative_position = self.current_target_position - self.robots[0].get_position()
         # rotate relative position back to body point of view
         additional_states = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
 
@@ -246,13 +265,52 @@ class NavigateEnv(BaseEnv):
             dist = np.array([item[2] for item in results])
 
             valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-            dist[~valid_pts] = 0.0  # zero out invalid pts
+            dist[~valid_pts] = 1.0  # zero out invalid pts
             dist *= 30
 
             xyz = np.expand_dims(dist, 1) * orig_offset
             state['scan'] = xyz
 
+        if 'pedestrian' in self.output:
+            ped_pos = self.get_ped_states()
+            rob_pos = self.robots[0].get_position()
+            ped_robot_relative_pos = [[ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1]] for i in range(self.num_ped)]
+            ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
+            state['pedestrian'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
+            
+        if 'waypoints' in self.output:
+            path = self.compute_a_star(self.config['scene']) # current dim is (107, 2), varying by scene and start/end points
+            rob_pos = self.robots[0].get_position()
+            path_robot_relative_pos = [[path[i][0] - rob_pos[0], path[i][1] - rob_pos[1]] for i in range(path.shape[0])]
+            path_robot_relative_pos = np.asarray(path_robot_relative_pos)
+            path_point_ind = np.argmin(np.linalg.norm(path_robot_relative_pos , axis=1))
+            curr_points_num = path.shape[0] - path_point_ind
+            # keep the dimenstion based on the number of waypoints specified in the config file
+            if curr_points_num > self.config['waypoints']:
+                out = path_robot_relative_pos[path_point_ind:path_point_ind+self.config['waypoints']]
+            else:
+                curr_waypoints = path_robot_relative_pos[path_point_ind:]
+                end_point = np.repeat(path_robot_relative_pos[path.shape[0]-1].reshape(1,2), (self.config['waypoints']-curr_points_num), axis=0)
+                out = np.vstack((curr_waypoints, end_point))
+            state['waypoints'] = out.flatten()            
+            
         return state
+
+    def get_ped_states(self):
+        return [self.rvo_simulator.getAgentPosition(agent_no)
+                 for agent_no in self._ped_list]
+
+    # def run_simulation(self):
+    #     collision_links = []
+    #     for _ in range(self.simulator_loop):
+    #         self.simulator_step()
+    #         self.has_pedestrian = False
+    #         if self.has_pedestrian:
+    #             self.update_pedestrian()
+    #         # when pedestrians can see the robot, they are very unlikely to collide with the robot
+    #         collision_links += [item[3] for item in p.getContactPoints(bodyA=self.robots[0].robot_ids[0])]
+    #     collision_links = np.unique(collision_links)
+    #     return collision_links    
 
     def run_simulation(self):
         collision_links = []
@@ -288,6 +346,46 @@ class NavigateEnv(BaseEnv):
             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
         return self.filter_collision_links(collision_links)
 
+    def update_pedestrian(self):
+        self.rvo_simulator.doStep()
+        if self.config['pedestrian_can_see_robot']:
+            self.rvo_simulator.setAgentPosition(self.rvo_robot_id, tuple(self.robots[0].get_position()[:2]))
+        ped_pos = self.get_ped_states()
+        x = [pos[0] for pos in ped_pos]
+        y = [pos[1] for pos in ped_pos]
+
+        prev_x_mean = np.mean(self.prev_ped_x, axis = 0)
+        prev_y_mean = np.mean(self.prev_ped_y, axis = 0)
+
+        self.prev_ped_x.append(x)
+        self.prev_ped_y.append(y)
+        
+        # keep track of pedestrian trajectory for up to 5 timesteps
+        if len(self.prev_ped_x) > 5:
+            self.prevent_stuck_at_corners(x, y, self.prev_ped_x[0], self.prev_ped_y[0])
+            self.prev_ped_x.pop(0)
+            self.prev_ped_y.pop(0)
+
+        angle = np.arctan2(y - prev_y_mean, x - prev_x_mean)
+        for j in range(self.num_ped):
+            direction = p.getQuaternionFromEuler([0, 0, angle[j]])
+            self.peds[j].reset_position_orientation([x[j], y[j], 0.03], direction)
+
+    def prevent_stuck_at_corners(self, x, y, old_x, old_y, eps = 0.01):
+        # self.rvo_simulator.setAgentPosition(ai, (self._ped_states[ai,0], self._ped_states[ai,1]))
+        def dist(x1, y1, x2, y2, eps = 0.01):
+            return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
+
+        for i in range(self.num_ped):
+            if(dist(x[i], y[i], old_x[i], old_y[i]) < eps):
+                ai = self._ped_list[i]
+                assig_speed = np.random.uniform(0.02, 0.04)
+                assig_direc = np.random.uniform(0.0, 2*np.pi)
+                vx = assig_speed * np.cos(assig_direc)
+                vy = assig_speed * np.sin(assig_direc)
+                self.rvo_simulator.setAgentPrefVelocity(ai, (vx, vy))
+                self.rvo_simulator.setAgentVelocity(ai, (vx, vy))
+
     def filter_collision_links(self, collision_links):
         return [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
 
@@ -298,9 +396,9 @@ class NavigateEnv(BaseEnv):
             return self.robots[0].get_end_effector_position()
 
     def get_potential(self):
-        return l2_distance(self.target_pos, self.get_position_of_interest())
+        return l2_distance(self.current_target_position, self.get_position_of_interest())
 
-    def get_reward(self, collision_links=[], action=None, info={}):
+    def get_reward(self, collision_links=[], action=None, info={}):        
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
         new_normalized_potential = self.get_potential() / self.initial_potential
@@ -318,11 +416,15 @@ class NavigateEnv(BaseEnv):
         reward += stall_torque_reward * self.stall_torque_reward_weight  # |stall_torque_reward| ~= 0.05 per step
 
         collision_reward = float(len(collision_links) > 0)
-        info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
-        reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
-
+        if collision_reward > 0:
+            self.collision = True
+            info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
+            reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
+        else:
+            self.collision = False
+            
         # goal reached
-        if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
+        if l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
             reward += self.success_reward  # |success_reward| = 10.0 per step
 
         return reward, info
@@ -339,7 +441,12 @@ class NavigateEnv(BaseEnv):
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
         # max_force = max([elem[9] for elem in collision_links]) if len(collision_links) > 0 else 0
 
-        if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
+        if self.collision:
+            print("COLLISION!")
+            done = True
+            info['success'] = False
+            
+        elif l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
             print("GOAL")
             done = True
             info['success'] = True
@@ -420,9 +527,10 @@ class NavigateEnv(BaseEnv):
         self.energy_cost = 0.0
 
         # set position for visual objects
-        if self.visual_object_at_initial_target_pos:
+        if self.visual_object_at_initial_pos:
             self.initial_pos_vis_obj.set_position(self.initial_pos)
-            self.target_pos_vis_obj.set_position(self.target_pos)
+        if self.visual_object_at_target_pos:            
+            self.target_pos_vis_obj.set_position(self.current_target_position)
 
         state = self.get_state()
         return state
@@ -448,7 +556,7 @@ class NavigateRandomEnv(NavigateEnv):
         self.random_height = random_height
 
     def reset_initial_and_target_pos(self):
-        floor, pos = self.scene.get_random_point()
+        floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
         self.robots[0].set_orientation(
             orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
@@ -457,8 +565,8 @@ class NavigateRandomEnv(NavigateEnv):
         max_trials = 100
         dist = 0.0
         for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
-            _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
-            dist = l2_distance(self.initial_pos, self.target_pos)
+            _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
+            dist = l2_distance(self.initial_pos, self.current_target_position)
             if dist > 1.0:
                 break
         if dist < 1.0:
@@ -473,14 +581,14 @@ class NavigateRandomEnv(NavigateEnv):
 
 class NavigateObstaclesEnv(NavigateEnv):
     def __init__(
-            self,
-            config_file,
-            mode='headless',
-            action_timestep=1 / 10.0,
-            physics_timestep=1 / 240.0,
-            automatic_reset=False,
-            random_height=False,
-            device_idx=0,
+             self,
+             config_file,
+             mode='headless',
+             action_timestep=1 / 10.0,
+             physics_timestep=1 / 240.0,
+             automatic_reset=False,
+             random_height=False,
+             device_idx=0,
     ):
         super(NavigateObstaclesEnv, self).__init__(config_file,
                                                 mode=mode,
@@ -490,17 +598,24 @@ class NavigateObstaclesEnv(NavigateEnv):
                                                 device_idx=device_idx)
         self.random_height = random_height
 
-        self.floor = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0.643, 0.643, 0.788, 0.0], half_extents=[20, 20, 0.02], initial_offset=[0, 0, -0.03])
-        self.floor.load()
-        self.floor.set_position([0, 0, 0])
-        self.simulator.import_object(self.floor)
-
+#         self.floor = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0.643, 0.643, 0.788, 0.0], half_extents=[20, 20, 0.02], initial_offset=[0, 0, -0.03])
+#         self.floor.load()
+#         self.floor.set_position([0, 0, 0])
+#         self.simulator.import_object(self.floor)
+    
+#         self.box_poses = [
+#             [[np.random.uniform(-2, 1), np.random.uniform(-2, -1), 0], [0, 0, 0, 1]],
+#             [[np.random.uniform(2, 1), np.random.uniform(2, -1), 0], [0, 0, 0, 1]],
+#             [[np.random.uniform(4, 1), np.random.uniform(-1, -1), 0], [0, 0, 0, 1]]
+#             ]
+        
         self.box_poses = [
-            [[np.random.uniform(-2, 1), np.random.uniform(-2, -1), 0], [0, 0, 0, 1]],
-            [[np.random.uniform(2, 1), np.random.uniform(2, -1), 0], [0, 0, 0, 1]],
-            [[np.random.uniform(1, 1), np.random.uniform(-1, -1), 0], [0, 0, 0, 1]]
+            [[0, -1.5, 0], [0, 0, 0, 1]],
+            [[0, 1.5, 0], [0, 0, 0, 1]],
+            [[1.5, 0, 0], [0, 0, 0, 1]],
+            [[-1.5, 0, 0], [0, 0, 0, 1]]
             ]
-
+    
         self.walls = []
         for box_pose in self.box_poses:
             box = BoxShape(pos=box_pose[0], dim=[0.2, 0.3, 0.3])
@@ -508,17 +623,17 @@ class NavigateObstaclesEnv(NavigateEnv):
             self.walls += [box]
         
     def reset_initial_and_target_pos(self):
-        floor, pos = self.scene.get_random_point()
+        floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
         self.robots[0].set_orientation(
             orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
         self.initial_pos = pos
-
+        
         max_trials = 100
         dist = 0.0
         for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
-            _, self.target_pos = self.scene.get_random_point_floor(floor, self.random_height)
-            dist = l2_distance(self.initial_pos, self.target_pos)
+            _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
+            dist = l2_distance(self.initial_pos, self.current_target_position)
             if dist > 1.0:
                 break
         if dist < 1.0:
@@ -1072,9 +1187,9 @@ if __name__ == '__main__':
                         default='headless',
                         help='which mode for simulation (default: headless)')
     parser.add_argument('--env_type',
-                        choices=['deterministic', 'random', 'obstacles', 'interactive'],
+                        choices=['deterministic', 'random', 'fixed_obstacles', 'interactive'],
                         default='deterministic',
-                        help='which environment type (deterministic | random | interactive')
+                        help='which environment type (deterministic | random |  fixed_obstacles | interactive')
     args = parser.parse_args()
 
     if args.robot == 'turtlebot':
@@ -1095,7 +1210,7 @@ if __name__ == '__main__':
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
                                     physics_timestep=1 / 40.0)
-    elif args.env_type == 'obstacles':
+    elif args.env_type == 'fixed_obstacles':
         nav_env = NavigateObstaclesEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
