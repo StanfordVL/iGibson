@@ -365,7 +365,8 @@ class NavigateEnv(BaseEnv):
     def update_pedestrian(self):
         self.pedestrian_simulator.doStep()
         if self.config['pedestrian_can_see_robot']:
-            self.pedestrian_simulator.setAgentPosition(self.rvo_robot_id, tuple(self.robots[0].get_position()[:2]))
+            pass
+            #self.pedestrian_simulator.setAgentPosition(self.rvo_robot_id, tuple(self.robots[0].get_position()[:2]))
         ped_pos = self.get_ped_states()
         x = [pos[0] for pos in ped_pos]
         y = [pos[1] for pos in ped_pos]
@@ -701,6 +702,8 @@ class NavigatePedestriansEnv(NavigateEnv):
                           [[1.5, -1, 0.501], [0.5, 0.1, 0.5]],
                           [[-1, -2, 0.501], [0.1, 1, 0.5]],
                           [[2.5, -4, 0.501], [0.5, 0.1, 0.5]]]
+
+        self.obstacles = list()
 
         # p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "racecar.mp4")
 
