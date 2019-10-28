@@ -505,29 +505,35 @@ class NavigateEnv(BaseEnv):
             state = self.reset()
         return state, reward, done, info
 
-    def reset_initial_and_target_pos(self):
-        self.robots[0].set_position(pos=self.initial_pos)
-        self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
-
-        collision_links = []
-        for _ in range(self.simulator_loop):
-            self.simulator_step()
-            collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-        collision_links = self.filter_collision_links(collision_links)
-        no_collision = len(collision_links) == 0
-        return no_collision
+#     def reset_initial_and_target_pos(self):
+#         self.robots[0].set_position(pos=self.initial_pos)
+#         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
+# 
+#         collision_links = []
+#         for _ in range(self.simulator_loop):
+#             self.simulator_step()
+#             collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+#         collision_links = self.filter_collision_links(collision_links)
+#         no_collision = len(collision_links) == 0
+#         return no_collision
 
     def reset_agent(self):
+        print("RESET AGENT")
         max_trials = 1000
         for _ in range(max_trials):
             self.robots[0].robot_specific_reset()
             if self.reset_initial_and_target_pos():
-                return
+                return True
+            else:
+                return False
         raise Exception("Failed to reset robot without collision")
 
     def reset(self):
         self.current_episode += 1
-        self.reset_agent()
+        agent_reset = False
+        while not agent_reset:
+            agent_reset = self.reset_agent()
+            
         self.initial_potential = self.get_potential()
         self.normalized_potential = 1.0
         if self.reward_type == 'normalized_l2':
@@ -571,29 +577,29 @@ class NavigateRandomEnv(NavigateEnv):
                                                 device_idx=device_idx)
         self.random_height = random_height
 
-    def reset_initial_and_target_pos(self):
-        floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
-        self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
-        self.robots[0].set_orientation(
-            orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-        self.initial_pos = pos
-
-        max_trials = 100
-        dist = 0.0
-        for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
-            _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
-            dist = l2_distance(self.initial_pos, self.current_target_position)
-            if dist > 1.0:
-                break
-        if dist < 1.0:
-            raise Exception("Failed to find initial and target pos that are >1m apart")
-        collision_links = []
-        for _ in range(self.simulator_loop):
-            self.simulator_step()
-            collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-        collision_links = self.filter_collision_links(collision_links)
-        no_collision = len(collision_links) == 0
-        return no_collision
+#     def reset_initial_and_target_pos(self):
+#         floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
+#         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
+#         self.robots[0].set_orientation(
+#             orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+#         self.initial_pos = pos
+# 
+#         max_trials = 100
+#         dist = 0.0
+#         for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
+#             _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
+#             dist = l2_distance(self.initial_pos, self.current_target_position)
+#             if dist > 1.0:
+#                 break
+#         if dist < 1.0:
+#             raise Exception("Failed to find initial and target pos that are >1m apart")
+#         collision_links = []
+#         for _ in range(self.simulator_loop):
+#             self.simulator_step()
+#             collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+#         collision_links = self.filter_collision_links(collision_links)
+#         no_collision = len(collision_links) == 0
+#         return no_collision
 
 class NavigateObstaclesEnv(NavigateEnv):
     def __init__(
@@ -638,30 +644,29 @@ class NavigateObstaclesEnv(NavigateEnv):
             self.simulator.import_interactive_object(box)
             self.walls += [box]
         
-    def reset_initial_and_target_pos(self):
-        print("HELLO!!!!!!!!!!!!")
-        floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
-        self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
-        self.robots[0].set_orientation(
-            orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-        self.initial_pos = pos
-        
-        max_trials = 100
-        dist = 0.0
-        for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
-            _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
-            dist = l2_distance(self.initial_pos, self.current_target_position)
-            if dist > 1.0:
-                break
-        if dist < 1.0:
-            raise Exception("Failed to find initial and target pos that are >1m apart")
-        collision_links = []
-        for _ in range(self.simulator_loop):
-            self.simulator_step()
-            collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-        collision_links = self.filter_collision_links(collision_links)
-        no_collision = len(collision_links) == 0
-        return no_collision
+#     def reset_initial_and_target_pos(self):
+#         floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
+#         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
+#         self.robots[0].set_orientation(
+#             orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+#         self.initial_pos = pos
+#         
+#         max_trials = 100
+#         dist = 0.0
+#         for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
+#             _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
+#             dist = l2_distance(self.initial_pos, self.current_target_position)
+#             if dist > 1.0:
+#                 break
+#         if dist < 1.0:
+#             raise Exception("Failed to find initial and target pos that are >1m apart")
+#         collision_links = []
+#         for _ in range(self.simulator_loop):
+#             self.simulator_step()
+#             collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+#         collision_links = self.filter_collision_links(collision_links)
+#         no_collision = len(collision_links) == 0
+#         return no_collision
     
 class NavigatePedestriansEnv(NavigateEnv):
     def __init__(
@@ -749,28 +754,36 @@ class NavigatePedestriansEnv(NavigateEnv):
 #                 self._simulator.setAgentVelocity(pedestrian, (vx, vy))
         
     def reset_initial_and_target_pos(self):
-        floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
-        self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
-        self.robots[0].set_orientation(
-            orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-        self.initial_pos = pos
-        
-        max_trials = 1000
-        dist = 0.0
-        for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
-            _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
-            dist = l2_distance(self.initial_pos, self.current_target_position)
-            if dist > 1.0:
-                break
-        if dist < 1.0:
-            raise Exception("Failed to find initial and target pos that are >1m apart")
+        reset_complete = False
+        while not reset_complete:
+            print("RESET")
+            floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
+            self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
+            self.robots[0].set_orientation(
+                orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+            self.initial_pos = pos
+            
+            max_trials = 1000
+            dist = 0.0
+            for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
+                _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
+                dist = l2_distance(self.initial_pos, self.current_target_position)
+                if dist > 1.0:
+                    reset_complete = True
+                    break
+            if dist < 1.0:
+                #raise Exception("Failed to find initial and target pos that are >1m apart")
+                print("Failed to find initial and target pos that are >1m apart")
+                print("Selecting new initial position")
+
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
             collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
-        return no_collision
+        #return no_collision
+        return True
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
