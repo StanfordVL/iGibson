@@ -6,9 +6,9 @@ scene: stadium
 # scene: building
 # model_id: Ohoopee
 
-pedestrian: true
-pedestrian_can_see_robot: true
-num_ped: 1
+has_pedestrians: true
+pedestrian_can_see_robot: false
+num_pedestrians: 3
 
 # robot
 robot: Turtlebot
@@ -17,13 +17,19 @@ velocity: 0.5
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 
-initial_orn: [0.0, 0.0, 0.0]
-initial_pos: [6.0, 1.0, 0.0] # stadium_congested/ stadium_obstacle: [6.0, -6.0, 0.0]  # Ohoopee: [0.0, 0.0, 0.0]
+#initial_orn: [0.0, 0.0, 0.0]
+#initial_pos: [6.0, 1.0, 0.0] # stadium_congested/ stadium_obstacle: [6.0, -6.0, 0.0]  # Ohoopee: [0.0, 0.0, 0.0]
 # stadium_difficult: [6.0, 1.0, 0.0]
 
-target_orn: [0.0, 0.0, 0.0]
-target_pos: [4.0, 3.0, 0.0] # stadium_congested: [2.0, -2.0, 0.0] # stadium_obstacle: [-3., 4., 0.] # Ohoopee: [-4.4, 2.7, 0.0]
+#target_orn: [0.0, 0.0, 0.0]
+#target_pos: [4.0, 3.0, 0.0] # stadium_congested: [2.0, -2.0, 0.0] # stadium_obstacle: [-3., 4., 0.] # Ohoopee: [-4.4, 2.7, 0.0]
 # stadium_difficult: [4.0, 3.0, 0.0]
+
+initial_pos: [-3.0, 3.0, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
+
+target_pos: [-3.0, 3.0, 0.0]
+target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
 additional_states_dim: 3
@@ -45,7 +51,7 @@ max_step: 400
 # sensor
 # output: [sensor, rgb, depth]
 # output: [sensor, scan, pedestrian]
-output: [sensor, depth, pedestrian, waypoints]
+output: [sensor, depth, pedestrian]
 # output: [sensor, scan]
 scan_beams: 512 #128 
 scan_vertical_beams: 1 #9 
@@ -74,6 +80,11 @@ speed:
 mode: headless #gui|web_ui
 verbose: false
 fast_lq_render: true
+
+# visual objects
+visual_object_at_initial_pos: false
+visual_object_at_target_pos: true
+target_visual_object_visible_to_agent: true
 
 # debug
 debug: false

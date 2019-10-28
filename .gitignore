@@ -75,3 +75,7 @@ build
 
 #emacs backup files
 *~
+
+# Eclipse
+.pydevproject
+.project
