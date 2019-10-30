@@ -479,7 +479,7 @@ class Turtlebot(WalkerBase):
 
     def __init__(self, config):
         self.config = config
-        self.velocity = config.get("velocity", 1.0)
+        self.velocity = config.get("velocity", 0.1)
         WalkerBase.__init__(self,
                             "turtlebot/turtlebot.urdf",
                             "base_link",
