@@ -7,8 +7,8 @@ scene: stadium
 # model_id: Ohoopee
 
 has_pedestrians: true
-pedestrian_can_see_robot: true
-num_pedestrians: 5
+pedestrian_can_see_robot: false
+num_pedestrians: 10
 
 # robot
 robot: Turtlebot
@@ -35,9 +35,9 @@ is_discrete: false
 additional_states_dim: 3
 
 # reward
-success_reward: 10.0
-slack_reward: -0.01
-potential_reward_weight: 30.0
+success_reward: 1.0
+slack_reward: -0.001
+potential_reward_weight: 1.0
 #electricity_reward_weight: -0.02
 #stall_torque_reward_weight: -0.0001
 electricity_reward_weight: 0.0
@@ -46,13 +46,13 @@ collision_reward_weight: -1.0
 collision_ignore_body_ids: [0, 1, 2, 3, 4]  # ignore the agent's collision with these body ids
 
 # termination condition
-dist_tol: 0.1
+dist_tol: 0.5
 max_step: 500
 
 # sensor
 # output: [sensor, rgb, depth]
 # output: [sensor, scan, pedestrian]
-output: [sensor, depth, pedestrian]
+output: [sensor, pedestrian]
 # output: [sensor, scan]
 scan_beams: 512 #128 
 scan_vertical_beams: 1 #9 
