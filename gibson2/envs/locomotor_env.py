@@ -321,6 +321,9 @@ class NavigateEnv(BaseEnv):
             vx = pref_speed[i] * np.cos(init_direction[i])
             vy = pref_speed[i] * np.sin(init_direction[i])
             sim.setAgentPrefVelocity(pedestrian_id, (vx, vy))
+            
+        # add the robot
+        self.robot_as_pedestrian_id = sim.addAgent(tuple(self.robots[0].get_position()[:2]))
  
         for i in range(len(walls)):
             x, y, _ = walls[i][0] # pos = [x, y, z]
@@ -365,8 +368,7 @@ class NavigateEnv(BaseEnv):
     def update_pedestrian(self):
         self.pedestrian_simulator.doStep()
         if self.config['pedestrian_can_see_robot']:
-            pass
-            #self.pedestrian_simulator.setAgentPosition(self.rvo_robot_id, tuple(self.robots[0].get_position()[:2]))
+            self.pedestrian_simulator.setAgentPosition(self.robot_as_pedestrian_id, tuple(self.robots[0].get_position()[:2]))
         ped_pos = self.get_ped_states()
         x = [pos[0] for pos in ped_pos]
         y = [pos[1] for pos in ped_pos]
@@ -727,7 +729,8 @@ class NavigatePedestriansEnv(NavigateEnv):
             
             self.pedestrian_ids = []
         
-            self.initial_pedestrian_positions = [(3.0, -5.5, 0.03), (-5.0, -5.0, 0.03), (2.0, -2.0, 0.03), (4.5, -4.5, 0.03), (3.5, 5.0, 0.03)]
+            self.initial_pedestrian_positions = [(3.0, -5.5, 0.03), (-5.0, -5.0, 0.03), (2.0, -2.0, 0.03), (4.5, -4.5, 0.03), (3.5, 5.0, 0.03),
+                                                 (3.0, -5.0, 0.03), (-4.5, -4.5, 0.03), (2.5, -2.5, 0.03), (4.0, -4.0, 0.03), (3.0, 5.5, 0.03)]
         
             self.pedestrians = [Pedestrian(pos = self.initial_pedestrian_positions[i]) for i in range(self.num_pedestrians)]
             self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
