@@ -367,7 +367,7 @@ class NavigateEnv(BaseEnv):
 
     def update_pedestrian(self):
         self.pedestrian_simulator.doStep()
-        if self.config['pedestrian_can_see_robot']:
+        if self.config['pedestrians_can_see_robot']:
             self.pedestrian_simulator.setAgentPosition(self.robot_as_pedestrian_id, tuple(self.robots[0].get_position()[:2]))
         ped_pos = self.get_ped_states()
         x = [pos[0] for pos in ped_pos]
@@ -691,14 +691,14 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.random_height = random_height
         
         # wall = [pos, dim]
-        self.walls = [[[0, 7, 0.501], [10, 0.2, 0.5]],
-                     [[0, -7, 0.501], [6.89, 0.1, 0.5]],
-                     [[7, -1.5, 0.501], [0.1, 5.5, 0.5]],
-                     [[-7, -1, 0.501], [0.1, 6, 0.5]],
-                     [[-8.55, 5, 0.501], [1.44, 0.1, 0.5]],
-                     [[8.55, 4, 0.501], [1.44, 0.1, 0.5]],
-                     [[10.2, 5.5 ,0.501],[0.2, 1.5, 0.5]],
-                     [[-10.2, 6, 0.501],[0.2, 1, 0.5]]]
+        self.walls = [[[0, 5, 0.501], [5, 0.2, 0.5]],
+                      [[0, -5, 0.501], [5, 0.1, 0.5]],
+                      [[5, 0, 0.501], [0.1, 5, 0.5]],
+                      [[-5, 0, 0.501], [0.1, 5, 0.5]]]
+#                     [[-8.55, 5, 0.501], [1.44, 0.1, 0.5]],
+#                     [[8.55, 4, 0.501], [1.44, 0.1, 0.5]],
+#                     [[10.2, 5.5 ,0.501],[0.2, 1.5, 0.5]],
+#                     [[-10.2, 6, 0.501],[0.2, 1, 0.5]]]
 
         self.obstacles = [[[-0.5, 2, 0.501], [1.5, 0.1, 0.5]],
                           [[1.5, -1, 0.501], [0.5, 0.1, 0.5]],
@@ -729,8 +729,8 @@ class NavigatePedestriansEnv(NavigateEnv):
             
             self.pedestrian_ids = []
         
-            self.initial_pedestrian_positions = [(3.0, -5.5, 0.03), (-5.0, -5.0, 0.03), (2.0, -2.0, 0.03), (4.5, -4.5, 0.03), (3.5, 5.0, 0.03),
-                                                 (3.0, -5.0, 0.03), (-4.5, -4.5, 0.03), (2.5, -2.5, 0.03), (4.0, -4.0, 0.03), (3.0, 5.5, 0.03)]
+            self.initial_pedestrian_positions = [(2.0, -2.0, 0.03), (-3.0, -3.0, 0.03), (-2.0, 2.0, 0.03)]
+#, (4.5, -4.5, 0.03), (3.5, 5.0, 0.03), (3.0, -5.0, 0.03), (-4.5, -4.5, 0.03), (2.5, -2.5, 0.03), (4.0, -4.0, 0.03), (3.0, 5.5, 0.03)]
         
             self.pedestrians = [Pedestrian(pos = self.initial_pedestrian_positions[i]) for i in range(self.num_pedestrians)]
             self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
@@ -1398,7 +1398,7 @@ if __name__ == '__main__':
             # debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
             # action[2:] = np.array(debug_param_values)
 
-            state, reward, done, _ = nav_env.step(action)
+            state, reward, done, _ = nav_env.step([np.random.uniform(-1, 1), np.random.uniform(-1, 1)])
             # print(reward)
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
