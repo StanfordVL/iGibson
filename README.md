@@ -241,15 +241,3 @@ Gibson provides a set of methods for you to define your own environments. You ca
 | robot.apply_action(action) | Apply action to robot. |
 | robot.reset_new_pose(pos, orn) | Reset the robot to any pose. |
 | robot.dist_to_target() | Get current distance from robot to target. |
-
-Goggles: transferring the agent to real-world
-=================
-Gibson includes a baked-in domain adaptation mechanism, named Goggles, for when an agent trained in Gibson is going to be deployed in real-world (i.e. operate based on images coming from an onboard camera). The mechanisms is essentially a learned inverse function that alters the frames coming from a real camera to what they would look like if they were rendered via Gibson, and hence, disolve the domain gap. 
-
-<img src=http://gibson.vision/public/img/figure4.jpg width="600">
-
-
-**More details:** With all the imperfections in point cloud rendering, it has been proven difficult to get completely photo-realistic rendering with neural network fixes. The remaining issues make a domain gap between the synthesized and real images. Therefore, we formulate the rendering problem as forming a joint space ensuring a correspondence between rendered and real images, rather than trying to (unsuccessfully) render images that are identical to real ones. This provides a deterministic pathway for traversing across these domains and hence undoing the gap. We add another network "u" for target image (I_t) and define the rendering loss to minimize the distance between f(I_s) and u(I_t), where "f" and "I_s" represent the filler neural network and point cloud rendering output, respectively (see the loss in above figure). We use the same network structure for f and u. The function u(I) is trained to alter the observation in real-world, I_t, to look like the corresponding I_s and consequently dissolve the gap. We named the u network goggles, as it resembles corrective lenses for the agent for deployment in real-world. Detailed formulation and discussion of the mechanism can be found in the paper. You can download the function u and apply it when you deploy your trained agent in real-world.
-
-In order to use goggle, you will need preferably a camera with depth sensor, we provide an example [here](examples/ros/gibson-ros/goggle.py) for Kinect. The trained goggle functions are stored in `assets/unfiller_{resolution}.pth`, and each one is paired with one filler function. You need to use the correct one depending on which filler function is used. If you don't have a camera with depth sensor, we also provide an example for RGB only [here](examples/demo/goggle_video.py).
-
