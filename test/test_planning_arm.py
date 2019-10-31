@@ -10,46 +10,36 @@ from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_na
     set_joint_positions, add_data_path, connect, plan_base_motion, plan_joint_motion, enable_gravity, \
     joint_controller, dump_body, load_model, joints_from_names, user_input, disconnect, get_joint_positions, \
     get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, set_point, create_box, stable_z
-
 import matplotlib.pyplot as plt
 import time
 
 config = parse_config('test.yaml')
 
-def test_turtlebot():
+def test_jr2():
     s = Simulator(mode='gui', resolution=512)
-    scene = BuildingScene('Bolton')
+    scene = StadiumScene()
     s.import_scene(scene)
-    turtlebot = Turtlebot(config)
-    s.import_robot(turtlebot)
+    jr2 = JR2_Kinova(config)
+    s.import_robot(jr2)
     nbody = p.getNumBodies()
-    obstacle = create_box(w=0.5, l=0.5, h=1.0, color=(1,0,0,1)) # Creates a red box obstacle
-    set_point(obstacle, [0.5, 0.5, 1.0 / 2.]) # Sets the [x,y,z] position of the obstacle
 
+    robot_id = jr2.robot_ids[0]
     dump_world()
-    robot_id = turtlebot.robot_ids[0]
 
-    set_point(robot_id, [0, 0, 0.1]) # Sets the z position of the robot
+    #set_point(robot_id, [0, 0, 0.1]) # Ssts the z position of the robot
 
-    path = None
-
-    while path is None:
-        path = plan_base_motion(robot_id, [-2.3,-5,0], ((-6, -6), (6, 6)), obstacles=[obstacle, 0], restarts=10, iterations=50, smooth=30)
-
-    print(path)
-    path = np.array(path)
-    
-    plt.figure()
-    plt.scatter(path[:,0], path[:,1])
-    plt.show()
-
-
-    for bq in path:
-        set_base_values(robot_id, [bq[0], bq[1], bq[2]])
-        # user_input('Continue?')
-        time.sleep(0.05)
+    for _ in range(10):
         s.step()
+    for item in p.getContactPoints(robot_id, robot_id):
+        print(item)
+
+    arm_joints = joints_from_names(robot_id, ['m1n6s200_joint_1', 'm1n6s200_joint_2', 'm1n6s200_joint_3', \
+        'm1n6s200_joint_4', 'm1n6s200_joint_5'])
+
+    arm_path = plan_joint_motion(robot_id, arm_joints, [1,1,1,1,1], disabled_collisions=set(), self_collisions=False)
+
+    print(arm_path)
 
     s.disconnect()
 
-test_turtlebot()
+test_jr2()
