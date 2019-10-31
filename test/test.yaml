@@ -14,7 +14,7 @@ initial_pos: [0.0, 0.0, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 target_pos: [-5.0, 3.2, 0.0]
 
-is_discrete: true
+is_discrete: false
 additional_states_dim: 3
 
 dist_tol: 0.5
