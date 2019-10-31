@@ -1,25 +1,22 @@
-# GIBSON ENVIRONMENT for Embodied Active Agents with Real-World Perception (V2)
+#  Interactive Gibson Environment
+Large Scale Virtualized Interactive Environment for Learning Robot Manipulation and Navigation
 
-**Gibson V2 is an updated version of GibsonEnv, it achieves higher rendering performance and added the ability for robots to interact with objects.**
+Interactive Gibson is a fast simulator and a dataset for indoor navigation and manipulation. It was first released in June 2019. It allows for complicated interactions between the agent and the environment, such as picking up and placing objects, or opening doors and cabinets. This environment opens up new venues for jointly training base and arm policies, allowing researchers to explore the synergy between manipulation and navigation.
 
-<img src=misc/ui.gif width="600">
-
-**Summary**: Perception and being active (i.e. having a certain level of motion freedom) are closely tied. Learning active perception and sensorimotor control in the physical world is cumbersome as existing algorithms are too slow to efficiently learn in real-time and robots are fragile and costly. This has given a fruitful rise to learning in the simulation which consequently casts a question on transferring to real-world. We developed Gibson environment with the following primary characteristics:  
-
-**I.** being from the real-world and reflecting its semantic complexity through virtualizing real spaces,  
-**II.** having a baked-in mechanism for transferring to real-world (Goggles function), and  
-**III.** embodiment of the agent and making it subject to constraints of space and physics via integrating a physics engine ([Bulletphysics](http://bulletphysics.org/wordpress/)).  
-
-**Naming**: Gibson environment is named after *James J. Gibson*, the author of "Ecological Approach to Visual Perception", 1979. “We must perceive in order to move, but we must also move in order to perceive” – JJ Gibson
-
-Please see the [website](http://gibson.vision/) (http://gibsonenv.stanford.edu/) for more technical details. This repository is intended for distribution of the environment and installation/running instructions.
 
 #### Paper
-**["Gibson Env: Real-World Perception for Embodied Agents"](http://gibson.vision/)**, in **CVPR 2018 [Spotlight Oral]**.
+If you use Interactive Gibson Simulator or Interactive Gibson assets, please consider citing the following paper:
 
-
-[![Gibson summary video](misc/vid_thumbnail_600.png)](https://youtu.be/KdxuZjemyjc "Click to watch the video summarizing Gibson environment!")
-
+```
+@techreport{xiagibson2019,
+           title = {Gibson Env V2: Embodied Simulation Environments for Interactive Navigation},
+           author = {Xia, Fei and Li, Chengshu and Chen, Kevin and Shen, William B and Mart{\'i}n-Mart{\'i}n, Roberto and Hirose, Noriaki and Zamir, Amir R and Fei-Fei, Li and Savarese, Silvio},
+           group = {Stanford Vision and Learning Group},
+           year = {2019},
+           institution = {Stanford University},
+           month = {6},
+}
+```
 
 
 Release
@@ -46,7 +43,6 @@ Table of contents
    * [Environment Configuration](#environment-configuration)
    * [Goggles: transferring the agent to real-world](#goggles-transferring-the-agent-to-real-world)
    * [Citation](#citation)
-
 
 Installation
 =================
@@ -257,17 +253,3 @@ Gibson includes a baked-in domain adaptation mechanism, named Goggles, for when 
 
 In order to use goggle, you will need preferably a camera with depth sensor, we provide an example [here](examples/ros/gibson-ros/goggle.py) for Kinect. The trained goggle functions are stored in `assets/unfiller_{resolution}.pth`, and each one is paired with one filler function. You need to use the correct one depending on which filler function is used. If you don't have a camera with depth sensor, we also provide an example for RGB only [here](examples/demo/goggle_video.py).
 
-
-Citation
-=================
-
-If you use Gibson Environment's software or database, please cite:
-```
-@inproceedings{xiazamirhe2018gibsonenv,
-  title={Gibson {Env}: real-world perception for embodied agents},
-  author={Xia, Fei and R. Zamir, Amir and He, Zhi-Yang and Sax, Alexander and Malik, Jitendra and Savarese, Silvio},
-  booktitle={Computer Vision and Pattern Recognition (CVPR), 2018 IEEE Conference on},
-  year={2018},
-  organization={IEEE}
-}
-```
