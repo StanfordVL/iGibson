@@ -6,9 +6,9 @@ scene: stadium
 # scene: building
 # model_id: Ohoopee
 
-has_pedestrians: true
+has_pedestrians: false
 pedestrians_can_see_robot: false
-num_pedestrians: 3
+num_pedestrians: 0
 
 # robot
 robot: Turtlebot
@@ -44,8 +44,9 @@ max_step: 500
 # sensor
 # output: [sensor, rgb, depth]
 # output: [sensor, scan, pedestrian]
-output: [sensor, pedestrian]
+#output: [sensor, pedestrian]
 # output: [sensor, scan]
+output: [sensor, depth]
 scan_beams: 512 #128 
 scan_vertical_beams: 1 #9 
 resolution: 64

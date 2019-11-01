@@ -57,7 +57,7 @@ class NavigateEnv(BaseEnv):
 
         self.target_pos = np.array(self.config.get('target_pos', [5, 5, 0]))
         self.target_orn = np.array(self.config.get('target_orn', [0, 0, 0]))
-        
+
         self.additional_states_dim = self.config.get('additional_states_dim', 0)
         self.auxiliary_sensor_dim = self.config.get('auxiliary_sensor_dim', 0)
         self.normalize_observation = self.config.get('normalize_observation', False)
@@ -93,6 +93,7 @@ class NavigateEnv(BaseEnv):
         self.n_vertical_beams = self.config.get('n_vertical_beams', 9)
         
         # pedestrians
+        self.has_pedestrians = self.config.get('has_pedestrians', False)
         self.num_pedestrians = self.config.get('num_pedestrians', 0)
 
         # TODO: sensor: observations that are passed as network input, e.g. target position in local frame
@@ -649,29 +650,29 @@ class NavigateObstaclesEnv(NavigateEnv):
             self.simulator.import_interactive_object(box)
             self.walls += [box]
         
-#     def reset_initial_and_target_pos(self):
-#         floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
-#         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
-#         self.robots[0].set_orientation(
-#             orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-#         self.initial_pos = pos
-#         
-#         max_trials = 100
-#         dist = 0.0
-#         for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
-#             _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
-#             dist = l2_distance(self.initial_pos, self.current_target_position)
-#             if dist > 1.0:
-#                 break
-#         if dist < 1.0:
-#             raise Exception("Failed to find initial and target pos that are >1m apart")
-#         collision_links = []
-#         for _ in range(self.simulator_loop):
-#             self.simulator_step()
-#             collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-#         collision_links = self.filter_collision_links(collision_links)
-#         no_collision = len(collision_links) == 0
-#         return no_collision
+    def reset_initial_and_target_pos(self):
+        floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
+        self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
+        self.robots[0].set_orientation(
+            orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+        self.initial_pos = pos
+        
+        max_trials = 100
+        dist = 0.0
+        for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
+            _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
+            dist = l2_distance(self.initial_pos, self.current_target_position)
+            if dist > 1.0:
+                break
+        if dist < 1.0:
+            raise Exception("Failed to find initial and target pos that are >1m apart")
+        collision_links = []
+        for _ in range(self.simulator_loop):
+            self.simulator_step()
+            collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+        collision_links = self.filter_collision_links(collision_links)
+        no_collision = len(collision_links) == 0
+        return no_collision
     
 class NavigatePedestriansEnv(NavigateEnv):
     def __init__(
@@ -723,9 +724,6 @@ class NavigatePedestriansEnv(NavigateEnv):
             box = BoxShape(pos=[obstacle[0][0], obstacle[0][1], obstacle[0][2]], dim=[obstacle[1][0], obstacle[1][1], obstacle[1][2]])                        
             self.simulator.import_object(box)
             
-        # pedestrians
-        self.has_pedestrians = self.config.get('has_pedestrians', False)
-        
         if self.has_pedestrians:
             assert self.num_pedestrians > 0
             
