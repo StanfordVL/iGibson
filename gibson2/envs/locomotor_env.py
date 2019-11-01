@@ -1,6 +1,6 @@
 from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape, Pedestrian
 import gibson2
-from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
+from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -18,6 +18,8 @@ import rvo2
 from IPython import embed
 import cv2
 import time
+
+from gibson2.core.pedestrians.human import Human
 
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
@@ -55,7 +57,7 @@ class NavigateEnv(BaseEnv):
 
         self.target_pos = np.array(self.config.get('target_pos', [5, 5, 0]))
         self.target_orn = np.array(self.config.get('target_orn', [0, 0, 0]))
-
+        
         self.additional_states_dim = self.config.get('additional_states_dim', 0)
         self.auxiliary_sensor_dim = self.config.get('auxiliary_sensor_dim', 0)
         self.normalize_observation = self.config.get('normalize_observation', False)
@@ -763,6 +765,12 @@ class NavigatePedestriansEnv(NavigateEnv):
         reset_complete = False
         while not reset_complete:
             print("RESET")
+
+            self.humans = []
+            
+            for i in range(self.num_pedestrians):
+                self.humans.append(self.generate_hallway_crossing_human())
+            
             floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_orientation(
@@ -790,6 +798,34 @@ class NavigatePedestriansEnv(NavigateEnv):
         no_collision = len(collision_links) == 0
         #return no_collision
         return True
+    
+    def generate_hallway_crossing_human(self):
+        human = Human(self.config, 'humans')
+#         if self.randomize_attributes:
+#             human.sample_random_attributes()
+
+        if np.random.random() > 0.5:
+            sign = -1
+        else:
+            sign = 1
+            
+
+        px = np.random.uniform(self.config.get('humans')['initial_position']['min_x'], self.config.get('humans')['initial_position']['max_x'])
+        py = np.random.uniform(self.config.get('humans')['initial_position']['min_y'], self.config.get('humans')['initial_position']['max_y'])
+
+#             px = (np.random.random() - 0.5) * self.square_width
+#             py = (np.random.random() - 0.5) * self.square_width
+
+
+        gx = np.random.uniform(self.config.get('humans')['initial_position']['min_x'], self.config.get('humans')['initial_position']['max_x'])
+        gy = np.random.uniform(self.config.get('humans')['initial_position']['min_y'], self.config.get('humans')['initial_position']['max_y'])
+
+#            gx = (np.random.random() - 0.5) * self.square_width
+#            gy = (np.random.random() - 0.5) * self.square_width
+
+        human.set(px, py, 0, gx, gy, 0, 0, 0, 0)
+        
+        return human
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,

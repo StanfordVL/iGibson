@@ -83,3 +83,28 @@ target_visual_object_visible_to_agent: true
 debug: false
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: true
+
+humans:
+  visible: true
+  policy: orca
+  radius: 0.3
+  v_pref: 1.0
+  position_noise: 0.0
+  velocity_noise: 0.0
+  sensor: coordinates
+  personal_space: 1.0
+  max_linear_velocity: 1.0
+  max_angular_velocity: 1.0
+  kinematics: unicycle
+  # for random initialization and goal setting
+  initial_position:
+     min_x: -5.0
+     max_x: 5.0
+     min_y: -5.0
+     max_y: 5.0
+  target_position:
+     min_x: -5.0
+     max_x: 5.0
+     min_y: -5.0
+     max_y: 5.0
+
