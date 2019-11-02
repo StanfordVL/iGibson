@@ -6,51 +6,51 @@ scene: stadium
 # scene: building
 # model_id: Ohoopee
 
-pedestrian: true
-pedestrian_can_see_robot: true
-num_ped: 1
+has_pedestrians: false
+pedestrians_can_see_robot: false
+num_pedestrians: 0
 
 # robot
 robot: Turtlebot
-velocity: 0.5
+velocity: 0.1
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 
+initial_pos: [-3.0, 3.0, 0.0]
 initial_orn: [0.0, 0.0, 0.0]
-initial_pos: [6.0, 1.0, 0.0] # stadium_congested/ stadium_obstacle: [6.0, -6.0, 0.0]  # Ohoopee: [0.0, 0.0, 0.0]
-# stadium_difficult: [6.0, 1.0, 0.0]
 
+target_pos: [-3.0, 3.0, 0.0]
 target_orn: [0.0, 0.0, 0.0]
-target_pos: [4.0, 3.0, 0.0] # stadium_congested: [2.0, -2.0, 0.0] # stadium_obstacle: [-3., 4., 0.] # Ohoopee: [-4.4, 2.7, 0.0]
-# stadium_difficult: [4.0, 3.0, 0.0]
 
 is_discrete: false
 additional_states_dim: 3
 
 # reward
-terminal_reward: 5000
-#electricity_cost: -0.02
-#stall_torque_cost: -0.0001
-electricity_cost: 0.0
-stall_torque_cost: 0.0
-discount_factor: 0.99
-collision_reward_weight: 1.0
-potential_reward_weight: 20.0
+success_reward: 1.0
+slack_reward: -0.001
+potential_reward_weight: 1.0
+#electricity_reward_weight: -0.02
+#stall_torque_reward_weight: -0.0001
+electricity_reward_weight: 0.0
+stall_torque_reward_weight: 0.0
+collision_reward_weight: -1.0
+collision_ignore_body_ids: [0, 1, 2, 3, 4]  # ignore the agent's collision with these body ids
 
 # termination condition
-dist_tol: 0.1
-max_step: 400
+dist_tol: 0.5
+max_step: 500
 
 # sensor
 # output: [sensor, rgb, depth]
 # output: [sensor, scan, pedestrian]
-output: [sensor, depth, pedestrian, waypoints]
+#output: [sensor, pedestrian]
 # output: [sensor, scan]
+output: [sensor, depth]
 scan_beams: 512 #128 
 scan_vertical_beams: 1 #9 
 resolution: 64
-waypoints: 5
+#waypoints: 5
 fov: 90
 
 # display
@@ -75,7 +75,37 @@ mode: headless #gui|web_ui
 verbose: false
 fast_lq_render: true
 
+# visual objects
+visual_object_at_initial_pos: false
+visual_object_at_target_pos: true
+target_visual_object_visible_to_agent: true
+
 # debug
 debug: false
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: true
+
+humans:
+  visible: true
+  policy: orca
+  radius: 0.3
+  v_pref: 1.0
+  position_noise: 0.0
+  velocity_noise: 0.0
+  sensor: coordinates
+  personal_space: 1.0
+  max_linear_velocity: 1.0
+  max_angular_velocity: 1.0
+  kinematics: unicycle
+  # for random initialization and goal setting
+  initial_position:
+     min_x: -5.0
+     max_x: 5.0
+     min_y: -5.0
+     max_y: 5.0
+  target_position:
+     min_x: -5.0
+     max_x: 5.0
+     min_y: -5.0
+     max_y: 5.0
+
