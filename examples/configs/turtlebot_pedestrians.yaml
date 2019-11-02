@@ -17,10 +17,10 @@ velocity: 0.1
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 
-initial_pos: [-3.0, 3.0, 0.0]
+initial_pos: [-2.0, 2.0, 0.0]
 initial_orn: [0.0, 0.0, 0.0]
 
-target_pos: [-3.0, 3.0, 0.0]
+target_pos: [-2.0, 2.0, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false

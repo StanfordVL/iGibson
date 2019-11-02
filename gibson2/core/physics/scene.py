@@ -21,8 +21,8 @@ class StadiumScene(Scene):
     stadium_halfwidth = 50 * 0.25    # FOOBALL_FIELD_HALFWID
 
     def load(self):
-        filename = os.path.join(pybullet_data.getDataPath(), "stadium_no_collision.sdf")
-        #filename = os.path.join(pybullet_data.getDataPath(), "plane_stadium.sdf")
+        #filename = os.path.join(pybullet_data.getDataPath(), "stadium_no_collision.sdf")
+        filename = os.path.join(pybullet_data.getDataPath(), "plane_stadium.sdf")
         self.stadium = p.loadSDF(filename)
 
         planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
