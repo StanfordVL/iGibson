@@ -1375,7 +1375,77 @@ class InteractiveNavigateEnv(NavigateEnv):
         # print("get_reward (stage %d): %f" % (self.stage, reward))
         return reward, info
 
+class NavigateRandomObstaclesEnv(NavigateEnv):
+    def __init__(self,
+                 config_file,
+                 mode='headless',
+                 action_timestep=1 / 10.0,
+                 physics_timestep=1 / 240.0,
+                 automatic_reset=False,
+                 random_height=False,
+                 device_idx=0,
+    ):
+        super(NavigateRandomObstaclesEnv, self).__init__(config_file,
+                                                         mode=mode,
+                                                         action_timestep=action_timestep,
+                                                         physics_timestep=physics_timestep,
+                                                         automatic_reset=automatic_reset,
+                                                         device_idx=device_idx)
+        self.random_height = random_height
+        # Fix number of boxes and their positional range for now.
+        self.obstacles_low_x, self.obstacles_high_x = -2.5, 2.5
+        self.obstacles_low_y, self.obstacles_high_y = -2.5, 2.5
+        self.num_obstacles = 8
+        self.orn = [0, 0, 0, 1]
+        self.box_x, self.box_y, self.box_z = 0.2, 0.3, 0.3
+        initial_box_pose = [0, 0, 0]
+        self.boxes = []
+        self.box_poses = []
+        for _ in range(self.num_obstacles):
+            box = BoxShape(pos=initial_box_pose, dim=[self.box_x, self.box_y, self.box_z])
+            self.simulator.import_interactive_object(box)
+            self.boxes.append(box)
+            self.box_poses.append(initial_box_pose)
 
+    def reset_obstacles(self):
+        for i in range(self.num_obstacles):
+            _, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
+            self.boxes[i].set_position(pos=pos)
+            self.box_poses[i] = pos
+
+
+    def reset_initial_and_target_pos(self):
+        self.reset_obstacles()
+        # This will make the randomized initial position converge very quick.
+        floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
+        # floor, pos = self.scene.get_random_point()
+        self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
+        self.robots[0].set_orientation(
+            orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+        self.initial_pos = pos
+
+        # max_trials = 100
+        dist = 0.0
+        overlap_obstacles = True
+        # for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
+        while dist < 1.0 or overlap_obstacles:
+            print('reset position')    
+            _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
+            dist = l2_distance(self.initial_pos, self.current_target_position)
+            overlap_obstacles = False
+            print('dist: {}, overlap: {}'.format(dist, overlap_obstacles))
+            # print('dist: {}'.format(dist))
+            # for pos in self.box_poses:
+                # if l2_distance(self.current_target_position, pos) < 0.2: # hardcoded
+                    # overlap_obstacles = True
+        print("OUT OF LOOP!")
+        collision_links = []
+        for _ in range(self.simulator_loop):
+            self.simulator_step()
+            collision_links += list(pybullet.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+        collision_links = self.filter_collision_links(collision_links)
+        no_collision = len(collision_links) == 0
+        return no_collision
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--robot',
@@ -1393,9 +1463,9 @@ if __name__ == '__main__':
                         default='headless',
                         help='which mode for simulation (default: headless)')
     parser.add_argument('--env_type',
-                        choices=['deterministic', 'random', 'fixed_obstacles', 'pedestrians', 'interactive'],
+                        choices=['deterministic', 'random', 'random_obstacles', 'fixed_obstacles', 'pedestrians', 'interactive'],
                         default='deterministic',
-                        help='which environment type (deterministic | random |  fixed_obstacles | pedestrians | interactive')
+                        help='which environment type (deterministic | random |  random_obstacles | fixed_obstacles | pedestrians | interactive')
     args = parser.parse_args()
 
     if args.robot == 'turtlebot':
@@ -1423,6 +1493,11 @@ if __name__ == '__main__':
                                     physics_timestep=1 / 40.0)
     elif args.env_type == 'pedestrians':
         nav_env = NavigatePedestriansEnv(config_file=config_filename,
+                                    mode=args.mode,
+                                    action_timestep=1.0 / 10.0,
+                                    physics_timestep=1 / 40.0)
+    elif args.env_type == 'random_obstacles':
+        nav_env = NavigateRandomObstaclesEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
                                     physics_timestep=1 / 40.0)
@@ -1466,3 +1541,6 @@ if __name__ == '__main__':
                 break
 
     nav_env.clean()
+
+
+

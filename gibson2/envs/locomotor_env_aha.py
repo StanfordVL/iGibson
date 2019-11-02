@@ -178,7 +178,7 @@ class NavigateEnv(BaseEnv):
         if self.visual_object_at_target_pos:
             cyl_length = 1.5            
             self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
-                                                   rgba_color=[0, 0, 1, 0.4],
+                                                   rgba_color=[0, 1, 1, 0.4],
                                                    radius=0.5,
                                                    length=cyl_length,
                                                    initial_offset=[0, 0, cyl_length / 2.0])
@@ -666,44 +666,28 @@ class NavigateRandomObstaclesEnv(NavigateEnv):
         # Fix number of boxes and their positional range for now.
         self.obstacles_low_x, self.obstacles_high_x = -2.5, 2.5
         self.obstacles_low_y, self.obstacles_high_y = -2.5, 2.5
-        self.num_obstacles = 4
+        self.num_obstacles = 8
         self.orn = [0, 0, 0, 1]
         self.box_x, self.box_y, self.box_z = 0.2, 0.3, 0.3
-        
-        box_poses = [
-            [[0, -1.5, 0], [0, 0, 0, 1]],
-            [[0, 1.5, 0], [0, 0, 0, 1]],
-            [[1.5, 0, 0], [0, 0, 0, 1]],
-            [[-1.5, 0, 0], [0, 0, 0, 1]]
-            ]
+        self.box_poses = [[0, 0, 0] * self.num_obstacles]
         self.boxes = []
-        for box_pos in box_poses:
-            box = BoxShape(pos=box_pos[0], dim=[self.box_x, self.box_y, self.box_z])
+        for box_pos in self.box_poses:
+            box = BoxShape(pos=box_pos, dim=[self.box_x, self.box_y, self.box_z])
             self.simulator.import_interactive_object(box)
             self.boxes.append(box)
 
     def reset_obstacles(self):
         for i in range(self.num_obstacles):
-            # collide = True
-            # while collide:
-                # collide = False
-            pos = [np.random.uniform(self.obstacles_low_x, self.obstacles_high_x), np.random.uniform(self.obstacles_low_y, self.obstacles_high_y), 0]
+            _, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
             self.boxes[i].set_position(pos=pos)
-                # self.simulator_step() # Doesn't hurt self.current_step.
-                # Keep looking for new positions until there is no collision.
-                # if i == 0:
-                    # break
-                # for j in range(i):
-                    # collision = p.getContactPoints(bodyA=self.boxes[i].body_id, bodyB=self.boxes[j].body_id)
-                    # if len(collision) == 0:
-                        # collide = False
-                        # break
+            self.box_poses[i] = pos
+
 
     def reset_initial_and_target_pos(self):
         self.reset_obstacles()
         # This will make the randomized initial position converge very quick.
-        # floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
-        floor, pos = self.scene.get_random_point()
+        floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
+        # floor, pos = self.scene.get_random_point()
         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
         self.robots[0].set_orientation(
             orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
@@ -1341,3 +1325,12 @@ if __name__ == '__main__':
                 break
 
     nav_env.clean()
+from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape
+import gibson2
+from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
+from gibson2.envs.base_env import BaseEnv
+from transforms3d.euler import euler2quat
+from collections import OrderedDict
+import argparse
+from gibson2.learn.completion import CompletionNet, identity_init, Perceptual
+import torch.nn as nn
