@@ -722,8 +722,8 @@ class NavigateRandomObstaclesEnv(NavigateEnv):
                                                          device_idx=device_idx)
         self.random_height = random_height
         # Fix number of boxes and their positional range for now.
-        self.obstacles_low_x, self.obstacles_high_x = -2.5, 2.5
-        self.obstacles_low_y, self.obstacles_high_y = -2.5, 2.5
+        self.obstacles_low_x, self.obstacles_high_x = self.initial_pos[0], self.initial_pos[1]
+        self.obstacles_low_y, self.obstacles_high_y = self.initial_pos[0], self.initial_pos[1]
         self.num_obstacles = 4
         self.orn = [0, 0, 0, 1]
         self.box_x, self.box_y, self.box_z = 0.2, 0.3, 0.3

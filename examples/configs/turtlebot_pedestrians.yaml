@@ -17,10 +17,10 @@ velocity: 0.1
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 
-initial_pos: [-2.0, 2.0, 0.0]
+initial_pos: [-3.0, 3.0, 0.0]
 initial_orn: [0.0, 0.0, 0.0]
 
-target_pos: [-2.0, 2.0, 0.0]
+target_pos: [-3.0, 3.0, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
@@ -35,7 +35,7 @@ potential_reward_weight: 1.0
 electricity_reward_weight: 0.0
 stall_torque_reward_weight: 0.0
 collision_reward_weight: -1.0
-collision_ignore_body_ids: [0, 1, 2, 3, 4]  # ignore the agent's collision with these body ids
+collision_ignore_body_ids: [0, 1]  # ignore the agent's collision with these body ids (0=floor, 1=robot)
 
 # termination condition
 dist_tol: 0.5
