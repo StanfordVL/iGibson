@@ -547,18 +547,6 @@ class NavigateEnv(BaseEnv):
             state = self.reset()
         return state, reward, done, info
 
-#     def reset_initial_and_target_pos(self):
-#         self.robots[0].set_position(pos=self.initial_pos)
-#         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
-# 
-#         collision_links = []
-#         for _ in range(self.simulator_loop):
-#             self.simulator_step()
-#             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-#         collision_links = self.filter_collision_links(collision_links)
-#         no_collision = len(collision_links) == 0
-#         return no_collision
-
     def reset_agent(self):
         # print("RESET AGENT")
         max_trials = 1000
@@ -618,30 +606,6 @@ class NavigateRandomEnv(NavigateEnv):
                                                 automatic_reset=automatic_reset,
                                                 device_idx=device_idx)
         self.random_height = random_height
-
-#     def reset_initial_and_target_pos(self):
-#         floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
-#         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
-#         self.robots[0].set_orientation(
-#             orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-#         self.initial_pos = pos
-# 
-#         max_trials = 100
-#         dist = 0.0
-#         for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
-#             _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
-#             dist = l2_distance(self.initial_pos, self.current_target_position)
-#             if dist > 1.0:
-#                 break
-#         if dist < 1.0:
-#             raise Exception("Failed to find initial and target pos that are >1m apart")
-#         collision_links = []
-#         for _ in range(self.simulator_loop):
-#             self.simulator_step()
-#             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-#         collision_links = self.filter_collision_links(collision_links)
-#         no_collision = len(collision_links) == 0
-#         return no_collision
 
 class NavigateObstaclesEnv(NavigateEnv):
     def __init__(
