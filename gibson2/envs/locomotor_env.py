@@ -85,7 +85,7 @@ class NavigateEnv(BaseEnv):
         self.collision_reward_weight = self.config.get('collision_reward_weight', 0.0)
         # ignore the agent's collision with these body ids, typically ids of the ground
         self.collision_ignore_body_ids = set(self.config.get('collision_ignore_body_ids', []))
-
+        
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
         self.output = self.config['output']
@@ -551,9 +551,9 @@ class NavigateEnv(BaseEnv):
 #         return no_collision
 
     def reset_agent(self):
-        print("RESET AGENT")
+        # print("RESET AGENT")
         max_trials = 1000
-        for _ in range(max_trials):
+        for i in range(max_trials):
             self.robots[0].robot_specific_reset()
             if self.reset_initial_and_target_pos():
                 return True
@@ -1409,7 +1409,7 @@ class NavigateRandomObstaclesEnv(NavigateEnv):
 
     def reset_obstacles(self):
         for i in range(self.num_obstacles):
-            _, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
+            _, pos = self.scene.get_random_point(min_xy=-3, max_xy=3)
             self.boxes[i].set_position(pos=pos)
             self.box_poses[i] = pos
 
@@ -1417,28 +1417,24 @@ class NavigateRandomObstaclesEnv(NavigateEnv):
     def reset_initial_and_target_pos(self):
         self.reset_obstacles()
         # This will make the randomized initial position converge very quick.
-        floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
-        # floor, pos = self.scene.get_random_point()
+        # floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
+        floor, pos = self.scene.get_random_point(min_xy=-3, max_xy=3)
         self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
         self.robots[0].set_orientation(
             orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
         self.initial_pos = pos
 
-        # max_trials = 100
         dist = 0.0
-        overlap_obstacles = True
-        # for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
+        overlap_obstacles = True # Whether target overlaps with obstacles.
         while dist < 1.0 or overlap_obstacles:
-            print('reset position')    
             _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
             dist = l2_distance(self.initial_pos, self.current_target_position)
             overlap_obstacles = False
-            print('dist: {}, overlap: {}'.format(dist, overlap_obstacles))
-            # print('dist: {}'.format(dist))
-            # for pos in self.box_poses:
-                # if l2_distance(self.current_target_position, pos) < 0.2: # hardcoded
-                    # overlap_obstacles = True
-        print("OUT OF LOOP!")
+            for pos in self.box_poses:
+                if l2_distance(self.current_target_position, pos) < 2 * self.box_y: # roughly set
+                    overlap_obstacles = True
+        
+        # Check whether the agent collides with objects in the environment.
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
@@ -1446,6 +1442,7 @@ class NavigateRandomObstaclesEnv(NavigateEnv):
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
         return no_collision
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--robot',
