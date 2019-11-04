@@ -32,7 +32,7 @@ class BaseEnv(gym.Env):
         elif self.config['scene'] == 'building':
             scene = BuildingScene(self.config['model_id'])
 
-        self.simulator.import_scene(scene)
+        self.scene_ids = self.simulator.import_scene(scene)
         if self.config['robot'] == 'Turtlebot':
             robot = Turtlebot(self.config)
         elif self.config['robot'] == 'Husky':
@@ -50,6 +50,7 @@ class BaseEnv(gym.Env):
 
         self.scene = scene
         self.robots = [robot]
+        self.obstacle_ids = []
         for robot in self.robots:
             self.simulator.import_robot(robot)
 

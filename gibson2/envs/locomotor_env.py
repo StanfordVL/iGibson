@@ -83,8 +83,11 @@ class NavigateEnv(BaseEnv):
         self.electricity_reward_weight = self.config.get('electricity_reward_weight', 0.0)
         self.stall_torque_reward_weight = self.config.get('stall_torque_reward_weight', 0.0)
         self.collision_reward_weight = self.config.get('collision_reward_weight', 0.0)
-        # ignore the agent's collision with these body ids, typically ids of the ground
-        self.collision_ignore_body_ids = set(self.config.get('collision_ignore_body_ids', []))
+        # ignore the agent's collision with these body ids, typically ids of the ground and the robot itself
+        #self.collision_ignore_body_ids = set(self.config.get('collision_ignore_body_ids', []))
+        self.collision_ignore_body_ids = []
+        self.collision_ignore_body_ids.extend(self.scene_ids)
+        self.collision_ignore_body_ids.append(self.robots[0].robot_ids[0])
         
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
@@ -680,7 +683,7 @@ class NavigateObstaclesEnv(NavigateEnv):
         self.walls = []
         for box_pose in self.box_poses:
             box = BoxShape(pos=box_pose[0], dim=[0.2, 0.3, 0.3], rgba_color=[1.0, 0.0, 0.0, 1.0])
-            self.simulator.import_interactive_object(box)
+            self.obstacle_ids.append(self.simulator.import_interactive_object(box))
             self.walls += [box]
         
     def reset_initial_and_target_pos(self):
@@ -749,13 +752,13 @@ class NavigatePedestriansEnv(NavigateEnv):
             wall = self.walls[i]
 #            obj = VisualBoxShape(curr[0], curr[1])
             box = BoxShape(pos=[wall[0][0], wall[0][1], wall[0][2]], dim=[wall[1][0], wall[1][1], wall[1][2]])            
-            self.simulator.import_object(box)
+            self.obstacle_ids.append(self.simulator.import_object(box))
 
         for i in range(len(self.obstacles)):
             obstacle = self.obstacles[i]
             #obj = VisualBoxShape(curr[0], curr[1])
             box = BoxShape(pos=[obstacle[0][0], obstacle[0][1], obstacle[0][2]], dim=[obstacle[1][0], obstacle[1][1], obstacle[1][2]])                        
-            self.simulator.import_object(box)
+            self.obstacle_ids.append(self.simulator.import_object(box))
             
         if self.has_pedestrians:
             assert self.num_pedestrians > 0
@@ -1407,9 +1410,10 @@ class NavigateRandomObstaclesEnv(NavigateEnv):
         initial_box_pose = [0, 0, 0]
         self.boxes = []
         self.box_poses = []
+
         for _ in range(self.num_obstacles):
             box = BoxShape(pos=initial_box_pose, dim=[self.box_x, self.box_y, self.box_z], rgba_color=[1.0, 0.0, 0.0, 1.0])
-            self.simulator.import_interactive_object(box)
+            self.obstacle_ids.append(self.simulator.import_interactive_object(box))
             self.boxes.append(box)
             self.box_poses.append(initial_box_pose)
 
