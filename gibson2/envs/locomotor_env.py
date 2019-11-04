@@ -1431,7 +1431,7 @@ class NavigateRandomObstaclesEnv(NavigateEnv):
             dist = l2_distance(self.initial_pos, self.current_target_position)
             overlap_obstacles = False
             for pos in self.box_poses:
-                if l2_distance(self.current_target_position, pos) < 2 * self.box_y: # roughly set
+                if l2_distance(self.current_target_position, pos) < self.box_y: # roughly set
                     overlap_obstacles = True
         
         # Check whether the agent collides with objects in the environment.
