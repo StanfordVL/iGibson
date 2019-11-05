@@ -21,6 +21,25 @@ class YCBObject(object):
         return body_id
 
 
+class GeneralObject(object):
+    def __init__(self, name, vhacd_name, scale=1):
+        self.visual_filename = name
+        self.vhacd_name = vhacd_name
+        self.scale = scale
+
+    def load(self):
+        collision_id = p.createCollisionShape(p.GEOM_MESH,
+                                              fileName=self.vhacd_name,
+                                              meshScale=self.scale)
+        visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
+
+        body_id = p.createMultiBody(basePosition=[0, 0, 0],
+                                    baseMass=0.1,
+                                    baseCollisionShapeIndex=collision_id,
+                                    baseVisualShapeIndex=visual_id)
+        return body_id
+
+
 class ShapeNetObject(object):
     def __init__(self, path, scale=1., position=[0, 0, 0], orientation=[0, 0, 0]):
         self.filename = path
@@ -99,13 +118,15 @@ class VisualObject(object):
                  radius=1.0,
                  half_extents=[1, 1, 1],
                  length=1,
-                 initial_offset=[0, 0, 0]):
+                 initial_offset=[0, 0, 0],
+                 filename=None):
         self.visual_shape = visual_shape
         self.rgba_color = rgba_color
         self.radius = radius
         self.half_extents = half_extents
         self.length = length
         self.initial_offset = initial_offset
+        self.filename = filename
 
     def load(self):
         if self.visual_shape == p.GEOM_BOX:
@@ -119,11 +140,14 @@ class VisualObject(object):
                                         radius=self.radius,
                                         length=self.length,
                                         visualFramePosition=self.initial_offset)
+        elif self.visual_shape == p.GEOM_MESH:
+            shape = p.createVisualShape(self.visual_shape, fileName=self.filename)
         else:
             shape = p.createVisualShape(self.visual_shape,
                                         rgbaColor=self.rgba_color,
                                         radius=self.radius,
                                         visualFramePosition=self.initial_offset)
+
         self.body_id = p.createMultiBody(baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1)
         return self.body_id
 

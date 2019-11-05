@@ -7,6 +7,7 @@ class Viewer:
     def __init__(self):
         self.px = 0
         self.py = 0
+        self.pz = 0
         self._mouse_ix, self._mouse_iy = -1, -1
         self.down = False
         self.view_direction = np.array([1, 0, 0])
@@ -16,6 +17,8 @@ class Viewer:
         cv2.setMouseCallback('test', self.change_dir)
 
         self.renderer = None
+        self.free_view_point = True
+
 
     def change_dir(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -35,9 +38,10 @@ class Viewer:
         elif event == cv2.EVENT_LBUTTONUP:
             self.down = False
 
+
     def update(self):
-        camera_pose = np.array([self.px, self.py, 1.2])
-        if not self.renderer is None:
+        camera_pose = np.array([self.px, self.py, self.pz])
+        if not self.renderer is None and self.free_view_point:
             self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, [0, 0, 1])
 
         if not self.renderer is None:
@@ -62,6 +66,10 @@ class Viewer:
             self.py += 0.05
         elif q == ord('d'):
             self.py -= 0.05
+        elif q == ord('z'):
+            self.pz += 0.05
+        elif q == ord('x'):
+            self.pz -= 0.05
         elif q == ord('q'):
             exit()
 

@@ -9,7 +9,7 @@ import OpenGL.GL as GL
 import cv2
 import numpy as np
 #from pyassimp import load, release
-from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
+from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat, get_params
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
 from gibson2.core.render.mesh_renderer import CppMeshRenderer
@@ -20,7 +20,6 @@ import pybullet as p
 import gibson2
 import os
 import tinyobjloader
-
 
 class VisualObject(object):
     def __init__(self, filename, VAO_ids, id, renderer):
@@ -36,7 +35,6 @@ class VisualObject(object):
     def __repr__(self):
         return self.__str__()
 
-
 class InstanceGroup(object):
     def __init__(self,
                  objects,
@@ -46,12 +44,16 @@ class InstanceGroup(object):
                  class_id,
                  poses_trans,
                  poses_rot,
+                 poses_trans_init,
+                 poses_rot_init,
                  dynamic,
                  robot=None):
         # assert(len(objects) > 0) # no empty instance group
         self.objects = objects
         self.poses_trans = poses_trans
         self.poses_rot = poses_rot
+        self.poses_trans_init = poses_trans_init
+        self.poses_rot_init = poses_rot_init
         self.id = id
         self.link_ids = link_ids
         self.class_id = class_id
@@ -65,6 +67,9 @@ class InstanceGroup(object):
         self.dynamic = dynamic
         self.tf_tree = None
 
+        self.next_poses_trans = []
+        self.next_poses_rot = []
+        
     def render(self):
         if self.renderer is None:
             return
@@ -88,6 +93,21 @@ class InstanceGroup(object):
                 GL.glUniformMatrix4fv(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1, GL.GL_TRUE,
                     self.poses_rot[i])
+
+                if len(self.next_poses_trans) > 0:
+                    GL.glUniformMatrix4fv(
+                        GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_trans'), 1,
+                        GL.GL_FALSE, self.next_poses_trans[i])
+                    GL.glUniformMatrix4fv(
+                        GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_rot'), 1, GL.GL_TRUE,
+                        self.next_poses_rot[i])
+                else:
+                    GL.glUniformMatrix4fv(
+                        GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_trans'), 1,
+                        GL.GL_FALSE, self.poses_trans[i])
+                    GL.glUniformMatrix4fv(
+                        GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_rot'), 1, GL.GL_TRUE,
+                        self.poses_rot[i])
 
                 GL.glUniform3f(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
@@ -140,7 +160,6 @@ class InstanceGroup(object):
     def __repr__(self):
         return self.__str__()
 
-
 class Robot(InstanceGroup):
     def __init__(self, *args, **kwargs):
         super(Robot, self).__init__(*args, **kwargs)
@@ -149,17 +168,18 @@ class Robot(InstanceGroup):
         return "Robot({}) -> Objects({})".format(
             self.id, ",".join([str(object.id) for object in self.objects]))
 
-
 class Instance(object):
-    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic):
-        self.object = object
+    def __init__(self, input_object, input_id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic):
+        self.object = input_object
         self.pose_trans = pose_trans
         self.pose_rot = pose_rot
-        self.id = id
+        self.id = input_id
         self.class_id = class_id
-        self.renderer = object.renderer
+        self.renderer = input_object.renderer
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
+        self.next_pose_trans = None
+        self.next_pose_rot = None
 
     def render(self):
         if self.renderer is None:
@@ -174,6 +194,16 @@ class Instance(object):
                               GL.GL_FALSE, self.pose_trans)
         GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'pose_rot'), 1,
                               GL.GL_TRUE, self.pose_rot)
+        if self.next_pose_trans is not None:
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_trans'), 1,
+                                  GL.GL_FALSE, self.next_pose_trans)
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_rot'), 1,
+                                  GL.GL_TRUE, self.next_pose_rot)
+        else:
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_trans'), 1,
+                                  GL.GL_FALSE, self.pose_trans)
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.renderer.shaderProgram, 'next_pose_rot'), 1,
+                                  GL.GL_TRUE, self.pose_rot)
         GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_position'),
                        *self.renderer.lightpos)
         GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'light_color'),
@@ -189,7 +219,6 @@ class Instance(object):
                 GL.glGetUniformLocation(self.renderer.shaderProgram, 'use_texture'),
                 float(self.renderer.materials_mapping[
                     self.renderer.mesh_materials[object_idx]].is_texture()))
-
             try:
                 # Activate texture
                 GL.glActiveTexture(GL.GL_TEXTURE0)
@@ -279,6 +308,16 @@ class MeshRenderer:
         self.shaders = shaders
         self.colors = colormap
         self.lightcolor = [1, 1, 1]
+        self.material_string="""
+material cream
+{
+    color 1.0 0.94 0.8
+    roughness 1.0
+    specular 0.5
+}
+"""       
+        self.mmap = {}
+        self.light_string=""
 
         print("fisheye", self.fisheye)
 
@@ -553,7 +592,7 @@ class MeshRenderer:
                      pose_trans=np.eye(4),
                      dynamic=False):
         instance = Instance(self.visual_objects[object_id],
-                            id=len(self.instances),
+                            input_id=len(self.instances),
                             pybullet_uuid=pybullet_uuid,
                             class_id=class_id,
                             pose_trans=pose_trans,
@@ -566,6 +605,8 @@ class MeshRenderer:
                            link_ids,
                            poses_rot,
                            poses_trans,
+                           poses_rot_init,
+                           poses_trans_init,
                            class_id=0,
                            pybullet_uuid=None,
                            dynamic=False,
@@ -577,6 +618,8 @@ class MeshRenderer:
                                        class_id=class_id,
                                        poses_trans=poses_trans,
                                        poses_rot=poses_rot,
+                                       poses_rot_init=poses_rot_init,
+                                       poses_trans_init=poses_trans_init,
                                        dynamic=dynamic,
                                        robot=robot)
         self.instances.append(instance_group)
@@ -587,6 +630,8 @@ class MeshRenderer:
                   class_id,
                   poses_rot,
                   poses_trans,
+                  poses_rot_init,
+                  poses_trans_init,
                   pybullet_uuid=None,
                   dynamic=False,
                   robot=None):
@@ -597,6 +642,8 @@ class MeshRenderer:
                       class_id=class_id,
                       poses_trans=poses_trans,
                       poses_rot=poses_rot,
+                      poses_rot_init=poses_rot_init,
+                      poses_trans_init=poses_trans_init,
                       dynamic=dynamic,
                       robot=robot)
         self.instances.append(robot)
@@ -607,6 +654,10 @@ class MeshRenderer:
         self.up = up
         V = lookat(self.camera, self.target, up=self.up)
         self.V = np.ascontiguousarray(V, np.float32)
+
+
+    def get_camera(self):
+        return get_params(self.V)
 
     def set_fov(self, fov):
         self.fov = fov
@@ -754,7 +805,71 @@ class MeshRenderer:
                 for item in self.render(modes=modes, hidden=[]):
                     frames.append(item)
         return frames
+    def export_scene(self, filename):
+        eye,target,up = self.get_camera()
+        with open(filename, 'w') as f:
+            f.write('properties \n{\n')
+            f.write('\t width {}\n'.format(self.width))
+            f.write('\t height {}\n'.format(self.height))
+            f.write('\t up {} {} {}\n'.format(*up))
+            f.write('\t eye {} {} {}\n'.format(*eye))
+            f.write('\t look {} {} {}\n'.format(*target))
+            f.write('}\n')
 
+            f.write(self.material_string)
+
+            for item in self.instances:
+
+                if isinstance(item, Instance):
+                    mesh = item.object.filename
+                    trans = item.pose_trans[3,:3]
+                    rot = item.pose_rot[:3,:3]
+                    print(mesh, trans, rot)
+                    f.write('mesh\n')
+                    f.write('{\n')
+                    f.write('\t file {}\n'.format(mesh))
+                    f.write('\t material {} \n'.format(self.mmap.get(mesh, 'cream')))
+                    f.write('\t translate {} {} {} \n'.format(trans[0], trans[1], trans[2]))
+                    f.write('\t rotate {} {} {} {} {} {} {} {} {}\n'.format(rot[0,0], rot[0,1], rot[0,2], rot[1,0], rot[1,1]
+                        ,rot[1,2], rot[2,0], rot[2,1], rot[2,2]))
+                    f.write('}\n')
+
+                elif isinstance(item, InstanceGroup):
+                    for i in range(len(item.objects)):
+                        mesh = item.objects[i].filename
+                        rot = item.poses_rot[i][:3,:3]
+                        trans = item.poses_trans[i][3,:3] + rot.dot(item.poses_trans_init[i][3,:3])
+                        print(mesh, trans, rot)
+                        f.write('mesh\n')
+                        f.write('{\n')
+                        f.write('\t file {}\n'.format(mesh))
+                        f.write('\t material {} \n'.format(self.mmap.get(mesh, 'cream')))
+                        f.write('\t translate {} {} {} \n'.format(trans[0], trans[1], trans[2]))
+                        f.write('\t rotate {} {} {} {} {} {} {} {} {}\n'.format(rot[0,0], rot[0,1], rot[0,2], rot[1,0], rot[1,1]
+                            ,rot[1,2], rot[2,0], rot[2,1], rot[2,2]))
+                        f.write('}\n')
+            f.write(self.light_string)
+    
+    def save_pose(self):
+        self.saved_instance_poses = []
+        self.saved_instance_group_poses = []
+        for item in self.instances:
+            if isinstance(item, Instance):
+                self.saved_instance_poses.append((item.pose_trans, item.pose_rot))
+            elif isinstance(item, InstanceGroup):
+                self.saved_instance_group_poses.append((item.poses_trans, item.poses_rot))
+
+    def load_pose(self):
+        for item in self.instances:
+            if isinstance(item, Instance):
+                item.next_pose_trans = np.copy(item.pose_trans)
+                item.next_pose_rot = np.copy(item.pose_rot)
+                item.pose_trans, item.pose_rot = self.saved_instance_poses.pop(0)
+
+            elif isinstance(item, InstanceGroup):
+                item.next_poses_trans = np.copy(item.poses_trans)
+                item.next_poses_rot = np.copy(item.poses_rot)
+                item.poses_trans, item.poses_rot = self.saved_instance_group_poses.pop(0)
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
