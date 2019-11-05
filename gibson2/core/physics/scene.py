@@ -17,6 +17,19 @@ class Scene:
     def load(self):
         raise (NotImplementedError())
 
+class EmptyScene(Scene):
+    def load(self):
+        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+        self.ground_plane_mjcf = p.loadMJCF(planeName)
+        self.ground_plane_mjcf = p.loadMJCF(planeName)
+        for i in self.ground_plane_mjcf:
+            pos, orn = p.getBasePositionAndOrientation(i)
+            p.resetBasePositionAndOrientation(i, [pos[0], pos[1], pos[2] - 0.005], orn)
+
+        for i in self.ground_plane_mjcf:
+            p.changeVisualShape(i, -1, rgbaColor=[1,1,1,1])
+
+        return [item for item in self.ground_plane_mjcf]
 
 class StadiumScene(Scene):
     zero_at_running_strip_start_line = True    # if False, center of coordinates (0,0,0) will be at the middle of the stadium

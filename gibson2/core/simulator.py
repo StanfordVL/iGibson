@@ -47,7 +47,7 @@ class Simulator:
         self.load()
 
     def load(self):
-        self.renderer = MeshRenderer(width=self.resolution,
+        self.renderer = MeshRenderer(width=int(self.resolution * 2),
                                      height=self.resolution,
                                      fov=self.fov,
                                      device_idx=self.device_idx,
@@ -93,17 +93,17 @@ class Simulator:
         
 
                 elif type == p.GEOM_PLANE:
-                    pass #don't load plane, it will cause z fighting
-                    #filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
-                    # self.renderer.load_object(filename,
-                    #                           transform_orn=rel_orn,
-                    #                           transform_pos=rel_pos,
-                    #                           input_kd=color[:3],
-                    #                           scale=[100, 100, 0.01])
-                    # self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
-                    #                            pybullet_uuid=new_object,
-                    #                            class_id=class_id,
-                    #                            dynamic=True)
+                    #pass #don't load plane, it will cause z fighting
+                    filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                    self.renderer.load_object(filename,
+                                              transform_orn=rel_orn,
+                                              transform_pos=rel_pos,
+                                              input_kd=color[:3],
+                                              scale=[100, 100, 0.01])
+                    self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                                               pybullet_uuid=new_object,
+                                               class_id=class_id,
+                                               dynamic=True)
 
         self.scene = scene
         return new_objects
