@@ -20,7 +20,7 @@ import cv2
 import time
 
 from gibson2.core.pedestrians.human import Human
-
+from gibson2.core.pedestrians.robot import Robot
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
 # arXiv preprint arXiv:1807.06757 (2018).
@@ -97,6 +97,8 @@ class NavigateEnv(BaseEnv):
         
         # pedestrians
         self.num_pedestrians = self.config.get('num_pedestrians', 0)
+        self.pedestrians_can_see_robot = self.config['pedestrians_can_see_robot']        
+        self.randomize_pedestrian_attributes = self.config.get('randomize_pedestrian_attributes', True)
 
         # TODO: sensor: observations that are passed as network input, e.g. target position in local frame
         # TODO: auxiliary sensor: observations that are not passed as network input, but used to maintain the same
@@ -405,7 +407,7 @@ class NavigateEnv(BaseEnv):
 
     def update_pedestrian(self):
         self.pedestrian_simulator.doStep()
-        if self.config['pedestrians_can_see_robot']:
+        if self.pedestrians_can_see_robot:
             self.pedestrian_simulator.setAgentPosition(self.robot_as_pedestrian_id, tuple(self.robots[0].get_position()[:2]))
         ped_pos = self.get_ped_states()
         x = [pos[0] for pos in ped_pos]
@@ -691,7 +693,7 @@ class NavigatePedestriansEnv(NavigateEnv):
                                                 automatic_reset=automatic_reset,
                                                 device_idx=device_idx)
         self.random_height = random_height
-        
+
         # wall = [pos, dim]
         self.walls = [[[0, 5, 0.501], [5, 0.2, 0.5]],
                       [[0, -5, 0.501], [5, 0.1, 0.5]],
@@ -736,7 +738,7 @@ class NavigatePedestriansEnv(NavigateEnv):
             
         self.pedestrian_ids = []
     
-        self.initial_pedestrian_positions = [(2.0, -2.0, 0.03), (-3.0, -3.0, 0.03), (-2.5, 2.5, 0.03), (3.0, 3.0, 0.03), (2.5, -2.5, 0.03)]
+        self.initial_pedestrian_positions = [(2.0, -2.0, 0.03)]#, (-3.0, -3.0, 0.03), (-2.5, 2.5, 0.03), (3.0, 3.0, 0.03), (2.5, -2.5, 0.03)]
 #, , (-4.5, -4.5, 0.03), (4.0, -4.0, 0.03), (3.0, 5.5, 0.03)]
     
         self.pedestrians = [Pedestrian(pos = self.initial_pedestrian_positions[i]) for i in range(self.num_pedestrians)]
@@ -749,7 +751,6 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.prev_ped_x = [[pos[0] for pos in prev_ped_pos]]
         self.prev_ped_y = [[pos[1] for pos in prev_ped_pos]]
 
- 
 #     def dist(self, x1, y1, x2, y2, eps = 0.01):
 #         return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
 # 
@@ -766,13 +767,51 @@ class NavigatePedestriansEnv(NavigateEnv):
 #                 self._simulator.setAgentPrefVelocity(pedestrian, (vx, vy))
 #                 self._simulator.setAgentVelocity(pedestrian, (vx, vy))
 
+    def step(self, action):
+        # Compute the next human actions from the current observations
+        human_actions = []
+
+        for human in self.humans:
+            # observation for humans is always coordinates
+            ob = [other_human.get_observable_state() for other_human in self.humans if other_human != human]
+          
+            #self.pedestrians_can_see_robot = np.random.uniform()
+            #if self.pedestrians_can_see_robot < 0.5:
+            
+            if self.pedestrians_can_see_robot:
+                ob += [self.robot.get_observable_state()]
+            human_actions.append(human.act(ob, walls=self.walls, obstacles=self.obstacles))
+        
+        self.robots[0].apply_action(action)
+        collision_links = self.run_simulation()
+        state = self.get_state(collision_links)
+        info = {}
+        reward, info = self.get_reward(collision_links, action, info)
+        done, info = self.get_termination(collision_links, info)
+
+        if done and self.automatic_reset:
+            info['last_observation'] = state
+            state = self.reset()
+        return state, reward, done, info
+
+    def reset_pedestrians(self):
+        pedestrian_scenario = 'hallway_crossing'
+        if pedestrian_scenario == 'hallway_crossing':
+            self.humans = []
+            for _ in range(self.num_pedestrians):
+                self.humans.append(self.generate_hallway_crossing_human())
+
     def reset_obstacles(self):
         for i in range(self.num_obstacles):
             _, pos = self.scene.get_random_point(min_xy=-3, max_xy=3)
             self.obstacles[i].set_position(pos=pos)
         
     def reset_initial_and_target_pos(self):
+        # Select new positions for obstacles
         self.reset_obstacles()
+
+        # Select new positions and goals for pedestrians
+        self.reset_pedestrians()
         
         self.pedestrian_simulator = self.init_rvo_simulator(self.num_pedestrians, self.initial_pedestrian_positions, self.walls, self.obstacles)
     
@@ -820,21 +859,20 @@ class NavigatePedestriansEnv(NavigateEnv):
     
     def generate_hallway_crossing_human(self):
         human = Human(self.config, 'humans')
-#         if self.randomize_attributes:
-#             human.sample_random_attributes()
+
+        if self.randomize_pedestrian_attributes:
+            human.sample_random_attributes()
 
         if np.random.random() > 0.5:
             sign = -1
         else:
             sign = 1
-            
 
         px = np.random.uniform(self.config.get('humans')['initial_position']['min_x'], self.config.get('humans')['initial_position']['max_x'])
         py = np.random.uniform(self.config.get('humans')['initial_position']['min_y'], self.config.get('humans')['initial_position']['max_y'])
 
 #             px = (np.random.random() - 0.5) * self.square_width
 #             py = (np.random.random() - 0.5) * self.square_width
-
 
         gx = np.random.uniform(self.config.get('humans')['initial_position']['min_x'], self.config.get('humans')['initial_position']['max_x'])
         gy = np.random.uniform(self.config.get('humans')['initial_position']['min_y'], self.config.get('humans')['initial_position']['max_y'])
@@ -843,7 +881,7 @@ class NavigatePedestriansEnv(NavigateEnv):
 #            gy = (np.random.random() - 0.5) * self.square_width
 
         human.set(px, py, 0, gx, gy, 0, 0, 0, 0)
-        
+
         return human
 
 class InteractiveNavigateEnv(NavigateEnv):
@@ -862,7 +900,6 @@ class InteractiveNavigateEnv(NavigateEnv):
                                                      physics_timestep=physics_timestep,
                                                      automatic_reset=automatic_reset,
                                                      device_idx=device_idx)
-
         self.arena = arena
         assert self.arena in [
             "only_ll_obstacles",

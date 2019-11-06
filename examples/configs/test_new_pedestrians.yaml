@@ -6,7 +6,7 @@ scene: stadium
 # scene: building
 # model_id: Ohoopee
 
-num_pedestrians: 0
+num_pedestrians: 1
 pedestrians_can_see_robot: false
 
 # robot

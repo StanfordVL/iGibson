@@ -1,5 +1,5 @@
-from crowd_sim.envs.utils.agent import Agent
-from crowd_sim.envs.utils.state import JointState, TensorFlowState
+from gibson2.core.pedestrians.agent import Agent
+from gibson2.core.pedestrians.state import JointState, TensorFlowState
 
 
 class Robot(Agent):

@@ -2,7 +2,6 @@ import numpy as np
 import rvo2
 from gibson2.core.pedestrians.action import ActionXY
 
-
 class ORCA(object):
     def __init__(self):
         """
@@ -53,6 +52,7 @@ class ORCA(object):
         """
         super().__init__()
         self.name = 'ORCA'
+        self.time_step = 0.1
         self.trainable = False
         self.multiagent_training = None
         self.kinematics = 'holonomic'
@@ -78,7 +78,7 @@ class ORCA(object):
     def set_phase(self, phase):
         return
 
-    def predict(self, state, include_obstacles=False):
+    def predict(self, state, walls=[], obstacles=[]):
         """
         Create a rvo2 simulation at each time step and run one step
         Python-RVO2 API: https://github.com/sybrenstuvel/Python-RVO2/blob/master/src/rvo2.pyx
@@ -90,8 +90,9 @@ class ORCA(object):
         :return:
         """
         self_state = state.self_state
-        #obstacles = state.obstacles
+
         params = self.neighbor_dist, self.max_neighbors, self.time_horizon, self.time_horizon_obst
+        
         if self.sim is not None and self.sim.getNumAgents() != len(state.human_states) + 1:
             del self.sim
             self.sim = None
@@ -103,20 +104,20 @@ class ORCA(object):
             for human_state in state.human_states:
                 self.sim.addAgent(human_state.position, *params, human_state.radius + 0.01 + human_state.personal_space / 2.0,
                                   self.max_speed, human_state.velocity)
-            
-            if include_obstacles:
-                obstacles = list()
-                obstacles.append([(-0.5, 1.5), (0.5, 1.5), (0.5, 0.5), (-0.5, 0.5)])
-                obstacles.append([(-3.0, 0.5), (-2.5, 0.5), (-2.5, -0.5), (-3.0, -0.5)])
-                obstacles.append([(4.0, -0.5), (3.5, -0.5), (3.5, -1.5), (4.0, -1.5)])
-                
-                for obstacle in obstacles:
-                    for i in range(len(obstacle) - 1):
-                        self.sim.addObstacle([obstacle[i], obstacle[i+1]])
-                        
-                    self.sim.addObstacle([obstacle[len(obstacle) - 1], obstacle[0]])
+
+            if len(walls) > 0:
+                for i in range(len(walls)):
+                    x, y, _ = walls[i][0] # pos = [x, y, z]
+                    dx, dy, _ = walls[i][1] # dim = [dx, dy, dz]
+                    self.sim.addObstacle([(x+dx, y+dy), (x-dx, y+dy), (x-dx, y-dy), (x+dx, y-dy)])
+             
+            if len(obstacles) > 0:
+                for i in range(len(obstacles)):
+                    x, y, _ = obstacles[i].get_position() # pos = [x, y, z]
+                    dx, dy, _ = obstacles[i].get_dimensions() # dim = [dx, dy, dz]
+                    self.sim.addObstacle([(x+dx, y+dy), (x-dx, y+dy), (x-dx, y-dy), (x+dx, y-dy)])
     
-                self.sim.processObstacles()
+            self.sim.processObstacles()
             
         else:
             self.sim.setAgentPosition(0, self_state.position)
