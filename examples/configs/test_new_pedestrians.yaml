@@ -6,7 +6,7 @@ scene: stadium
 # scene: building
 # model_id: Ohoopee
 
-num_pedestrians: 1
+num_pedestrians: 3
 pedestrians_can_see_robot: false
 
 # robot
@@ -95,7 +95,7 @@ humans:
   personal_space: 1.0
   max_linear_velocity: 1.0
   max_angular_velocity: 1.0
-  kinematics: unicycle
+  kinematics: holonomic
   # for random initialization and goal setting
   initial_position:
      min_x: -5.0

@@ -369,7 +369,7 @@ class NavigateEnv(BaseEnv):
             self.simulator_step()
 
             if self.num_pedestrians > 0:
-                self.update_pedestrian()
+                self.update_pedestrian_positions()
             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
 
             # personalize keyboard event; might cause problem
@@ -399,36 +399,42 @@ class NavigateEnv(BaseEnv):
                     yaw += 0.2 
                 p.resetDebugVisualizerCamera(dist, yaw, pitch, target)
             """
-            if self.num_pedestrians > 0:
-                self.update_pedestrian()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-
+    
         return self.filter_collision_links(collision_links)
 
-    def update_pedestrian(self):
-        self.pedestrian_simulator.doStep()
-        if self.pedestrians_can_see_robot:
-            self.pedestrian_simulator.setAgentPosition(self.robot_as_pedestrian_id, tuple(self.robots[0].get_position()[:2]))
-        ped_pos = self.get_ped_states()
-        x = [pos[0] for pos in ped_pos]
-        y = [pos[1] for pos in ped_pos]
-
-        prev_x_mean = np.mean(self.prev_ped_x, axis = 0)
-        prev_y_mean = np.mean(self.prev_ped_y, axis = 0)
-
-        self.prev_ped_x.append(x)
-        self.prev_ped_y.append(y)
+    def update_pedestrian_positions(self):
+        for i, human in enumerate(self.humans):
+            px = human.px
+            py = human.py
+            theta = human.theta
         
-        # keep track of pedestrian trajectory for up to 5 timesteps
-        if len(self.prev_ped_x) > 5:
-            self.prevent_stuck_at_corners(x, y, self.prev_ped_x[0], self.prev_ped_y[0])
-            self.prev_ped_x.pop(0)
-            self.prev_ped_y.pop(0)
+            direction = p.getQuaternionFromEuler([0, 0, theta])
+            self.pedestrians[i].reset_position_orientation([px, py, 0.03], direction)
 
-        angle = np.arctan2(y - prev_y_mean, x - prev_x_mean)
-        for j in range(self.num_pedestrians):
-            direction = p.getQuaternionFromEuler([0, 0, angle[j]])
-            self.pedestrians[j].reset_position_orientation([x[j], y[j], 0.03], direction)
+    # def update_pedestrian(self):
+    #     self.pedestrian_simulator.doStep()
+    #     if self.pedestrians_can_see_robot:
+    #         self.pedestrian_simulator.setAgentPosition(self.robot_as_pedestrian_id, tuple(self.robots[0].get_position()[:2]))
+    #     ped_pos = self.get_ped_states()
+    #     x = [pos[0] for pos in ped_pos]
+    #     y = [pos[1] for pos in ped_pos]
+
+    #     prev_x_mean = np.mean(self.prev_ped_x, axis = 0)
+    #     prev_y_mean = np.mean(self.prev_ped_y, axis = 0)
+
+    #     self.prev_ped_x.append(x)
+    #     self.prev_ped_y.append(y)
+        
+    #     # keep track of pedestrian trajectory for up to 5 timesteps
+    #     if len(self.prev_ped_x) > 5:
+    #         self.prevent_stuck_at_corners(x, y, self.prev_ped_x[0], self.prev_ped_y[0])
+    #         self.prev_ped_x.pop(0)
+    #         self.prev_ped_y.pop(0)
+
+    #     angle = np.arctan2(y - prev_y_mean, x - prev_x_mean)
+    #     for j in range(self.num_pedestrians):
+    #         direction = p.getQuaternionFromEuler([0, 0, angle[j]])
+    #         self.pedestrians[j].reset_position_orientation([x[j], y[j], 0.03], direction)
 
     def prevent_stuck_at_corners(self, x, y, old_x, old_y, eps = 0.01):
         # self.pedestrian_simulator.setAgentPosition(ai, (self._ped_states[ai,0], self._ped_states[ai,1]))
@@ -738,7 +744,7 @@ class NavigatePedestriansEnv(NavigateEnv):
             
         self.pedestrian_ids = []
     
-        self.initial_pedestrian_positions = [(2.0, -2.0, 0.03)]#, (-3.0, -3.0, 0.03), (-2.5, 2.5, 0.03), (3.0, 3.0, 0.03), (2.5, -2.5, 0.03)]
+        self.initial_pedestrian_positions = [(2.0, -2.0, 0.03), (-3.0, -3.0, 0.03), (-2.5, 2.5, 0.03)]#, (3.0, 3.0, 0.03), (2.5, -2.5, 0.03)]
 #, , (-4.5, -4.5, 0.03), (4.0, -4.0, 0.03), (3.0, 5.5, 0.03)]
     
         self.pedestrians = [Pedestrian(pos = self.initial_pedestrian_positions[i]) for i in range(self.num_pedestrians)]
@@ -770,7 +776,6 @@ class NavigatePedestriansEnv(NavigateEnv):
     def step(self, action):
         # Compute the next human actions from the current observations
         human_actions = []
-
         for human in self.humans:
             # observation for humans is always coordinates
             ob = [other_human.get_observable_state() for other_human in self.humans if other_human != human]
@@ -780,8 +785,13 @@ class NavigatePedestriansEnv(NavigateEnv):
             
             if self.pedestrians_can_see_robot:
                 ob += [self.robot.get_observable_state()]
+                #self.pedestrian_simulator.setAgentPosition(self.robot_as_pedestrian_id, tuple(self.robots[0].get_position()[:2]))
             human_actions.append(human.act(ob, walls=self.walls, obstacles=self.obstacles))
-        
+
+        # Move each human
+        for i, human_action in enumerate(human_actions):
+            self.humans[i].step(human_action)
+
         self.robots[0].apply_action(action)
         collision_links = self.run_simulation()
         state = self.get_state(collision_links)
@@ -815,10 +825,10 @@ class NavigatePedestriansEnv(NavigateEnv):
         
         self.pedestrian_simulator = self.init_rvo_simulator(self.num_pedestrians, self.initial_pedestrian_positions, self.walls, self.obstacles)
     
-        prev_ped_pos = [self.pedestrian_simulator.getAgentPosition(pedestrian_id) for pedestrian_id in self.pedestrian_ids]
+        # prev_ped_pos = [self.pedestrian_simulator.getAgentPosition(pedestrian_id) for pedestrian_id in self.pedestrian_ids]
 
-        self.prev_ped_x = [[pos[0] for pos in prev_ped_pos]]
-        self.prev_ped_y = [[pos[1] for pos in prev_ped_pos]]
+        # self.prev_ped_x = [[pos[0] for pos in prev_ped_pos]]
+        # self.prev_ped_y = [[pos[1] for pos in prev_ped_pos]]
         
         reset_complete = False
         while not reset_complete:
@@ -874,14 +884,19 @@ class NavigatePedestriansEnv(NavigateEnv):
 #             px = (np.random.random() - 0.5) * self.square_width
 #             py = (np.random.random() - 0.5) * self.square_width
 
-        gx = np.random.uniform(self.config.get('humans')['initial_position']['min_x'], self.config.get('humans')['initial_position']['max_x'])
-        gy = np.random.uniform(self.config.get('humans')['initial_position']['min_y'], self.config.get('humans')['initial_position']['max_y'])
+        while True:
+            gx = np.random.uniform(self.config.get('humans')['target_position']['min_x'], self.config.get('humans')['initial_position']['max_x'])
+            gy = np.random.uniform(self.config.get('humans')['target_position']['min_y'], self.config.get('humans')['initial_position']['max_y'])
 
-#            gx = (np.random.random() - 0.5) * self.square_width
-#            gy = (np.random.random() - 0.5) * self.square_width
-
+            collide = False
+#             for agent in [self.robot] + self.humans:
+#                 #if norm((gx - agent.gx, gy - agent.gy)) < human.radius + agent.radius + self.discomfort_dist:
+#                 if norm((gx - agent.gx, gy - agent.gy)) < human.radius:
+#                     collide = True
+#                     break
+            if not collide:
+                break
         human.set(px, py, 0, gx, gy, 0, 0, 0, 0)
-
         return human
 
 class InteractiveNavigateEnv(NavigateEnv):

@@ -30,7 +30,7 @@ class Agent(object):
         self.vy = None
         self.vr = None
         self.theta = 0.0
-        self.time_step = None
+        self.time_step = 0.1
 
     def print_info(self):
         logging.info('Agent is {} and has {} kinematic constraint'.format(
@@ -146,7 +146,7 @@ class Agent(object):
             if self.kinematics == 'holonomic':
                 px = self.px + action.vx * delta_t
                 py = self.py + action.vy * delta_t
-                theta = self.theta
+                theta = np.arctan2(action.vy, action.vx)
             else:
                 theta = (self.theta + action.r * delta_t) % (2 * np.pi)
                 px = self.px + np.cos(theta) * action.v * delta_t
