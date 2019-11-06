@@ -161,7 +161,13 @@ class BoxShape(object):
     def set_position(self, pos):
         _, org_orn = p.getBasePositionAndOrientation(self.body_id)
         p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
-
+        
+    def get_position(self):
+        pos, orn = p.getBasePositionAndOrientation(self.body_id)
+        return pos
+    
+    def get_dimensions(self):
+        return self.dimension
 
 class InteractiveObj(object):
     def __init__(self, filename, scale=1):
