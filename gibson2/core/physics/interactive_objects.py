@@ -56,7 +56,7 @@ class ShapeNetObject(object):
 
 
 class Pedestrian(object):
-    def __init__(self, style='standing', pos=[0, 0, 0]):
+    def __init__(self, style='standing', pos=[0, 0, 0], orn=[1. / np.sqrt(2), 0, 0, 1. / np.sqrt(2)]):
         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
                                                'person_{}'.format(style), 'meshes',
                                                'person_vhacd.obj')
@@ -66,17 +66,19 @@ class Pedestrian(object):
         self.cid = None
 
         self.pos = pos
+        self.orn = orn
 
     def load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename)
         visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
-        body_id = p.createMultiBody(basePosition=[0, 0, 0],
+        body_id = p.createMultiBody(basePosition=self.pos,
+                                    baseOrientation=self.orn,
                                     baseMass=60,
                                     baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=visual_id)
         self.body_id = body_id
 
-        p.resetBasePositionAndOrientation(self.body_id, self.pos, [-0.5, -0.5, -0.5, 0.5])
+        #p.resetBasePositionAndOrientation(self.body_id, self.pos, self.orn)
 
         self.cid = p.createConstraint(self.body_id,
                                       -1,
@@ -125,6 +127,7 @@ class VisualObject(object):
                                         radius=self.radius,
                                         visualFramePosition=self.initial_offset)
         self.body_id = p.createMultiBody(baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1)
+
         return self.body_id
 
     def set_position(self, pos, new_orn=None):

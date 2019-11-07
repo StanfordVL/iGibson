@@ -1,5 +1,5 @@
 from gibson2.core.pedestrians.agent import Agent
-from gibson2.core.pedestrians.state import JointState, TensorFlowState
+from gibson2.core.pedestrians.state import JointState
 
 
 class Robot(Agent):
@@ -11,10 +11,4 @@ class Robot(Agent):
         state = JointState(self.get_full_state(), ob)
         action = self.policy.predict(state)
         return action
-    
-    def orca_act(self, ob):
-        if self.policy is None:
-            raise AttributeError('Policy attribute has to be set!')
-        state = TensorFlowState(self.get_full_state(), ob)
-        action = self.policy.predict(state)
-        return action
+

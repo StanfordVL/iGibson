@@ -94,6 +94,12 @@ class WalkerBase(BaseRobot):
 
     def set_orientation(self, orn):
         self.robot_body.set_orientation(orn)
+        
+    def get_velocity(self):
+        return self.robot_body.velocity()
+    
+    def get_angular_velocity(self):
+        return self.robot_body.angular_velocity()
 
     def move_by(self, delta):
         new_pos = np.array(delta) + self.get_position()

@@ -52,6 +52,7 @@ class ORCA(object):
         """
         super().__init__()
         self.name = 'ORCA'
+        # TODO: get time_step from config file
         self.time_step = 0.1
         self.trainable = False
         self.multiagent_training = None
@@ -62,7 +63,7 @@ class ORCA(object):
         self.time_horizon = 5
         self.time_horizon_obst = 5
         self.radius = 0.3
-        self.max_speed = 1
+        self.max_speed = 1.0
         self.sim = None
 
     def configure(self, config):
@@ -92,15 +93,17 @@ class ORCA(object):
         self_state = state.self_state
 
         params = self.neighbor_dist, self.max_neighbors, self.time_horizon, self.time_horizon_obst
-        
+                
         if self.sim is not None and self.sim.getNumAgents() != len(state.human_states) + 1:
             del self.sim
             self.sim = None
+            
         if self.sim is None:
             self.sim = rvo2.PyRVOSimulator(self.time_step, *params, self.radius, self.max_speed)
-            
+                        
             self.sim.addAgent(self_state.position, *params, self_state.radius + 0.01 + self_state.personal_space / 2.0,
                               self_state.v_pref, self_state.velocity)
+            
             for human_state in state.human_states:
                 self.sim.addAgent(human_state.position, *params, human_state.radius + 0.01 + human_state.personal_space / 2.0,
                                   self.max_speed, human_state.velocity)
@@ -132,10 +135,10 @@ class ORCA(object):
         pref_vel = velocity / speed if speed > 1 else velocity
 
         # Perturb a little to avoid deadlocks due to perfect symmetry.
-        # perturb_angle = np.random.random() * 2 * np.pi
-        # perturb_dist = np.random.random() * 0.01
-        # perturb_vel = np.array((np.cos(perturb_angle), np.sin(perturb_angle))) * perturb_dist
-        # pref_vel += perturb_vel
+        perturb_angle = np.random.random() * 0.02
+        perturb_dist = np.random.random() * 0.01
+        perturb_vel = np.array((np.cos(perturb_angle), np.sin(perturb_angle))) * perturb_dist
+        pref_vel += perturb_vel
 
         self.sim.setAgentPrefVelocity(0, tuple(pref_vel))
         for i, human_state in enumerate(state.human_states):
