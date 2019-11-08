@@ -18,6 +18,7 @@ import rvo2
 from IPython import embed
 import cv2
 import time
+import random
 
 from gibson2.core.pedestrians.human import Human
 from gibson2.core.pedestrians.robot import Robot
@@ -718,16 +719,17 @@ class NavigatePedestriansEnv(NavigateEnv):
 #         self.initial_pedestrian_positions = [(2.0, -2.0, 0.03), (-2.0, 2.0, 0.03), (-2.5, 2.5, 0.03), (3.0, 3.0, 0.03),
 #                                              (2.5, -2.5, 0.03), (-4.5, -4.5, 0.03), (4.0, -4.0, 0.03)]#, (3.0, 5.5, 0.03)]
         
-        self.pedestrian_start_poses = [(3.0, 3.0, 0.03)]
+        self.pedestrian_start_poses = [[(2.0, 2.0, 0.03), (-1.0, 1.0)]]
         
-        self.pedestrian_goal_poses =  [(-3.0, -3.0, 0.03)]
+        self.pedestrian_goal_poses =  [[(-2.0, -2.0, 0.03), (-1.0, 1.0)]]
         
-        self.initial_pedestrian_poses = self.generate_pedestrian_poses(self.pedestrian_start_poses)
+        self.initial_pedestrian_poses = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_start_poses)
+        self.initial_pedestrian_goals = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_goal_poses)        
     
-        self.pedestrians = [Pedestrian(pos = self.initial_pedestrian_positions[i]) for i in range(self.num_pedestrians)]
+        self.pedestrians = [Pedestrian(pos = self.initial_pedestrian_poses[i]) for i in range(self.num_pedestrians)]
         self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
 
-        self.pedestrian_simulator = self.init_rvo_simulator(self.num_pedestrians, self.initial_pedestrian_positions, self.walls, self.obstacles)
+        self.pedestrian_simulator = self.init_rvo_simulator(self.num_pedestrians, self.initial_pedestrian_poses, self.walls, self.obstacles)
         
     def step(self, action):
         # compute the next human actions from the current observations
@@ -787,7 +789,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.reset_pedestrians()
         
         # Reinialize the RVO pedestrian simulator
-        self.pedestrian_simulator = self.init_rvo_simulator(self.num_pedestrians, self.initial_pedestrian_positions, self.walls, self.obstacles)
+        self.pedestrian_simulator = self.init_rvo_simulator(self.num_pedestrians, self.initial_pedestrian_poses, self.walls, self.obstacles)
 
         # Choose new start postion and goal location for robot
         reset_complete = False
@@ -823,24 +825,25 @@ class NavigatePedestriansEnv(NavigateEnv):
         return True
     
     def generate_pedestrian_poses(self, n_pedestrians=0, start_poses=[], min_separation=1.0):
-        poses = []
-        excluded = set()
+        poses = list()
         i = 0
         while i < n_pedestrians:
-            start_pose = random.choice(start_poses)
-            x = start_pose[0] + random.randrange(*start_pose[2])
-            y = start_pose[1] + random.randrange(*start_pose[3])
-            if (x,y) in excluded: continue
-            poses.append((x, y))
+            good_pose = False
+            while not good_pose:
+                start_pose = random.choice(start_poses)
+
+                x = start_pose[0][0] + random.uniform(*start_pose[1])
+                y = start_pose[0][1] + random.uniform(*start_pose[1])
+
+                for pose in poses:
+                    if np.sqrt((pose[0] - x)**2 + (pose[1] - y)**2) < min_separation:
+                        good_pose = False
+                        break
+
+                good_pose = True
+
+                poses.append((x, y))
             i += 1
-            excluded.update((x + dx, y + dy) for (dx, dy) in deltas)
-            
-        # Generate a set of all points within min_separation of all other poses
-        deltas = set()
-        for x in range(-min_separation, min_separation):
-            for y in range(-min_separation, min_separation):
-                if x * x + y * y <= min_separation * min_separation:
-                    deltas.add((x, y))
 
         return poses
     
