@@ -715,8 +715,14 @@ class NavigatePedestriansEnv(NavigateEnv):
             
         self.pedestrian_ids = []
     
-        self.initial_pedestrian_positions = [(2.0, -2.0, 0.03), (-2.0, 2.0, 0.03), (-2.5, 2.5, 0.03), (3.0, 3.0, 0.03),
-                                             (2.5, -2.5, 0.03), (-4.5, -4.5, 0.03), (4.0, -4.0, 0.03)]#, (3.0, 5.5, 0.03)]
+#         self.initial_pedestrian_positions = [(2.0, -2.0, 0.03), (-2.0, 2.0, 0.03), (-2.5, 2.5, 0.03), (3.0, 3.0, 0.03),
+#                                              (2.5, -2.5, 0.03), (-4.5, -4.5, 0.03), (4.0, -4.0, 0.03)]#, (3.0, 5.5, 0.03)]
+        
+        self.pedestrian_start_poses = [(3.0, 3.0, 0.03)]
+        
+        self.pedestrian_goal_poses =  [(-3.0, -3.0, 0.03)]
+        
+        self.initial_pedestrian_poses = self.generate_pedestrian_poses(self.pedestrian_start_poses)
     
         self.pedestrians = [Pedestrian(pos = self.initial_pedestrian_positions[i]) for i in range(self.num_pedestrians)]
         self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
@@ -815,6 +821,82 @@ class NavigatePedestriansEnv(NavigateEnv):
         no_collision = len(collision_links) == 0
         #return no_collision
         return True
+    
+    def generate_pedestrian_poses(self, n_pedestrians=0, start_poses=[], min_separation=1.0):
+        poses = []
+        excluded = set()
+        i = 0
+        while i < n_pedestrians:
+            start_pose = random.choice(start_poses)
+            x = start_pose[0] + random.randrange(*start_pose[2])
+            y = start_pose[1] + random.randrange(*start_pose[3])
+            if (x,y) in excluded: continue
+            poses.append((x, y))
+            i += 1
+            excluded.update((x + dx, y + dy) for (dx, dy) in deltas)
+            
+        # Generate a set of all points within min_separation of all other poses
+        deltas = set()
+        for x in range(-min_separation, min_separation):
+            for y in range(-min_separation, min_separation):
+                if x * x + y * y <= min_separation * min_separation:
+                    deltas.add((x, y))
+
+        return poses
+    
+    def reset_pedestrian_poses(self, start_poses=[], start_range=[0, 0], goal_poses=[], goal_range=[0, 0]):
+        human = Human(self.config, 'humans')
+
+        if self.randomize_pedestrian_attributes:
+            human.sample_random_attributes()
+
+        if np.random.random() > 0.5:
+            sign = -1
+        else:
+            sign = 1
+
+        px 
+        px = np.random.uniform(self.config.get('humans')['initial_position']['min_x'], self.config.get('humans')['initial_position']['max_x'])
+        py = np.random.uniform(self.config.get('humans')['initial_position']['min_y'], self.config.get('humans')['initial_position']['max_y'])
+
+#         if len(self.pedestrian_goal_ids) == 0:
+#             px = py = 2.0
+#         else:
+#             px = py = -2.0
+
+#             px = (np.random.random() - 0.5) * self.square_width
+#             py = (np.random.random() - 0.5) * self.square_width
+
+        while True:
+            gx = np.random.uniform(self.config.get('humans')['target_position']['min_x'], self.config.get('humans')['target_position']['max_x'])
+            gy = np.random.uniform(self.config.get('humans')['target_position']['min_y'], self.config.get('humans')['target_position']['max_y'])
+
+#             if len(self.pedestrian_goal_ids) == 0:
+#                 gx = gy = -2.0
+#             else:
+#                 gx = gy = 2.0  
+            
+            collide = False
+#             for agent in [self.robot] + self.humans:
+#                 #if norm((gx - agent.gx, gy - agent.gy)) < human.radius + agent.radius + self.discomfort_dist:
+#                 if norm((gx - agent.gx, gy - agent.gy)) < human.radius:
+#                     collide = True
+#                     break
+            if not collide:
+                break
+            
+        human.set(px, py, 0, gx, gy, 0, 0, 0, 0)
+
+        cyl_length = 0.5
+        pedestrian_goal_visual_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
+                                                rgba_color=[1, 1, 0, 0.6],
+                                                radius=0.05,
+                                                length=cyl_length,
+                                                initial_offset=[gx, gy, cyl_length / 2.0])
+                
+        self.pedestrian_goal_ids.append(pedestrian_goal_visual_obj.load())
+            
+        return human
     
     def reset_pedestrian(self, scenario='random'):
         human = Human(self.config, 'humans')
