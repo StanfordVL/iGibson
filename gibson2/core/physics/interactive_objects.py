@@ -64,21 +64,21 @@ class Pedestrian(object):
                                             'person_{}'.format(style), 'meshes', 'person.obj')
         self.body_id = None
         self.cid = None
+        self.collision_id = None
+        self.visual_id = None
 
         self.pos = pos
         self.orn = orn
 
     def load(self):
-        collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename)
-        visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
+        self.collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename)
+        self.visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
         body_id = p.createMultiBody(basePosition=self.pos,
                                     baseOrientation=self.orn,
                                     baseMass=60,
-                                    baseCollisionShapeIndex=collision_id,
-                                    baseVisualShapeIndex=visual_id)
+                                    baseCollisionShapeIndex=self.collision_id,
+                                    baseVisualShapeIndex=self.visual_id)
         self.body_id = body_id
-
-        #p.resetBasePositionAndOrientation(self.body_id, self.pos, self.orn)
 
         self.cid = p.createConstraint(self.body_id,
                                       -1,
@@ -92,6 +92,11 @@ class Pedestrian(object):
 
     def reset_position_orientation(self, pos, orn):
         p.changeConstraint(self.cid, pos, orn)
+        
+    def set_position(self, pos, orn=None):
+        if orn is None:
+            _, orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
 
 
 class VisualObject(object):
