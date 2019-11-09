@@ -52,8 +52,7 @@ class ORCA(object):
         """
         super().__init__()
         self.name = 'ORCA'
-        # TODO: get time_step from config file
-        self.time_step = 0.1
+        self.time_step = 0.1 # TODO: get time_step from config file
         self.trainable = False
         self.multiagent_training = None
         self.kinematics = 'holonomic'
@@ -62,7 +61,7 @@ class ORCA(object):
         self.max_neighbors = 10
         self.time_horizon = 5
         self.time_horizon_obst = 5
-        self.radius = 0.3
+        self.radius = 1.2 # TODO: needs to be fixed to include radius + personal space
         self.max_speed = 1.0
         self.sim = None
 

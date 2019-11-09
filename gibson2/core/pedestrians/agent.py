@@ -146,7 +146,8 @@ class Agent(object):
             if self.kinematics == 'holonomic':
                 px = self.px + action.vx * delta_t
                 py = self.py + action.vy * delta_t
-                theta = np.arctan2(action.vy, action.vx)
+                #theta = np.arctan2(action.vy, action.vx)
+                theta = np.arctan2(self.gy - py, self.gx - px)
             else:
                 theta = (self.theta + action.r * delta_t) % (2 * np.pi)
                 px = self.px + np.cos(theta) * action.v * delta_t
