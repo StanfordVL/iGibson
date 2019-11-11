@@ -759,6 +759,21 @@ class NavigatePedestriansEnv(NavigateEnv):
             info['last_observation'] = state
             state = self.reset()
         return state, reward, done, info
+
+    def update_pedestrian_goal_markers(self, pedestrian_goals):
+        if len(self.pedestrian_goal_objects) == 0:
+            for ped_goal in pedestrian_goals:
+                pedestrian_goal_visual_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
+                                                          rgba_color=[1, 1, 0, 0.6],
+                                                          radius=0.05,
+                                                          length=0.5,
+                                                          initial_offset=[ped_goal[0], ped_goal[1], 0.25])
+
+                self.pedestrian_goal_objects.append(pedestrian_goal_visual_obj)
+                self.pedestrian_goal_ids.append(pedestrian_goal_visual_obj.load())                
+        else:
+            for i in range(len(self.pedestrian_goal_objects)):
+                self.pedestrian_goal_objects[i].set_position(pos=[pedestrian_goals[i][0], pedestrian_goals[i][1], 0.25])
     
     def create_pedestrian_goal_markers(self, pedestrian_goals):
         # remove exiting pedestrian goal markers
@@ -795,7 +810,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         pedestrian_goals = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_goal_poses, min_separation=1.0)
         
         # create the goal marker in Gibson
-        #self.create_pedestrian_goal_markers(pedestrian_goals)
+        self.update_pedestrian_goal_markers(pedestrian_goals)
         
         self.humans = []
         for i in range(self.num_pedestrians):
