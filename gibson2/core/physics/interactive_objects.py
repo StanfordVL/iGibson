@@ -149,17 +149,18 @@ class BoxShape(object):
         self.basePos = pos
         self.dimension = dim
         self.rgba_color = rgba_color
+        self.collision_id = None
 
     def load(self):
         mass = 1000
         # basePosition = [1,2,2]
         baseOrientation = [0, 0, 0, 1]
 
-        colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
+        self.collision_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
         visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.rgba_color)
 
         self.body_id = p.createMultiBody(baseMass=mass,
-                                         baseCollisionShapeIndex=colBoxId,
+                                         baseCollisionShapeIndex=self.collision_id,
                                          baseVisualShapeIndex=visualShapeId,
                                          basePosition=self.basePos,
                                          baseOrientation=baseOrientation)

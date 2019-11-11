@@ -6,7 +6,8 @@ scene: stadium
 # scene: building
 # model_id: Ohoopee
 
-num_pedestrians: 3
+num_obstacles: 2
+num_pedestrians: 2
 pedestrians_can_see_robot: true
 
 # robot
@@ -37,7 +38,7 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 100
+max_step: 300
 
 # sensor
 # output: [sensor, rgb, depth]
