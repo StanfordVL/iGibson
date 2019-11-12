@@ -554,6 +554,13 @@ class NavigateEnv(BaseEnv):
 
         state = self.get_state()
         return state
+    
+    def remove_all_collisions(self, body):
+        for elem in body:
+            # Get the number of sub-object/links in the multibody
+            for i in range(-1, elem.nbobj):
+                p.setCollisionFilterGroupMask(elem.getId(), i, 0, 0)
+                p.setCollisionFilterPair(0, elem.getId(), -1, i, 1)
 
 
 class NavigateRandomEnv(NavigateEnv):
@@ -707,24 +714,26 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.reset_pedestrians()
         
     def create_pedestrians_and_poses(self, pedestrian_poses):
-        # remove any existing pedestrians
-        for pedestrian in self.pedestrians:
-            p.removeCollisionShape(pedestrian.collision_id)            
-            p.removeConstraint(pedestrian.cid)
-            
-        for ped_id in self.pedestrian_gibson_ids:
-            try:
-                p.removeBody(ped_id)
-            except:
-                print("ERROR with PEDESTRIAN ID: ", ped_id)
-        
-        self.pedestrian_gibson_ids = []
+#         # remove any existing pedestrians
+#         for pedestrian in self.pedestrians:
+#             p.removeCollisionShape(pedestrian.collision_id)
+#             #self.remove_all_collisions(pedestrian.body_id)            
+#             p.removeConstraint(pedestrian.cid)
+#             
+#         for ped_id in self.pedestrian_gibson_ids:
+#             try:
+#                 p.removeBody(ped_id)
+#             except:
+#                 print("ERROR with PEDESTRIAN ID: ", ped_id)
+#         
+#         self.pedestrian_gibson_ids = []
 
         # create pedestrian objects
-        self.pedestrians = [Pedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]
+        if len(self.pedestrians) == 0:
+            self.pedestrians = [Pedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]
         
-        # spawn pedestrians and get Gibson IDs
-        self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
+            # spawn pedestrians and get Gibson IDs
+            self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
         
     def step(self, action):
         # compute the next human actions from the current observations
@@ -767,48 +776,28 @@ class NavigatePedestriansEnv(NavigateEnv):
                                                           rgba_color=[1, 1, 0, 0.6],
                                                           radius=0.05,
                                                           length=0.5,
-                                                          initial_offset=[ped_goal[0], ped_goal[1], 0.25])
+                                                          initial_offset=[0, 0, 0.25])
 
                 self.pedestrian_goal_objects.append(pedestrian_goal_visual_obj)
                 self.pedestrian_goal_ids.append(pedestrian_goal_visual_obj.load())                
         else:
             for i in range(len(self.pedestrian_goal_objects)):
                 self.pedestrian_goal_objects[i].set_position(pos=[pedestrian_goals[i][0], pedestrian_goals[i][1], 0.25])
-    
-    def create_pedestrian_goal_markers(self, pedestrian_goals):
-        # remove exiting pedestrian goal markers
-        for ped_goal_object in self.pedestrian_goal_objects:
-            p.removeBody(ped_goal_object.body_id)
-
-        for ped_goal_id in self.pedestrian_goal_ids:
-            try:
-                p.removeBody(ped_goal_id)
-            except:
-                print("ERROR with GOAL ID: ", ped_goal_id)
-
-        self.pedestrian_goal_ids = []                
-        self.pedestrian_goal_objects = []
-        
-        for ped_goal in pedestrian_goals:
-            pedestrian_goal_visual_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
-                                                      rgba_color=[1, 1, 0, 0.6],
-                                                      radius=0.05,
-                                                      length=0.5,
-                                                      initial_offset=[ped_goal[0], ped_goal[1], 0.25])
-
-            self.pedestrian_goal_objects.append(pedestrian_goal_visual_obj)                
-            self.pedestrian_goal_ids.append(pedestrian_goal_visual_obj.load())
             
     def reset_pedestrians(self):
-        # generate initial pedestrian poses
-        pedestrian_poses = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_start_poses, min_separation=2.0)
+        if len(self.pedestrians) == 0:
+            # generate initial pedestrian poses
+            pedestrian_poses = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_start_poses, min_separation=2.0)
             
-        # create Gibson pedestrian objects (destroy any existing pedestrians first)
-        self.create_pedestrians_and_poses(pedestrian_poses)
+            # create Gibson pedestrian objects (destroy any existing pedestrians first)
+            self.create_pedestrians_and_poses(pedestrian_poses)
+            
+        else:
+            pedestrian_poses = [pedestrian.get_position() for pedestrian in self.pedestrians]
         
         # generate a goal for each pedestrian
         pedestrian_goals = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_goal_poses, min_separation=1.0)
-        
+
         # create the goal marker in Gibson
         self.update_pedestrian_goal_markers(pedestrian_goals)
         
@@ -850,7 +839,7 @@ class NavigatePedestriansEnv(NavigateEnv):
 
         # Then recreate them in new positions
         for _ in range(self.num_obstacles):
-            _, pos = self.scene.get_random_point(min_xy=-3, max_xy=3)            
+            _, pos = self.scene.get_random_point(min_xy=-2, max_xy=2)            
             box = BoxShape(pos=pos, dim=self.initial_box_size, rgba_color=[1.0, 0.0, 0.0, 1.0])
             self.obstacle_ids.append(self.simulator.import_interactive_object(box))
             self.obstacles.append(box)

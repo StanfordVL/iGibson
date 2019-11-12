@@ -97,6 +97,10 @@ class Pedestrian(object):
         if orn is None:
             _, orn = p.getBasePositionAndOrientation(self.body_id)
         p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+        
+    def get_position(self):
+        pos, orn = p.getBasePositionAndOrientation(self.body_id)
+        return pos
 
 
 class VisualObject(object):
