@@ -679,12 +679,8 @@ class NavigatePedestriansEnv(NavigateEnv):
 #                     [[10.2, 5.5 ,0.501],[0.2, 1.5, 0.5]],
 #                     [[-10.2, 6, 0.501],[0.2, 1, 0.5]]]
 
-#         self.obstacles = [[[-0.5, 2, 0.0], [0.2, 0.3, 0.3]],
-#                           [[1.5, -1, 0.0], [0.2, 0.3, 0.3]],
-#                           [[-1, -2, 0.0], [0.2, 0.3, 0.3]]]
 
-        for i in range(len(self.walls)):
-            wall = self.walls[i]
+        for wall in self.walls:
             box = BoxShape(pos=[wall[0][0], wall[0][1], wall[0][2]], dim=[wall[1][0], wall[1][1], wall[1][2]])            
             self.obstacle_ids.append(self.simulator.import_object(box))
 
@@ -785,8 +781,10 @@ class NavigatePedestriansEnv(NavigateEnv):
     def reset_pedestrians(self):
         if len(self.pedestrians) == 0:
             # generate initial pedestrian poses
-            pedestrian_poses = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_start_poses, min_separation=2.0)
+            # pedestrian_poses = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_start_poses, min_separation=2.0)
             
+            pedestrian_poses = self.generate_pedestrian_poses_v2()
+
             # create Gibson pedestrian objects (destroy any existing pedestrians first)
             self.create_pedestrians_and_poses(pedestrian_poses)
             
@@ -794,7 +792,8 @@ class NavigatePedestriansEnv(NavigateEnv):
             pedestrian_poses = [pedestrian.get_position() for pedestrian in self.pedestrians]
         
         # generate a goal for each pedestrian
-        pedestrian_goals = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_goal_poses, min_separation=1.0)
+        # pedestrian_goals = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_goal_poses, min_separation=1.0)
+        pedestrian_goals = self.generate_pedestrian_poses_v2()
 
         # create the goal marker in Gibson
         self.update_pedestrian_goal_markers(pedestrian_goals)
@@ -828,6 +827,7 @@ class NavigatePedestriansEnv(NavigateEnv):
             
     def reset_obstacles(self):
         # First remove the obstacles
+        # print('RESET {} OBSTACLES'.format(self.num_obstacles))
         for obstacle in self.obstacles:
             p.removeCollisionShape(obstacle.collision_id)
             p.removeBody(obstacle.body_id)
@@ -854,7 +854,9 @@ class NavigatePedestriansEnv(NavigateEnv):
         while not reset_complete:
             print("RESET")
 
-            floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
+            # floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
+            floor, pos = self.scene.get_random_point(min_xy=-3, max_xy=3)
+            print('AGENT NEW POSITION: {}'.format(pos))
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_orientation(
                 orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
@@ -881,10 +883,45 @@ class NavigatePedestriansEnv(NavigateEnv):
         no_collision = len(collision_links) == 0
         #return no_collision
         return True
+   
+
+    def generate_pedestrian_poses_v2(self, pedestrian_x_min=-4, pedestrian_x_max=4, pedestrian_y_min=-4, pedestrian_y_max=4, pedestrian_z=0.03, min_separation=0.5):
+       
+        # Euclidean distance on xy plane.
+        def euclidean_xy(source, target):
+            return np.sqrt((source[0] - target[0]) ** 2 + (source[1] - target[1]) ** 2)
+
+        pedestrian_poses = list()
+        all_object_poses = list()
+        
+        for obstacle in self.obstacles:
+            all_object_poses.append(obstacle.get_position())
+     
+        for _ in range(self.num_pedestrians):
+            good_pose = False
+            while not good_pose:
+                good_pose = True
+                pedestrian_x = random.uniform(pedestrian_x_min, pedestrian_x_max)
+                pedestrian_y = random.uniform(pedestrian_y_min, pedestrian_y_max)
+                pedestrian_pose = (pedestrian_x, pedestrian_y, pedestrian_z)
+                # print('x: {} y: {}'.format(pedestrian_x, pedestrian_y))
+                
+                # Check if this position is too closed to any previous poses.
+                for prev_pose in all_object_poses:
+                    dist = euclidean_xy(pedestrian_pose, prev_pose)
+                    if dist < min_separation:
+                        good_pose = False
     
+            pedestrian_poses.append(pedestrian_pose)
+            all_object_poses.append(pedestrian_pose)
+
+        return pedestrian_poses
+
+
     def generate_pedestrian_poses(self, n_pedestrians=0, start_poses=[], min_separation=1.0):
         poses = list()
         
+        # Keep track of positions of the obstacles and the robot.
         all_object_poses = list()
         all_object_poses.append(self.robots[0].get_position())
         
@@ -892,23 +929,27 @@ class NavigatePedestriansEnv(NavigateEnv):
             all_object_poses.append(obstacle.get_position())
         
         i = 0
+        print('ALL OBJECT POSES: {}'.format(all_object_poses))
         while i < n_pedestrians:
             good_pose = False
             
             while not good_pose:
                 start_pose = random.choice(start_poses)
-                
+
                 good_pose = True
-                
+               
+                # Why initialize this way? 
                 x = start_pose[0][0] + random.uniform(*start_pose[1])
                 y = start_pose[0][1] + random.uniform(*start_pose[1])
-                
+               
+                pedestrian_pose = (x, y, 0.03)
+                min_separation = 0.5
                 for pose in all_object_poses:
                     if np.sqrt((pose[0] - x)**2 + (pose[1] - y)**2) < min_separation:
                         good_pose = False
 
-            poses.append((x, y, 0.03))
-            all_object_poses.append(pose)
+            poses.append(pedestrian_pose)
+            all_object_poses.append(pedestrian_pose)
             
             i += 1
 
