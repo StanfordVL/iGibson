@@ -356,7 +356,8 @@ class NavigateEnv(BaseEnv):
         return sim
 
     def get_ped_states(self):
-        return [self.pedestrian_simulator.getAgentPosition(pedestrian_id) for pedestrian_id in self.pedestrian_ids]  
+        print("PED IDS!!!!", self.pedestrian_gibson_ids)
+        return [self.pedestrian_simulator.getAgentPosition(pedestrian_id) for pedestrian_id in self.pedestrian_gibson_ids]  
 
     def run_simulation(self):
         collision_links = []
@@ -707,7 +708,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         
         self.reset_pedestrians()
         
-    def create_pedestrians_and_poses(self, pedestrian_poses):
+    def create_pedestrians(self, pedestrian_poses):
 #         # remove any existing pedestrians
 #         for pedestrian in self.pedestrians:
 #             p.removeCollisionShape(pedestrian.collision_id)
@@ -780,15 +781,16 @@ class NavigatePedestriansEnv(NavigateEnv):
             
     def reset_pedestrians(self):
         if len(self.pedestrians) == 0:
-            # generate initial pedestrian poses
             # pedestrian_poses = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_start_poses, min_separation=2.0)
             
+            # generate initial pedestrian poses
             pedestrian_poses = self.generate_pedestrian_poses_v2()
 
-            # create Gibson pedestrian objects (destroy any existing pedestrians first)
-            self.create_pedestrians_and_poses(pedestrian_poses)
+            # create Gibson pedestrian objects
+            self.create_pedestrians(pedestrian_poses)
             
         else:
+            # get current poses
             pedestrian_poses = [pedestrian.get_position() for pedestrian in self.pedestrians]
         
         # generate a goal for each pedestrian
