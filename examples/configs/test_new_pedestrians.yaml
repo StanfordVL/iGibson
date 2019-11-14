@@ -7,7 +7,7 @@ scene: stadium
 # model_id: Ohoopee
 
 num_obstacles: 0
-num_pedestrians: 7
+num_pedestrians: 5
 pedestrians_can_see_robot: false
 
 # robot
@@ -45,7 +45,7 @@ max_step: 300
 # output: [sensor, scan, pedestrian]
 #output: [sensor, pedestrian]
 # output: [sensor, scan]
-output: [sensor, depth]
+output: [sensor, depth, pedestrian_position, pedestrian_velocity]
 scan_beams: 512 #128 
 scan_vertical_beams: 1 #9 
 resolution: 64

@@ -151,6 +151,7 @@ class NavigateEnv(BaseEnv):
                                              shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
                                              dtype=np.float32)
             observation_space['scan'] = self.scan_space
+            
         if 'rgb_filled' in self.output:  # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
@@ -163,6 +164,18 @@ class NavigateEnv(BaseEnv):
                                                    shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
                                                    dtype=np.float32)
             observation_space['pedestrian'] = self.pedestrian_space
+            
+        if 'pedestrian_position' in self.output:
+            self.pedestrian_position_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+                                                   shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
+                                                   dtype=np.float32)
+            observation_space['pedestrian_position'] = self.pedestrian_position_space
+            
+        if 'pedestrian_velocity' in self.output:
+            self.pedestrian_velocity_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+                                                   shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
+                                                   dtype=np.float32)
+            observation_space['pedestrian_velocity'] = self.pedestrian_velocity_space
             
         if 'waypoints' in self.output:
             self.waypoints_space = gym.spaces.Box(low=-np.inf, high=np.inf,
@@ -295,6 +308,29 @@ class NavigateEnv(BaseEnv):
             ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
             state['pedestrian'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
             
+        if 'pedestrian_position' in self.output:
+            ped_pos = self.get_ped_positions()
+            rob_pos = self.robots[0].get_position()
+            ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+            ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
+            state['pedestrian_position'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
+            #print(state['pedestrian_position'])
+
+            
+        if 'pedestrian_velocity' in self.output:
+            ped_vel = self.get_ped_velocities()
+            rob_vel = self.robots[0].get_velocity()
+            ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+            ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
+            state['pedestrian_velocity'] = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
+            #print(state['pedestrian_velocity'])
+        
+        # time-to-collision (ttc)
+        if 'pedestrian_ttc' in self.output:
+            ped_ttc = self.get_ped_time_to_collision()
+            ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
+            state['pedestrian_ttc'] = ped_robot_relative_ttc # [ttc1, ttc2, ...] in robot frame
+            
         if 'waypoints' in self.output:
             path = self.compute_a_star(self.config['scene']) # current dim is (107, 2), varying by scene and start/end points
             rob_pos = self.robots[0].get_position()
@@ -309,8 +345,8 @@ class NavigateEnv(BaseEnv):
                 curr_waypoints = path_robot_relative_pos[path_point_ind:]
                 end_point = np.repeat(path_robot_relative_pos[path.shape[0]-1].reshape(1,2), (self.config['waypoints']-curr_points_num), axis=0)
                 out = np.vstack((curr_waypoints, end_point))
-            state['waypoints'] = out.flatten()            
-            
+            state['waypoints'] = out.flatten()
+                        
         return state
     
     def init_rvo_simulator(self, n_pedestrians=0, pedestrian_positions=[], pedestrian_goals=[], walls=[], obstacles=[]):
@@ -356,8 +392,13 @@ class NavigateEnv(BaseEnv):
         return sim
 
     def get_ped_states(self):
-        print("PED IDS!!!!", self.pedestrian_gibson_ids)
-        return [self.pedestrian_simulator.getAgentPosition(pedestrian_id) for pedestrian_id in self.pedestrian_gibson_ids]  
+        return [(self.humans[i].px, self.humans[i].py) for i in range(self.num_pedestrians)]
+    
+    def get_ped_positions(self):
+        return [(self.humans[i].px, self.humans[i].py) for i in range(self.num_pedestrians)]
+    
+    def get_ped_velocities(self):
+        return [(self.humans[i].vx, self.humans[i].vy) for i in range(self.num_pedestrians)]  
 
     def run_simulation(self):
         collision_links = []
