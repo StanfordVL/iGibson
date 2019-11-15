@@ -1,6 +1,6 @@
 from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape, Pedestrian
 import gibson2
-from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW
+from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, parse_config
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -695,6 +695,7 @@ class NavigatePedestriansEnv(NavigateEnv):
     def __init__(
              self,
              config_file,
+             layout,
              mode='headless',
              action_timestep=1 / 10.0,
              physics_timestep=1 / 240.0,
@@ -709,21 +710,39 @@ class NavigatePedestriansEnv(NavigateEnv):
                                                 automatic_reset=automatic_reset,
                                                 device_idx=device_idx)
         self.random_height = random_height
-        
+        self.layout = parse_config(layout)
+        self.pedestrian_z = 0.03 # hard-coded.
         ''' Walls '''
         # wall = [pos, dim]
-        self.walls = [[[0, 5.25, 0.501], [5, 0.25, 1.5]],
-                      [[0, -5.25, 0.501], [5, 0.25, 1.5]],
-                      [[5, 0, 0.501], [0.25, 5, 1.5]],
-                      [[-5, 0, 0.501], [0.25, 5, 1.5]]]
+        # self.walls = [[[0, 5.25, 0.501], [5, 0.25, 1.5]],
+                      # [[0, -5.25, 0.501], [5, 0.25, 1.5]],
+                      # [[5, 0, 0.501], [0.25, 5, 1.5]],
+                      # [[-5, 0, 0.501], [0.25, 5, 1.5]]]
 #                     [[-8.55, 5, 0.501], [1.44, 0.1, 0.5]],
 #                     [[8.55, 4, 0.501], [1.44, 0.1, 0.5]],
 #                     [[10.2, 5.5 ,0.501],[0.2, 1.5, 0.5]],
 #                     [[-10.2, 6, 0.501],[0.2, 1, 0.5]]]
+        
 
+        if layout: # if specify a layout file
+            self.walls = self.layout.get('walls')
+            self.pedestrian_initial_x_ranges = self.layout.get('humans')['initial_x_ranges']
+            self.pedestrian_initial_y_ranges = self.layout.get('humans')['initial_y_ranges']
+            self.pedestrian_target_x_ranges = self.layout.get('humans')['target_x_ranges']
+            self.pedestrian_target_y_ranges = self.layout.get('humans')['target_y_ranges']
+            self.min_separation = self.layout.get('humans')['min_separation']
+        else: # use the layout in meta-config
+            self.walls = self.config.get('walls')
+            self.pedestrian_initial_x_ranges = self.config.get('humans')['initial_x_ranges']
+            self.pedestrian_initial_y_ranges = self.config.get('humans')['initial_y_ranges']
+            self.pedestrian_target_x_ranges = self.config.get('humans')['target_x_ranges']
+            self.pedestrian_target_y_ranges = self.config.get('humans')['target_y_ranges']
+            self.min_separation = self.config.get('humans')['min_separation']
 
-        for wall in self.walls:
-            box = BoxShape(pos=[wall[0][0], wall[0][1], wall[0][2]], dim=[wall[1][0], wall[1][1], wall[1][2]])            
+        for i, wall_pos in enumerate(self.walls['walls_pos']):
+            wall_dim = self.walls['walls_dim'][i]
+            # box = BoxShape(pos=[wall[0][0], wall[0][1], wall[0][2]], dim=[wall[1][0], wall[1][1], wall[1][2]])            
+            box = BoxShape(pos=wall_pos, dim=wall_dim)
             self.obstacle_ids.append(self.simulator.import_object(box))
 
         ''' Obstacles '''
@@ -742,10 +761,10 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.pedestrian_gibson_ids = []
 
         # poses are defined as x,y,z followed by random lower and upper range to add to pose
-        self.pedestrian_start_poses = [[(3.0, 3.0, 0.03), (-1.0, 1.0)], [(2.0, 2.0, 0.03), (-1.0, 1.0)],
-                                       [(-3.0, -3.0, 0.03), (-1.0, 1.0)], [(-2.0, -2.0, 0.03), (-1.0, 1.0)]]
-        self.pedestrian_goal_poses = [[(3.0, 3.0, 0.03), (-1.0, 1.0)], [(2.0, 2.0, 0.03), (-1.0, 1.0)],
-                                      [(-3.0, -3.0, 0.03), (-1.0, 1.0)], [(-2.0, -2.0, 0.03), (-1.0, 1.0)]]
+        # self.pedestrian_start_poses = [[(3.0, 3.0, 0.03), (-1.0, 1.0)], [(2.0, 2.0, 0.03), (-1.0, 1.0)],
+                                       # [(-3.0, -3.0, 0.03), (-1.0, 1.0)], [(-2.0, -2.0, 0.03), (-1.0, 1.0)]]
+        # self.pedestrian_goal_poses = [[(3.0, 3.0, 0.03), (-1.0, 1.0)], [(2.0, 2.0, 0.03), (-1.0, 1.0)],
+                                      # [(-3.0, -3.0, 0.03), (-1.0, 1.0)], [(-2.0, -2.0, 0.03), (-1.0, 1.0)]]
         
         self.reset_pedestrians()
         
@@ -786,8 +805,9 @@ class NavigatePedestriansEnv(NavigateEnv):
             if self.pedestrians_can_see_robot:
                 ob += [self.get_robot_observable_state()]
                 #self.pedestrian_simulator.setAgentPosition(self.robot_as_pedestrian_id, tuple(self.robots[0].get_position()[:2]))
-            human_actions.append(human.act(ob, walls=self.walls, obstacles=self.obstacles))
-
+            # human_actions.append(human.act(ob, walls=self.walls, obstacles=self.obstacles))
+            walls_config = list(zip(self.walls['walls_pos'], self.walls['walls_dim']))
+            human_actions.append(human.act(ob, walls=walls_config, obstacles=self.obstacles))
         # move each human
         for i, human_action in enumerate(human_actions):
             self.humans[i].step(human_action)
@@ -825,7 +845,7 @@ class NavigatePedestriansEnv(NavigateEnv):
             # pedestrian_poses = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_start_poses, min_separation=2.0)
             
             # generate initial pedestrian poses
-            pedestrian_poses = self.generate_pedestrian_poses_v2()
+            pedestrian_poses = self.generate_pedestrian_poses_v2('initial')
 
             # create Gibson pedestrian objects
             self.create_pedestrians(pedestrian_poses)
@@ -836,7 +856,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         
         # generate a goal for each pedestrian
         # pedestrian_goals = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_goal_poses, min_separation=1.0)
-        pedestrian_goals = self.generate_pedestrian_poses_v2()
+        pedestrian_goals = self.generate_pedestrian_poses_v2('target')
 
         # create the goal marker in Gibson
         self.update_pedestrian_goal_markers(pedestrian_goals)
@@ -928,7 +948,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         return True
    
 
-    def generate_pedestrian_poses_v2(self, pedestrian_x_min=-4, pedestrian_x_max=4, pedestrian_y_min=-4, pedestrian_y_max=4, pedestrian_z=0.03, min_separation=0.5):
+    def generate_pedestrian_poses_v2(self, mode):
        
         # Euclidean distance on xy plane.
         def euclidean_xy(source, target):
@@ -940,19 +960,23 @@ class NavigatePedestriansEnv(NavigateEnv):
         for obstacle in self.obstacles:
             all_object_poses.append(obstacle.get_position())
      
-        for _ in range(self.num_pedestrians):
+        for i in range(self.num_pedestrians):
             good_pose = False
             while not good_pose:
                 good_pose = True
-                pedestrian_x = random.uniform(pedestrian_x_min, pedestrian_x_max)
-                pedestrian_y = random.uniform(pedestrian_y_min, pedestrian_y_max)
-                pedestrian_pose = (pedestrian_x, pedestrian_y, pedestrian_z)
+                if mode == 'initial':
+                    pedestrian_x = random.uniform(*tuple(self.pedestrian_initial_x_ranges[i]))
+                    pedestrian_y = random.uniform(*tuple(self.pedestrian_initial_y_ranges[i]))
+                elif mode == 'target':
+                    pedestrian_x = random.uniform(*tuple(self.pedestrian_target_x_ranges[i]))
+                    pedestrian_y = random.uniform(*tuple(self.pedestrian_target_y_ranges[i]))
+                pedestrian_pose = (pedestrian_x, pedestrian_y, self.pedestrian_z)
                 # print('x: {} y: {}'.format(pedestrian_x, pedestrian_y))
                 
                 # Check if this position is too closed to any previous poses.
                 for prev_pose in all_object_poses:
                     dist = euclidean_xy(pedestrian_pose, prev_pose)
-                    if dist < min_separation:
+                    if dist < self.min_separation:
                         good_pose = False
     
             pedestrian_poses.append(pedestrian_pose)
@@ -1629,6 +1653,10 @@ if __name__ == '__main__':
                         choices=['deterministic', 'random', 'fixed_obstacles', 'random_obstacles', 'pedestrians', 'interactive'],
                         default='deterministic',
                         help='which environment type (deterministic | random |  fixed_obstacles random_obstacles | pedestrians | interactive')
+    parser.add_argument('--layout',
+                        '-l',
+                        default=None,
+                        help='layout config file')
     args = parser.parse_args()
 
     if args.robot == 'turtlebot':
@@ -1662,6 +1690,7 @@ if __name__ == '__main__':
     elif args.env_type == 'pedestrians':
         nav_env = NavigatePedestriansEnv(config_file=config_filename,
                                     mode=args.mode,
+                                    layout=args.layout,
                                     action_timestep=1.0 / 10.0,
                                     physics_timestep=1 / 40.0)
     elif args.env_type == 'random_obstacles':
@@ -1677,6 +1706,8 @@ if __name__ == '__main__':
                                          physics_timestep=1 / 40.0,
                                          arena='complex_hl_ll')
 
+    
+    
     # # Sample code: manually set action using slide bar UI
     # debug_params = [
     #     p.addUserDebugParameter('link1', -1.0, 1.0, -0.5),
