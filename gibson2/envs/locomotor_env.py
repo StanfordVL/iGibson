@@ -315,7 +315,6 @@ class NavigateEnv(BaseEnv):
             ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
             state['pedestrian_position'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
             #print(state['pedestrian_position'])
-
             
         if 'pedestrian_velocity' in self.output:
             ped_vel = self.get_ped_velocities()
@@ -325,7 +324,7 @@ class NavigateEnv(BaseEnv):
             state['pedestrian_velocity'] = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
             #print(state['pedestrian_velocity'])
         
-        # time-to-collision (ttc)
+        # TODO: time-to-collision (ttc)
         if 'pedestrian_ttc' in self.output:
             ped_ttc = self.get_ped_time_to_collision()
             ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
