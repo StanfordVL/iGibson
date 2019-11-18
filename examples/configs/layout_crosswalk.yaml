@@ -1,0 +1,35 @@
+
+# Walls configuration
+walls:
+  walls_pos: [[0, 5.25, 0.501], [0, -5.25, 0.501], [5.0, 0, 0.501], [-5.0, 0, 0.501]]
+  walls_dim: [[5, 0.25, 1.5], [5.0, 0.25, 1.5], [0.25, 5.0, 1.5], [0.25, 5.0, 1.5]]
+
+# Pedestrian configuration
+humans:
+  visible: true
+  policy: orca
+  radius: 0.3
+  v_pref: 1.0
+  position_noise: 0.0
+  velocity_noise: 0.0
+  sensor: coordinates
+  personal_space: 1.0
+  max_linear_velocity: 1.0
+  max_angular_velocity: 1.0
+  kinematics: holonomic
+  # for random initialization and goal setting
+  initial_position:
+    min_x: -5.0
+    max_x: 5.0
+    min_y: -5.0
+    max_y: 5.0
+  target_position:
+    min_x: -5.0
+    max_x: 5.0
+    min_y: -5.0
+    max_y: 5.0
+  initial_x_ranges: [[3.0, 4.0], [3.0, 4.0], [3.0, 4.0], [3.0, 4.0]]
+  initial_y_ranges: [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
+  target_x_ranges: [[-4.0, -3.0], [-4.0, -3.0], [-4.0, -3.0], [-4.0, -3.0]]
+  target_y_ranges: [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
+  min_separation: 0.5
