@@ -1,6 +1,8 @@
 import yaml
 import os
 
+__version__ = "0.0.1"
+
 with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global_config.yaml')) as f:
     global_config = yaml.load(f)
 

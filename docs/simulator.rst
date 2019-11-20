@@ -1,5 +1,6 @@
 Simulator
 ============
+.. automodule:: gibson2.core.simulator
 
 Simulator
 ------------

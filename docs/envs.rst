@@ -1,6 +1,9 @@
 Environments
 =============
 
+.. automodule:: gibson2.envs
+.. automodule:: gibson2.envs.base_env
+
 
 BaseEnv
 ------------
@@ -13,6 +16,8 @@ BaseEnv
    .. automethod:: clean
    .. automethod:: simulator_step
 
+
+.. automodule:: gibson2.envs.locomotor_env
 
 NavigateEnv
 -------------

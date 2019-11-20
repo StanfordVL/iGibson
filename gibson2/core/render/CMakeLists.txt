@@ -13,13 +13,20 @@ endif()
 add_subdirectory(pybind11)
 
 add_library(CppMeshRenderer MODULE glad/egl.cpp glad/gl.cpp cpp/Mesh_renderer.cpp)
+add_library(tinyobjloader MODULE cpp/tinyobjloader/tiny_obj_loader.cc cpp/tinyobjloader/bindings.cc)
+
 if (USE_GLAD)
   target_link_libraries(CppMeshRenderer PRIVATE pybind11::module dl pthread)
 else ()
   target_link_libraries(CppMeshRenderer PRIVATE pybind11::module dl pthread  EGL ${OPENGL_LIBRARIES})
 endif()
 
+target_link_libraries(tinyobjloader PRIVATE pybind11::module)
+
 set_target_properties(CppMeshRenderer PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
+                                         SUFFIX "${PYTHON_MODULE_EXTENSION}")
+
+set_target_properties(tinyobjloader PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
                                          SUFFIX "${PYTHON_MODULE_EXTENSION}")
 
 add_executable(query_devices glad/egl.cpp glad/gl.cpp cpp/query_devices.cpp)

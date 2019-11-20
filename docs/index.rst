@@ -13,14 +13,14 @@ Welcome to GibsonEnvV2's documentation!
    overview.md
    installation.md
    quickstart.md
-
+   projects.md
    
 .. toctree::
    :maxdepth: 1
    :caption: Example Documentation
 
    examples.md
-   
+
 .. toctree::
    :maxdepth: 1
    :caption: APIs
@@ -31,9 +31,11 @@ Welcome to GibsonEnvV2's documentation!
 
 .. toctree::
    :maxdepth: 1
-   :caption: Trouble Shooting
+   :caption: Miscellaneous
 
    issues.md
+   acknowledgements.md
+
 
 
 Indices and tables
