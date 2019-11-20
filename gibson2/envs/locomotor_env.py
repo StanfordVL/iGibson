@@ -1,4 +1,4 @@
-from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape
+from gibson2.core.physics.interactive_objects import VisualMarker, InteractiveObj, BoxShape
 import gibson2
 from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
@@ -201,12 +201,12 @@ class NavigateEnv(BaseEnv):
 
         if self.visual_object_at_initial_target_pos:
             cyl_length = 0.2
-            self.initial_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
+            self.initial_pos_vis_obj = VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                                     rgba_color=[1, 0, 0, 0.3],
                                                     radius=self.dist_tol,
                                                     length=cyl_length,
                                                     initial_offset=[0, 0, cyl_length / 2.0])
-            self.target_pos_vis_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
+            self.target_pos_vis_obj = VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                                    rgba_color=[0, 0, 1, 0.3],
                                                    radius=self.dist_tol,
                                                    length=cyl_length,
@@ -626,7 +626,7 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         self.visualize_waypoints = True
         if self.visualize_waypoints and self.mode == 'gui':
             cyl_length = 0.2
-            self.waypoints_vis = [VisualObject(visual_shape=p.GEOM_CYLINDER,
+            self.waypoints_vis = [VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                                rgba_color=[0, 1, 0, 0.3],
                                                radius=0.1,
                                                length=cyl_length,
@@ -811,7 +811,7 @@ class InteractiveNavigateEnv(NavigateEnv):
             "complex_hl_ll"
         ], "Wrong arena"
 
-        self.floor = VisualObject(visual_shape=p.GEOM_BOX, rgba_color=[0.643, 0.643, 0.788, 0.0],
+        self.floor = VisualMarker(visual_shape=p.GEOM_BOX, rgba_color=[0.643, 0.643, 0.788, 0.0],
                                   half_extents=[20, 20, 0.02], initial_offset=[0, 0, -0.03])
         self.floor.load()
         self.floor.set_position([0, 0, 0])
@@ -944,16 +944,16 @@ class InteractiveNavigateEnv(NavigateEnv):
 
         # visualize subgoal
         cyl_length = 3.0
-        self.subgoal_end_effector = VisualObject(rgba_color=[0, 0, 0, 0.8], radius=0.06)
+        self.subgoal_end_effector = VisualMarker(rgba_color=[0, 0, 0, 0.8], radius=0.06)
         self.subgoal_end_effector.load()
-        self.subgoal_end_effector_base = VisualObject(visual_shape=p.GEOM_CYLINDER,
+        self.subgoal_end_effector_base = VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                                       rgba_color=[1, 1, 0, 0.8],
                                                       radius=0.05,
                                                       length=cyl_length,
                                                       initial_offset=[0, 0, cyl_length / 2])
         self.subgoal_end_effector_base.load()
 
-        self.door_handle_vis = VisualObject(rgba_color=[1, 0, 0, 0.0], radius=self.door_handle_dist_thresh)
+        self.door_handle_vis = VisualMarker(rgba_color=[1, 0, 0, 0.0], radius=self.door_handle_dist_thresh)
         self.door_handle_vis.load()
 
         # TODO: move robot joint id and name mapping to robot_locomotors.py

@@ -12,17 +12,14 @@ import cv2
 import networkx as nx
 from IPython import embed
 
-
 class Scene:
     def load(self):
         raise (NotImplementedError())
 
-
 class StadiumScene(Scene):
-    zero_at_running_strip_start_line = True    # if False, center of coordinates (0,0,0) will be at the middle of the stadium
-    stadium_halflen = 105 * 0.25    # FOOBALL_FIELD_HALFLEN
-    stadium_halfwidth = 50 * 0.25    # FOOBALL_FIELD_HALFWID
-
+    """
+    A simple stadium scene for debugging
+    """
     def load(self):
         filename = os.path.join(pybullet_data.getDataPath(), "stadium_no_collision.sdf")
         self.stadium = p.loadSDF(filename)
@@ -49,27 +46,10 @@ class StadiumScene(Scene):
         ])
 
 
-class StadiumSceneInteractive(Scene):
-    zero_at_running_strip_start_line = True    # if False, center of coordinates (0,0,0) will be at the middle of the stadium
-    stadium_halflen = 105 * 0.25    # FOOBALL_FIELD_HALFLEN
-    stadium_halfwidth = 50 * 0.25    # FOOBALL_FIELD_HALFWID
-
-    def load(self):
-        filename = os.path.join(pybullet_data.getDataPath(), "stadium_no_collision.sdf")
-        self.stadium = p.loadSDF(filename)
-        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-        self.ground_plane_mjcf = p.loadMJCF(planeName)
-        for i in self.ground_plane_mjcf:
-            pos, orn = p.getBasePositionAndOrientation(i)
-            p.resetBasePositionAndOrientation(i, [pos[0], pos[1], pos[2] - 0.005], orn)
-
-        for i in self.ground_plane_mjcf:
-            p.changeVisualShape(i, -1, rgbaColor=[1, 1, 1, 0.5])
-
-        return [item for item in self.stadium] + [item for item in self.ground_plane_mjcf]
-
-
 class BuildingScene(Scene):
+    """
+    Gibson Environment building scenes
+    """
     def __init__(self,
                  model_id,
                  trav_map_resolution=0.1,
@@ -79,6 +59,17 @@ class BuildingScene(Scene):
                  num_waypoints=10,
                  waypoint_resolution=0.2,
                  ):
+        """
+        Load a building scene and compute traversability
+
+        :param model_id: Scene id
+        :param trav_map_resolution: traversability map resolution
+        :param trav_map_erosion: erosion radius of traversability areas, should be robot footprint radius
+        :param build_graph: build connectivity graph
+        :param should_load_replaced_objects: load CAD objects for parts of the meshes
+        :param num_waypoints: number of way points returned
+        :param waypoint_resolution: resolution of adjacent way points
+        """
         print("building scene: %s" % model_id)
         self.model_id = model_id
         self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
@@ -95,6 +86,9 @@ class BuildingScene(Scene):
         return np.linalg.norm(np.array(a) - np.array(b))
 
     def load(self):
+        """
+        Load the mesh into pybullet
+        """
         filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_downsampled.obj")
         if os.path.isfile(filename):
             print('Using down-sampled mesh!')

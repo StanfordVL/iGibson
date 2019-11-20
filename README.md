@@ -27,7 +27,7 @@ Release
 
 Documentation
 =================
-- [ Interactive Gibson Environment Documentation](http://svl.stanford.edu/gibson2/docs/).
+- [Interactive Gibson Environment Documentation](http://svl.stanford.edu/gibson2/docs/).
 
 Dataset Download
 =================

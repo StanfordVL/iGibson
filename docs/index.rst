@@ -28,6 +28,9 @@ Welcome to GibsonEnvV2's documentation!
    render.rst
    simulator.rst
    envs.rst
+   scenes.rst
+   robots.rst
+   objects.rst
 
 .. toctree::
    :maxdepth: 1

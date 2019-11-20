@@ -92,7 +92,7 @@ class Pedestrian(object):
         p.changeConstraint(self.cid, pos, orn)
 
 
-class VisualObject(object):
+class VisualMarker(object):
     def __init__(self,
                  visual_shape=p.GEOM_SPHERE,
                  rgba_color=[1, 0, 0, 0.5],
@@ -100,6 +100,16 @@ class VisualObject(object):
                  half_extents=[1, 1, 1],
                  length=1,
                  initial_offset=[0, 0, 0]):
+        """
+        create a visual shape to show in pybullet and MeshRenderer
+
+        :param visual_shape: pybullet.GEOM_BOX, pybullet.GEOM_CYLINDER, pybullet.GEOM_CAPSULE or pybullet.GEOM_SPHERE
+        :param rgba_color: color
+        :param radius: radius (for sphere)
+        :param half_extents: parameters for pybullet.GEOM_BOX, pybullet.GEOM_CYLINDER or pybullet.GEOM_CAPSULE
+        :param length: parameters for pybullet.GEOM_BOX, pybullet.GEOM_CYLINDER or pybullet.GEOM_CAPSULE
+        :param initial_offset: visualFramePosition for the marker
+        """
         self.visual_shape = visual_shape
         self.rgba_color = rgba_color
         self.radius = radius
@@ -163,6 +173,9 @@ class BoxShape(object):
 
 
 class InteractiveObj(object):
+    """
+    Interactive Objects are represented as a urdf, but doesn't have motors
+    """
     def __init__(self, filename, scale=1):
         self.filename = filename
         self.scale = scale
