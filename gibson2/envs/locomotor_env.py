@@ -397,7 +397,33 @@ class NavigateEnv(BaseEnv):
         return [(self.humans[i].px, self.humans[i].py) for i in range(self.num_pedestrians)]
     
     def get_ped_velocities(self):
-        return [(self.humans[i].vx, self.humans[i].vy) for i in range(self.num_pedestrians)]  
+        return [(self.humans[i].vx, self.humans[i].vy) for i in range(self.num_pedestrians)]
+    
+    def get_ped_time_to_collision(self):
+        ped_pos = self.get_ped_positions()
+        rob_pos = self.robots[0].get_position()
+        ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+
+        ped_vel = self.get_ped_velocities()
+        rob_vel = self.robots[0].get_velocity()
+        ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+        
+        ttc = list()
+        
+        for pos, vel in ped_pos, ped_vel:
+            if (vel[0] * pos[0] + vel[1] * pos[1]) == 0:
+                time_to_collision = -1.0
+            else:
+                time_to_collision = -1.0 * (pos[0]**2 + pos[1]**2) / (vel[0] * pos[0] + vel[1] * pos[1])
+        
+            if time_to_collision < 0:
+                time_to_collision = -1.0
+            else:
+                time_to_collision = 1.0 - np.tanh(time_to_collision / 10.0)
+        
+        ttc.append(time_to_collision)
+                
+        return ttc
 
     def run_simulation(self):
         collision_links = []
@@ -694,7 +720,7 @@ class NavigatePedestriansEnv(NavigateEnv):
     def __init__(
              self,
              config_file,
-             layout,
+             layout=None,
              mode='headless',
              action_timestep=1 / 10.0,
              physics_timestep=1 / 240.0,
@@ -709,7 +735,6 @@ class NavigatePedestriansEnv(NavigateEnv):
                                                 automatic_reset=automatic_reset,
                                                 device_idx=device_idx)
         self.random_height = random_height
-        self.layout = parse_config(layout)
         self.pedestrian_z = 0.03 # hard-coded.
         ''' Walls '''
         # wall = [pos, dim]
@@ -724,6 +749,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         
 
         if layout: # if specify a layout file
+            self.layout = parse_config(layout)
             self.walls = self.layout.get('walls')
             self.pedestrian_initial_x_ranges = self.layout.get('humans')['initial_x_ranges']
             self.pedestrian_initial_y_ranges = self.layout.get('humans')['initial_y_ranges']
@@ -738,11 +764,12 @@ class NavigatePedestriansEnv(NavigateEnv):
             self.pedestrian_target_y_ranges = self.config.get('humans')['target_y_ranges']
             self.min_separation = self.config.get('humans')['min_separation']
 
-        for i, wall_pos in enumerate(self.walls['walls_pos']):
-            wall_dim = self.walls['walls_dim'][i]
-            # box = BoxShape(pos=[wall[0][0], wall[0][1], wall[0][2]], dim=[wall[1][0], wall[1][1], wall[1][2]])            
-            box = BoxShape(pos=wall_pos, dim=wall_dim)
-            self.obstacle_ids.append(self.simulator.import_object(box))
+        if self.walls:
+            for i, wall_pos in enumerate(self.walls['walls_pos']):
+                wall_dim = self.walls['walls_dim'][i]
+                # box = BoxShape(pos=[wall[0][0], wall[0][1], wall[0][2]], dim=[wall[1][0], wall[1][1], wall[1][2]])            
+                box = BoxShape(pos=wall_pos, dim=wall_dim)
+                self.obstacle_ids.append(self.simulator.import_object(box))
 
         ''' Obstacles '''
         self.obstacles = []
@@ -805,7 +832,10 @@ class NavigatePedestriansEnv(NavigateEnv):
                 ob += [self.get_robot_observable_state()]
                 #self.pedestrian_simulator.setAgentPosition(self.robot_as_pedestrian_id, tuple(self.robots[0].get_position()[:2]))
             # human_actions.append(human.act(ob, walls=self.walls, obstacles=self.obstacles))
-            walls_config = list(zip(self.walls['walls_pos'], self.walls['walls_dim']))
+            if self.walls:
+                walls_config = list(zip(self.walls['walls_pos'], self.walls['walls_dim']))
+            else:
+                walls_config = list()
             human_actions.append(human.act(ob, walls=walls_config, obstacles=self.obstacles))
         # move each human
         for i, human_action in enumerate(human_actions):
@@ -963,12 +993,26 @@ class NavigatePedestriansEnv(NavigateEnv):
             good_pose = False
             while not good_pose:
                 good_pose = True
+                test = np.random.random()
+                if test < 0.5:
+                    sign = -1
+                else:
+                    sign = 1
                 if mode == 'initial':
-                    pedestrian_x = random.uniform(*tuple(self.pedestrian_initial_x_ranges[i]))
-                    pedestrian_y = random.uniform(*tuple(self.pedestrian_initial_y_ranges[i]))
+                    pedestrian_x = sign * 6.0 * 0.3 * (1.0 + np.random.uniform(-0.2, 0.2))
+                    pedestrian_y = (np.random.random() - 0.5) * 6.0 + 3.0
                 elif mode == 'target':
-                    pedestrian_x = random.uniform(*tuple(self.pedestrian_target_x_ranges[i]))
-                    pedestrian_y = random.uniform(*tuple(self.pedestrian_target_y_ranges[i]))
+                    try:
+                        print("PX!!!!!", self.humans[i].px)
+                        if self.humans[i].px > 0:
+                            sign = 1
+                        else:
+                            sign = -1
+                    except:
+                        sign = 1
+                    pedestrian_x = -sign * 6.0 * 0.3 * (1.0 + np.random.uniform(-0.2, 0.2))
+                    print("GX!!!!!!", pedestrian_x)
+                    pedestrian_y = (np.random.random() - 0.5) * 6.0 + 3.0
                 pedestrian_pose = (pedestrian_x, pedestrian_y, self.pedestrian_z)
                 # print('x: {} y: {}'.format(pedestrian_x, pedestrian_y))
                 

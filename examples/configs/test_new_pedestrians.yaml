@@ -7,7 +7,7 @@ scene: stadium
 # model_id: Ohoopee
 
 num_obstacles: 0
-num_pedestrians: 4
+num_pedestrians: 1
 pedestrians_can_see_robot: false
 
 # robot
@@ -45,7 +45,7 @@ max_step: 300
 # output: [sensor, scan, pedestrian]
 #output: [sensor, pedestrian]
 # output: [sensor, scan]
-output: [sensor, depth, pedestrian_position, pedestrian_velocity]
+output: [sensor, pedestrian_position, pedestrian_velocity, ttc]
 scan_beams: 512 #128 
 scan_vertical_beams: 1 #9 
 resolution: 64
@@ -97,11 +97,11 @@ humans:
   max_angular_velocity: 1.0
   kinematics: holonomic
   # for random initialization and goal setting
-  initial_position:
-     min_x: -5.0
-     max_x: 5.0
-     min_y: -5.0
-     max_y: 5.0
+  initial_x_ranges: [[3.0, 4.0], [3.0, 4.0], [3.0, 4.0], [3.0, 4.0]]
+  initial_y_ranges: [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
+  target_x_ranges: [[-4.0, -3.0], [-4.0, -3.0], [-4.0, -3.0], [-4.0, -3.0]]
+  target_y_ranges: [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
+  min_separation: 0.5
   target_position:
      min_x: -5.0
      max_x: 5.0
@@ -109,7 +109,7 @@ humans:
      max_y: 5.0
      
 
-walls:
-  walls_pos: [[0, 5.25, 0.501], [0, -5.25, 0.501], [5.0, 0, 0.501], [-5.0, 0, 0.501]]
-  walls_dim: [[5, 0.25, 1.5], [5.0, 0.25, 1.5], [0.25, 5.0, 1.5], [0.25, 5.0, 1.5]]
+#walls:
+#  walls_pos: [[0, 5.25, 0.501], [0, -5.25, 0.501], [5.0, 0, 0.501], [-5.0, 0, 0.501]]
+#  walls_dim: [[5, 0.25, 1.5], [5.0, 0.25, 1.5], [0.25, 5.0, 1.5], [0.25, 5.0, 1.5]]
 
