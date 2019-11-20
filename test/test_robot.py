@@ -1,5 +1,5 @@
 import yaml
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Quadrotor
+from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Quadrotor, Freight, Fetch
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import BuildingScene, StadiumScene
 from gibson2.utils.utils import parse_config
@@ -9,6 +9,18 @@ import numpy as np
 
 config = parse_config('test.yaml')
 
+def test_fetch():
+    s = Simulator(mode='headless')
+    scene = StadiumScene()
+    s.import_scene(scene)
+    config = parse_config('test_continuous.yaml')
+    freight = Fetch(config)
+    s.import_robot(freight)
+    for i in range(100):
+        freight.apply_action([0] * 15)
+        freight.calc_state()
+        s.step()
+    s.disconnect()
 
 def test_turtlebot():
     s = Simulator(mode='headless')

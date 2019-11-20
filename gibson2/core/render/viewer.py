@@ -41,7 +41,7 @@ class Viewer:
             self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, [0, 0, 1])
 
         if not self.renderer is None:
-            frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=("rgb")), axis=1),
+            frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=('rgb', 'seg')), axis=1),
                                  cv2.COLOR_RGB2BGR)
         else:
             frame = np.zeros((300, 300, 3)).astype(np.uint8)
@@ -66,7 +66,7 @@ class Viewer:
             exit()
 
         if not self.renderer is None:
-            frames = self.renderer.render_robot_cameras()
+            frames = self.renderer.render_robot_cameras(modes=('rgb', 'seg'))
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
                 cv2.imshow('robots', frame)
