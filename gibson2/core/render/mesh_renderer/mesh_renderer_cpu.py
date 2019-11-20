@@ -8,7 +8,7 @@ import gibson2.core.render.mesh_renderer.glutils.glcontext as glcontext
 import OpenGL.GL as GL
 import cv2
 import numpy as np
-from pyassimp import load, release
+#from pyassimp import load, release
 from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
@@ -19,10 +19,21 @@ import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
 import gibson2
 import os
+from gibson2.core.render.mesh_renderer import tinyobjloader
 
 
 class VisualObject(object):
+    """
+    A visual object manages a set of VAOs and textures, one wavefront obj file loads into openGL, and managed
+    by a VisualObject
+    """
     def __init__(self, filename, VAO_ids, id, renderer):
+        """
+        :param filename: filename of the obj file
+        :param VAO_ids: VAO_ids in OpenGL
+        :param id: renderer maintains a list of visual objects, id is the handle of a visual object
+        :param renderer: pointer to the renderer
+        """
         self.VAO_ids = VAO_ids
         self.filename = filename
         self.texture_ids = []
@@ -37,21 +48,38 @@ class VisualObject(object):
 
 
 class InstanceGroup(object):
+    """
+    InstanceGroup is a set of visual objects, it is grouped together because they are kinematically connected.
+    Robots and articulated objects are represented as instance groups.
+    """
     def __init__(self,
                  objects,
                  id,
                  link_ids,
                  pybullet_uuid,
+                 class_id,
                  poses_trans,
                  poses_rot,
                  dynamic,
                  robot=None):
+        """
+        :param objects: visual objects
+        :param id: id this instance_group
+        :param link_ids: link_ids in pybullet
+        :param pybullet_uuid: body id in pybullet
+        :param class_id: class_id to render semantics
+        :param poses_trans: initial translations for each visual object
+        :param poses_rot: initial rotation matrix for each visual object
+        :param dynamic: is the instance group dynamic or not
+        :param robot: The robot associated with this InstanceGroup
+        """
         # assert(len(objects) > 0) # no empty instance group
         self.objects = objects
         self.poses_trans = poses_trans
         self.poses_rot = poses_rot
         self.id = id
         self.link_ids = link_ids
+        self.class_id = class_id
         self.robot = robot
         if len(objects) > 0:
             self.renderer = objects[0].renderer
@@ -63,6 +91,9 @@ class InstanceGroup(object):
         self.tf_tree = None
 
     def render(self):
+        """
+        Render this instance group
+        """
         if self.renderer is None:
             return
 
@@ -88,7 +119,7 @@ class InstanceGroup(object):
 
                 GL.glUniform3f(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
-                    *self.renderer.colors[self.id % 3])
+                    float(self.class_id) / 255.0, 0, 0)
 
                 GL.glUniform3f(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
@@ -125,9 +156,21 @@ class InstanceGroup(object):
         return pose
 
     def set_position(self, pos):
+        """
+        Set positions for each part of this InstanceGroup
+
+        :param pos: New translations
+        """
+
         self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
 
     def set_rotation(self, rot):
+        """
+        Set rotations for each part of this InstanceGroup
+
+        :param rot: New rotation matrices
+        """
+
         self.pose_rot = np.ascontiguousarray(quat2rotmat(rot))
 
     def __str__(self):
@@ -148,16 +191,23 @@ class Robot(InstanceGroup):
 
 
 class Instance(object):
-    def __init__(self, object, id, pybullet_uuid, pose_trans, pose_rot, dynamic):
+    """
+    InstanceGroup is one instance of a visual object. One visual object can have multiple instances to save memory.
+    """
+    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic):
         self.object = object
         self.pose_trans = pose_trans
         self.pose_rot = pose_rot
         self.id = id
+        self.class_id = class_id
         self.renderer = object.renderer
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
 
     def render(self):
+        """
+        Render this instance
+        """
         if self.renderer is None:
             return
 
@@ -177,8 +227,7 @@ class Instance(object):
 
         for object_idx in self.object.VAO_ids:
             GL.glUniform3f(GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
-                           *self.renderer.colors[self.id % 3])
-
+                           float(self.class_id) / 255.0, 0, 0)
             GL.glUniform3f(
                 GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
                 *self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd)
@@ -245,7 +294,18 @@ class Material:
 
 
 class MeshRenderer:
-    def __init__(self, width=512, height=512, device_idx=0, use_fisheye=False):
+    """
+    MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
+    It also manage a device to create OpenGL context on, and create buffers to store rendering results.
+    """
+    def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False):
+        """
+        :param width: width of the renderer output
+        :param height: width of the renderer output
+        :param fov: vertical field of view for the renderer
+        :param device_idx: which GPU to run the renderer on
+        :param use_fisheye: use fisheye shader or not
+        """
         self.shaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
@@ -309,7 +369,7 @@ class MeshRenderer:
 
         self.lightpos = [0, 0, 0]
         self.setup_framebuffer()
-        self.fov = 20
+        self.fov = fov
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
@@ -322,6 +382,9 @@ class MeshRenderer:
         self.mesh_materials = []
 
     def setup_framebuffer(self):
+        """
+        Set up RGB, surface normal, depth and segmentation framebuffers for the renderer
+        """
         self.fbo = GL.glGenFramebuffers(1)
         self.color_tex_rgb = GL.glGenTextures(1)
         self.color_tex_normal = GL.glGenTextures(1)
@@ -376,48 +439,112 @@ class MeshRenderer:
                     transform_orn=None,
                     transform_pos=None,
                     input_kd=None,
-                    texture_scale=1.0):
+                    texture_scale=1.0,
+                    load_texture=True):
+        """
+        Load a wavefront obj file into the renderer and create a VisualObject to manage it.
 
-        scene = load(obj_path)
+        :param obj_path: path of obj file
+        :param scale: scale, default 1
+        :param transform_orn: rotation for loading, 3x3 matrix
+        :param transform_pos: translation for loading, it is a list of length 3
+        :param input_kd: If loading texture is not successful, the color to use, it is a list of length 3
+        :param texture_scale: texture scale for the object, downsample to save memory.
+        :param load_texture: load texture or not
+        :return: VAO_ids
+        """
+        reader = tinyobjloader.ObjReader()
+        ret = reader.ParseFromFile(obj_path)
+
+        if ret == False:
+            print("Warn:", reader.Warning())
+            print("Err:", reader.Error())
+            print("Failed to load : ", obj_path)
+
+            sys.exit(-1)
+
+        if reader.Warning():
+            print("Warn:", reader.Warning())
+
+        attrib = reader.GetAttrib()
+        print("attrib.vertices = ", len(attrib.vertices))
+        print("attrib.normals = ", len(attrib.normals))
+        print("attrib.texcoords = ", len(attrib.texcoords))
+
+        materials = reader.GetMaterials()
+        print("Num materials: ", len(materials))
+        for m in materials:
+            print(m.name)
+            print(m.diffuse)
+
+        shapes = reader.GetShapes()
+        print("Num shapes: ", len(shapes))
+       
         material_count = len(self.materials_mapping)
         materials_fn = {}
 
-        for i, item in enumerate(scene.materials):
+        for i, item in enumerate(materials):
             is_texture = False
-            kd = [0.5, 0.5, 0.5]
-            for k, v in item.properties.items():
-                if k == 'file':
-                    materials_fn[i + material_count] = v
-                    dir = os.path.dirname(obj_path)
-                    texture = loadTexture(os.path.join(dir, v), scale=texture_scale)
-                    material = Material('texture', texture_id=texture)
-                    self.materials_mapping[i + material_count] = material
-                    self.textures.append(texture)
-                    is_texture = True
+            kd = item.diffuse
 
-                if k == 'diffuse':
-                    kd = v
+            if item.diffuse_texname != '':
+                is_texture = True
+                if load_texture:
+                    materials_fn[i + material_count] = item.diffuse_texname
+                    dir = os.path.dirname(obj_path)
+                    texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
+                    material = Material('texture', texture_id=texture)
+                    self.textures.append(texture)
+                else:
+                    material = Material('color', kd=kd)
+                
+                self.materials_mapping[i + material_count] = material
+
             if not is_texture:
                 self.materials_mapping[i + material_count] = Material('color', kd=kd)
 
-        if not input_kd is None:    # urdf material
-            self.materials_mapping[len(scene.materials) + material_count] = Material('color',
-                                                                                     kd=input_kd)
+        if input_kd is not None:  # urdf material
+            self.materials_mapping[len(materials) + material_count] = Material('color', kd=input_kd)
+        elif len(materials) == 0:  # urdf material not specified, but it is required
+            self.materials_mapping[len(materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5])
 
+        print(self.materials_mapping)
         VAO_ids = []
 
-        for mesh in scene.meshes:
-            faces = mesh.faces
+        vertex_position = np.array(attrib.vertices).reshape((len(attrib.vertices)//3, 3))
+        vertex_normal = np.array(attrib.normals).reshape((len(attrib.normals)//3, 3))
+        vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
+        print(vertex_position.shape, vertex_normal.shape, vertex_texcoord.shape)
 
-            if mesh.normals.shape[0] == 0:
-                mesh.normals = np.zeros(mesh.vertices.shape, dtype=mesh.vertices.dtype)
-            if mesh.texturecoords.shape[0] == 0:
-                mesh.texturecoords = np.zeros((1, mesh.vertices.shape[0], mesh.vertices.shape[1]),
-                                              dtype=mesh.vertices.dtype)
+
+        for shape in shapes:
+            print(shape.name)
+            material_id = shape.mesh.material_ids[0] # assume one shape only have one material
+            print("material_id = {}".format(material_id))
+            print("num_indices = {}".format(len(shape.mesh.indices)))
+            n_indices = len(shape.mesh.indices)
+            np_indices = shape.mesh.numpy_indices().reshape((n_indices,3))
+
+            shape_vertex_index = np_indices[:,0]
+            shape_normal_index = np_indices[:,1]
+            shape_texcoord_index = np_indices[:,2]
+
+            shape_vertex = vertex_position[shape_vertex_index]
+
+            if len(vertex_normal) == 0:
+                shape_normal = np.zeros((shape_vertex.shape[0], 3)) #dummy normal if normal is not available
+            else:
+                shape_normal = vertex_normal[shape_normal_index]
+            
+            if len(vertex_texcoord) == 0:
+                shape_texcoord = np.zeros((shape_vertex.shape[0], 2)) #dummy texcoord if texcoord is not available
+            else:
+                shape_texcoord = vertex_texcoord[shape_texcoord_index]
 
             vertices = np.concatenate(
-                [mesh.vertices * scale, mesh.normals, mesh.texturecoords[0, :, :2]], axis=-1)
+                [shape_vertex * scale, shape_normal, shape_texcoord], axis=-1)
 
+            faces = np.array(range(len(vertices))).reshape((len(vertices)//3, 3))
             if not transform_orn is None:
                 orn = quat2rotmat(
                     [transform_orn[-1], transform_orn[0], transform_orn[1], transform_orn[2]])
@@ -458,13 +585,15 @@ class MeshRenderer:
             self.VBOs.append(VBO)
             self.faces.append(faces)
             self.objects.append(obj_path)
-            if mesh.materialindex == 0:    # if there is no material, use urdf color as material
-                self.mesh_materials.append(len(scene.materials) + material_count)
+            if material_id == -1:  # if no material, use urdf color as material
+                self.mesh_materials.append(len(materials) + material_count)
             else:
-                self.mesh_materials.append(mesh.materialindex + material_count)
+                self.mesh_materials.append(material_id + material_count)
+
+            print('mesh_materials', self.mesh_materials)
             VAO_ids.append(self.get_num_objects() - 1)
 
-        release(scene)
+        #release(scene)
 
         new_obj = VisualObject(obj_path, VAO_ids, len(self.visual_objects), self)
         self.visual_objects.append(new_obj)
@@ -473,12 +602,17 @@ class MeshRenderer:
     def add_instance(self,
                      object_id,
                      pybullet_uuid=None,
+                     class_id=0,
                      pose_rot=np.eye(4),
                      pose_trans=np.eye(4),
                      dynamic=False):
+        """
+        Create instance for a visual object and link it to pybullet
+        """
         instance = Instance(self.visual_objects[object_id],
                             id=len(self.instances),
                             pybullet_uuid=pybullet_uuid,
+                            class_id=class_id,
                             pose_trans=pose_trans,
                             pose_rot=pose_rot,
                             dynamic=dynamic)
@@ -489,13 +623,18 @@ class MeshRenderer:
                            link_ids,
                            poses_rot,
                            poses_trans,
+                           class_id=0,
                            pybullet_uuid=None,
                            dynamic=False,
                            robot=None):
+        """
+        Create an instance group for a list of visual objects and link it to pybullet
+        """
         instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids],
                                        id=len(self.instances),
                                        link_ids=link_ids,
                                        pybullet_uuid=pybullet_uuid,
+                                       class_id=class_id,
                                        poses_trans=poses_trans,
                                        poses_rot=poses_rot,
                                        dynamic=dynamic,
@@ -505,15 +644,20 @@ class MeshRenderer:
     def add_robot(self,
                   object_ids,
                   link_ids,
+                  class_id,
                   poses_rot,
                   poses_trans,
                   pybullet_uuid=None,
                   dynamic=False,
                   robot=None):
+        """
+            Create an instance group (a robot) for a list of visual objects and link it to pybullet
+        """
         robot = Robot([self.visual_objects[object_id] for object_id in object_ids],
                       id=len(self.instances),
                       link_ids=link_ids,
                       pybullet_uuid=pybullet_uuid,
+                      class_id=class_id,
                       poses_trans=poses_trans,
                       poses_rot=poses_rot,
                       dynamic=dynamic,
@@ -556,6 +700,12 @@ class MeshRenderer:
         return np.array([[fu, 0, u0], [0, fv, v0], [0, 0, 1]])
 
     def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d')):
+        """
+        Read framebuffer of rendering.
+
+        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d').
+        :return: a list of numpy arrays depending corresponding to `modes`
+        """
         results = []
 
         if 'rgb' in modes:
@@ -585,6 +735,14 @@ class MeshRenderer:
         return results
 
     def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
+        """
+        A function to render all the instances in the renderer and read the output from framebuffer.
+
+        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d').
+        :param hidden: Hidden instances to skip. When rendering from a robot's perspective, it's own body can be
+            hidden
+
+        """
         GL.glClearColor(0, 0, 0, 1)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         GL.glEnable(GL.GL_DEPTH_TEST)
@@ -607,11 +765,17 @@ class MeshRenderer:
         self.instances[idx].pose_trans = np.ascontiguousarray(xyz2mat(pose[:3]))
 
     def release(self):
+        """
+        Clean everything, and release the openGL context.
+        """
         print(self.glstring)
         self.clean()
         self.r.release()
 
     def clean(self):
+        """
+        Clean all the framebuffers, objects and instances
+        """
         GL.glDeleteTextures([
             self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
             self.depth_tex
@@ -673,75 +837,3 @@ class MeshRenderer:
                 for item in self.render(modes=modes, hidden=[instance]):
                     frames.append(item)
         return frames
-
-
-if __name__ == '__main__':
-    model_path = sys.argv[1]
-    renderer = MeshRenderer(width=256, height=256)
-    renderer.load_object(model_path)
-    renderer.load_object(
-        os.path.join(gibson2.assets_path, 'models/ycb/011_banana/textured_simple.obj'))
-
-    renderer.add_instance(0)
-    renderer.add_instance(1)
-    renderer.add_instance(1)
-    renderer.add_instance(1)
-
-    renderer.instances[1].set_position([1, 0, 0.3])
-    renderer.instances[2].set_position([1, 0, 0.5])
-    renderer.instances[3].set_position([1, 0, 0.7])
-
-    print(renderer.visual_objects, renderer.instances)
-    print(renderer.materials_mapping, renderer.mesh_materials)
-    camera_pose = np.array([0, 0, 1.2])
-    view_direction = np.array([1, 0, 0])
-    renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
-    renderer.set_fov(90)
-    print(renderer.get_intrinsics())
-    px = 0
-    py = 0
-
-    _mouse_ix, _mouse_iy = -1, -1
-    down = False
-
-    def change_dir(event, x, y, flags, param):
-        global _mouse_ix, _mouse_iy, down, view_direction
-        if event == cv2.EVENT_LBUTTONDOWN:
-            _mouse_ix, _mouse_iy = x, y
-            down = True
-        if event == cv2.EVENT_MOUSEMOVE:
-            if down:
-                dx = (x - _mouse_ix) / 100.0
-                dy = (y - _mouse_iy) / 100.0
-                _mouse_ix = x
-                _mouse_iy = y
-                r1 = np.array([[np.cos(dy), 0, np.sin(dy)], [0, 1, 0], [-np.sin(dy), 0,
-                                                                        np.cos(dy)]])
-                r2 = np.array([[np.cos(-dx), -np.sin(-dx), 0], [np.sin(-dx),
-                                                                np.cos(-dx), 0], [0, 0, 1]])
-                view_direction = r1.dot(r2).dot(view_direction)
-        elif event == cv2.EVENT_LBUTTONUP:
-            down = False
-
-    cv2.namedWindow('test')
-    cv2.setMouseCallback('test', change_dir)
-
-    for i in range(10000):
-        print(i)
-        frame = renderer.render()
-        cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
-        q = cv2.waitKey(1)
-        if q == ord('w'):
-            px += 0.05
-        elif q == ord('s'):
-            px -= 0.05
-        elif q == ord('a'):
-            py += 0.05
-        elif q == ord('d'):
-            py -= 0.05
-        elif q == ord('q'):
-            break
-        camera_pose = np.array([px, py, 1.2])
-        renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
-
-    renderer.release()

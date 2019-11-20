@@ -39,7 +39,7 @@ max_step: 500
 
 # sensor
 output: [sensor, rgb, depth]
-resolution: 64
+resolution: 68
 fov: 1.57
 
 # display
