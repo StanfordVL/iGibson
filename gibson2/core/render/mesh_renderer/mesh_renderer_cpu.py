@@ -23,7 +23,17 @@ import tinyobjloader
 
 
 class VisualObject(object):
+    """
+    A visual object manages a set of VAOs and textures, one wavefront obj file loads into openGL, and managed
+    by a VisualObject
+    """
     def __init__(self, filename, VAO_ids, id, renderer):
+        """
+        :param filename: filename of the obj file
+        :param VAO_ids: VAO_ids in OpenGL
+        :param id: renderer maintains a list of visual objects, id is the handle of a visual object
+        :param renderer: pointer to the renderer
+        """
         self.VAO_ids = VAO_ids
         self.filename = filename
         self.texture_ids = []
@@ -38,6 +48,10 @@ class VisualObject(object):
 
 
 class InstanceGroup(object):
+    """
+    InstanceGroup is a set of visual objects, it is grouped together because they are kinematically connected.
+    Robots and articulated objects are represented as instance groups.
+    """
     def __init__(self,
                  objects,
                  id,
@@ -48,6 +62,17 @@ class InstanceGroup(object):
                  poses_rot,
                  dynamic,
                  robot=None):
+        """
+        :param objects: visual objects
+        :param id: id this instance_group
+        :param link_ids: link_ids in pybullet
+        :param pybullet_uuid: body id in pybullet
+        :param class_id: class_id to render semantics
+        :param poses_trans: initial translations for each visual object
+        :param poses_rot: initial rotation matrix for each visual object
+        :param dynamic: is the instance group dynamic or not
+        :param robot: The robot associated with this InstanceGroup
+        """
         # assert(len(objects) > 0) # no empty instance group
         self.objects = objects
         self.poses_trans = poses_trans
@@ -66,6 +91,9 @@ class InstanceGroup(object):
         self.tf_tree = None
 
     def render(self):
+        """
+        Render this instance group
+        """
         if self.renderer is None:
             return
 
@@ -128,9 +156,21 @@ class InstanceGroup(object):
         return pose
 
     def set_position(self, pos):
+        """
+        Set positions for each part of this InstanceGroup
+
+        :param pos: New translations
+        """
+
         self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
 
     def set_rotation(self, rot):
+        """
+        Set rotations for each part of this InstanceGroup
+
+        :param rot: New rotation matrices
+        """
+
         self.pose_rot = np.ascontiguousarray(quat2rotmat(rot))
 
     def __str__(self):
@@ -151,6 +191,9 @@ class Robot(InstanceGroup):
 
 
 class Instance(object):
+    """
+    InstanceGroup is one instance of a visual object. One visual object can have multiple instances to save memory.
+    """
     def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic):
         self.object = object
         self.pose_trans = pose_trans
@@ -162,6 +205,9 @@ class Instance(object):
         self.dynamic = dynamic
 
     def render(self):
+        """
+        Render this instance
+        """
         if self.renderer is None:
             return
 
@@ -248,7 +294,18 @@ class Material:
 
 
 class MeshRenderer:
+    """
+    MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
+    It also manage a device to create OpenGL context on, and create buffers to store rendering results.
+    """
     def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False):
+        """
+        :param width: width of the renderer output
+        :param height: width of the renderer output
+        :param fov: vertical field of view for the renderer
+        :param device_idx: which GPU to run the renderer on
+        :param use_fisheye: use fisheye shader or not
+        """
         self.shaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
@@ -325,6 +382,9 @@ class MeshRenderer:
         self.mesh_materials = []
 
     def setup_framebuffer(self):
+        """
+        Set up RGB, surface normal, depth and segmentation framebuffers for the renderer
+        """
         self.fbo = GL.glGenFramebuffers(1)
         self.color_tex_rgb = GL.glGenTextures(1)
         self.color_tex_normal = GL.glGenTextures(1)
@@ -381,7 +441,18 @@ class MeshRenderer:
                     input_kd=None,
                     texture_scale=1.0,
                     load_texture=True):
+        """
+        Load a wavefront obj file into the renderer and create a VisualObject to manage it.
 
+        :param obj_path: path of obj file
+        :param scale: scale, default 1
+        :param transform_orn: rotation for loading, 3x3 matrix
+        :param transform_pos: translation for loading, it is a list of length 3
+        :param input_kd: If loading texture is not successful, the color to use, it is a list of length 3
+        :param texture_scale: texture scale for the object, downsample to save memory.
+        :param load_texture: load texture or not
+        :return: VAO_ids
+        """
         reader = tinyobjloader.ObjReader()
         ret = reader.ParseFromFile(obj_path)
 
@@ -470,23 +541,6 @@ class MeshRenderer:
             else:
                 shape_texcoord = vertex_texcoord[shape_texcoord_index]
 
-            #from IPython import embed; embed()
-            #for (i, idx) in enumerate(shape.mesh.indices):
-            #    print("[{}] v_idx {}".format(i, idx.vertex_index))
-            #    print("[{}] vn_idx {}".format(i, idx.normal_index))
-            #    print("[{}] vt_idx {}".format(i, idx.texcoord_index))
-
-        #exit()
-
-        #for mesh in scene.meshes:
-        #    faces = mesh.faces
-        #
-        #    if mesh.normals.shape[0] == 0:
-        #        mesh.normals = np.zeros(mesh.vertices.shape, dtype=mesh.vertices.dtype)
-        #    if mesh.texturecoords.shape[0] == 0:
-        #        mesh.texturecoords = np.zeros((1, mesh.vertices.shape[0], mesh.vertices.shape[1]),
-        #                                      dtype=mesh.vertices.dtype)
-
             vertices = np.concatenate(
                 [shape_vertex * scale, shape_normal, shape_texcoord], axis=-1)
 
@@ -552,6 +606,9 @@ class MeshRenderer:
                      pose_rot=np.eye(4),
                      pose_trans=np.eye(4),
                      dynamic=False):
+        """
+        Create instance for a visual object and link it to pybullet
+        """
         instance = Instance(self.visual_objects[object_id],
                             id=len(self.instances),
                             pybullet_uuid=pybullet_uuid,
@@ -570,6 +627,9 @@ class MeshRenderer:
                            pybullet_uuid=None,
                            dynamic=False,
                            robot=None):
+        """
+        Create an instance group for a list of visual objects and link it to pybullet
+        """
         instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids],
                                        id=len(self.instances),
                                        link_ids=link_ids,
@@ -590,6 +650,9 @@ class MeshRenderer:
                   pybullet_uuid=None,
                   dynamic=False,
                   robot=None):
+        """
+            Create an instance group (a robot) for a list of visual objects and link it to pybullet
+        """
         robot = Robot([self.visual_objects[object_id] for object_id in object_ids],
                       id=len(self.instances),
                       link_ids=link_ids,
@@ -637,6 +700,12 @@ class MeshRenderer:
         return np.array([[fu, 0, u0], [0, fv, v0], [0, 0, 1]])
 
     def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d')):
+        """
+        Read framebuffer of rendering.
+
+        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d').
+        :return: a list of numpy arrays depending corresponding to `modes`
+        """
         results = []
 
         if 'rgb' in modes:
@@ -666,6 +735,14 @@ class MeshRenderer:
         return results
 
     def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
+        """
+        A function to render all the instances in the renderer and read the output from framebuffer.
+
+        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d').
+        :param hidden: Hidden instances to skip. When rendering from a robot's perspective, it's own body can be
+            hidden
+
+        """
         GL.glClearColor(0, 0, 0, 1)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         GL.glEnable(GL.GL_DEPTH_TEST)
@@ -688,11 +765,17 @@ class MeshRenderer:
         self.instances[idx].pose_trans = np.ascontiguousarray(xyz2mat(pose[:3]))
 
     def release(self):
+        """
+        Clean everything, and release the openGL context.
+        """
         print(self.glstring)
         self.clean()
         self.r.release()
 
     def clean(self):
+        """
+        Clean all the framebuffers, objects and instances
+        """
         GL.glDeleteTextures([
             self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
             self.depth_tex
@@ -754,74 +837,3 @@ class MeshRenderer:
                 for item in self.render(modes=modes, hidden=[instance]):
                     frames.append(item)
         return frames
-
-
-if __name__ == '__main__':
-    model_path = sys.argv[1]
-    renderer = MeshRenderer(width=256, height=256)
-    renderer.load_object(model_path, load_texture=True)
-    renderer.load_object(os.path.join(gibson2.assets_path, 'models/ycb/011_banana/textured_simple.obj'))
-
-    renderer.add_instance(0, class_id=255)
-    renderer.add_instance(1, class_id=127)
-    renderer.add_instance(1, class_id=0)
-    renderer.add_instance(1, class_id=0)
-
-    renderer.instances[1].set_position([1, 0, 0.3])
-    renderer.instances[2].set_position([1, 0, 0.5])
-    renderer.instances[3].set_position([1, 0, 0.7])
-
-    print(renderer.visual_objects, renderer.instances)
-    print(renderer.materials_mapping, renderer.mesh_materials)
-    camera_pose = np.array([0, 0, 1.2])
-    view_direction = np.array([1, 0, 0])
-    renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
-    renderer.set_fov(90)
-    print(renderer.get_intrinsics())
-    px = 0
-    py = 0
-
-    _mouse_ix, _mouse_iy = -1, -1
-    down = False
-
-    def change_dir(event, x, y, flags, param):
-        global _mouse_ix, _mouse_iy, down, view_direction
-        if event == cv2.EVENT_LBUTTONDOWN:
-            _mouse_ix, _mouse_iy = x, y
-            down = True
-        if event == cv2.EVENT_MOUSEMOVE:
-            if down:
-                dx = (x - _mouse_ix) / 100.0
-                dy = (y - _mouse_iy) / 100.0
-                _mouse_ix = x
-                _mouse_iy = y
-                r1 = np.array([[np.cos(dy), 0, np.sin(dy)], [0, 1, 0], [-np.sin(dy), 0,
-                                                                        np.cos(dy)]])
-                r2 = np.array([[np.cos(-dx), -np.sin(-dx), 0], [np.sin(-dx),
-                                                                np.cos(-dx), 0], [0, 0, 1]])
-                view_direction = r1.dot(r2).dot(view_direction)
-        elif event == cv2.EVENT_LBUTTONUP:
-            down = False
-
-    cv2.namedWindow('test')
-    cv2.setMouseCallback('test', change_dir)
-
-    for i in range(10000):
-        print(i)
-        frame = renderer.render()
-        cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
-        q = cv2.waitKey(1)
-        if q == ord('w'):
-            px += 0.05
-        elif q == ord('s'):
-            px -= 0.05
-        elif q == ord('a'):
-            py += 0.05
-        elif q == ord('d'):
-            py -= 0.05
-        elif q == ord('q'):
-            break
-        camera_pose = np.array([px, py, 1.2])
-        renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
-
-    renderer.release()

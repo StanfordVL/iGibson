@@ -20,9 +20,7 @@ import time
 import collections
 
 
-# define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
-# arXiv preprint arXiv:1807.06757 (2018).
-# https://arxiv.org/pdf/1807.06757.pdf
+
 
 Episode = collections.namedtuple('Episode',
                                  ['env',
@@ -44,6 +42,11 @@ Episode = collections.namedtuple('Episode',
 
 
 class NavigateEnv(BaseEnv):
+    """
+    We define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
+    arXiv preprint arXiv:1807.06757 (2018). (https://arxiv.org/pdf/1807.06757.pdf)
+
+    """
     def __init__(
             self,
             config_file,
@@ -467,6 +470,12 @@ class NavigateEnv(BaseEnv):
         return
 
     def step(self, action):
+        """
+        apply robot's action and get state, reward, done and info, following openAI gym's convention
+
+        :param action: a list of control signals
+        :return: state: state, reward, done, info
+        """
         self.current_step += 1
         self.robots[0].apply_action(action)
         cache = self.before_simulation()
@@ -502,6 +511,10 @@ class NavigateEnv(BaseEnv):
         return len(collision_links_flatten) == 0
 
     def reset(self):
+        """
+        Reset the agent to a collision-free start point
+        """
+
         self.current_episode += 1
         self.reset_agent()
         state = self.get_state()

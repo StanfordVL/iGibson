@@ -17,7 +17,18 @@ class Simulator:
                  resolution=256,
                  fov=90,
                  device_idx=0):
+        """
+        Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
+        both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
 
+        :param gravity: gravity on z direction.
+        :param timestep: timestep of physical simulation
+        :param use_fisheye: use fisheye
+        :param mode: choose mode from gui or headless
+        :param resolution: resolution of camera (square)
+        :param fov: field of view of camera in degree
+        :param device_idx: GPU device index to run rendering on
+        """
         # physics simulator
         self.gravity = gravity
         self.timestep = timestep
@@ -34,19 +45,32 @@ class Simulator:
         self.load()
 
     def set_timestep(self, timestep):
+        """
+        :param timestep: set timestep after the initialization of Simulator
+        """
         self.timestep = timestep
         p.setTimeStep(self.timestep)
 
     def add_viewer(self):
+        """
+        Attach a debugging viewer to the renderer. This will make the step much slower so should be avoided when
+        training agents
+        """
         self.viewer = Viewer()
         self.viewer.renderer = self.renderer
 
     def reload(self):
+        """
+        Destroy the MeshRenderer and physics simulator and start again.
+        """
         self.renderer.release()
         p.disconnect(self.cid)
         self.load()
 
     def load(self):
+        """
+        Set up MeshRenderer and physics simulation client. Initialize the list of objects.
+        """
         self.renderer = MeshRenderer(width=self.resolution,
                                      height=self.resolution,
                                      fov=self.fov,
@@ -69,6 +93,16 @@ class Simulator:
         self.objects = []
 
     def import_scene(self, scene, texture_scale=1.0, load_texture=True, class_id=0):
+
+        """
+        Import a scene. A scene could be a synthetic one or a realistic Gibson Environment.
+
+        :param scene: Scene object
+        :param texture_scale: Option to scale down the texture for rendering
+        :param load_texture: If you don't need rgb output, texture loading could be skipped to make rendering faster
+        :param class_id: The class_id for background for rendering semantics.
+        """
+
         new_objects = scene.load()
         for item in new_objects:
             self.objects.append(item)
@@ -109,6 +143,10 @@ class Simulator:
         return new_objects
 
     def import_object(self, object, class_id=0):
+        """
+        :param object: Object to load
+        :param class_id: class_id to show for semantic segmentation mask
+        """
         new_object = object.load()
         self.objects.append(new_object)
         for shape in p.getVisualShapeData(new_object):
@@ -165,6 +203,14 @@ class Simulator:
         return new_object
 
     def import_robot(self, robot, class_id=0):
+        """
+        Import a robot into Simulator
+
+        :param robot: Robot
+        :param class_id: class_id to show for semantic segmentation mask
+        :return: id for robot in pybullet
+        """
+
         ids = robot.load()
         visual_objects = []
         link_ids = []
@@ -240,6 +286,13 @@ class Simulator:
         return ids
 
     def import_interactive_object(self, obj, class_id=0):
+        """
+        Import articulated objects into simulator
+
+        :param obj:
+        :param class_id: class_id to show for semantic segmentation mask
+        :return: pybulet id
+        """
         ids = obj.load()
         visual_objects = []
         link_ids = []
@@ -316,6 +369,10 @@ class Simulator:
         return ids
 
     def step(self):
+        """
+        Step the simulation and update positions in renderer
+        """
+
         p.stepSimulation()
         for instance in self.renderer.instances:
             if instance.dynamic:
@@ -325,6 +382,11 @@ class Simulator:
 
     @staticmethod
     def update_position(instance):
+        """
+        Update position for an object or a robot in renderer.
+
+        :param instance: Instance in the renderer
+        """
         if isinstance(instance, Instance):
             pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
             instance.set_position(pos)
@@ -347,26 +409,15 @@ class Simulator:
             instance.poses_trans = poses_trans
 
     def isconnected(self):
+        """
+        :return: pybullet is alive
+        """
         return p.getConnectionInfo(self.cid)['isConnected']
 
     def disconnect(self):
+        """
+        clean up the simulator
+        """
         if self.isconnected():
             p.disconnect(self.cid)
         self.renderer.release()
-
-
-if __name__ == '__main__':
-    s = Simulator()
-    scene = StadiumScene()
-    s.import_scene(scene)
-    obj = YCBObject('006_mustard_bottle')
-
-    for i in range(10):
-        s.import_object(obj)
-
-    obj = YCBObject('002_master_chef_can')
-    for i in range(10):
-        s.import_object(obj)
-
-    while s.isconnected():
-        s.step()

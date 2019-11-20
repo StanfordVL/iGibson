@@ -17,6 +17,12 @@ class BaseEnv(gym.Env):
                  model_id=None,
                  mode='headless',
                  device_idx=0):
+        """
+        :param config_file: config_file path
+        :param model_id: override model_id in config file
+        :param mode: headless or gui mode
+        :param device_idx: which GPU to run the simulation and rendering on
+        """
         self.config = parse_config(config_file)
         if model_id is not None:
             self.config['model_id'] = model_id
@@ -28,11 +34,19 @@ class BaseEnv(gym.Env):
         self.load()
 
     def reload(self, config_file):
+        """
+        Reload another config file, this allows one to change the envrionment on the fly
+
+        :param config_file: new config file path
+        """
         self.config = parse_config(config_file)
         self.simulator.reload()
         self.load()
 
     def load(self):
+        """
+        Load the scene and robot
+        """
         if self.config['scene'] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
@@ -72,10 +86,16 @@ class BaseEnv(gym.Env):
             self.simulator.import_robot(robot, class_id=1)
 
     def clean(self):
+        """
+        Clean up
+        """
         if self.simulator is not None:
             self.simulator.disconnect()
 
     def simulator_step(self):
+        """
+        Step the simulation, this is different from environment step where one can get observation and reward
+        """
         self.simulator.step()
 
     def step(self, action):
@@ -86,10 +106,3 @@ class BaseEnv(gym.Env):
 
     def set_mode(self, mode):
         self.simulator.mode = mode
-
-
-if __name__ == "__main__":
-    config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
-    env = BaseEnv(config_file=config_filename, mode='gui')
-    for i in range(100):
-        env.simulator_step()
