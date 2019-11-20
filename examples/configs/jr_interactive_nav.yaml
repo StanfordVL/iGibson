@@ -1,47 +1,97 @@
 # scene
 scene: stadium
 #scene: building
-model_id: Ohoopee
+#model_id: Ohoopee
 
 # robot
 robot: JR2_Kinova
 wheel_velocity: 0.025
-arm_velocity: 0.01
+arm_velocity: 0.005
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 fisheye: false
+door_angle: 90
 
 initial_pos: [0, -5, 0.0]
 initial_orn: [0.0, 0.0, 0.0]
 
 target_pos: [0, 5, 0.0]
-target_orn: [0.0, 0.0, 6.283185307179586]
+target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
 additional_states_dim: 3
+auxiliary_sensor_dim: 66
+
+normalize_observation: true
+observation_normalizer: {'sensor':[[-3.0, -3.0, 0.0],                                         # arm_x, arm_y, arm_z (world)
+                                   [3.0, 3.0, 1.3]],                                          # arm_x, arm_y, arm_z (world)
+                         'auxiliary_sensor': [[-3.0, -3.0, -0.001,                            # x, y, z
+                                               -0.2, -0.7, 0.0,                               # arm_x, arm_y_ arm_z (local)
+                                               -0.6, -0.12, -0.05,                            # vx, vy, vz
+                                               -3.141592653589793, -3.141592653589793,        # roll, pitch
+                                               -3.141592653589793, -6.0, -130.0, -1.0, -1.0,  # wheel 1
+                                               -3.141592653589793, -6.0, -130.0, -1.0, -1.0,  # wheel 2
+                                               -3.141592653589793, -1.0, -100.0, -1.0, -1.0,  # arm joint 1
+                                               -3.141592653589793, -1.2, -45.0, -1.0, -1.0,   # arm joint 2
+                                               -3.141592653589793, -1.2, -10.0, -1.0, -1.0,   # arm joint 3
+                                               -3.141592653589793, -1.5, -2.5, -1.0, -1.0,    # arm joint 4
+                                               -3.141592653589793, -1.3, -1.5, -1.0, -1.0,    # arm joint 5
+                                               -0.15, -0.15, -2.0,                            # v_roll, v_pitch, v_yaw
+                                               -3.141592653589793, -1.0, -1.0,                # yaw, cos(yaw), sin(yaw)
+                                               -3.141592653589793, -1.0, -1.0, -1.0,          # door_angle, cos(door_angle), sin(door_angle), has_door_handle_in_hand
+                                               -3.0, -3.0, -0.01,                             # target_pos
+                                               -3.0, -3.0, -0.03,                             # door_pos_local
+                                               -6.0, -6.0, -0.02,                             # target_pos_local
+                                               -1.0,                                          # has collision
+                                              ],
+                                              [3.0, 3.0, 0.001,                               # x, y, z
+                                               0.8, 0.0, 1.3,                                 # arm_x, arm_y_ arm_z
+                                               0.6, 0.12, 0.05,                               # vx, vy, vz
+                                               3.141592653589793, 3.141592653589793,          # roll, pitch
+                                               3.141592653589793, 6.0, 130.0, 1.0, 1.0,       # wheel 1
+                                               3.141592653589793, 6.0, 130.0, 1.0, 1.0,       # wheel 2
+                                               3.141592653589793, 1.0, 100.0, 1.0, 1.0,       # arm joint 1
+                                               3.141592653589793, 1.2, 10.0, 1.0, 1.0,        # arm joint 2
+                                               3.141592653589793, 1.2, 10.0, 1.0, 1.0,        # arm joint 3
+                                               3.141592653589793, 1.5, 2.5, 1.0, 1.0,         # arm joint 4
+                                               3.141592653589793, 1.3, 1.5, 1.0, 1.0,         # arm joint 5
+                                               0.15, 0.15, 2.0,                               # v_roll, v_pitch, v_yaw
+                                               3.141592653589793, 1.0, 1.0,                   # yaw, cos(yaw), sin(yaw)
+                                               3.141592653589793, 1.0, 1.0, 1.0,              # door_angle, cos(door_angle), sin(door_angle), has_door_handle_in_hand
+                                               3.0, 3.0, 0.01,                                # target_pos
+                                               3.0, 3.0, -0.01,                               # door_pos_local
+                                               6.0, 6.0, 0.02,                                # target_pos_local
+                                               1.0,                                           # has collision
+                                              ]],
+                         'rgb': [0.0, 1.0],
+                         'depth': [0.0, 5.0],
+                         'scan': [0.0, 5.0]
+}
 
 # reward
-success_reward: 10.0
+reward_type: dense
+success_reward: 50.0
 slack_reward: -0.01
-potential_reward_weight: 30.0
-#electricity_reward_weight: -0.02
-#stall_torque_reward_weight: -0.0001
-electricity_reward_weight: 0.0
+potential_reward_weight: 2.0
+electricity_reward_weight: -0.001
 stall_torque_reward_weight: 0.0
-collision_reward_weight: 0.0
+collision_reward_weight: -0.01
+collision_ignore_body_b_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
 
 # discount factor
 discount_factor: 0.99
 
 # termination condition
-dist_tol: 0.2
-max_step: 500
+dist_tol: 0.5
+max_step: 1000
 
 # sensor
-output: [sensor, rgb, depth]
+output: [sensor, auxiliary_sensor, depth]
 resolution: 64
-fov: 1.57
+fov: 150
+n_horizontal_rays: 128
+n_vertical_beams: 1
 
 # display
 use_filler: true
@@ -67,7 +117,7 @@ fast_lq_render: true
 
 # visual objects
 visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: true
+target_visual_object_visible_to_agent: false
 
 # debug
 debug: false

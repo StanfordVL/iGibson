@@ -21,13 +21,20 @@ class BaseRobot:
     Handles object loading
     """
 
-    def __init__(self, model_file, robot_name, scale=1):
+    def __init__(self, model_file, robot_name, scale=1, self_collision=False):
+        """
+        :param model_file: model urdf file name
+        :param robot_name: name of the robot
+        :param scale: scale, default to 1
+        :param self_collision: use self collision or not
+        """
         self.parts = None
         self.jdict = None
         self.ordered_joints = None
         self.robot_body = None
 
         self.robot_ids = None
+        self.robot_mass = None
         self.model_file = model_file
         self.robot_name = robot_name
         self.physics_model_dir = os.path.join(gibson2.assets_path, "models")
@@ -40,13 +47,23 @@ class BaseRobot:
             self.model_type = 'MJCF'
         self.config = None
         self.np_random = None
+        self.self_collision = self_collision
 
     def load(self):
+        """
+        Load the robot urdf model into pybullet
+        :return: body id in pybullet
+        """
         ids = self._load_model()
         self.eyes = self.parts["eyes"]
         return ids
 
-    def addToScene(self, bodies):
+    def parse_robot(self, bodies):
+        """
+        Parse the robot to get properties including joint information and mass
+        :param bodies: body ids in pybullet
+        :return: parts, joints, ordered_joints, robot_body, robot_mass
+        """
         assert len(bodies) == 1, 'robot body has length > 1'
 
         if self.parts is not None:
@@ -64,6 +81,8 @@ class BaseRobot:
         else:
             ordered_joints = []
 
+        robot_mass = 0.0
+
         part_name, robot_name = p.getBodyInfo(bodies[0])
         part_name = part_name.decode("utf8")
         parts[part_name] = BodyPart(part_name,
@@ -78,6 +97,7 @@ class BaseRobot:
             self.robot_body = parts[part_name]
 
         for j in range(p.getNumJoints(bodies[0])):
+            robot_mass += p.getDynamicsInfo(bodies[0], j)[0]
             p.setJointMotorControl2(bodies[0],
                                     j,
                                     p.POSITION_CONTROL,
@@ -118,19 +138,25 @@ class BaseRobot:
         if self.robot_body is None:
             raise Exception('robot body not initialized.')
 
-        return parts, joints, ordered_joints, self.robot_body
+        return parts, joints, ordered_joints, self.robot_body, robot_mass
 
     def _load_model(self):
+        """
+        Actual function to load urdf into pybullet
+        """
+        if self.self_collision:
+            flags = p.URDF_USE_SELF_COLLISION + p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT
+        else:
+            flags = 0
+
         if self.model_type == "MJCF":
             self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file),
-                                        flags=p.URDF_USE_SELF_COLLISION +
-                                        p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS)
+                                        flags=flags)
         if self.model_type == "URDF":
             self.robot_ids = (p.loadURDF(os.path.join(self.physics_model_dir, self.model_file),
-                                         globalScaling=self.scale), )
+                                         globalScaling=self.scale, flags=flags),)
 
-        self.parts, self.jdict, self.ordered_joints, self.robot_body = self.addToScene(
-            self.robot_ids)
+        self.parts, self.jdict, self.ordered_joints, self.robot_body, self.robot_mass = self.parse_robot(self.robot_ids)
         return self.robot_ids
 
     def robot_specific_reset(self):
@@ -331,7 +357,7 @@ class Joint:
         return x, vx, trq
 
     def set_state(self, x, vx):
-        """Set state of jointlower_limit
+        """Set state of joint
            x is defined in real world scale """
         if self.joint_type == p.JOINT_PRISMATIC:
             x /= self.scale
@@ -343,16 +369,13 @@ class Joint:
 
         # normalize position to [-1, 1]
         if self.lower_limit < self.upper_limit:
-            pos = 2 * (pos - 0.5 * (self.lower_limit + self.upper_limit)) / (self.upper_limit -
-                                                                             self.lower_limit)
+            mean = (self.lower_limit + self.upper_limit) / 2.0
+            magnitude = (self.upper_limit - self.lower_limit) / 2.0
+            pos = (pos - mean) / magnitude
 
         # (try to) normalize velocity to [-1, 1]
         if self.max_velocity > 0:
             vel /= self.max_velocity
-        elif self.joint_type == p.JOINT_REVOLUTE:
-            vel *= 0.1
-        else:
-            vel *= 0.5
         return pos, vel, trq
 
     def set_position(self, position):
