@@ -20,10 +20,21 @@
 import sphinx_rtd_theme
 from recommonmark.parser import CommonMarkParser
 import sys, os
+import gibson2
+
+
 
 project = 'GibsonEnvV2'
 copyright = 'Stanford University 2018-2020'
 author = 'Fei Xia, William B. Shen, Chengshu Li, Micael Tchapmi, Lyne Tchapmi, Noriaki Hirose, Kevin Chen, Junyoung Gwak Priya Kasimbeg, Alexander Toshev,  Amir R. Zamir, Roberto Martı́n-Martı́n, Li Fei-Fei, Silvio Savarese'
+
+github_doc_root = 'https://github.com/StanfordVL/GibsonEnvV2'
+
+# The short X.Y version
+version = gibson2.__version__
+# The full version, including alpha/beta/rc tags
+release = gibson2.__version__
+
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0, os.path.abspath('../../'))
 
@@ -69,3 +80,4 @@ master_doc = 'index'
 source_parsers = {
     '.md': CommonMarkParser,
 }
+

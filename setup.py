@@ -6,13 +6,30 @@ from distutils.command.build_py import build_py as _build_py
 import sys, os.path
 import re
 
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 from distutils.version import LooseVersion
 import subprocess
 import platform
+import codecs
 
 use_clang = False
+
+here = os.path.abspath(os.path.dirname(__file__))
+
+
+def read(*parts):
+    with codecs.open(os.path.join(here, *parts), 'r') as fp:
+        return fp.read()
+
+
+def find_version(*file_paths):
+    version_file = read(*file_paths)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
+                              version_file, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Unable to find version string.")
 
 
 class CMakeExtension(Extension):
@@ -84,7 +101,7 @@ class PostInstallCommand(install):
 
 setup(
     name='gibson2',
-    version='0.0.1',
+    version=find_version('gibson2', '__init__.py'),
     author='Stanford University',
     zip_safe=False,
     install_requires=[

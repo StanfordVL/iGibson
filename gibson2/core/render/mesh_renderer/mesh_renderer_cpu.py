@@ -19,7 +19,7 @@ import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
 import gibson2
 import os
-import tinyobjloader
+from gibson2.core.render.mesh_renderer import tinyobjloader
 
 
 class VisualObject(object):

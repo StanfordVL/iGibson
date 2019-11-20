@@ -1,6 +1,10 @@
 MeshRenderer
 ==============
 
+.. automodule:: gibson2.core.render
+.. automodule:: gibson2.core.render.mesh_renderer
+.. automodule:: gibson2.core.render.mesh_renderer.mesh_renderer_cpu
+
 MeshRenderer
 --------------
 .. autoclass:: gibson2.core.render.mesh_renderer.mesh_renderer_cpu.MeshRenderer
@@ -18,8 +22,6 @@ MeshRenderer
 	.. automethod:: render
 	.. automethod:: clean
 	.. automethod:: release
-
-
 
 
 VisualObject

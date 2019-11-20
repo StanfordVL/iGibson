@@ -1,5 +1,5 @@
 
-## Common Issues
+## Trouble Shooting
 
 ### Unable to initialize EGL
 

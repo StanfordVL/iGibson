@@ -6,7 +6,7 @@ Interactive Gibson is a fast simulator and a dataset for indoor navigation and m
 ## Paper
 If you use Interactive Gibson Simulator or Interactive Gibson assets, please consider citing the following paper:
 
-````
+````text
 @techreport{xiagibson2019,
            title = {Gibson Env V2: Embodied Simulation Environments for Interactive Navigation},
            author = {Xia, Fei and Li, Chengshu and Chen, Kevin and Shen, William B and Mart{\'i}n-Mart{\'i}n, Roberto and Hirose, Noriaki and Zamir, Amir R and Fei-Fei, Li and Savarese, Silvio},
