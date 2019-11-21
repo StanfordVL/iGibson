@@ -113,6 +113,12 @@ class NavigateEnv(BaseEnv):
         self.action_dim = self.robots[0].action_dim
         
         observation_space = OrderedDict()
+        if 'concatenate' in self.output:
+            self.concatenate_space = gym.spaces.Box(low=-np.inf,
+                                               high=np.inf,
+                                               shape=(2 + 5 * self.num_pedestrians,),
+                                               dtype=np.float32)
+            observation_space['concatentate'] = self.concatenate_space            
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf,
                                                high=np.inf,
@@ -345,6 +351,9 @@ class NavigateEnv(BaseEnv):
                 end_point = np.repeat(path_robot_relative_pos[path.shape[0]-1].reshape(1,2), (self.config['waypoints']-curr_points_num), axis=0)
                 out = np.vstack((curr_waypoints, end_point))
             state['waypoints'] = out.flatten()
+
+        if 'concatenate' in self.output:
+            state['concatenate'] = np.concatenate(state['sensor'], state['pedestrian_position'], state['pedestrian_velocity'], state['pedestrian_ttc'], axis=None)
                         
         return state
     
@@ -947,17 +956,34 @@ class NavigatePedestriansEnv(NavigateEnv):
             print("RESET")
 
             # floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
-            floor, pos = self.scene.get_random_point(min_xy=-3, max_xy=3)
+            #floor, pos = self.scene.get_random_point(min_xy=-5.5, max_xy=5.5)
+            test = np.random.random()
+            if test > 0:
+                sign = 1
+            else:
+                sign = -1
+            pos = [0]*3
+            pos[0] = sign * np.random.uniform(5.0, 5.8)
+            pos[1] = np.random.uniform(-2.5, 2.5)
+            pos[2] = 0.0
             print('AGENT NEW POSITION: {}'.format(pos))
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_orientation(
                 orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-            self.initial_pos = pos
+            self.initial_pos = np.array(pos)
             
             max_trials = 1000
             dist = 0.0
             for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
-                _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
+                current_target_position = [0]*3                
+                current_target_position[0] = -sign * np.random.uniform(5.0, 5.8)
+                current_target_position[1] = np.random.uniform(-2.5, 2.5)
+                current_target_position[2] = 0.0
+
+                self.current_target_position = np.array(current_target_position)
+                
+#                _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
+                
                 dist = l2_distance(self.initial_pos, self.current_target_position)
                 if dist > 1.0:
                     reset_complete = True
@@ -999,20 +1025,18 @@ class NavigatePedestriansEnv(NavigateEnv):
                 else:
                     sign = 1
                 if mode == 'initial':
-                    pedestrian_x = sign * 6.0 * 0.3 * (1.0 + np.random.uniform(-0.2, 0.2))
-                    pedestrian_y = (np.random.random() - 0.5) * 6.0 + 3.0
+                    pedestrian_x = sign * np.random.uniform(5.0, 5.8)
+                    pedestrian_y = np.random.uniform(-2.5, 2.5)
                 elif mode == 'target':
                     try:
-                        print("PX!!!!!", self.humans[i].px)
                         if self.humans[i].px > 0:
-                            sign = 1
-                        else:
                             sign = -1
+                        else:
+                            sign = 1
                     except:
                         sign = 1
-                    pedestrian_x = -sign * 6.0 * 0.3 * (1.0 + np.random.uniform(-0.2, 0.2))
-                    print("GX!!!!!!", pedestrian_x)
-                    pedestrian_y = (np.random.random() - 0.5) * 6.0 + 3.0
+                    pedestrian_x = sign * np.random.uniform(5.0, 5.8)
+                    pedestrian_y = np.random.uniform(-2.5, 2.5)
                 pedestrian_pose = (pedestrian_x, pedestrian_y, self.pedestrian_z)
                 # print('x: {} y: {}'.format(pedestrian_x, pedestrian_y))
                 
