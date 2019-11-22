@@ -17,6 +17,8 @@ It is a good idea to run `ldconfig -p | grep EGL` and you should be able to see 
 	libEGL.so (libc6) => /usr/lib/i386-linux-gnu/libEGL.so
 ```
 
+Make sure EGL is not linked to mesa, because in order for gibson to work, linking to Nvidia's EGL is required. For example, this will cause problems: `/usr/lib/x86_64-linux-gnu/libEGL.so -> mesa-egl/libEGL.so`
+
 If the original installation doesn't work, try the following:
 
 1. Is nvidia driver properly installed? You can check by running nvidia-smi

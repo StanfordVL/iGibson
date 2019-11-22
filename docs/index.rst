@@ -19,8 +19,10 @@ Welcome to GibsonEnvV2's documentation!
    :maxdepth: 1
    :caption: Example Documentation
 
-   examples.md
-
+   examples.rst
+   examples_simulator.rst
+   examples_tasks.rst
+   
 .. toctree::
    :maxdepth: 1
    :caption: APIs
