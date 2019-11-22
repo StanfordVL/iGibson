@@ -875,6 +875,64 @@ class NavigatePedestriansEnv(NavigateEnv):
             state = self.reset()
         return state, reward, done, info
 
+    def get_reward(self, collision_links=[], action=None, info={}):        
+        reward = self.slack_reward  # |slack_reward| = 0.01 per step
+
+        new_normalized_potential = self.get_potential() / self.initial_potential
+
+        potential_reward = self.normalized_potential - new_normalized_potential
+        reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+        self.normalized_potential = new_normalized_potential
+
+        # electricity_reward = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
+        electricity_reward = 0.0
+        reward += electricity_reward * self.electricity_reward_weight  # |electricity_reward| ~= 0.05 per step
+
+        # stall_torque_reward = np.square(self.robots[0].joint_torque).mean()
+        stall_torque_reward = 0.0
+        reward += stall_torque_reward * self.stall_torque_reward_weight  # |stall_torque_reward| ~= 0.05 per step
+
+        # # get minimum distance between the robot and a pedestrian
+        # ped_positions = get_ped_positions(self)
+        # robot_position = self.robots[0].get_position()
+
+        # # TODO: human and robot radius hard coded for now (0.3 meters each)
+        # self.collision = False
+        # ped_robot_distances = [[np.linalg.norm(ped_pos[i][0] - robot_pos[0], ped_pos[i][1] - robot_pos[1]) - 0.3 - 0.3] for i in range(self.num_pedestrians)]
+        # closest_dist = np.min(ped_robot_distances)
+
+        # # velocity projection to elongate the personal space in the direction of motion
+        # cutting_off = False
+
+        # ped_robot_lookahead_distances = [(self.humans[i].vx, self.humans[i].vy) for i in range(self.um_pedestrians)]        
+        
+        # for i, human in enumerate(self.humans):
+        #     px = human.px - self.robot.px
+        #     py = human.py - self.robot.py
+
+        #     ex = px + human.vx * self.lookahead_interval
+        #     ey = py + human.vy * self.lookahead_interval
+            
+        #     # get the nearest distance to segment connecting the current position and future position
+        #     velocity_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - self.robot.radius
+
+        #     if velocity_dist < velocity_dmin:
+        #         velocity_dmin = velocity_dist
+        
+        collision_reward = float(len(collision_links) > 0)
+        if collision_reward > 0:
+            self.collision = True
+            info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
+            reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
+        else:
+            self.collision = False
+            
+        # goal reached
+        if l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
+            reward += self.success_reward  # |success_reward| = 10.0 per step
+
+        return reward, info
+
     def update_pedestrian_goal_markers(self, pedestrian_goals):
         if len(self.pedestrian_goal_objects) == 0:
             for ped_goal in pedestrian_goals:
@@ -1013,10 +1071,8 @@ class NavigatePedestriansEnv(NavigateEnv):
         no_collision = len(collision_links) == 0
         #return no_collision
         return True
-   
 
     def generate_pedestrian_poses_v2(self, mode):
-       
         # Euclidean distance on xy plane.
         def euclidean_xy(source, target):
             return np.sqrt((source[0] - target[0]) ** 2 + (source[1] - target[1]) ** 2)
