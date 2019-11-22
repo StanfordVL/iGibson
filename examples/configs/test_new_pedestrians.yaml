@@ -8,7 +8,7 @@ scene: stadium
 
 num_obstacles: 0
 num_pedestrians: 7
-pedestrians_can_see_robot: false
+pedestrians_can_see_robot: true
 
 # robot
 robot: Turtlebot
@@ -44,9 +44,10 @@ max_step: 300
 # output: [sensor, rgb, depth]
 # output: [sensor, scan, pedestrian]
 #output: [sensor, pedestrian]
-# output: [sensor, scan]
-#output: [sensor, pedestrian_position, pedestrian_velocity, ttc]
-output: [sensor, pedestrian_position, pedestrian_velocity, ttc, concatenate]
+#output: [sensor, scan]
+#output: [sensor, pedestrian_position, pedestrian_velocity]
+#output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
+output: [concatenate]
 scan_beams: 512 #128 
 scan_vertical_beams: 1 #9 
 resolution: 64
