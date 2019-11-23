@@ -20,6 +20,10 @@
 #include <pybind11/stl.h>
 #include <cstdint>
 
+#include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
+
+#define MAX_NUM_RESOURCES 10
 
 namespace py = pybind11;
 
@@ -44,9 +48,9 @@ struct EGLInternalData2 {
 };
 
 
-class CppMeshRenderer{
+class MeshRendererContext{
 public:
-    CppMeshRenderer(int w, int h, int d):m_windowHeight(h),m_windowWidth(w),m_renderDevice(d) {};
+    MeshRendererContext(int w, int h, int d):m_windowHeight(h),m_windowWidth(w),m_renderDevice(d) {};
 
     int m_windowWidth;
     int m_windowHeight;
@@ -61,7 +65,7 @@ public:
 
 
     EGLInternalData2* m_data = NULL;
-
+    cudaGraphicsResource* cuda_res[MAX_NUM_RESOURCES];
 
     int init() {
 
@@ -102,6 +106,9 @@ public:
         EGL_NONE,
     };
 
+    for (int i = 0; i < MAX_NUM_RESOURCES; i++)
+        cuda_res[i] = NULL;
+
     // Load EGL functions
 #ifdef USE_GLAD
     int egl_version = gladLoaderLoadEGL(NULL);
@@ -122,8 +129,6 @@ public:
         printf("eglQueryDevicesEXT Failed.\n");
         m_data->egl_display = EGL_NO_DISPLAY;
     }
-
-    printf("number of devices found %d\n", num_devices);
 
     m_data->m_renderDevice = m_renderDevice;
     // Query EGL Screens
@@ -234,7 +239,19 @@ public:
     void release(){
         eglTerminate(m_data->egl_display);
         delete m_data;
+        for (int i = 0; i < MAX_NUM_RESOURCES; i++)
+          {
+            if (cuda_res[i])
+            {
+              cudaError_t err = cudaGraphicsUnregisterResource(cuda_res[i]);
+              if( err != cudaSuccess )
+              {
+                std::cout << "cudaGraphicsUnregisterResource failed: " << err << std::endl;
+              }
+            }
+          }
     }
+
 
     void draw(py::array_t<float> x) {
         //printf("draw\n");
@@ -270,14 +287,54 @@ public:
 
         std::fill(x.mutable_data(), x.mutable_data() + x.size(), 42);
     }
+
+    void map_tensor(GLuint tid, int width, int height, std::size_t data)
+    {
+       cudaError_t err;
+       if (cuda_res[tid] == NULL)
+       {
+         err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
+         if( err != cudaSuccess )
+         {
+           std::cout << "cudaGraphicsGLRegisterImage failed: " << err << std::endl;
+         }
+       }
+
+       err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
+       if( err != cudaSuccess )
+       {
+         std::cout << "cudaGraphicsMapResources failed: " << err << std::endl;
+       }
+
+       cudaArray* array;
+       err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
+       if( err != cudaSuccess )
+       {
+         std::cout << "cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
+       }
+
+       // copy data
+       err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(float), array, 0, 0, width*4*sizeof(float), height, cudaMemcpyDeviceToDevice);
+       if( err != cudaSuccess )
+       {
+         std::cout << "cudaMemcpy2DFromArray failed: " << err << std::endl;
+       }
+
+       err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
+       if( err != cudaSuccess )
+       {
+         std::cout << "cudaGraphicsUnmapResources failed: " << err << std::endl;
+       }
+    }
 };
 
 
-PYBIND11_MODULE(CppMeshRenderer, m) {
-    py::class_<CppMeshRenderer>(m, "CppMeshRenderer")
+PYBIND11_MODULE(MeshRendererContext, m) {
+    py::class_<MeshRendererContext>(m, "MeshRendererContext")
         .def(py::init<int, int, int>())
-        .def("init", &CppMeshRenderer::init)
-        .def("release", &CppMeshRenderer::release);
+        .def("init", &MeshRendererContext::init)
+        .def("release", &MeshRendererContext::release)
+        .def("map_tensor", &MeshRendererContext::map_tensor);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
