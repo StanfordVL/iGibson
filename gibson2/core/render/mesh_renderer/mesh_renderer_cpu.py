@@ -12,7 +12,7 @@ import numpy as np
 from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-from gibson2.core.render.mesh_renderer import CppMeshRenderer
+from gibson2.core.render.mesh_renderer import MeshRendererContext
 from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
 from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTexture
 import gibson2.core.render.mesh_renderer as mesh_renderer
@@ -325,10 +325,13 @@ class MeshRenderer:
         # self.context = glcontext.Context()
         # self.context.create_opengl_context((self.width, self.height))
         available_devices = get_available_devices()
-        assert (device_idx < len(available_devices))
-        device = available_devices[device_idx]
-
-        self.r = CppMeshRenderer.CppMeshRenderer(width, height, device)
+        if device_idx < len(available_devices):
+            device = available_devices[device_idx]
+            print("using device {}".format(device))
+        else:
+            print("device index is larger than number of devices, falling back to use 0")
+            device = 0
+        self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
         self.glstring = GL.glGetString(GL.GL_VERSION)
