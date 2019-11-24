@@ -4,7 +4,7 @@ Examples of simulator
 Create a simple simulated environment
 ---------------------------------------
 
-Here we show how to craete a simple simulated environment with one mesh and one robot. Use the config file in `gibsonv2/examples/configs/turtlebot_p2p_nav.yaml`.
+Here we show how to craete a simple simulated environment with one mesh and one robot. Use the config file in `gibsonv2/examples/configs/turtlebot_p2p_nav.yaml`. This example can be found at `examples/demo/simulator_example.py`. 
 
 .. code-block:: python
 
@@ -19,7 +19,7 @@ Here we show how to craete a simple simulated environment with one mesh and one 
 
     config = parse_config('turtlebot_p2p_nav.yaml')
 
-    s = Simulator(mode='headless')
+    s = Simulator(mode='gui', resolution=512)
     scene = BuildingScene('Ohopee')
     s.import_scene(scene)
     turtlebot = Turtlebot(config)
@@ -29,7 +29,22 @@ Here we show how to craete a simple simulated environment with one mesh and one 
 
     s.disconnect()
 
+Adding a camera to this example:
 
+.. code-block:: python
+
+    for i in range(100):
+        turtlebot.apply_action([0.1,0.1])
+        s.step()
+        rgb = s.renderer.render_robot_cameras(modes=('rgb'))
+
+With full physical simulation and rendering at 512x512, it runs at about 180 fps (don't forget to switch to headless mode).
+
+If we switch to render to pytorch tensor like below, it can run full physical simulation and rendering at 512x512 at 460 fps.
+
+.. code-block:: python
+
+    s = Simulator(mode='headless', resolution=512, render_to_tensor=False)
 
 Simulate a robot and many objects
 ---------------------------------------

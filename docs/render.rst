@@ -29,7 +29,7 @@ MeshRendererG2G
 .. autoclass:: gibson2.core.render.mesh_renderer.mesh_renderer_tensor.MeshRendererG2G
 
 	.. automethod:: __init__
-	.. automethod:: render_to_tensor
+	.. automethod:: render
 
 
 VisualObject
