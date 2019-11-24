@@ -1,14 +1,50 @@
 
-# Walls configuration
+############ ROOM LAYOUT #################
+# Walls configuration.
 walls:
   walls_pos: [[0, 5.25, 0.501], [0, -5.25, 0.501], [5.0, 0, 0.501], [-5.0, 0, 0.501]]
   walls_dim: [[5, 0.25, 1.5], [5.0, 0.25, 1.5], [0.25, 5.0, 1.5], [0.25, 5.0, 1.5]]
+
+# Specify different parts of the room.
+components:
+  entrance_1:
+    center_x: 0.0
+    center_y: 4.0
+  entrance_2:
+    center_x: 4.0
+    center_y: 0.0
+  entrance_3:
+    center_x: 0.0
+    center_y: -4.0
+  entrance_4:
+    center_x: -4.0
+    center_y: 0.0
+
+# TODO: specify obstacles.
+
+############ MOVEMENTS ##############
+# Movements configuration
+movements:
+    humans:
+        initial_positions: ['entrance_1', 'entrance_1', 'entrance_3', 'entrance_1']
+        target_positions: ['entrance_3', 'entrance_3', 'entrance_1', 'entrance_3']
+        x_range_radius: [0.5, 0.5, 0.5, 0.5]
+        y_range_radius: [0.5, 0.5, 0.5, 0.5]
+        flips: [True, True, True, True]
+        wait_steps: [0, 0, 0, 0]
+    agent:
+        initial_positions: 'entrance_2'
+        target_positions: 'entrance_4'
+        x_range_radius: 1.0
+        y_range_radius: 1.0
+        
+############# PEDESTRIAN CONFIGURATION ############
 
 # Pedestrian configuration
 humans:
   visible: true
   policy: orca
-  radius: 0.3
+  radius: 0.03
   v_pref: 1.0
   position_noise: 0.0
   velocity_noise: 0.0
