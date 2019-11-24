@@ -1,9 +1,8 @@
 Examples of renderer
-=============
+=====================
 
 Use the mesh renderer
 ---------------------
-
 
 You can use the mesh renderer to render a Gibson mesh within lines of code:
 
@@ -97,3 +96,52 @@ The code can be found in `examples/demo/mesh_renderer_example.py`.
             renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
 
         renderer.release()
+
+Sample rendering results with 'Ribera' scene would look like below:
+
+.. image:: images/renderer_example.png
+    :width: 600
+
+
+Use the mesh renderer to render to tensor
+--------------------------------------------
+
+You can use gibson's mesh renderer to render to a pytorch tensor, and it is extremely fast. Pytorch installation is required (otherwise, gibson simulator is not dependent on pytorch.)
+
+The code can be found in `examples/demo/mesh_renderer_example.py`.
+
+.. code-block:: python
+
+    import cv2
+    import sys
+    import numpy as np
+    from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
+    from gibson2.core.render.profiler import Profiler
+    import matplotlib.pyplot as plt
+    import torch
+
+    if __name__ == '__main__':
+        model_path = sys.argv[1]
+        renderer = MeshRendererG2G(width=512, height=512, device_idx=0)
+        renderer.load_object(model_path)
+        renderer.add_instance(0)
+
+        print(renderer.visual_objects, renderer.instances)
+        print(renderer.materials_mapping, renderer.mesh_materials)
+        camera_pose = np.array([0, 0, 1.2])
+        view_direction = np.array([1, 0, 0])
+        renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
+        renderer.set_fov(90)
+        for i in range(3000):
+            with Profiler('Render'):
+                frame = renderer.render_to_tensor(modes=('rgb', 'normal'))
+
+        print(frame)
+        img_np = frame[0].flip(0).data.cpu().numpy().reshape(renderer.height, renderer.width, 4)
+        normal_np = frame[1].flip(0).data.cpu().numpy().reshape(renderer.height, renderer.width, 4)
+        plt.imshow(np.concatenate([img_np, normal_np], axis=1))
+        plt.show()
+
+        renderer.release()
+
+On `Ribera` scene, rendering 'rgb' and 'normal' at 512x512 on a GTX 1080ti, a framerate of 1300+ fps can be achieved.

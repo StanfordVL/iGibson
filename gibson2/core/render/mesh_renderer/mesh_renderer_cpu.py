@@ -20,7 +20,7 @@ import pybullet as p
 import gibson2
 import os
 from gibson2.core.render.mesh_renderer import tinyobjloader
-
+import torch
 
 class VisualObject(object):
     """
@@ -331,6 +331,9 @@ class MeshRenderer:
         else:
             print("device index is larger than number of devices, falling back to use 0")
             device = 0
+
+        self.device_idx = device_idx
+        self.device_minor = device
         self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
@@ -710,7 +713,6 @@ class MeshRenderer:
         :return: a list of numpy arrays depending corresponding to `modes`
         """
         results = []
-
         if 'rgb' in modes:
             GL.glReadBuffer(GL.GL_COLOR_ATTACHMENT0)
             frame = GL.glReadPixels(0, 0, self.width, self.height, GL.GL_RGBA, GL.GL_FLOAT)

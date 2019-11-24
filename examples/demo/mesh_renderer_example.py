@@ -1,7 +1,8 @@
 import cv2
 import sys
 import numpy as np
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import VisualObject, InstanceGroup, MeshRenderer
+from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.core.render.profiler import Profiler
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
@@ -44,7 +45,8 @@ if __name__ == '__main__':
     cv2.setMouseCallback('test', change_dir)
 
     while True:
-        frame = renderer.render(modes=('rgb', 'normal', '3d'))
+        with Profiler('Render'):
+            frame = renderer.render(modes=('rgb', 'normal', '3d'))
         cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
         q = cv2.waitKey(1)
         if q == ord('w'):
