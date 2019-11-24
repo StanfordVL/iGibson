@@ -1,5 +1,6 @@
 from gibson2.core.physics.scene import StadiumScene
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat, xyz2mat
+from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject, RBOObject, Pedestrian, ShapeNetObject, BoxShape
 from gibson2.core.render.viewer import Viewer
 import pybullet as p
@@ -16,7 +17,8 @@ class Simulator:
                  mode='gui',
                  resolution=256,
                  fov=90,
-                 device_idx=0):
+                 device_idx=0,
+                 render_to_tensor=False):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -28,6 +30,7 @@ class Simulator:
         :param resolution: resolution of camera (square)
         :param fov: field of view of camera in degree
         :param device_idx: GPU device index to run rendering on
+        :param render_to_tensor: Render to GPU tensors
         """
         # physics simulator
         self.gravity = gravity
@@ -38,10 +41,7 @@ class Simulator:
         self.fov = fov
         self.device_idx = device_idx
         self.use_fisheye = use_fisheye
-
-        if self.mode == 'gui':
-            self.viewer = Viewer()
-
+        self.render_to_tensor = render_to_tensor
         self.load()
 
     def set_timestep(self, timestep):
@@ -72,7 +72,14 @@ class Simulator:
         """
         Set up MeshRenderer and physics simulation client. Initialize the list of objects.
         """
-        self.renderer = MeshRenderer(width=self.resolution,
+        if self.render_to_tensor:
+            self.renderer = MeshRendererG2G(width=self.resolution,
+                                         height=self.resolution,
+                                         fov=self.fov,
+                                         device_idx=self.device_idx,
+                                         use_fisheye=self.use_fisheye)
+        else:
+            self.renderer = MeshRenderer(width=self.resolution,
                                      height=self.resolution,
                                      fov=self.fov,
                                      device_idx=self.device_idx,
@@ -85,8 +92,8 @@ class Simulator:
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
 
-        if self.mode == 'gui':
-            self.viewer.renderer = self.renderer
+        if self.mode == 'gui' and not self.render_to_tensor:
+            self.add_viewer()
 
         self.visual_objects = {}
         self.robots = []
