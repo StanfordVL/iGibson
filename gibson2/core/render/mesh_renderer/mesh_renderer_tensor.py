@@ -42,7 +42,7 @@ class MeshRendererG2G(MeshRenderer):
                 results.append(self.pc_tensor.clone())
 
         return results
-    def render_to_tensor(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
+    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
         """
         A function to render all the instances in the renderer and read the output from framebuffer into pytorch tensor.
 
