@@ -1,8 +1,15 @@
 import subprocess
 import os
 
-
 def get_available_devices():
+    """
+    Find available devices to run EGL on, it will return the minor numbers,
+    The minor number for the device is such that the Nvidia device node
+    file for each GPU will have the form /dev/nvidia[minor number]. Avail-
+    able only on Linux platform.
+
+     :return: Minor number
+    """
     executable_path = os.path.join(os.path.dirname(__file__), 'build')
     try:
         num_devices = int(subprocess.check_output(["{}/query_devices".format(executable_path)]))
@@ -27,6 +34,18 @@ def get_available_devices():
     return available_devices
 
 def get_cuda_device(minor_idx):
+    """
+
+    Get the device index to use in pytorch
+
+    The minor number for the device is such that the Nvidia device node
+    file for each GPU will have the form /dev/nvidia[minor number]. Avail-
+    able only on Linux platform.
+
+    :param minor_idx: Minor index for a GPU
+    :return: index to use in torch.cuda.device()
+    """
+
     executable_path = os.path.join(os.path.dirname(__file__), 'build')
     try:
         num_devices = int(subprocess.check_output(["{}/query_devices".format(executable_path)]))

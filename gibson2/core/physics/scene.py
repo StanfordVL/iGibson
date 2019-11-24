@@ -16,6 +16,15 @@ class Scene:
     def load(self):
         raise (NotImplementedError())
 
+class EmptyScene(Scene):
+    """
+    A empty scene for debugging
+    """
+    def load(self):
+        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+        self.ground_plane_mjcf = p.loadMJCF(planeName)
+        return [item for item in self.ground_plane_mjcf]
+
 class StadiumScene(Scene):
     """
     A simple stadium scene for debugging
@@ -44,7 +53,6 @@ class StadiumScene(Scene):
             np.random.uniform(-5, 5),
             np.random.uniform(0.4, 0.8) if random_height else 0.0
         ])
-
 
 class BuildingScene(Scene):
     """

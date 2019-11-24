@@ -314,6 +314,45 @@ public:
        }
 
        // copy data
+       err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(char), array, 0, 0, width*4*sizeof(char), height, cudaMemcpyDeviceToDevice);
+       if( err != cudaSuccess )
+       {
+         std::cout << "cudaMemcpy2DFromArray failed: " << err << std::endl;
+       }
+
+       err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
+       if( err != cudaSuccess )
+       {
+         std::cout << "cudaGraphicsUnmapResources failed: " << err << std::endl;
+       }
+    }
+
+    void map_tensor_float(GLuint tid, int width, int height, std::size_t data)
+    {
+       cudaError_t err;
+       if (cuda_res[tid] == NULL)
+       {
+         err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
+         if( err != cudaSuccess )
+         {
+           std::cout << "cudaGraphicsGLRegisterImage failed: " << err << std::endl;
+         }
+       }
+
+       err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
+       if( err != cudaSuccess )
+       {
+         std::cout << "cudaGraphicsMapResources failed: " << err << std::endl;
+       }
+
+       cudaArray* array;
+       err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
+       if( err != cudaSuccess )
+       {
+         std::cout << "cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
+       }
+
+       // copy data
        err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(float), array, 0, 0, width*4*sizeof(float), height, cudaMemcpyDeviceToDevice);
        if( err != cudaSuccess )
        {
@@ -334,7 +373,9 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         .def(py::init<int, int, int>())
         .def("init", &MeshRendererContext::init)
         .def("release", &MeshRendererContext::release)
-        .def("map_tensor", &MeshRendererContext::map_tensor);
+        .def("map_tensor", &MeshRendererContext::map_tensor)
+        .def("map_tensor_float", &MeshRendererContext::map_tensor_float);
+
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

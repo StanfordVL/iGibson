@@ -9,7 +9,7 @@ class YCBObject(object):
         self.filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
                                      'textured_simple.obj')
         self.scale = scale
-
+        self.body_id = None
     def load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH,
                                               fileName=self.filename,
@@ -18,6 +18,8 @@ class YCBObject(object):
                                     baseMass=0.1,
                                     baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=-1)
+
+        self.body_id = body_id
         return body_id
 
 
@@ -42,6 +44,7 @@ class ShapeNetObject(object):
             'position': pose[0],
             'orientation_quat': pose[1],
         }
+        self.body_id = None
 
     def load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH,
@@ -52,6 +55,7 @@ class ShapeNetObject(object):
                                     baseMass=self._default_mass,
                                     baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=-1)
+        self.body_id = body_id
         return body_id
 
 
@@ -116,6 +120,7 @@ class VisualMarker(object):
         self.half_extents = half_extents
         self.length = length
         self.initial_offset = initial_offset
+        self.body_id = None
 
     def load(self):
         if self.visual_shape == p.GEOM_BOX:
@@ -150,10 +155,10 @@ class BoxShape(object):
     def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3]):
         self.basePos = pos
         self.dimension = dim
+        self.body_id = None
 
     def load(self):
         mass = 1000
-        # basePosition = [1,2,2]
         baseOrientation = [0, 0, 0, 1]
 
         colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
@@ -161,10 +166,9 @@ class BoxShape(object):
 
         self.body_id = p.createMultiBody(baseMass=mass,
                                          baseCollisionShapeIndex=colBoxId,
-                                         baseVisualShapeIndex=visualShapeId,
-                                         basePosition=self.basePos,
-                                         baseOrientation=baseOrientation)
+                                         baseVisualShapeIndex=visualShapeId)
 
+        p.resetBasePositionAndOrientation(self.body_id, self.basePos, baseOrientation)
         return self.body_id
 
     def set_position(self, pos):
@@ -179,6 +183,7 @@ class InteractiveObj(object):
     def __init__(self, filename, scale=1):
         self.filename = filename
         self.scale = scale
+        self.body_id = None
 
     def load(self):
         self.body_id = p.loadURDF(self.filename, globalScaling=self.scale)
