@@ -136,6 +136,31 @@ class WalkerBase(BaseRobot):
         elif self.control == 'position':
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_position(action[n])
+        elif self.control == 'differential':
+            assert len(action) == 2, "Differential drive must have only two joints"
+            # hard code Turtlebot parameters for now
+            wheel_track = 0.3   # meters
+            half_track = wheel_track / 2.0
+            wheel_radius = 0.01 # meters
+            linear_velocity = action[0]  # m/s
+            angular_velocity = action[1] # rad/s
+
+            if linear_velocity == 0:
+                # turn in place
+                right = angular_velocity * half_track / wheel_radius
+                left = -right
+            elif angular_velocity == 0:
+                # pure forward/backward motion
+                left = right = linear_velocity / wheel_radius / (2.0 * np.pi)
+            else:
+                # Rotation about a point in space
+                left = linear_velocity - angular_velocity * half_track  / wheel_radius / (2.0 * np.pi)
+                right = linear_velocity + angular_velocity * half_track  / wheel_radius / (2.0 * np.pi)
+            for n, j in enumerate(self.ordered_joints):
+                if n == 0:
+                    j.set_motor_velocity(left)
+                else:
+                    j.set_motor_velocity(right)
         elif type(self.control) is list or type(
                 self.control) is tuple:  # if control is a tuple, set different control
             # type for each joint
@@ -521,6 +546,49 @@ class Turtlebot(WalkerBase):
             (): 4  # stay still
         }
 
+class TurtlebotDifferentialDrive(WalkerBase):
+    mjcf_scaling = 1
+    model_type = "URDF"
+    default_scale = 1
+
+    def __init__(self, config):
+        self.config = config
+        self.max_linear_velocity = config.get("max_linear_velocity", 1.0)
+        self.max_angular_velocity = config.get("max_angular_velocity", 3.0)        
+        WalkerBase.__init__(self,
+                            "turtlebot/turtlebot.urdf",
+                            "base_link",
+                            action_dim=2,
+                            sensor_dim=16,
+                            power=2.5,
+                            scale=config.get("robot_scale", self.default_scale),
+                            resolution=config.get("resolution", 64),
+                            is_discrete=config.get("is_discrete", False),
+                            control="differential")
+
+    def set_up_continuous_action_space(self):
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
+        self.action_high = np.array([self.max_linear_velocity, self.max_angular_velocity])
+        self.action_low = -self.action_high
+
+    def set_up_discrete_action_space(self):
+        self.action_list = [[self.velocity, self.velocity], [-self.velocity, -self.velocity],
+                            [self.velocity * 0.5, -self.velocity * 0.5],
+                            [-self.velocity * 0.5, self.velocity * 0.5], [0, 0]]
+        self.action_space = gym.spaces.Discrete(len(self.action_list))
+        self.setup_keys_to_action()
+
+    def setup_keys_to_action(self):
+        self.keys_to_action = {
+            (ord('w'),): 0,  # forward
+            (ord('s'),): 1,  # backward
+            (ord('d'),): 2,  # turn right
+            (ord('a'),): 3,  # turn left
+            (): 4  # stay still
+        }
 
 class JR2(WalkerBase):
     mjcf_scaling = 1

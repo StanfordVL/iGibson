@@ -1,4 +1,4 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
+from gibson2.core.physics.robot_locomotors import Turtlebot, TurtlebotDifferentialDrive, Husky, Ant, Humanoid, JR2, JR2_Kinova
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import BuildingScene, StadiumScene
 import gibson2

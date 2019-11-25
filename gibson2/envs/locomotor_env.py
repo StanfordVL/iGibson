@@ -1868,13 +1868,11 @@ if __name__ == '__main__':
             # debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
             # action[2:] = np.array(debug_param_values)
 
-            state, reward, done, _ = nav_env.step([np.random.uniform(-1, 1), np.random.uniform(-1, 1)])
+            #state, reward, done, _ = nav_env.step([np.random.uniform(-1, 1), np.random.uniform(-1, 1)])
+            state, reward, done, _ = nav_env.step([1.0, 1.0])            
             # print(reward)
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
                 break
 
     nav_env.clean()
-
-
-
