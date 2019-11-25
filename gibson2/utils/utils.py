@@ -5,7 +5,7 @@ import yaml
 # File I/O related
 def parse_config(config):
     with open(config, 'r') as f:
-        config_data = yaml.load(f)
+        config_data = yaml.load(f, Loader=yaml.FullLoader)
     return config_data
 
 

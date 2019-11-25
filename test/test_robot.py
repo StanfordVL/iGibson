@@ -6,19 +6,21 @@ from gibson2.utils.utils import parse_config
 import pytest
 import pybullet as p
 import numpy as np
+import gibson2
+import os
 
-config = parse_config('test.yaml')
+config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 
 def test_fetch():
     s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
-    config = parse_config('test_continuous.yaml')
-    freight = Fetch(config)
-    s.import_robot(freight)
+    config = parse_config(os.path.join(gibson2.root_path, '../test/test_continuous.yaml'))
+    fetch = Fetch(config)
+    s.import_robot(fetch)
     for i in range(100):
-        freight.apply_action([0] * 15)
-        freight.calc_state()
+        fetch.apply_action(np.array([0] * 2))
+        fetch.calc_state()
         s.step()
     s.disconnect()
 
@@ -45,7 +47,7 @@ def test_jr2():
 
 
 def test_ant():
-    s = Simulator(mode='gui', timestep=1 / 40.0)
+    s = Simulator(mode='headless', timestep=1 / 40.0)
     scene = StadiumScene()
     s.import_scene(scene)
     ant = Ant(config)
@@ -155,7 +157,7 @@ def test_multiagent():
 
 
 def show_action_sensor_space():
-    s = Simulator(mode='gui')
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
 

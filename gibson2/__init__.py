@@ -4,10 +4,11 @@ import os
 __version__ = "0.0.1"
 
 with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'global_config.yaml')) as f:
-    global_config = yaml.load(f)
+    global_config = yaml.load(f, Loader=yaml.FullLoader)
 
 assets_path = global_config['assets_path']
 dataset_path = global_config['dataset_path']
+root_path = os.path.dirname(os.path.realpath(__file__))
 
 if not os.path.isabs(assets_path):
     assets_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), assets_path)

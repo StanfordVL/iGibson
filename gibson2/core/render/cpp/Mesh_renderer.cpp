@@ -176,8 +176,8 @@ public:
         fprintf(stderr, "Unable to reload EGL.\n");
         exit(EXIT_FAILURE);
     }
-    printf("Loaded EGL %d.%d after reload.\n", GLAD_VERSION_MAJOR(egl_version),
-           GLAD_VERSION_MINOR(egl_version));
+    //printf("Loaded EGL %d.%d after reload.\n", GLAD_VERSION_MAJOR(egl_version),
+    //       GLAD_VERSION_MINOR(egl_version));
 #else
     printf("not using glad\n");
 #endif

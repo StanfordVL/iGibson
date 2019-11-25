@@ -5,15 +5,7 @@ from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoi
 import yaml
 import gibson2
 import os
-
-
-def parse_config(config):
-    with open(config, 'r') as f:
-        config_data = yaml.load(f)
-    return config_data
-
-
-config = parse_config('test.yaml')
+from gibson2.utils.utils import parse_config
 
 
 def test_import_object():
@@ -45,7 +37,7 @@ def test_import_many_object():
 
 
 def test_import_rbo_object():
-    s = Simulator(mode='gui')
+    s = Simulator(mode='headless')
     try:
         scene = StadiumScene()
         s.import_scene(scene)
@@ -69,25 +61,8 @@ def test_import_rbo_object():
         s.disconnect()
 
 
-def test_import_human():
-    s = Simulator(mode='gui')
-    scene = StadiumScene()
-    s.import_scene(scene)
-
-    obj = Pedestrian()
-    s.import_object(obj)
-
-    for j in range(100):
-        s.step()
-        obj.reset_position_orientation([j * 0.001, 0, 0], [0, 0, 0, 1])
-
-    last_obj = s.objects[-1]
-    s.disconnect()
-    assert (last_obj == 4)
-
-
 def test_import_box():
-    s = Simulator(mode='gui')
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     print(s.objects)
@@ -109,6 +84,7 @@ def test_import_box():
         obj = BoxShape(curr[0], curr[1])
         s.import_object(obj)
 
+    config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
     turtlebot1 = Turtlebot(config)
     turtlebot2 = Turtlebot(config)
     s.import_robot(turtlebot1)
