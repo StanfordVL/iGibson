@@ -56,7 +56,6 @@ def test_ant():
     s.import_robot(ant2)
     ant2.set_position([0, 2, 2])
     nbody = p.getNumBodies()
-    s.add_viewer()
     for i in range(100):
         s.step()
         #ant.apply_action(np.random.randint(17))
