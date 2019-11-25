@@ -38,7 +38,7 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 300
+max_step: 750
 
 # sensor
 # output: [sensor, rgb, depth]
