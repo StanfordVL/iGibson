@@ -3,28 +3,30 @@ scene: building
 model_id: Ohoopee
 
 # robot
-robot: JR2
-velocity: 0.01
+robot: Turtlebot
+velocity: 0.1
+
 # task, observation and action
-task: pointgoal # pointgoal|objectgoal|areagoal|reaching
+task: pointgoal # pointgoal|objectgoal|areagoal
 
 initial_orn: [0.0, 0.0, 0.0]
-initial_pos: [-2.5, -1.0, 0.0]
+initial_pos: [0.0, 0.0, 0.1]
 
 target_orn: [0.0, 0.0, 0.0]
-target_pos: [-5.0, 3.2, 0.0]
-fisheye: false
+target_pos: [-5.0, 3.2, 0.1]
 
 is_discrete: false
 additional_states_dim: 3
 
-# reward and termination condition
 dist_tol: 0.5
 terminal_reward: 5000
 discount_factor: 1.0
-max_step: 500
 
+fov: 90
+fisheye: false
+debug: true
 # display
+
 use_filler: true
 display_ui: false
 show_diagnostics: false
@@ -38,14 +40,8 @@ random:
   random_init_z_range: [-0.1, 0.1]
   random_init_rot_range: [-0.1, 0.1]
 
-output: [sensor, rgb, depth, rgb_filled]
-
-# visual objects
-visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: true
-
+output: [nonviz_sensor, rgb, depth]
 resolution: 256
-fov: 1.57
 
 speed:
   timestep: 0.001
@@ -55,5 +51,6 @@ mode: web_ui #gui|headless
 verbose: false
 fast_lq_render: true
 
-# debug
-debug: false
+# visual objects
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: true

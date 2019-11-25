@@ -29,6 +29,12 @@ Here we show how to craete a simple simulated environment with one mesh and one 
 
     s.disconnect()
 
+This example should show something like below, a turtlebot in a house.
+
+
+.. image:: images/simulator_example.png
+    :width: 600
+
 Adding a camera to this example:
 
 .. code-block:: python
