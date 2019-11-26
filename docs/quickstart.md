@@ -117,3 +117,68 @@ Gibson provides a set of methods for you to define your own environments. You ca
 | robot.apply_action(action) | Apply action to robot. |
 | robot.reset_new_pose(pos, orn) | Reset the robot to any pose. |
 | robot.dist_to_target() | Get current distance from robot to target. |
+
+
+
+Create a docker image for gibson v2
+=======================================
+
+
+You can use the following Dockerfile to create a docker image for using gibson. `nvidia-docker` is required to run this docker image.
+
+```text
+from nvidia/cudagl:10.0-base-ubuntu18.04
+
+ARG CUDA=10.0
+ARG CUDNN=7.6.2.24-1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl build-essential git cmake \
+    cuda-command-line-tools-10-0 \
+    cuda-cublas-10-0 \
+    cuda-cufft-10-0 \
+    cuda-curand-10-0 \
+    cuda-cusolver-10-0 \
+    cuda-cusparse-10-0 \
+    libcudnn7=${CUDNN}+cuda${CUDA} \
+    libhdf5-dev \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    wget
+
+# Install miniconda to /miniconda
+RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+RUN bash Miniconda-latest-Linux-x86_64.sh -p /miniconda -b
+RUN rm Miniconda-latest-Linux-x86_64.sh
+ENV PATH=/miniconda/bin:${PATH}
+RUN conda update -y conda
+RUN conda create -y -n gibson python=3.6.8
+# Python packages from conda
+
+ENV PATH /miniconda/envs/gibson/bin:$PATH
+
+RUN pip install pytest
+RUN pip install tf-nightly-gpu==1.15.0-dev20190730
+RUN pip install tfp-nightly==0.8.0-dev20190730
+RUN pip install tf-estimator-nightly==1.14.0.dev2019041501 
+RUN pip install gast==0.2.2
+RUN pip install opencv-python networkx ipython
+
+RUN git clone --branch release-cleanup https://github.com/StanfordVL/GibsonEnvV2 /opt/gibsonv2 --recursive
+WORKDIR /opt/gibsonv2
+RUN pip install -e .
+
+RUN git clone https://github.com/ChengshuLi/agents/ /opt/agents
+WORKDIR /opt/agents
+RUN pip install -e .
+
+WORKDIR /opt/gibsonv2/gibson2/
+RUN wget -q https://storage.googleapis.com/gibsonassets/assets_dev.tar.gz && tar -zxf assets_dev.tar.gz
+WORKDIR /opt/gibsonv2/gibson2/assets
+RUN mkdir dataset
+WORKDIR /opt/gibsonv2/gibson2/assets/dataset
+RUN wget -q https://storage.googleapis.com/gibsonassets/gibson_mesh/Ohopee.tar.gz && tar -zxf Ohopee.tar.gz
+
+WORKDIR /opt/agents
+```
