@@ -138,29 +138,33 @@ class WalkerBase(BaseRobot):
                 j.set_motor_position(action[n])
         elif self.control == 'differential':
             assert len(action) == 2, "Differential drive must have only two joints"
-            # hard code Turtlebot parameters for now
-            wheel_track = 0.3   # meters
+            # hardcode Turtlebot parameters for now
+            wheel_track = 0.235   # meters
             half_track = wheel_track / 2.0
-            wheel_radius = 0.01 # meters
-            linear_velocity = action[0]  # m/s
+            wheel_radius = 0.025 # meters
+            linear_velocity = abs(action[0])  # m/s
             angular_velocity = action[1] # rad/s
 
             if linear_velocity == 0:
                 # turn in place
-                right = angular_velocity * half_track / wheel_radius
+                right = angular_velocity * half_track / (2.0 * np.pi * wheel_radius)
                 left = -right
             elif angular_velocity == 0:
                 # pure forward/backward motion
-                left = right = linear_velocity / wheel_radius / (2.0 * np.pi)
+                left = right = linear_velocity / (2.0 * np.pi * wheel_radius)
             else:
                 # Rotation about a point in space
-                left = linear_velocity - angular_velocity * half_track  / wheel_radius / (2.0 * np.pi)
-                right = linear_velocity + angular_velocity * half_track  / wheel_radius / (2.0 * np.pi)
+                left = (linear_velocity - angular_velocity * half_track)  / (2.0 * np.pi * wheel_radius)
+                right = (linear_velocity + angular_velocity * half_track)  / (2.0 * np.pi * wheel_radius)
+                
+            left = 2 * np.pi * left / 360
+            right = 2 * np.pi * right / 360
+            
             for n, j in enumerate(self.ordered_joints):
                 if n == 0:
-                    j.set_motor_velocity(left)
+                    j.set_motor_velocity(self.power * j.power_coef * float(np.clip(left, -1, +1)))
                 else:
-                    j.set_motor_velocity(right)
+                    j.set_motor_velocity(self.power * j.power_coef * float(np.clip(right, -1, +1)))
         elif type(self.control) is list or type(
                 self.control) is tuple:  # if control is a tuple, set different control
             # type for each joint

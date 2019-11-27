@@ -1034,7 +1034,8 @@ class NavigatePedestriansEnv(NavigateEnv):
                 sign = -1
             pos = [0]*3
             pos[0] = np.random.uniform(-1.5, 1.5)
-            pos[1] = sign * np.random.uniform(2.88, 4.32)
+            #pos[1] = sign * np.random.uniform(2.88, 4.32)
+            pos[1] = sign * np.random.uniform(1.44, 2.16)
             pos[2] = 0.0
             print('AGENT NEW POSITION: {}'.format(pos))
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
@@ -1047,7 +1048,8 @@ class NavigatePedestriansEnv(NavigateEnv):
             for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
                 current_target_position = [0]*3                
                 current_target_position[0] = np.random.uniform(-1.5, 1.5)
-                current_target_position[1] = -sign * np.random.uniform(2.88, 4.32)
+                #current_target_position[1] = -sign * np.random.uniform(2.88, 4.32)
+                current_target_position[1] = -sign * np.random.uniform(1.44, 2.16)
                 current_target_position[2] = 0.0
 
                 self.current_target_position = np.array(current_target_position)
@@ -1093,7 +1095,8 @@ class NavigatePedestriansEnv(NavigateEnv):
                 else:
                     sign = 1
                 if mode == 'initial':
-                    pedestrian_x = sign * np.random.uniform(2.88, 4.32)
+                    #pedestrian_x = sign * np.random.uniform(2.88, 4.32)
+                    pedestrian_x = sign * np.random.uniform(1.44, 2.16)
                     pedestrian_y = np.random.uniform(-2.5, 2.5)
                 elif mode == 'target':
                     try:
@@ -1103,7 +1106,8 @@ class NavigatePedestriansEnv(NavigateEnv):
                             sign = 1
                     except:
                         sign = 1
-                    pedestrian_x = sign * np.random.uniform(2.88, 4.32)
+                    #pedestrian_x = sign * np.random.uniform(2.88, 4.32)
+                    pedestrian_x = sign * np.random.uniform(1.44, 2.16)
                     pedestrian_y = np.random.uniform(-2.5, 2.5)
                 pedestrian_pose = (pedestrian_x, pedestrian_y, self.pedestrian_z)
                 # print('x: {} y: {}'.format(pedestrian_x, pedestrian_y))
@@ -1856,7 +1860,7 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         nav_env.reset()
-        for i in range(500):  # 500 steps, 50s world time
+        for i in range(100):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             # action[:] = 0
             # if nav_env.stage == 0:
@@ -1869,7 +1873,7 @@ if __name__ == '__main__':
             # action[2:] = np.array(debug_param_values)
 
             #state, reward, done, _ = nav_env.step([np.random.uniform(-1, 1), np.random.uniform(-1, 1)])
-            state, reward, done, _ = nav_env.step([1.0, 1.0])            
+            state, reward, done, _ = nav_env.step([0.5, 0.0])            
             # print(reward)
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))

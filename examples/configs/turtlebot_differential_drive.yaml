@@ -7,13 +7,13 @@ scene: stadium
 # model_id: Ohoopee
 
 num_obstacles: 0
-num_pedestrians: 0
+num_pedestrians: 7
 pedestrians_can_see_robot: true
 
 # robot
 robot: TurtlebotDifferentialDrive
 max_linear_velocity: 1.0
-max_angular_velocity: 3.0
+max_angular_velocity: 1.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -39,7 +39,7 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 750
+max_step: 300
 
 # sensor
 # output: [sensor, rgb, depth]
