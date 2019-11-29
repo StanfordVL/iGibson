@@ -93,17 +93,19 @@ class Simulator:
         
 
                 elif type == p.GEOM_PLANE:
-                    filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
-                    self.renderer.load_object(filename,
-                                              transform_orn=rel_orn,
-                                              transform_pos=rel_pos,
-                                              input_kd=color[:3],
-                                              scale=[100, 100, 0.01])
-                    self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
-                                               pybullet_uuid=new_object,
-                                               class_id=class_id,
-                                               dynamic=True)
+                    #filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                    #self.renderer.load_object(filename,
+                    #                          transform_orn=rel_orn,
+                    #                          transform_pos=rel_pos,
+                    #                          input_kd=color[:3],
+                    #                          scale=[100, 100, 0.01])
+                    #self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                    #                           pybullet_uuid=new_object,
+                    #                           class_id=class_id,
+                    #                           dynamic=True)
 
+                    # Uncomment the above block if you want to render the additionally added floor
+                    pass
         self.scene = scene
         return new_objects
 

@@ -36,7 +36,7 @@ Episode = collections.namedtuple('Episode',
                                      # 'object_files',
                                      # 'object_trajectory',
                                      'success',
-                                     # 'path_efficiency',
+                                     'path_efficiency',
                                      # 'kinematic_disturbance',
                                      # 'dynamic_disturbance_a',
                                      # 'dynamic_disturbance_b',
@@ -155,8 +155,14 @@ class NavigateEnv(BaseEnv):
                                             dtype=np.float32)
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
-            self.depth_space = gym.spaces.Box(low=-np.inf,
-                                              high=np.inf,
+            # self.depth_space = gym.spaces.Box(low=-np.inf,
+            #                                   high=np.inf,
+            #                                   shape=(self.config.get('resolution', 64),
+            #                                          self.config.get('resolution', 64),
+            #                                          1),
+            #                                   dtype=np.float32)
+            self.depth_space = gym.spaces.Box(low=0.0,
+                                              high=1.0,
                                               shape=(self.config.get('resolution', 64),
                                                      self.config.get('resolution', 64),
                                                      1),
@@ -179,9 +185,13 @@ class NavigateEnv(BaseEnv):
                                                   dtype=np.float32)
             observation_space['depth_seg'] = self.depth_seg_space
         if 'scan' in self.output:
-            self.scan_space = gym.spaces.Box(low=-np.inf,
-                                             high=np.inf,
-                                             shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
+            # self.scan_space = gym.spaces.Box(low=-np.inf,
+            #                                  high=np.inf,
+            #                                  shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
+            #                                  dtype=np.float32)
+            self.scan_space = gym.spaces.Box(low=0.0,
+                                             high=1.0,
+                                             shape=(self.n_horizontal_rays * self.n_vertical_beams,),
                                              dtype=np.float32)
             observation_space['scan'] = self.scan_space
         if 'rgb_filled' in self.output:  # use filler
@@ -237,7 +247,8 @@ class NavigateEnv(BaseEnv):
         auxiliary_sensor = self.get_auxiliary_sensor(collision_links)
 
         # rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
-        # rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
+        # rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+
         # depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
         # depth = np.clip(depth / 5.0, 0.0, 1.0)
         # depth = 1.0 - depth  # flip black/white
@@ -245,6 +256,8 @@ class NavigateEnv(BaseEnv):
         # if self.num_object_classes is not None:
         #     seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
         # cv2.imshow('rgb', rgb)
+        # cv2.imwrite('test/%d_%d.jpg' % (self.current_episode, self.current_step), (rgb * 255).astype(np.uint8))
+
         # cv2.imshow('depth', depth)
         # cv2.imshow('seg', seg)
 
@@ -286,32 +299,52 @@ class NavigateEnv(BaseEnv):
 
         # TODO: figure out why 'scan' consumes so much cpu
         if 'scan' in self.output:
-            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
-            pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-            elev_bottom_angle = -30. * np.pi / 180.
-            elev_top_angle = 10. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
-            orig_offset = np.vstack([
-                np.vstack([np.cos(angle),
-                           np.sin(angle),
-                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
-            ])
-            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+            laser_linear_range = 25.0
+            laser_angular_range = 220.0
+            laser_angular_half_range = laser_angular_range / 2.0
+            min_laser_dist = 0.1
+            laser_pose = self.robots[0].parts['laser_link'].get_pose()
+            transform_matrix = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
+            angle = np.arange(-laser_angular_half_range / 180 * np.pi,
+                              laser_angular_half_range / 180 * np.pi,
+                              laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
+            unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+            unit_vector_world = transform_matrix.dot(unit_vector_local.T).T
+            start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
+            start_pose += unit_vector_world * min_laser_dist
+            end_pose = laser_pose[:3] + unit_vector_world * laser_linear_range
+            results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
+            # hit_object_id = np.array([item[0] for item in results])
+            # link_id = np.array([item[1] for item in results])
+            hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
+            state['scan'] = hit_fraction
 
-            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-            hit = np.array([item[0] for item in results])
-            dist = np.array([item[2] for item in results])
-
-            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-            dist[~valid_pts] = 0.0  # zero out invalid pts
-            dist *= 30
-
-            xyz = np.expand_dims(dist, 1) * orig_offset
-            state['scan'] = xyz
+            # assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+            # pose_camera = self.robots[0].parts['scan_link'].get_pose()
+            # angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+            # elev_bottom_angle = -30. * np.pi / 180.
+            # elev_top_angle = 10. * np.pi / 180.
+            # elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+            #                        (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+            # orig_offset = np.vstack([
+            #     np.vstack([np.cos(angle),
+            #                np.sin(angle),
+            #                np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+            # ])
+            # transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+            # offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+            # pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+            #
+            # results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            # hit = np.array([item[0] for item in results])
+            # dist = np.array([item[2] for item in results])
+            #
+            # valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+            # dist[~valid_pts] = 0.0  # zero out invalid pts
+            # dist *= 30
+            #
+            # xyz = np.expand_dims(dist, 1) * orig_offset
+            # state['scan'] = xyz
 
         return state
 
@@ -368,7 +401,6 @@ class NavigateEnv(BaseEnv):
         # goal reached
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
             reward += self.success_reward  # |success_reward| = 10.0 per step
-
         return reward, info
 
     def get_termination(self, collision_links=[], info={}):
@@ -425,10 +457,10 @@ class NavigateEnv(BaseEnv):
             #                                   'collision_step',
             #                                   ])
 
-            # shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
-            #                                                                 self.initial_pos[:2],
-            #                                                                 self.target_pos[:2],
-            #                                                                 entire_path=True)
+            shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
+                                                                            self.initial_pos[:2],
+                                                                            self.target_pos[:2],
+                                                                            entire_path=True)
             # floor_height = self.scene.get_floor_height(self.floor_num)
             # shortest_path = np.array([np.array([path[0], path[1], floor_height]) for path in shortest_path])
             # min_kin_dist = self.path_length * self.robots[0].robot_mass
@@ -448,7 +480,7 @@ class NavigateEnv(BaseEnv):
                 # object_files=object_files,
                 # object_trajectory=np.array(self.object_trajectory),
                 success=float(info['success']),
-                # path_efficiency=min(1.0, geodesic_distance / self.path_length),
+                path_efficiency=min(1.0, geodesic_distance / self.path_length),
                 # kinematic_disturbance=kinematic_disturbance,
                 # dynamic_disturbance_a=dynamic_disturbance_a,
                 # dynamic_disturbance_b=dynamic_disturbance_b,
@@ -814,6 +846,8 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
 
         self.gt_pos = []
         self.ns_pos = []
+        # self.linear_vel = []
+        # self.angular_vel = []
 
         # self.eyes_vis = VisualObject(rgba_color=[1, 0, 0, 1.0], radius=0.03)
         # self.eyes_vis.load()
@@ -834,6 +868,13 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
                                                initial_offset=[0, 0, cyl_length / 2.0]) for _ in range(1000)]
             for waypoint in self.waypoints_vis:
                 waypoint.load()
+
+        # cv2.namedWindow('depth', cv2.WINDOW_NORMAL)
+        # cv2.resizeWindow('depth', 400, 400)
+        # cv2.namedWindow('scan', cv2.WINDOW_NORMAL)
+        # cv2.resizeWindow('scan', 400, 400)
+        # cv2.namedWindow('collision', cv2.WINDOW_NORMAL)
+        # cv2.resizeWindow('collision', 400, 400)
 
     def build_class_map(self):
         # 0 and 1 are reserved for mesh and robot
@@ -910,14 +951,22 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
 
         target_pos_local = self.global_to_local(self.target_pos, cur_pos, cur_rot)[:2]
         linear_velocity_local = rotate_vector_3d(self.robots[0].robot_body.velocity(), *cur_rot)[:2]
-        angular_velocity_local = rotate_vector_3d(self.robots[0].robot_body.angular_velocity(), *cur_rot)[:2]
+        angular_velocity_local = rotate_vector_3d(self.robots[0].robot_body.angular_velocity(), *cur_rot)[2:3]
+        # print('linear', self.robots[0].robot_body.velocity())
+        # print('linear_local', linear_velocity_local)
+        # print('angular', self.robots[0].robot_body.angular_velocity())
+        # print('angular_local', angular_velocity_local)
+
+        # linear_vel = np.linalg.norm(self.robots[0].robot_body.velocity())
+        # angular_vel = np.linalg.norm(self.robots[0].robot_body.angular_velocity())
+        # self.linear_vel.append(linear_vel)
+        # self.angular_vel.append(angular_vel)
 
         gt_pos = self.robots[0].get_position()[:2]
         source = gt_pos
         target = self.target_pos[:2]
-        _, geodesic_dist = self.scene.get_shortest_path(self.floor_num, source, target)
-        # geodesic_dist = 0.0
-
+        # _, geodesic_dist = self.scene.get_shortest_path(self.floor_num, source, target)
+        geodesic_dist = 0.0
         robot_z = self.robots[0].get_position()[2]
         if self.visualize_waypoints and self.mode == 'gui':
             for i in range(1000):
@@ -929,6 +978,10 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
         # self.eyes_vis.set_position(pos=self.robots[0].eyes.get_position())
 
         closest_idx = np.argmin(np.linalg.norm(cur_pos[:2] - self.shortest_path, axis=1))
+        # approximate geodesic_dist to speed up training
+        # geodesic_dist = np.sum(
+        #     np.linalg.norm(self.shortest_path[closest_idx:-1] - self.shortest_path[closest_idx + 1:], axis=1)
+        # )
         shortest_path = self.shortest_path[closest_idx:closest_idx + self.scene.num_waypoints]
         num_remaining_waypoints = self.scene.num_waypoints - shortest_path.shape[0]
         if num_remaining_waypoints > 0:
@@ -955,10 +1008,20 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
         height = int(width * (480.0 / 640.0))
         half_diff = int((width - height) / 2)
         depth = depth[half_diff:half_diff+height, :]
-        # cv2.imshow('depth', depth)
-        depth[depth < 0.6] = -1.0
-        depth[depth > 4.0] = -1.0
+
+        # depth[depth < 0.6] = -1.0
+        # depth[depth > 4.0] = -1.0
+
+        invalid = depth == 0.0
+        depth[depth < 0.35] = 0.35
+        depth[depth > 5.0] = 5.0
+        depth[invalid] = 0.0
+        depth /= 5.0
         state['depth'] = depth
+
+        # cv2.imshow('depth', state['depth'])
+        # cv2.imshow('scan', state['scan'] * 10.0)
+
         return state
 
     def get_potential(self):
@@ -990,6 +1053,9 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
         self.reset_replaced_objects()
         self.reset_additional_objects()
         self.new_potential = None
+        # if len(self.linear_vel) > 0:
+        #     print('linear', np.mean(self.linear_vel), np.max(self.linear_vel))
+        #     print('angular', np.mean(self.angular_vel), np.max(self.angular_vel))
         # if len(self.gt_pos) > 0:
         #     self.gt_pos = np.array(self.gt_pos)
         #     self.ns_pos = np.array(self.ns_pos)
@@ -1008,35 +1074,43 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
         target = self.target_pos[:2]
         shortest_path, _ = self.scene.get_shortest_path(self.floor_num, source, target, entire_path=True)
         self.shortest_path = shortest_path
+        # robot_z = self.robots[0].get_position()[2]
+        # if self.visualize_waypoints and self.mode == 'gui':
+        #     for i in range(1000):
+        #         self.waypoints_vis[i].set_position(pos=np.array([0.0, 0.0, 0.0]))
+        #     for i in range(min(1000, self.shortest_path.shape[0])):
+        #         self.waypoints_vis[i].set_position(pos=np.array([self.shortest_path[i][0],
+        #                                                          self.shortest_path[i][1],
+        #                                                          robot_z]))
 
-    # def before_simulation(self):
-    #     robot_position = self.robots[0].get_position()
-    #     object_positions = [obj.get_position() for obj in self.interactive_objects]
-    #     return robot_position, object_positions
-    #
-    # def after_simulation(self, cache, collision_links):
-    #     robot_position, object_positions = cache
-    #
-    #     collision_links_flatten = [item for sublist in collision_links for item in sublist]
-    #     if len(collision_links_flatten) > 0:
-    #         self.dynamic_disturbance_a += np.mean([
-    #             np.linalg.norm(
-    #                 np.sum([elem[9] * np.array(elem[7]) for elem in sublist], axis=0)  # sum of all forces
-    #             )
-    #             for sublist in collision_links])
-    #         collision_objects = set([col[2] for col in collision_links_flatten])
-    #         self.dynamic_disturbance_b += len(collision_objects)
-    #         self.interactive_objects_collided |= collision_objects
-    #
-    #     self.agent_trajectory.append(np.concatenate((self.robots[0].get_position(), self.robots[0].get_orientation())))
-    #     self.object_trajectory.append([np.concatenate((obj.get_position(), obj.get_orientation()))
-    #                                    for obj in self.interactive_objects])
-    #     self.path_length += np.linalg.norm(self.robots[0].get_position() - robot_position)
-    #     self.kinematic_disturbance += np.sum([
-    #         obj.mass * np.linalg.norm(np.array(obj.get_position()) - np.array(prev_pos))
-    #         for obj, prev_pos in zip(self.interactive_objects, object_positions)
-    #         if obj.body_id in self.interactive_objects_collided
-    #     ])
+    def before_simulation(self):
+        robot_position = self.robots[0].get_position()
+        object_positions = [obj.get_position() for obj in self.interactive_objects]
+        return robot_position, object_positions
+
+    def after_simulation(self, cache, collision_links):
+        robot_position, object_positions = cache
+
+        # collision_links_flatten = [item for sublist in collision_links for item in sublist]
+        # if len(collision_links_flatten) > 0:
+        #     self.dynamic_disturbance_a += np.mean([
+        #         np.linalg.norm(
+        #             np.sum([elem[9] * np.array(elem[7]) for elem in sublist], axis=0)  # sum of all forces
+        #         )
+        #         for sublist in collision_links])
+        #     collision_objects = set([col[2] for col in collision_links_flatten])
+        #     self.dynamic_disturbance_b += len(collision_objects)
+        #     self.interactive_objects_collided |= collision_objects
+        #
+        # self.agent_trajectory.append(np.concatenate((self.robots[0].get_position(), self.robots[0].get_orientation())))
+        # self.object_trajectory.append([np.concatenate((obj.get_position(), obj.get_orientation()))
+        #                                for obj in self.interactive_objects])
+        self.path_length += np.linalg.norm(self.robots[0].get_position() - robot_position)
+        # self.kinematic_disturbance += np.sum([
+        #     obj.mass * np.linalg.norm(np.array(obj.get_position()) - np.array(prev_pos))
+        #     for obj, prev_pos in zip(self.interactive_objects, object_positions)
+        #     if obj.body_id in self.interactive_objects_collided
+        # ])
 
 
 class InteractiveNavigateEnv(NavigateEnv):
@@ -1528,6 +1602,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.collision_step += int(len(collision_links_flatten) > 0)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
         info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
+
         # self.reward_stats.append(np.abs(collision_reward * self.collision_reward_weight))
 
         # goal reached
@@ -1605,8 +1680,9 @@ if __name__ == '__main__':
         nav_env.reset()
         for step in range(500):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
-            # action[:] = 0.5
-            # action[:] = -1.0
+            # action[0] = 2.0 / 3.0
+            # action[1] = -1.0
+            # action[:] = 1.0
             # action[:] = -1.0 / 3
             # if nav_env.stage == 0:
             #     action[:2] = 0.5
@@ -1618,7 +1694,6 @@ if __name__ == '__main__':
             # action[2:] = np.array(debug_param_values)
 
             state, reward, done, _ = nav_env.step(action)
-            # print('reward', reward)
             if done:
                 print('Episode finished after {} timesteps'.format(step + 1))
                 break
