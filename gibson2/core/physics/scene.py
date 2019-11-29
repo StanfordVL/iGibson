@@ -40,6 +40,9 @@ class StadiumScene(Scene):
     def get_random_point(self, random_height=False):
         return self.get_random_point_floor(0, random_height)
 
+    def get_random_floor(self):
+        return 0
+
     def get_random_point_floor(self, floor, random_height=False):
         del floor
         return 0, np.array([
@@ -47,6 +50,12 @@ class StadiumScene(Scene):
             np.random.uniform(-5, 5),
             np.random.uniform(0.4, 0.8) if random_height else 0.0
         ])
+
+    def reset_floor(self, floor=0, additional_elevation=0.05, height=None):
+        return
+
+    def get_floor_height(self, floor):
+        return 0.0
 
 
 class StadiumSceneInteractive(Scene):
