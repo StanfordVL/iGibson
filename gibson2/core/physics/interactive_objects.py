@@ -6,18 +6,24 @@ import numpy as np
 
 class YCBObject(object):
     def __init__(self, name, scale=1):
-        self.filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
+        self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
                                      'textured_simple.obj')
+        self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
+                                     'textured_simple_vhacd.obj')
         self.scale = scale
         self.body_id = None
     def load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH,
-                                              fileName=self.filename,
+                                              fileName=self.collision_filename,
                                               meshScale=self.scale)
-        body_id = p.createMultiBody(basePosition=[0, 0, 0],
-                                    baseMass=0.1,
-                                    baseCollisionShapeIndex=collision_id,
-                                    baseVisualShapeIndex=-1)
+        visual_id = p.createVisualShape(p.GEOM_MESH,
+                                              fileName=self.visual_filename,
+                                              meshScale=self.scale)
+
+        body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
+                                    baseVisualShapeIndex=visual_id,
+                                    basePosition=[0, 0, 0],
+                                    baseMass=0.1)
 
         self.body_id = body_id
         return body_id

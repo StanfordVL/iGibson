@@ -134,7 +134,7 @@ The code can be found in `examples/demo/mesh_renderer_example.py`.
         renderer.set_fov(90)
         for i in range(3000):
             with Profiler('Render'):
-                frame = renderer.render_to_tensor(modes=('rgb', 'normal'))
+                frame = renderer.render(modes=('rgb', 'normal'))
 
         print(frame)
         img_np = frame[0].flip(0).data.cpu().numpy().reshape(renderer.height, renderer.width, 4)
