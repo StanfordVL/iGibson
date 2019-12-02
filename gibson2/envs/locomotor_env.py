@@ -576,11 +576,19 @@ class NavigateEnv(BaseEnv):
             print("COLLISION!")
             done = True
             info['success'] = False
+            self.n_collisions += 1
+            robot_velocity = self.robots[0].get_velocity()
+
+            if np.linalg.norm([robot_velocity[0], robot_velocity[1]]) < 0.05:
+                self.n_ped_hits_robot += 1
+            else:
+                self.n_ped_collisions += 1
             
         elif l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
             print("GOAL")
             done = True
             info['success'] = True
+            self.n_successes += 1
 
         elif self.robots[0].get_position()[2] > self.death_z_thresh:
             print("DEATH")
@@ -591,6 +599,7 @@ class NavigateEnv(BaseEnv):
             done = True
             print("TIMEOUT!")
             info['success'] = False
+            self.n_timeouts += 1
 
         # elif door_angle < (-10.0 / 180.0 * np.pi):
         #     print("WRONG PUSH")
@@ -902,6 +911,9 @@ class NavigatePedestriansEnv(NavigateEnv):
         if done and self.automatic_reset:
             info['last_observation'] = state
             state = self.reset()
+            
+        print(info)
+        
         return state, reward, done, info
 
     def get_reward(self, collision_links=[], action=None, info={}):  
@@ -962,7 +974,22 @@ class NavigatePedestriansEnv(NavigateEnv):
         if l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
             reward += self.success_reward  # |success_reward| = 10.0 per step
             self.success = True
-
+            
+        info['episodes'] = self.current_episode
+        info['successes'] = self.n_successes,
+        info['collisions'] = self.n_collisions,
+        info['ped_collisions'] = self.n_ped_collisions,
+        info['ped_hits_robot'] = self.n_ped_hits_robot,
+        info['timeouts'] = self.n_timeouts,
+        info['personal_space_violations'] = 0 if self.distance_traveled == 0 else self.n_personal_space_violations / self.distance_traveled,
+        info['cutting_off'] = 0 if self.distance_traveled == 0 else self.n_cutting_off / self.distance_traveled,
+        info['success_rate'] = 0 if self.current_episode == 0 else 100 * self.n_successes / self.current_episode,
+        info['collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_collisions / self.current_episode,
+        info['ped_collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_collisions / self.current_episode,
+        info['ped_hits_robot_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_hits_robot / self.current_episode,
+        info['timeout_rate'] = 0 if self.current_episode == 0 else 100 * self.n_timeouts / self.current_episode,
+        info['shortest_path_length'] = None if self.current_episode == 0 else self.spl
+                         
         return reward, info
 
     def update_pedestrian_goal_markers(self, pedestrian_goals):
@@ -1130,8 +1157,6 @@ class NavigatePedestriansEnv(NavigateEnv):
         
         self.spl = self.spl_sum / self.current_episode
         
-        print("SPL: ", self.spl)
-
     def generate_pedestrian_poses_v2(self, mode):
         # Euclidean distance on xy plane.
         def euclidean_xy(source, target):
@@ -1868,39 +1893,39 @@ if __name__ == '__main__':
         nav_env = NavigateEnv(config_file=config_filename,
                               mode=args.mode,
                               action_timestep=1.0 / 10.0,
-                              physics_timestep=1 / 40.0)
+                              physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random':
         nav_env = NavigateRandomEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
-                                    physics_timestep=1 / 40.0)
+                                    physics_timestep=1.0 / 40.0)
     elif args.env_type == 'fixed_obstacles':
         nav_env = NavigateObstaclesEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
-                                    physics_timestep=1 / 40.0)
+                                    physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random_obstacles':
         nav_env = NavigateRandomObstaclesEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
-                                    physics_timestep=1 / 40.0)
+                                    physics_timestep=1.0 / 40.0)
     elif args.env_type == 'pedestrians':
         nav_env = NavigatePedestriansEnv(config_file=config_filename,
                                     mode=args.mode,
                                     layout=args.layout,
                                     action_timestep=1.0 / 10.0,
-                                    physics_timestep=1 / 40.0)
+                                    physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random_obstacles':
         nav_env = NavigateRandomObstaclesEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
-                                    physics_timestep=1 / 40.0)
+                                    physics_timestep=1.0 / 40.0)
     else:
         nav_env = InteractiveNavigateEnv(config_file=config_filename,
                                          mode=args.mode,
                                          action_timestep=1.0 / 10.0,
                                          random_position=False,
-                                         physics_timestep=1 / 40.0,
+                                         physics_timestep=1.0 / 40.0,
                                          arena='compget_terminationlex_hl_ll')
 
     
@@ -1930,7 +1955,7 @@ if __name__ == '__main__':
             # debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
             # action[2:] = np.array(debug_param_values)
 
-            state, reward, done, _ = nav_env.step([np.random.uniform(0, 1), np.random.uniform(-2, 2)])
+            state, reward, done, info = nav_env.step([np.random.uniform(0, 1), np.random.uniform(-2, 2)])
             #state, reward, done, _ = nav_env.step([0.5, 0.0])            
             # print(reward)
             if done:
