@@ -52,6 +52,22 @@ class NavigateEnv(BaseEnv):
         self.current_step = 0
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
+        
+        self.n_steps = 0
+        self.n_successes = 0
+        self.n_collisions = 0
+        self.n_ped_collisions = 0
+        self.n_ped_hits_robot = 0
+        self.n_timeouts = 0
+        self.n_personal_space_violations = 0
+        self.n_cutting_off = 0
+        self.ped_collision = False
+        self.success = False
+        self.distance_traveled = 0.0
+        self.time_elapsed = 0.0
+        self.episode_distance = 0.0
+        self.spl_sum = 0 # shortest path length (SPL)
+        self.spl = 0     # average shortest path length       
 
     def load(self):
         super(NavigateEnv, self).load()
@@ -573,6 +589,7 @@ class NavigateEnv(BaseEnv):
 
         elif self.current_step >= self.max_step:
             done = True
+            print("TIMEOUT!")
             info['success'] = False
 
         # elif door_angle < (-10.0 / 180.0 * np.pi):
@@ -870,12 +887,26 @@ class NavigatePedestriansEnv(NavigateEnv):
         reward, info = self.get_reward(collision_links, action, info)
         done, info = self.get_termination(collision_links, info)
 
+        # Update distance metrics
+        self.time_elapsed += self.action_timestep
+
+        robot_position = self.robots[0].get_position()
+        distance_traveled = np.sqrt((robot_position[0] - self.last_robot_px)**2 + (robot_position[1] - self.last_robot_py)**2)
+        
+        self.distance_traveled += distance_traveled
+        self.episode_distance += distance_traveled
+                
+        self.last_robot_px = robot_position[0]
+        self.last_robot_py = robot_position[1]
+
         if done and self.automatic_reset:
             info['last_observation'] = state
             state = self.reset()
         return state, reward, done, info
 
-    def get_reward(self, collision_links=[], action=None, info={}):        
+    def get_reward(self, collision_links=[], action=None, info={}):  
+        self.success = False
+              
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
         new_normalized_potential = self.get_potential() / self.initial_potential
@@ -930,6 +961,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         # goal reached
         if l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
             reward += self.success_reward  # |success_reward| = 10.0 per step
+            self.success = True
 
         return reward, info
 
@@ -1014,6 +1046,14 @@ class NavigatePedestriansEnv(NavigateEnv):
             self.obstacles.append(box)
         
     def reset_initial_and_target_pos(self):
+        # Compute SPL metric
+        robot_position = self.robots[0].get_position()
+        self.last_robot_px = robot_position[0]
+        self.last_robot_py = robot_position[1]
+        
+        if self.current_episode > 0:
+            self.compute_metrics()
+            
         # Select new positions for obstacles
         self.reset_obstacles()
 
@@ -1071,8 +1111,26 @@ class NavigatePedestriansEnv(NavigateEnv):
             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
+
+        # Compute the shortest distance to this goal (TODO: account for obstacles!)
+        robot_position = self.robots[0].get_position()
+
+        self.episode_shortest_distance = np.sqrt((current_target_position[0] - robot_position[0])**2 + (current_target_position[1] - robot_position[1])**2)
+        
+        self.n_steps = 0
+        self.episode_distance = 0.0
+        self.episode_time = 0.0
+
         #return no_collision
         return True
+    
+    def compute_metrics(self):
+        if self.success:
+            self.spl_sum += self.episode_shortest_distance / (max(self.episode_shortest_distance, self.episode_distance))
+        
+        self.spl = self.spl_sum / self.current_episode
+        
+        print("SPL: ", self.spl)
 
     def generate_pedestrian_poses_v2(self, mode):
         # Euclidean distance on xy plane.
@@ -1095,8 +1153,8 @@ class NavigatePedestriansEnv(NavigateEnv):
                 else:
                     sign = 1
                 if mode == 'initial':
-                    #pedestrian_x = sign * np.random.uniform(2.88, 4.32)
-                    pedestrian_x = sign * np.random.uniform(1.44, 2.16)
+                    pedestrian_x = sign * np.random.uniform(2.88, 4.32)
+                    #pedestrian_x = sign * np.random.uniform(1.44, 2.16)
                     pedestrian_y = np.random.uniform(-2.5, 2.5)
                 elif mode == 'target':
                     try:
@@ -1106,8 +1164,8 @@ class NavigatePedestriansEnv(NavigateEnv):
                             sign = 1
                     except:
                         sign = 1
-                    #pedestrian_x = sign * np.random.uniform(2.88, 4.32)
-                    pedestrian_x = sign * np.random.uniform(1.44, 2.16)
+                    pedestrian_x = sign * np.random.uniform(2.88, 4.32)
+                    #pedestrian_x = sign * np.random.uniform(1.44, 2.16)
                     pedestrian_y = np.random.uniform(-2.5, 2.5)
                 pedestrian_pose = (pedestrian_x, pedestrian_y, self.pedestrian_z)
                 # print('x: {} y: {}'.format(pedestrian_x, pedestrian_y))
@@ -1843,7 +1901,7 @@ if __name__ == '__main__':
                                          action_timestep=1.0 / 10.0,
                                          random_position=False,
                                          physics_timestep=1 / 40.0,
-                                         arena='complex_hl_ll')
+                                         arena='compget_terminationlex_hl_ll')
 
     
     
@@ -1855,12 +1913,12 @@ if __name__ == '__main__':
     #     p.addUserDebugParameter('link4', -1.0, 1.0, 0.5),
     #     p.addUserDebugParameter('link5', -1.0, 1.0, 0.0),
     # ]
-
+    
     for episode in range(100):
         print('Episode: {}'.format(episode))
         start = time.time()
         nav_env.reset()
-        for i in range(100):  # 500 steps, 50s world time
+        for i in range(nav_env.config.get('max_step', 100)):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             # action[:] = 0
             # if nav_env.stage == 0:
@@ -1872,8 +1930,8 @@ if __name__ == '__main__':
             # debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
             # action[2:] = np.array(debug_param_values)
 
-            #state, reward, done, _ = nav_env.step([np.random.uniform(-1, 1), np.random.uniform(-1, 1)])
-            state, reward, done, _ = nav_env.step([0.5, 0.0])            
+            state, reward, done, _ = nav_env.step([np.random.uniform(0, 1), np.random.uniform(-2, 2)])
+            #state, reward, done, _ = nav_env.step([0.5, 0.0])            
             # print(reward)
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
