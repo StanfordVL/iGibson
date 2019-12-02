@@ -585,7 +585,7 @@ class NavigateEnv(BaseEnv):
                 self.n_ped_collisions += 1
             
         elif l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
-            print("GOAL")
+            print("SUCCESS!")
             done = True
             info['success'] = True
             self.n_successes += 1
@@ -908,12 +908,12 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.last_robot_px = robot_position[0]
         self.last_robot_py = robot_position[1]
 
-        if done and self.automatic_reset:
-            info['last_observation'] = state
-            state = self.reset()
-            
-        print(info)
-        
+        if done:
+            print(info)
+            if self.automatic_reset:
+                info['last_observation'] = state
+                state = self.reset()
+                    
         return state, reward, done, info
 
     def get_reward(self, collision_links=[], action=None, info={}):  
@@ -1090,8 +1090,6 @@ class NavigatePedestriansEnv(NavigateEnv):
         # Choose new start postion and goal location for robot
         reset_complete = False
         while not reset_complete:
-            print("RESET")
-
             # floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
             #floor, pos = self.scene.get_random_point(min_xy=-5.5, max_xy=5.5)
             test = np.random.random()
@@ -1104,7 +1102,6 @@ class NavigatePedestriansEnv(NavigateEnv):
             #pos[1] = sign * np.random.uniform(2.88, 4.32)
             pos[1] = sign * np.random.uniform(1.44, 2.16)
             pos[2] = 0.0
-            print('AGENT NEW POSITION: {}'.format(pos))
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_orientation(
                 orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
