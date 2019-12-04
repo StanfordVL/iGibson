@@ -7,7 +7,7 @@ scene: stadium
 # model_id: Ohoopee
 
 num_obstacles: 0
-num_pedestrians: 2
+num_pedestrians: 4
 pedestrians_can_see_robot: true
 randomize_pedestrian_attributes: false
 
@@ -96,6 +96,24 @@ movements:
         y_range_radius: 1.0
         
 ############# PEDESTRIAN CONFIGURATION ############
+
+speed:
+  timestep: 0.001
+  frameskip: 10
+
+mode: headless #gui|web_ui
+verbose: false
+fast_lq_render: true
+
+# visual objects
+visual_object_at_initial_pos: false
+visual_object_at_target_pos: true
+target_visual_object_visible_to_agent: true
+
+# debug
+debug: false
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: true
 
 # Pedestrian configuration
 humans:
