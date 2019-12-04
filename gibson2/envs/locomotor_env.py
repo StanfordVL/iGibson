@@ -767,10 +767,11 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.agent_x_range_radius = agent['x_range_radius']
         self.agent_y_range_radius = agent['y_range_radius']
 
-        for i, wall_pos in enumerate(self.walls['walls_pos']):
-            wall_dim = self.walls['walls_dim'][i]
-            box = BoxShape(pos=wall_pos, dim=wall_dim)
-            self.obstacle_ids.append(self.simulator.import_object(box))
+        if self.walls is not None:
+            for i, wall_pos in enumerate(self.walls['walls_pos']):
+                wall_dim = self.walls['walls_dim'][i]
+                box = BoxShape(pos=wall_pos, dim=wall_dim)
+                self.obstacle_ids.append(self.simulator.import_object(box))
 
         ''' Obstacles '''
         self.obstacles = []
@@ -1135,7 +1136,7 @@ class NavigatePedestriansEnv(NavigateEnv):
        
         for obstacle in self.obstacles:
             all_object_poses.append(obstacle.get_position())
-     
+
         for i in range(self.num_pedestrians):
             good_pose = False
             while not good_pose:
