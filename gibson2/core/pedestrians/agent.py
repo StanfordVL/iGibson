@@ -6,7 +6,6 @@ from gibson2.core.pedestrians.policy_factory import policy_factory
 from gibson2.core.pedestrians.action import ActionXY, ActionRot
 from gibson2.core.pedestrians.state import ObservableState, FullState
 
-
 class Agent(object):
     def __init__(self, config, section):
         """

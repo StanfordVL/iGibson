@@ -16,7 +16,7 @@ class FullState(object):
         self.position = (self.px, self.py, self.theta)
         self.goal_position = (self.gx, self.gy, self.gr)
         self.velocity = (self.vx, self.vy, self.vr)
-
+        
     def __add__(self, other):
         return other + (self.px, self.py, self.theta, self.vx, self.vy, self.vr, self.radius, self.personal_space, self.gx, self.gy, self.gr, self.v_pref)
 
@@ -55,7 +55,6 @@ class JointState(object):
 
         self.self_state = self_state
         self.human_states = human_states
-        #self.obstacles = obstacles
 
 class TensorFlowState(object):
     def __init__(self, self_state, human_states):

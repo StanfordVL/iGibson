@@ -14,7 +14,6 @@ import gym
 import numpy as np
 import os
 import pybullet as p
-import rvo2
 from IPython import embed
 import cv2
 import time
@@ -120,7 +119,7 @@ class NavigateEnv(BaseEnv):
         # pedestrians
         self.num_pedestrians = self.config.get('num_pedestrians', 0)
         self.pedestrians_can_see_robot = self.config['pedestrians_can_see_robot']        
-        self.randomize_pedestrian_attributes = self.config.get('randomize_pedestrian_attributes', True)
+        self.randomize_pedestrian_attributes = self.config.get('randomize_pedestrian_attributes', False)
 
         # TODO: sensor: observations that are passed as network input, e.g. target position in local frame
         # TODO: auxiliary sensor: observations that are not passed as network input, but used to maintain the same
@@ -384,48 +383,6 @@ class NavigateEnv(BaseEnv):
             
             state['concatenate'] = np.concatenate([sensor_state[0:2], state_pedestrian_position, state_pedestrian_velocity, state_pedestrian_ttc], axis=None).flatten()
         return state
-    
-    def init_rvo_simulator(self, n_pedestrians=0, pedestrian_positions=[], pedestrian_goals=[], walls=[], obstacles=[]):
-        assert len(pedestrian_positions) == n_pedestrians
-        #assert len(pedestrian_goals) == n_pedestrians
-
-        # Initializing RVO2 simulator && add agents to self.pedestrian_ids
-        init_direction = np.random.uniform(0.0, 2*np.pi, size=(self.num_pedestrians,))
-        pref_speed = np.linspace(0.001, 0.01, num=self.num_pedestrians) # ??? scale
-        timeStep = 0.1
-        neighborDist = 10 # safe-radius to observe states
-        maxNeighbors = 10
-        timeHorizon = 5 #np.linspace(0.5, 2.0, num=self.num_pedestrians)
-        timeHorizonObst = 5
-        radius = 1.2 # size of the agent inflated to include personal space
-        maxSpeed = 1.0 # ???
-        sim = rvo2.PyRVOSimulator(timeStep, neighborDist, maxNeighbors, timeHorizon, timeHorizonObst, radius, maxSpeed)
- 
-        for i in range(self.num_pedestrians):
-            pedestrian_id = sim.addAgent(pedestrian_positions[i])
-            self.pedestrian_ids.append(pedestrian_id)
-            vx = pref_speed[i] * np.cos(init_direction[i])
-            vy = pref_speed[i] * np.sin(init_direction[i])
-            sim.setAgentPrefVelocity(pedestrian_id, (vx, vy))
-            
-        # add the robot
-        self.robot_as_pedestrian_id = sim.addAgent(tuple(self.robots[0].get_position()[:2]))
- 
-        # add the walls
-        for i in range(len(walls)):
-            x, y, _ = walls[i][0] # pos = [x, y, z]
-            dx, dy, _ = walls[i][1] # dim = [dx, dy, dz]
-            sim.addObstacle([(x+dx, y+dy), (x-dx, y+dy), (x-dx, y-dy), (x+dx, y-dy)])
- 
-        # add obstacles
-        for i in range(len(obstacles)):
-            x, y, _ = obstacles[i].get_position() # pos = [x, y, z]
-            dx, dy, _ = obstacles[i].get_dimensions() # dim = [dx, dy, dz]
-            sim.addObstacle([(x+dx, y+dy), (x-dx, y+dy), (x-dx, y-dy), (x+dx, y-dy)])
-             
-        sim.processObstacles()
- 
-        return sim
 
     def get_ped_states(self):
         return [(self.humans[i].px, self.humans[i].py) for i in range(self.num_pedestrians)]
@@ -904,6 +861,8 @@ class NavigatePedestriansEnv(NavigateEnv):
         
         self.distance_traveled += distance_traveled
         self.episode_distance += distance_traveled
+        
+        #self.n_personal_space_violations += 1 * (self.discomfort_dist - dmin) / self.discomfort_dist * self.time_step
                 
         self.last_robot_px = robot_position[0]
         self.last_robot_py = robot_position[1]
@@ -1009,8 +968,6 @@ class NavigatePedestriansEnv(NavigateEnv):
             
     def reset_pedestrians(self):
         if len(self.pedestrians) == 0:
-            # pedestrian_poses = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_start_poses, min_separation=2.0)
-            
             # generate initial pedestrian poses
             pedestrian_poses = self.generate_pedestrian_poses_v2('initial')
 
@@ -1022,7 +979,6 @@ class NavigatePedestriansEnv(NavigateEnv):
             pedestrian_poses = [pedestrian.get_position() for pedestrian in self.pedestrians]
         
         # generate a goal for each pedestrian
-        # pedestrian_goals = self.generate_pedestrian_poses(self.num_pedestrians, self.pedestrian_goal_poses, min_separation=1.0)
         pedestrian_goals = self.generate_pedestrian_poses_v2('target')
 
         # create the goal marker in Gibson
@@ -1037,8 +993,11 @@ class NavigatePedestriansEnv(NavigateEnv):
                 
             [px, py, _] = pedestrian_poses[i]
             [gx, gy, _] = pedestrian_goals[i]
-                
-            human.set(px, py, human.theta, gx, gy, 0, 0, 0, 0)
+            
+            vx = human.v_pref * np.cos(human.theta)
+            vy = human.v_pref * np.sin(human.theta)
+            human.set(px, py, human.theta, gx, gy, vx, vy, 0, 0)
+            
 
             self.humans.append(human)
 
@@ -1248,7 +1207,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         vr = self.robots[0].get_angular_velocity()[2]
 
         # TODO: replace hard coded robot radius and personal space radius
-        return ObservableState(px, py, theta, vx, vy, vr, 0.15, 1.2)
+        return ObservableState(px, py, theta, vx, vy, vr, 0.15, 0.6)
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,

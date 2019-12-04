@@ -9,11 +9,12 @@ scene: stadium
 num_obstacles: 0
 num_pedestrians: 7
 pedestrians_can_see_robot: true
+randomize_pedestrian_attributes: false
 
 # robot
 robot: TurtlebotDifferentialDrive
 max_linear_velocity: 1.0
-max_angular_velocity: 1.0
+max_angular_velocity: 2.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -39,7 +40,7 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 750
+max_step: 500
 
 # sensor
 # output: [sensor, rgb, depth]
@@ -95,7 +96,7 @@ humans:
   position_noise: 0.0
   velocity_noise: 0.0
   sensor: coordinates
-  personal_space: 1.0
+  personal_space: 0.6
   max_linear_velocity: 1.0
   max_angular_velocity: 1.0
   kinematics: holonomic
