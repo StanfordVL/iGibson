@@ -23,6 +23,7 @@ class EmptyScene(Scene):
     def load(self):
         planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
         self.ground_plane_mjcf = p.loadMJCF(planeName)
+        p.changeDynamics(self.ground_plane_mjcf[0], -1, lateralFriction=1)
         return [item for item in self.ground_plane_mjcf]
 
 class StadiumScene(Scene):
