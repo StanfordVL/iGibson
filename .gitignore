@@ -79,3 +79,5 @@ build
 # Eclipse
 .pydevproject
 .project
+
+tensorboard_logs

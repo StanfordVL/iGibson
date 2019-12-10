@@ -127,84 +127,89 @@ class NavigateEnv(BaseEnv):
         self.sensor_dim = self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
         
-        observation_space = OrderedDict()
-        if 'concatenate' in self.output:
-            self.concatenate_space = gym.spaces.Box(low=-np.inf,
-                                               high=np.inf,
-                                               shape=(2 + 5 * self.num_pedestrians,),
-                                               dtype=np.float32)
-            observation_space['concatenate'] = self.concatenate_space            
-        if 'sensor' in self.output:
-            self.sensor_space = gym.spaces.Box(low=-np.inf,
-                                               high=np.inf,
-                                               shape=(self.sensor_dim,),
-                                               dtype=np.float32)
-            observation_space['sensor'] = self.sensor_space
-        if 'auxiliary_sensor' in self.output:
-            self.auxiliary_sensor_space = gym.spaces.Box(low=-np.inf,
-                                                         high=np.inf,
-                                                         shape=(self.auxiliary_sensor_dim,),
-                                                         dtype=np.float32)
-            observation_space['auxiliary_sensor'] = self.auxiliary_sensor_space
-        if 'pointgoal' in self.output:
-            self.pointgoal_space = gym.spaces.Box(low=-np.inf,
-                                                  high=np.inf,
-                                                  shape=(2,),
-                                                  dtype=np.float32)
-            observation_space['pointgoal'] = self.pointgoal_space
-        if 'rgb' in self.output:
-            self.rgb_space = gym.spaces.Box(low=-np.inf,
-                                            high=np.inf,
-                                            shape=(self.config['resolution'],
-                                                   self.config['resolution'], 3),
-                                            dtype=np.float32)
-            observation_space['rgb'] = self.rgb_space
-        if 'depth' in self.output:
-            self.depth_space = gym.spaces.Box(low=-np.inf,
-                                              high=np.inf,
-                                              shape=(self.config['resolution'],
-                                                     self.config['resolution'], 1),
-                                              dtype=np.float32)
-            observation_space['depth'] = self.depth_space
-        if 'scan' in self.output:
-            self.scan_space = gym.spaces.Box(low=-np.inf,
-                                             high=np.inf,
-                                             shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
-                                             dtype=np.float32)
-            observation_space['scan'] = self.scan_space
-            
-        if 'rgb_filled' in self.output:  # use filler
-            self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
-            self.comp = torch.nn.DataParallel(self.comp).cuda()
-            self.comp.load_state_dict(
-                torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
-            self.comp.eval()
+        self.observation_space = gym.spaces.Box(low=-1.0,
+                                           high=1.0,
+                                           shape=(2 + 5 * self.num_pedestrians,),
+                                           dtype=np.float32)
+        
+        #observation_space = OrderedDict()
+#        if 'concatenate' in self.output:
+#            self.concatenate_space = gym.spaces.Box(low=-np.inf,
+#                                               high=np.inf,
+#                                               shape=(2 + 5 * self.num_pedestrians,),
+#                                               dtype=np.float32)
+#            observation_space['concatenate'] = self.concatenate_space            
+#         if 'sensor' in self.output:
+#             self.sensor_space = gym.spaces.Box(low=-np.inf,
+#                                                high=np.inf,
+#                                                shape=(self.sensor_dim,),
+#                                                dtype=np.float32)
+#             observation_space['sensor'] = self.sensor_space
+#         if 'auxiliary_sensor' in self.output:
+#             self.auxiliary_sensor_space = gym.spaces.Box(low=-np.inf,
+#                                                          high=np.inf,
+#                                                          shape=(self.auxiliary_sensor_dim,),
+#                                                          dtype=np.float32)
+#             observation_space['auxiliary_sensor'] = self.auxiliary_sensor_space
+#         if 'pointgoal' in self.output:
+#             self.pointgoal_space = gym.spaces.Box(low=-np.inf,
+#                                                   high=np.inf,
+#                                                   shape=(2,),
+#                                                   dtype=np.float32)
+#             observation_space['pointgoal'] = self.pointgoal_space
+#         if 'rgb' in self.output:
+#             self.rgb_space = gym.spaces.Box(low=-np.inf,
+#                                             high=np.inf,
+#                                             shape=(self.config['resolution'],
+#                                                    self.config['resolution'], 3),
+#                                             dtype=np.float32)
+#             observation_space['rgb'] = self.rgb_space
+#         if 'depth' in self.output:
+#             self.depth_space = gym.spaces.Box(low=-np.inf,
+#                                               high=np.inf,
+#                                               shape=(self.config['resolution'],
+#                                                      self.config['resolution'], 1),
+#                                               dtype=np.float32)
+#             observation_space['depth'] = self.depth_space
+#         if 'scan' in self.output:
+#             self.scan_space = gym.spaces.Box(low=-np.inf,
+#                                              high=np.inf,
+#                                              shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
+#                                              dtype=np.float32)
+#             observation_space['scan'] = self.scan_space
+#             
+#         if 'rgb_filled' in self.output:  # use filler
+#             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
+#             self.comp = torch.nn.DataParallel(self.comp).cuda()
+#             self.comp.load_state_dict(
+#                 torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
+#             self.comp.eval()
+# 
+#         if 'pedestrian' in self.output:
+#             self.pedestrian_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+#                                                    shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
+#                                                    dtype=np.float32)
+#             observation_space['pedestrian'] = self.pedestrian_space
+#             
+#         if 'pedestrian_position' in self.output:
+#             self.pedestrian_position_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+#                                                    shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
+#                                                    dtype=np.float32)
+#             observation_space['pedestrian_position'] = self.pedestrian_position_space
+#             
+#         if 'pedestrian_velocity' in self.output:
+#             self.pedestrian_velocity_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+#                                                    shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
+#                                                    dtype=np.float32)
+#             observation_space['pedestrian_velocity'] = self.pedestrian_velocity_space
+#             
+#         if 'waypoints' in self.output:
+#             self.waypoints_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+#                                                   shape=(self.config['waypoints']*2,),  # waypoints * len([x_pos, y_pos])
+#                                                   dtype=np.float32)
+#             observation_space['waypoints'] = self.waypoints_space
 
-        if 'pedestrian' in self.output:
-            self.pedestrian_space = gym.spaces.Box(low=-np.inf, high=np.inf,
-                                                   shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
-                                                   dtype=np.float32)
-            observation_space['pedestrian'] = self.pedestrian_space
-            
-        if 'pedestrian_position' in self.output:
-            self.pedestrian_position_space = gym.spaces.Box(low=-np.inf, high=np.inf,
-                                                   shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
-                                                   dtype=np.float32)
-            observation_space['pedestrian_position'] = self.pedestrian_position_space
-            
-        if 'pedestrian_velocity' in self.output:
-            self.pedestrian_velocity_space = gym.spaces.Box(low=-np.inf, high=np.inf,
-                                                   shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
-                                                   dtype=np.float32)
-            observation_space['pedestrian_velocity'] = self.pedestrian_velocity_space
-            
-        if 'waypoints' in self.output:
-            self.waypoints_space = gym.spaces.Box(low=-np.inf, high=np.inf,
-                                                  shape=(self.config['waypoints']*2,),  # waypoints * len([x_pos, y_pos])
-                                                  dtype=np.float32)
-            observation_space['waypoints'] = self.waypoints_space
-
-        self.observation_space = gym.spaces.Dict(observation_space)
+        #self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
 
         # variable initialization
@@ -269,105 +274,105 @@ class NavigateEnv(BaseEnv):
         # cv2.imshow('rgb', rgb)
         # cv2.imshow('depth', depth)
 
-        state = OrderedDict()
-        if 'sensor' in self.output:
-            state['sensor'] = sensor_state
-        if 'auxiliary_sensor' in self.output:
-            state['auxiliary_sensor'] = auxiliary_sensor
-        if 'pointgoal' in self.output:
-            state['pointgoal'] = sensor_state[:2]
-        if 'rgb' in self.output:
-            state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
-        if 'depth' in self.output:
-            depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            state['depth'] = depth
-        if 'normal' in self.output:
-            state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
-        if 'seg' in self.output:
-            state['seg'] = self.simulator.renderer.render_robot_cameras(modes='seg')
-        if 'rgb_filled' in self.output:
-            with torch.no_grad():
-                tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
-                rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
-                state['rgb_filled'] = rgb_filled
-
-        if 'pointgoal' in self.output:
-            state['pointgoal'] = sensor_state[:2]
-
-        # TODO: figure out why 'scan' consumes so much cpu
-        if 'scan' in self.output:
-            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
-            pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-            elev_bottom_angle = -30. * np.pi / 180.
-            elev_top_angle = 10. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
-            orig_offset = np.vstack([
-                np.vstack([np.cos(angle),
-                           np.sin(angle),
-                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
-            ])
-            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
-
-            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-            hit = np.array([item[0] for item in results])
-            dist = np.array([item[2] for item in results])
-
-            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-            dist[~valid_pts] = 1.0  # zero out invalid pts
-            dist *= 30
-
-            xyz = np.expand_dims(dist, 1) * orig_offset
-            state['scan'] = xyz
-
-        if 'pedestrian' in self.output:
-            ped_pos = self.get_ped_states()
-            rob_pos = self.robots[0].get_position()
-            ped_robot_relative_pos = [[ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1]] for i in range(self.num_pedestrians)]
-            ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
-            state['pedestrian'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
-            
-        if 'pedestrian_position' in self.output:
-            ped_pos = self.get_ped_positions()
-            rob_pos = self.robots[0].get_position()
-            ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
-            # Crowdsim normalization for direct comparison
-            ped_robot_relative_pos /= (12.0 / np.sqrt(2.0))
-            ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
-            state['pedestrian_position'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
-            
-        if 'pedestrian_velocity' in self.output:
-            ped_vel = self.get_ped_velocities()
-            rob_vel = self.robots[0].get_velocity()
-            ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
-            # Crowdsim normalization for direct comparison
-            ped_robot_relative_vel /= (1.0 / np.sqrt(2.0))
-            ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
-            state['pedestrian_velocity'] = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
-        
-        if 'pedestrian_ttc' in self.output:
-            ped_ttc = self.get_ped_time_to_collision()
-            ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
-            state['pedestrian_ttc'] = ped_robot_relative_ttc # [ttc1, ttc2, ...] in robot frame
-            
-        if 'waypoints' in self.output:
-            path = self.compute_a_star(self.config['scene']) # current dim is (107, 2), varying by scene and start/end points
-            rob_pos = self.robots[0].get_position()
-            path_robot_relative_pos = [[path[i][0] - rob_pos[0], path[i][1] - rob_pos[1]] for i in range(path.shape[0])]
-            path_robot_relative_pos = np.asarray(path_robot_relative_pos)
-            path_point_ind = np.argmin(np.linalg.norm(path_robot_relative_pos , axis=1))
-            curr_points_num = path.shape[0] - path_point_ind
-            # keep the dimenstion based on the number of waypoints specified in the config file
-            if curr_points_num > self.config['waypoints']:
-                out = path_robot_relative_pos[path_point_ind:path_point_ind+self.config['waypoints']]
-            else:
-                curr_waypoints = path_robot_relative_pos[path_point_ind:]
-                end_point = np.repeat(path_robot_relative_pos[path.shape[0]-1].reshape(1,2), (self.config['waypoints']-curr_points_num), axis=0)
-                out = np.vstack((curr_waypoints, end_point))
-            state['waypoints'] = out.flatten()
+#         state = OrderedDict()
+#         if 'sensor' in self.output:
+#             state['sensor'] = sensor_state
+#         if 'auxiliary_sensor' in self.output:
+#             state['auxiliary_sensor'] = auxiliary_sensor
+#         if 'pointgoal' in self.output:
+#             state['pointgoal'] = sensor_state[:2]
+#         if 'rgb' in self.output:
+#             state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+#         if 'depth' in self.output:
+#             depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+#             state['depth'] = depth
+#         if 'normal' in self.output:
+#             state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
+#         if 'seg' in self.output:
+#             state['seg'] = self.simulator.renderer.render_robot_cameras(modes='seg')
+#         if 'rgb_filled' in self.output:
+#             with torch.no_grad():
+#                 tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
+#                 rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
+#                 state['rgb_filled'] = rgb_filled
+# 
+#         if 'pointgoal' in self.output:
+#             state['pointgoal'] = sensor_state[:2]
+# 
+#         # TODO: figure out why 'scan' consumes so much cpu
+#         if 'scan' in self.output:
+#             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+#             pose_camera = self.robots[0].parts['scan_link'].get_pose()
+#             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+#             elev_bottom_angle = -30. * np.pi / 180.
+#             elev_top_angle = 10. * np.pi / 180.
+#             elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+#                                    (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+#             orig_offset = np.vstack([
+#                 np.vstack([np.cos(angle),
+#                            np.sin(angle),
+#                            np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+#             ])
+#             transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+#             offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+#             pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+# 
+#             results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+#             hit = np.array([item[0] for item in results])
+#             dist = np.array([item[2] for item in results])
+# 
+#             valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+#             dist[~valid_pts] = 1.0  # zero out invalid pts
+#             dist *= 30
+# 
+#             xyz = np.expand_dims(dist, 1) * orig_offset
+#             state['scan'] = xyz
+# 
+#         if 'pedestrian' in self.output:
+#             ped_pos = self.get_ped_states()
+#             rob_pos = self.robots[0].get_position()
+#             ped_robot_relative_pos = [[ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1]] for i in range(self.num_pedestrians)]
+#             ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
+#             state['pedestrian'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
+#             
+#         if 'pedestrian_position' in self.output:
+#             ped_pos = self.get_ped_positions()
+#             rob_pos = self.robots[0].get_position()
+#             ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+#             # Crowdsim normalization for direct comparison
+#             ped_robot_relative_pos /= (12.0 / np.sqrt(2.0))
+#             ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
+#             state['pedestrian_position'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
+#             
+#         if 'pedestrian_velocity' in self.output:
+#             ped_vel = self.get_ped_velocities()
+#             rob_vel = self.robots[0].get_velocity()
+#             ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+#             # Crowdsim normalization for direct comparison
+#             ped_robot_relative_vel /= (1.0 / np.sqrt(2.0))
+#             ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
+#             state['pedestrian_velocity'] = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
+#         
+#         if 'pedestrian_ttc' in self.output:
+#             ped_ttc = self.get_ped_time_to_collision()
+#             ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
+#             state['pedestrian_ttc'] = ped_robot_relative_ttc # [ttc1, ttc2, ...] in robot frame
+#             
+#         if 'waypoints' in self.output:
+#             path = self.compute_a_star(self.config['scene']) # current dim is (107, 2), varying by scene and start/end points
+#             rob_pos = self.robots[0].get_position()
+#             path_robot_relative_pos = [[path[i][0] - rob_pos[0], path[i][1] - rob_pos[1]] for i in range(path.shape[0])]
+#             path_robot_relative_pos = np.asarray(path_robot_relative_pos)
+#             path_point_ind = np.argmin(np.linalg.norm(path_robot_relative_pos , axis=1))
+#             curr_points_num = path.shape[0] - path_point_ind
+#             # keep the dimenstion based on the number of waypoints specified in the config file
+#             if curr_points_num > self.config['waypoints']:
+#                 out = path_robot_relative_pos[path_point_ind:path_point_ind+self.config['waypoints']]
+#             else:
+#                 curr_waypoints = path_robot_relative_pos[path_point_ind:]
+#                 end_point = np.repeat(path_robot_relative_pos[path.shape[0]-1].reshape(1,2), (self.config['waypoints']-curr_points_num), axis=0)
+#                 out = np.vstack((curr_waypoints, end_point))
+#             state['waypoints'] = out.flatten()
 
         if 'concatenate' in self.output:
             normalizer = 12.0 / np.sqrt(2.0)
@@ -392,7 +397,7 @@ class NavigateEnv(BaseEnv):
             ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
             state_pedestrian_ttc = ped_robot_relative_ttc # [ttc1, ttc2, ...] in robot frame
             
-            state['concatenate'] = np.concatenate([sensor_state[0:2], state_pedestrian_position, state_pedestrian_velocity, state_pedestrian_ttc], axis=None).flatten()
+            state = np.concatenate([sensor_state[0:2], state_pedestrian_position, state_pedestrian_velocity, state_pedestrian_ttc], axis=None).flatten()
         return state
 
     def get_ped_states(self):

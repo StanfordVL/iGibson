@@ -142,9 +142,9 @@ class WalkerBase(BaseRobot):
             wheel_track = 0.235   # meters
             half_track = wheel_track / 2.0
             wheel_radius = 0.025 # meters
-            linear_velocity = abs(action[0])  # m/s
+            linear_velocity = (action[0] + 1.0) / 2.0  # m/s
             angular_velocity = action[1] # rad/s
-
+            
             if linear_velocity == 0:
                 # turn in place
                 right = angular_velocity * half_track / (2.0 * np.pi * wheel_radius)
@@ -190,6 +190,7 @@ class WalkerBase(BaseRobot):
         else:
             action = np.clip(action, self.action_space.low, self.action_space.high)
             real_action = self.action_high * action
+            
         self.apply_real_action(real_action)
 
     def calc_state(self):
