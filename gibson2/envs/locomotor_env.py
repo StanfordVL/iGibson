@@ -28,7 +28,6 @@ from gibson2.core.pedestrians.state import ObservableState
 # arXiv preprint arXiv:1807.06757 (2018).
 # https://arxiv.org/pdf/1807.06757.pdf
 
-
 class NavigateEnv(BaseEnv):
     def __init__(
             self,
@@ -886,7 +885,9 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.current_step += 1
 
         if done:
-            print(info)
+            #print(info)
+            print("episodes:", self.current_episode, [(key, np.around(info[key][0], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
+
             if self.automatic_reset:
                 info['last_observation'] = state
                 state = self.reset()
@@ -978,7 +979,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         info['ped_collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_collisions / self.current_episode,
         info['ped_hits_robot_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_hits_robot / self.current_episode,
         info['timeout_rate'] = 0 if self.current_episode == 0 else 100 * self.n_timeouts / self.current_episode,
-        info['shortest_path_length'] = None if self.current_episode == 0 else self.spl
+        info['shortest_path_length'] = None if self.current_episode == 0 else [self.spl]
         
         if self.success:
             print(reward)
@@ -1251,7 +1252,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         vr = self.robots[0].get_angular_velocity()[2]
 
         # TODO: replace hard coded robot radius and personal space radius
-        return ObservableState(px, py, theta, vx, vy, vr, 0.15, 0.6)
+        return ObservableState(px, py, theta, vx, vy, vr, 0.3, 0.6)
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,

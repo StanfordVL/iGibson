@@ -891,7 +891,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.current_step += 1
 
         if done:
-            print(info)
+            print("episodes:", self.current_episode, [(key, np.around(info[key], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
             if self.automatic_reset:
                 info['last_observation'] = state
                 state = self.reset()
@@ -1256,7 +1256,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         vr = self.robots[0].get_angular_velocity()[2]
 
         # TODO: replace hard coded robot radius and personal space radius
-        return ObservableState(px, py, theta, vx, vy, vr, 0.15, 0.6)
+        return ObservableState(px, py, theta, vx, vy, vr, 0.3, 0.6)
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
