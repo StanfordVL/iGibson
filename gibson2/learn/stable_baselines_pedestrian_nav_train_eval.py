@@ -248,9 +248,9 @@ def train_eval(
     gamma = 0.99
     params['learning_trials'] = learning_trials = 1500000
     params['learning_rate'] = learning_rate = 0.0001
-    params['n_parallel_env'] = 8
+    params['test'] = 'updated_stable_baselines'
 
-    tb_log_dir = os.path.expanduser('~') + '/tensorboard_logs/sac_stable_baselines' + string_to_filename(json.dumps(params))
+    tb_log_dir = os.path.expanduser('~') + '/tensorboard_logs/sac_gibson_stable_baselines' + string_to_filename(json.dumps(params))
 
     save_weights_file = tb_log_dir + '/sac_weights_final' + '.h5f'
 
