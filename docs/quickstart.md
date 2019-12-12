@@ -54,7 +54,7 @@ Demonstration examples can be found in `examples/demo` folder. `demo.py` shows t
 ROS Configuration
 ---------
 
-We provide examples of configuring Gibson with ROS [here](examples/ros/gibson-ros). We use turtlebot as an example, after a policy is trained in Gibson, it requires minimal changes to deploy onto a turtlebot. See [README](examples/ros/gibson-ros) for more details.
+We provide examples of configuring Gibson with ROS [here](https://github.com/StanfordVL/GibsonEnvV2/examples/ros/gibson-ros). We use turtlebot as an example, after a policy is trained in Gibson, it requires minimal changes to deploy onto a turtlebot. See [README](https://github.com/StanfordVL/GibsonEnvV2/examples/ros/gibson-ros) for more details.
 
 
 Coding Your RL Agent
