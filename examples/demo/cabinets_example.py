@@ -46,8 +46,61 @@ obj = YCBObject('003_cracker_box')
 s.import_object(obj)
 p.resetBasePositionAndOrientation(obj.body_id, [-2,2,1.2], [0,0,0,1])
 
-for i in range(1000):
-    with Profiler("Simulation: step"):
-        s.step()
+
+robot_id = jr.robot_ids[0]
+arm_joints = joints_from_names(robot_id, ['m1n6s200_joint_1', 'm1n6s200_joint_2', 'm1n6s200_joint_3', 'm1n6s200_joint_4', 'm1n6s200_joint_5'])
+rest_position = [-1.6214899194372223, 1.4082722179709484, -2.9650918084213216, -1.7071872988002772, 3.0503822148927712e-05]
+finger_joints = joints_from_names(robot_id, ['m1n6s200_joint_finger_1', 'm1n6s200_joint_finger_2'])
+
+path = None
+set_joint_positions(robot_id, arm_joints, rest_position)
+
+while path is None:
+    set_point(robot_id, [-3, -1, 0.0]) # Sets the z position of the robot
+    set_joint_positions(robot_id, arm_joints, rest_position)
+
+    path = plan_base_motion(robot_id, [-1,1.5,np.pi], ((-6, -6), (6, 6)), obstacles=obstacles, restarts=10, iterations=50, smooth=30)
+
+for bq in path:
+    set_base_values(robot_id, [bq[0], bq[1], bq[2]])
+    set_joint_positions(robot_id, arm_joints, rest_position)
+    time.sleep(0.05)
+    s.step()
+
+x,y,z = jr.get_end_effector_position()
+print(x,y,z)
+visual_marker = p.createVisualShape(p.GEOM_SPHERE, radius = 0.02, rgbaColor=(1,1,1,0.5))
+marker = p.createMultiBody(baseVisualShapeIndex = visual_marker)
+f = 1
+control_joints(robot_id, finger_joints, [f,f])
+
+
+while True:
+    joint_pos = p.calculateInverseKinematics(robot_id, 33, [x, y, z])[2:7]
+    control_joints(robot_id, arm_joints, joint_pos)
+    keys = p.getKeyboardEvents()
+    #set_base_values(robot_id, [-1,1.5,np.pi])
+    control_joints(robot_id, finger_joints, [f, f])
+
+    for k, v in keys.items():
+        if (k == p.B3G_RIGHT_ARROW and (v & p.KEY_IS_DOWN)):
+            x += 0.01
+        if (k == p.B3G_LEFT_ARROW and (v & p.KEY_IS_DOWN)):
+            x -= 0.01
+        if (k == p.B3G_UP_ARROW and (v & p.KEY_IS_DOWN)):
+            y += 0.01
+        if (k == p.B3G_DOWN_ARROW and (v & p.KEY_IS_DOWN)):
+            y -= 0.01
+        if (k == ord('z') and (v & p.KEY_IS_DOWN)):
+            z += 0.01
+        if (k == ord('x') and (v & p.KEY_IS_DOWN)):
+            z -= 0.01
+        if (k == ord('a') and (v & p.KEY_IS_DOWN)):
+            f += 0.01
+        if (k == ord('d') and (v & p.KEY_IS_DOWN)):
+            f -= 0.01
+
+    p.resetBasePositionAndOrientation(marker, [x,y,z], [0,0,0,1])
+    s.step()
 
 s.disconnect()
