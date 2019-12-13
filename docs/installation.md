@@ -28,7 +28,7 @@ The minimum system requirements are the following:
 
 First, our environment core assets data are available [here](https://storage.googleapis.com/gibsonassets/assets_gibson_v2.tar.gz).  You can store the data where you want and put the path in `global_config.yaml`.  The `assets` folder stores necessary data (agent models, environments, etc) to run gibson environment. 
 
-Users can add more environments files into `dataset` folder and put the path in `global_config.yaml` to run gibson on more environments. Visit the [database readme](gibson/data/README.md) for downloading more spaces. Please sign the [license agreement](gibson/data/README.md#download) before using Gibson's database. The default path is:
+Users can add more environments files into `dataset` folder and put the path in `global_config.yaml` to run gibson on more environments. Visit the [database readme](https://forms.gle/YTbzXjNtmmsra9KY6) for downloading more spaces. Please sign the [license agreement](https://forms.gle/YTbzXjNtmmsra9KY6) before using Gibson's database. The default path is:
 
 ```yaml
 assets_path: assets #put either absolute path or relative to current directory
@@ -40,7 +40,7 @@ dataset_path: assets/dataset
 ```
 wget https://storage.googleapis.com/gibsonassets/gibson_mesh/Ohopee.tar.gz
 ```
-Put the downloaded `Ohopee` scene into `dataset_path` and you should be able to run all the tests and some examples. Full dataset will be realeased soon, check back soon!
+Put the downloaded `Ohopee` scene into `dataset_path` and you should be able to run all the tests and some examples. Full dataset will can be downloaded [here](https://forms.gle/YTbzXjNtmmsra9KY6).
 
 
 Uninstalling
