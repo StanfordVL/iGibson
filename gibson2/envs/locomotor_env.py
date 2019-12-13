@@ -427,36 +427,36 @@ class NavigateEnv(BaseEnv):
             #                                   'collision_step',
             #                                   ])
 
-            shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
-                                                                            self.initial_pos[:2],
-                                                                            self.target_pos[:2],
-                                                                            entire_path=True)
-            floor_height = self.scene.get_floor_height(self.floor_num)
-            shortest_path = np.array([np.array([path[0], path[1], floor_height]) for path in shortest_path])
-            min_kin_dist = self.path_length * self.robots[0].robot_mass
-            kinematic_disturbance = min_kin_dist / (min_kin_dist + self.kinematic_disturbance)
-            min_dyn_dist = self.current_step * self.robots[0].robot_mass * 9.8
-            dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
-            dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
-            object_files = [obj.filename for obj in self.interactive_objects]
-            episode = Episode(
-                env=self.scene.model_id,
-                agent=self.robots[0].model_file,
-                initial_pos=self.initial_pos,
-                target_pos=self.target_pos,
-                geodesic_distance=geodesic_distance,
-                shortest_path=shortest_path,
-                agent_trajectory=np.array(self.agent_trajectory),
-                object_files=object_files,
-                object_trajectory=np.array(self.object_trajectory),
-                success=float(info['success']),
-                path_efficiency=min(1.0, geodesic_distance / self.path_length),
-                kinematic_disturbance=kinematic_disturbance,
-                dynamic_disturbance_a=dynamic_disturbance_a,
-                dynamic_disturbance_b=dynamic_disturbance_b,
-                collision_step=self.collision_step,
-            )
-            self.stored_episodes.append(episode)
+            # shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
+            #                                                                 self.initial_pos[:2],
+            #                                                                 self.target_pos[:2],
+            #                                                                 entire_path=True)
+            # floor_height = self.scene.get_floor_height(self.floor_num)
+            # shortest_path = np.array([np.array([path[0], path[1], floor_height]) for path in shortest_path])
+            # min_kin_dist = self.path_length * self.robots[0].robot_mass
+            # kinematic_disturbance = min_kin_dist / (min_kin_dist + self.kinematic_disturbance)
+            # min_dyn_dist = self.current_step * self.robots[0].robot_mass * 9.8
+            # dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
+            # dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
+            # object_files = [obj.filename for obj in self.interactive_objects]
+            # episode = Episode(
+            #     env=self.scene.model_id,
+            #     agent=self.robots[0].model_file,
+            #     initial_pos=self.initial_pos,
+            #     target_pos=self.target_pos,
+            #     geodesic_distance=geodesic_distance,
+            #     shortest_path=shortest_path,
+            #     agent_trajectory=np.array(self.agent_trajectory),
+            #     object_files=object_files,
+            #     object_trajectory=np.array(self.object_trajectory),
+            #     success=float(info['success']),
+            #     path_efficiency=min(1.0, geodesic_distance / self.path_length),
+            #     kinematic_disturbance=kinematic_disturbance,
+            #     dynamic_disturbance_a=dynamic_disturbance_a,
+            #     dynamic_disturbance_b=dynamic_disturbance_b,
+            #     collision_step=self.collision_step,
+            # )
+            # self.stored_episodes.append(episode)
 
         return done, info
 
