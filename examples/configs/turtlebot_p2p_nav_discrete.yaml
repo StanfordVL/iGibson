@@ -40,7 +40,7 @@ max_step: 500
 # sensor
 output: [sensor, rgb, depth]
 resolution: 64
-fov: 1.57
+fov: 90
 
 # display
 use_filler: true

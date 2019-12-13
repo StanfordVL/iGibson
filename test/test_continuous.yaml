@@ -21,7 +21,7 @@ dist_tol: 0.5
 terminal_reward: 5000
 discount_factor: 1.0
 
-fov: 1.57
+fov: 90
 fisheye: false
 debug: true
 # display
