@@ -431,6 +431,7 @@ class NavigateEnv(BaseEnv):
             #                                                                 self.initial_pos[:2],
             #                                                                 self.target_pos[:2],
             #                                                                 entire_path=True)
+
             # floor_height = self.scene.get_floor_height(self.floor_num)
             # shortest_path = np.array([np.array([path[0], path[1], floor_height]) for path in shortest_path])
             # min_kin_dist = self.path_length * self.robots[0].robot_mass

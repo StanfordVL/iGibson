@@ -89,7 +89,7 @@ class BuildingScene(Scene):
         self.should_load_replaced_objects = should_load_replaced_objects
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
-
+        self.mesh_body_id = None
     def l2_distance(self, a, b):
         return np.linalg.norm(np.array(a) - np.array(b))
 
@@ -113,6 +113,8 @@ class BuildingScene(Scene):
         visualId = -1
         boundaryUid = p.createMultiBody(baseCollisionShapeIndex=collisionId,
                                         baseVisualShapeIndex=visualId)
+
+        self.mesh_body_id = boundaryUid
         p.changeDynamics(boundaryUid, -1, lateralFriction=1)
 
         planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
