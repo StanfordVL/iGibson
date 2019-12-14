@@ -2461,19 +2461,20 @@ def get_collision_fn(body, joints, obstacles, attachments, self_collisions, disa
     # TODO: test self collision with the holding
     def collision_fn(q):
         if not all_between(lower_limits, q, upper_limits):
-            #print('Joint limits violated')
-            return True
+            print(lower_limits, q, upper_limits)
+            print('Joint limits violated')
+            #return True
         set_joint_positions(body, joints, q)
         for attachment in attachments:
             attachment.assign()
         for link1, link2 in check_link_pairs:
             # Self-collisions should not have the max_distance parameter
             if pairwise_link_collision(body, link1, body, link2): #, **kwargs):
-                #print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
-                return True
+                print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
+                #return True
         for body1, body2 in check_body_pairs:
             if pairwise_collision(body1, body2, **kwargs):
-                #print(get_body_name(body1), get_body_name(body2))
+                print(get_body_name(body1), get_body_name(body2))
                 return True
         return False
     return collision_fn
@@ -2652,13 +2653,27 @@ def plan_base_motion(body, end_conf, base_limits, obstacles=[], direct=False,
     distance_fn = get_base_distance_fn(weights=weights)
 
     def extend_fn(q1, q2):
-        steps = np.abs(np.divide(difference_fn(q2, q1), resolutions))
-        n = int(np.max(steps)) + 1
-        q = q1
-        for i in range(n):
-            q = tuple((1. / (n - i)) * np.array(difference_fn(q2, q)) + q)
+        target_theta = np.arctan2(q2[1]-q1[1], q2[0]-q1[0])
+
+        n1 = int(np.abs(circular_difference(target_theta, q1[2]) / resolutions[2])) + 1
+        n3 = int(np.abs(circular_difference(q2[2], target_theta) / resolutions[2])) + 1
+        steps2 = np.abs(np.divide(difference_fn(q2, q1), resolutions))
+        n2 = int(np.max(steps2)) + 1
+
+        for i in range(n1):
+            q = (i / (n1)) * np.array(difference_fn((q1[0], q1[1], target_theta), q1)) + np.array(q1)
+            q = tuple(q)
             yield q
-            # TODO: should wrap these joints
+
+        for i in range(n2):
+            q = (i / (n2)) * np.array(difference_fn((q2[0], q2[1], target_theta), (q1[0], q1[1], target_theta))) +  np.array((q1[0], q1[1], target_theta))
+            q = tuple(q)
+            yield q
+
+        for i in range(n3):
+            q = (i / (n3)) * np.array(difference_fn(q2, (q2[0], q2[1], target_theta))) + np.array((q2[0], q2[1], target_theta))
+            q = tuple(q)
+            yield q
 
     def collision_fn(q):
         # TODO: update this function
