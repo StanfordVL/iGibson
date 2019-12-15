@@ -7,7 +7,7 @@ scene: stadium
 # model_id: Ohoopee
 
 num_obstacles: 0
-num_pedestrians: 4
+num_pedestrians: 7
 pedestrians_can_see_robot: true
 randomize_pedestrian_attributes: false
 
@@ -18,6 +18,12 @@ max_angular_velocity: 2.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
+
+initial_pos: [-2.0, 2.0, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
+
+target_pos: [-2.0, 2.0, 0.0]
+target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
 additional_states_dim: 3
@@ -56,46 +62,13 @@ display_ui: false
 show_diagnostics: false
 ui_num: 2
 ui_components: [RGB_FILLED, DEPTH]
-
-# Walls configuration
-walls:
-  walls_pos: [[0, 5.25, 0.501], [0, -5.25, 0.501], [5.0, 0, 0.501], [-5.0, 0, 0.501]]
-  walls_dim: [[5, 0.25, 1.5], [5.0, 0.25, 1.5], [0.25, 5.0, 1.5], [0.25, 5.0, 1.5]]
-
-# Specify different parts of the room.
-components:
-  entrance_1:
-    center_x: 0.0
-    center_y: 4.0
-  entrance_2:
-    center_x: 4.0
-    center_y: 0.0
-  entrance_3:
-    center_x: 0.0
-    center_y: -4.0
-  entrance_4:
-    center_x: -4.0
-    center_y: 0.0
-
-# TODO: specify obstacles.
-
-############ MOVEMENTS ##############
-# Movements configuration
-movements:
-    humans:
-        initial_positions: ['entrance_1', 'entrance_1', 'entrance_3', 'entrance_1']
-        target_positions: ['entrance_3', 'entrance_3', 'entrance_1', 'entrance_3']
-        x_range_radius: [0.5, 0.5, 0.5, 0.5]
-        y_range_radius: [0.5, 0.5, 0.5, 0.5]
-        flips: [True, True, True, True]
-        wait_steps: [0, 0, 0, 0]
-    agent:
-        initial_positions: 'entrance_2'
-        target_positions: 'entrance_4'
-        x_range_radius: 1.0
-        y_range_radius: 1.0
-        
-############# PEDESTRIAN CONFIGURATION ############
+random:
+  random_initial_pose : false
+  random_target_pose : false
+  random_init_x_range: [-0.1, 0.1]
+  random_init_y_range: [-0.1, 0.1]
+  random_init_z_range: [-0.1, 0.1]
+  random_init_rot_range: [-0.1, 0.1]
 
 speed:
   timestep: 0.001
@@ -115,32 +88,32 @@ debug: false
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: true
 
-# Pedestrian configuration
 humans:
   visible: true
   policy: orca
-  radius: 0.03
+  radius: 0.3
   v_pref: 1.0
   position_noise: 0.0
   velocity_noise: 0.0
   sensor: coordinates
-  personal_space: 1.0
+  personal_space: 0.6
   max_linear_velocity: 1.0
   max_angular_velocity: 1.0
   kinematics: holonomic
   # for random initialization and goal setting
-  initial_position:
-    min_x: -5.0
-    max_x: 5.0
-    min_y: -5.0
-    max_y: 5.0
-  target_position:
-    min_x: -5.0
-    max_x: 5.0
-    min_y: -5.0
-    max_y: 5.0
   initial_x_ranges: [[3.0, 4.0], [3.0, 4.0], [3.0, 4.0], [3.0, 4.0]]
   initial_y_ranges: [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
   target_x_ranges: [[-4.0, -3.0], [-4.0, -3.0], [-4.0, -3.0], [-4.0, -3.0]]
   target_y_ranges: [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
   min_separation: 0.5
+  target_position:
+     min_x: -5.0
+     max_x: 5.0
+     min_y: -5.0
+     max_y: 5.0
+     
+
+#walls:
+#  walls_pos: [[0, 5.25, 0.501], [0, -5.25, 0.501], [5.0, 0, 0.501], [-5.0, 0, 0.501]]
+#  walls_dim: [[5, 0.25, 1.5], [5.0, 0.25, 1.5], [0.25, 5.0, 1.5], [0.25, 5.0, 1.5]]
+

@@ -17,8 +17,8 @@ class Human(Agent):
         state = JointState(self.get_full_state(), ob)
         if self.num_pedestrians:
             # Rescale personal space
-            state.self_state.personal_space = max(0.2, 1.0 / self.num_pedestrians)
+            state.self_state.personal_space = max(0.3, 1.0 / self.num_pedestrians)
             for human_state in state.human_states:
-                human_state.personal_space = max(0.2, 1.0 / self.num_pedestrians)
+                human_state.personal_space = max(0.3, 1.0 / self.num_pedestrians)
         action = self.policy.predict(state, walls=walls, obstacles=obstacles)
         return action

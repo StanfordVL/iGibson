@@ -61,7 +61,8 @@ class ORCA(object):
         self.max_neighbors = 10
         self.time_horizon = 5
         self.time_horizon_obst = 5
-        self.radius = 1.2 # TODO: needs to be fixed to include radius + personal space
+        self.radius = 0.3
+        self.personal_space = 0.6
         self.max_speed = 1.0
         self.sim = None
 
@@ -98,13 +99,13 @@ class ORCA(object):
             self.sim = None
             
         if self.sim is None:
-            self.sim = rvo2.PyRVOSimulator(self.time_step, *params, self.radius, self.max_speed)
-                        
-            self.sim.addAgent(self_state.position, *params, self_state.radius + 0.01 + self_state.personal_space / 2.0,
+            self.sim = rvo2.PyRVOSimulator(self.time_step, *params, self.personal_space, self.max_speed)
+            
+            self.sim.addAgent(self_state.position, *params, self_state.personal_space,
                               self_state.v_pref, self_state.velocity)
             
             for human_state in state.human_states:
-                self.sim.addAgent(human_state.position, *params, human_state.radius + 0.01 + human_state.personal_space / 2.0,
+                self.sim.addAgent(human_state.position, *params, human_state.personal_space,
                                   self.max_speed, human_state.velocity)
 
             if len(walls) > 0:

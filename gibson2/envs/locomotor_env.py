@@ -14,7 +14,6 @@ import gym
 import numpy as np
 import os
 import pybullet as p
-import rvo2
 from IPython import embed
 import cv2
 import time
@@ -52,6 +51,22 @@ class NavigateEnv(BaseEnv):
         self.current_step = 0
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
+        
+        self.n_steps = 0
+        self.n_successes = 0
+        self.n_collisions = 0
+        self.n_ped_collisions = 0
+        self.n_ped_hits_robot = 0
+        self.n_timeouts = 0
+        self.n_personal_space_violations = 0
+        self.n_cutting_off = 0
+        self.ped_collision = False
+        self.success = False
+        self.distance_traveled = 0.0
+        self.time_elapsed = 0.0
+        self.episode_distance = 0.0
+        self.spl_sum = 0 # shortest path length (SPL)
+        self.spl = 0     # average shortest path length       
 
     def load(self):
         super(NavigateEnv, self).load()
@@ -104,7 +119,7 @@ class NavigateEnv(BaseEnv):
         # pedestrians
         self.num_pedestrians = self.config.get('num_pedestrians', 0)
         self.pedestrians_can_see_robot = self.config['pedestrians_can_see_robot']        
-        self.randomize_pedestrian_attributes = self.config.get('randomize_pedestrian_attributes', True)
+        self.randomize_pedestrian_attributes = self.config.get('randomize_pedestrian_attributes', False)
 
         # TODO: sensor: observations that are passed as network input, e.g. target position in local frame
         # TODO: auxiliary sensor: observations that are not passed as network input, but used to maintain the same
@@ -113,6 +128,12 @@ class NavigateEnv(BaseEnv):
         self.action_dim = self.robots[0].action_dim
         
         observation_space = OrderedDict()
+        if 'concatenate' in self.output:
+            self.concatenate_space = gym.spaces.Box(low=-np.inf,
+                                               high=np.inf,
+                                               shape=(2 + 5 * self.num_pedestrians,),
+                                               dtype=np.float32)
+            observation_space['concatenate'] = self.concatenate_space            
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf,
                                                high=np.inf,
@@ -314,7 +335,6 @@ class NavigateEnv(BaseEnv):
             ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
             ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
             state['pedestrian_position'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
-            #print(state['pedestrian_position'])
             
         if 'pedestrian_velocity' in self.output:
             ped_vel = self.get_ped_velocities()
@@ -322,9 +342,7 @@ class NavigateEnv(BaseEnv):
             ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
             ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
             state['pedestrian_velocity'] = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
-            #print(state['pedestrian_velocity'])
         
-        # TODO: time-to-collision (ttc)
         if 'pedestrian_ttc' in self.output:
             ped_ttc = self.get_ped_time_to_collision()
             ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
@@ -345,50 +363,26 @@ class NavigateEnv(BaseEnv):
                 end_point = np.repeat(path_robot_relative_pos[path.shape[0]-1].reshape(1,2), (self.config['waypoints']-curr_points_num), axis=0)
                 out = np.vstack((curr_waypoints, end_point))
             state['waypoints'] = out.flatten()
-                        
-        return state
-    
-    def init_rvo_simulator(self, n_pedestrians=0, pedestrian_positions=[], pedestrian_goals=[], walls=[], obstacles=[]):
-        assert len(pedestrian_positions) == n_pedestrians
-        #assert len(pedestrian_goals) == n_pedestrians
 
-        # Initializing RVO2 simulator && add agents to self.pedestrian_ids
-        init_direction = np.random.uniform(0.0, 2*np.pi, size=(self.num_pedestrians,))
-        pref_speed = np.linspace(0.001, 0.01, num=self.num_pedestrians) # ??? scale
-        timeStep = 1.0
-        neighborDist = 10 # safe-radius to observe states
-        maxNeighbors = 10
-        timeHorizon = 5 #np.linspace(0.5, 2.0, num=self.num_pedestrians)
-        timeHorizonObst = 5
-        radius = 1.2 # size of the agent inflated to include personal space
-        maxSpeed = 0.5 # ???
-        sim = rvo2.PyRVOSimulator(timeStep, neighborDist, maxNeighbors, timeHorizon, timeHorizonObst, radius, maxSpeed)
- 
-        for i in range(self.num_pedestrians):
-            pedestrian_id = sim.addAgent(pedestrian_positions[i])
-            self.pedestrian_ids.append(pedestrian_id)
-            vx = pref_speed[i] * np.cos(init_direction[i])
-            vy = pref_speed[i] * np.sin(init_direction[i])
-            sim.setAgentPrefVelocity(pedestrian_id, (vx, vy))
+        if 'concatenate' in self.output:
+            ped_pos = self.get_ped_positions()
+            rob_pos = self.robots[0].get_position()
+            ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+            ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
+            state_pedestrian_position = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
+
+            ped_vel = self.get_ped_velocities()
+            rob_vel = self.robots[0].get_velocity()
+            ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+            ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
+            state_pedestrian_velocity = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
+
+            ped_ttc = self.get_ped_time_to_collision()
+            ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
+            state_pedestrian_ttc = ped_robot_relative_ttc # [ttc1, ttc2, ...] in robot frame
             
-        # add the robot
-        self.robot_as_pedestrian_id = sim.addAgent(tuple(self.robots[0].get_position()[:2]))
- 
-        # add the walls
-        for i in range(len(walls)):
-            x, y, _ = walls[i][0] # pos = [x, y, z]
-            dx, dy, _ = walls[i][1] # dim = [dx, dy, dz]
-            sim.addObstacle([(x+dx, y+dy), (x-dx, y+dy), (x-dx, y-dy), (x+dx, y-dy)])
- 
-        # add obstacles
-        for i in range(len(obstacles)):
-            x, y, _ = obstacles[i].get_position() # pos = [x, y, z]
-            dx, dy, _ = obstacles[i].get_dimensions() # dim = [dx, dy, dz]
-            sim.addObstacle([(x+dx, y+dy), (x-dx, y+dy), (x-dx, y-dy), (x+dx, y-dy)])
-             
-        sim.processObstacles()
- 
-        return sim
+            state['concatenate'] = np.concatenate([sensor_state[0:2], state_pedestrian_position, state_pedestrian_velocity, state_pedestrian_ttc], axis=None).flatten()
+        return state
 
     def get_ped_states(self):
         return [(self.humans[i].px, self.humans[i].py) for i in range(self.num_pedestrians)]
@@ -397,7 +391,33 @@ class NavigateEnv(BaseEnv):
         return [(self.humans[i].px, self.humans[i].py) for i in range(self.num_pedestrians)]
     
     def get_ped_velocities(self):
-        return [(self.humans[i].vx, self.humans[i].vy) for i in range(self.num_pedestrians)]  
+        return [(self.humans[i].vx, self.humans[i].vy) for i in range(self.num_pedestrians)]
+    
+    def get_ped_time_to_collision(self):
+        ped_pos = self.get_ped_positions()
+        rob_pos = self.robots[0].get_position()
+        ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+
+        ped_vel = self.get_ped_velocities()
+        rob_vel = self.robots[0].get_velocity()
+        ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+        
+        ttc = list()
+        
+        for pos, vel in zip(ped_pos, ped_vel):
+            if (vel[0] * pos[0] + vel[1] * pos[1]) == 0:
+                time_to_collision = -1.0
+            else:
+                time_to_collision = -1.0 * (pos[0]**2 + pos[1]**2) / (vel[0] * pos[0] + vel[1] * pos[1])
+        
+            if time_to_collision < 0:
+                time_to_collision = -1.0
+            else:
+                time_to_collision = 1.0 - np.tanh(time_to_collision / 10.0)
+        
+            ttc.append(time_to_collision)
+                
+        return ttc
 
     def run_simulation(self):
         collision_links = []
@@ -513,11 +533,19 @@ class NavigateEnv(BaseEnv):
             print("COLLISION!")
             done = True
             info['success'] = False
+            self.n_collisions += 1
+            robot_velocity = self.robots[0].get_velocity()
+
+            if np.linalg.norm([robot_velocity[0], robot_velocity[1]]) < 0.05:
+                self.n_ped_hits_robot += 1
+            else:
+                self.n_ped_collisions += 1
             
         elif l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
-            print("GOAL")
+            print("SUCCESS!")
             done = True
             info['success'] = True
+            self.n_successes += 1
 
         elif self.robots[0].get_position()[2] > self.death_z_thresh:
             print("DEATH")
@@ -526,7 +554,9 @@ class NavigateEnv(BaseEnv):
 
         elif self.current_step >= self.max_step:
             done = True
+            print("TIMEOUT!")
             info['success'] = False
+            self.n_timeouts += 1
 
         # elif door_angle < (-10.0 / 180.0 * np.pi):
         #     print("WRONG PUSH")
@@ -694,7 +724,6 @@ class NavigatePedestriansEnv(NavigateEnv):
     def __init__(
              self,
              config_file,
-             # layout,
              mode='headless',
              action_timestep=1 / 10.0,
              physics_timestep=1 / 240.0,
@@ -709,7 +738,6 @@ class NavigatePedestriansEnv(NavigateEnv):
                                                 automatic_reset=automatic_reset,
                                                 device_idx=device_idx)
         self.random_height = random_height
-        # self.layout = parse_config(layout)
         self.pedestrian_z = 0.03 # hard-coded.
         ''' Walls '''
         # wall = [pos, dim]
@@ -723,6 +751,16 @@ class NavigatePedestriansEnv(NavigateEnv):
 #                     [[-10.2, 6, 0.501],[0.2, 1, 0.5]]]
         
 
+        # if layout: # if specify a layout file
+            # self.walls = self.layout.get('walls')
+            # components = self.layout.get('components')
+            # humans = self.layout.get('movements')['humans']
+            # agent = self.layout.get('movements')['agent']
+            # self.pedestrian_initial_x_ranges = self.layout.get('humans')['initial_x_ranges']
+            # self.pedestrian_initial_y_ranges = self.layout.get('humans')['initial_y_ranges']
+            # self.pedestrian_target_x_ranges = self.layout.get('humans')['target_x_ranges']
+            # self.pedestrian_target_y_ranges = self.layout.get('humans')['target_y_ranges'] 
+            # self.min_separation = self.layout.get('humans')['min_separation']
         # else: # use the layout in meta-config
         self.walls = self.config.get('walls')
         components = self.config.get('components')
@@ -731,6 +769,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         agent = self.config.get('movements')['agent']
 
         self.min_separation = self.config.get('humans')['radius'] * 2 + 0.05
+        print('min separation: {}'.format(self.min_separation))
         # self.min_separation = 0.5
         self.pedestrian_x_range_radius = [humans['x_range_radius'] for _ in range(self.num_pedestrians)]
         self.pedestrian_y_range_radius = [humans['y_range_radius'] for _ in range(self.num_pedestrians)]
@@ -751,10 +790,12 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.agent_x_range_radius = agent['x_range_radius']
         self.agent_y_range_radius = agent['y_range_radius']
 
-        for i, wall_pos in enumerate(self.walls['walls_pos']):
-            wall_dim = self.walls['walls_dim'][i]
-            box = BoxShape(pos=wall_pos, dim=wall_dim)
-            self.obstacle_ids.append(self.simulator.import_object(box))
+        if self.walls is not None:
+            for i, wall_pos in enumerate(self.walls['walls_pos']):
+                wall_dim = self.walls['walls_dim'][i]
+                box = BoxShape(pos=wall_pos, dim=wall_dim)
+                self.obstacle_ids.append(self.simulator.import_object(box))
+
         ''' Obstacles '''
         self.obstacles = []
 
@@ -821,7 +862,10 @@ class NavigatePedestriansEnv(NavigateEnv):
                 ob += [self.get_robot_observable_state()]
                 #self.pedestrian_simulator.setAgentPosition(self.robot_as_pedestrian_id, tuple(self.robots[0].get_position()[:2]))
             # human_actions.append(human.act(ob, walls=self.walls, obstacles=self.obstacles))
-            walls_config = list(zip(self.walls['walls_pos'], self.walls['walls_dim']))
+            if self.walls:
+                walls_config = list(zip(self.walls['walls_pos'], self.walls['walls_dim']))
+            else:
+                walls_config = list()
             human_actions.append(human.act(ob, walls=walls_config, obstacles=self.obstacles))
 
             # Set next goal if close to current one.
@@ -842,10 +886,103 @@ class NavigatePedestriansEnv(NavigateEnv):
         reward, info = self.get_reward(collision_links, action, info)
         done, info = self.get_termination(collision_links, info)
 
-        if done and self.automatic_reset:
-            info['last_observation'] = state
-            state = self.reset()
+        # Update distance metrics
+        self.time_elapsed += self.action_timestep
+
+        robot_position = self.robots[0].get_position()
+        distance_traveled = np.sqrt((robot_position[0] - self.last_robot_px)**2 + (robot_position[1] - self.last_robot_py)**2)
+        
+        self.distance_traveled += distance_traveled
+        self.episode_distance += distance_traveled
+        
+        #self.n_personal_space_violations += 1 * (self.discomfort_dist - dmin) / self.discomfort_dist * self.time_step
+                
+        self.last_robot_px = robot_position[0]
+        self.last_robot_py = robot_position[1]
+
+        if done:
+            print(info)
+            if self.automatic_reset:
+                info['last_observation'] = state
+                state = self.reset()
+                    
         return state, reward, done, info
+
+    def get_reward(self, collision_links=[], action=None, info={}):  
+        self.success = False
+              
+        reward = self.slack_reward  # |slack_reward| = 0.01 per step
+
+        new_normalized_potential = self.get_potential() / self.initial_potential
+
+        potential_reward = self.normalized_potential - new_normalized_potential
+        reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+        self.normalized_potential = new_normalized_potential
+
+        # electricity_reward = np.abs(self.robots[0].joint_speeds * self.robots[0].joint_torque).mean().item()
+        electricity_reward = 0.0
+        reward += electricity_reward * self.electricity_reward_weight  # |electricity_reward| ~= 0.05 per step
+
+        # stall_torque_reward = np.square(self.robots[0].joint_torque).mean()
+        stall_torque_reward = 0.0
+        reward += stall_torque_reward * self.stall_torque_reward_weight  # |stall_torque_reward| ~= 0.05 per step
+
+        # # get minimum distance between the robot and a pedestrian
+        # ped_positions = get_ped_positions(self)
+        # robot_position = self.robots[0].get_position()
+
+        # # TODO: human and robot radius hard coded for now (0.3 meters each)
+        # self.collision = False
+        # ped_robot_distances = [[np.linalg.norm(ped_pos[i][0] - robot_pos[0], ped_pos[i][1] - robot_pos[1]) - 0.3 - 0.3] for i in range(self.num_pedestrians)]
+        # closest_dist = np.min(ped_robot_distances)
+
+        # # velocity projection to elongate the personal space in the direction of motion
+        # cutting_off = False
+
+        # ped_robot_lookahead_distances = [(self.humans[i].vx, self.humans[i].vy) for i in range(self.um_pedestrians)]        
+        
+        # for i, human in enumerate(self.humans):
+        #     px = human.px - self.robot.px
+        #     py = human.py - self.robot.py
+
+        #     ex = px + human.vx * self.lookahead_interval
+        #     ey = py + human.vy * self.lookahead_interval
+            
+        #     # get the nearest distance to segment connecting the current position and future position
+        #     velocity_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - self.robot.radius
+
+        #     if velocity_dist < velocity_dmin:
+        #         velocity_dmin = velocity_dist
+        
+        collision_reward = float(len(collision_links) > 0)
+        if collision_reward > 0:
+            self.collision = True
+            info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
+            reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
+        else:
+            self.collision = False
+            
+        # goal reached
+        if l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
+            reward += self.success_reward  # |success_reward| = 10.0 per step
+            self.success = True
+            
+        info['episodes'] = self.current_episode
+        info['successes'] = self.n_successes,
+        info['collisions'] = self.n_collisions,
+        info['ped_collisions'] = self.n_ped_collisions,
+        info['ped_hits_robot'] = self.n_ped_hits_robot,
+        info['timeouts'] = self.n_timeouts,
+        info['personal_space_violations'] = 0 if self.distance_traveled == 0 else self.n_personal_space_violations / self.distance_traveled,
+        info['cutting_off'] = 0 if self.distance_traveled == 0 else self.n_cutting_off / self.distance_traveled,
+        info['success_rate'] = 0 if self.current_episode == 0 else 100 * self.n_successes / self.current_episode,
+        info['collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_collisions / self.current_episode,
+        info['ped_collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_collisions / self.current_episode,
+        info['ped_hits_robot_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_hits_robot / self.current_episode,
+        info['timeout_rate'] = 0 if self.current_episode == 0 else 100 * self.n_timeouts / self.current_episode,
+        info['shortest_path_length'] = None if self.current_episode == 0 else self.spl
+                         
+        return reward, info
 
     def update_pedestrian_goal_markers(self, pedestrian_goals):
         if len(self.pedestrian_goal_objects) == 0:
@@ -894,13 +1031,9 @@ class NavigatePedestriansEnv(NavigateEnv):
             
             # generate initial pedestrian poses
             pedestrian_poses = self.generate_pedestrian_poses_v2()
-
-            # create Gibson pedestrian objects
-            # self.create_pedestrians(pedestrian_poses)          
         else:
             # get current poses
             pedestrian_poses = [pedestrian.get_position() for pedestrian in self.pedestrians]
-        
             
         # generate a goal for each pedestrian
         pedestrian_goals = self.generate_pedestrian_poses_v2()
@@ -937,7 +1070,7 @@ class NavigatePedestriansEnv(NavigateEnv):
             theta = human.theta
         
             direction = p.getQuaternionFromEuler([0, 0, theta])
-            self.pedestrians[i].reset_position_orientation([px, py, 0.03], direction)
+            self.pedestrians[i].reset_position_orientation([px, py, 0.03], direction)        
             
     def reset_obstacles(self):
         # First remove the obstacles
@@ -957,6 +1090,14 @@ class NavigatePedestriansEnv(NavigateEnv):
             self.obstacles.append(box)
         
     def reset_initial_and_target_pos(self):
+        # Compute SPL metric
+        robot_position = self.robots[0].get_position()
+        self.last_robot_px = robot_position[0]
+        self.last_robot_py = robot_position[1]
+        
+        if self.current_episode > 0:
+            self.compute_metrics()
+            
         # Select new positions for obstacles
         self.reset_obstacles()
 
@@ -966,29 +1107,22 @@ class NavigatePedestriansEnv(NavigateEnv):
         # Choose new start postion and goal location for robot
         reset_complete = False
         while not reset_complete:
-            print("RESET")
-
-            # floor, pos = self.scene.get_random_point(min_xy=self.initial_pos[0], max_xy=self.initial_pos[1])
-            # floor, pos = self.scene.get_random_point(min_xy=self.agent_, max_xy=3)
-            
             pos = np.array([np.random.uniform(self.agent_init['center_x'] - self.agent_x_range_radius, self.agent_init['center_x'] + self.agent_x_range_radius), np.random.uniform(self.agent_init['center_y'] - self.agent_y_range_radius, self.agent_init['center_y'] + self.agent_y_range_radius), 0.0])
-            print('AGENT NEW POSITION: {}'.format(pos))
+
             self.robots[0].set_position(pos=[pos[0], pos[1], pos[2] + 0.1])
             self.robots[0].set_orientation(
                 orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
-            self.initial_pos = pos
+            self.initial_pos = np.array(pos)
             
             max_trials = 1000
             dist = 0.0
             for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
-                # _, self.current_target_position = self.scene.get_random_point_floor(floor, min_xy=self.target_pos[0], max_xy=self.target_pos[1], random_height=self.random_height)
                 self.current_target_position = np.array([np.random.uniform(self.agent_target['center_x'] - self.agent_x_range_radius, self.agent_target['center_x'] + self.agent_x_range_radius), np.random.uniform(self.agent_target['center_y']- self.agent_y_range_radius, self.agent_target['center_y'] + self.agent_y_range_radius), 0.0])
                 dist = l2_distance(self.initial_pos, self.current_target_position)
                 if dist > 1.0:
                     reset_complete = True
                     break
             if dist < 1.0:
-                #raise Exception("Failed to find initial and target pos that are >1m apart")
                 print("Failed to find initial and target pos that are >1m apart")
                 print("Selecting new initial position")
 
@@ -998,12 +1132,26 @@ class NavigatePedestriansEnv(NavigateEnv):
             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
+
+        # Compute the shortest distance to this goal (TODO: account for obstacles!)
+        robot_position = self.robots[0].get_position()
+
+        self.episode_shortest_distance = np.sqrt((self.current_target_position[0] - robot_position[0])**2 + (self.current_target_position[1] - robot_position[1])**2)
+        
+        self.n_steps = 0
+        self.episode_distance = 0.0
+        self.episode_time = 0.0
+
         #return no_collision
         return True
-   
-
+    
+    def compute_metrics(self):
+        if self.success:
+            self.spl_sum += self.episode_shortest_distance / (max(self.episode_shortest_distance, self.episode_distance))
+        
+        self.spl = self.spl_sum / self.current_episode
+        
     def generate_pedestrian_poses_v2(self):
-       
         # Euclidean distance on xy plane.
         def euclidean_xy(source, target):
             return np.sqrt((source[0] - target[0]) ** 2 + (source[1] - target[1]) ** 2)
@@ -1013,7 +1161,7 @@ class NavigatePedestriansEnv(NavigateEnv):
        
         for obstacle in self.obstacles:
             all_object_poses.append(obstacle.get_position())
-     
+
         for i in range(self.num_pedestrians):
             good_pose = False
             while not good_pose:
@@ -1041,44 +1189,6 @@ class NavigatePedestriansEnv(NavigateEnv):
         print('pedestrian poses: {}'.format(pedestrian_poses))
         return pedestrian_poses
 
-
-    def generate_pedestrian_poses(self, n_pedestrians=0, start_poses=[], min_separation=1.0):
-        poses = list()
-        
-        # Keep track of positions of the obstacles and the robot.
-        all_object_poses = list()
-        all_object_poses.append(self.robots[0].get_position())
-        
-        for obstacle in self.obstacles:
-            all_object_poses.append(obstacle.get_position())
-        
-        i = 0
-        print('ALL OBJECT POSES: {}'.format(all_object_poses))
-        while i < n_pedestrians:
-            good_pose = False
-            
-            while not good_pose:
-                start_pose = random.choice(start_poses)
-
-                good_pose = True
-               
-                # Why initialize this way? 
-                x = start_pose[0][0] + random.uniform(*start_pose[1])
-                y = start_pose[0][1] + random.uniform(*start_pose[1])
-               
-                pedestrian_pose = (x, y, 0.03)
-                min_separation = 0.5
-                for pose in all_object_poses:
-                    if np.sqrt((pose[0] - x)**2 + (pose[1] - y)**2) < min_separation:
-                        good_pose = False
-
-            poses.append(pedestrian_pose)
-            all_object_poses.append(pedestrian_pose)
-            
-            i += 1
-
-        return poses
-    
     def get_robot_observable_state(self):
         px, py, pz = self.robots[0].get_position()
         theta = self.robots[0].get_rpy()[2]
@@ -1086,7 +1196,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         vr = self.robots[0].get_angular_velocity()[2]
 
         # TODO: replace hard coded robot radius and personal space radius
-        return ObservableState(px, py, theta, vx, vy, vr, 0.15, 1.2)
+        return ObservableState(px, py, theta, vx, vy, vr, 0.15, 0.6)
 
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
@@ -1728,40 +1838,40 @@ if __name__ == '__main__':
         nav_env = NavigateEnv(config_file=config_filename,
                               mode=args.mode,
                               action_timestep=1.0 / 10.0,
-                              physics_timestep=1 / 40.0)
+                              physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random':
         nav_env = NavigateRandomEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
-                                    physics_timestep=1 / 40.0)
+                                    physics_timestep=1.0 / 40.0)
     elif args.env_type == 'fixed_obstacles':
         nav_env = NavigateObstaclesEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
-                                    physics_timestep=1 / 40.0)
+                                    physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random_obstacles':
         nav_env = NavigateRandomObstaclesEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
-                                    physics_timestep=1 / 40.0)
+                                    physics_timestep=1.0 / 40.0)
     elif args.env_type == 'pedestrians':
         nav_env = NavigatePedestriansEnv(config_file=config_filename,
                                     mode=args.mode,
                                     # layout=args.layout,
                                     action_timestep=1.0 / 10.0,
-                                    physics_timestep=1 / 40.0)
+                                    physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random_obstacles':
         nav_env = NavigateRandomObstaclesEnv(config_file=config_filename,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
-                                    physics_timestep=1 / 40.0)
+                                    physics_timestep=1.0 / 40.0)
     else:
         nav_env = InteractiveNavigateEnv(config_file=config_filename,
                                          mode=args.mode,
                                          action_timestep=1.0 / 10.0,
                                          random_position=False,
-                                         physics_timestep=1 / 40.0,
-                                         arena='complex_hl_ll')
+                                         physics_timestep=1.0 / 40.0,
+                                         arena='compget_terminationlex_hl_ll')
 
     
     
@@ -1773,12 +1883,12 @@ if __name__ == '__main__':
     #     p.addUserDebugParameter('link4', -1.0, 1.0, 0.5),
     #     p.addUserDebugParameter('link5', -1.0, 1.0, 0.0),
     # ]
-
+    
     for episode in range(100):
         print('Episode: {}'.format(episode))
         start = time.time()
         nav_env.reset()
-        for i in range(500):  # 500 steps, 50s world time
+        for i in range(nav_env.config.get('max_step', 100)):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             # action[:] = 0
             # if nav_env.stage == 0:
@@ -1790,13 +1900,11 @@ if __name__ == '__main__':
             # debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
             # action[2:] = np.array(debug_param_values)
 
-            state, reward, done, _ = nav_env.step([np.random.uniform(-1, 1), np.random.uniform(-1, 1)])
+            state, reward, done, info = nav_env.step([np.random.uniform(0, 1), np.random.uniform(-2, 2)])
+            #state, reward, done, _ = nav_env.step([0.5, 0.0])            
             # print(reward)
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
                 break
 
     nav_env.clean()
-
-
-

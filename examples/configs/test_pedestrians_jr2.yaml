@@ -8,11 +8,13 @@ scene: stadium
 
 num_obstacles: 0
 num_pedestrians: 7
-pedestrians_can_see_robot: true
+pedestrians_can_see_robot: false
 
 # robot
-robot: Turtlebot
-velocity: 0.1
+robot: JR2_Kinova
+wheel_velocity: 0.025
+arm_velocity: 0.005
+arm_reset_noise_in_pi: 0.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -25,6 +27,7 @@ target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
 additional_states_dim: 3
+auxiliary_sensor_dim: 66
 
 # reward
 success_reward: 1.0
@@ -38,21 +41,16 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 750
+max_step: 100
 
 # sensor
-# output: [sensor, rgb, depth]
-# output: [sensor, scan, pedestrian]
-#output: [sensor, pedestrian]
-#output: [sensor, scan]
-#output: [sensor, pedestrian_position, pedestrian_velocity]
-#output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
-output: [concatenate]
-scan_beams: 512 #128 
-scan_vertical_beams: 1 #9 
+output: [sensor, auxiliary_sensor, depth]
 resolution: 64
-#waypoints: 5
-fov: 90
+fov: 150
+n_horizontal_rays: 128
+n_vertical_beams: 1
+# output: [sensor, scan, pedestrian]
+fov: 150
 
 # display
 use_filler: true
@@ -99,11 +97,11 @@ humans:
   max_angular_velocity: 1.0
   kinematics: holonomic
   # for random initialization and goal setting
-  initial_x_ranges: [[3.0, 4.0], [3.0, 4.0], [3.0, 4.0], [3.0, 4.0]]
-  initial_y_ranges: [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
-  target_x_ranges: [[-4.0, -3.0], [-4.0, -3.0], [-4.0, -3.0], [-4.0, -3.0]]
-  target_y_ranges: [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
-  min_separation: 0.5
+  initial_position:
+     min_x: -5.0
+     max_x: 5.0
+     min_y: -5.0
+     max_y: 5.0
   target_position:
      min_x: -5.0
      max_x: 5.0
@@ -111,7 +109,4 @@ humans:
      max_y: 5.0
      
 
-#walls:
-#  walls_pos: [[0, 5.25, 0.501], [0, -5.25, 0.501], [5.0, 0, 0.501], [-5.0, 0, 0.501]]
-#  walls_dim: [[5, 0.25, 1.5], [5.0, 0.25, 1.5], [0.25, 5.0, 1.5], [0.25, 5.0, 1.5]]
 
