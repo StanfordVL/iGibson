@@ -583,7 +583,7 @@ class NavigateRandomEnv(NavigateEnv):
 
     def reset(self):
         self.floor_num = self.scene.get_random_floor()
-        self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.05)
+        self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.02)
         state = super(NavigateRandomEnv, self).reset()
         return state
 
