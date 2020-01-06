@@ -106,6 +106,7 @@ class BaseRobot:
                                     force=0)
             _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, part_name, _, _, _, _ = p.getJointInfo(
                 bodies[0], j)
+            print(p.getJointInfo(bodies[0], j))
             joint_name = joint_name.decode("utf8")
             part_name = part_name.decode("utf8")
 
