@@ -585,6 +585,9 @@ class Fetch(LocomotorRobot):
         print(len(base_state), len(angular_velocity))
         return np.concatenate((base_state, np.array(angular_velocity)))
 
+    def get_end_effector_position(self):
+        return self.parts['l_gripper_finger_link'].get_position()
+
 
 class JR2(LocomotorRobot):
     mjcf_scaling = 1
