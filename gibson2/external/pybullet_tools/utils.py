@@ -2508,10 +2508,10 @@ def plan_direct_joint_motion(body, joints, end_conf, **kwargs):
 
 def check_initial_end(start_conf, end_conf, collision_fn):
     if collision_fn(start_conf):
-        print("Warning: initial configuration is in collision")
+        #print("Warning: initial configuration is in collision")
         return False
     if collision_fn(end_conf):
-        print("Warning: end configuration is in collision")
+        #print("Warning: end configuration is in collision")
         return False
     return True
 
@@ -2682,10 +2682,10 @@ def plan_base_motion(body, end_conf, base_limits, obstacles=[], direct=False,
 
     start_conf = get_base_values(body)
     if collision_fn(start_conf):
-        print("Warning: initial configuration is in collision")
+        #print("Warning: initial configuration is in collision")
         return None
     if collision_fn(end_conf):
-        print("Warning: end configuration is in collision")
+        #print("Warning: end configuration is in collision")
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)

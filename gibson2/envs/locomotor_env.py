@@ -164,6 +164,14 @@ class NavigateEnv(BaseEnv):
                                                      1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
+        # if 'pc' in self.output:
+        #     self.depth_space = gym.spaces.Box(low=-np.inf,
+        #                                       high=np.inf,
+        #                                       shape=(self.config.get('resolution', 64),
+        #                                              self.config.get('resolution', 64),
+        #                                              4),
+        #                                       dtype=np.float32)
+        #     observation_space['pc'] = self.depth_space
         if 'seg' in self.output:
             self.seg_space = gym.spaces.Box(low=0.0,
                                             high=1.0,
@@ -262,6 +270,9 @@ class NavigateEnv(BaseEnv):
         if 'depth' in self.output:
             depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
             state['depth'] = depth
+        if 'pc' in self.output:
+            pc = self.simulator.renderer.render_robot_cameras(modes=('3d'))[0]
+            state['pc'] = pc
         if 'normal' in self.output:
             state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
         if 'seg' in self.output:
