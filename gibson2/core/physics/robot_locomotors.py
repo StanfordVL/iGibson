@@ -8,7 +8,11 @@ from transforms3d.euler import euler2quat, euler2mat
 from transforms3d.quaternions import quat2mat, qmult
 import transforms3d.quaternions as quat
 import sys
-
+from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_name, set_joint_position, \
+    set_joint_positions, add_data_path, connect, plan_base_motion, plan_joint_motion, enable_gravity, \
+    joint_controller, dump_body, load_model, joints_from_names, user_input, disconnect, get_joint_positions, \
+    get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, \
+    set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_base_values
 
 class LocomotorRobot(BaseRobot):
     """ Built on top of BaseRobot
@@ -569,9 +573,19 @@ class Fetch(LocomotorRobot):
 
     def robot_specific_reset(self):
         super(Fetch, self).robot_specific_reset()
+        for j in self.ordered_joints:
+            j.reset_joint_state(0.0, 0.0)
         # roll the arm to its body
-        for i in range(2, 6):
-            self.ordered_joints[i].reset_joint_state(np.pi / 2.0, 0.0)
+        robot_id = self.robot_ids[0]
+        arm_joints = joints_from_names(robot_id, ['torso_lift_joint', 'shoulder_pan_joint', 'shoulder_lift_joint',
+                                                  'upperarm_roll_joint',
+                                                  'elbow_flex_joint', 'forearm_roll_joint', 'wrist_flex_joint',
+                                                  'wrist_roll_joint'])
+        rest_position = (0.38548146667743244, 1.1522793897208579, 1.2576467971105596, -0.312703569911879,
+                         1.7404867100093226, -0.0962895617312548, -1.4418232619629425, -1.6780152866247762)
+
+        set_joint_positions(robot_id, arm_joints, rest_position)
+
 
     def apply_action(self, action):
         denormalized_action = self.action_to_real_action(action)
@@ -586,7 +600,7 @@ class Fetch(LocomotorRobot):
         return np.concatenate((base_state, np.array(angular_velocity)))
 
     def get_end_effector_position(self):
-        return self.parts['l_gripper_finger_link'].get_position()
+        return self.parts['gripper_link'].get_position()
 
 
 class JR2(LocomotorRobot):
