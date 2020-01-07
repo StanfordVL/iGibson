@@ -489,7 +489,8 @@ class NavigateEnv(BaseEnv):
         :return: state: state, reward, done, info
         """
         self.current_step += 1
-        self.robots[0].apply_action(action)
+        if action is not None:
+            self.robots[0].apply_action(action)
         cache = self.before_simulation()
         collision_links = self.run_simulation()
         self.after_simulation(cache, collision_links)
