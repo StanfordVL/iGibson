@@ -30,15 +30,15 @@ fetch.robot_body.reset_orientation([0,0,1,0])
 obstacles = []
 obj = InteractiveObj(filename='/data4/mdv0/cabinet/0007/part_objs/cabinet_0007.urdf')
 ids = s.import_interactive_object(obj)
-for i in range(5):
-    p.changeDynamics(ids,i,lateralFriction=50,mass=0.1, linearDamping=0, angularDamping=0)
+# for i in range(5):
+#     p.changeDynamics(ids,i,lateralFriction=50,mass=0.1, linearDamping=0, angularDamping=0)
 obstacles.append(ids)
 
 obj.set_position([-2,0,0.5])
 obj = InteractiveObj(filename='/data4/mdv0/cabinet/0007/part_objs/cabinet_0007.urdf')
 ids = s.import_interactive_object(obj)
-for i in range(5):
-    p.changeDynamics(ids,i,lateralFriction=50,mass=0.1, linearDamping=0, angularDamping=0)
+# for i in range(5):
+#     p.changeDynamics(ids,i,lateralFriction=50,mass=0.1, linearDamping=0, angularDamping=0)
 obstacles.append(ids)
 
 obj.set_position([-2,2,0.5])
@@ -51,6 +51,14 @@ obj = InteractiveObj(filename='/data4/mdv0/cabinet/0004/part_objs/cabinet_0004.u
 ids = s.import_interactive_object(obj)
 obstacles.append(ids)
 obj.set_position([-2.1, 0.4, 2])
+
+for ob in obstacles:
+    #jointPositions = [0.000000, 0.000000, 0.000000, 0.000000, 0.000000]
+    for jointIndex in range(p.getNumJoints(ob)):
+        #p.resetJointState(ob, jointIndex, jointPositions[jointIndex])
+        friction = 1
+        p.setJointMotorControl2(ob, jointIndex, p.VELOCITY_CONTROL, force=friction)
+
 
 obj = BoxShape([-2.05,1,0.5], [0.35,0.6,0.5])
 ids = s.import_interactive_object(obj)
@@ -115,8 +123,8 @@ for i in range(100):
     control_joints(robot_id, finger_joints, [0.04, 0.04])
     s.step()
 
-p.changeDynamics(robot_id, fetch.parts['r_gripper_finger_link'].body_part_index, lateralFriction=50)
-p.changeDynamics(robot_id, fetch.parts['l_gripper_finger_link'].body_part_index, lateralFriction=50)
+p.changeDynamics(robot_id, fetch.parts['r_gripper_finger_link'].body_part_index, lateralFriction=1)
+p.changeDynamics(robot_id, fetch.parts['l_gripper_finger_link'].body_part_index, lateralFriction=1)
 
 if 1:
         sid = p.saveState()

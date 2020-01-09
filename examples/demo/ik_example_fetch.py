@@ -13,7 +13,7 @@ from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_na
     set_joint_positions, add_data_path, connect, plan_base_motion, plan_joint_motion, enable_gravity, \
     joint_controller, dump_body, load_model, joints_from_names, user_input, disconnect, get_joint_positions, \
     get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, \
-    set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits
+    set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_sample_fn
 
 import time
 import numpy as np
@@ -51,11 +51,14 @@ print(min_limits)
 
 
 def accurateCalculateInverseKinematics(robotid, endEffectorId, targetPos, threshold, maxIter):
+
+  sample_fn = get_sample_fn(robotid, arm_joints)
+  set_joint_positions(robotid, arm_joints, sample_fn())
   closeEnough = False
   iter = 0
   dist2 = 1e30
   while (not closeEnough and iter < maxIter):
-    jointPoses = p.calculateInverseKinematics(robotid, endEffectorId, targetPos,[0,0.7071067,0,0.7071067],
+    jointPoses = p.calculateInverseKinematics(robotid, endEffectorId, targetPos,
                                                      lowerLimits = min_limits,
                                                      upperLimits = max_limits,
                                                      jointRanges = joint_range,
@@ -79,7 +82,7 @@ while True:
         maxIter = 100
         joint_pos = accurateCalculateInverseKinematics(robot_id, fetch.parts['gripper_link'].body_part_index, [x, y, z], threshold, maxIter)[2:10]
 
-        control_joints(robot_id, finger_joints, [0.04, 0.04])
+        set_joint_positions(robot_id, finger_joints, [0.04, 0.04])
         s.step()
         keys = p.getKeyboardEvents()
         for k, v in keys.items():
