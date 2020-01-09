@@ -745,6 +745,18 @@ class NavigatePedestriansEnv(NavigateEnv):
                                                 device_idx=device_idx)
         self.random_height = random_height
         self.pedestrian_z = 0.03 # hard-coded.
+        ''' Walls '''
+        # wall = [pos, dim]
+        # self.walls = [[[0, 5.25, 0.501], [5, 0.25, 1.5]],
+                      # [[0, -5.25, 0.501], [5, 0.25, 1.5]],
+                      # [[5, 0, 0.501], [0.25, 5, 1.5]],
+                      # [[-5, 0, 0.501], [0.25, 5, 1.5]]]
+#                     [[-8.55, 5, 0.501], [1.44, 0.1, 0.5]],
+#                     [[8.55, 4, 0.501], [1.44, 0.1, 0.5]],
+#                     [[10.2, 5.5 ,0.501],[0.2, 1.5, 0.5]],
+#                     [[-10.2, 6, 0.501],[0.2, 1, 0.5]]]
+        
+
         # if layout: # if specify a layout file
             # self.walls = self.layout.get('walls')
             # components = self.layout.get('components')
@@ -758,14 +770,25 @@ class NavigatePedestriansEnv(NavigateEnv):
         # else: # use the layout in meta-config
         self.walls = self.config.get('walls')
         components = self.config.get('components')
+        self.num_pedestrians = self.config.get('num_pedestrians')
         humans = self.config.get('movements')['humans']
         agent = self.config.get('movements')['agent']
 
-        # self.min_separation = self.config.get('humans')['personal_space']
-        self.min_separation = 0.5
-        self.pedestrian_x_range_radius = humans['x_range_radius']
-        self.pedestrian_y_range_radius = humans['y_range_radius']
-        self.pedestrian_centers = [[components[loc] for loc in humans['initial_positions']], [components[loc] for loc in humans['target_positions']]]
+        self.min_separation = self.config.get('humans')['radius'] * 2 + 0.05
+        print('min separation: {}'.format(self.min_separation))
+        # self.min_separation = 0.5
+        self.pedestrian_x_range_radius = [humans['x_range_radius'] for _ in range(self.num_pedestrians)]
+        self.pedestrian_y_range_radius = [humans['y_range_radius'] for _ in range(self.num_pedestrians)]
+        self.flip_prob = humans['flip_prob']
+        self.pedestrian_dist_tol = 0.1 * self.num_pedestrians
+        # Randomize initial - target positions for each pedestrian.
+        self.pedestrian_centers = [[], []]
+        initial_target = humans['initial_target']
+        for pedestrian in range(self.num_pedestrians):
+            initial, target = random.choice(initial_target)
+            print('pedestrian: {} initial {} target {}'.format(pedestrian, initial, target))
+            self.pedestrian_centers[0].append(components[initial])
+            self.pedestrian_centers[1].append(components[target])
         self.pedestrian_status = [False] * self.num_pedestrians 
 
         self.agent_init = components[agent['initial_positions']]
@@ -853,8 +876,10 @@ class NavigatePedestriansEnv(NavigateEnv):
             human_actions.append(human.act(ob, walls=walls_config, obstacles=self.obstacles))
 
             # Set next goal if close to current one.
-            if l2_distance(np.array(human.get_goal_position()), self.pedestrians[i].get_position()) < self.dist_tol:
-                self.reset_single_pedestrian(i)
+            if l2_distance(np.array(human.get_goal_position()), self.pedestrians[i].get_position()) < self.pedestrian_dist_tol:
+                prob = random.random()
+                if prob < self.flip_prob:
+                    self.reset_single_pedestrian(i)
                 
         # move each human
         for i, human_action in enumerate(human_actions):
@@ -1013,7 +1038,7 @@ class NavigatePedestriansEnv(NavigateEnv):
 
     def create_human_agents(self):
         for i in range(self.num_pedestrians):
-            human = Human(self.config, 'humans')
+            human = Human(self.config, 'humans', num_pedestrians=self.num_pedestrians)
             self.humans.append(human)
             if self.randomize_pedestrian_attributes:
                 human.sample_random_attributes()
@@ -1206,6 +1231,7 @@ class NavigatePedestriansEnv(NavigateEnv):
             pedestrian_poses.append(pedestrian_pose)
             all_object_poses.append(pedestrian_pose)
 
+        print('pedestrian poses: {}'.format(pedestrian_poses))
         return pedestrian_poses
 
     def get_robot_observable_state(self):

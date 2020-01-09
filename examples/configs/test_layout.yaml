@@ -7,7 +7,7 @@ scene: stadium
 # model_id: Ohoopee
 
 num_obstacles: 0
-num_pedestrians: 7
+num_pedestrians: 5
 pedestrians_can_see_robot: false
 
 # robot
@@ -37,7 +37,7 @@ stall_torque_reward_weight: 0.0
 collision_reward_weight: -1.0
 
 # termination condition
-dist_tol: 0.5
+dist_tol: 0.2
 max_step: 300
 
 # sensor
@@ -97,6 +97,7 @@ humans:
   max_linear_velocity: 3.0
   max_angular_velocity: 1.0
   kinematics: holonomic
+  # dist_tol: 0.5
 
 ############ ROOM LAYOUT #################
 # Walls configuration.
@@ -125,12 +126,14 @@ components:
 # Movements configuration
 movements:
   humans:
-    initial_positions: ['entrance_1', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3']
-    target_positions: ['entrance_3', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1']
-    x_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-    y_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-    flips: [True, True, True, True, True, True, True]
-    wait_steps: [0, 0, 0, 0, 0, 0, 0]
+    # initial_positions: ['entrance_1', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3']
+    # target_positions: ['entrance_3', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1']
+    initial_target: [['entrance_1', 'entrance_3'], ['entrance_3', 'entrance_1']]
+    # x_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    # y_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    x_range_radius: 0.5
+    y_range_radius: 0.5
+    flip_prob: 0.5
   agent:
     initial_positions: 'entrance_2'
     target_positions: 'entrance_4'
