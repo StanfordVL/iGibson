@@ -20,7 +20,7 @@ max_angular_velocity: 2.0
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 
 is_discrete: false
-additional_states_dim: 3
+additional_states_dim: 2
 
 # reward
 success_reward: 1.0
@@ -34,7 +34,7 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 500
+max_step: 300
 
 # sensor
 # output: [sensor, rgb, depth]

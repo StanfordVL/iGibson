@@ -1011,7 +1011,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         
 
 
-    def create_human_agents(self, pedestrian_poses, pedestrian_goals):
+    def create_human_agents(self):
         for i in range(self.num_pedestrians):
             human = Human(self.config, 'humans')
             self.humans.append(human)
@@ -1038,9 +1038,10 @@ class NavigatePedestriansEnv(NavigateEnv):
 
     def reset_pedestrians(self):
         if len(self.pedestrians) == 0:
-            
-            # generate initial pedestrian poses
+            # create pedestrians and generate initial poses
             pedestrian_poses = self.generate_pedestrian_poses_v2()
+            self.create_pedestrians(pedestrian_poses)
+            self.create_human_agents()
         else:
             # get current poses
             pedestrian_poses = [pedestrian.get_position() for pedestrian in self.pedestrians]
@@ -1048,16 +1049,12 @@ class NavigatePedestriansEnv(NavigateEnv):
         # generate a goal for each pedestrian
         pedestrian_goals = self.generate_pedestrian_poses_v2()
 
-        if len(self.pedestrians) == 0:
-            self.create_pedestrians(pedestrian_poses)
-            self.create_human_agents(pedestrian_poses, pedestrian_goals)
-
         # generate the goal marker in Gibson
         self.update_pedestrian_goal_markers(pedestrian_goals)
         
-        # self.humans = []
+        self.humans = []
         for i in range(self.num_pedestrians):
-            # human = Human(self.config, 'humans')
+            human = Human(self.config, 'humans')
             
             if self.randomize_pedestrian_attributes:
                 self.humans[i].sample_random_attributes()
