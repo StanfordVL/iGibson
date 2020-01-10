@@ -208,52 +208,47 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return path
 
     def step(self, pt):
-        # point = [x,y]
-        x = int((pt[0]+1)/2.0 * 150)
-        y = int((pt[1]+1)/2.0 * 128)
+        dx = pt[0] * 0.5
+        dy = pt[1] * 0.5
         yaw = self.robots[0].get_rpy()[2]
         orn = pt[2] * np.pi + yaw
-
         armx = int((pt[3]+1)/2.0 * 128)
         army = int((pt[4]+1)/2.0 * 128)
-
         opos = get_base_values(self.robot_id)
-
         self.get_additional_states()
         org_potential = self.get_potential()
-
         state, _, done, _ = super(MotionPlanningBaseArmEnv, self).step(None)
         points = state['pc']
 
-        if x < 128:
-
-            point = points[x, y]
-
-            camera_pose = (self.robots[0].parts['eyes'].get_pose())
-            transform_mat = quat_pos_to_mat(pos=camera_pose[:3],
-                                         quat=[camera_pose[6], camera_pose[3], camera_pose[4], camera_pose[5]])
-
-            projected_point = (transform_mat).dot(np.array([-point[2], -point[0], point[1], 1]))
-
-            subgoal = projected_point[:2]
-        else:
-            subgoal = list(opos)[:2]
-
-        path = self.plan_base_motion(subgoal[0], subgoal[1], orn)
-        if path is not None:
-            self.marker.set_position([subgoal[0], subgoal[1], 0.1])
-            bq = path[-1]
-            set_base_values(self.robot_id, [bq[0], bq[1], bq[2]])
-            state, _, done, info = super(MotionPlanningBaseArmEnv, self).step(None)
-            self.get_additional_states()
-
-        else:
-            set_base_values(self.robot_id, opos)
-            state, _, done, info = super(MotionPlanningBaseArmEnv, self).step(None)
-            reward = -0.02
-
-            del state['pc']
-            return state, reward, done, info
+        # if x < 128:
+        #
+        #     point = points[x, y]
+        #
+        #     camera_pose = (self.robots[0].parts['eyes'].get_pose())
+        #     transform_mat = quat_pos_to_mat(pos=camera_pose[:3],
+        #                                  quat=[camera_pose[6], camera_pose[3], camera_pose[4], camera_pose[5]])
+        #
+        #     projected_point = (transform_mat).dot(np.array([-point[2], -point[0], point[1], 1]))
+        #
+        #     subgoal = projected_point[:2]
+        # else:
+        #     subgoal = list(opos)[:2]
+        #
+        # path = self.plan_base_motion(subgoal[0], subgoal[1], orn)
+        # if path is not None:
+        #     self.marker.set_position([subgoal[0], subgoal[1], 0.1])
+        #     bq = path[-1]
+        #     set_base_values(self.robot_id, [bq[0], bq[1], bq[2]])
+        #     state, _, done, info = super(MotionPlanningBaseArmEnv, self).step(None)
+        #     self.get_additional_states()
+        #
+        # else:
+        #     set_base_values(self.robot_id, opos)
+        #     state, _, done, info = super(MotionPlanningBaseArmEnv, self).step(None)
+        #     reward = -0.02
+        #
+        #     del state['pc']
+        #     return state, reward, done, info
 
         point = points[armx, army]
         camera_pose = (self.robots[0].parts['eyes'].get_pose())
@@ -261,8 +256,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                         quat=[camera_pose[6], camera_pose[3], camera_pose[4], camera_pose[5]])
         projected_point2 = (transform_mat).dot(np.array([-point[2], -point[0], point[1], 1]))[:3]
 
-        projected_point2[2] += 1 # 1m from floor
+        subgoal = [projected_point2[0] + dx, projected_point2[1] + dy]
+        path = self.plan_base_motion(subgoal[0], subgoal[1], orn)
+        if path is not None:
+            self.marker.set_position([subgoal[0], subgoal[1], 0.1])
+            bq = path[-1]
+            set_base_values(self.robot_id, [bq[0], bq[1], bq[2]])
+            state, _, done, info = super(MotionPlanningBaseArmEnv, self).step(None)
+            self.get_additional_states()
+        else:
+            set_base_values(self.robot_id, opos)
 
+        self.marker.set_position([subgoal[0], subgoal[1], 0.1])
         self.marker2.set_position(projected_point2)
 
         robot_id = self.robot_id
