@@ -87,7 +87,7 @@ movements:
         target_positions: ['entrance_3', 'entrance_3', 'entrance_1', 'entrance_3']
         x_range_radius: [0.5, 0.5, 0.5, 0.5]
         y_range_radius: [0.5, 0.5, 0.5, 0.5]
-        flips: [True, True, True, True]
+        flip_prob: [True, True, True, True]
         wait_steps: [0, 0, 0, 0]
     agent:
         initial_positions: 'entrance_2'
