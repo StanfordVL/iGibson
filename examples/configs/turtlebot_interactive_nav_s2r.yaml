@@ -4,9 +4,9 @@ scene: building
 model_id: area1
 #model_id: Albertville
 build_graph: true
-load_texture: false
+load_texture: true
 should_load_replaced_objects: false
-should_load_additional_objects: false
+should_load_additional_objects: true
 trav_map_erosion: 2
 
 # robot
@@ -26,7 +26,7 @@ target_pos: [0, 2, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
-additional_states_dim: 26
+additional_states_dim: 25
 
 # reward
 reward_type: dense
@@ -47,9 +47,13 @@ dist_tol: 0.333  # body width
 max_step: 500
 
 # sensor
-output: [sensor, depth]
-resolution: 80
+output: [sensor, rgbd, scan, seg_pred]
+resolution: 96
+#output: [sensor, rgbd, seg_pred]
+#resolution: 320
 fov: 58
+n_horizontal_rays: 228
+n_vertical_beams: 1
 
 # display
 use_filler: true

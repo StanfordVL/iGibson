@@ -1,3 +1,6 @@
+from semantic_segmentation_pytorch.models import ModelBuilder
+from semantic_segmentation_pytorch.utils import colorEncode
+import semantic_segmentation_pytorch
 from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape
 import gibson2
 from gibson2.utils.utils import parse_config, rotate_vector_3d, rotate_vector_2d, l2_distance, quatToXYZW
@@ -19,6 +22,9 @@ import cv2
 import time
 import collections
 import matplotlib.pyplot as plt
+from scipy.io import loadmat
+from PIL import Image
+
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
 # arXiv preprint arXiv:1807.06757 (2018).
@@ -168,6 +174,14 @@ class NavigateEnv(BaseEnv):
                                                      1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
+        if 'rgbd' in self.output:
+            self.rgbd_space = gym.spaces.Box(low=0.0,
+                                             high=1.0,
+                                             shape=(self.config.get('resolution', 64),
+                                                    self.config.get('resolution', 64),
+                                                    4),
+                                             dtype=np.float32)
+            observation_space['rgbd'] = self.rgbd_space
         if 'seg' in self.output:
             self.seg_space = gym.spaces.Box(low=0.0,
                                             high=1.0,
@@ -200,6 +214,46 @@ class NavigateEnv(BaseEnv):
             self.comp.load_state_dict(
                 torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
+        if 'seg_pred' in self.output:
+            # torch.cuda.set_device(1)
+            encoder_weights = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__),
+                                           # 'ckpt/ade20k-resnet18dilated-ppm_deepsup/encoder_epoch_20.pth')
+                                           'ckpt/ade20k-mobilenetv2dilated-c1_deepsup/encoder_epoch_20.pth')
+
+            self.seg_encoder = ModelBuilder.build_encoder(
+                arch='mobilenetv2dilated',
+                # arch='resnet18dilated',
+                weights=encoder_weights)
+            self.seg_encoder.cuda()
+            self.seg_encoder.eval()
+
+            decoder_weights = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__),
+                                           # 'ckpt/ade20k-resnet18dilated-ppm_deepsup/decoder_epoch_20.pth')
+                                           'ckpt/ade20k-mobilenetv2dilated-c1_deepsup/decoder_epoch_20.pth')
+            self.seg_decoder = ModelBuilder.build_decoder(
+                # arch='ppm_deepsup',
+                # fc_dim=512,
+                arch='c1_deepsup',
+                fc_dim=320,
+                num_class=150,
+                weights=decoder_weights,
+                use_softmax=True)
+            self.seg_decoder.cuda()
+            self.seg_decoder.eval()
+            color_path = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__), 'data/color150.mat')
+            self.seg_colors = loadmat(color_path)['colors']
+
+            self.seg_normalizer = transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225])
+
+            self.seg_pred_space = gym.spaces.Box(low=0.0,
+                                                 high=1.0,
+                                                 shape=(self.config.get('resolution', 64) // 8,
+                                                        self.config.get('resolution', 64) // 8,
+                                                        320),
+                                                 dtype=np.float32)
+            observation_space['seg_pred'] = self.seg_pred_space
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
@@ -256,12 +310,15 @@ class NavigateEnv(BaseEnv):
         # if self.num_object_classes is not None:
         #     seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
         # cv2.imshow('rgb', rgb)
-        # cv2.imwrite('test/%d_%d.jpg' % (self.current_episode, self.current_step), (rgb * 255).astype(np.uint8))
-
+        # cv2.imwrite('test_sc/%d_%d.jpg' % (self.current_episode, self.current_step), (rgb * 255).astype(np.uint8))
+        # cv2.imwrite('test_sc/%d_%d_depth.jpg' % (self.current_episode, self.current_step), (depth * 255).astype(np.uint8))
         # cv2.imshow('depth', depth)
         # cv2.imshow('seg', seg)
 
         state = OrderedDict()
+        rgb = None
+        depth = None
+        seg = None
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
         if 'auxiliary_sensor' in self.output:
@@ -269,19 +326,30 @@ class NavigateEnv(BaseEnv):
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
         if 'rgb' in self.output:
-            state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+            if rgb is None:
+                rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+            state['rgb'] = rgb
         if 'depth' in self.output:
-            depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+            if depth is None:
+                depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
             state['depth'] = depth
+        if 'rgbd' in self.output:
+            if rgb is None:
+                rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+            if depth is None:
+                depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+            state['rgbd'] = np.concatenate((rgb, depth), axis=2)
         if 'normal' in self.output:
             state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
         if 'seg' in self.output:
-            seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
+            if seg is None:
+                seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
             if self.num_object_classes is not None:
                 seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
             state['seg'] = seg
         if 'depth_seg' in self.output:
-            depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+            if depth is None:
+                depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
             depth = np.clip(depth / 5.0, 0.0, 1.0)
             seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
             if self.num_object_classes is not None:
@@ -293,17 +361,74 @@ class NavigateEnv(BaseEnv):
                 tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
                 rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
                 state['rgb_filled'] = rgb_filled
+        if 'seg_pred' in self.output:
+            if rgb is None:
+                rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+            with torch.no_grad():
+                width = rgb.shape[0]
+                height = int(width * (480.0 / 640.0))
+                half_diff = int((width - height) / 2)
+                rgb_cropped = rgb[half_diff:half_diff + height, :]
+                rgb_cropped = (rgb_cropped * 255).astype(np.uint8)
+                tensor = transforms.ToTensor()(rgb_cropped)
+                img = self.seg_normalizer(tensor).unsqueeze(0).cuda()
+                seg_pred = self.seg_encoder(img)
+                seg_pred = seg_pred[0][0].permute(1, 2, 0).cpu().numpy()
+                state['seg_pred'] = seg_pred
+
+                scores = self.seg_decoder(self.seg_encoder(img, return_feature_maps=True), segSize=(height, width))
+                _, pred = torch.max(scores, dim=1)
+                pred = pred.squeeze(0).cpu().numpy().astype(np.int32)
+                pred_color = colorEncode(pred, self.seg_colors).astype(np.uint8)
+                pred_color = cv2.cvtColor(pred_color, cv2.COLOR_RGB2BGR)
+
+                depth_cropped = depth[half_diff:half_diff + height, :]
+                low = 0.8
+                high = 3.5
+                invalid = depth_cropped == 0.0
+                depth_cropped[depth_cropped < low] = low
+                depth_cropped[depth_cropped > high] = high
+                depth_cropped[invalid] = 0.0
+                depth_cropped /= high
+                depth_cropped = (depth_cropped * 255).astype(np.uint8)
+                depth_cropped = np.tile(depth_cropped, (1, 1, 3))
+
+                rgb_cropped = cv2.cvtColor(rgb_cropped, cv2.COLOR_RGB2BGR)
+
+                vis = np.concatenate((rgb_cropped, depth_cropped, pred_color), axis=1)
+                cv2.imshow('vis', vis)
+                #
+                # # aggregate images and save
+                # im_vis = np.concatenate((rgb_cropped, pred_color), axis=1)
+                # if self.current_step % 10 == 0:
+                #     img_name = 'seg_results_area1/%d_%d.png' % (self.current_episode, self.current_step)
+                #     Image.fromarray(im_vis).save(img_name)
 
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
 
         # TODO: figure out why 'scan' consumes so much cpu
         if 'scan' in self.output:
-            laser_linear_range = 25.0
-            laser_angular_range = 220.0
+            if self.config['robot'] == 'Turtlebot':
+                # Hokuyo URG-04LX-UG01
+                laser_linear_range = 5.6
+                laser_angular_range = 240.0
+                min_laser_dist = 0.05
+                laser_link_name = 'scan_link'
+            elif self.config['robot'] == 'Fetch':
+                # SICK TiM571-2050101 Laser Range Finder
+                laser_linear_range = 25.0
+                laser_angular_range = 220.0
+                min_laser_dist = 0.1
+                laser_link_name = 'laser_link'
+            else:
+                assert False, 'unknown robot for LiDAR observation'
+
             laser_angular_half_range = laser_angular_range / 2.0
-            min_laser_dist = 0.1
-            laser_pose = self.robots[0].parts['laser_link'].get_pose()
+            laser_pose = self.robots[0].parts[laser_link_name].get_pose()
+
+            # self.scan_vis.set_position(pos=laser_pose[:3])
+
             transform_matrix = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
             angle = np.arange(-laser_angular_half_range / 180 * np.pi,
                               laser_angular_half_range / 180 * np.pi,
@@ -593,12 +718,13 @@ class NavigateRandomEnv(NavigateEnv):
         floor, self.initial_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
         max_trials = 100
         dist = 0.0
+        # Need to change to 5 meter if we need to add obstacles
         for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
             _, self.target_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
             dist = l2_distance(self.initial_pos, self.target_pos)
-            if dist > 1.0:
+            if dist > 5.0:
                 break
-        if dist < 1.0:
+        if dist < 5.0:
             raise Exception("Failed to find initial and target pos that are >1m apart")
         self.robots[0].set_position(pos=[self.initial_pos[0],
                                          self.initial_pos[1],
@@ -854,10 +980,19 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
         resolution = self.config.get('resolution', 64)
         width = resolution
         height = int(width * (480.0 / 640.0))
-        self.observation_space.spaces['depth'] = gym.spaces.Box(low=-np.inf,
-                                                                high=np.inf,
-                                                                shape=(height, width, 1),
-                                                                dtype=np.float32)
+        if 'rgbd' in self.output:
+            self.observation_space.spaces['rgbd'] = gym.spaces.Box(low=0.0,
+                                                                   high=1.0,
+                                                                   shape=(height, width, 4),
+                                                                   dtype=np.float32)
+        if 'seg_pred' in self.output:
+            self.observation_space.spaces['seg_pred'] = gym.spaces.Box(low=-np.inf,
+                                                                       high=np.inf,
+                                                                       shape=(height // 8, width // 8, 320),
+                                                                       dtype=np.float32)
+        # self.scan_vis = VisualObject(rgba_color=[1, 0, 0, 1.0], radius=0.05)
+        # self.scan_vis.load()
+
         self.visualize_waypoints = True
         if self.visualize_waypoints and self.mode == 'gui':
             cyl_length = 0.2
@@ -1003,24 +1138,35 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
 
     def get_state(self, collision_links=[]):
         state = super(InteractiveGibsonNavigateSim2RealEnv, self).get_state(collision_links)
-        depth = state['depth']
-        width = depth.shape[0]
-        height = int(width * (480.0 / 640.0))
-        half_diff = int((width - height) / 2)
-        depth = depth[half_diff:half_diff+height, :]
+        if 'rgbd' in state:
+            rgbd = state['rgbd']
+            width = rgbd.shape[0]
+            height = int(width * (480.0 / 640.0))
+            half_diff = int((width - height) / 2)
+            rgbd = rgbd[half_diff:half_diff+height, :]
 
-        # depth[depth < 0.6] = -1.0
-        # depth[depth > 4.0] = -1.0
+            if self.config['robot'] == 'Turtlebot':
+                # ASUS Xtion PRO LIVE
+                low = 0.8
+                high = 3.5
+            elif self.config['robot'] == 'Fetch':
+                # Primesense Carmine 1.09 short-range RGBD sensor
+                low = 0.35
+                high = 1.4
+            else:
+                assert False, 'unknown robot for RGBD observation'
 
-        invalid = depth == 0.0
-        depth[depth < 0.35] = 0.35
-        depth[depth > 5.0] = 5.0
-        depth[invalid] = 0.0
-        depth /= 5.0
-        state['depth'] = depth
+            depth = rgbd[:, :, 3]
+            invalid = depth == 0.0
+            depth[depth < low] = low
+            depth[depth > high] = high
+            depth[invalid] = 0.0
+            depth /= high
+            rgbd[:, :, 3] = depth
 
+            state['rgbd'] = rgbd
         # cv2.imshow('depth', state['depth'])
-        # cv2.imshow('scan', state['scan'] * 10.0)
+        # cv2.imshow('scan', state['scan'])
 
         return state
 
@@ -1030,7 +1176,13 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
     def reset_additional_objects(self):
         for obj in self.additional_objects:
             while True:
-                _, pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
+                # _, pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
+                pos_without_z = self.shortest_path[np.random.randint(self.shortest_path.shape[0])]
+                pos = [
+                    pos_without_z[0] + np.random.uniform(-0.2, 0.2),
+                    pos_without_z[1] + np.random.uniform(-0.2, 0.2),
+                    self.scene.get_floor_height(self.floor_num)
+                ]
                 obj.set_position_rotation([pos[0], pos[1], pos[2] + self.random_init_z_offset],
                                           quatToXYZW(euler2quat(0.0, 0.0, 0.0), 'wxyz'))
                 has_collision = False
@@ -1051,7 +1203,7 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
         self.floor_num = self.scene.get_random_floor()
         self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.05)
         self.reset_replaced_objects()
-        self.reset_additional_objects()
+        # self.reset_additional_objects()
         self.new_potential = None
         # if len(self.linear_vel) > 0:
         #     print('linear', np.mean(self.linear_vel), np.max(self.linear_vel))
@@ -1074,6 +1226,7 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
         target = self.target_pos[:2]
         shortest_path, _ = self.scene.get_shortest_path(self.floor_num, source, target, entire_path=True)
         self.shortest_path = shortest_path
+        self.reset_additional_objects()
         # robot_z = self.robots[0].get_position()[2]
         # if self.visualize_waypoints and self.mode == 'gui':
         #     for i in range(1000):
@@ -1674,12 +1827,16 @@ if __name__ == '__main__':
     #     p.addUserDebugParameter('link5', -1.0, 1.0, 0.0),
     # ]
 
+    step_time_list = []
     for episode in range(100):
         print('Episode: {}'.format(episode))
         start = time.time()
         nav_env.reset()
-        for step in range(500):  # 500 steps, 50s world time
+        for step in range(1000):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
+            # action[:] = 1.0
+            action[0] = -0.4666666666666666
+            action[1] = -0.2
             # action[0] = 2.0 / 3.0
             # action[1] = -1.0
             # action[:] = 1.0
@@ -1694,8 +1851,22 @@ if __name__ == '__main__':
             # action[2:] = np.array(debug_param_values)
 
             state, reward, done, _ = nav_env.step(action)
+            print(state.keys())
+            print(state['sensor'])
+            # embed()
+            # print('reward', reward)
             if done:
                 print('Episode finished after {} timesteps'.format(step + 1))
                 break
-        print(time.time() - start)
+        episode_time = time.time() - start
+        step_time = episode_time / 100.0
+        fps = 1.0 / step_time
+        print('episode_time', episode_time)
+        print('step_time', step_time)
+        print('fps', fps)
+        if episode != 0:
+            step_time_list.append(step_time)
+
+    print('avg_step_time', np.mean(step_time_list))
+    print('avg_fps', 1.0 / np.mean(step_time_list))
     nav_env.clean()
