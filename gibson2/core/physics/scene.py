@@ -47,6 +47,9 @@ class StadiumScene(Scene):
     def get_random_point(self, random_height=False):
         return self.get_random_point_floor(0, random_height)
 
+    def get_random_floor(self):
+        return 0
+
     def get_random_point_floor(self, floor, random_height=False):
         del floor
         return 0, np.array([
@@ -54,6 +57,33 @@ class StadiumScene(Scene):
             np.random.uniform(-5, 5),
             np.random.uniform(0.4, 0.8) if random_height else 0.0
         ])
+
+    def reset_floor(self, floor=0, additional_elevation=0.05, height=None):
+        return
+
+    def get_floor_height(self, floor):
+        return 0.0
+
+
+class StadiumSceneInteractive(Scene):
+    zero_at_running_strip_start_line = True    # if False, center of coordinates (0,0,0) will be at the middle of the stadium
+    stadium_halflen = 105 * 0.25    # FOOBALL_FIELD_HALFLEN
+    stadium_halfwidth = 50 * 0.25    # FOOBALL_FIELD_HALFWID
+
+    def load(self):
+        filename = os.path.join(pybullet_data.getDataPath(), "stadium_no_collision.sdf")
+        self.stadium = p.loadSDF(filename)
+        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+        self.ground_plane_mjcf = p.loadMJCF(planeName)
+        for i in self.ground_plane_mjcf:
+            pos, orn = p.getBasePositionAndOrientation(i)
+            p.resetBasePositionAndOrientation(i, [pos[0], pos[1], pos[2] - 0.005], orn)
+
+        for i in self.ground_plane_mjcf:
+            p.changeVisualShape(i, -1, rgbaColor=[1, 1, 1, 0.5])
+
+        return [item for item in self.stadium] + [item for item in self.ground_plane_mjcf]
+
 
 class BuildingScene(Scene):
     """
@@ -145,15 +175,15 @@ class BuildingScene(Scene):
                 print('floors', self.floors)
             for f in range(len(self.floors)):
                 trav_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(f)))
-                obstacle_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f)))
+                # obstacle_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f)))
                 if self.trav_map_original_size is None:
                     width, height = trav_map.size
                     assert width == height, 'trav map is not a square'
                     self.trav_map_original_size = height
                     self.trav_map_size = int(self.trav_map_original_size * self.trav_map_default_resolution / self.trav_map_resolution)
                 trav_map = np.array(trav_map.resize((self.trav_map_size, self.trav_map_size)))
-                obstacle_map = np.array(obstacle_map.resize((self.trav_map_size, self.trav_map_size)))
-                trav_map[obstacle_map == 0] = 0
+                # obstacle_map = np.array(obstacle_map.resize((self.trav_map_size, self.trav_map_size)))
+                # trav_map[obstacle_map == 0] = 0
                 trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
 
                 if self.build_graph:

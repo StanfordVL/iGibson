@@ -147,6 +147,8 @@ class Simulator:
                     #                            class_id=class_id,
                     #                            dynamic=True)
 
+                    # Uncomment the above block if you want to render the additionally added floor
+                    pass
         self.scene = scene
         return new_objects
 
