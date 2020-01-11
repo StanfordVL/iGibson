@@ -1,16 +1,16 @@
 # scene
 scene: building
 #model_id: Kerrtown
-model_id: Norvelt
+model_id: area1
 #model_id: Albertville
 build_graph: true
 load_texture: true
 should_load_replaced_objects: false
-should_load_additional_objects: false
-trav_map_erosion: 3
+should_load_additional_objects: true
+trav_map_erosion: 2
 
 # robot
-robot: Fetch
+robot: Turtlebot
 
 action_high: 0.1
 action_low: -0.05
@@ -36,21 +36,23 @@ potential_reward_weight: 1.0
 electricity_reward_weight: 0.0
 stall_torque_reward_weight: 0.0
 collision_reward_weight: -0.0
-collision_ignore_link_a_ids: [0, 1, 2]  # ignore collision with these agent's link ids
+collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collision with these agent's link ids
 
 # discount factor
 discount_factor: 0.99
 
 # termination condition
 death_z_thresh: 0.2
-dist_tol: 0.5  # body width
+dist_tol: 0.333  # body width
 max_step: 500
 
 # sensor
-output: [sensor, depth, scan]
-resolution: 256
-fov: 54
-n_horizontal_rays: 220
+output: [sensor, rgbd, scan, seg_pred]
+resolution: 96
+#output: [sensor, rgbd, seg_pred]
+#resolution: 320
+fov: 58
+n_horizontal_rays: 228
 n_vertical_beams: 1
 
 # display
