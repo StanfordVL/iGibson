@@ -5,7 +5,6 @@ from gibson2.core.pedestrians.policy_factory import policy_factory
 class Human(Agent):
     def __init__(self, config, section, num_pedestrians=None):
         super().__init__(config, section)
-        print('Create Human')
         self.policy = policy_factory['orca']()        
         self.num_pedestrians = num_pedestrians
     def act(self, ob, walls=[], obstacles=[]):
