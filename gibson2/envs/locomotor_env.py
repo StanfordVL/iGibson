@@ -2,7 +2,6 @@ from gibson2.core.physics.interactive_objects import VisualMarker, InteractiveOb
 from semantic_segmentation_pytorch.models import ModelBuilder
 from semantic_segmentation_pytorch.utils import colorEncode
 import semantic_segmentation_pytorch
-from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape
 import gibson2
 from gibson2.utils.utils import parse_config, rotate_vector_3d, rotate_vector_2d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
@@ -568,56 +567,56 @@ class NavigateEnv(BaseEnv):
         #     done = True
         #     info['success'] = False
 
-        if done:
-            info['episode_length'] = self.current_step
-            info['path_length'] = self.path_length
-            info['collision_step'] = self.collision_step
-            info['energy_cost'] = self.energy_cost
-            info['stage'] = self.stage
-
-            # Episode = collections.namedtuple('Episode',
-            #                                  ['initial_pos',
-            #                                   'target_pos',
-            #                                   'geodesic_distance',
-            #                                   'shortest_path',
-            #                                   'trajectory',
-            #                                   'success',
-            #                                   'path_efficiency',
-            #                                   'kinematic_disturbance',
-            #                                   'dynamic_disturbance_a',
-            #                                   'dynamic_disturbance_b',
-            #                                   'collision_step',
-            #                                   ])
-            # shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
-            #                                                                 self.initial_pos[:2],
-            #                                                                 self.target_pos[:2],
-            #                                                                 entire_path=True)
-            # floor_height = self.scene.get_floor_height(self.floor_num)
-            # shortest_path = np.array([np.array([path[0], path[1], floor_height]) for path in shortest_path])
-            # min_kin_dist = self.path_length * self.robots[0].robot_mass
-            # kinematic_disturbance = min_kin_dist / (min_kin_dist + self.kinematic_disturbance)
-            # min_dyn_dist = self.current_step * self.robots[0].robot_mass * 9.8
-            # dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
-            # dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
-            # object_files = [obj.filename for obj in self.interactive_objects]
-            # episode = Episode(
-                # env=self.scene.model_id,
-                # agent=self.robots[0].model_file,
-                # initial_pos=self.initial_pos,
-                # target_pos=self.target_pos,
-                # geodesic_distance=geodesic_distance,
-                # shortest_path=shortest_path,
-                # agent_trajectory=np.array(self.agent_trajectory),
-                # object_files=object_files,
-                # object_trajectory=np.array(self.object_trajectory),
-                # success=float(info['success']),
-                # path_efficiency=min(1.0, geodesic_distance / self.path_length),
-                # kinematic_disturbance=kinematic_disturbance,
-                # dynamic_disturbance_a=dynamic_disturbance_a,
-                # dynamic_disturbance_b=dynamic_disturbance_b,
-                # collision_step=self.collision_step,
-            # )
-            # self.stored_episodes.append(episode)
+        # if done:
+        #     info['episode_length'] = self.current_step
+        #     info['path_length'] = self.path_length
+        #     info['collision_step'] = self.collision_step
+        #     info['energy_cost'] = self.energy_cost
+        #     info['stage'] = self.stage
+        #
+        #     Episode = collections.namedtuple('Episode',
+        #                                      ['initial_pos',
+        #                                       'target_pos',
+        #                                       'geodesic_distance',
+        #                                       'shortest_path',
+        #                                       'trajectory',
+        #                                       'success',
+        #                                       'path_efficiency',
+        #                                       'kinematic_disturbance',
+        #                                       'dynamic_disturbance_a',
+        #                                       'dynamic_disturbance_b',
+        #                                       'collision_step',
+        #                                       ])
+        #     shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
+        #                                                                     self.initial_pos[:2],
+        #                                                                     self.target_pos[:2],
+        #                                                                     entire_path=True)
+        #     floor_height = self.scene.get_floor_height(self.floor_num)
+        #     shortest_path = np.array([np.array([path[0], path[1], floor_height]) for path in shortest_path])
+        #     min_kin_dist = self.path_length * self.robots[0].robot_mass
+        #     kinematic_disturbance = min_kin_dist / (min_kin_dist + self.kinematic_disturbance)
+        #     min_dyn_dist = self.current_step * self.robots[0].robot_mass * 9.8
+        #     dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
+        #     dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
+        #     object_files = [obj.filename for obj in self.interactive_objects]
+        #     episode = Episode(
+        #         env=self.scene.model_id,
+        #         agent=self.robots[0].model_file,
+        #         initial_pos=self.initial_pos,
+        #         target_pos=self.target_pos,
+        #         geodesic_distance=geodesic_distance,
+        #         shortest_path=shortest_path,
+        #         agent_trajectory=np.array(self.agent_trajectory),
+        #         object_files=object_files,
+        #         object_trajectory=np.array(self.object_trajectory),
+        #         success=float(info['success']),
+        #         path_efficiency=min(1.0, geodesic_distance / self.path_length),
+        #         kinematic_disturbance=kinematic_disturbance,
+        #         dynamic_disturbance_a=dynamic_disturbance_a,
+        #         dynamic_disturbance_b=dynamic_disturbance_b,
+        #         collision_step=self.collision_step,
+        #     )
+        #     self.stored_episodes.append(episode)
 
         return done, info
 
@@ -739,9 +738,9 @@ class NavigateRandomEnv(NavigateEnv):
         for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
             _, self.target_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
             dist = l2_distance(self.initial_pos, self.target_pos)
-            if dist > 5.0:
+            if dist > 1.0:
                 break
-        if dist < 5.0:
+        if dist < 1.0:
             raise Exception("Failed to find initial and target pos that are >1m apart")
         self.robots[0].set_position(pos=[self.initial_pos[0],
                                          self.initial_pos[1],
@@ -993,7 +992,7 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
         # self.linear_vel = []
         # self.angular_vel = []
 
-        # self.eyes_vis = VisualObject(rgba_color=[1, 0, 0, 1.0], radius=0.03)
+        # self.eyes_vis = VisualMarker(rgba_color=[1, 0, 0, 1.0], radius=0.03)
         # self.eyes_vis.load()
         resolution = self.config.get('resolution', 64)
         width = resolution
@@ -1008,13 +1007,13 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
                                                                        high=np.inf,
                                                                        shape=(height // 8, width // 8, 320),
                                                                        dtype=np.float32)
-        # self.scan_vis = VisualObject(rgba_color=[1, 0, 0, 1.0], radius=0.05)
+        # self.scan_vis = VisualMarker(rgba_color=[1, 0, 0, 1.0], radius=0.05)
         # self.scan_vis.load()
 
         self.visualize_waypoints = True
         if self.visualize_waypoints and self.mode == 'gui':
             cyl_length = 0.2
-            self.waypoints_vis = [VisualObject(visual_shape=p.GEOM_CYLINDER,
+            self.waypoints_vis = [VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                                rgba_color=[0, 1, 0, 0.3],
                                                radius=0.1,
                                                length=cyl_length,

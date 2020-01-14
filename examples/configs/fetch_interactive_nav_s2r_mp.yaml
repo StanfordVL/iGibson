@@ -1,6 +1,11 @@
 # scene
 scene: building
 model_id: Avonia
+build_graph: true
+load_texture: true
+should_load_replaced_objects: false
+should_load_additional_objects: false
+trav_map_erosion: 3
 
 # robot
 robot: Fetch
@@ -17,29 +22,32 @@ target_pos: [1.0, 1.0, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
-additional_states_dim: 6
+additional_states_dim: 23
 
 # reward
+reward_type: dense
 success_reward: 10.0
-slack_reward: -0.01
-potential_reward_weight: 30.0
-#electricity_reward_weight: -0.02
-#stall_torque_reward_weight: -0.0001
+slack_reward: 0.0
+potential_reward_weight: 1.0
 electricity_reward_weight: 0.0
 stall_torque_reward_weight: 0.0
-collision_reward_weight: 0.0
+collision_reward_weight: -0.0
+collision_ignore_link_a_ids: [0, 1, 2]  # ignore collision with these agent's link ids
 
 # discount factor
 discount_factor: 0.99
 
 # termination condition
-dist_tol: 0.2
-max_step: 500
+death_z_thresh: 0.2
+dist_tol: 0.5  # body width
+max_step: 20
 
 # sensor
 output: [sensor, rgb, depth, pc]
 resolution: 128
 fov: 120
+n_horizontal_rays: 220
+n_vertical_beams: 1
 
 # display
 use_filler: true

@@ -174,17 +174,23 @@ class BuildingScene(Scene):
                 self.floors = sorted(list(map(float, f.readlines())))
                 print('floors', self.floors)
             for f in range(len(self.floors)):
-                trav_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(f)))
-                # obstacle_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f)))
+                trav_map = np.array(Image.open(
+                    os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(f))
+                ))
+                obstacle_map = np.array(Image.open(
+                    os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f))
+                ))
                 if self.trav_map_original_size is None:
-                    width, height = trav_map.size
-                    assert width == height, 'trav map is not a square'
+                    height, width = trav_map.shape
+                    assert height == width, 'trav map is not a square'
                     self.trav_map_original_size = height
-                    self.trav_map_size = int(self.trav_map_original_size * self.trav_map_default_resolution / self.trav_map_resolution)
-                trav_map = np.array(trav_map.resize((self.trav_map_size, self.trav_map_size)))
-                # obstacle_map = np.array(obstacle_map.resize((self.trav_map_size, self.trav_map_size)))
-                # trav_map[obstacle_map == 0] = 0
+                    self.trav_map_size = int(self.trav_map_original_size *
+                                             self.trav_map_default_resolution /
+                                             self.trav_map_resolution)
+                trav_map[obstacle_map == 0] = 0
+                trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
                 trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
+                trav_map[trav_map < 255] = 0
 
                 if self.build_graph:
                     g = nx.Graph()
@@ -237,6 +243,11 @@ class BuildingScene(Scene):
 
     def world_to_map(self, xy):
         return np.flip((xy / self.trav_map_resolution + self.trav_map_size / 2.0)).astype(np.int)
+
+    def has_node(self, floor, world_xy):
+        map_xy = tuple(self.world_to_map(xy))
+        g = self.floor_graph[floor]
+        return g.has_node(map_xy)
 
     def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
         # print("called shortest path", source_world, target_world)
