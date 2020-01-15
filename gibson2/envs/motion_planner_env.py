@@ -329,8 +329,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         points = state['pc']
         height, width = points.shape[0:2]
 
-        arm_img_u = int((action[0] + 1) / 2.0 * height)
-        arm_img_v = int((action[1] + 1) / 2.0 * width)
+        arm_img_u = np.clip(int((action[0] + 1) / 2.0 * height), 0, height - 1)
+        arm_img_v = np.clip(int((action[1] + 1) / 2.0 * width), 0, width - 1)
 
         # original_pos = get_base_values(self.robot_id)
         point = points[arm_img_u, arm_img_v]
