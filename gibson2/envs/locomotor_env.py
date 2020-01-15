@@ -774,9 +774,12 @@ class NavigatePedestriansEnv(NavigateEnv):
         humans = self.config.get('movements')['humans']
         agent = self.config.get('movements')['agent']
 
-        self.min_separation = self.config.get('humans')['radius'] * 2 + 0.05
+        #self.min_separation = self.config.get('humans')['radius'] * 2 + 0.05
+        self.min_separation = self.config.get('humans')['min_separation']
+        if self.min_separation is None:
+            self.min_separation = 0.25
+        
         print('min separation: {}'.format(self.min_separation))
-        # self.min_separation = 0.5
         self.pedestrian_x_range_radius = [humans['x_range_radius'] for _ in range(self.num_pedestrians)]
         self.pedestrian_y_range_radius = [humans['y_range_radius'] for _ in range(self.num_pedestrians)]
         self.flip_prob = humans['flip_prob']
