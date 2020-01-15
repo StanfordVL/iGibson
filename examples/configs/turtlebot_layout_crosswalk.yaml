@@ -1,0 +1,148 @@
+# scene
+# scene: stadium_obstacle
+# scene: stadium_congested # remember to change target_pos
+#scene: stadium_difficult # remember to change target_pos
+scene: stadium
+# scene: building
+# model_id: Ohoopee
+
+num_obstacles: 0
+num_pedestrians: 5
+pedestrians_can_see_robot: false
+randomize_pedestrian_attributes: false
+
+# robot
+robot: TurtlebotDifferentialDrive
+max_linear_velocity: 1.0
+max_angular_velocity: 2.0
+
+# task, observation and action
+task: pointgoal # pointgoal|objectgoal|areagoal|reaching
+
+initial_pos: [-2.0, 2.0, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
+
+target_pos: [-2.0, 2.0, 0.0]
+target_orn: [0.0, 0.0, 0.0]
+
+is_discrete: false
+additional_states_dim: 2
+
+# reward
+success_reward: 1.0
+slack_reward: -0.001
+potential_reward_weight: 1.0
+#electricity_reward_weight: -0.02
+#stall_torque_reward_weight: -0.0001
+electricity_reward_weight: 0.0
+stall_torque_reward_weight: 0.0
+collision_reward_weight: -1.0
+
+# termination condition
+dist_tol: 0.5
+max_step: 300
+
+# sensor
+# output: [sensor, rgb, depth]
+# output: [sensor, scan, pedestrian]
+#output: [sensor, pedestrian]
+#output: [sensor, scan]
+#output: [sensor, pedestrian_position, pedestrian_velocity]
+#output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
+output: [concatenate]
+scan_beams: 512 #128 
+scan_vertical_beams: 1 #9 
+resolution: 64
+#waypoints: 5
+fov: 90
+
+# display
+use_filler: true
+display_ui: false
+show_diagnostics: false
+ui_num: 2
+ui_components: [RGB_FILLED, DEPTH]
+random:
+  random_initial_pose : false
+  random_target_pose : false
+  random_init_x_range: [-0.1, 0.1]
+  random_init_y_range: [-0.1, 0.1]
+  random_init_z_range: [-0.1, 0.1]
+  random_init_rot_range: [-0.1, 0.1]
+
+speed:
+  timestep: 0.001
+  frameskip: 10
+
+mode: headless #gui|web_ui
+verbose: false
+fast_lq_render: true
+
+# visual objects
+visual_object_at_initial_pos: false
+visual_object_at_target_pos: true
+target_visual_object_visible_to_agent: true
+
+# debug
+debug: false
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: true
+
+
+############ PEDESTRIANS #################
+humans:
+  visible: true
+  policy: orca
+  radius: 0.3
+  v_pref: 1.0
+  position_noise: 0.0
+  velocity_noise: 0.0
+  sensor: coordinates
+  personal_space: 0.5
+  min_separation: 0.25
+  max_linear_velocity: 3.0
+  max_angular_velocity: 1.0
+  kinematics: holonomic
+  # dist_tol: 0.5
+
+############ ROOM LAYOUT #################
+# Walls configuration.
+walls:
+  walls_pos: [[0, 5.25, 0.501], [0, -5.25, 0.501], [5.25, 0, 0.501], [-5.25, 0, 0.501]]
+  walls_dim: [[5, 0.25, 1.5], [5.0, 0.25, 1.5], [0.25, 5.0, 1.5], [0.25, 5.0, 1.5]]
+
+# Specify different parts of the room.
+components:
+  entrance_1:
+    center_x: 0.0
+    center_y: 4.0
+  entrance_2:
+    center_x: 4.0
+    center_y: 0.0
+  entrance_3:
+    center_x: 0.0
+    center_y: -4.0
+  entrance_4:
+    center_x: -4.0
+    center_y: 0.0
+
+# TODO: specify obstacles.
+
+############### MOVEMENTS ######################
+# Movements configuration
+movements:
+  humans:
+    # initial_positions: ['entrance_1', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3']
+    # target_positions: ['entrance_3', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1']
+    initial_target: [['entrance_1', 'entrance_3'], ['entrance_3', 'entrance_1']]
+    # x_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    # y_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    x_range_radius: 0.5
+    y_range_radius: 0.5
+    flip_prob: 0.5
+  agent:
+    initial_positions: 'entrance_2'
+    target_positions: 'entrance_4'
+    x_range_radius: 1.0
+    y_range_radius: 1.0
+        
