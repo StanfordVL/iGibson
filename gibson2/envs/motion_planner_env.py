@@ -174,7 +174,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                  physics_timestep=1 / 240.0,
                  device_idx=0,
                  automatic_reset=False,
-                 eval = False,
+                 eval=False,
                  ):
         super(MotionPlanningBaseArmEnv, self).__init__(config_file,
                                                        model_id=model_id,
@@ -183,9 +183,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                        physics_timestep=physics_timestep,
                                                        automatic_reset=automatic_reset,
                                                        random_height=False,
-                                                       device_idx=device_idx,
-                                                       eval=eval)
-        resolution = self.config.get('resolution', 64)
+                                                       device_idx=device_idx)
+        # resolution = self.config.get('resolution', 64)
         # width = resolution
         # height = int(width * (480.0 / 640.0))
         # if 'rgb' in self.output:
@@ -199,6 +198,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         #                                                             shape=(height, width, 1),
         #                                                             dtype=np.float32)
 
+        self.eval = eval
         self.visualize_waypoints = True
         if self.visualize_waypoints and self.mode == 'gui':
             cyl_length = 0.2
