@@ -26,7 +26,6 @@ from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_na
     get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, \
     set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_base_values
 
-
 class MotionPlanningEnv(NavigateRandomEnv):
     def __init__(self,
                  config_file,
@@ -37,6 +36,7 @@ class MotionPlanningEnv(NavigateRandomEnv):
                  physics_timestep=1 / 240.0,
                  device_idx=0,
                  automatic_reset=False,
+                 eval=False
                  ):
         super(MotionPlanningEnv, self).__init__(config_file,
                                                 model_id=model_id,
@@ -56,6 +56,8 @@ class MotionPlanningEnv(NavigateRandomEnv):
                                            high=1.0,
                                            dtype=np.float32)
 
+        self.eval = eval
+
     def prepare_motion_planner(self):
         self.robot_id = self.robots[0].robot_ids[0]
         self.mesh_id = self.scene.mesh_body_id
@@ -71,12 +73,15 @@ class MotionPlanningEnv(NavigateRandomEnv):
 
     def plan_base_motion(self, x, y, theta):
         half_size = self.map_size / 2.0
+        if self.mode == 'gui':
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         path = plan_base_motion(
             self.robot_id,
             [x, y, theta],
             ((-half_size, -half_size), (half_size, half_size)),
-            obstacles=[self.mesh_id]
-        )
+            obstacles=[self.mesh_id])
+        if self.mode == 'gui':
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         return path
 
     def step(self, pt):
@@ -110,11 +115,14 @@ class MotionPlanningEnv(NavigateRandomEnv):
         path = self.plan_base_motion(subgoal[0], subgoal[1], orn)
         if path is not None:
             self.marker.set_position([subgoal[0], subgoal[1], 0.1])
-            bq = path[-1]
-            # for bq in path:
-            set_base_values(self.robot_id, [bq[0], bq[1], bq[2]])
+            if not self.eval:
+                bq = path[-1]
+                set_base_values(self.robot_id, [bq[0], bq[1], bq[2]])
+            else:
+                for bq in path:
+                    set_base_values(self.robot_id, [bq[0], bq[1], bq[2]])
+                    time.sleep(0.02) # for visualization
             state, _, done, info = super(MotionPlanningEnv, self).step([0, 0])
-            # time.sleep(0.05)
             self.get_additional_states()
             reward = org_potential - self.get_potential()
         else:
@@ -166,6 +174,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                  physics_timestep=1 / 240.0,
                  device_idx=0,
                  automatic_reset=False,
+                 eval = False,
                  ):
         super(MotionPlanningBaseArmEnv, self).__init__(config_file,
                                                        model_id=model_id,
@@ -174,7 +183,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                        physics_timestep=physics_timestep,
                                                        automatic_reset=automatic_reset,
                                                        random_height=False,
-                                                       device_idx=device_idx)
+                                                       device_idx=device_idx,
+                                                       eval=eval)
         resolution = self.config.get('resolution', 64)
         # width = resolution
         # height = int(width * (480.0 / 640.0))
@@ -234,8 +244,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def plan_base_motion(self, x, y, theta):
         half_size = self.map_size / 2.0
+        if self.mode == 'gui':
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         path = plan_base_motion(self.robot_id, [x, y, theta], ((-half_size, -half_size), (half_size, half_size)),
                                 obstacles=[self.mesh_id])
+        if self.mode == 'gui':
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         return path
 
     def global_to_local(self, pos, cur_pos, cur_rot):
@@ -358,10 +372,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         is_base_subgoal_valid = self.scene.has_node(self.floor_num, base_subgoal_pos[:2])
         if is_base_subgoal_valid:
-        # if path is not None:
-        #     print('subgoal succeed')
-        #     last_step = path[-1]
-            set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
+            if self.eval:
+                path = self.plan_base_motion(base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
+                if path is not None:
+                    for way_point in path:
+                        set_base_values(self.robot_id, [way_point[0], way_point[1], way_point[2]])
+                        time.sleep(0.1)
+            else:
+                set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
+                
+            # print('subgoal succeed')
+            # last_step = path[-1]
+            # set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
             # state, _, done, info = super(MotionPlanningBaseArmEnv, self).step(None)
             # self.get_additional_states()
         else:
@@ -409,6 +431,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # print('after arm IK')
         # print(joint_positions)
         set_joint_positions(self.robot_id, arm_joints, joint_positions)
+        if self.eval:
+            time.sleep(0.5) # for visualization
         # dist = l2_distance(arm_subgoal, self.get_position_of_interest())
         # print(dist)
 
@@ -457,10 +481,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    nav_env = MotionPlanningBaseArmEnv(config_file=args.config,
+    nav_env = MotionPlanningEnv(config_file=args.config,
                                        mode=args.mode,
                                        action_timestep=1.0 / 1000000.0,
-                                       physics_timestep=1.0 / 1000000.0)
+                                       physics_timestep=1.0 / 1000000.0,
+                                eval=True)
 
     for episode in range(100):
         print('Episode: {}'.format(episode))

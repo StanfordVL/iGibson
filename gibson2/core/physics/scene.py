@@ -245,7 +245,7 @@ class BuildingScene(Scene):
         return np.flip((xy / self.trav_map_resolution + self.trav_map_size / 2.0)).astype(np.int)
 
     def has_node(self, floor, world_xy):
-        map_xy = tuple(self.world_to_map(xy))
+        map_xy = tuple(self.world_to_map(world_xy))
         g = self.floor_graph[floor]
         return g.has_node(map_xy)
 
