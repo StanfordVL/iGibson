@@ -1,7 +1,7 @@
 from gibson2.core.physics.interactive_objects import VisualMarker, InteractiveObj, BoxShape
-from semantic_segmentation_pytorch.models import ModelBuilder
-from semantic_segmentation_pytorch.utils import colorEncode
-import semantic_segmentation_pytorch
+#from semantic_segmentation_pytorch.models import ModelBuilder
+#from semantic_segmentation_pytorch.utils import colorEncode
+#import semantic_segmentation_pytorch
 import gibson2
 from gibson2.utils.utils import parse_config, rotate_vector_3d, rotate_vector_2d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
@@ -217,46 +217,46 @@ class NavigateEnv(BaseEnv):
             self.comp.load_state_dict(
                 torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
-        if 'seg_pred' in self.output:
-            # torch.cuda.set_device(1)
-            encoder_weights = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__),
-                                           # 'ckpt/ade20k-resnet18dilated-ppm_deepsup/encoder_epoch_20.pth')
-                                           'ckpt/ade20k-mobilenetv2dilated-c1_deepsup/encoder_epoch_20.pth')
-
-            self.seg_encoder = ModelBuilder.build_encoder(
-                arch='mobilenetv2dilated',
-                # arch='resnet18dilated',
-                weights=encoder_weights)
-            self.seg_encoder.cuda()
-            self.seg_encoder.eval()
-
-            decoder_weights = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__),
-                                           # 'ckpt/ade20k-resnet18dilated-ppm_deepsup/decoder_epoch_20.pth')
-                                           'ckpt/ade20k-mobilenetv2dilated-c1_deepsup/decoder_epoch_20.pth')
-            self.seg_decoder = ModelBuilder.build_decoder(
-                # arch='ppm_deepsup',
-                # fc_dim=512,
-                arch='c1_deepsup',
-                fc_dim=320,
-                num_class=150,
-                weights=decoder_weights,
-                use_softmax=True)
-            self.seg_decoder.cuda()
-            self.seg_decoder.eval()
-            color_path = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__), 'data/color150.mat')
-            self.seg_colors = loadmat(color_path)['colors']
-
-            self.seg_normalizer = transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225])
-
-            self.seg_pred_space = gym.spaces.Box(low=0.0,
-                                                 high=1.0,
-                                                 shape=(self.config.get('resolution', 64) // 8,
-                                                        self.config.get('resolution', 64) // 8,
-                                                        320),
-                                                 dtype=np.float32)
-            observation_space['seg_pred'] = self.seg_pred_space
+        # if 'seg_pred' in self.output:
+        #     # torch.cuda.set_device(1)
+        #     encoder_weights = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__),
+        #                                    # 'ckpt/ade20k-resnet18dilated-ppm_deepsup/encoder_epoch_20.pth')
+        #                                    'ckpt/ade20k-mobilenetv2dilated-c1_deepsup/encoder_epoch_20.pth')
+        #
+        #     self.seg_encoder = ModelBuilder.build_encoder(
+        #         arch='mobilenetv2dilated',
+        #         # arch='resnet18dilated',
+        #         weights=encoder_weights)
+        #     self.seg_encoder.cuda()
+        #     self.seg_encoder.eval()
+        #
+        #     decoder_weights = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__),
+        #                                    # 'ckpt/ade20k-resnet18dilated-ppm_deepsup/decoder_epoch_20.pth')
+        #                                    'ckpt/ade20k-mobilenetv2dilated-c1_deepsup/decoder_epoch_20.pth')
+        #     self.seg_decoder = ModelBuilder.build_decoder(
+        #         # arch='ppm_deepsup',
+        #         # fc_dim=512,
+        #         arch='c1_deepsup',
+        #         fc_dim=320,
+        #         num_class=150,
+        #         weights=decoder_weights,
+        #         use_softmax=True)
+        #     self.seg_decoder.cuda()
+        #     self.seg_decoder.eval()
+        #     color_path = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__), 'data/color150.mat')
+        #     self.seg_colors = loadmat(color_path)['colors']
+        #
+        #     self.seg_normalizer = transforms.Normalize(
+        #         mean=[0.485, 0.456, 0.406],
+        #         std=[0.229, 0.224, 0.225])
+        #
+        #     self.seg_pred_space = gym.spaces.Box(low=0.0,
+        #                                          high=1.0,
+        #                                          shape=(self.config.get('resolution', 64) // 8,
+        #                                                 self.config.get('resolution', 64) // 8,
+        #                                                 320),
+        #                                          dtype=np.float32)
+        #     observation_space['seg_pred'] = self.seg_pred_space
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
