@@ -21,6 +21,7 @@ directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(directory, '../motion'))
 from motion_planners.rrt_connect import birrt, direct_path
 #from ..motion.motion_planners.rrt_connect import birrt, direct_path
+import cv2
 
 # from future_builtins import map, filter
 # from builtins import input # TODO - use future
@@ -2691,6 +2692,87 @@ def plan_base_motion(body, end_conf, base_limits, obstacles=[], direct=False,
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
     return birrt(start_conf, end_conf, distance_fn,
                  sample_fn, extend_fn, collision_fn, **kwargs)
+
+
+def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, grid_resolution, robot_footprint_radius_in_map,
+                        obstacles=[], direct=False, weights=1 * np.ones(3), resolutions=0.05 * np.ones(3),
+                        max_distance=MAX_DISTANCE, **kwargs):
+    def sample_fn():
+        x, y = np.random.uniform(*base_limits)
+        theta = np.random.uniform(*CIRCULAR_LIMITS)
+        return (x, y, theta)
+
+    difference_fn = get_base_difference_fn()
+    distance_fn = get_base_distance_fn(weights=weights)
+
+    def extend_fn(q1, q2):
+        target_theta = np.arctan2(q2[1] - q1[1], q2[0] - q1[0])
+
+        n1 = int(np.abs(circular_difference(target_theta, q1[2]) / resolutions[2])) + 1
+        n3 = int(np.abs(circular_difference(q2[2], target_theta) / resolutions[2])) + 1
+        steps2 = np.abs(np.divide(difference_fn(q2, q1), resolutions))
+        n2 = int(np.max(steps2)) + 1
+
+        for i in range(n1):
+            q = (i / (n1)) * np.array(difference_fn((q1[0], q1[1], target_theta), q1)) + np.array(q1)
+            q = tuple(q)
+            yield q
+
+        for i in range(n2):
+            q = (i / (n2)) * np.array(
+                difference_fn((q2[0], q2[1], target_theta), (q1[0], q1[1], target_theta))) + np.array(
+                (q1[0], q1[1], target_theta))
+            q = tuple(q)
+            yield q
+
+        for i in range(n3):
+            q = (i / (n3)) * np.array(difference_fn(q2, (q2[0], q2[1], target_theta))) + np.array(
+                (q2[0], q2[1], target_theta))
+            q = tuple(q)
+            yield q
+
+    start_conf = get_base_values(body)
+
+    def collision_fn(q):
+        # TODO: update this function
+        # set_base_values(body, q)
+        # return any(pairwise_collision(body, obs, max_distance=max_distance) for obs in obstacles)
+        delta = np.array(q)[:2] - np.array(start_conf)[:2]
+        theta = start_conf[2]
+        x_dir = np.array([np.sin(theta), -np.cos(theta)])
+        y_dir = np.array([np.cos(theta), np.sin(theta)])
+        end_in_start_frame = [x_dir.dot(delta), y_dir.dot(delta)]
+        pts = np.array(end_in_start_frame) / (occupancy_range) * (grid_resolution / 2) + grid_resolution / 2
+        pts = pts.astype(np.int32)
+        #print(pts)
+
+        if pts[0] < robot_footprint_radius_in_map or pts[1] < robot_footprint_radius_in_map \
+                or pts[0] > grid_resolution - robot_footprint_radius_in_map - 1 or pts[
+            1] > grid_resolution - robot_footprint_radius_in_map - 1:
+            return True
+
+        # plt.figure()
+        # plt.imshow(map_2d[pts[0]-1:pts[0]+1, pts[1]-1:pts[1]+1])
+        # plt.colorbar()
+        mask = np.zeros((robot_footprint_radius_in_map * 2 + 1, robot_footprint_radius_in_map * 2 + 1))
+        cv2.circle(mask, (robot_footprint_radius_in_map, robot_footprint_radius_in_map), robot_footprint_radius_in_map,
+                   1, -1)
+        mask = mask.astype(np.bool)
+        return np.any(map_2d[pts[0] - robot_footprint_radius_in_map:pts[0] + robot_footprint_radius_in_map + 1,
+                      pts[1] - robot_footprint_radius_in_map:pts[1] + robot_footprint_radius_in_map + 1][mask] == 0)
+
+    if collision_fn(start_conf):
+        print("Warning: initial configuration is in collision")
+        return None
+    if collision_fn(end_conf):
+        print("Warning: end configuration is in collision")
+        return None
+    if direct:
+        return direct_path(start_conf, end_conf, extend_fn, collision_fn)
+    return birrt(start_conf, end_conf, distance_fn,
+                 sample_fn, extend_fn, collision_fn, **kwargs)
+
+
 
 #####################################
 
