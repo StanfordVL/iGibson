@@ -28,24 +28,24 @@ from PIL import Image
 
 
 
-# Episode = collections.namedtuple('Episode',
-#                                  [
-#                                      'env',
-#                                      'agent',
-#                                      'initial_pos',
-#                                      'target_pos',
-#                                      'geodesic_distance',
-#                                      'shortest_path',
-#                                      'agent_trajectory',
-#                                      'object_files',
-#                                      'object_trajectory',
-#                                      'success',
-#                                      'path_efficiency',
-#                                      'kinematic_disturbance',
-#                                      'dynamic_disturbance_a',
-#                                      'dynamic_disturbance_b',
-#                                      'collision_step',
-#                                  ])
+Episode = collections.namedtuple('Episode',
+                                 [
+                                     # 'env',
+                                     # 'agent',
+                                     # 'initial_pos',
+                                     # 'target_pos',
+                                     # 'geodesic_distance',
+                                     # 'shortest_path',
+                                     # 'agent_trajectory',
+                                     # 'object_files',
+                                     # 'object_trajectory',
+                                     'success',
+                                     # 'path_efficiency',
+                                     # 'kinematic_disturbance',
+                                     # 'dynamic_disturbance_a',
+                                     # 'dynamic_disturbance_b',
+                                     # 'collision_step',
+                                 ])
 
 
 class NavigateEnv(BaseEnv):
@@ -208,7 +208,7 @@ class NavigateEnv(BaseEnv):
             #                                  dtype=np.float32)
             self.scan_space = gym.spaces.Box(low=0.0,
                                              high=1.0,
-                                             shape=(self.n_horizontal_rays * self.n_vertical_beams,),
+                                             shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
                                              dtype=np.float32)
             observation_space['scan'] = self.scan_space
         if 'rgb_filled' in self.output:  # use filler
@@ -305,16 +305,25 @@ class NavigateEnv(BaseEnv):
 
         # rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
         # rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-
+        #
         # depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-        # depth = np.clip(depth / 5.0, 0.0, 1.0)
+        # depth = np.clip(depth / 8.0, 0.0, 1.0)
         # depth = 1.0 - depth  # flip black/white
         # seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
         # if self.num_object_classes is not None:
         #     seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
         # cv2.imshow('rgb', rgb)
-        # cv2.imwrite('test_sc/%d_%d.jpg' % (self.current_episode, self.current_step), (rgb * 255).astype(np.uint8))
-        # cv2.imwrite('test_sc/%d_%d_depth.jpg' % (self.current_episode, self.current_step), (depth * 255).astype(np.uint8))
+        # cv2.imwrite('test.jpg', (rgb * 255).astype(np.uint8))
+        # cv2.imwrite('test_depth.jpg', (depth * 255).astype(np.uint8))
+
+        # print(cv2.imwrite('button/%d_%d.jpg' % (self.current_episode, self.current_step), (rgb * 255).astype(np.uint8)))
+        # print(cv2.imwrite('button/%d_%d_depth.jpg' % (self.current_episode, self.current_step), (depth * 255).astype(np.uint8)))
+        # assert False
+        # cv2.imshow('rgb', rgb)
+        # cv2.imshow('depth', depth)
+
+        # assert False
+
         # cv2.imshow('depth', depth)
         # cv2.imshow('seg', seg)
 
@@ -448,7 +457,7 @@ class NavigateEnv(BaseEnv):
             # hit_object_id = np.array([item[0] for item in results])
             # link_id = np.array([item[1] for item in results])
             hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
-            state['scan'] = hit_fraction
+            state['scan'] = np.expand_dims(hit_fraction, 1)
 
             # assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
             # pose_camera = self.robots[0].parts['scan_link'].get_pose()
@@ -567,26 +576,13 @@ class NavigateEnv(BaseEnv):
         #     done = True
         #     info['success'] = False
 
-        # if done:
+        if done:
         #     info['episode_length'] = self.current_step
         #     info['path_length'] = self.path_length
         #     info['collision_step'] = self.collision_step
         #     info['energy_cost'] = self.energy_cost
         #     info['stage'] = self.stage
         #
-        #     Episode = collections.namedtuple('Episode',
-        #                                      ['initial_pos',
-        #                                       'target_pos',
-        #                                       'geodesic_distance',
-        #                                       'shortest_path',
-        #                                       'trajectory',
-        #                                       'success',
-        #                                       'path_efficiency',
-        #                                       'kinematic_disturbance',
-        #                                       'dynamic_disturbance_a',
-        #                                       'dynamic_disturbance_b',
-        #                                       'collision_step',
-        #                                       ])
         #     shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
         #                                                                     self.initial_pos[:2],
         #                                                                     self.target_pos[:2],
@@ -599,24 +595,24 @@ class NavigateEnv(BaseEnv):
         #     dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
         #     dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
         #     object_files = [obj.filename for obj in self.interactive_objects]
-        #     episode = Episode(
-        #         env=self.scene.model_id,
-        #         agent=self.robots[0].model_file,
-        #         initial_pos=self.initial_pos,
-        #         target_pos=self.target_pos,
-        #         geodesic_distance=geodesic_distance,
-        #         shortest_path=shortest_path,
-        #         agent_trajectory=np.array(self.agent_trajectory),
-        #         object_files=object_files,
-        #         object_trajectory=np.array(self.object_trajectory),
-        #         success=float(info['success']),
-        #         path_efficiency=min(1.0, geodesic_distance / self.path_length),
-        #         kinematic_disturbance=kinematic_disturbance,
-        #         dynamic_disturbance_a=dynamic_disturbance_a,
-        #         dynamic_disturbance_b=dynamic_disturbance_b,
-        #         collision_step=self.collision_step,
-        #     )
-        #     self.stored_episodes.append(episode)
+            episode = Episode(
+                # env=self.scene.model_id,
+                # agent=self.robots[0].model_file,
+                # initial_pos=self.initial_pos,
+                # target_pos=self.target_pos,
+                # geodesic_distance=geodesic_distance,
+                # shortest_path=shortest_path,
+                # agent_trajectory=np.array(self.agent_trajectory),
+                # object_files=object_files,
+                # object_trajectory=np.array(self.object_trajectory),
+                success=float(info['success']),
+                # path_efficiency=min(1.0, geodesic_distance / self.path_length),
+                # kinematic_disturbance=kinematic_disturbance,
+                # dynamic_disturbance_a=dynamic_disturbance_a,
+                # dynamic_disturbance_b=dynamic_disturbance_b,
+                # collision_step=self.collision_step,
+            )
+            self.stored_episodes.append(episode)
 
         return done, info
 
@@ -682,6 +678,13 @@ class NavigateEnv(BaseEnv):
         self.current_episode += 1
         self.reset_agent()
         self.after_reset_agent()
+
+        # set position for visual objects
+        if self.visual_object_at_initial_target_pos:
+            self.initial_pos_vis_obj.set_position(self.initial_pos)
+            self.target_pos_vis_obj.set_position(self.target_pos)
+
+        self.simulator.sync()
         state = self.get_state()
 
         if self.reward_type == 'l2':
@@ -699,11 +702,6 @@ class NavigateEnv(BaseEnv):
         self.object_trajectory = []
         self.interactive_objects_collided = set()
         self.energy_cost = 0.0
-
-        # set position for visual objects
-        if self.visual_object_at_initial_target_pos:
-            self.initial_pos_vis_obj.set_position(self.initial_pos)
-            self.target_pos_vis_obj.set_position(self.target_pos)
 
         return state
 

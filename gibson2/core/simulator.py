@@ -384,6 +384,12 @@ class Simulator:
         """
 
         p.stepSimulation()
+        self.sync()
+
+    def sync(self):
+        """
+        Update positions in renderer without stepping the simulation. Usually used in the reset() function
+        """
         for instance in self.renderer.instances:
             if instance.dynamic:
                 self.update_position(instance)

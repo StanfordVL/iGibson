@@ -12,7 +12,7 @@ robot: Fetch
 velocity: 0.1
 
 # task, observation and action
-task: reaching # pointgoal|objectgoal|areagoal|reaching
+task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 fisheye: false
 
 initial_pos: [-1.0, -1.0, 0.0]
@@ -22,7 +22,7 @@ target_pos: [1.0, 1.0, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
-additional_states_dim: 23
+additional_states_dim: 22
 
 # reward
 reward_type: dense
@@ -43,7 +43,7 @@ dist_tol: 0.5  # body width
 max_step: 20
 
 # sensor
-output: [sensor, rgb, depth, pc]
+output: [sensor, rgb, depth, scan, pc]
 resolution: 128
 fov: 120
 n_horizontal_rays: 220
