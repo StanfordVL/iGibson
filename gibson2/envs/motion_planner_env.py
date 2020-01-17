@@ -24,7 +24,7 @@ from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_na
     set_joint_positions, add_data_path, connect, plan_base_motion, plan_joint_motion, enable_gravity, \
     joint_controller, dump_body, load_model, joints_from_names, user_input, disconnect, get_joint_positions, \
     get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, \
-    set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_base_values
+    set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_base_values, plan_base_motion_2d
 
 class MotionPlanningEnv(NavigateRandomEnv):
     def __init__(self,
@@ -267,7 +267,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.robot_id = self.robots[0].robot_ids[0]
         self.mesh_id = self.scene.mesh_body_id
         self.map_size = self.scene.trav_map_original_size * self.scene.trav_map_default_resolution
-        # print(self.robot_id, self.mesh_id, self.map_size)
+
+        self.grid_resolution = 400
+        self.occupancy_range = 8.0  # m
+        self.robot_footprint_radius = 0.3
+        self.robot_footprint_radius_in_map = int(self.robot_footprint_radius / self.occupancy_range * self.grid_resolution)
 
     def plan_base_motion(self, x, y, theta):
         half_size = self.map_size / 2.0
@@ -279,8 +283,60 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         #     p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         return path
 
+    def plan_base_motion_2d(self, x, y, theta):
+        half_size = self.map_size / 2.0
+        # if self.mode == 'gui':
+        #     p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+
+        grid = self.get_local_occupancy_grid()
+        path = plan_base_motion_2d(self.robot_id, [x, y, theta], ((-half_size, -half_size), (half_size, half_size)),
+                                   map_2d=grid, occupancy_range=self.occupancy_range, grid_resolution=self.grid_resolution,
+                                   robot_footprint_radius_in_map=self.robot_footprint_radius_in_map, obstacles=[])
+        # if self.mode == 'gui':
+        #     p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+        return path
+
     def global_to_local(self, pos, cur_pos, cur_rot):
         return rotate_vector_3d(pos - cur_pos, *cur_rot)
+
+    def get_local_occupancy_grid(self):
+        # assumes it has "scan" state
+        # assumes it is either Turtlebot or fetch
+        if self.config['robot'] == 'Turtlebot':
+            # Hokuyo URG-04LX-UG01
+            laser_linear_range = 5.6
+            laser_angular_range = 240.0
+            laser_link_name = 'scan_link'
+        elif self.config['robot'] == 'Fetch':
+            # SICK TiM571-2050101 Laser Range Finder
+            laser_linear_range = 25.0
+            laser_angular_range = 220.0
+            laser_link_name = 'laser_link'
+
+        laser_angular_half_range = laser_angular_range / 2.0
+        laser_pose = self.robots[0].parts[laser_link_name].get_pose()
+        base_pose = self.robots[0].parts['base_link'].get_pose()
+        laser_in_base_frame = laser_pose[:3] - base_pose[:3]
+
+        angle = np.arange(-laser_angular_half_range / 180 * np.pi,
+                          laser_angular_half_range / 180 * np.pi,
+                          laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
+        unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+
+        state = self.get_state()
+        scan = state['scan']
+
+        scan_local = unit_vector_local[:, :2] * scan * laser_linear_range - laser_in_base_frame[:2]
+        scan_local = np.concatenate([np.array([[0, 0]]), scan_local, np.array([[0, 0]])], axis=0)
+
+
+        occupancy_grid = np.zeros((self.grid_resolution, self.grid_resolution)).astype(np.uint8)
+        scan_local_in_map = scan_local / (self.occupancy_range / 2) * (self.grid_resolution / 2) + self.grid_resolution / 2
+        scan_local_in_map = scan_local_in_map.reshape((1, -1, 1, 2)).astype(np.int32)
+        cv2.fillPoly(occupancy_grid, scan_local_in_map, True, 1)
+        cv2.circle(occupancy_grid, (self.grid_resolution // 2, self.grid_resolution // 2), int(self.robot_footprint_radius_in_map), 1, -1)
+
+        return occupancy_grid
 
     def get_additional_states(self):
         pos_noise = 0.0
@@ -348,7 +404,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                             # angular_velocity_local))
         # cache results for reward calculation
         self.new_potential = geodesic_dist
-        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
+        assert len(additional_states) == self.additional_states_dim, \
+            'additional states dimension mismatch, {}, {}'.format(len(additional_states), self.additional_states_dim)
         return additional_states
 
     def get_state(self, collision_links=[]):
@@ -418,11 +475,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 is_base_subgoal_valid = is_base_subgoal_valid and is_valid
             if is_base_subgoal_valid:
                 if self.eval:
-                    path = self.plan_base_motion(base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
+                    path = self.plan_base_motion_2d(base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
                     if path is not None:
                         for way_point in path:
                             set_base_values(self.robot_id, [way_point[0], way_point[1], way_point[2]])
-                            time.sleep(0.1)
+                            time.sleep(0.05)
                 else:
                     set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
                 # set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
