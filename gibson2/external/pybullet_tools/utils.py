@@ -2742,7 +2742,7 @@ def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, gr
         x_dir = np.array([np.sin(theta), -np.cos(theta)])
         y_dir = np.array([np.cos(theta), np.sin(theta)])
         end_in_start_frame = [x_dir.dot(delta), y_dir.dot(delta)]
-        pts = np.array(end_in_start_frame) / (occupancy_range) * (grid_resolution / 2) + grid_resolution / 2
+        pts = np.array(end_in_start_frame) / (occupancy_range / 2) * (grid_resolution / 2) + grid_resolution / 2
         pts = pts.astype(np.int32)
         #print(pts)
 

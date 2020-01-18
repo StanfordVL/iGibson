@@ -270,7 +270,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         self.grid_resolution = 400
         self.occupancy_range = 8.0  # m
-        self.robot_footprint_radius = 0.3
+        self.robot_footprint_radius = 0.279
         self.robot_footprint_radius_in_map = int(self.robot_footprint_radius / self.occupancy_range * self.grid_resolution)
 
     def plan_base_motion(self, x, y, theta):
@@ -306,11 +306,13 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             # Hokuyo URG-04LX-UG01
             laser_linear_range = 5.6
             laser_angular_range = 240.0
+            min_laser_dist = 0.05
             laser_link_name = 'scan_link'
         elif self.config['robot'] == 'Fetch':
             # SICK TiM571-2050101 Laser Range Finder
             laser_linear_range = 25.0
             laser_angular_range = 220.0
+            min_laser_dist = 0.1
             laser_link_name = 'laser_link'
 
         laser_angular_half_range = laser_angular_range / 2.0
@@ -325,7 +327,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         state = self.get_state()
         scan = state['scan']
 
-        scan_laser = unit_vector_laser * scan * laser_linear_range
+        scan_laser = unit_vector_laser * (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
         # embed()
 
         laser_translation = laser_pose[:3]
@@ -603,8 +605,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         if done and self.automatic_reset:
             state = self.reset()
         del state['pc']
+
+        info['start_conf'] = original_pos
+        info['path'] = path
+
         print('reward', reward)
-        time.sleep(3)
         return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
