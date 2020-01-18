@@ -316,26 +316,38 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         laser_angular_half_range = laser_angular_range / 2.0
         laser_pose = self.robots[0].parts[laser_link_name].get_pose()
         base_pose = self.robots[0].parts['base_link'].get_pose()
-        laser_in_base_frame = laser_pose[:3] - base_pose[:3]
 
         angle = np.arange(-laser_angular_half_range / 180 * np.pi,
                           laser_angular_half_range / 180 * np.pi,
                           laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
-        unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+        unit_vector_laser = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
 
         state = self.get_state()
         scan = state['scan']
 
-        scan_local = unit_vector_local[:, :2] * scan * laser_linear_range - laser_in_base_frame[:2]
+        scan_laser = unit_vector_laser * scan * laser_linear_range
+        # embed()
+
+        laser_translation = laser_pose[:3]
+        laser_rotation = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])
+        scan_world = laser_rotation.dot(scan_laser.T).T + laser_translation
+
+        base_translation = base_pose[:3]
+        base_rotation = quat2mat([base_pose[6], base_pose[3], base_pose[4], base_pose[5]])
+        scan_local = base_rotation.T.dot((scan_world - base_translation).T).T
+        scan_local = scan_local[:, :2]
         scan_local = np.concatenate([np.array([[0, 0]]), scan_local, np.array([[0, 0]])], axis=0)
 
-
+        # flip y axis
+        scan_local[:, 1] *= -1
         occupancy_grid = np.zeros((self.grid_resolution, self.grid_resolution)).astype(np.uint8)
-        scan_local_in_map = scan_local / (self.occupancy_range / 2) * (self.grid_resolution / 2) + self.grid_resolution / 2
+        scan_local_in_map = scan_local / (self.occupancy_range / 2) * (self.grid_resolution / 2) + (self.grid_resolution / 2)
         scan_local_in_map = scan_local_in_map.reshape((1, -1, 1, 2)).astype(np.int32)
         cv2.fillPoly(occupancy_grid, scan_local_in_map, True, 1)
         cv2.circle(occupancy_grid, (self.grid_resolution // 2, self.grid_resolution // 2), int(self.robot_footprint_radius_in_map), 1, -1)
-
+        # cv2.imwrite('occupancy_grid.png', occupancy_grid)
+        # embed()
+        # assert False
         return occupancy_grid
 
     def get_additional_states(self):
@@ -439,6 +451,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.new_potential = geodesic_dist
 
     def step(self, action):
+        print('-' * 20)
         # action[0] = base_or_arm
         # action[1] = base_subgoal_theta
         # action[2] = base_subgoal_dist
@@ -449,6 +462,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.current_step += 1
         subgoal_success = True
         use_base = action[0] > 0.0
+        use_base = True
         if use_base:
             # print('base')
             # use base
@@ -461,32 +475,53 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             base_subgoal_pos *= base_subgoal_dist
             base_subgoal_pos = np.append(base_subgoal_pos, 0.0)
             base_subgoal_pos += robot_pos
+            print('base_subgoal_pos', base_subgoal_pos)
+
             self.base_marker.set_position(base_subgoal_pos)
 
             base_subgoal_orn = action[3] * np.pi
             base_subgoal_orn += yaw
 
-            is_base_subgoal_valid = self.scene.has_node(self.floor_num, base_subgoal_pos[:2])
-            if self.arena == 'button':
-                x_min = -6.0 if self.door_open else -3.0
-                x_max = 2.0
-                y_min, y_max = -2.0, 2.0
-                is_valid = x_min <= base_subgoal_pos[0] <= x_max and y_min <= base_subgoal_pos[1] <= y_max
-                is_base_subgoal_valid = is_base_subgoal_valid and is_valid
-            if is_base_subgoal_valid:
+            original_pos = get_base_values(self.robot_id)
+
+            path = self.plan_base_motion_2d(base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
+            if path is not None:
+                print('base mp success')
                 if self.eval:
-                    path = self.plan_base_motion_2d(base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
-                    if path is not None:
-                        for way_point in path:
-                            set_base_values(self.robot_id, [way_point[0], way_point[1], way_point[2]])
-                            time.sleep(0.05)
+                    for way_point in path:
+                        set_base_values(self.robot_id, [way_point[0], way_point[1], way_point[2]])
+                        time.sleep(0.05)
                 else:
                     set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
-                # set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
-                # print('subgoal succeed')
             else:
-                # print('subgoal fail')
+                print('base mp failure')
                 subgoal_success = False
+                set_base_values(self.robot_id, original_pos)
+
+            # is_base_subgoal_valid = self.scene.has_node(self.floor_num, base_subgoal_pos[:2])
+            # if self.arena == 'button':
+            #     x_min = -6.0 if self.door_open else -3.0
+            #     x_max = 2.0
+            #     y_min, y_max = -2.0, 2.0
+            #     is_valid = x_min <= base_subgoal_pos[0] <= x_max and y_min <= base_subgoal_pos[1] <= y_max
+            #     is_base_subgoal_valid = is_base_subgoal_valid and is_valid
+            # if is_base_subgoal_valid:
+            #     if self.eval:
+            #         path = self.plan_base_motion_2d(base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
+            #         if path is not None:
+            #             print('base mp success')
+            #             for way_point in path:
+            #                 set_base_values(self.robot_id, [way_point[0], way_point[1], way_point[2]])
+            #                 time.sleep(0.05)
+            #         else:
+            #             print('base mp failure')
+            #     else:
+            #         set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
+            #     # set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
+            #     # print('subgoal succeed')
+            # else:
+            #     # print('subgoal fail')
+            #     subgoal_success = False
         else:
             # print('arm')
             # use arm
@@ -568,8 +603,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         if done and self.automatic_reset:
             state = self.reset()
         del state['pc']
-        # print('reward', reward)
-        # time.sleep(3)
+        print('reward', reward)
+        time.sleep(3)
         return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
