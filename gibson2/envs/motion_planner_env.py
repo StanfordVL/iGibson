@@ -24,7 +24,8 @@ from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_na
     set_joint_positions, add_data_path, connect, plan_base_motion, plan_joint_motion, enable_gravity, \
     joint_controller, dump_body, load_model, joints_from_names, user_input, disconnect, get_joint_positions, \
     get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, \
-    set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_base_values, plan_base_motion_2d
+    set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_base_values, \
+    plan_base_motion_2d, get_sample_fn
 
 class MotionPlanningEnv(NavigateRandomEnv):
     def __init__(self,
@@ -240,6 +241,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                        length=0.1,
                                        initial_offset=[0, 0, 0.1 / 2.0])
         self.arm_marker.load()
+
+        self.arm_default_joint_positions = (0.38548146667743244, 1.1522793897208579,
+                                           1.2576467971105596, -0.312703569911879,
+                                           1.7404867100093226, -0.0962895617312548,
+                                           -1.4418232619629425, -1.6780152866247762)
 
         if self.arena == 'button':
             self.button_marker = VisualMarker(visual_shape=p.GEOM_SPHERE,
@@ -491,7 +497,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 if self.eval:
                     for way_point in path:
                         set_base_values(self.robot_id, [way_point[0], way_point[1], way_point[2]])
-                        time.sleep(0.05)
+                        time.sleep(0.02)
                 else:
                     set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
             else:
@@ -555,20 +561,99 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             joint_range = list(np.array(max_limits) - np.array(min_limits))
             joint_range = [item + 1 for item in joint_range]
             joint_damping = [0.1 for _ in joint_range]
-            joint_positions = p.calculateInverseKinematics(self.robot_id,
-                                                           self.robots[0].parts['gripper_link'].body_part_index,
-                                                           arm_subgoal,
-                                                           lowerLimits=min_limits,
-                                                           upperLimits=max_limits,
-                                                           jointRanges=joint_range,
-                                                           restPoses=rest_position,
-                                                           jointDamping=joint_damping,
-                                                           solver=p.IK_DLS,
-                                                           maxNumIterations=100)[2:10]
-            set_joint_positions(self.robot_id, arm_joints, joint_positions)
-            if self.eval:
-                time.sleep(0.5)  # for visualization
 
+            n_attempt = 0
+            max_attempt = 200
+            sample_fn = get_sample_fn(nav_env.robot_id, arm_joints)
+
+            while n_attempt < max_attempt: # find collision free ik solution
+
+                set_joint_positions(self.robot_id, arm_joints, sample_fn())
+
+                joint_positions = p.calculateInverseKinematics(self.robot_id,
+                                                               self.robots[0].parts['gripper_link'].body_part_index,
+                                                               arm_subgoal,
+                                                               lowerLimits=min_limits,
+                                                               upperLimits=max_limits,
+                                                               jointRanges=joint_range,
+                                                               restPoses=rest_position,
+                                                               jointDamping=joint_damping,
+                                                               solver=p.IK_DLS,
+                                                               maxNumIterations=100)[2:10]
+                n_attempt += 1
+                #print(n_attempt)
+
+                set_joint_positions(self.robot_id, arm_joints, joint_positions)
+
+                end_effector_link_state = p.getLinkState(self.robot_id, self.robots[0].parts['gripper_link'].body_part_index)
+                end_effector_position = end_effector_link_state[4]
+                diff = [arm_subgoal[0] - end_effector_position[0], arm_subgoal[1] - end_effector_position[1], arm_subgoal[2] - end_effector_position[2]]
+                ik_threshold = 0.05
+                dist = np.linalg.norm(np.array(diff))
+                close_enough = (dist < ik_threshold)
+
+                collision_free = True
+                for arm_link in arm_joints:
+                    for other_link in range(p.getNumJoints(self.robot_id)):
+                        contact_pts = p.getContactPoints(self.robot_id, self.robot_id, arm_link, other_link)
+                        #print(contact_pts)
+                        if len(contact_pts) > 0:
+                            collision_free = False
+                if collision_free and close_enough:
+                    break
+
+            if n_attempt == max_attempt:
+                ik_success = False
+            else:
+                ik_success = True
+
+            if ik_success:
+                set_joint_positions(self.robot_id, arm_joints, self.arm_default_joint_positions)
+                arm_path = plan_joint_motion(self.robot_id, arm_joints, joint_positions, disabled_collisions=set(),
+                                     self_collisions=False)
+
+                if arm_path is not None:
+                    arm_mp_success = True
+                else:
+                    arm_mp_success = False
+            else:
+                arm_mp_success = False
+
+            print('ik_success', ik_success)
+            print('arm_mp_success', arm_mp_success)
+
+            set_joint_positions(self.robot_id, arm_joints, self.arm_default_joint_positions)
+            if arm_mp_success and ik_success:
+                if self.eval:
+                    for joint_way_point in arm_path:
+                        set_joint_positions(self.robot_id, arm_joints, joint_way_point)
+                        time.sleep(0.02) # animation
+                else:
+                    set_joint_positions(self.robot_id, arm_joints, joint_positions) # set to last position in training
+
+            ##push
+            # push_vector = np.array([0,0.2,0])
+            # if arm_mp_success and ik_success:
+            #     for i in range(100):
+            #         push_goal = np.array(arm_subgoal) + push_vector * i / 100.0
+            #
+            #         joint_positions = p.calculateInverseKinematics(self.robot_id,
+            #                                                        self.robots[0].parts['gripper_link'].body_part_index,
+            #                                                        push_goal,
+            #                                                        lowerLimits=min_limits,
+            #                                                        upperLimits=max_limits,
+            #                                                        jointRanges=joint_range,
+            #                                                        restPoses=rest_position,
+            #                                                        jointDamping=joint_damping,
+            #                                                        solver=p.IK_DLS,
+            #                                                        maxNumIterations=100)[2:10]
+            #
+            #         set_joint_positions(self.robot_id, arm_joints, joint_positions)
+            #         if eval:
+            #             time.sleep(0.02) # for visualization
+
+
+        ###### reward computation ######
         if use_base:
             # trigger re-computation of geodesic distance for get_reward
             state = self.get_state()
@@ -595,11 +680,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         if not use_base:
             # arm reset
-            arm_default_joint_positions = (0.38548146667743244, 1.1522793897208579,
-                                           1.2576467971105596, -0.312703569911879,
-                                           1.7404867100093226, -0.0962895617312548,
-                                           -1.4418232619629425, -1.6780152866247762)
-            set_joint_positions(self.robot_id, arm_joints, arm_default_joint_positions)
+
+            set_joint_positions(self.robot_id, arm_joints, self.arm_default_joint_positions)
             # need to call get_state again after arm reset (camera height could be different if torso moves)
             # TODO: should only call get_state once or twice (e.g. disable torso movement, or cache get_state result)
             state = self.get_state()
@@ -608,9 +690,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             state = self.reset()
         del state['pc']
 
-        # info['start_conf'] = original_pos
-        # info['path'] = path
-
+        if use_base:
+            info['start_conf'] = original_pos
+            info['path'] = path
         # print('reward', reward)
         # time.sleep(3)
         return state, reward, done, info

@@ -554,7 +554,8 @@ class Fetch(LocomotorRobot):
                                 scale=config.get("robot_scale", self.default_scale),
                                 resolution=config.get("resolution", 64),
                                 is_discrete=config.get("is_discrete", True),
-                                control="velocity")
+                                control="velocity",
+                                self_collision=True)
 
     def set_up_continuous_action_space(self):
         if self.action_high is not None and self.action_low is not None:
@@ -601,6 +602,23 @@ class Fetch(LocomotorRobot):
 
     def get_end_effector_position(self):
         return self.parts['gripper_link'].get_position()
+
+    def load(self):
+        ids = self._load_model()
+        self.eyes = self.parts["eyes"]
+
+        robot_id = ids[0]
+
+        # disable collision for immediate parent
+        for joint in range(p.getNumJoints(robot_id)):
+            info = p.getJointInfo(robot_id, joint)
+            parent_id = info[-1]
+            p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)
+
+        # disable collision for torso_lift_joint and shoulder_lift_joint
+        p.setCollisionFilterPair(robot_id, robot_id, 3, 13, 0)
+
+        return ids
 
 
 class JR2(LocomotorRobot):

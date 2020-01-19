@@ -2762,10 +2762,10 @@ def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, gr
                       pts[1] - robot_footprint_radius_in_map:pts[1] + robot_footprint_radius_in_map + 1][mask] == 0)
 
     if collision_fn(start_conf):
-        print("Warning: initial configuration is in collision")
+        # print("Warning: initial configuration is in collision")
         return None
     if collision_fn(end_conf):
-        print("Warning: end configuration is in collision")
+        # print("Warning: end configuration is in collision")
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
