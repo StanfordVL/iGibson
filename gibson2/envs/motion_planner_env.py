@@ -453,7 +453,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.new_potential = geodesic_dist
 
     def step(self, action):
-        print('-' * 20)
+        # print('-' * 20)
         # action[0] = base_or_arm
         # action[1] = base_subgoal_theta
         # action[2] = base_subgoal_dist
@@ -464,7 +464,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.current_step += 1
         subgoal_success = True
         use_base = action[0] > 0.0
-        use_base = True
         if use_base:
             # print('base')
             # use base
@@ -477,7 +476,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             base_subgoal_pos *= base_subgoal_dist
             base_subgoal_pos = np.append(base_subgoal_pos, 0.0)
             base_subgoal_pos += robot_pos
-            print('base_subgoal_pos', base_subgoal_pos)
+            # print('base_subgoal_pos', base_subgoal_pos)
 
             self.base_marker.set_position(base_subgoal_pos)
 
@@ -488,7 +487,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             path = self.plan_base_motion_2d(base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
             if path is not None:
-                print('base mp success')
+                # print('base mp success')
                 if self.eval:
                     for way_point in path:
                         set_base_values(self.robot_id, [way_point[0], way_point[1], way_point[2]])
@@ -496,7 +495,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 else:
                     set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
             else:
-                print('base mp failure')
+                # print('base mp failure')
                 subgoal_success = False
                 set_base_values(self.robot_id, original_pos)
 
@@ -578,7 +577,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         if subgoal_success:
             reward, info = self.get_reward([], action, info)
         else:
-            reward = -0.0
+            # failed subgoal penalty
+            reward = 0.0
         done, info = self.get_termination([], info)
 
         if self.arena == 'button':
@@ -589,6 +589,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.door_open = True
                 self.button_marker.set_position([100.0, 100.0, 0.0])
                 self.door.set_position([100.0, 100.0, 0.0])
+
+                # button pressed reward
                 reward += 5.0
 
         if not use_base:
@@ -606,10 +608,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             state = self.reset()
         del state['pc']
 
-        info['start_conf'] = original_pos
-        info['path'] = path
+        # info['start_conf'] = original_pos
+        # info['path'] = path
 
-        print('reward', reward)
+        # print('reward', reward)
+        # time.sleep(3)
         return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
@@ -623,7 +626,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
             self.button_marker_pos = [
                 np.random.uniform(-3.0, -0.5),
-                np.random.uniform(-1.0, 1.0),
+                np.random.uniform(-1.25, 1.25),
                 1.5
             ]
             self.button_marker.set_position(self.button_marker_pos)
