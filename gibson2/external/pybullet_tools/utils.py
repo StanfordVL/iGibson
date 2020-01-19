@@ -2870,6 +2870,34 @@ def get_constraints():
     return [p.getConstraintUniqueId(i, physicsClientId=CLIENT)
             for i in range(p.getNumConstraints(physicsClientId=CLIENT))]
 
+def add_p2p_constraint(body, body_link, robot, robot_link, max_force=None):
+    if body_link == -1:
+        body_pose = get_pose(body)
+    else:
+        body_pose = get_com_pose(body, link=body_link)
+    #end_effector_pose = get_link_pose(robot, robot_link)
+    end_effector_pose = get_com_pose(robot, robot_link)
+    grasp_pose = multiply(invert(end_effector_pose), body_pose)
+    point, quat = grasp_pose
+    # TODO: can I do this when I'm not adjacent?
+    # joint axis in local frame (ignored for JOINT_FIXED)
+    #return p.createConstraint(robot, robot_link, body, body_link,
+    #                          p.JOINT_FIXED, jointAxis=unit_point(),
+    #                          parentFramePosition=unit_point(),
+    #                          childFramePosition=point,
+    #                          parentFrameOrientation=unit_quat(),
+    #                          childFrameOrientation=quat)
+    constraint = p.createConstraint(robot, robot_link, body, body_link,  # Both seem to work
+                                    p.JOINT_POINT2POINT, jointAxis=unit_point(),
+                                    parentFramePosition=point,
+                                    childFramePosition=unit_point(),
+                                    parentFrameOrientation=quat,
+                                    childFrameOrientation=unit_quat(),
+                                    physicsClientId=CLIENT)
+    if max_force is not None:
+        p.changeConstraint(constraint, maxForce=max_force, physicsClientId=CLIENT)
+    return constraint
+
 def remove_constraint(constraint):
     p.removeConstraint(constraint, physicsClientId=CLIENT)
 
