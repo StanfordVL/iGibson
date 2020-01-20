@@ -273,8 +273,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             for wall_pose in self.wall_poses:
                 wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
                                       scale=1)
-                self.simulator.import_object(wall, class_id=3)
+                self.simulator.import_interactive_object(wall, class_id=3)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
+                self.simulator.sync()
                 self.walls += [wall]
         elif self.arena == 'push_door':
             self.door = InteractiveObj(
@@ -283,19 +284,20 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.simulator.import_interactive_object(self.door, class_id=2)
             self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
             self.door_axis_link_id = 1
+            # for i in range(p.getNumJoints(self.door.body_id)):
+            #    for j in range(p.getNumJoints(self.robot_id)):
+            #        #if j != self.robots[0].parts['gripper_link'].body_part_index:
+            #        p.setCollisionFilterPair(self.door.body_id, self.robot_id, i, j, 0) # disable collision for robot and door
 
-            # self.wall_poses = [
-            #     [[-3.5, 7.5, 1], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz')],
-            #     [[-3.5, -7.5, 1], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz')],
-            # ]
-            # self.walls = []
-            # for wall_pose in self.wall_poses:
-            #     wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-            #                           scale=1)
-            #     self.simulator.import_object(wall, class_id=3)
-            #     wall.set_position_rotation(wall_pose[0], wall_pose[1])
-            #     self.walls += [wall]
+            self.walls = []
+            wall = BoxShape([-3.5, 1, 0.7], [0.2, 0.35, 0.5], visual_only=True)
+            self.simulator.import_interactive_object(wall, class_id=3)
+            self.walls += [wall]
+            wall = BoxShape([-3.5, -1, 0.7], [0.2, 0.45, 0.5], visual_only=True)
+            self.simulator.import_interactive_object(wall, class_id=3)
+            self.walls += [wall]
 
+            self.simulator.sync()
 
     def prepare_motion_planner(self):
         self.robot_id = self.robots[0].robot_ids[0]
@@ -491,7 +493,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.new_potential = geodesic_dist
 
     def step(self, action):
-        embed()
         # print('-' * 30)
         # action[0] = base_or_arm
         # action[1] = base_subgoal_theta
@@ -499,7 +500,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # action[3] = base_orn
         # action[4] = arm_img_u
         # action[5] = arm_img_v
-
+        
         self.current_step += 1
         use_base = action[0] > 0.0
         if use_base:
@@ -587,9 +588,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                             'forearm_roll_joint',
                                             'wrist_flex_joint',
                                             'wrist_roll_joint'])
-            max_limits = [0., 0.] + get_max_limits(self.robot_id, arm_joints) + [0.05, 0.05]
-            min_limits = [0., 0.] + get_min_limits(self.robot_id, arm_joints) + [0., 0.]
-            rest_position = [0., 0.] + list(get_joint_positions(self.robot_id, arm_joints)) + [0.04, 0.04]
+            max_limits = [0., 0.] + get_max_limits(self.robot_id, arm_joints)
+            min_limits = [0., 0.] + get_min_limits(self.robot_id, arm_joints)
+            rest_position = [0., 0.] + list(get_joint_positions(self.robot_id, arm_joints))
             joint_range = list(np.array(max_limits) - np.array(min_limits))
             joint_range = [item + 1 for item in joint_range]
             joint_damping = [0.1 for _ in joint_range]
@@ -655,8 +656,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 else:
                     set_joint_positions(self.robot_id, arm_joints, subgoal_joint_positions)
 
-                embed()
-
                 ## push
                 # TODO: figure out push dist threshold (i.e. can push object x centimeters away from the gripper)
                 # TODO: whitelist object ids that can be pushed
@@ -666,17 +665,17 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 points = []
                 pushable_obj_ids = [self.door.body_id]
                 for i in pushable_obj_ids:
-                        points.extend(
-                            p.getClosestPoints(self.robot_id, i, distance=self.push_dist_threshold,
-                                               linkIndexA=self.robots[0].parts['gripper_link'].body_part_index))
+                    points.extend(
+                        p.getClosestPoints(self.robot_id, i, distance=self.push_dist_threshold,
+                                           linkIndexA=self.robots[0].parts['gripper_link'].body_part_index))
                 dist = 1e4
                 for point in points:
                     if point[8] < dist:
                         dist = point[8]
-                        #if not focus is None and not (focus[2] == point[2] and focus[4] == point[4]):
+                        # if not focus is None and not (focus[2] == point[2] and focus[4] == point[4]):
                         # p.changeVisualShape(objectUniqueId=focus[2], linkIndex=focus[4], rgbaColor=[1, 1, 1, 1])
                         focus = point
-                        #p.changeVisualShape(objectUniqueId=focus[2], linkIndex=focus[4], rgbaColor=[1, 0, 0, 1])
+                        # p.changeVisualShape(objectUniqueId=focus[2], linkIndex=focus[4], rgbaColor=[1, 0, 0, 1])
 
                 # print(focus)
 
@@ -685,11 +684,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                            focus[4],
                                            self.robot_id,
                                            self.robots[0].parts['gripper_link'].body_part_index,
-                                           max_force=5000)
+                                           max_force=500)
 
                 push_vector = np.array([-0.5, 0.0, 0])
 
                 base_pose = get_base_values(self.robot_id)
+
                 for i in range(100):
                     push_goal = np.array(arm_subgoal) + push_vector * i / 100.0
 
@@ -709,7 +709,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     self.simulator.set_timestep(0.002)
                     self.simulator_step()
                     self.simulator.set_timestep(1e-8)
-                    if eval:
+                    if self.eval:
                         time.sleep(0.02)  # for visualization
                 if focus is not None:
                     remove_constraint(c)
