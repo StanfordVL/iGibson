@@ -1,6 +1,6 @@
 from gibson2.core.physics.interactive_objects import VisualMarker, InteractiveObj, BoxShape
 import gibson2
-from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
+from gibson2.utils.utils import parse_config, rotate_vector_3d, rotate_vector_2d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -187,6 +187,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                        automatic_reset=automatic_reset,
                                                        random_height=False,
                                                        device_idx=device_idx)
+
+        # # real sensor spec for Fetch
         # resolution = self.config.get('resolution', 64)
         # width = resolution
         # height = int(width * (480.0 / 640.0))
@@ -216,19 +218,21 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         self.new_potential = None
         self.collision_reward_weight = collision_reward_weight
+
         # action[0] = base_or_arm
         # action[1] = base_subgoal_theta
         # action[2] = base_subgoal_dist
         # action[3] = base_orn
         # action[4] = arm_img_u
         # action[5] = arm_img_v
-        self.action_space = gym.spaces.Box(shape=(6,),
+        # action[6] = arm_push_vector_x
+        # action[7] = arm_push_vector_y
+        self.action_space = gym.spaces.Box(shape=(8,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
         self.prepare_motion_planner()
 
-        # visualization
         self.base_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                         rgba_color=[1, 0, 0, 1],
                                         radius=0.1,
@@ -242,24 +246,30 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                        length=0.1,
                                        initial_offset=[0, 0, 0.1 / 2.0])
         self.arm_marker.load()
-
         self.arm_default_joint_positions = (0.38548146667743244, 1.1522793897208579,
                                             1.2576467971105596, -0.312703569911879,
                                             1.7404867100093226, -0.0962895617312548,
                                             -1.4418232619629425, -1.6780152866247762)
+        self.arm_joint_ids = joints_from_names(self.robot_id,
+                                               ['torso_lift_joint',
+                                                'shoulder_pan_joint',
+                                                'shoulder_lift_joint',
+                                                'upperarm_roll_joint',
+                                                'elbow_flex_joint',
+                                                'forearm_roll_joint',
+                                                'wrist_flex_joint',
+                                                'wrist_roll_joint'])
         self.arm_subgoal_threshold = 0.05
-
-        self.push_dist_threshold = 0.01
-
         self.failed_subgoal_penalty = -0.0
 
         if self.arena == 'button':
+            self.button_threshold = 0.5
+            self.button_reward = 5.0
+
             self.button_marker = VisualMarker(visual_shape=p.GEOM_SPHERE,
                                               rgba_color=[0, 1, 0, 1],
                                               radius=0.3)
             self.simulator.import_object(self.button_marker, class_id=255)
-            self.button_threshold = 0.5
-            self.button_reward = 5.0
 
             self.door = InteractiveObj(
                 os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
@@ -275,8 +285,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                       scale=1)
                 self.simulator.import_interactive_object(wall, class_id=3)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
-                self.simulator.sync()
                 self.walls += [wall]
+
         elif self.arena == 'push_door':
             self.door = InteractiveObj(
                 os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
@@ -284,20 +294,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.simulator.import_interactive_object(self.door, class_id=2)
             self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
             self.door_axis_link_id = 1
-            # for i in range(p.getNumJoints(self.door.body_id)):
-            #    for j in range(p.getNumJoints(self.robot_id)):
-            #        #if j != self.robots[0].parts['gripper_link'].body_part_index:
-            #        p.setCollisionFilterPair(self.door.body_id, self.robot_id, i, j, 0) # disable collision for robot and door
 
+            self.wall_poses = [
+                [[-3.5, 0.45, 0.45], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz')],
+                [[-3.5, -0.4, 0.45], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz')],
+            ]
             self.walls = []
-            wall = BoxShape([-3.5, 1, 0.7], [0.2, 0.35, 0.7], visual_only=True)
-            self.simulator.import_interactive_object(wall, class_id=3)
-            self.walls += [wall]
-            wall = BoxShape([-3.5, -1, 0.7], [0.2, 0.45, 0.7], visual_only=True)
-            self.simulator.import_interactive_object(wall, class_id=3)
-            self.walls += [wall]
-
-            self.simulator.sync()
+            for wall_pose in self.wall_poses:
+                wall = InteractiveObj(
+                    os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_quarter.urdf'),
+                    scale=0.3)
+                self.simulator.import_interactive_object(wall, class_id=3)
+                wall.set_position_rotation(wall_pose[0], wall_pose[1])
+                self.walls += [wall]
 
     def prepare_motion_planner(self):
         self.robot_id = self.robots[0].robot_ids[0]
@@ -306,9 +315,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         self.grid_resolution = 400
         self.occupancy_range = 8.0  # m
-        self.robot_footprint_radius = 0.279
-        self.robot_footprint_radius_in_map = int(
-            self.robot_footprint_radius / self.occupancy_range * self.grid_resolution)
+        robot_footprint_radius = 0.279
+        self.robot_footprint_radius_in_map = int(robot_footprint_radius / self.occupancy_range * self.grid_resolution)
 
     def plan_base_motion(self, x, y, theta):
         half_size = self.map_size / 2.0
@@ -338,8 +346,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return rotate_vector_3d(pos - cur_pos, *cur_rot)
 
     def get_local_occupancy_grid(self):
-        # assumes it has "scan" state
-        # assumes it is either Turtlebot or fetch
+        assert 'scan' in self.output
+        assert self.config['robot'] in ['Turtlebot', 'Fetch']
+
         if self.config['robot'] == 'Turtlebot':
             # Hokuyo URG-04LX-UG01
             laser_linear_range = 5.6
@@ -366,7 +375,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         scan = state['scan']
 
         scan_laser = unit_vector_laser * (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
-        # embed()
 
         laser_translation = laser_pose[:3]
         laser_rotation = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])
@@ -387,9 +395,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         cv2.fillPoly(occupancy_grid, scan_local_in_map, True, 1)
         cv2.circle(occupancy_grid, (self.grid_resolution // 2, self.grid_resolution // 2),
                    int(self.robot_footprint_radius_in_map), 1, -1)
+
         # cv2.imwrite('occupancy_grid.png', occupancy_grid)
-        # embed()
-        # assert False
         return occupancy_grid
 
     def get_additional_states(self):
@@ -435,7 +442,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         waypoints_local_xy = np.array([self.global_to_local(waypoint, cur_pos, cur_rot)[:2]
                                        for waypoint in shortest_path]).flatten()
 
-        # # convert Cartesian space to radian space START
+        # # convert Cartesian space to radian space
         # for i in range(waypoints_local_xy.shape[0] // 2):
         #     vec = waypoints_local_xy[(i * 2):(i * 2 + 2)]
         #     norm = np.linalg.norm(vec)
@@ -450,16 +457,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         #     dir = np.arctan2(target_pos_local[1], target_pos_local[0])
         #     target_pos_local[0] = dir
         #     target_pos_local[1] = norm
-        # # convert Cartesian space to radian space END
 
         additional_states = np.concatenate((waypoints_local_xy,
                                             target_pos_local[:2]))
         # linear_velocity_local,
         # angular_velocity_local))
+
         # cache results for reward calculation
         self.new_potential = geodesic_dist
+
         assert len(additional_states) == self.additional_states_dim, \
             'additional states dimension mismatch, {}, {}'.format(len(additional_states), self.additional_states_dim)
+
         return additional_states
 
     def get_state(self, collision_links=[]):
@@ -492,6 +501,310 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.shortest_path = shortest_path
         self.new_potential = geodesic_dist
 
+    def get_base_subgoal(self, action):
+        """
+        Convert action to base_subgoal
+        :param action: policy output
+        :return: base_subgoal_pos [x, y] in the world frame
+        :return: base_subgoal_orn yaw in the world frame
+        """
+        # print('base')
+        yaw = self.robots[0].get_rpy()[2]
+        robot_pos = self.robots[0].get_position()
+        base_subgoal_theta = (action[1] * 110.0) / 180.0 * np.pi  # [-110.0, 110.0]
+        base_subgoal_theta += yaw
+        base_subgoal_dist = (action[2] + 1)  # [0.0, 2.0]
+        base_subgoal_pos = np.array([np.cos(base_subgoal_theta), np.sin(base_subgoal_theta)])
+        base_subgoal_pos *= base_subgoal_dist
+        base_subgoal_pos = np.append(base_subgoal_pos, 0.0)
+        base_subgoal_pos += robot_pos
+        base_subgoal_orn = action[3] * np.pi
+        base_subgoal_orn += yaw
+
+        # print('base_subgoal_pos', base_subgoal_pos)
+        self.base_marker.set_position(base_subgoal_pos)
+
+        return base_subgoal_pos, base_subgoal_orn
+
+    def reach_base_subgoal(self, base_subgoal_pos, base_subgoal_orn):
+        """
+        Attempt to reach base_subgoal and return success / failure
+        If failed, reset the base to its original pose
+        :param base_subgoal_pos: [x, y] in the world frame
+        :param base_subgoal_orn: yaw in the world frame
+        :return: whether base_subgoal is achieved
+        """
+        original_pos = get_base_values(self.robot_id)
+
+        path = self.plan_base_motion_2d(base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
+        if path is not None:
+            # print('base mp success')
+            if self.eval:
+                for way_point in path:
+                    set_base_values(self.robot_id, [way_point[0], way_point[1], way_point[2]])
+                    time.sleep(0.02)
+            else:
+                set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
+
+            return True
+        else:
+            # print('base mp failure')
+            set_base_values(self.robot_id, original_pos)
+            return False
+
+    def move_base(self, action):
+        """
+        Execute action for base_subgoal
+        :param action: policy output
+        :return: whether base_subgoal is achieved
+        """
+        # print('base')
+        # start = time.time()
+        base_subgoal_pos, base_subgoal_orn = self.get_base_subgoal(action)
+        # print('get_base_subgoal', time.time() - start)
+
+        # start = time.time()
+        subgoal_success = self.reach_base_subgoal(base_subgoal_pos, base_subgoal_orn)
+        # print('reach_base_subgoal', time.time() - start)
+
+        return subgoal_success
+
+    def get_arm_subgoal(self, action):
+        """
+        Convert action to arm_subgoal
+        :param action: policy output
+        :return: arm_subgoal [x, y, z] in the world frame
+        """
+        state = self.get_state()
+        points = state['pc']
+        height, width = points.shape[0:2]
+
+        arm_img_u = np.clip(int((action[4] + 1) / 2.0 * height), 0, height - 1)
+        arm_img_v = np.clip(int((action[5] + 1) / 2.0 * width), 0, width - 1)
+
+        point = points[arm_img_u, arm_img_v]
+        camera_pose = (self.robots[0].parts['eyes'].get_pose())
+        transform_mat = quat_pos_to_mat(pos=camera_pose[:3],
+                                        quat=[camera_pose[6], camera_pose[3], camera_pose[4], camera_pose[5]])
+        arm_subgoal = transform_mat.dot(np.array([-point[2], -point[0], point[1], 1]))[:3]
+        self.arm_marker.set_position(arm_subgoal)
+        return arm_subgoal
+
+    def is_collision_free(self, body_a, link_a_list, body_b=None, link_b_list=None):
+        """
+        :param body_a: body id of body A
+        :param link_a_list: link ids of body A that that of interest
+        :param body_b: body id of body B (optional)
+        :param link_b_list: link ids of body B that are of interest (optional)
+        :return: whether the bodies and links of interest are collision-free
+        """
+        if body_b is None:
+            for link_a in link_a_list:
+                contact_pts = p.getContactPoints(bodyA=body_a, linkIndexA=link_a)
+                if len(contact_pts) > 0:
+                    return False
+        elif link_b_list is None:
+            for link_a in link_a_list:
+                contact_pts = p.getContactPoints(bodyA=body_a, bodyB=body_b, linkIndexA=link_a)
+                if len(contact_pts) > 0:
+                    return False
+        else:
+            for link_a in link_a_list:
+                for link_b in link_b_list:
+                    contact_pts = p.getContactPoints(bodyA=body_a, bodyB=body_b, linkIndexA=link_a, linkIndexB=link_b)
+                    if len(contact_pts) > 0:
+                        return False
+
+        return True
+
+    def get_arm_joint_positions(self, arm_subgoal):
+        """
+        Attempt to find arm_joint_positions that satisfies arm_subgoal
+        If failed, return None
+        :param arm_subgoal: [x, y, z] in the world frame
+        :return: arm joint positions
+        """
+        max_limits = [0., 0.] + get_max_limits(self.robot_id, self.arm_joint_ids)
+        min_limits = [0., 0.] + get_min_limits(self.robot_id, self.arm_joint_ids)
+        rest_position = [0., 0.] + list(get_joint_positions(self.robot_id, self.arm_joint_ids))
+        joint_range = list(np.array(max_limits) - np.array(min_limits))
+        joint_range = [item + 1 for item in joint_range]
+        joint_damping = [0.1 for _ in joint_range]
+
+        n_attempt = 0
+        max_attempt = 50
+        sample_fn = get_sample_fn(self.robot_id, self.arm_joint_ids)
+        base_pose = get_base_values(self.robot_id)
+
+        # find collision-free IK solution for arm_subgoal
+        while n_attempt < max_attempt:
+            set_joint_positions(self.robot_id, self.arm_joint_ids, sample_fn())
+            arm_joint_positions = p.calculateInverseKinematics(self.robot_id,
+                                                               self.robots[0].parts['gripper_link'].body_part_index,
+                                                               arm_subgoal,
+                                                               lowerLimits=min_limits,
+                                                               upperLimits=max_limits,
+                                                               jointRanges=joint_range,
+                                                               restPoses=rest_position,
+                                                               jointDamping=joint_damping,
+                                                               solver=p.IK_DLS,
+                                                               maxNumIterations=100)[2:10]
+            set_joint_positions(self.robot_id, self.arm_joint_ids, arm_joint_positions)
+
+            dist = l2_distance(self.robots[0].get_end_effector_position(), arm_subgoal)
+            if dist > self.arm_subgoal_threshold:
+                n_attempt += 1
+                continue
+
+            self.simulator_step()
+            set_base_values(self.robot_id, base_pose)
+
+            # arm should not have any collision
+            collision_free = self.is_collision_free(body_a=self.robot_id,
+                                                    link_a_list=self.arm_joint_ids)
+            if not collision_free:
+                n_attempt += 1
+                continue
+
+            # gripper should not have any self-collision
+            collision_free = self.is_collision_free(body_a=self.robot_id,
+                                                    link_a_list=[self.robots[0].parts['gripper_link'].body_part_index],
+                                                    body_b=self.robot_id)
+            if not collision_free:
+                n_attempt += 1
+                continue
+
+            return arm_joint_positions
+
+        return
+
+    def reach_arm_subgoal(self, arm_joint_positions):
+        """
+        Attempt to reach arm arm_joint_positions and return success / failure
+        If failed, reset the arm to its original pose
+        :param arm_joint_positions
+        :return: whether arm_joint_positions is achieved
+        """
+        set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
+
+        if arm_joint_positions is None:
+            return False
+
+        arm_path = plan_joint_motion(self.robot_id,
+                                     self.arm_joint_ids,
+                                     arm_joint_positions,
+                                     disabled_collisions=set(),
+                                     self_collisions=False)
+        if arm_path is not None:
+            if self.eval:
+                for joint_way_point in arm_path:
+                    set_joint_positions(self.robot_id, self.arm_joint_ids, joint_way_point)
+                    time.sleep(0.02)  # animation
+            else:
+                set_joint_positions(self.robot_id, self.arm_joint_ids, arm_joint_positions)
+            return True
+        else:
+            set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
+            return False
+
+    def reset_object_velocities(self):
+        """
+        Remove any accumulated velocities or forces of objects resulting from arm motion planner
+        """
+        if self.arena == 'push_door':
+            door_pos = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+            p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=door_pos, targetVelocity=0.0)
+            for wall in self.walls:
+                p.resetBaseVelocity(wall.body_id, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
+
+    def interact(self, action, arm_subgoal):
+        """
+        Move the arm according to push_vector and physically simulate the interaction
+        :param action: policy output
+        :param arm_subgoal: starting location of the interaction
+        :return: None
+        """
+        push_vector_local = np.array([action[6], action[7]])  # [-1.0, 1.0]
+        push_vector = rotate_vector_2d(push_vector_local, -self.robots[0].get_rpy()[2])
+        push_vector = np.append(push_vector, 0.0)
+
+        # push_vector = np.array([-0.5, 0.0, 0.0])
+
+        max_limits = [0., 0.] + get_max_limits(self.robot_id, self.arm_joint_ids)
+        min_limits = [0., 0.] + get_min_limits(self.robot_id, self.arm_joint_ids)
+        rest_position = [0., 0.] + list(get_joint_positions(self.robot_id, self.arm_joint_ids))
+        joint_range = list(np.array(max_limits) - np.array(min_limits))
+        joint_range = [item + 1 for item in joint_range]
+        joint_damping = [0.1 for _ in joint_range]
+
+        base_pose = get_base_values(self.robot_id)
+
+        self.simulator.set_timestep(0.002)
+        for i in range(100):
+            push_goal = np.array(arm_subgoal) + push_vector * i / 100.0
+
+            joint_positions = p.calculateInverseKinematics(self.robot_id,
+                                                           self.robots[0].parts['gripper_link'].body_part_index,
+                                                           push_goal,
+                                                           lowerLimits=min_limits,
+                                                           upperLimits=max_limits,
+                                                           jointRanges=joint_range,
+                                                           restPoses=rest_position,
+                                                           jointDamping=joint_damping,
+                                                           solver=p.IK_DLS,
+                                                           maxNumIterations=100)[2:10]
+
+            # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
+            control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
+            self.simulator_step()
+            set_base_values(self.robot_id, base_pose)
+
+            if self.eval:
+                time.sleep(0.02)  # for visualization
+
+        self.simulator.set_timestep(1e-8)
+
+    def move_arm(self, action):
+        """
+        Execute action for arm_subgoal and push_vector
+        :param action: policy output
+        :return: whether arm_subgoal is achieved
+        """
+        # print('arm')
+        # start = time.time()
+        arm_subgoal = self.get_arm_subgoal(action)
+        # print('get_arm_subgoal', time.time() - start)
+
+        # start = time.time()
+        # print(p.getNumBodies())
+        # state_id = p.saveState()
+        # print('saveState', time.time() - start)
+
+        # start = time.time()
+        arm_joint_positions = self.get_arm_joint_positions(arm_subgoal)
+        # print('get_arm_joint_positions', time.time() - start)
+
+        # start = time.time()
+        subgoal_success = self.reach_arm_subgoal(arm_joint_positions)
+        # print('reach_arm_subgoal', time.time() - start)
+
+        # start = time.time()
+        # p.restoreState(stateId=state_id)
+        # print('restoreState', time.time() - start)
+
+        # start = time.time()
+        self.reset_object_velocities()
+        # print('reset_object_velocities', time.time() - start)
+
+        if subgoal_success:
+            # set_joint_positions(self.robot_id, self.arm_joint_ids, arm_joint_positions)
+
+            # start = time.time()
+            self.interact(action, arm_subgoal)
+            # print('interact', time.time() - start)
+
+        return subgoal_success
+
     def step(self, action):
         # print('-' * 30)
         # action[0] = base_or_arm
@@ -500,243 +813,23 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # action[3] = base_orn
         # action[4] = arm_img_u
         # action[5] = arm_img_v
+        # action[6] = arm_push_vector_x
+        # action[7] = arm_push_vector_y
 
         self.current_step += 1
         use_base = action[0] > 0.0
         if use_base:
-            # print('base')
-            # use base
-            yaw = self.robots[0].get_rpy()[2]
-            robot_pos = self.robots[0].get_position()
-            base_subgoal_theta = (action[1] * 110.0) / 180.0 * np.pi  # [-110.0, 110.0]
-            base_subgoal_theta += yaw
-            base_subgoal_dist = (action[2] + 1)  # [0.0, 2.0]
-            base_subgoal_pos = np.array([np.cos(base_subgoal_theta), np.sin(base_subgoal_theta)])
-            base_subgoal_pos *= base_subgoal_dist
-            base_subgoal_pos = np.append(base_subgoal_pos, 0.0)
-            base_subgoal_pos += robot_pos
-            # print('base_subgoal_pos', base_subgoal_pos)
-
-            self.base_marker.set_position(base_subgoal_pos)
-
-            base_subgoal_orn = action[3] * np.pi
-            base_subgoal_orn += yaw
-
-            original_pos = get_base_values(self.robot_id)
-
-            path = self.plan_base_motion_2d(base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
-            subgoal_success = path is not None
-            if subgoal_success:
-                # print('base mp success')
-                if self.eval:
-                    for way_point in path:
-                        set_base_values(self.robot_id, [way_point[0], way_point[1], way_point[2]])
-                        time.sleep(0.02)
-                else:
-                    set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
-            else:
-                # print('base mp failure')
-                set_base_values(self.robot_id, original_pos)
-
-            # is_base_subgoal_valid = self.scene.has_node(self.floor_num, base_subgoal_pos[:2])
-            # if self.arena == 'button':
-            #     x_min = -6.0 if self.door_open else -3.0
-            #     x_max = 2.0
-            #     y_min, y_max = -2.0, 2.0
-            #     is_valid = x_min <= base_subgoal_pos[0] <= x_max and y_min <= base_subgoal_pos[1] <= y_max
-            #     is_base_subgoal_valid = is_base_subgoal_valid and is_valid
-            # if is_base_subgoal_valid:
-            #     if self.eval:
-            #         path = self.plan_base_motion_2d(base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
-            #         if path is not None:
-            #             print('base mp success')
-            #             for way_point in path:
-            #                 set_base_values(self.robot_id, [way_point[0], way_point[1], way_point[2]])
-            #                 time.sleep(0.05)
-            #         else:
-            #             print('base mp failure')
-            #     else:
-            #         set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
-            #     # set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
-            #     # print('subgoal succeed')
-            # else:
-            #     # print('subgoal fail')
-            #     subgoal_success = False
+            subgoal_success = self.move_base(action)
         else:
-            # print('arm')
-            # use arm
-            state = self.get_state()
-            points = state['pc']
-            height, width = points.shape[0:2]
+            subgoal_success = self.move_arm(action)
 
-            arm_img_u = np.clip(int((action[4] + 1) / 2.0 * height), 0, height - 1)
-            arm_img_v = np.clip(int((action[5] + 1) / 2.0 * width), 0, width - 1)
+        # print('subgoal success', subgoal_success)
 
-            point = points[arm_img_u, arm_img_v]
-            camera_pose = (self.robots[0].parts['eyes'].get_pose())
-            transform_mat = quat_pos_to_mat(pos=camera_pose[:3],
-                                            quat=[camera_pose[6], camera_pose[3], camera_pose[4], camera_pose[5]])
-            arm_subgoal = transform_mat.dot(np.array([-point[2], -point[0], point[1], 1]))[:3]
-            #arm_subgoal[0] += 0.15
-            self.arm_marker.set_position(arm_subgoal)
+        return self.compute_next_step(use_base, subgoal_success)
 
-            arm_joints = joints_from_names(self.robot_id,
-                                           ['torso_lift_joint',
-                                            'shoulder_pan_joint',
-                                            'shoulder_lift_joint',
-                                            'upperarm_roll_joint',
-                                            'elbow_flex_joint',
-                                            'forearm_roll_joint',
-                                            'wrist_flex_joint',
-                                            'wrist_roll_joint'])
-            max_limits = [0., 0.] + get_max_limits(self.robot_id, arm_joints)
-            min_limits = [0., 0.] + get_min_limits(self.robot_id, arm_joints)
-            rest_position = [0., 0.] + list(get_joint_positions(self.robot_id, arm_joints))
-            joint_range = list(np.array(max_limits) - np.array(min_limits))
-            joint_range = [item + 1 for item in joint_range]
-            joint_damping = [0.1 for _ in joint_range]
+    def compute_next_step(self, use_base, subgoal_success):
+        self.simulator.sync()
 
-            n_attempt = 0
-            max_attempt = 50
-            sample_fn = get_sample_fn(self.robot_id, arm_joints)
-            base_pose = get_base_values(self.robot_id)
-            while n_attempt < max_attempt:  # find self-collision-free ik solution
-                set_joint_positions(self.robot_id, arm_joints, sample_fn())
-                subgoal_joint_positions = p.calculateInverseKinematics(self.robot_id,
-                                                                       self.robots[0].parts[
-                                                                           'gripper_link'].body_part_index,
-                                                                       arm_subgoal,
-                                                                       lowerLimits=min_limits,
-                                                                       upperLimits=max_limits,
-                                                                       jointRanges=joint_range,
-                                                                       restPoses=rest_position,
-                                                                       jointDamping=joint_damping,
-                                                                       solver=p.IK_DLS,
-                                                                       maxNumIterations=100)[2:10]
-                set_joint_positions(self.robot_id, arm_joints, subgoal_joint_positions)
-                self.simulator_step()
-                set_base_values(self.robot_id, base_pose)
-
-                dist = l2_distance(self.robots[0].get_end_effector_position(), arm_subgoal)
-                if dist < self.arm_subgoal_threshold:
-                    # print('arm_subgoal_dist', dist)
-                    collision_free = True
-                    num_joints = p.getNumJoints(self.robot_id)
-                    # self collision
-                    for arm_link in arm_joints:
-                        for other_link in range(num_joints):
-                            contact_pts = p.getContactPoints(self.robot_id, self.robot_id, arm_link, other_link)
-                            # print(contact_pts)
-                            if len(contact_pts) > 0:
-                                collision_free = False
-                                break
-                        if not collision_free:
-                            break
-
-                    # arm collision with door
-                    if self.arena == 'push_door':
-                        for arm_link in arm_joints:
-                            for door_link in range(p.getNumJoints(self.door.body_id)):
-                                if arm_link != self.robots[0].parts['gripper_link'].body_part_index:
-                                    contact_pts = p.getContactPoints(self.robot_id, self.door.body_id, arm_link,
-                                                                     door_link)
-                                    if len(contact_pts) > 0:
-                                        print(arm_link, 'in collision with door')
-                                        collision_free = False
-                                        break
-                            if not collision_free:
-                                break
-
-                    if collision_free:
-                        break
-                n_attempt += 1
-
-            ik_success = n_attempt != max_attempt
-
-            if ik_success:
-                set_joint_positions(self.robot_id, arm_joints, self.arm_default_joint_positions)
-                arm_path = plan_joint_motion(self.robot_id, arm_joints, subgoal_joint_positions,
-                                             disabled_collisions=set(),
-                                             self_collisions=False)
-                subgoal_success = arm_path is not None
-            else:
-                subgoal_success = False
-
-            set_joint_positions(self.robot_id, arm_joints, self.arm_default_joint_positions)
-
-            # print('ik_success', ik_success)
-            # print('arm_mp_success', subgoal_success)
-
-            if subgoal_success:
-                if self.eval:
-                    for joint_way_point in arm_path:
-                        set_joint_positions(self.robot_id, arm_joints, joint_way_point)
-                        time.sleep(0.02)  # animation
-                else:
-                    set_joint_positions(self.robot_id, arm_joints, subgoal_joint_positions)
-
-                ## push
-                # TODO: figure out push dist threshold (i.e. can push object x centimeters away from the gripper)
-                # TODO: whitelist object ids that can be pushed
-
-                # find the closest object
-                focus = None
-                points = []
-                pushable_obj_ids = [self.door.body_id]
-                for i in pushable_obj_ids:
-                    points.extend(
-                        p.getClosestPoints(self.robot_id, i, distance=self.push_dist_threshold,
-                                           linkIndexA=self.robots[0].parts['gripper_link'].body_part_index))
-                dist = 1e4
-                for point in points:
-                    if point[8] < dist:
-                        dist = point[8]
-                        # if not focus is None and not (focus[2] == point[2] and focus[4] == point[4]):
-                        # p.changeVisualShape(objectUniqueId=focus[2], linkIndex=focus[4], rgbaColor=[1, 1, 1, 1])
-                        focus = point
-                        # p.changeVisualShape(objectUniqueId=focus[2], linkIndex=focus[4], rgbaColor=[1, 0, 0, 1])
-
-                # print(focus)
-
-                # if focus is not None:
-                #     c = add_p2p_constraint(focus[2],
-                #                            focus[4],
-                #                            self.robot_id,
-                #                            self.robots[0].parts['gripper_link'].body_part_index,
-                #                            max_force=500)
-
-                push_vector = np.array([-0.5, 0.0, 0])
-                door_pos = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
-                p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=door_pos, targetVelocity=0.0)
-
-                for i in range(100):
-                    push_goal = np.array(arm_subgoal) + push_vector * i / 100.0
-
-                    joint_positions = p.calculateInverseKinematics(self.robot_id,
-                                                                   self.robots[0].parts['gripper_link'].body_part_index,
-                                                                   push_goal,
-                                                                   lowerLimits=min_limits,
-                                                                   upperLimits=max_limits,
-                                                                   jointRanges=joint_range,
-                                                                   restPoses=rest_position,
-                                                                   jointDamping=joint_damping,
-                                                                   solver=p.IK_DLS,
-                                                                   maxNumIterations=100)[2:10]
-                    set_base_values(self.robot_id, base_pose)
-
-                    #set_joint_positions(self.robot_id, arm_joints, joint_positions)
-                    control_joints(self.robot_id, arm_joints, joint_positions)
-                    self.simulator.set_timestep(0.002)
-                    self.simulator_step()
-                    if self.eval:
-                        time.sleep(0.02)  # for visualization
-                # if focus is not None:
-                #    remove_constraint(c)
-
-            self.simulator.set_timestep(1e-8)
-            set_base_values(self.robot_id, base_pose)
-
-        ###### reward computation ######
         if use_base:
             # trigger re-computation of geodesic distance for get_reward
             state = self.get_state()
@@ -751,69 +844,61 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         if self.arena == 'button':
             dist = l2_distance(self.robots[0].get_end_effector_position(), self.button_marker_pos)
-            # print('button_marker_dist', dist)
             if not self.door_open and dist < self.button_threshold:
-                # touch the button -> remove the button and the door
                 print("OPEN DOOR")
                 self.door_open = True
                 self.button_marker.set_position([100.0, 100.0, 0.0])
                 self.door.set_position([100.0, 100.0, 0.0])
-
                 reward += self.button_reward
+        elif self.arena == 'push_door':
+            door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+            door_angle_diff = door_angle - self.door_angle
+            reward += door_angle_diff
+            self.door_angle = door_angle
 
         if not use_base:
-            # arm reset
-            set_joint_positions(self.robot_id, arm_joints, self.arm_default_joint_positions)
-            # need to call get_state again after arm reset (camera height could be different if torso moves)
-            # TODO: should only call get_state once or twice (e.g. disable torso movement, or cache get_state result)
+            set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
             state = self.get_state()
 
         if done and self.automatic_reset:
             state = self.reset()
+
         del state['pc']
 
-        if use_base:
-            info['start_conf'] = original_pos
-            info['path'] = path
         # print('reward', reward)
         # time.sleep(3)
-
-        self.simulator.sync()
 
         return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
         if self.arena in ['button', 'push_door']:
             floor_height = self.scene.get_floor_height(self.floor_num)
-            self.initial_pos = np.array([-3.0, 0.0, floor_height])
+            self.initial_pos = np.array([1.2, 0.0, floor_height])
             self.target_pos = np.array([-5.0, 0.0, floor_height])
             self.robots[0].set_position(pos=[self.initial_pos[0],
                                              self.initial_pos[1],
                                              self.initial_pos[2] + self.random_init_z_offset])
             self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
-
-            if self.arena == 'button':
-                self.button_marker_pos = [
-                    np.random.uniform(-3.0, -0.5),
-                    np.random.uniform(-1.25, 1.25),
-                    1.5
-                ]
-                self.button_marker.set_position(self.button_marker_pos)
-                self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
-            elif self.arena == 'push_door':
-                p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
-
         else:
             super(MotionPlanningBaseArmEnv, self).reset_initial_and_target_pos()
+
+    def before_reset_agent(self):
+        if self.arena == 'button':
+            self.button_marker_pos = [
+                np.random.uniform(-3.0, -0.5),
+                np.random.uniform(-1.25, 1.25),
+                1.5
+            ]
+            self.button_marker.set_position(self.button_marker_pos)
+            self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+            self.door_open = False
+        elif self.arena == 'push_door':
+            p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
+            self.door_angle = 0.0
 
     def reset(self):
         state = super(MotionPlanningBaseArmEnv, self).reset()
         del state['pc']
-        # embed()
-        if self.arena == 'button':
-            self.door_open = False
-
-        self.simulator.sync()
         return state
 
 
@@ -833,8 +918,8 @@ if __name__ == '__main__':
 
     nav_env = MotionPlanningBaseArmEnv(config_file=args.config,
                                        mode=args.mode,
-                                       action_timestep=1.0 / 1000000.0,
-                                       physics_timestep=1.0 / 1000000.0,
+                                       action_timestep=1e-8,
+                                       physics_timestep=1e-8,
                                        eval=args.mode == 'gui',
                                        arena='push_door',
                                        )

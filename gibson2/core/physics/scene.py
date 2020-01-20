@@ -11,6 +11,7 @@ from PIL import Image
 import cv2
 import networkx as nx
 from IPython import embed
+import pickle
 
 class Scene:
     def load(self):
@@ -121,6 +122,7 @@ class BuildingScene(Scene):
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
         self.mesh_body_id = None
+
     def l2_distance(self, a, b):
         return np.linalg.norm(np.array(a) - np.array(b))
 
@@ -193,26 +195,35 @@ class BuildingScene(Scene):
                 trav_map[trav_map < 255] = 0
 
                 if self.build_graph:
-                    g = nx.Graph()
-                    for i in range(self.trav_map_size):
-                        for j in range(self.trav_map_size):
-                            if trav_map[i, j] > 0:
-                                g.add_node((i, j))
-                                # 8-connected graph
-                                neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
-                                for n in neighbors:
-                                    if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and \
-                                            trav_map[n[0], n[1]] > 0:
-                                        g.add_edge(n, (i, j), weight=self.l2_distance(n, (i, j)))
+                    graph_file = os.path.join(get_model_path(self.model_id), 'floor_trav_{}.p'.format(f))
+                    if os.path.isfile(graph_file):
+                        print("load traversable graph")
+                        with open(graph_file, 'rb') as pfile:
+                            g = pickle.load(pfile)
+                    else:
+                        print("build traversable graph")
+                        g = nx.Graph()
+                        for i in range(self.trav_map_size):
+                            for j in range(self.trav_map_size):
+                                if trav_map[i, j] > 0:
+                                    g.add_node((i, j))
+                                    # 8-connected graph
+                                    neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
+                                    for n in neighbors:
+                                        if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and \
+                                                trav_map[n[0], n[1]] > 0:
+                                            g.add_edge(n, (i, j), weight=self.l2_distance(n, (i, j)))
 
-                    # only take the largest connected component
-                    largest_cc = max(nx.connected_components(g), key=len)
-                    g = g.subgraph(largest_cc).copy()
+                        # only take the largest connected component
+                        largest_cc = max(nx.connected_components(g), key=len)
+                        g = g.subgraph(largest_cc).copy()
+                        with open(graph_file, 'wb') as pfile:
+                            pickle.dump(g, pfile, protocol=pickle.HIGHEST_PROTOCOL)
+
                     self.floor_graph.append(g)
-
                     # update trav_map accordingly
                     trav_map[:, :] = 0
-                    for node in largest_cc:
+                    for node in g.nodes:
                         trav_map[node[0], node[1]] = 255
 
                 self.floor_map.append(trav_map)

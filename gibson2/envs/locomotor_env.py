@@ -667,6 +667,9 @@ class NavigateEnv(BaseEnv):
         collision_links_flatten = [item for sublist in collision_links for item in sublist]
         return len(collision_links_flatten) == 0
 
+    def before_reset_agent(self):
+        return
+
     def after_reset_agent(self):
         return
 
@@ -676,6 +679,7 @@ class NavigateEnv(BaseEnv):
         """
 
         self.current_episode += 1
+        self.before_reset_agent()
         self.reset_agent()
         self.after_reset_agent()
 
