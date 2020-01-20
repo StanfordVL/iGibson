@@ -3038,7 +3038,7 @@ def control_joints(body, joints, positions):
     # TODO: the whole PR2 seems to jitter
     #kp = 1.0
     #kv = 0.3
-    forces = [get_max_force(body, joint)*100 for joint in joints]
+    forces = [get_max_force(body, joint) * 100 for joint in joints]
     #forces = [5000]*len(joints)
     #forces = [20000]*len(joints)
     return p.setJointMotorControlArray(body, joints, p.POSITION_CONTROL,
