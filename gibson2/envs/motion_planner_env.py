@@ -25,7 +25,7 @@ from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_na
     joint_controller, dump_body, load_model, joints_from_names, user_input, disconnect, get_joint_positions, \
     get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, \
     set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_base_values, \
-    plan_base_motion_2d, get_sample_fn
+    plan_base_motion_2d, get_sample_fn, add_p2p_constraint, remove_constraint
 
 
 class MotionPlanningEnv(NavigateRandomEnv):
@@ -249,6 +249,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                             -1.4418232619629425, -1.6780152866247762)
         self.arm_subgoal_threshold = 0.05
 
+        self.push_dist_threshold = 0.01
+
         if self.arena == 'button':
             self.button_marker = VisualMarker(visual_shape=p.GEOM_SPHERE,
                                               rgba_color=[0, 1, 0, 1],
@@ -355,7 +357,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         scan_local[:, 1] *= -1
         occupancy_grid = np.zeros((self.grid_resolution, self.grid_resolution)).astype(np.uint8)
         scan_local_in_map = scan_local / (self.occupancy_range / 2) * (self.grid_resolution / 2) + (
-                    self.grid_resolution / 2)
+                self.grid_resolution / 2)
         scan_local_in_map = scan_local_in_map.reshape((1, -1, 1, 2)).astype(np.int32)
         cv2.fillPoly(occupancy_grid, scan_local_in_map, True, 1)
         cv2.circle(occupancy_grid, (self.grid_resolution // 2, self.grid_resolution // 2),
@@ -575,15 +577,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             while n_attempt < max_attempt:  # find self-collision-free ik solution
                 set_joint_positions(self.robot_id, arm_joints, sample_fn())
                 subgoal_joint_positions = p.calculateInverseKinematics(self.robot_id,
-                                                               self.robots[0].parts['gripper_link'].body_part_index,
-                                                               arm_subgoal,
-                                                               lowerLimits=min_limits,
-                                                               upperLimits=max_limits,
-                                                               jointRanges=joint_range,
-                                                               restPoses=rest_position,
-                                                               jointDamping=joint_damping,
-                                                               solver=p.IK_DLS,
-                                                               maxNumIterations=100)[2:10]
+                                                                       self.robots[0].parts[
+                                                                           'gripper_link'].body_part_index,
+                                                                       arm_subgoal,
+                                                                       lowerLimits=min_limits,
+                                                                       upperLimits=max_limits,
+                                                                       jointRanges=joint_range,
+                                                                       restPoses=rest_position,
+                                                                       jointDamping=joint_damping,
+                                                                       solver=p.IK_DLS,
+                                                                       maxNumIterations=100)[2:10]
                 set_joint_positions(self.robot_id, arm_joints, subgoal_joint_positions)
 
                 dist = l2_distance(self.robots[0].get_end_effector_position(), arm_subgoal)
@@ -626,28 +629,60 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         set_joint_positions(self.robot_id, arm_joints, joint_way_point)
                         time.sleep(0.02)  # animation
                 else:
-                    set_joint_positions(self.robot_id, arm_joints, subgoal_joint_positions)  # set to last position in training
+                    set_joint_positions(self.robot_id, arm_joints,
+                                        subgoal_joint_positions)  # set to last position in training
 
-            ##push
-            # push_vector = np.array([0,0.2,0])
-            # if subgoal_success:
-            #     for i in range(100):
-            #         push_goal = np.array(arm_subgoal) + push_vector * i / 100.0
-            #
-            #         joint_positions = p.calculateInverseKinematics(self.robot_id,
-            #                                                        self.robots[0].parts['gripper_link'].body_part_index,
-            #                                                        push_goal,
-            #                                                        lowerLimits=min_limits,
-            #                                                        upperLimits=max_limits,
-            #                                                        jointRanges=joint_range,
-            #                                                        restPoses=rest_position,
-            #                                                        jointDamping=joint_damping,
-            #                                                        solver=p.IK_DLS,
-            #                                                        maxNumIterations=100)[2:10]
-            #
-            #         set_joint_positions(self.robot_id, arm_joints, joint_positions)
-            #         if eval:
-            #             time.sleep(0.02) # for visualization
+                ## push
+                # TODO: figure out push dist threshold (i.e. can push object x centimeters away from the gripper)
+                # TODO: whitelist object ids that can be pushed
+
+                # # find the closest object
+                # focus = None
+                # points = []
+                # pushable_obj_ids = [self.door.body_id]
+                # for i in pushable_obj_ids:
+                #         points.extend(
+                #             p.getClosestPoints(self.robot_id, i, distance=self.push_dist_threshold,
+                #                                linkIndexA=self.robots[0].parts['gripper_link'].body_part_index))
+                # dist = 1e4
+                # for point in points:
+                #     if point[8] < dist:
+                #         dist = point[8]
+                #         #if not focus is None and not (focus[2] == point[2] and focus[4] == point[4]):
+                #         # p.changeVisualShape(objectUniqueId=focus[2], linkIndex=focus[4], rgbaColor=[1, 1, 1, 1])
+                #         focus = point
+                #         #p.changeVisualShape(objectUniqueId=focus[2], linkIndex=focus[4], rgbaColor=[1, 0, 0, 1])
+                #
+                # # print(focus)
+                #
+                # if focus is not None:
+                #     c = add_p2p_constraint(focus[2],
+                #                            focus[4],
+                #                            self.robot_id,
+                #                            self.robots[0].parts['gripper_link'].body_part_index,
+                #                            max_force=50)
+                #
+                # push_vector = np.array([0.3, 0.3, 0])
+                #
+                # for i in range(100):
+                #     push_goal = np.array(arm_subgoal) + push_vector * i / 100.0
+                #
+                #     joint_positions = p.calculateInverseKinematics(self.robot_id,
+                #                                                    self.robots[0].parts['gripper_link'].body_part_index,
+                #                                                    push_goal,
+                #                                                    lowerLimits=min_limits,
+                #                                                    upperLimits=max_limits,
+                #                                                    jointRanges=joint_range,
+                #                                                    restPoses=rest_position,
+                #                                                    jointDamping=joint_damping,
+                #                                                    solver=p.IK_DLS,
+                #                                                    maxNumIterations=100)[2:10]
+                #
+                #     set_joint_positions(self.robot_id, arm_joints, joint_positions)
+                #     if eval:
+                #         time.sleep(0.02)  # for visualization
+                # if focus is not None:
+                #     remove_constraint(c)
 
         ###### reward computation ######
         if use_base:
