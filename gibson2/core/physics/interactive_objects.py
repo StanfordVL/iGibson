@@ -158,10 +158,11 @@ class VisualMarker(object):
 
 
 class BoxShape(object):
-    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3]):
+    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], visual_only = False):
         self.basePos = pos
         self.dimension = dim
         self.body_id = None
+        self.visual_only = visual_only
 
     def load(self):
         mass = 1000
@@ -169,8 +170,11 @@ class BoxShape(object):
 
         colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
         visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension)
-
-        self.body_id = p.createMultiBody(baseMass=mass,
+        if self.visual_only:
+            self.body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
+                                             baseVisualShapeIndex=visualShapeId)
+        else:
+            self.body_id = p.createMultiBody(baseMass=mass,
                                          baseCollisionShapeIndex=colBoxId,
                                          baseVisualShapeIndex=visualShapeId)
 
