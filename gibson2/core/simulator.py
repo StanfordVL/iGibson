@@ -100,6 +100,15 @@ class Simulator:
         self.scene = None
         self.objects = []
 
+    def load_without_pybullet_vis(load_func):
+        def wrapped_load_func(*args, **kwargs):
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+            res = load_func(*args, **kwargs)
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+            return res
+        return wrapped_load_func
+
+    @load_without_pybullet_vis
     def import_scene(self, scene, texture_scale=1.0, load_texture=True, class_id=0):
 
         """
@@ -152,6 +161,7 @@ class Simulator:
         self.scene = scene
         return new_objects
 
+    @load_without_pybullet_vis
     def import_object(self, object, class_id=0):
         """
         :param object: Object to load
@@ -212,6 +222,7 @@ class Simulator:
 
         return new_object
 
+    @load_without_pybullet_vis
     def import_robot(self, robot, class_id=0):
         """
         Import a robot into Simulator
@@ -295,6 +306,7 @@ class Simulator:
 
         return ids
 
+    @load_without_pybullet_vis
     def import_interactive_object(self, obj, class_id=0):
         """
         Import articulated objects into simulator
