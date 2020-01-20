@@ -51,8 +51,10 @@ max_step: 600
 #output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
 #output: [concatenate]
 output: [sensor, depth]
-scan_beams: 512 #128 
-scan_vertical_beams: 1 #9 
+#scan_beams: 64 #128 
+#scan_vertical_beams: 1 #9 
+n_horizontal_rays: 128
+n_vertical_beams: 1
 resolution: 64
 #waypoints: 5
 fov: 90
