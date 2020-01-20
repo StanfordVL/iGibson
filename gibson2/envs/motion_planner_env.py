@@ -251,12 +251,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         self.push_dist_threshold = 0.01
 
+        self.failed_subgoal_penalty = -0.0
+
         if self.arena == 'button':
             self.button_marker = VisualMarker(visual_shape=p.GEOM_SPHERE,
                                               rgba_color=[0, 1, 0, 1],
                                               radius=0.3)
             self.simulator.import_object(self.button_marker, class_id=255)
-            self.button_marker_threshold = 0.5
+            self.button_threshold = 0.5
+            self.button_reward = 5.0
 
             self.door = InteractiveObj(
                 os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
@@ -273,6 +276,26 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.simulator.import_object(wall, class_id=3)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
+        elif self.arena == 'push_door':
+            self.door = InteractiveObj(
+                os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
+                scale=1.0)
+            self.simulator.import_interactive_object(self.door, class_id=2)
+            self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+            self.door_axis_link_id = 1
+
+            # self.wall_poses = [
+            #     [[-3.5, 7.5, 1], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz')],
+            #     [[-3.5, -7.5, 1], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz')],
+            # ]
+            # self.walls = []
+            # for wall_pose in self.wall_poses:
+            #     wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
+            #                           scale=1)
+            #     self.simulator.import_object(wall, class_id=3)
+            #     wall.set_position_rotation(wall_pose[0], wall_pose[1])
+            #     self.walls += [wall]
+
 
     def prepare_motion_planner(self):
         self.robot_id = self.robots[0].robot_ids[0]
@@ -468,6 +491,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.new_potential = geodesic_dist
 
     def step(self, action):
+        embed()
         # print('-' * 30)
         # action[0] = base_or_arm
         # action[1] = base_subgoal_theta
@@ -629,60 +653,68 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         set_joint_positions(self.robot_id, arm_joints, joint_way_point)
                         time.sleep(0.02)  # animation
                 else:
-                    set_joint_positions(self.robot_id, arm_joints,
-                                        subgoal_joint_positions)  # set to last position in training
+                    set_joint_positions(self.robot_id, arm_joints, subgoal_joint_positions)
+
+                embed()
 
                 ## push
                 # TODO: figure out push dist threshold (i.e. can push object x centimeters away from the gripper)
                 # TODO: whitelist object ids that can be pushed
 
-                # # find the closest object
-                # focus = None
-                # points = []
-                # pushable_obj_ids = [self.door.body_id]
-                # for i in pushable_obj_ids:
-                #         points.extend(
-                #             p.getClosestPoints(self.robot_id, i, distance=self.push_dist_threshold,
-                #                                linkIndexA=self.robots[0].parts['gripper_link'].body_part_index))
-                # dist = 1e4
-                # for point in points:
-                #     if point[8] < dist:
-                #         dist = point[8]
-                #         #if not focus is None and not (focus[2] == point[2] and focus[4] == point[4]):
-                #         # p.changeVisualShape(objectUniqueId=focus[2], linkIndex=focus[4], rgbaColor=[1, 1, 1, 1])
-                #         focus = point
-                #         #p.changeVisualShape(objectUniqueId=focus[2], linkIndex=focus[4], rgbaColor=[1, 0, 0, 1])
-                #
-                # # print(focus)
-                #
-                # if focus is not None:
-                #     c = add_p2p_constraint(focus[2],
-                #                            focus[4],
-                #                            self.robot_id,
-                #                            self.robots[0].parts['gripper_link'].body_part_index,
-                #                            max_force=50)
-                #
-                # push_vector = np.array([0.3, 0.3, 0])
-                #
-                # for i in range(100):
-                #     push_goal = np.array(arm_subgoal) + push_vector * i / 100.0
-                #
-                #     joint_positions = p.calculateInverseKinematics(self.robot_id,
-                #                                                    self.robots[0].parts['gripper_link'].body_part_index,
-                #                                                    push_goal,
-                #                                                    lowerLimits=min_limits,
-                #                                                    upperLimits=max_limits,
-                #                                                    jointRanges=joint_range,
-                #                                                    restPoses=rest_position,
-                #                                                    jointDamping=joint_damping,
-                #                                                    solver=p.IK_DLS,
-                #                                                    maxNumIterations=100)[2:10]
-                #
-                #     set_joint_positions(self.robot_id, arm_joints, joint_positions)
-                #     if eval:
-                #         time.sleep(0.02)  # for visualization
-                # if focus is not None:
-                #     remove_constraint(c)
+                # find the closest object
+                focus = None
+                points = []
+                pushable_obj_ids = [self.door.body_id]
+                for i in pushable_obj_ids:
+                        points.extend(
+                            p.getClosestPoints(self.robot_id, i, distance=self.push_dist_threshold,
+                                               linkIndexA=self.robots[0].parts['gripper_link'].body_part_index))
+                dist = 1e4
+                for point in points:
+                    if point[8] < dist:
+                        dist = point[8]
+                        #if not focus is None and not (focus[2] == point[2] and focus[4] == point[4]):
+                        # p.changeVisualShape(objectUniqueId=focus[2], linkIndex=focus[4], rgbaColor=[1, 1, 1, 1])
+                        focus = point
+                        #p.changeVisualShape(objectUniqueId=focus[2], linkIndex=focus[4], rgbaColor=[1, 0, 0, 1])
+
+                # print(focus)
+
+                if focus is not None:
+                    c = add_p2p_constraint(focus[2],
+                                           focus[4],
+                                           self.robot_id,
+                                           self.robots[0].parts['gripper_link'].body_part_index,
+                                           max_force=5000)
+
+                push_vector = np.array([-0.5, 0.0, 0])
+
+                base_pose = get_base_values(self.robot_id)
+                for i in range(100):
+                    push_goal = np.array(arm_subgoal) + push_vector * i / 100.0
+
+                    joint_positions = p.calculateInverseKinematics(self.robot_id,
+                                                                   self.robots[0].parts['gripper_link'].body_part_index,
+                                                                   push_goal,
+                                                                   lowerLimits=min_limits,
+                                                                   upperLimits=max_limits,
+                                                                   jointRanges=joint_range,
+                                                                   restPoses=rest_position,
+                                                                   jointDamping=joint_damping,
+                                                                   solver=p.IK_DLS,
+                                                                   maxNumIterations=100)[2:10]
+                    set_base_values(self.robot_id, base_pose)
+
+                    set_joint_positions(self.robot_id, arm_joints, joint_positions)
+                    self.simulator.set_timestep(0.002)
+                    self.simulator_step()
+                    self.simulator.set_timestep(1e-8)
+                    if eval:
+                        time.sleep(0.02)  # for visualization
+                if focus is not None:
+                    remove_constraint(c)
+
+                set_base_values(self.robot_id, base_pose)
 
         ###### reward computation ######
         if use_base:
@@ -694,22 +726,20 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             reward, info = self.get_reward([], action, info)
         else:
             # failed subgoal penalty
-            reward = 0.0
+            reward = self.failed_subgoal_penalty
         done, info = self.get_termination([], info)
 
         if self.arena == 'button':
             dist = l2_distance(self.robots[0].get_end_effector_position(), self.button_marker_pos)
             # print('button_marker_dist', dist)
-            if not self.door_open and dist < self.button_marker_threshold:
+            if not self.door_open and dist < self.button_threshold:
                 # touch the button -> remove the button and the door
                 print("OPEN DOOR")
                 self.door_open = True
                 self.button_marker.set_position([100.0, 100.0, 0.0])
                 self.door.set_position([100.0, 100.0, 0.0])
-                self.simulator.sync()
 
-                # button pressed reward
-                reward += 5.0
+                reward += self.button_reward
 
         if not use_base:
             # arm reset
@@ -727,24 +757,32 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             info['path'] = path
         # print('reward', reward)
         # time.sleep(3)
+
+        self.simulator.sync()
+
         return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
-        if self.arena == 'button':
+        if self.arena in ['button', 'push_door']:
             floor_height = self.scene.get_floor_height(self.floor_num)
-            self.initial_pos = np.array([1.2, 0.0, floor_height])
+            self.initial_pos = np.array([-3.0, 0.0, floor_height])
             self.target_pos = np.array([-5.0, 0.0, floor_height])
             self.robots[0].set_position(pos=[self.initial_pos[0],
                                              self.initial_pos[1],
                                              self.initial_pos[2] + self.random_init_z_offset])
             self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
-            self.button_marker_pos = [
-                np.random.uniform(-3.0, -0.5),
-                np.random.uniform(-1.25, 1.25),
-                1.5
-            ]
-            self.button_marker.set_position(self.button_marker_pos)
-            self.door.set_position_rotation([-3.5, 0, 0.0], [0, 0, np.sqrt(0.5), np.sqrt(0.5)])
+
+            if self.arena == 'button':
+                self.button_marker_pos = [
+                    np.random.uniform(-3.0, -0.5),
+                    np.random.uniform(-1.25, 1.25),
+                    1.5
+                ]
+                self.button_marker.set_position(self.button_marker_pos)
+                self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+            elif self.arena == 'push_door':
+                p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
+
         else:
             super(MotionPlanningBaseArmEnv, self).reset_initial_and_target_pos()
 
@@ -776,7 +814,7 @@ if __name__ == '__main__':
                                        action_timestep=1.0 / 1000000.0,
                                        physics_timestep=1.0 / 1000000.0,
                                        eval=args.mode == 'gui',
-                                       arena='button',
+                                       arena='push_door',
                                        )
 
     for episode in range(100):
