@@ -577,6 +577,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             transform_mat = quat_pos_to_mat(pos=camera_pose[:3],
                                             quat=[camera_pose[6], camera_pose[3], camera_pose[4], camera_pose[5]])
             arm_subgoal = transform_mat.dot(np.array([-point[2], -point[0], point[1], 1]))[:3]
+            #arm_subgoal[0] += 0.15
             self.arm_marker.set_position(arm_subgoal)
 
             arm_joints = joints_from_names(self.robot_id,
@@ -596,9 +597,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             joint_damping = [0.1 for _ in joint_range]
 
             n_attempt = 0
-            max_attempt = 2000
+            max_attempt = 50
             sample_fn = get_sample_fn(self.robot_id, arm_joints)
-
+            base_pose = get_base_values(self.robot_id)
             while n_attempt < max_attempt:  # find self-collision-free ik solution
                 set_joint_positions(self.robot_id, arm_joints, sample_fn())
                 subgoal_joint_positions = p.calculateInverseKinematics(self.robot_id,
@@ -613,6 +614,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                                        solver=p.IK_DLS,
                                                                        maxNumIterations=100)[2:10]
                 set_joint_positions(self.robot_id, arm_joints, subgoal_joint_positions)
+                self.simulator_step()
+                set_base_values(self.robot_id, base_pose)
 
                 dist = l2_distance(self.robots[0].get_end_effector_position(), arm_subgoal)
                 if dist < self.arm_subgoal_threshold:
@@ -630,19 +633,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         if not collision_free:
                             break
 
-                    # # arm collision with door
-                    # if self.arena == 'push_door':
-                    #     for arm_link in arm_joints:
-                    #         for door_link in range(p.getNumJoints(self.door.body_id)):
-                    #             if arm_link != self.robots[0].parts['gripper_link'].body_part_index:
-                    #                 contact_pts = p.getContactPoints(self.robot_id, self.door.body_id, arm_link,
-                    #                                                  door_link)
-                    #                 if len(contact_pts) > 0:
-                    #                     print(arm_link, 'in collision with door')
-                    #                     collision_free = False
-                    #                     break
-                    #         if not collision_free:
-                    #             break
+                    # arm collision with door
+                    if self.arena == 'push_door':
+                        for arm_link in arm_joints:
+                            for door_link in range(p.getNumJoints(self.door.body_id)):
+                                if arm_link != self.robots[0].parts['gripper_link'].body_part_index:
+                                    contact_pts = p.getContactPoints(self.robot_id, self.door.body_id, arm_link,
+                                                                     door_link)
+                                    if len(contact_pts) > 0:
+                                        print(arm_link, 'in collision with door')
+                                        collision_free = False
+                                        break
+                            if not collision_free:
+                                break
 
                     if collision_free:
                         break
@@ -703,8 +706,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 #                            max_force=500)
 
                 push_vector = np.array([-0.5, 0.0, 0])
-
-                base_pose = get_base_values(self.robot_id)
+                door_pos = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+                p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=door_pos, targetVelocity=0.0)
 
                 for i in range(100):
                     push_goal = np.array(arm_subgoal) + push_vector * i / 100.0
@@ -721,16 +724,17 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                                    maxNumIterations=100)[2:10]
                     set_base_values(self.robot_id, base_pose)
 
-                    set_joint_positions(self.robot_id, arm_joints, joint_positions)
+                    #set_joint_positions(self.robot_id, arm_joints, joint_positions)
+                    control_joints(self.robot_id, arm_joints, joint_positions)
                     self.simulator.set_timestep(0.002)
                     self.simulator_step()
-                    self.simulator.set_timestep(1e-8)
                     if self.eval:
                         time.sleep(0.02)  # for visualization
                 # if focus is not None:
                 #    remove_constraint(c)
 
-                set_base_values(self.robot_id, base_pose)
+            self.simulator.set_timestep(1e-8)
+            set_base_values(self.robot_id, base_pose)
 
         ###### reward computation ######
         if use_base:
