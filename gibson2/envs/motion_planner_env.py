@@ -290,10 +290,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             #        p.setCollisionFilterPair(self.door.body_id, self.robot_id, i, j, 0) # disable collision for robot and door
 
             self.walls = []
-            wall = BoxShape([-3.5, 1, 0.7], [0.2, 0.35, 0.5], visual_only=True)
+            wall = BoxShape([-3.5, 1, 0.7], [0.2, 0.35, 0.7], visual_only=True)
             self.simulator.import_interactive_object(wall, class_id=3)
             self.walls += [wall]
-            wall = BoxShape([-3.5, -1, 0.7], [0.2, 0.45, 0.5], visual_only=True)
+            wall = BoxShape([-3.5, -1, 0.7], [0.2, 0.45, 0.7], visual_only=True)
             self.simulator.import_interactive_object(wall, class_id=3)
             self.walls += [wall]
 
@@ -500,7 +500,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # action[3] = base_orn
         # action[4] = arm_img_u
         # action[5] = arm_img_v
-        
+
         self.current_step += 1
         use_base = action[0] > 0.0
         if use_base:
@@ -596,7 +596,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             joint_damping = [0.1 for _ in joint_range]
 
             n_attempt = 0
-            max_attempt = 200
+            max_attempt = 2000
             sample_fn = get_sample_fn(self.robot_id, arm_joints)
 
             while n_attempt < max_attempt:  # find self-collision-free ik solution
@@ -619,6 +619,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     # print('arm_subgoal_dist', dist)
                     collision_free = True
                     num_joints = p.getNumJoints(self.robot_id)
+                    # self collision
                     for arm_link in arm_joints:
                         for other_link in range(num_joints):
                             contact_pts = p.getContactPoints(self.robot_id, self.robot_id, arm_link, other_link)
@@ -628,6 +629,21 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                 break
                         if not collision_free:
                             break
+
+                    # # arm collision with door
+                    # if self.arena == 'push_door':
+                    #     for arm_link in arm_joints:
+                    #         for door_link in range(p.getNumJoints(self.door.body_id)):
+                    #             if arm_link != self.robots[0].parts['gripper_link'].body_part_index:
+                    #                 contact_pts = p.getContactPoints(self.robot_id, self.door.body_id, arm_link,
+                    #                                                  door_link)
+                    #                 if len(contact_pts) > 0:
+                    #                     print(arm_link, 'in collision with door')
+                    #                     collision_free = False
+                    #                     break
+                    #         if not collision_free:
+                    #             break
+
                     if collision_free:
                         break
                 n_attempt += 1
@@ -679,12 +695,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
                 # print(focus)
 
-                if focus is not None:
-                    c = add_p2p_constraint(focus[2],
-                                           focus[4],
-                                           self.robot_id,
-                                           self.robots[0].parts['gripper_link'].body_part_index,
-                                           max_force=500)
+                # if focus is not None:
+                #     c = add_p2p_constraint(focus[2],
+                #                            focus[4],
+                #                            self.robot_id,
+                #                            self.robots[0].parts['gripper_link'].body_part_index,
+                #                            max_force=500)
 
                 push_vector = np.array([-0.5, 0.0, 0])
 
@@ -711,8 +727,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     self.simulator.set_timestep(1e-8)
                     if self.eval:
                         time.sleep(0.02)  # for visualization
-                if focus is not None:
-                    remove_constraint(c)
+                # if focus is not None:
+                #    remove_constraint(c)
 
                 set_base_values(self.robot_id, base_pose)
 
@@ -792,6 +808,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # embed()
         if self.arena == 'button':
             self.door_open = False
+
+        self.simulator.sync()
         return state
 
 
