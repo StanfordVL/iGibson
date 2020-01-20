@@ -2462,8 +2462,9 @@ def get_collision_fn(body, joints, obstacles, attachments, self_collisions, disa
     # TODO: test self collision with the holding
     def collision_fn(q):
         if not all_between(lower_limits, q, upper_limits):
-            print(lower_limits, q, upper_limits)
-            print('Joint limits violated')
+            pass
+            # print(lower_limits, q, upper_limits)
+            # print('Joint limits violated')
             #return True
         set_joint_positions(body, joints, q)
         for attachment in attachments:

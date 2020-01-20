@@ -253,7 +253,7 @@ class BodyPart:
         if link_id == -1:
             (x, y, z), (a, b, c, d) = p.getBasePositionAndOrientation(body_id)
         else:
-            (x, y, z), (a, b, c, d), _, _, _, _ = p.getLinkState(body_id, link_id)
+            _, _, _, _, (x, y, z), (a, b, c, d) = p.getLinkState(body_id, link_id)
         x, y, z = x * self.scale, y * self.scale, z * self.scale
         return np.array([x, y, z, a, b, c, d])
 
