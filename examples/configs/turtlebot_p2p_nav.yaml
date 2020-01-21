@@ -39,8 +39,8 @@ dist_tol: 0.2
 max_step: 500
 
 # sensor
-output: [sensor, depth]
-resolution: 64
+output: [sensor, rgb, depth]
+resolution: 68
 fov: 90
 
 # display

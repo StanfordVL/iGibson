@@ -44,7 +44,6 @@ def test_render_rendering_cleaning():
         renderer.release()
         GPUtil.showUtilization()
 
-
 '''
 def test_tensor_render_rendering():
     w = 800

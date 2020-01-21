@@ -12,7 +12,7 @@ import os
 
 
 def test_env():
-    config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
+    config_filename = os.path.join(gibson2.root_path, '../test/test_house.yaml')
     nav_env = NavigateEnv(config_file=config_filename, mode='headless')
     try:
         for j in range(2):
@@ -30,7 +30,7 @@ def test_env():
 
 
 def test_env_reload():
-    config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
+    config_filename = os.path.join(gibson2.root_path, '../test/test_house.yaml')
     nav_env = NavigateEnv(config_file=config_filename, mode='headless')
     try:
         for i in range(3):
@@ -44,6 +44,5 @@ def test_env_reload():
                 if ts[2]:
                     print("Episode finished after {} timesteps".format(i + 1))
                     break
-
     finally:
         nav_env.clean()

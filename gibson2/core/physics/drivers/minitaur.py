@@ -5,7 +5,7 @@ import copy
 import math
 import numpy as np
 from gibson2.core.physics.drivers import motor
-from gibson2.core.physics.robot_locomotors import WalkerBase
+from gibson2.core.physics.robot_locomotors import LocomotorRobot
 from gibson2.core.physics.robot_bases import Joint, BodyPart
 import os, sys
 import pybullet as p
@@ -15,7 +15,7 @@ from transforms3d.euler import euler2quat
 tracking_camera = {'yaw': 20, 'z_offset': 0.3, 'distance': 2, 'pitch': -20}
 
 
-class MinitaurBase(WalkerBase):
+class MinitaurBase(LocomotorRobot):
     model_type = "URDF"
     default_scale = 1
 
@@ -84,17 +84,17 @@ class MinitaurBase(WalkerBase):
         self.robot_name = "base_chassis_link"
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
 
-        WalkerBase.__init__(self,
+        LocomotorRobot.__init__(self,
                             "quadruped/minitaur.urdf",
-                            self.robot_name,
-                            action_dim=8,
-                            sensor_dim=self.OBSERVATION_DIM,
-                            power=5,
-                            scale=scale,
-                            initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"],
-                            resolution=config["resolution"],
-                            env=env)
+                                self.robot_name,
+                                action_dim=8,
+                                sensor_dim=self.OBSERVATION_DIM,
+                                power=5,
+                                scale=scale,
+                                initial_pos=config['initial_pos'],
+                                target_pos=config["target_pos"],
+                                resolution=config["resolution"],
+                                env=env)
 
         self.r_f = 0.1
         self.time_step = config["speed"]["timestep"]

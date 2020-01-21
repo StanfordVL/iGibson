@@ -1,14 +1,28 @@
 import yaml
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Quadrotor
+from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Quadrotor, Freight, Fetch
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import BuildingScene, StadiumScene
 from gibson2.utils.utils import parse_config
 import pytest
 import pybullet as p
 import numpy as np
+import gibson2
+import os
 
-config = parse_config('test.yaml')
+config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 
+def test_fetch():
+    s = Simulator(mode='headless')
+    scene = StadiumScene()
+    s.import_scene(scene)
+    config = parse_config(os.path.join(gibson2.root_path, '../test/test_continuous.yaml'))
+    fetch = Fetch(config)
+    s.import_robot(fetch)
+    for i in range(100):
+        fetch.apply_action(np.array([0] * 2))
+        fetch.calc_state()
+        s.step()
+    s.disconnect()
 
 def test_turtlebot():
     s = Simulator(mode='headless')
@@ -33,7 +47,7 @@ def test_jr2():
 
 
 def test_ant():
-    s = Simulator(mode='gui', timestep=1 / 40.0)
+    s = Simulator(mode='headless', timestep=1 / 40.0)
     scene = StadiumScene()
     s.import_scene(scene)
     ant = Ant(config)
@@ -42,7 +56,6 @@ def test_ant():
     s.import_robot(ant2)
     ant2.set_position([0, 2, 2])
     nbody = p.getNumBodies()
-    s.add_viewer()
     for i in range(100):
         s.step()
         #ant.apply_action(np.random.randint(17))
@@ -143,7 +156,7 @@ def test_multiagent():
 
 
 def show_action_sensor_space():
-    s = Simulator(mode='gui')
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
 
