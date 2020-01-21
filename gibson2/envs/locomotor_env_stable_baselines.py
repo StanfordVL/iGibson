@@ -51,7 +51,7 @@ class NavigateEnv(BaseEnv):
         self.current_step = 0
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
-        
+
         self.n_steps = 0
         self.n_successes = 0
         self.n_collisions = 0
@@ -66,7 +66,7 @@ class NavigateEnv(BaseEnv):
         self.time_elapsed = 0.0
         self.episode_distance = 0.0
         self.spl_sum = 0 # shortest path length (SPL)
-        self.spl = 0     # average shortest path length       
+        self.spl = 0     # average shortest path length  
 
     def load(self):
         super(NavigateEnv, self).load()
@@ -102,10 +102,10 @@ class NavigateEnv(BaseEnv):
         self.stall_torque_reward_weight = self.config.get('stall_torque_reward_weight', 0.0)
         self.collision_reward_weight = self.config.get('collision_reward_weight', 0.0)
         # ignore the agent's collision with these body ids, typically ids of the ground and the robot itself
-        #self.collision_ignore_body_ids = set(self.config.get('collision_ignore_body_ids', []))
-        self.collision_ignore_body_ids = []
+        self.collision_ignore_body_ids = set(self.config.get('collision_ignore_body_ids', []))
+        #self.collision_ignore_body_ids = []
         #self.collision_ignore_body_ids.extend(self.scene_ids)
-        self.collision_ignore_body_ids.append(self.robots[0].robot_ids[0])
+        #self.collision_ignore_body_ids.append(self.robots[0].robot_ids[0])
         
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
@@ -121,7 +121,7 @@ class NavigateEnv(BaseEnv):
         
         self.observation_space = gym.spaces.Box(low=-1.0,
                                            high=1.0,
-                                           shape=(2 + 8,),
+                                           shape=(2 + self.config['resolution'],),
                                            dtype=np.float32)
         
         #observation_space = OrderedDict()
@@ -367,14 +367,13 @@ class NavigateEnv(BaseEnv):
 #             state['waypoints'] = out.flatten()
 
         if 'concatenate' in self.output:
-            normalizer = 12.0 / np.sqrt(2.0)
-            
-            sensor_state /= normalizer
-
             depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            depth_lidar = np.amin(depth_lidar, axis=1)
-            
-            state = np.concatenate([sensor_state[0:2], depth_lidar], axis=None).flatten()
+            # substitute NaNs (-0) with max range (15 meters)
+            depth_lidar[depth_lidar == 0] = 15.0
+            mid_row = int(self.config['resolution']/2)
+            depth_lidar_mid_row = np.amin(depth_lidar[mid_row-1:mid_row+1,:], axis=0)
+            #print(np.amin(depth_lidar_mid_row))
+            state = np.concatenate([sensor_state[0:2], depth_lidar_mid_row], axis=None).flatten()
         return state
 
         # if 'concatenate' in self.output:
@@ -494,7 +493,6 @@ class NavigateEnv(BaseEnv):
 #                 self.pedestrian_simulator.setAgentVelocity(pedestrian, (vx, vy))
 
     def filter_collision_links(self, collision_links):
-        return []        
         return [elem for elem in collision_links if elem[2] not in self.collision_ignore_body_ids]
 
     def get_position_of_interest(self):
@@ -1918,7 +1916,7 @@ if __name__ == '__main__':
     elif args.env_type == 'pedestrians':
         nav_env = NavigatePedestriansEnv(config_file=config_filename,
                                     mode=args.mode,
-                                    layout=args.layout,
+#                                    layout=args.layout,
                                     action_timestep=1.0 / 10.0,
                                     physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random_obstacles':
