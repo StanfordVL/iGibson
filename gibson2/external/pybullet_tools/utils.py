@@ -1083,6 +1083,11 @@ def set_base_values(body, values):
     set_point(body, (x, y, z))
     set_quat(body, z_rotation(theta))
 
+def set_base_values_with_z(body, values, z):
+    x, y, theta = values
+    set_point(body, (x, y, z))
+    set_quat(body, z_rotation(theta))
+
 def get_velocity(body):
     linear, angular = p.getBaseVelocity(body, physicsClientId=CLIENT)
     return linear, angular # [x,y,z], [wx,wy,wz]

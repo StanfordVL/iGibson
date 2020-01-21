@@ -25,7 +25,7 @@ from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_na
     joint_controller, dump_body, load_model, joints_from_names, user_input, disconnect, get_joint_positions, \
     get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, \
     set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_base_values, \
-    plan_base_motion_2d, get_sample_fn, add_p2p_constraint, remove_constraint
+    plan_base_motion_2d, get_sample_fn, add_p2p_constraint, remove_constraint, set_base_values_with_z
 
 
 class MotionPlanningEnv(NavigateRandomEnv):
@@ -541,15 +541,17 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             # print('base mp success')
             if self.eval:
                 for way_point in path:
-                    set_base_values(self.robot_id, [way_point[0], way_point[1], way_point[2]])
+                    set_base_values_with_z(self.robot_id, [way_point[0], way_point[1], way_point[2]],
+                                           z=self.initial_pos[2] + self.random_init_z_offset)
                     time.sleep(0.02)
             else:
-                set_base_values(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
+                set_base_values_with_z(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn],
+                                       z=self.initial_pos[2] + self.random_init_z_offset)
 
             return True
         else:
             # print('base mp failure')
-            set_base_values(self.robot_id, original_pos)
+            set_base_values_with_z(self.robot_id, original_pos, z=self.initial_pos[2] + self.random_init_z_offset)
             return False
 
     def move_base(self, action):
@@ -657,7 +659,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 continue
 
             self.simulator_step()
-            set_base_values(self.robot_id, base_pose)
+            set_base_values_with_z(self.robot_id, base_pose, z=self.initial_pos[2] + self.random_init_z_offset)
+            self.reset_object_velocities()
 
             # arm should not have any collision
             collision_free = self.is_collision_free(body_a=self.robot_id,
@@ -707,13 +710,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
             return False
 
+    def stash_object_position(self):
+        if self.arena == 'push_door':
+            self.door_pos = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+
     def reset_object_velocities(self):
         """
         Remove any accumulated velocities or forces of objects resulting from arm motion planner
         """
         if self.arena == 'push_door':
-            door_pos = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
-            p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=door_pos, targetVelocity=0.0)
+            p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=self.door_pos, targetVelocity=0.0)
             for wall in self.walls:
                 p.resetBaseVelocity(wall.body_id, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
 
@@ -757,12 +763,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
             self.simulator_step()
-            set_base_values(self.robot_id, base_pose)
+            set_base_values_with_z(self.robot_id, base_pose,
+                                   z=self.initial_pos[2] + self.random_init_z_offset)
 
             if self.eval:
                 time.sleep(0.02)  # for visualization
-
-        self.simulator.set_timestep(1e-8)
 
     def move_arm(self, action):
         """
@@ -779,6 +784,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # print(p.getNumBodies())
         # state_id = p.saveState()
         # print('saveState', time.time() - start)
+
+        self.stash_object_position()
 
         # start = time.time()
         arm_joint_positions = self.get_arm_joint_positions(arm_subgoal)
@@ -873,7 +880,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
     def reset_initial_and_target_pos(self):
         if self.arena in ['button', 'push_door']:
             floor_height = self.scene.get_floor_height(self.floor_num)
-            self.initial_pos = np.array([1.2, 0.0, floor_height])
+            self.initial_pos = np.array([-3, 0.0, floor_height])
             self.target_pos = np.array([-5.0, 0.0, floor_height])
             self.robots[0].set_position(pos=[self.initial_pos[0],
                                              self.initial_pos[1],
@@ -918,8 +925,8 @@ if __name__ == '__main__':
 
     nav_env = MotionPlanningBaseArmEnv(config_file=args.config,
                                        mode=args.mode,
-                                       action_timestep=1e-8,
-                                       physics_timestep=1e-8,
+                                       action_timestep=1/500.0,
+                                       physics_timestep=1/500.0,
                                        eval=args.mode == 'gui',
                                        arena='push_door',
                                        )
