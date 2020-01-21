@@ -46,11 +46,11 @@ from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines.sac.policies import MlpPolicy, FeedForwardPolicy, CnnPolicy
 from stable_baselines.common.policies import MlpLstmPolicy, ActorCriticPolicy, register_policy, mlp_extractor
 
-from stable_baselines import SAC, PPO2, DDPG
+from stable_baselines import SAC
 from stable_baselines.gail import ExpertDataset
 
-from stable_baselines.ddpg.policies import MlpPolicy as DPPG_MlpPolicy
-from stable_baselines.ddpg.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise, AdaptiveParamNoiseSpec
+#from stable_baselines.ddpg.policies import MlpPolicy as DPPG_MlpPolicy
+#from stable_baselines.ddpg.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise, AdaptiveParamNoiseSpec
 
 from gibson2.learn import suite_gibson_stable_baselines as suite_gibson
 
@@ -74,6 +74,21 @@ from gibson2.learn import suite_gibson_stable_baselines as suite_gibson
 # from tf_agents.utils import common
 # from tf_agents.utils import episode_utils
 
+best_mean_reward, n_steps = -np.inf, 0
+
+def callback(_locals, _globals):
+    """
+    Callback called at each step (for DQN an others) or after n steps (see ACER or PPO2)
+    :param _locals: (dict)
+    :param _globals: (dict)
+    """
+    global n_steps, best_mean_reward, tb_log_dir
+    if (n_steps + 1) % 10000 == 0:    
+        print("Saving checkpoint")
+        _locals['self'].save(tb_log_dir + '/latest_model.pkl')
+
+    n_steps += 1
+    return True
 
 flags.DEFINE_string('root_dir', os.getenv('TEST_UNDECLARED_OUTPUTS_DIR'),
                     'Root directory for writing logs/summaries/checkpoints.')
@@ -234,6 +249,8 @@ def train_eval(
     root_dir = os.path.expanduser(root_dir)
     train_dir = os.path.join(root_dir, 'train')
     eval_dir = os.path.join(root_dir, 'eval')
+
+    global tb_log_dir
     
     env = env_load_fn(0, 'headless', gpu)
 
@@ -246,9 +263,9 @@ def train_eval(
     
     params['nn_layers'] = nn_layers = [256, 128, 64]
     gamma = 0.99
-    params['learning_trials'] = learning_trials = 1500000
-    params['learning_rate'] = learning_rate = 0.0001
-    params['test'] = 'updated_stable_baselines'
+    params['learning_trials'] = learning_trials = 500000
+    params['learning_rate'] = learning_rate = 0.0005
+    params['n_peds'] = learning_rate = 3
 
     tb_log_dir = os.path.expanduser('~') + '/tensorboard_logs/sac_gibson_stable_baselines' + string_to_filename(json.dumps(params))
 
@@ -275,7 +292,7 @@ def train_eval(
         env.close()
         os._exit(0)
             
-    model.learn(total_timesteps=learning_trials, log_interval=10)
+    model.learn(total_timesteps=learning_trials, log_interval=10, callback=callback)
     model.save(tb_log_dir + "/stable_baselines")
     print(">>>>> End testing <<<<<", string_to_filename(json.dumps(params)))
     print("Final weights saved at: ", tb_log_dir + "/stable_baselines.zip")

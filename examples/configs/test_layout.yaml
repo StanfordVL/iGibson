@@ -7,7 +7,7 @@ scene: stadium
 # model_id: Ohoopee
 
 num_obstacles: 0
-num_pedestrians: 5
+num_pedestrians: 3
 pedestrians_can_see_robot: false
 
 # robot
@@ -24,7 +24,7 @@ target_pos: [-2.0, 2.0, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
-additional_states_dim: 3
+additional_states_dim: 2
 
 # reward
 success_reward: 1.0

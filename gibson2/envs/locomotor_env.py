@@ -158,12 +158,19 @@ class NavigateEnv(BaseEnv):
         self.action_dim = self.robots[0].action_dim
         
         observation_space = OrderedDict()
+        # if 'concatenate' in self.output:
+        #     self.concatenate_space = gym.spaces.Box(low=-np.inf,
+        #                                        high=np.inf,
+        #                                        shape=(2 + 5 * self.num_pedestrians,),
+        #                                        dtype=np.float32)
+        #     observation_space['concatenate'] = self.concatenate_space
         if 'concatenate' in self.output:
             self.concatenate_space = gym.spaces.Box(low=-np.inf,
                                                high=np.inf,
-                                               shape=(2 + 5 * self.num_pedestrians,),
+                                               shape=(2 + self.config.get('resolution', 64),),
                                                dtype=np.float32)
             observation_space['concatenate'] = self.concatenate_space            
+        
         if 'sensor' in self.output:
             self.sensor_space = gym.spaces.Box(low=-np.inf,
                                                high=np.inf,
@@ -198,6 +205,14 @@ class NavigateEnv(BaseEnv):
                                                      1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
+        if 'scan' in self.output:
+            self.scan_space = gym.spaces.Box(low=-np.inf,
+                                              high=np.inf,
+                                              shape=(self.config.get('resolution', 64),
+                                                     1),
+                                              dtype=np.float32)
+            observation_space['scan'] = self.scan_space
+            
         if 'seg' in self.output:
             self.seg_space = gym.spaces.Box(low=0.0,
                                             high=1.0,
@@ -214,12 +229,12 @@ class NavigateEnv(BaseEnv):
                                                          2),
                                                   dtype=np.float32)
             observation_space['depth_seg'] = self.depth_seg_space
-        if 'scan' in self.output:
-            self.scan_space = gym.spaces.Box(low=-np.inf,
-                                             high=np.inf,
-                                             shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
-                                             dtype=np.float32)
-            observation_space['scan'] = self.scan_space
+        # if 'scan' in self.output:
+        #     self.scan_space = gym.spaces.Box(low=-np.inf,
+        #                                      high=np.inf,
+        #                                      shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
+        #                                      dtype=np.float32)
+        #     observation_space['scan'] = self.scan_space
             
         if 'rgb_filled' in self.output:  # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
@@ -370,34 +385,38 @@ class NavigateEnv(BaseEnv):
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
 
-        # TODO: figure out why 'scan' consumes so much cpu
         if 'scan' in self.output:
-            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
-            pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-            elev_bottom_angle = -30. * np.pi / 180.
-            elev_top_angle = 10. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
-            orig_offset = np.vstack([
-                np.vstack([np.cos(angle),
-                           np.sin(angle),
-                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
-            ])
-            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+            depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+            state['scan'] = np.amin(depth_lidar, axis=1)
 
-            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-            hit = np.array([item[0] for item in results])
-            dist = np.array([item[2] for item in results])
+        # TODO: figure out why 'scan' consumes so much cpu
+        # if 'scan' in self.output:
+        #     assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+        #     pose_camera = self.robots[0].parts['scan_link'].get_pose()
+        #     angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+        #     elev_bottom_angle = -30. * np.pi / 180.
+        #     elev_top_angle = 10. * np.pi / 180.
+        #     elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+        #                            (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+        #     orig_offset = np.vstack([
+        #         np.vstack([np.cos(angle),
+        #                    np.sin(angle),
+        #                    np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+        #     ])
+        #     transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+        #     offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+        #     pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
 
-            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-            dist[~valid_pts] = 1.0  # zero out invalid pts
-            dist *= 30
+        #     results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+        #     hit = np.array([item[0] for item in results])
+        #     dist = np.array([item[2] for item in results])
 
-            xyz = np.expand_dims(dist, 1) * orig_offset
-            state['scan'] = xyz
+        #     valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+        #     dist[~valid_pts] = 1.0  # zero out invalid pts
+        #     dist *= 30
+
+        #     xyz = np.expand_dims(dist, 1) * orig_offset
+        #     state['scan'] = xyz
 
         if 'pedestrian' in self.output:
             ped_pos = self.get_ped_states()
@@ -449,27 +468,38 @@ class NavigateEnv(BaseEnv):
             normalizer = 12.0 / np.sqrt(2.0)
             
             sensor_state /= normalizer
-            
-            ped_pos = self.get_ped_positions()
-            rob_pos = self.robots[0].get_position()
-            ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
-            ped_robot_relative_pos /= normalizer
-            ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
-            state_pedestrian_position = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
 
-            ped_vel = self.get_ped_velocities()
-            rob_vel = self.robots[0].get_velocity()
-            ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
-            ped_robot_relative_vel /= normalizer
-            ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
-            state_pedestrian_velocity = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
-
-            ped_ttc = self.get_ped_time_to_collision()
-            ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
-            state_pedestrian_ttc = ped_robot_relative_ttc # [ttc1, ttc2, ...] in robot frame
+            depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+            depth_lidar = np.amin(depth_lidar, axis=1)
             
-            state['concatenate'] = np.concatenate([sensor_state[0:2], state_pedestrian_position, state_pedestrian_velocity, state_pedestrian_ttc], axis=None).flatten()
+            state['concatenate'] = np.concatenate([sensor_state[0:2], depth_lidar], axis=None).flatten()
         return state
+
+        # if 'concatenate' in self.output:
+        #     normalizer = 12.0 / np.sqrt(2.0)
+            
+        #     sensor_state /= normalizer
+            
+        #     ped_pos = self.get_ped_positions()
+        #     rob_pos = self.robots[0].get_position()
+        #     ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+        #     ped_robot_relative_pos /= normalizer
+        #     ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
+        #     state_pedestrian_position = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
+
+        #     ped_vel = self.get_ped_velocities()
+        #     rob_vel = self.robots[0].get_velocity()
+        #     ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+        #     ped_robot_relative_vel /= normalizer
+        #     ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
+        #     state_pedestrian_velocity = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
+
+        #     ped_ttc = self.get_ped_time_to_collision()
+        #     ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
+        #     state_pedestrian_ttc = ped_robot_relative_ttc # [ttc1, ttc2, ...] in robot frame
+            
+        #     state['concatenate'] = np.concatenate([sensor_state[0:2], state_pedestrian_position, state_pedestrian_velocity, state_pedestrian_ttc], axis=None).flatten()
+        # return state
 
     def get_ped_states(self):
         return [(self.humans[i].px, self.humans[i].py) for i in range(self.num_pedestrians)]
@@ -958,6 +988,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         components = self.config.get('components')
         self.num_pedestrians = self.config.get('num_pedestrians', 0)
         self.num_obstacles = self.config.get('num_obstacles', 0)
+        self.pedestrians_can_see_robot = self.config.get('pedestrians_can_see_robot', False)        
 
         humans = self.config.get('movements')['humans']
         agent = self.config.get('movements')['agent']
