@@ -825,9 +825,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         # print('subgoal success', subgoal_success)
 
-        return self.compute_next_step(use_base, subgoal_success)
+        return self.compute_next_step(action, use_base, subgoal_success)
 
-    def compute_next_step(self, use_base, subgoal_success):
+    def compute_next_step(self, action, use_base, subgoal_success):
         self.simulator.sync()
 
         if use_base:
