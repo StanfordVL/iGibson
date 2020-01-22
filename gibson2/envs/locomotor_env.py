@@ -1,4 +1,4 @@
-from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape, Pedestrian
+from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape, CylinderPedestrian, Pedestrian
 import gibson2
 from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, parse_config
 from gibson2.envs.base_env import BaseEnv
@@ -133,14 +133,10 @@ class NavigateEnv(BaseEnv):
         self.electricity_reward_weight = self.config.get('electricity_reward_weight', 0.0)
         self.stall_torque_reward_weight = self.config.get('stall_torque_reward_weight', 0.0)
         self.collision_reward_weight = self.config.get('collision_reward_weight', 0.0)
-# <<<<<<< HEAD
-#         # ignore the agent's collision with these body ids, typically ids of the ground and the robot itself
-        #self.collision_ignore_body_ids = set(self.config.get('collision_ignore_body_ids', []))
-        self.collision_ignore_body_ids = []
-        #self.collision_ignore_body_ids.extend(self.scene_ids)
-        self.collision_ignore_body_ids.append(self.robots[0].robot_ids[0])
-#         
-# =======
+        # ignore the agent's collision with these body ids, typically ids of the ground and the robot itself
+        self.collision_ignore_body_ids = self.config.get('collision_ignore_body_ids', [])
+
+# Master =======
 #         # ignore the agent's collision with these body ids, typically ids of the ground
 #         self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', []))
 #         self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
@@ -158,17 +154,12 @@ class NavigateEnv(BaseEnv):
         self.action_dim = self.robots[0].action_dim
         
         observation_space = OrderedDict()
-        # if 'concatenate' in self.output:
-        #     self.concatenate_space = gym.spaces.Box(low=-np.inf,
-        #                                        high=np.inf,
-        #                                        shape=(2 + 5 * self.num_pedestrians,),
-        #                                        dtype=np.float32)
-        #     observation_space['concatenate'] = self.concatenate_space
         if 'concatenate' in self.output:
-            self.concatenate_space = gym.spaces.Box(low=-np.inf,
-                                               high=np.inf,
-                                               shape=(2 + self.config.get('resolution', 64),),
-                                               dtype=np.float32)
+            self.concatenate_space = gym.spaces.Box(low=-1.0,
+                                           high=1.0,
+                                           shape=(2 + self.config['n_horizontal_rays'],),
+                                           dtype=np.float32)
+            
             observation_space['concatenate'] = self.concatenate_space            
         
         if 'sensor' in self.output:
@@ -465,14 +456,42 @@ class NavigateEnv(BaseEnv):
             state['waypoints'] = out.flatten()
 
         if 'concatenate' in self.output:
-            normalizer = 12.0 / np.sqrt(2.0)
+            # TODO: figure out why 'scan' consumes so much cpu
+            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+            pose_camera = self.robots[0].parts['scan_link'].get_pose()
+            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+            elev_bottom_angle = -15. * np.pi / 180.
+            elev_top_angle = 15. * np.pi / 180.
+            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
             
-            sensor_state /= normalizer
+            elev_angle = [0.0]
+            orig_offset = np.vstack([
+                np.vstack([np.cos(angle),
+                           np.sin(angle),
+                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+            ])
+            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
 
-            depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            depth_lidar = np.amin(depth_lidar, axis=1)
+            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            hit = np.array([item[0] for item in results])
+            dist = np.array([item[2] for item in results])
+                        
+            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+            dist[~valid_pts] = 1.0  # set invalid points to max range
             
-            state['concatenate'] = np.concatenate([sensor_state[0:2], depth_lidar], axis=None).flatten()
+            dist *= 30
+            
+            #xyz = np.expand_dims(dist, 1) * orig_offset
+            #state_scan = xyz
+            
+            state_scan = dist
+
+            state = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
+
+            state /= 30.0 # normalize by the max lidar range
         return state
 
         # if 'concatenate' in self.output:
@@ -545,7 +564,6 @@ class NavigateEnv(BaseEnv):
                 self.update_pedestrian_positions_in_gibson()
                 
             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-            collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
 
         return self.filter_collision_links(collision_links)
 
@@ -565,8 +583,6 @@ class NavigateEnv(BaseEnv):
 #                 self.pedestrian_simulator.setAgentVelocity(pedestrian, (vx, vy))
 
     def filter_collision_links(self, collision_links):
-        return []
-        print("IDS!!!!!!!!!!!", collision_links)
         return [elem for elem in collision_links if elem[0] not in self.collision_ignore_body_ids]
         
 #     def filter_collision_links(self, collision_links):
@@ -961,6 +977,12 @@ class NavigatePedestriansEnv(NavigateEnv):
                                                 device_idx=device_idx)
         self.random_height = random_height
         self.pedestrian_z = 0.03 # hard-coded.
+
+        self.num_pedestrians = self.config.get('num_pedestrians', 0)
+        self.num_obstacles = self.config.get('num_obstacles', 0)
+        self.pedestrians_can_see_robot = self.config.get('pedestrians_can_see_robot', False)
+        self.randomize_pedestrian_attributes = self.config.get('randomize_pedestrian_attributes', False)                
+        
         ''' Walls '''
         # wall = [pos, dim]
         # self.walls = [[[0, 5.25, 0.501], [5, 0.25, 1.5]],
@@ -999,7 +1021,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.pedestrian_x_range_radius = [humans['x_range_radius'] for _ in range(self.num_pedestrians)]
         self.pedestrian_y_range_radius = [humans['y_range_radius'] for _ in range(self.num_pedestrians)]
         self.flip_prob = humans['flip_prob']
-        self.pedestrian_dist_tol = 0.1 * self.num_pedestrians
+        self.pedestrian_dist_tol = self.dist_tol * 2.0
         # Randomize initial - target positions for each pedestrian.
         self.pedestrian_centers = [[], []]
         initial_target = humans['initial_target']
@@ -1394,8 +1416,10 @@ class NavigatePedestriansEnv(NavigateEnv):
         for _ in range(self.simulator_loop):
             self.simulator_step()
             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+        print("COLLISION LINKS!!!!!!!!", collision_links)
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
+        print("NO COLLISION????????", no_collision)
 
         # Compute the shortest distance to this goal (TODO: account for obstacles!)
         robot_position = self.robots[0].get_position()

@@ -266,7 +266,6 @@ def train_eval(
     params['learning_trials'] = learning_trials = 500000
     params['learning_rate'] = learning_rate = 0.0005
     params['n_peds'] = 3
-    params['test'] = 'no_walls'
 
     tb_log_dir = os.path.expanduser('~') + '/tensorboard_logs/sac_gibson_stable_baselines' + string_to_filename(json.dumps(params))
 

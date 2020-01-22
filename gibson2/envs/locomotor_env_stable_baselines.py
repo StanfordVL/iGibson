@@ -23,6 +23,7 @@ from gibson2.core.pedestrians.human import Human
 from gibson2.core.pedestrians.robot import Robot
 from gibson2.core.pedestrians.state import ObservableState
 
+import collections
 
 # define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
 # arXiv preprint arXiv:1807.06757 (2018).
@@ -369,7 +370,6 @@ class NavigateEnv(BaseEnv):
 #             state['waypoints'] = out.flatten()
 
         if 'concatenate' in self.output:
-            # TODO: figure out why 'scan' consumes so much cpu
             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
             pose_camera = self.robots[0].parts['scan_link'].get_pose()
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
@@ -405,13 +405,6 @@ class NavigateEnv(BaseEnv):
             state = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
 
             state /= 30.0 # normalize by the max lidar range
-
-#             depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-#             # substitute NaNs (-0) with max range (15 meters)
-#             depth_lidar[depth_lidar == 0] = 15.0
-#             mid_row = int(self.config['resolution']/2)
-#             depth_lidar_mid_row = np.amin(depth_lidar[mid_row-1:mid_row+1,:], axis=0)
-#             state = np.concatenate([sensor_state[0:2], depth_lidar_mid_row], axis=None).flatten()
 
         return state
 
@@ -485,34 +478,6 @@ class NavigateEnv(BaseEnv):
                 self.update_pedestrian_positions_in_gibson()
                 
             collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-
-            # personalize keyboard event; might cause problem
-            # TODO:aha delete the code at some point
-            """
-            keyboard_event = p.GetKeyboardEvents()
-            if len(keyboard_event) > 0:
-                camera_info = p.GetDebugVisualizerCamera()
-                yaw, pitch, dist, target = camera_info[-4:]
-                # print('yaw: {}, pitch: {}, dist: {}, target: {}'.format(yaw, pitch, dist, target))
-                if p.B3G_LEFT_ARROW in keyboard_event and keyboard_event[p.B3G_LEFT_ARROW] == p.KEY_IS_DOWN:
-                    target = (target[0], target[1] - 0.02, target[2])
-                elif p.B3G_RIGHT_ARROW in keyboard_event and keyboard_event[p.B3G_RIGHT_ARROW] == p.KEY_IS_DOWN:
-                    target = (target[0], target[1] + 0.02, target[2])
-                elif p.B3G_UP_ARROW in keyboard_event and keyboard_event[p.B3G_UP_ARROW] == p.KEY_IS_DOWN:
-                    target = (target[0] - 0.02, target[1], target[2])
-                elif p.B3G_DOWN_ARROW in keyboard_event and keyboard_event[p.B3G_DOWN_ARROW] == p.KEY_IS_DOWN:
-                    target = (target[0] + 0.02, target[1], target[2])
-                # print("keyboard: {}".format(keyboard_event))
-                if ord('e') in keyboard_event and keyboard_event[ord('e')] == p.KEY_IS_DOWN:
-                    dist -= 0.05
-                elif ord('d') in keyboard_event and keyboard_event[ord('d')] == p.KEY_IS_DOWN:
-                    dist += 0.05
-                if ord('s') in keyboard_event and keyboard_event[ord('s')] == p.KEY_IS_DOWN:
-                    yaw -= 0.2
-                elif ord('f') in keyboard_event and keyboard_event[ord('f')] == p.KEY_IS_DOWN:
-                    yaw += 0.2 
-                p.resetDebugVisualizerCamera(dist, yaw, pitch, target)
-            """
     
         return self.filter_collision_links(collision_links)
 
