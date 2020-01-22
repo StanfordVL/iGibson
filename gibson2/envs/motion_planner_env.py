@@ -276,7 +276,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             self.door = InteractiveObj(
                 os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor_closed.urdf'),
-                scale=3.0)
+                scale=1.0)
             self.simulator.import_interactive_object(self.door, class_id=2)
             self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
             self.door_axis_link_id = 1
@@ -934,6 +934,12 @@ if __name__ == '__main__':
                         default='headless',
                         help='which mode for simulation (default: headless)')
 
+    parser.add_argument('--arena',
+                        '-a',
+                        choices=['button_door', 'push_door'],
+                        default='push_door',
+                        help='which arena to train or test (default: push_door)')
+
     args = parser.parse_args()
 
     nav_env = MotionPlanningBaseArmEnv(config_file=args.config,
@@ -941,7 +947,7 @@ if __name__ == '__main__':
                                        action_timestep=1/500.0,
                                        physics_timestep=1/500.0,
                                        eval=args.mode == 'gui',
-                                       arena='button_door',
+                                       arena=args.arena,
                                        )
 
     for episode in range(100):
