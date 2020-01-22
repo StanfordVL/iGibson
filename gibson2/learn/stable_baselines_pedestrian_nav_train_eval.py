@@ -263,9 +263,10 @@ def train_eval(
     
     params['nn_layers'] = nn_layers = [256, 128, 64]
     gamma = 0.99
-    params['learning_trials'] = learning_trials = 500000
-    params['learning_rate'] = learning_rate = 0.0005
+    params['learning_trials'] = learning_trials = 100000
+    params['learning_rate'] = learning_rate = 0.001
     params['n_peds'] = 3
+    params['test'] = 'take_two'
 
     tb_log_dir = os.path.expanduser('~') + '/tensorboard_logs/sac_gibson_stable_baselines' + string_to_filename(json.dumps(params))
 
@@ -286,7 +287,6 @@ def train_eval(
             obs, rewards, done, info = env.step(action)
             if done:
                 n_episodes += 1
-                #del info['terminal_observation']
                 if n_episodes % 2 == 0:
                     print("episodes:", n_episodes, [(key, info[0][key]) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
         env.close()

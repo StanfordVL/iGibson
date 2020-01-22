@@ -111,6 +111,58 @@ class Pedestrian(object):
     def get_position(self):
         pos, orn = p.getBasePositionAndOrientation(self.body_id)
         return pos
+    
+class CylinderPedestrian(object):
+    def __init__(self, radius=0.3, length=2.0, pos=[0, 0, 0],
+                 orn=[1, 0, 0, 0], rgba_color=[0, 1, 1, 0.8]):
+
+        self.mass = 100
+        
+        self.body_id = None
+        self.cid = None
+        self.collision_id = None
+        self.visual_id = None
+
+        self.radius = radius
+        self.length = length
+        self.rgba_color = rgba_color
+        self.pos = pos
+        self.orn = orn
+
+    def load(self):
+        self.collision_id = p.createCollisionShape(p.GEOM_CYLINDER, radius=self.radius)
+        visualShapeId = p.createVisualShape(p.GEOM_CYLINDER, radius=self.radius, length=self.length, rgbaColor=self.rgba_color)
+
+        body_id = p.createMultiBody(baseMass=self.mass,
+                                         baseCollisionShapeIndex=self.collision_id,
+                                         baseVisualShapeIndex=visualShapeId,
+                                         basePosition=self.pos,
+                                         baseOrientation=self.orn)
+        
+        self.body_id = body_id 
+        
+        p.resetBasePositionAndOrientation(self.body_id, self.pos, self.orn)
+
+        self.cid = p.createConstraint(self.body_id,
+                                      -1,
+                                      -1,
+                                      -1,
+                                      p.JOINT_FIXED, [0, 0, 0], [0, 0, 0],
+                                      self.pos,
+                                      parentFrameOrientation=[1, 0, 0, 0])    # facing x axis
+        return body_id
+
+    def reset_position_orientation(self, pos, orn):
+        p.changeConstraint(self.cid, pos, orn)
+        
+    def set_position(self, pos, orn=None):
+        if orn is None:
+            _, orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+        
+    def get_position(self):
+        pos, orn = p.getBasePositionAndOrientation(self.body_id)
+        return pos
 
 
 class VisualMarker(object):
@@ -250,6 +302,7 @@ class BoxShape(object):
     
     def get_dimensions(self):
         return self.dimension
+    
 
 class InteractiveObj(object):
     """

@@ -1,4 +1,4 @@
-from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape, Pedestrian
+from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape, CylinderPedestrian, Pedestrian
 import gibson2
 from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, parse_config
 from gibson2.envs.base_env import BaseEnv
@@ -49,6 +49,8 @@ class NavigateEnv(BaseEnv):
         self.simulator.set_timestep(physics_timestep)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.current_step = 0
+        self.collision = False
+
         # self.reward_stats = []
         # self.state_stats = {'sensor': [], 'auxiliary_sensor': []}
 
@@ -121,7 +123,7 @@ class NavigateEnv(BaseEnv):
         
         self.observation_space = gym.spaces.Box(low=-1.0,
                                            high=1.0,
-                                           shape=(2 + self.config['resolution'],),
+                                           shape=(2 + self.config['n_horizontal_rays'],),
                                            dtype=np.float32)
         
         #observation_space = OrderedDict()
@@ -367,13 +369,50 @@ class NavigateEnv(BaseEnv):
 #             state['waypoints'] = out.flatten()
 
         if 'concatenate' in self.output:
-            depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            # substitute NaNs (-0) with max range (15 meters)
-            depth_lidar[depth_lidar == 0] = 15.0
-            mid_row = int(self.config['resolution']/2)
-            depth_lidar_mid_row = np.amin(depth_lidar[mid_row-1:mid_row+1,:], axis=0)
-            #print(np.amin(depth_lidar_mid_row))
-            state = np.concatenate([sensor_state[0:2], depth_lidar_mid_row], axis=None).flatten()
+            # TODO: figure out why 'scan' consumes so much cpu
+            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+            pose_camera = self.robots[0].parts['scan_link'].get_pose()
+            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+            elev_bottom_angle = -15. * np.pi / 180.
+            elev_top_angle = 15. * np.pi / 180.
+            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+            
+            elev_angle = [0.0]
+            orig_offset = np.vstack([
+                np.vstack([np.cos(angle),
+                           np.sin(angle),
+                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+            ])
+            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+
+            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            hit = np.array([item[0] for item in results])
+            dist = np.array([item[2] for item in results])
+                        
+            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+            dist[~valid_pts] = 1.0  # set invalid points to max range
+            
+            dist *= 30
+            
+            #xyz = np.expand_dims(dist, 1) * orig_offset
+            #state_scan = xyz
+            
+            state_scan = dist
+            
+            #sensor_state /= 30.0
+            
+            state = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
+                        
+#             depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+#             # substitute NaNs (-0) with max range (15 meters)
+#             depth_lidar[depth_lidar == 0] = 15.0
+#             mid_row = int(self.config['resolution']/2)
+#             depth_lidar_mid_row = np.amin(depth_lidar[mid_row-1:mid_row+1,:], axis=0)
+#             state = np.concatenate([sensor_state[0:2], depth_lidar_mid_row], axis=None).flatten()
+
         return state
 
         # if 'concatenate' in self.output:
@@ -794,7 +833,8 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.pedestrian_x_range_radius = [humans['x_range_radius'] for _ in range(self.num_pedestrians)]
         self.pedestrian_y_range_radius = [humans['y_range_radius'] for _ in range(self.num_pedestrians)]
         self.flip_prob = humans['flip_prob']
-        self.pedestrian_dist_tol = 0.1 * self.num_pedestrians
+        #self.pedestrian_dist_tol = 0.1 * self.num_pedestrians
+        self.pedestrian_dist_tol = self.dist_tol * 2.0
         # Randomize initial - target positions for each pedestrian.
         self.pedestrian_centers = [[], []]
         initial_target = humans['initial_target']
@@ -862,7 +902,8 @@ class NavigatePedestriansEnv(NavigateEnv):
 
         # create pedestrian objects
         if len(self.pedestrians) == 0:
-            self.pedestrians = [Pedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]
+            #self.pedestrians = [Pedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]
+            self.pedestrians = [CylinderPedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]
             # spawn pedestrians and get Gibson IDs
             self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
     
@@ -908,13 +949,14 @@ class NavigatePedestriansEnv(NavigateEnv):
         # get the next state
         state = self.get_state(collision_links)
         
-        # collect reward
         info = {}
-        reward, info = self.get_reward(collision_links, action, info)
         
         # check for a termination result
         done, info = self.get_termination(collision_links, info)
-
+        
+        # collect reward
+        reward, info = self.get_reward(collision_links, action, info)
+        
         # Update distance metrics
         self.time_elapsed += self.action_timestep
 
@@ -1257,10 +1299,8 @@ class NavigatePedestriansEnv(NavigateEnv):
         # TODO: replace hard coded robot radius and personal space radius
         return ObservableState(px, py, theta, vx, vy, vr, 0.3, 0.6)
 
-    def reset(self):
-        return super(NavigatePedestriansEnv, self).reset()
-
-
+#     def reset(self):
+#         return super(NavigatePedestriansEnv, self).reset()
 
     
 class InteractiveNavigateEnv(NavigateEnv):
