@@ -6,6 +6,8 @@ scene: stadium
 # scene: building
 # model_id: Ohoopee
 
+automatic_reset: true
+
 collision_ignore_body_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
 
 num_obstacles: 0
@@ -42,7 +44,7 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 500
+max_step: 600
 
 # sensor
 # output: [sensor, rgb, depth]
@@ -55,9 +57,9 @@ output: [concatenate]
 #output: [sensor, scan]
 #scan_beams: 64 #128 
 #scan_vertical_beams: 1 #9 
-n_horizontal_rays: 128
+n_horizontal_rays: 16
 n_vertical_beams: 1
-resolution: 32
+resolution: 128
 #waypoints: 5
 fov: 90
 
