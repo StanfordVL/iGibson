@@ -262,27 +262,34 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.arm_subgoal_threshold = 0.05
         self.failed_subgoal_penalty = -0.0
 
-        if self.arena == 'button':
-            self.button_threshold = 0.5
+        if self.arena == 'button_door':
+            self.button_threshold = -0.05
             self.button_reward = 5.0
 
-            self.button_marker = VisualMarker(visual_shape=p.GEOM_SPHERE,
-                                              rgba_color=[0, 1, 0, 1],
-                                              radius=0.3)
-            self.simulator.import_object(self.button_marker, class_id=255)
+            # self.button_marker = VisualMarker(visual_shape=p.GEOM_SPHERE,
+            #                                   rgba_color=[0, 1, 0, 1],
+            #                                   radius=0.3)
+            self.button = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'eswitch', 'eswitch.urdf'),
+                                      scale=1)
+            self.simulator.import_interactive_object(self.button, class_id=255)
+            self.button_axis_link_id = 1
 
             self.door = InteractiveObj(
-                os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
-                scale=4.0)
+                os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor_closed.urdf'),
+                scale=3.0)
             self.simulator.import_interactive_object(self.door, class_id=2)
+            self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+            self.door_axis_link_id = 1
 
             self.wall_poses = [
-                [[0, -2.0, 1], [0, 0, 0, 1]],
+                [[-3.5, 0.45, 0.45], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz')],
+                [[-3.5, -0.4, 0.45], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz')],
             ]
             self.walls = []
             for wall_pose in self.wall_poses:
-                wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                      scale=1)
+                wall = InteractiveObj(
+                    os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_quarter.urdf'),
+                    scale=0.3)
                 self.simulator.import_interactive_object(wall, class_id=3)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
@@ -711,14 +718,20 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             return False
 
     def stash_object_position(self):
-        if self.arena == 'push_door':
+        if self.arena == 'button_door':
+            self.button_pos = p.getJointState(self.button.body_id, self.button_axis_link_id)[0]
+        elif self.arena == 'push_door':
             self.door_pos = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
 
     def reset_object_velocities(self):
         """
         Remove any accumulated velocities or forces of objects resulting from arm motion planner
         """
-        if self.arena == 'push_door':
+        if self.arena == 'button_door':
+            p.resetJointState(self.button.body_id, self.button_axis_link_id, targetValue=self.button_pos, targetVelocity=0.0)
+            for wall in self.walls:
+                p.resetBaseVelocity(wall.body_id, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
+        elif self.arena == 'push_door':
             p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=self.door_pos, targetVelocity=0.0)
             for wall in self.walls:
                 p.resetBaseVelocity(wall.body_id, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
@@ -849,12 +862,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             reward = self.failed_subgoal_penalty
         done, info = self.get_termination([], info)
 
-        if self.arena == 'button':
-            dist = l2_distance(self.robots[0].get_end_effector_position(), self.button_marker_pos)
-            if not self.door_open and dist < self.button_threshold:
+        if self.arena == 'button_door':
+            button_pos = p.getJointState(self.button.body_id, self.button_axis_link_id)[0]
+            if not self.button_pressed and button_pos < self.button_threshold:
                 print("OPEN DOOR")
-                self.door_open = True
-                self.button_marker.set_position([100.0, 100.0, 0.0])
+                self.button_pressed = True
                 self.door.set_position([100.0, 100.0, 0.0])
                 reward += self.button_reward
         elif self.arena == 'push_door':
@@ -878,9 +890,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
-        if self.arena in ['button', 'push_door']:
+        if self.arena in ['button_door', 'push_door']:
             floor_height = self.scene.get_floor_height(self.floor_num)
-            self.initial_pos = np.array([-3, 0.0, floor_height])
+            self.initial_pos = np.array([0, 0.0, floor_height])
             self.target_pos = np.array([-5.0, 0.0, floor_height])
             self.robots[0].set_position(pos=[self.initial_pos[0],
                                              self.initial_pos[1],
@@ -890,15 +902,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             super(MotionPlanningBaseArmEnv, self).reset_initial_and_target_pos()
 
     def before_reset_agent(self):
-        if self.arena == 'button':
-            self.button_marker_pos = [
-                np.random.uniform(-3.0, -0.5),
-                np.random.uniform(-1.25, 1.25),
+        if self.arena == 'button_door':
+            self.button_obj_pos = [
+                np.random.uniform(-3.0, 0),
+                np.random.uniform(-1.25, -1),
                 1.5
             ]
-            self.button_marker.set_position(self.button_marker_pos)
+            self.button.set_position(self.button_obj_pos)
+            p.resetJointState(self.button.body_id, self.button_axis_link_id, targetValue=0.0, targetVelocity=0.0)
             self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
-            self.door_open = False
+            self.button_pressed = False
         elif self.arena == 'push_door':
             p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
             self.door_angle = 0.0
@@ -928,7 +941,7 @@ if __name__ == '__main__':
                                        action_timestep=1/500.0,
                                        physics_timestep=1/500.0,
                                        eval=args.mode == 'gui',
-                                       arena='push_door',
+                                       arena='button_door',
                                        )
 
     for episode in range(100):
