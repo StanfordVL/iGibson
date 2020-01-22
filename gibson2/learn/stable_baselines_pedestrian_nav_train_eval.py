@@ -265,7 +265,7 @@ def train_eval(
     gamma = 0.99
     params['learning_trials'] = learning_trials = 500000
     params['learning_rate'] = learning_rate = 0.0005
-    params['n_peds'] = learning_rate = 3
+    params['n_peds'] = 3
 
     tb_log_dir = os.path.expanduser('~') + '/tensorboard_logs/sac_gibson_stable_baselines' + string_to_filename(json.dumps(params))
 
@@ -308,7 +308,7 @@ def train_eval(
     time_step_spec = tf_env.time_step_spec()
     observation_spec = time_step_spec.observation
     action_spec = tf_env.action_spec()
-    
+
     print('observation_spec', observation_spec)
     print('action_spec', action_spec)
 

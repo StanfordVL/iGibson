@@ -1256,6 +1256,12 @@ class NavigatePedestriansEnv(NavigateEnv):
 
         # TODO: replace hard coded robot radius and personal space radius
         return ObservableState(px, py, theta, vx, vy, vr, 0.3, 0.6)
+
+    def reset(self):
+        return super(NavigatePedestriansEnv, self).reset()
+
+
+
     
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
