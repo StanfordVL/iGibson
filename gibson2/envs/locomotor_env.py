@@ -244,6 +244,7 @@ class NavigateEnv(BaseEnv):
         additional_states = rotate_vector_3d(relative_position, *self.robots[0].get_rpy())
         additional_states = additional_states[0:2]
         
+        # print('ADDITIONAL STATES: {}'.format(additional_states))
         if self.config['task'] == 'reaching':
             end_effector_pos = self.robots[0].get_end_effector_position() - self.robots[0].get_position()
             end_effector_pos = rotate_vector_3d(end_effector_pos, *self.robots[0].get_rpy())
@@ -258,6 +259,8 @@ class NavigateEnv(BaseEnv):
     def get_state(self, collision_links=[]):
         # calculate state
         sensor_state = self.get_additional_states()
+        # print('sensor_state: {}'.format(sensor_state))
+        # time.sleep(0.1)
         auxiliary_sensor = self.get_auxiliary_sensor(collision_links)
 
         # rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
@@ -786,7 +789,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         initial_target = humans['initial_target']
         for pedestrian in range(self.num_pedestrians):
             initial, target = random.choice(initial_target)
-            print('pedestrian: {} initial {} target {}'.format(pedestrian, initial, target))
+            # print('pedestrian: {} initial {} target {}'.format(pedestrian, initial, target))
             self.pedestrian_centers[0].append(components[initial])
             self.pedestrian_centers[1].append(components[target])
         self.pedestrian_status = [False] * self.num_pedestrians 
@@ -1231,7 +1234,7 @@ class NavigatePedestriansEnv(NavigateEnv):
             pedestrian_poses.append(pedestrian_pose)
             all_object_poses.append(pedestrian_pose)
 
-        print('pedestrian poses: {}'.format(pedestrian_poses))
+        # print('pedestrian poses: {}'.format(pedestrian_poses))
         return pedestrian_poses
 
     def get_robot_observable_state(self):
