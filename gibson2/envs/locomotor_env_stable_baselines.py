@@ -401,11 +401,11 @@ class NavigateEnv(BaseEnv):
             #state_scan = xyz
             
             state_scan = dist
-            
-            #sensor_state /= 30.0
-            
+
             state = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
-                        
+
+            state /= 30.0 # normalize by the max lidar range
+
 #             depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
 #             # substitute NaNs (-0) with max range (15 meters)
 #             depth_lidar[depth_lidar == 0] = 15.0
@@ -951,11 +951,11 @@ class NavigatePedestriansEnv(NavigateEnv):
         
         info = {}
         
-        # check for a termination result
-        done, info = self.get_termination(collision_links, info)
-        
         # collect reward
         reward, info = self.get_reward(collision_links, action, info)
+
+        # check for a termination result
+        done, info = self.get_termination(collision_links, info)
         
         # Update distance metrics
         self.time_elapsed += self.action_timestep
