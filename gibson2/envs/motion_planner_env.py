@@ -308,6 +308,17 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
 
+        elif self.arena == 'obstacles':
+            self.obstacle_poses = [[-3.5, 0.5, 0.6], [-3.5, -0.05, 0.6], [-3.5, -0.6, 0.6], [-3.5, -1.15, 0.6]]
+            self.obstacles = []
+            head_joint = joint_from_name(self.robot_id, 'head_tilt_joint')
+            set_joint_position(self.robot_id, head_joint, 1.2)
+            for obstacle_pose in self.obstacle_poses:
+                obstacle = BoxShape(pos=obstacle_pose, dim=[0.25,0.25,0.5], mass=10, color=[1,0.64,0,1])
+                self.simulator.import_interactive_object(obstacle, class_id=4)
+                p.changeDynamics(obstacle.body_id, -1, lateralFriction=0.5)
+                self.obstacles.append(obstacle)
+
     def prepare_motion_planner(self):
         self.robot_id = self.robots[0].robot_ids[0]
         self.mesh_id = self.scene.mesh_body_id
@@ -661,6 +672,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.simulator_step()
             set_base_values_with_z(self.robot_id, base_pose, z=self.initial_pos[2] + self.random_init_z_offset)
             self.reset_object_velocities()
+            self.reset_obstacles_z()
 
             # arm should not have any collision
             collision_free = self.is_collision_free(body_a=self.robot_id,
@@ -680,6 +692,13 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             return arm_joint_positions
 
         return
+
+
+    def reset_obstacles_z(self):
+        for obstacle in self.obstacles:
+            obstacle_pose = get_base_values(obstacle.body_id)
+            set_base_values_with_z(obstacle.body_id, obstacle_pose, 0.6)
+
 
     def reach_arm_subgoal(self, arm_joint_positions):
         """
@@ -734,7 +753,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         push_vector = rotate_vector_2d(push_vector_local, -self.robots[0].get_rpy()[2])
         push_vector = np.append(push_vector, 0.0)
 
-        # push_vector = np.array([-0.5, 0.0, 0.0])
+        push_vector = np.array([-0.5, 0.0, 0.0])
 
         max_limits = [0., 0.] + get_max_limits(self.robot_id, self.arm_joint_ids)
         min_limits = [0., 0.] + get_min_limits(self.robot_id, self.arm_joint_ids)
@@ -765,6 +784,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.simulator_step()
             set_base_values_with_z(self.robot_id, base_pose,
                                    z=self.initial_pos[2] + self.random_init_z_offset)
+
+            self.reset_obstacles_z()
 
             if self.eval:
                 time.sleep(0.02)  # for visualization
@@ -878,9 +899,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
-        if self.arena in ['button', 'push_door']:
+        if self.arena in ['button', 'push_door', 'obstacles']:
             floor_height = self.scene.get_floor_height(self.floor_num)
-            self.initial_pos = np.array([-3, 0.0, floor_height])
+            self.initial_pos = np.array([-2.7, 0.0, floor_height])
             self.target_pos = np.array([-5.0, 0.0, floor_height])
             self.robots[0].set_position(pos=[self.initial_pos[0],
                                              self.initial_pos[1],
@@ -902,7 +923,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         elif self.arena == 'push_door':
             p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
             self.door_angle = 0.0
-
+        elif self.arena == 'obstacles':
+            # reset obstacle poses
+            for i in range(len(self.obstacles)):
+                set_base_values_with_z(self.obstacles[i].body_id, [self.obstacle_poses[i][0], self.obstacle_poses[i][1], 0], 0.6)
     def reset(self):
         state = super(MotionPlanningBaseArmEnv, self).reset()
         del state['pc']
@@ -928,7 +952,7 @@ if __name__ == '__main__':
                                        action_timestep=1/500.0,
                                        physics_timestep=1/500.0,
                                        eval=args.mode == 'gui',
-                                       arena='push_door',
+                                       arena='obstacles',
                                        )
 
     for episode in range(100):
