@@ -262,38 +262,58 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.arm_subgoal_threshold = 0.05
         self.failed_subgoal_penalty = -0.0
 
-        if self.arena == 'button':
-            self.button_threshold = 0.5
+        if self.arena == 'button_door':
+            self.button_threshold = -0.05
             self.button_reward = 5.0
 
-            self.button_marker = VisualMarker(visual_shape=p.GEOM_SPHERE,
-                                              rgba_color=[0, 1, 0, 1],
-                                              radius=0.3)
-            self.simulator.import_object(self.button_marker, class_id=255)
+            # self.button_marker = VisualMarker(visual_shape=p.GEOM_SPHERE,
+            #                                   rgba_color=[0, 1, 0, 1],
+            #                                   radius=0.3)
+            self.button = InteractiveObj(
+                os.path.join(gibson2.assets_path, 'models', 'scene_components', 'eswitch', 'eswitch.urdf'),
+                scale=2.0)
+            self.simulator.import_interactive_object(self.button, class_id=255)
+            self.button_axis_link_id = 1
 
             self.door = InteractiveObj(
-                os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
-                scale=4.0)
+                os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor_closed.urdf'),
+                scale=1.0)
             self.simulator.import_interactive_object(self.door, class_id=2)
+            self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+            self.door_axis_link_id = 1
 
             self.wall_poses = [
-                [[0, -2.0, 1], [0, 0, 0, 1]],
+                [[-3.5, 0.45, 0.45], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz')],
+                [[-3.5, -0.4, 0.45], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz')],
             ]
             self.walls = []
             for wall_pose in self.wall_poses:
-                wall = InteractiveObj(os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls.urdf'),
-                                      scale=1)
+                wall = InteractiveObj(
+                    os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_quarter.urdf'),
+                    scale=0.3)
                 self.simulator.import_interactive_object(wall, class_id=3)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
                 self.walls += [wall]
 
         elif self.arena == 'push_door':
-            self.door = InteractiveObj(
-                os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
-                scale=1.0)
-            self.simulator.import_interactive_object(self.door, class_id=2)
-            self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
+            self.doors = []
+            door_scales = [1.0, 0.9]
+            door_positions = [[-3.5, 0, 0.0], [-1.2, -2.47, 0.0]]
+            door_rotations = [np.pi / 2.0, -np.pi / 2.0]
+
+            for scale, position, rotation in zip(door_scales, door_positions, door_rotations):
+                door = InteractiveObj(
+                    os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
+                    scale=scale)
+                self.simulator.import_interactive_object(door, class_id=2)
+                door.set_position_rotation(position, quatToXYZW(euler2quat(0, 0, rotation), 'wxyz'))
+                self.doors.append(door)
+
             self.door_axis_link_id = 1
+            self.door_target_pos = [
+                [[-5.5, -4.5], [-1.0, 1.0]],
+                [[0.5, 2.0], [-4.5, -3.0]]
+            ]
 
             self.wall_poses = [
                 [[-3.5, 0.45, 0.45], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz')],
@@ -553,16 +573,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if self.eval:
                 for way_point in path:
                     set_base_values_with_z(self.robot_id, [way_point[0], way_point[1], way_point[2]],
-                                           z=self.initial_pos[2] + self.random_init_z_offset)
+                                           z=self.initial_height)
                     time.sleep(0.02)
             else:
                 set_base_values_with_z(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn],
-                                       z=self.initial_pos[2] + self.random_init_z_offset)
+                                       z=self.initial_height)
 
             return True
         else:
             # print('base mp failure')
-            set_base_values_with_z(self.robot_id, original_pos, z=self.initial_pos[2] + self.random_init_z_offset)
+            set_base_values_with_z(self.robot_id, original_pos, z=self.initial_height)
             return False
 
     def move_base(self, action):
@@ -670,10 +690,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 continue
 
             self.simulator_step()
-            set_base_values_with_z(self.robot_id, base_pose, z=self.initial_pos[2] + self.random_init_z_offset)
+            set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
             self.reset_object_velocities()
 
-            self.arena == 'obstacles':
+            if self.arena == 'obstacles':
                 self.reset_obstacles_z()
 
             # arm should not have any collision
@@ -731,16 +751,26 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
             return False
 
-    def stash_object_position(self):
-        if self.arena == 'push_door':
-            self.door_pos = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
+    def stash_object_positions(self):
+        if self.arena == 'button_door':
+            self.button_pos = p.getJointState(self.button.body_id, self.button_axis_link_id)[0]
+        elif self.arena == 'push_door':
+            for i, door in enumerate(self.doors):
+                self.door_angles[i] = p.getJointState(door.body_id, self.door_axis_link_id)[0]
 
     def reset_object_velocities(self):
         """
         Remove any accumulated velocities or forces of objects resulting from arm motion planner
         """
-        if self.arena == 'push_door':
-            p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=self.door_pos, targetVelocity=0.0)
+        if self.arena == 'button_door':
+            p.resetJointState(self.button.body_id, self.button_axis_link_id,
+                              targetValue=self.button_pos, targetVelocity=0.0)
+            for wall in self.walls:
+                p.resetBaseVelocity(wall.body_id, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
+        elif self.arena == 'push_door':
+            for door, door_angle in zip(self.doors, self.door_angles):
+                p.resetJointState(door.body_id, self.door_axis_link_id,
+                                  targetValue=door_angle, targetVelocity=0.0)
             for wall in self.walls:
                 p.resetBaseVelocity(wall.body_id, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
 
@@ -766,7 +796,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         base_pose = get_base_values(self.robot_id)
 
-        self.simulator.set_timestep(0.002)
+        # self.simulator.set_timestep(0.002)
         for i in range(100):
             push_goal = np.array(arm_subgoal) + push_vector * i / 100.0
 
@@ -784,10 +814,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
             self.simulator_step()
-            set_base_values_with_z(self.robot_id, base_pose,
-                                   z=self.initial_pos[2] + self.random_init_z_offset)
+            set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
 
-            self.arena == 'obstacles':
+            if self.arena == 'obstacles':
                 self.reset_obstacles_z()
 
             if self.eval:
@@ -809,7 +838,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # state_id = p.saveState()
         # print('saveState', time.time() - start)
 
-        self.stash_object_position()
+        self.stash_object_positions()
 
         # start = time.time()
         arm_joint_positions = self.get_arm_joint_positions(arm_subgoal)
@@ -838,6 +867,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def step(self, action):
         # print('-' * 30)
+        # embed()
         # action[0] = base_or_arm
         # action[1] = base_subgoal_theta
         # action[2] = base_subgoal_dist
@@ -873,20 +903,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             reward = self.failed_subgoal_penalty
         done, info = self.get_termination([], info)
 
-        if self.arena == 'button':
-            dist = l2_distance(self.robots[0].get_end_effector_position(), self.button_marker_pos)
-            if not self.door_open and dist < self.button_threshold:
+        if self.arena == 'button_door':
+            button_pos = p.getJointState(self.button.body_id, self.button_axis_link_id)[0]
+            if not self.button_pressed and button_pos < self.button_threshold:
                 print("OPEN DOOR")
-                self.door_open = True
-                self.button_marker.set_position([100.0, 100.0, 0.0])
+                self.button_pressed = True
                 self.door.set_position([100.0, 100.0, 0.0])
                 reward += self.button_reward
         elif self.arena == 'push_door':
-            door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
-            door_angle_diff = door_angle - self.door_angle
+            new_door_angle = p.getJointState(self.doors[self.door_idx].body_id, self.door_axis_link_id)[0]
+            door_angle_diff = new_door_angle - self.door_angles[self.door_idx]
             reward += door_angle_diff
-            self.door_angle = door_angle
-
+            self.door_angles[self.door_idx] = new_door_angle
         if not use_base:
             set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
             state = self.get_state()
@@ -902,34 +930,54 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
-        if self.arena in ['button', 'push_door', 'obstacles']:
+        if self.arena in ['button_door', 'push_door', 'obstacles']:
             floor_height = self.scene.get_floor_height(self.floor_num)
-            self.initial_pos = np.array([-2.7, 0.0, floor_height])
-            self.target_pos = np.array([-5.0, 0.0, floor_height])
+            self.initial_height = floor_height + self.random_init_z_offset
+            self.initial_pos = np.array([1.2, 0.0, floor_height])
             self.robots[0].set_position(pos=[self.initial_pos[0],
                                              self.initial_pos[1],
-                                             self.initial_pos[2] + self.random_init_z_offset])
+                                             self.initial_height])
             self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
+            if self.arena == 'button_door' or self.arena == 'obstacles':
+                self.target_pos = np.array([-5.0, 0.0, floor_height])
+            elif self.arena == 'push_door':
+                self.door_idx = np.random.randint(0, len(self.doors))
+                door_target_pos = self.door_target_pos[self.door_idx]
+                self.target_pos = np.array([
+                    np.random.uniform(door_target_pos[0][0], door_target_pos[0][1]),
+                    np.random.uniform(door_target_pos[1][0], door_target_pos[1][1]),
+                    floor_height
+                ])
         else:
             super(MotionPlanningBaseArmEnv, self).reset_initial_and_target_pos()
 
     def before_reset_agent(self):
-        if self.arena == 'button':
-            self.button_marker_pos = [
-                np.random.uniform(-3.0, -0.5),
-                np.random.uniform(-1.25, 1.25),
+        if self.arena == 'button_door':
+            left_button = np.random.random() > 0.5
+            y = np.random.uniform(-1.5, -1) if left_button else np.random.uniform(1, 1.5)
+            self.button_obj_pos = [
+                np.random.uniform(-3.0, 0),
+                y,
                 1.5
             ]
-            self.button_marker.set_position(self.button_marker_pos)
+            orn = 0.0 if left_button else np.pi
+            self.button.set_position_rotation(self.button_obj_pos, quatToXYZW(euler2quat(0, 0, orn), 'wxyz'))
+            p.resetJointState(self.button.body_id, self.button_axis_link_id, targetValue=0.0, targetVelocity=0.0)
             self.door.set_position_rotation([-3.5, 0, 0.0], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz'))
-            self.door_open = False
+            self.button_pressed = False
         elif self.arena == 'push_door':
-            p.resetJointState(self.door.body_id, self.door_axis_link_id, targetValue=0.0, targetVelocity=0.0)
-            self.door_angle = 0.0
+
+            self.door_angles = np.zeros(len(self.doors))
+            for door, door_angle in zip(self.doors, self.door_angles):
+                p.resetJointState(door.body_id, self.door_axis_link_id, targetValue=door_angle, targetVelocity=0.0)
+
         elif self.arena == 'obstacles':
             # reset obstacle poses
             for i in range(len(self.obstacles)):
-                set_base_values_with_z(self.obstacles[i].body_id, [self.obstacle_poses[i][0], self.obstacle_poses[i][1], 0], 0.6)
+                set_base_values_with_z(self.obstacles[i].body_id, [self.obstacle_poses[i][0], self.obstacle_poses[i][1], 0],
+                                   0.6)
+
+
     def reset(self):
         state = super(MotionPlanningBaseArmEnv, self).reset()
         del state['pc']
@@ -948,14 +996,20 @@ if __name__ == '__main__':
                         default='headless',
                         help='which mode for simulation (default: headless)')
 
+    parser.add_argument('--arena',
+                        '-a',
+                        choices=['button_door', 'push_door', 'obstacles'],
+                        default='push_door',
+                        help='which arena to train or test (default: push_door)')
+
     args = parser.parse_args()
 
     nav_env = MotionPlanningBaseArmEnv(config_file=args.config,
                                        mode=args.mode,
-                                       action_timestep=1/500.0,
-                                       physics_timestep=1/500.0,
+                                       action_timestep=1 / 500.0,
+                                       physics_timestep=1 / 500.0,
                                        eval=args.mode == 'gui',
-                                       arena='obstacles',
+                                       arena=args.arena,
                                        )
 
     for episode in range(100):
