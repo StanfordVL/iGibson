@@ -719,6 +719,21 @@ class NavigateEnv(BaseEnv):
             info['energy_cost'] = self.energy_cost
             info['stage'] = self.stage
 
+            info['episodes'] = self.current_episode
+            info['successes'] = self.n_successes,
+            info['collisions'] = self.n_collisions,
+            info['ped_collisions'] = self.n_ped_collisions,
+            info['ped_hits_robot'] = self.n_ped_hits_robot,
+            info['timeouts'] = self.n_timeouts,
+            info['personal_space_violations'] = 0 if self.distance_traveled == 0 else self.n_personal_space_violations / self.distance_traveled,
+            info['cutting_off'] = 0 if self.distance_traveled == 0 else self.n_cutting_off / self.distance_traveled,
+            info['success_rate'] = 0 if self.current_episode == 0 else 100 * self.n_successes / self.current_episode,
+            info['collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_collisions / self.current_episode,
+            info['ped_collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_collisions / self.current_episode,
+            info['ped_hits_robot_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_hits_robot / self.current_episode,
+            info['timeout_rate'] = 0 if self.current_episode == 0 else 100 * self.n_timeouts / self.current_episode,
+            info['shortest_path_length'] = None if self.current_episode == 0 else [self.spl]
+
             # Episode = collections.namedtuple('Episode',
             #                                  ['initial_pos',
             #                                   'target_pos',
