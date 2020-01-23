@@ -175,7 +175,6 @@ class VisualMarker(object):
                  initial_offset=[0, 0, 0]):
         """
         create a visual shape to show in pybullet and MeshRenderer
-
         :param visual_shape: pybullet.GEOM_BOX, pybullet.GEOM_CYLINDER, pybullet.GEOM_CAPSULE or pybullet.GEOM_SPHERE
         :param rgba_color: color
         :param radius: radius (for sphere)
@@ -209,7 +208,6 @@ class VisualMarker(object):
                                         radius=self.radius,
                                         visualFramePosition=self.initial_offset)
         self.body_id = p.createMultiBody(baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1)
-
         return self.body_id
 
     def set_position(self, pos, new_orn=None):

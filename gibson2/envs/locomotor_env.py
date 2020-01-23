@@ -1,4 +1,4 @@
-from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, BoxShape, CylinderPedestrian, Pedestrian
+from gibson2.core.physics.interactive_objects import VisualObject, InteractiveObj, VisualMarker, BoxShape, CylinderPedestrian, Pedestrian
 import gibson2
 from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, parse_config
 from gibson2.envs.base_env import BaseEnv
@@ -18,6 +18,7 @@ from IPython import embed
 import cv2
 import time
 import random
+
 
 from gibson2.core.pedestrians.human import Human
 from gibson2.core.pedestrians.robot import Robot
@@ -134,12 +135,12 @@ class NavigateEnv(BaseEnv):
         self.stall_torque_reward_weight = self.config.get('stall_torque_reward_weight', 0.0)
         self.collision_reward_weight = self.config.get('collision_reward_weight', 0.0)
         # ignore the agent's collision with these body ids, typically ids of the ground and the robot itself
-        self.collision_ignore_body_ids = self.config.get('collision_ignore_body_ids', [])
+        # self.collision_ignore_body_ids = self.config.get('collision_ignore_body_ids', [])
 
 # Master =======
 #         # ignore the agent's collision with these body ids, typically ids of the ground
-#         self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', []))
-#         self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
+        self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', []))
+        self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
 
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
@@ -285,27 +286,28 @@ class NavigateEnv(BaseEnv):
                                                    radius=0.3,
                                                    length=cyl_length,
                                                    initial_offset=[0, 0, cyl_length / 2.0])
-# =======
-#         self.visual_object_at_initial_target_pos = self.config.get('visual_object_at_initial_target_pos', False)
-# 
-#         if self.visual_object_at_initial_target_pos:
-#             cyl_length = 0.2
-#             self.initial_pos_vis_obj = VisualMarker(visual_shape=p.GEOM_CYLINDER,
-#                                                     rgba_color=[1, 0, 0, 0.3],
-#                                                     radius=self.dist_tol,
-#                                                     length=cyl_length,
-#                                                     initial_offset=[0, 0, cyl_length / 2.0])
-#             self.target_pos_vis_obj = VisualMarker(visual_shape=p.GEOM_CYLINDER,
-#                                                    rgba_color=[0, 0, 1, 0.3],
+
+        self.visual_object_at_initial_target_pos = self.config.get('visual_object_at_initial_target_pos', False)
+#        if self.visual_object_at_initial_target_pos:
+#            cyl_length = 0.2
+#            self.initial_pos_vis_obj = VisualMarker(visual_shape=p.GEOM_CYLINDER,
+#                                                    rgba_color=[1, 0, 0, 0.3],
 #                                                    radius=self.dist_tol,
-# >>>>>>> master
+#                                                    length=cyl_length,
+#                                                    initial_offset=[0, 0, cyl_length / 2.0])
+#            self.target_pos_vis_obj = VisualMarker(visual_shape=p.GEOM_CYLINDER,
+#                                                   rgba_color=[0, 1, 0, 0.3],
+#                                                   radius=self.dist_tol,
+#                                                  length=cyl_length,
+#                                                   initial_offset=[0, 0, cyl_length / 2.0])
 
 
-            if self.config.get('target_visual_object_visible_to_agent', False):
-                self.simulator.import_object(self.target_pos_vis_obj, class_id=255)
-            else:
-                self.target_pos_vis_obj.load()
 
+        # if self.config.get('target_visual_object_visible_to_agent', False):
+            # self.simulator.import_object(self.target_pos_vis_obj, class_id=255)
+        # else:
+        self.target_pos_vis_obj.load()
+    
     def get_additional_states(self):
         relative_position = self.current_target_position - self.robots[0].get_position()
         # rotate relative position back to body point of view
@@ -563,7 +565,7 @@ class NavigateEnv(BaseEnv):
             if self.num_pedestrians > 0:
                 self.update_pedestrian_positions_in_gibson()
                 
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
 
         return self.filter_collision_links(collision_links)
 
@@ -582,14 +584,23 @@ class NavigateEnv(BaseEnv):
 #                 self.pedestrian_simulator.setAgentPrefVelocity(pedestrian, (vx, vy))
 #                 self.pedestrian_simulator.setAgentVelocity(pedestrian, (vx, vy))
 
+    # def filter_collision_links(self, collision_links):
+    # return [elem for elem in collision_links if elem[0] not in self.collision_ignore_body_ids]
     def filter_collision_links(self, collision_links):
-        return [elem for elem in collision_links if elem[0] not in self.collision_ignore_body_ids]
-        
-#     def filter_collision_links(self, collision_links):
-#         return [[item for item in collision_per_sim_step
-#                  if item[2] not in self.collision_ignore_body_b_ids and
-#                  item[3] not in self.collision_ignore_link_a_ids]
-#                 for collision_per_sim_step in collision_links]
+        # print('COLLISION LINKS: {}'.format(collision_links))
+        #print('IGNORE LINK: {}'.format(self.collision_ignore_link_a_ids))
+        filtered_collision_links = [[item for item in collision_per_sim_step
+             if item[2] not in self.collision_ignore_body_b_ids and
+             item[3] not in self.collision_ignore_link_a_ids]
+            for collision_per_sim_step in collision_links]
+        # print('FILTERED COLLISOIN LINKS: {}'.format(filtered_collision_links))
+        return filtered_collision_links
+
+    # def filter_collision_links(self, collision_links):
+        # return [[item for item in collision_per_sim_step 
+               #  if item[2] not in self.collision_ignore_body_b_ids and \
+               # item[3] not in self.collision_ignore_link_a_ids]
+               #  for collision_per_sim_step in collision_links]
 
     def get_position_of_interest(self):
         if self.config['task'] == 'pointgoal':
@@ -808,25 +819,11 @@ class NavigateEnv(BaseEnv):
         """
         Reset the agent to a collision-free start point
         """
-
+        print('RESET')
         self.current_episode += 1
         agent_reset = False
-
         while not agent_reset:
-            agent_reset = self.reset_agent()
-        
-#         self.initial_potential = self.get_potential()
-#         print(self.initial_potential)
-# 
-#         self.normalized_potential = 1.0
-#         if self.reward_type == 'normalized_l2':
-#             self.initial_l2_potential = self.get_l2_potential()
-#             self.normalized_l2_potential = 1.0
-#         elif self.reward_type == 'l2':
-#             self.l2_potential = self.get_l2_potential()
-#         elif self.reward_type == 'dense':
-#             self.potential = self.get_potential()
-
+          agent_reset = self.reset_agent()
         state = self.get_state()
 
         if self.reward_type == 'l2':
@@ -846,9 +843,9 @@ class NavigateEnv(BaseEnv):
         self.energy_cost = 0.0
 
         # set position for visual objects
-        if self.visual_object_at_initial_pos:
-            self.initial_pos_vis_obj.set_position(self.initial_pos)
-        if self.visual_object_at_target_pos:            
+        # if self.visual_object_at_initial_target_pos:
+        if self.visual_object_at_target_pos:
+            # self.initial_pos_vis_obj.set_position(self.initial_pos)
             self.target_pos_vis_obj.set_position(self.current_target_position)
 
         return state
@@ -953,7 +950,7 @@ class NavigateObstaclesEnv(NavigateEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
         return no_collision
@@ -1047,7 +1044,6 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.obstacles = []
 
         self.initial_box_size = [0.2, 0.3, 0.3]
-
         # Create/re-create obstacles in random positions
         self.reset_obstacles() 
         
@@ -1179,7 +1175,11 @@ class NavigatePedestriansEnv(NavigateEnv):
             self.success = True
         else:
             # check for collision
-            collision_reward = float(len(collision_links) > 0)
+            collision_reward = 0
+            for collision_link in collision_links:
+              if collision_link != []:
+                collision_reward += 1
+            # collision_reward = float(len(collision_links) > 0)
             if collision_reward > 0:
                 self.collision = True
                 
@@ -1415,11 +1415,12 @@ class NavigatePedestriansEnv(NavigateEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
-        print("COLLISION LINKS!!!!!!!!", collision_links)
+            collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
         collision_links = self.filter_collision_links(collision_links)
-        no_collision = len(collision_links) == 0
-        print("NO COLLISION????????", no_collision)
+        # no_collision = len(collision_links) == 0
+        no_collision = True
+        for collision_link in collision_links:
+          no_collision = False
 
         # Compute the shortest distance to this goal (TODO: account for obstacles!)
         robot_position = self.robots[0].get_position()
@@ -1712,7 +1713,7 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
 
@@ -2039,7 +2040,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
         return no_collision
@@ -2119,6 +2120,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         auxiliary_sensor[65] = has_collision
 
         return auxiliary_sensor
+
 
     def filter_collision_links(self, collision_links):
         collision_links = super(InteractiveNavigateEnv, self).filter_collision_links(collision_links)
@@ -2334,7 +2336,7 @@ class NavigateRandomObstaclesEnv(NavigateEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links += list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+            collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
         collision_links = self.filter_collision_links(collision_links)
         no_collision = len(collision_links) == 0
         return no_collision
