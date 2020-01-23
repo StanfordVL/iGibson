@@ -371,40 +371,87 @@ class NavigateEnv(BaseEnv):
 
         if 'concatenate' in self.output:
             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
-            pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-            elev_bottom_angle = -15. * np.pi / 180.
-            elev_top_angle = 15. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
-            
-            elev_angle = [0.0]
-            orig_offset = np.vstack([
-                np.vstack([np.cos(angle),
-                           np.sin(angle),
-                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
-            ])
-            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+            if self.config['robot'] == 'Turtlebot':
+                # Hokuyo URG-04LX-UG01
+                laser_linear_range = 5.6
+                laser_angular_range = 240.0
+                min_laser_dist = 0.05
+                laser_link_name = 'scan_link'
+            elif self.config['robot'] == 'Fetch':
+                # SICK TiM571-2050101 Laser Range Finder
+                laser_linear_range = 25.0
+                laser_angular_range = 220.0
+                min_laser_dist = 0.1
+                laser_link_name = 'laser_link'
+            elif self.config['robot'] == 'TurtlebotDifferentialDrive':
+                # SICK TiM571-2050101 Laser Range Finder
+                laser_linear_range = 25.0
+                laser_angular_range = 220.0
+                min_laser_dist = 0.1
+                laser_link_name = 'scan_link'
+            else:
+                assert False, 'unknown robot for LiDAR observation'
 
-            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-            hit = np.array([item[0] for item in results])
-            dist = np.array([item[2] for item in results])
+            laser_angular_half_range = laser_angular_range / 2.0
+            laser_pose = self.robots[0].parts[laser_link_name].get_pose()
+
+            # self.scan_vis.set_position(pos=laser_pose[:3])
+
+            transform_matrix = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
+            angle = np.arange(-laser_angular_half_range / 180 * np.pi,
+                              laser_angular_half_range / 180 * np.pi,
+                              laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
+            unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+            unit_vector_world = transform_matrix.dot(unit_vector_local.T).T
+            start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
+            start_pose += unit_vector_world * min_laser_dist
+            end_pose = laser_pose[:3] + unit_vector_world * laser_linear_range
+            results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
+            # hit_object_id = np.array([item[0] for item in results])
+            # link_id = np.array([item[1] for item in results])
+            hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
+            state_scan = np.expand_dims(hit_fraction, 1)
+            
+            # normalize goal coordinates using laser range
+            sensor_state /= laser_linear_range
                         
-            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-            dist[~valid_pts] = 1.0  # set invalid points to max range
-            
-            dist *= 30
-            
-            #xyz = np.expand_dims(dist, 1) * orig_offset
-            #state_scan = xyz
-            
-            state_scan = dist
-
             state = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
-
-            state /= 30.0 # normalize by the max lidar range
+            
+#             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+#             pose_camera = self.robots[0].parts['scan_link'].get_pose()
+#             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+#             elev_bottom_angle = -15. * np.pi / 180.
+#             elev_top_angle = 15. * np.pi / 180.
+#             elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+#                                    (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+#             
+#             elev_angle = [0.0]
+#             orig_offset = np.vstack([
+#                 np.vstack([np.cos(angle),
+#                            np.sin(angle),
+#                            np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+#             ])
+#             transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+#             offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+#             pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+# 
+#             results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+#             hit = np.array([item[0] for item in results])
+#             dist = np.array([item[2] for item in results])
+#                         
+#             valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+#             dist[~valid_pts] = 1.0  # set invalid points to max range
+#             
+#             dist *= 30
+#             
+#             #xyz = np.expand_dims(dist, 1) * orig_offset
+#             #state_scan = xyz
+#             
+#             state_scan = dist
+# 
+#             state = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
+# 
+#             state /= 30.0 # normalize by the max lidar range
 
         return state
 
