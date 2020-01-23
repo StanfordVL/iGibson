@@ -1155,6 +1155,17 @@ class NavigatePedestriansEnv(NavigateEnv):
         
         # get the next state
         state = self.get_state(collision_links)
+
+        # import matplotlib.pyplot as plt
+        # print('=' * 100)
+        # print('2D: {}'.format(state['sensor']))
+        # print('DEPTH: {}'.format(state['depth'][:, :, 0]))
+        # print('DEPTH shape: {}'.format(state['depth'].shape))
+        # plt.imshow(state['depth'][:, :, 0], cmap='gray')
+        # plt.show()
+        # xit(0)
+        # print('RGB: {}'.format(state['rgb']))
+        # print('=' * 100)
         
         # collect reward
         info = {}
