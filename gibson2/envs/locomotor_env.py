@@ -142,9 +142,6 @@ class NavigateEnv(BaseEnv):
         self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', []))
         self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
 
-        print('IGNORE COLLISION LINK A: {}'.format(self.collision_ignore_link_a_ids))
-        print('IGNORE COLLISION BODY B: {}'.format(self.collision_ignore_body_b_ids))
-
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
         self.output = self.config['output']
@@ -316,10 +313,10 @@ class NavigateEnv(BaseEnv):
 
 
 
-        # if self.config.get('target_visual_object_visible_to_agent', False):
-            # self.simulator.import_object(self.target_pos_vis_obj, class_id=255)
-        # else:
-        self.target_pos_vis_obj.load()
+        if self.config.get('target_visual_object_visible_to_agent', False):
+            self.simulator.import_object(self.target_pos_vis_obj, class_id=255)
+        else:
+            self.target_pos_vis_obj.load()
     
     def get_additional_states(self):
         relative_position = self.current_target_position - self.robots[0].get_position()
@@ -678,6 +675,8 @@ class NavigateEnv(BaseEnv):
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
         # max_force = max([item[9] for item in collision_links_flatten]) if len(collision_links_flatten) > 0 else 0
 
+        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
+        
         if self.collision:
             print("COLLISION!")
             done = True
@@ -694,15 +693,14 @@ class NavigateEnv(BaseEnv):
             
         elif l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
             print("SUCCESS!")
-
-        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
-        if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
-            print("GOAL")
+        # if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
+            # print("GOAL")
 
             done = True
             info['success'] = True
             self.n_successes += 1
 
+        # What is this branch?
         elif self.robots[0].get_position()[2] > floor_height + self.death_z_thresh:
             print("DEATH")
             done = True
@@ -988,7 +986,6 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.pedestrian_z = 0.03 # hard-coded.
 
         self.num_pedestrians = self.config.get('num_pedestrians', 0)
-        print('Number of pedstrians called second time: {}'.format(self.num_pedestrians))
         self.num_obstacles = self.config.get('num_obstacles', 0)
         self.pedestrians_can_see_robot = self.config.get('pedestrians_can_see_robot', False)
         self.randomize_pedestrian_attributes = self.config.get('randomize_pedestrian_attributes', False)                
@@ -1149,7 +1146,6 @@ class NavigatePedestriansEnv(NavigateEnv):
         reward, info = self.get_reward(collision_links, action, info)
         
         # check for a termination result
-        print('COLLISION LINKS: {}'.format(collision_links))
         done, info = self.get_termination(collision_links, info)
 
         # Update distance metrics
