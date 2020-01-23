@@ -672,7 +672,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.simulator_step()
             set_base_values_with_z(self.robot_id, base_pose, z=self.initial_pos[2] + self.random_init_z_offset)
             self.reset_object_velocities()
-            self.reset_obstacles_z()
+
+            self.arena == 'obstacles':
+                self.reset_obstacles_z()
 
             # arm should not have any collision
             collision_free = self.is_collision_free(body_a=self.robot_id,
@@ -785,7 +787,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             set_base_values_with_z(self.robot_id, base_pose,
                                    z=self.initial_pos[2] + self.random_init_z_offset)
 
-            self.reset_obstacles_z()
+            self.arena == 'obstacles':
+                self.reset_obstacles_z()
 
             if self.eval:
                 time.sleep(0.02)  # for visualization
