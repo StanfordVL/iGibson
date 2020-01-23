@@ -172,7 +172,7 @@ FLAGS = flags.FLAGS
 
 class CustomPolicy(FeedForwardPolicy):
     def __init__(self, *args, **kwargs):
-        super(CustomPolicy, self).__init__(*args, layers=[1024, 512, 256], layer_norm=True, feature_extraction="mlp", **kwargs)
+        super(CustomPolicy, self).__init__(*args, layers=[512, 256, 128], layer_norm=True, feature_extraction="mlp", **kwargs)
 
 def string_to_filename(input):
     output = input.replace('"', '').replace('{', '').replace('}', '').replace(' ', '_').replace(',', '_')
@@ -261,12 +261,12 @@ def train_eval(
     
     params = dict()
     
-    params['nn_layers'] = nn_layers = [1024, 512, 256]
+    params['nn_layers'] = nn_layers = [512, 256, 128]
     gamma = 0.99
     params['learning_trials'] = learning_trials = 1500000
     params['learning_rate'] = learning_rate = 0.0001
     params['n_peds'] = 3
-    params['n_rays'] = 720    
+    params['test'] = 'new_scan_440_rays'  
 
     tb_log_dir = os.path.expanduser('~') + '/tensorboard_logs/sac_gibson_stable_baselines' + string_to_filename(json.dumps(params))
 
