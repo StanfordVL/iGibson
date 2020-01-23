@@ -142,11 +142,23 @@ class NavigateEnv(BaseEnv):
         self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', []))
         self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
 
+        print('IGNORE COLLISION LINK A: {}'.format(self.collision_ignore_link_a_ids))
+        print('IGNORE COLLISION BODY B: {}'.format(self.collision_ignore_body_b_ids))
+
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
         self.output = self.config['output']
         self.n_horizontal_rays = self.config.get('n_horizontal_rays', 128)
         self.n_vertical_beams = self.config.get('n_vertical_beams', 9)
+        
+
+        # obstacles
+        self.num_obstacles = self.config.get('num_obstacles', 0)        
+
+        # pedestrians
+        self.num_pedestrians = self.config.get('num_pedestrians', 0)
+        self.pedestrians_can_see_robot = self.config['pedestrians_can_see_robot']        
+        self.randomize_pedestrian_attributes = self.config.get('randomize_pedestrian_attributes', False)
 
         # TODO: sensor: observations that are passed as network input, e.g. target position in local frame
         # TODO: auxiliary sensor: observations that are not passed as network input, but used to maintain the same
@@ -242,6 +254,7 @@ class NavigateEnv(BaseEnv):
             observation_space['pedestrian'] = self.pedestrian_space
             
         if 'pedestrian_position' in self.output:
+            # print('NUMBER OF PEDESTRIANS called once: {}'.format(self.num_pedestrians))
             self.pedestrian_position_space = gym.spaces.Box(low=-np.inf, high=np.inf,
                                                    shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
                                                    dtype=np.float32)
@@ -491,9 +504,9 @@ class NavigateEnv(BaseEnv):
             
             state_scan = dist
 
-            state = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
+            state['concatenate'] = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
 
-            state /= 30.0 # normalize by the max lidar range
+            state['concatenate'] /= 30.0 # normalize by the max lidar range
         return state
 
         # if 'concatenate' in self.output:
@@ -819,7 +832,6 @@ class NavigateEnv(BaseEnv):
         """
         Reset the agent to a collision-free start point
         """
-        print('RESET')
         self.current_episode += 1
         agent_reset = False
         while not agent_reset:
@@ -976,6 +988,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.pedestrian_z = 0.03 # hard-coded.
 
         self.num_pedestrians = self.config.get('num_pedestrians', 0)
+        print('Number of pedstrians called second time: {}'.format(self.num_pedestrians))
         self.num_obstacles = self.config.get('num_obstacles', 0)
         self.pedestrians_can_see_robot = self.config.get('pedestrians_can_see_robot', False)
         self.randomize_pedestrian_attributes = self.config.get('randomize_pedestrian_attributes', False)                
@@ -1136,6 +1149,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         reward, info = self.get_reward(collision_links, action, info)
         
         # check for a termination result
+        print('COLLISION LINKS: {}'.format(collision_links))
         done, info = self.get_termination(collision_links, info)
 
         # Update distance metrics
