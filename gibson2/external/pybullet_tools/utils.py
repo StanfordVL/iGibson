@@ -973,7 +973,7 @@ def base_values_from_pose(pose, tolerance=1e-3):
     (point, quat) = pose
     x, y, _ = point
     roll, pitch, yaw = euler_from_quat(quat)
-    assert (abs(roll) < tolerance) and (abs(pitch) < tolerance)
+    #assert (abs(roll) < tolerance) and (abs(pitch) < tolerance)
     return (x, y, yaw)
 
 pose2d_from_pose = base_values_from_pose
