@@ -9,6 +9,7 @@ scene: stadium
 automatic_reset: true
 
 collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore the agent's collision with these body ids
+collision_ignore_body_ids: [0, 1, 2, 3] # for backward compatibility
 
 num_obstacles: 0
 num_pedestrians: 3
@@ -44,7 +45,7 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 600
+max_step: 400
 
 # sensor
 # output: [sensor, rgb, depth]
@@ -54,10 +55,9 @@ max_step: 600
 #output: [sensor, pedestrian_position, pedestrian_velocity]
 #output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
 output: [concatenate]
-#output: [sensor, scan]
 #scan_beams: 64 #128 
 #scan_vertical_beams: 1 #9 
-n_horizontal_rays: 720
+n_horizontal_rays: 32
 n_vertical_beams: 1
 resolution: 128
 #waypoints: 5
@@ -122,16 +122,16 @@ walls:
 components:
   entrance_1:
     center_x: 8.0
-    center_y: 1.0
+    center_y: 0.0
   entrance_2:
     center_x: -8.0
-    center_y: 1.0
+    center_y: 0.0
   entrance_3:
     center_x: 6.0
-    center_y: 1.0
+    center_y: 0.0
   entrance_4:
     center_x: -6.0
-    center_y: 1.0
+    center_y: 0.0
 
 # TODO: specify obstacles.
 
@@ -142,8 +142,8 @@ movements:
     initial_target: [['entrance_1', 'entrance_2'], ['entrance_2', 'entrance_1']]
     # x_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
     # y_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-    x_range_radius: 0.5
-    y_range_radius: 0.5
+    x_range_radius: 1.0
+    y_range_radius: 1.0
     flip_prob: 0.5
   agent:
     initial_positions: 'entrance_3'
