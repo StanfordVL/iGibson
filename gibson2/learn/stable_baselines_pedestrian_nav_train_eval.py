@@ -172,7 +172,7 @@ FLAGS = flags.FLAGS
 
 class CustomPolicy(FeedForwardPolicy):
     def __init__(self, *args, **kwargs):
-        super(CustomPolicy, self).__init__(*args, layers=[512, 256, 128], layer_norm=True, feature_extraction="mlp", **kwargs)
+        super(CustomPolicy, self).__init__(*args, layers=[256, 128, 64], layer_norm=True, feature_extraction="mlp", **kwargs)
 
 def string_to_filename(input):
     output = input.replace('"', '').replace('{', '').replace('}', '').replace(' ', '_').replace(',', '_')
@@ -261,12 +261,12 @@ def train_eval(
     
     params = dict()
     
-    params['nn_layers'] = nn_layers = [512, 256, 128]
+    params['nn_layers'] = nn_layers = [256, 128, 64]
     gamma = 0.99
-    params['learning_trials'] = learning_trials = 1500000
-    params['learning_rate'] = learning_rate = 0.0001
+    params['learning_trials'] = learning_trials = 500000
+    params['learning_rate'] = learning_rate = 0.0005
     params['n_peds'] = 3
-    params['test'] = 'new_scan_440_rays'  
+    params['test'] = 'fixed_lidar_position'  
 
     tb_log_dir = os.path.expanduser('~') + '/tensorboard_logs/sac_gibson_stable_baselines' + string_to_filename(json.dumps(params))
 
@@ -287,8 +287,8 @@ def train_eval(
             obs, rewards, done, info = env.step(action)
             if done:
                 n_episodes += 1
-                if n_episodes % 2 == 0:
-                    print("episodes:", n_episodes, [(key, info[0][key]) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
+            #    if n_episodes % 2 == 0:
+            #        print("episodes:", n_episodes, [(key, info[0][key]) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
         env.close()
         os._exit(0)
             
