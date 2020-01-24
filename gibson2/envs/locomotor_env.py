@@ -388,38 +388,74 @@ class NavigateEnv(BaseEnv):
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
 
-        if 'scan' in self.output:
-            depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            state['scan'] = np.amin(depth_lidar, axis=1)
+        # if 'scan' in self.output:
+            # depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+            # state['scan'] = np.amin(depth_lidar, axis=1)
 
         # TODO: figure out why 'scan' consumes so much cpu
-        # if 'scan' in self.output:
-        #     assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
-        #     pose_camera = self.robots[0].parts['scan_link'].get_pose()
-        #     angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-        #     elev_bottom_angle = -30. * np.pi / 180.
-        #     elev_top_angle = 10. * np.pi / 180.
-        #     elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-        #                            (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
-        #     orig_offset = np.vstack([
-        #         np.vstack([np.cos(angle),
-        #                    np.sin(angle),
-        #                    np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
-        #     ])
-        #     transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-        #     offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-        #     pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+        if 'scan' in self.output:
+            """
+            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+            pose_camera = self.robots[0].parts['scan_link'].get_pose()
+            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+            elev_bottom_angle = -30. * np.pi / 180.
+            elev_top_angle = 10. * np.pi / 180.
+            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+            orig_offset = np.vstack([
+                np.vstack([np.cos(angle),
+                           np.sin(angle),
+                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+            ])
+            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
 
-        #     results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-        #     hit = np.array([item[0] for item in results])
-        #     dist = np.array([item[2] for item in results])
+            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            hit = np.array([item[0] for item in results])
+            dist = np.array([item[2] for item in results])
 
-        #     valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-        #     dist[~valid_pts] = 1.0  # zero out invalid pts
-        #     dist *= 30
+            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+            dist[~valid_pts] = 1.0  # zero out invalid pts
+            dist *= 30
 
-        #     xyz = np.expand_dims(dist, 1) * orig_offset
-        #     state['scan'] = xyz
+            xyz = np.expand_dims(dist, 1) * orig_offset
+            """
+            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+            pose_camera = self.robots[0].parts['scan_link'].get_pose()
+            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+            elev_bottom_angle = -15. * np.pi / 180.
+            elev_top_angle = 15. * np.pi / 180.
+            if self.n_vertical_beams > 1:
+                elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+            
+            else:
+                elev_angle = [0.0]
+            orig_offset = np.vstack([
+                np.vstack([np.cos(angle),
+                           np.sin(angle),
+                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+            ])
+            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+
+            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            hit = np.array([item[0] for item in results])
+            dist = np.array([item[2] for item in results])
+                        
+            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+            dist[~valid_pts] = 1.0  # set invalid points to max range
+            
+            dist *= 30
+            
+            xyz = np.expand_dims(dist, 1) * orig_offset
+            #state_scan = xyz
+            
+            # state_scan = dist
+            state['scan'] = xyz
+
 
         if 'pedestrian' in self.output:
             ped_pos = self.get_ped_states()
@@ -474,10 +510,12 @@ class NavigateEnv(BaseEnv):
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
             elev_bottom_angle = -15. * np.pi / 180.
             elev_top_angle = 15. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+            if self.n_vertical_beams > 1:
+                elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
                                    (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
             
-            elev_angle = [0.0]
+            else:
+                elev_angle = [0.0]
             orig_offset = np.vstack([
                 np.vstack([np.cos(angle),
                            np.sin(angle),
@@ -1207,8 +1245,9 @@ class NavigatePedestriansEnv(NavigateEnv):
         
 
         if done:
-            #print(info)
-            print("episodes:", self.current_episode, [(key, np.around(info[key][0], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
+            # print('Episodes: {}\n--Return:{}\n--Success Rate: {}\n--COLLISION RATE: {}\n--TIMEOUT RATE: {}\n--PEDESTRIAN HIT ROBOT RATE:{}\n'.format())
+            print("Episodes:", self.current_episode, [(key, np.around(info[key][0], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
+            # TODO: add return here?
             if self.automatic_reset:
                 info['last_observation'] = state
                 state = self.reset()
