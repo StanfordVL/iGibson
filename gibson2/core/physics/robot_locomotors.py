@@ -578,12 +578,27 @@ class Fetch(LocomotorRobot):
             j.reset_joint_state(0.0, 0.0)
         # roll the arm to its body
         robot_id = self.robot_ids[0]
-        arm_joints = joints_from_names(robot_id, ['torso_lift_joint', 'shoulder_pan_joint', 'shoulder_lift_joint',
-                                                  'upperarm_roll_joint',
-                                                  'elbow_flex_joint', 'forearm_roll_joint', 'wrist_flex_joint',
-                                                  'wrist_roll_joint'])
-        rest_position = (0.38548146667743244, 1.1522793897208579, 1.2576467971105596, -0.312703569911879,
-                         1.7404867100093226, -0.0962895617312548, -1.4418232619629425, -1.6780152866247762)
+        arm_joints = joints_from_names(robot_id,
+                                       [
+                                           'head_tilt_joint',
+                                           'torso_lift_joint',
+                                           'shoulder_pan_joint',
+                                           'shoulder_lift_joint',
+                                           'upperarm_roll_joint',
+                                           'elbow_flex_joint',
+                                           'forearm_roll_joint',
+                                           'wrist_flex_joint',
+                                           'wrist_roll_joint'
+                                       ])
+        rest_position = (
+            np.pi / 12,
+            0.02, np.pi / 2.0,
+            np.pi / 2.0, 0.0,
+            np.pi / 2.0, 0.0,
+            np.pi / 2.0, 0.0
+        )
+        # rest_position = (0.38548146667743244, 1.1522793897208579, 1.2576467971105596, -0.312703569911879,
+        #                  1.7404867100093226, -0.0962895617312548, -1.4418232619629425, -1.6780152866247762)
 
         set_joint_positions(robot_id, arm_joints, rest_position)
 
