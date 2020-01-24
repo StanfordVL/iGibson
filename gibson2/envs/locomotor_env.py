@@ -139,7 +139,7 @@ class NavigateEnv(BaseEnv):
 
 # Master =======
 #         # ignore the agent's collision with these body ids, typically ids of the ground
-        self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', []))
+        self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', self.scene_ids))
         self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
 
         # discount factor
@@ -679,6 +679,7 @@ class NavigateEnv(BaseEnv):
         
         if self.collision:
             print("COLLISION!")
+            assert self.current_step > 0, "Collision shouldn't be penalized during resetting!"
             done = True
             info['success'] = False
             
@@ -845,18 +846,23 @@ class NavigateEnv(BaseEnv):
         """
         Reset the agent to a collision-free start point
         """
+        # self.is_resetting = True
         self.current_episode += 1
         agent_reset = False
+        self.current_step = 0
+
         while not agent_reset:
-          agent_reset = self.reset_agent()
+            # print('reset agent!')
+            # print('is resetting: {}'.format(self.is_resetting))
+            agent_reset = self.reset_agent()
         state = self.get_state()
+        # self.is_resetting = False
 
         if self.reward_type == 'l2':
             self.potential = self.get_l2_potential()
         elif self.reward_type == 'dense':
             self.potential = self.get_potential()
 
-        self.current_step = 0
         self.collision_step = 0
         self.kinematic_disturbance = 0.0
         self.dynamic_disturbance_a = 0.0
@@ -1064,6 +1070,10 @@ class NavigatePedestriansEnv(NavigateEnv):
                 wall_dim = self.walls['walls_dim'][i]
                 box = BoxShape(pos=wall_pos, dim=wall_dim)
                 self.obstacle_ids.append(self.simulator.import_object(box))
+        print('=' * 100)
+        print('WALLS IDS: {}'.format(self.obstacle_ids))
+        print('SCENE IDS: {}'.format(self.scene_ids))
+        print('ROBOT IDS: {}'.format(self.robots[0].robot_ids[0]))
 
         ''' Obstacles '''
         self.obstacles = []
@@ -1116,7 +1126,9 @@ class NavigatePedestriansEnv(NavigateEnv):
     
     def step(self, action):
         # compute the next human actions from the current observations
+        # print('self.is_resetting: {}'.format(self.is_resetting))
         human_actions = []
+        # print('step is called!!!')
         
         for i, human in enumerate(self.humans):
             # get the positions and velocities of other humans
@@ -1169,10 +1181,15 @@ class NavigatePedestriansEnv(NavigateEnv):
         
         # collect reward
         info = {}
+        # if not self.is_resetting:
         reward, info = self.get_reward(collision_links, action, info)
-        
         # check for a termination result
+        self.current_step += 1
         done, info = self.get_termination(collision_links, info)
+
+        # else:
+            # print('REWARD: {}'.format(reward))
+            # print('DONE: {}'.format(done))
 
         # Update distance metrics
         self.time_elapsed += self.action_timestep
@@ -1188,15 +1205,14 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.last_robot_px = robot_position[0]
         self.last_robot_py = robot_position[1]
         
-        self.current_step += 1
 
         if done:
             #print(info)
             print("episodes:", self.current_episode, [(key, np.around(info[key][0], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
-
             if self.automatic_reset:
                 info['last_observation'] = state
                 state = self.reset()
+            print('=' * 100)
                     
         return state, reward, done, info
 
@@ -1412,7 +1428,7 @@ class NavigatePedestriansEnv(NavigateEnv):
             self.compute_metrics()
             
         # Select new positions for obstacles
-        self.reset_obstacles()
+        # self.reset_obstacles()
 
         # Select new positions and goals for pedestrians
         # self.reset_pedestrians()
@@ -1456,7 +1472,8 @@ class NavigatePedestriansEnv(NavigateEnv):
         # no_collision = len(collision_links) == 0
         no_collision = True
         for collision_link in collision_links:
-          no_collision = False
+            if collision_link != []:
+                no_collision = False
 
         # Compute the shortest distance to this goal (TODO: account for obstacles!)
         robot_position = self.robots[0].get_position()
@@ -1467,8 +1484,8 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.episode_distance = 0.0
         self.episode_time = 0.0
 
-        #return no_collision
-        return True
+        return no_collision
+        # return True
     
     def compute_metrics(self):
         if self.success:
@@ -2492,5 +2509,5 @@ if __name__ == '__main__':
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
                 break
-        print(time.time() - start)
+        # print(time.time() - start)
     nav_env.clean()

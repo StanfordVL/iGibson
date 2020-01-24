@@ -60,7 +60,7 @@ class BaseEnv(gym.Env):
         # scene: class_id = 0
         # robot: class_id = 1
         # objects: class_id > 1
-        self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True), class_id=0)
+        self.scene_ids = self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True), class_id=0)
 
         if self.config['robot'] == 'Turtlebot':
             robot = Turtlebot(self.config)
