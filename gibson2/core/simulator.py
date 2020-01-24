@@ -18,7 +18,7 @@ class Simulator:
                  resolution=256,
                  fov=90,
                  device_idx=0,
-                 render_to_tensor=False):
+                 render_to_tensor=True):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -42,6 +42,8 @@ class Simulator:
         self.device_idx = device_idx
         self.use_fisheye = use_fisheye
         self.render_to_tensor = render_to_tensor
+        if self.mode == 'gui':
+            self.viewer = Viewer()        
         self.load()
 
     def set_timestep(self, timestep):
