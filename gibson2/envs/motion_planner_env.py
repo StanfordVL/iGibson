@@ -246,19 +246,29 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                        length=0.1,
                                        initial_offset=[0, 0, 0.1 / 2.0])
         self.arm_marker.load()
-        self.arm_default_joint_positions = (0.38548146667743244, 1.1522793897208579,
-                                            1.2576467971105596, -0.312703569911879,
-                                            1.7404867100093226, -0.0962895617312548,
-                                            -1.4418232619629425, -1.6780152866247762)
+        # self.arm_default_joint_positions = (0.38548146667743244, 1.1522793897208579,
+        #                                     1.2576467971105596, -0.312703569911879,
+        #                                     1.7404867100093226, -0.0962895617312548,
+        #                                     -1.4418232619629425, -1.6780152866247762)
+        self.arm_default_joint_positions = (
+            np.pi / 12,
+            0.02, np.pi / 2.0,
+            np.pi / 2.0, 0.0,
+            np.pi / 2.0, 0.0,
+            np.pi / 2.0, 0.0
+        )
         self.arm_joint_ids = joints_from_names(self.robot_id,
-                                               ['torso_lift_joint',
-                                                'shoulder_pan_joint',
-                                                'shoulder_lift_joint',
-                                                'upperarm_roll_joint',
-                                                'elbow_flex_joint',
-                                                'forearm_roll_joint',
-                                                'wrist_flex_joint',
-                                                'wrist_roll_joint'])
+                                               [
+                                                   'head_tilt_joint',
+                                                   'torso_lift_joint',
+                                                   'shoulder_pan_joint',
+                                                   'shoulder_lift_joint',
+                                                   'upperarm_roll_joint',
+                                                   'elbow_flex_joint',
+                                                   'forearm_roll_joint',
+                                                   'wrist_flex_joint',
+                                                   'wrist_roll_joint'
+                                               ])
         self.arm_subgoal_threshold = 0.05
         self.failed_subgoal_penalty = -0.0
 
@@ -266,8 +276,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def prepare_scene(self):
         if self.scene.model_id == 'Avonia':
-            door_scales = [1.0, 0.9]
-            self.door_positions = [[-3.5, 0, 0.0], [-1.2, -2.47, 0.0]]
+            door_scales = [
+                1.0,
+                0.9,
+            ]
+            self.door_positions = [
+                [-3.5, 0, 0.0],
+                [-1.2, -2.47, 0.0],
+            ]
             self.door_rotations = [np.pi / 2.0, -np.pi / 2.0]
             wall_poses = [
                 [[-3.5, 0.45, 0.45], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz')],
@@ -275,17 +291,27 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             ]
             self.door_target_pos = [
                 [[-5.5, -4.5], [-1.0, 1.0]],
-                [[0.5, 2.0], [-4.5, -3.0]]
+                [[0.5, 2.0], [-4.5, -3.0]],
             ]
 
-            button_scales = [2.0, 2.0]
+            button_scales = [
+                2.0,
+                2.0,
+            ]
             self.button_positions = [
                 [[-2.85, -2.85], [1.2, 1.7]],
                 [[-2.1, -1.6], [-2.95, -2.95]]
             ]
-            self.button_rotations = [-np.pi / 2.0, 0.0]
+            self.button_rotations = [
+                -np.pi / 2.0,
+                0.0,
+            ]
 
-            self.obstacle_poses = [[-3.5, 0.5, 0.6], [-3.5, -0.05, 0.6], [-3.5, -0.6, 0.6], [-3.5, -1.15, 0.6]]
+            self.obstacle_poses = [
+                [-3.5, 0.4, 0.6],
+                [-3.5, -0.3, 0.6],
+                [-3.5, -1.0, 0.6],
+            ]
 
             # TODO: initial_pos and target_pos sampling should also be put here (scene-specific)
 
@@ -652,12 +678,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :param arm_subgoal: [x, y, z] in the world frame
         :return: arm joint positions
         """
-        max_limits = [0., 0.] + get_max_limits(self.robot_id, self.arm_joint_ids)
-        min_limits = [0., 0.] + get_min_limits(self.robot_id, self.arm_joint_ids)
-        rest_position = [0., 0.] + list(get_joint_positions(self.robot_id, self.arm_joint_ids))
-        joint_range = list(np.array(max_limits) - np.array(min_limits))
-        joint_range = [item + 1 for item in joint_range]
-        joint_damping = [0.1 for _ in joint_range]
+        max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
 
         n_attempt = 0
         max_attempt = 50
@@ -676,7 +697,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                                restPoses=rest_position,
                                                                jointDamping=joint_damping,
                                                                solver=p.IK_DLS,
-                                                               maxNumIterations=100)[2:10]
+                                                               maxNumIterations=100)[2:11]
             set_joint_positions(self.robot_id, self.arm_joint_ids, arm_joint_positions)
 
             dist = l2_distance(self.robots[0].get_end_effector_position(), arm_subgoal)
@@ -773,6 +794,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             for obstacle, obstacle_state in zip(self.obstacles, self.obstacle_states):
                 p.resetBasePositionAndOrientation(obstacle.body_id, *obstacle_state)
 
+    def get_ik_parameters(self):
+        max_limits = [0., 0., np.pi / 12] + get_max_limits(self.robot_id, self.arm_joint_ids)
+        min_limits = [0., 0., np.pi / 12] + get_min_limits(self.robot_id, self.arm_joint_ids)
+        rest_position = [0., 0., np.pi / 12] + list(get_joint_positions(self.robot_id, self.arm_joint_ids))
+        joint_range = list(np.array(max_limits) - np.array(min_limits))
+        joint_range = [item + 1 for item in joint_range]
+        joint_damping = [0.1 for _ in joint_range]
+        return max_limits, min_limits, rest_position, joint_range, joint_damping
+
     def interact(self, action, arm_subgoal):
         """
         Move the arm according to push_vector and physically simulate the interaction
@@ -786,13 +816,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         # push_vector = np.array([-0.5, 0.0, 0.0])
 
-        max_limits = [0., 0.] + get_max_limits(self.robot_id, self.arm_joint_ids)
-        min_limits = [0., 0.] + get_min_limits(self.robot_id, self.arm_joint_ids)
-        rest_position = [0., 0.] + list(get_joint_positions(self.robot_id, self.arm_joint_ids))
-        joint_range = list(np.array(max_limits) - np.array(min_limits))
-        joint_range = [item + 1 for item in joint_range]
-        joint_damping = [0.1 for _ in joint_range]
-
+        max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
         base_pose = get_base_values(self.robot_id)
 
         # self.simulator.set_timestep(0.002)
@@ -808,7 +832,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                            restPoses=rest_position,
                                                            jointDamping=joint_damping,
                                                            solver=p.IK_DLS,
-                                                           maxNumIterations=100)[2:10]
+                                                           maxNumIterations=100)[2:11]
 
             # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
@@ -966,7 +990,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     button_pos = np.array([
                         np.random.uniform(button_pos_range[0][0], button_pos_range[0][1]),
                         np.random.uniform(button_pos_range[1][0], button_pos_range[1][1]),
-                        1.5
+                        1.2
                     ])
                     button.set_position_rotation(button_pos, quatToXYZW(euler2quat(0, 0, button_rotation), 'wxyz'))
                     p.resetJointState(button.body_id, self.button_axis_link_id,

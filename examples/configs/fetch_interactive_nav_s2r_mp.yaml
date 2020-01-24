@@ -32,7 +32,7 @@ potential_reward_weight: 1.0
 electricity_reward_weight: 0.0
 stall_torque_reward_weight: 0.0
 collision_reward_weight: -0.0
-collision_ignore_link_a_ids: [0, 1, 2, 3, 13, 20, 21, 22, 23, 24, 25, 26]  # ignore collision with these agent's link ids
+collision_ignore_link_a_ids: [0, 1, 2, 3, 20, 21, 22]  # ignore collision with these agent's link ids
 
 # discount factor
 discount_factor: 0.99
