@@ -264,7 +264,7 @@ class VisualObject(object):
 
 
 class BoxShape(object):
-    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], rgba_color=[1.0, 1.0, 1.0, 1.0]):
+    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], rgba_color=[1.0, 1.0, 1.0, 1.0], mass=1):
         self.basePos = pos
         self.dimension = dim
 
@@ -273,15 +273,16 @@ class BoxShape(object):
 
         self.body_id = None
 
+        self.mass = mass
+
 
     def load(self):
-        mass = 1000
         baseOrientation = [0, 0, 0, 1]
 
         self.collision_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
         visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.rgba_color)
 
-        self.body_id = p.createMultiBody(baseMass=mass,
+        self.body_id = p.createMultiBody(baseMass=self.mass,
                                          baseCollisionShapeIndex=self.collision_id,
                                          baseVisualShapeIndex=visualShapeId,
                                          basePosition=self.basePos,

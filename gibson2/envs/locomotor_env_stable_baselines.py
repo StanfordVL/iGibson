@@ -70,6 +70,8 @@ class NavigateEnv(BaseEnv):
         self.episode_distance = 0.0
         self.spl_sum = 0 # shortest path length (SPL)
         self.spl = 0     # average shortest path length  
+        
+        self.episode_start_time = time.time()
 
     def load(self):
         super(NavigateEnv, self).load()
@@ -115,6 +117,8 @@ class NavigateEnv(BaseEnv):
         self.output = self.config['output']
         self.n_horizontal_rays = self.config.get('n_horizontal_rays', 128)
         self.n_vertical_beams = self.config.get('n_vertical_beams', 9)
+        
+        self.num_pedestrians = self.config.get('num_pedestrians', 0)
 
         # TODO: sensor: observations that are passed as network input, e.g. target position in local frame
         # TODO: auxiliary sensor: observations that are not passed as network input, but used to maintain the same
@@ -124,10 +128,10 @@ class NavigateEnv(BaseEnv):
         
         self.observation_space = gym.spaces.Box(low=-1.0,
                                            high=1.0,
-                                           shape=(2 + self.config['n_horizontal_rays'],),
+                                           shape=(2 + self.config['n_horizontal_rays'] + 5 * self.num_pedestrians,),
                                            dtype=np.float32)
         
-        #observation_space = OrderedDict()
+#        observation_space = OrderedDict()
 #        if 'concatenate' in self.output:
 #            self.concatenate_space = gym.spaces.Box(low=-np.inf,
 #                                               high=np.inf,
@@ -166,12 +170,16 @@ class NavigateEnv(BaseEnv):
 #                                                      self.config['resolution'], 1),
 #                                               dtype=np.float32)
 #             observation_space['depth'] = self.depth_space
-#         if 'scan' in self.output:
-#             self.scan_space = gym.spaces.Box(low=-np.inf,
-#                                              high=np.inf,
-#                                              shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
-#                                              dtype=np.float32)
-#             observation_space['scan'] = self.scan_space
+        if 'scan' in self.output:
+            # self.scan_space = gym.spaces.Box(low=-np.inf,
+            #                                  high=np.inf,
+            #                                  shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
+            #                                  dtype=np.float32)
+            self.scan_space = gym.spaces.Box(low=0.0,
+                                             high=1.0,
+                                             shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
+                                             dtype=np.float32)
+            observation_space['scan'] = self.scan_space
 #             
 #         if 'rgb_filled' in self.output:  # use filler
 #             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
@@ -269,7 +277,8 @@ class NavigateEnv(BaseEnv):
         # cv2.imshow('rgb', rgb)
         # cv2.imshow('depth', depth)
 
-        state = OrderedDict()
+#         state = OrderedDict()
+#         
 #         if 'sensor' in self.output:
 #             state['sensor'] = sensor_state
 #         if 'auxiliary_sensor' in self.output:
@@ -290,38 +299,80 @@ class NavigateEnv(BaseEnv):
 #                 tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
 #                 rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
 #                 state['rgb_filled'] = rgb_filled
-# 
+#  
 #         if 'pointgoal' in self.output:
 #             state['pointgoal'] = sensor_state[:2]
-# 
-#         # TODO: figure out why 'scan' consumes so much cpu
+#  
 #         if 'scan' in self.output:
-#             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
-#             pose_camera = self.robots[0].parts['scan_link'].get_pose()
-#             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-#             elev_bottom_angle = -30. * np.pi / 180.
-#             elev_top_angle = 10. * np.pi / 180.
-#             elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-#                                    (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
-#             orig_offset = np.vstack([
-#                 np.vstack([np.cos(angle),
-#                            np.sin(angle),
-#                            np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
-#             ])
-#             transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-#             offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-#             pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+#             if self.config['robot'] == 'Turtlebot':
+#                 # Hokuyo URG-04LX-UG01
+#                 laser_linear_range = 5.6
+#                 laser_angular_range = 240.0
+#                 min_laser_dist = 0.05
+#                 laser_link_name = 'scan_link'
+#             elif self.config['robot'] == 'Fetch':
+#                 # SICK TiM571-2050101 Laser Range Finder
+#                 laser_linear_range = 25.0
+#                 laser_angular_range = 220.0
+#                 min_laser_dist = 0.1
+#                 laser_link_name = 'laser_link'
+#             elif self.config['robot'] == 'TurtlebotDifferentialDrive':
+#                 # SICK TiM571-2050101 Laser Range Finder
+#                 laser_linear_range = 25.0
+#                 laser_angular_range = 220.0
+#                 min_laser_dist = 0.1
+#                 laser_link_name = 'scan_link'
+#             else:
+#                 assert False, 'unknown robot for LiDAR observation'
 # 
-#             results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-#             hit = np.array([item[0] for item in results])
-#             dist = np.array([item[2] for item in results])
+#             laser_angular_half_range = laser_angular_range / 2.0
+#             laser_pose = self.robots[0].parts[laser_link_name].get_pose()
 # 
-#             valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-#             dist[~valid_pts] = 1.0  # zero out invalid pts
-#             dist *= 30
+#             # self.scan_vis.set_position(pos=laser_pose[:3])
 # 
-#             xyz = np.expand_dims(dist, 1) * orig_offset
-#             state['scan'] = xyz
+#             transform_matrix = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
+#             angle = np.arange(-laser_angular_half_range / 180 * np.pi,
+#                               laser_angular_half_range / 180 * np.pi,
+#                               laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
+#             unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+#             unit_vector_world = transform_matrix.dot(unit_vector_local.T).T
+#             start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
+#             start_pose += unit_vector_world * min_laser_dist
+#             end_pose = laser_pose[:3] + unit_vector_world * laser_linear_range
+#             results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
+#             # hit_object_id = np.array([item[0] for item in results])
+#             # link_id = np.array([item[1] for item in results])
+#             hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
+#             state['scan'] = np.expand_dims(hit_fraction, 1)
+
+            # assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+            # pose_camera = self.robots[0].parts['scan_link'].get_pose()
+            # angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+            # elev_bottom_angle = -30. * np.pi / 180.
+            # elev_top_angle = 10. * np.pi / 180.
+            # elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+            #                        (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+            # orig_offset = np.vstack([
+            #     np.vstack([np.cos(angle),
+            #                np.sin(angle),
+            #                np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+            # ])
+            # transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+            # offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+            # pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+            #
+            # results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            # hit = np.array([item[0] for item in results])
+            # dist = np.array([item[2] for item in results])
+            #
+            # valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+            # dist[~valid_pts] = 0.0  # zero out invalid pts
+            # dist *= 30
+            #
+            # xyz = np.expand_dims(dist, 1) * orig_offset
+            # state['scan'] = xyz
+
+#        return state
 # 
 #         if 'pedestrian' in self.output:
 #             ped_pos = self.get_ped_states()
@@ -370,41 +421,71 @@ class NavigateEnv(BaseEnv):
 #             state['waypoints'] = out.flatten()
 
         if 'concatenate' in self.output:
-            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
-            pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-            elev_bottom_angle = -15. * np.pi / 180.
-            elev_top_angle = 15. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
-            
-            elev_angle = [0.0]
-            orig_offset = np.vstack([
-                np.vstack([np.cos(angle),
-                           np.sin(angle),
-                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
-            ])
-            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+            if self.config['robot'] == 'Turtlebot':
+                # Hokuyo URG-04LX-UG01
+                laser_linear_range = 5.6
+                laser_angular_range = 240.0
+                min_laser_dist = 0.05
+                laser_link_name = 'scan_link'
+            elif self.config['robot'] == 'Fetch':
+                # SICK TiM571-2050101 Laser Range Finder
+                laser_linear_range = 25.0
+                laser_angular_range = 220.0
+                min_laser_dist = 0.1
+                laser_link_name = 'laser_link'
+            elif self.config['robot'] == 'TurtlebotDifferentialDrive':
+                # SICK TiM571-2050101 Laser Range Finder
+                laser_linear_range = 25.0
+                laser_angular_range = 220.0
+                min_laser_dist = 0.1
+                laser_link_name = 'scan_link'
+            else:
+                assert False, 'unknown robot for LiDAR observation'
+                
+            assert laser_link_name in self.robots[0].parts, "Requested scan but no scan_link"
 
-            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-            hit = np.array([item[0] for item in results])
-            dist = np.array([item[2] for item in results])
+            laser_angular_half_range = laser_angular_range / 2.0
+            laser_pose = self.robots[0].parts[laser_link_name].get_pose()
+
+            # self.scan_vis.set_position(pos=laser_pose[:3])
+
+            transform_matrix = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
+            angle = np.arange(-laser_angular_half_range / 180 * np.pi,
+                              laser_angular_half_range / 180 * np.pi,
+                              laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
+            unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+            unit_vector_world = transform_matrix.dot(unit_vector_local.T).T
+            start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
+            start_pose += unit_vector_world * min_laser_dist
+            end_pose = laser_pose[:3] + unit_vector_world * laser_linear_range
+            results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
+            # hit_object_id = np.array([item[0] for item in results])
+            # link_id = np.array([item[1] for item in results])
+            hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
+            state_scan = np.expand_dims(hit_fraction, 1)
                         
-            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-            dist[~valid_pts] = 1.0  # set invalid points to max range
+            # normalize goal coordinates using laser range
+            sensor_state /= laser_linear_range
             
-            dist *= 30
-            
-            #xyz = np.expand_dims(dist, 1) * orig_offset
-            #state_scan = xyz
-            
-            state_scan = dist
+            ped_pos = self.get_ped_positions()
+            rob_pos = self.robots[0].get_position()
+            ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+            ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
+            ped_robot_relative_pos /= laser_linear_range
+            state_pedestrian_position = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
 
-            state = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
+            ped_vel = self.get_ped_velocities()
+            rob_vel = self.robots[0].get_velocity()
+            ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+            ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
+            ped_robot_relative_vel /= laser_linear_range
+            state_pedestrian_velocity = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
 
-            state /= 30.0 # normalize by the max lidar range
+            ped_ttc = self.get_ped_time_to_collision()
+            ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
+            state_pedestrian_ttc = ped_robot_relative_ttc # [ttc1, ttc2, ...] in robot frame
+                                    
+            state = np.concatenate([sensor_state[0:2], state_scan, state_pedestrian_position, state_pedestrian_velocity, state_pedestrian_ttc], axis=None).flatten()
 
         return state
 
@@ -565,7 +646,7 @@ class NavigateEnv(BaseEnv):
                 self.n_collisions += 1
             
         elif l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
-            print("SUCCESS!")
+            print("SUCCESS!", self.current_step)
             done = True
             info['success'] = True
             self.n_successes += 1
@@ -755,6 +836,9 @@ class NavigatePedestriansEnv(NavigateEnv):
                                                 physics_timestep=physics_timestep,
                                                 automatic_reset=automatic_reset,
                                                 device_idx=device_idx)
+        
+        p.setPhysicsEngineParameter(numSolverIterations=10)
+
         self.random_height = random_height
         self.pedestrian_z = 0.03 # hard-coded.
 
@@ -791,6 +875,11 @@ class NavigatePedestriansEnv(NavigateEnv):
 
         humans = self.config.get('movements')['humans']
         agent = self.config.get('movements')['agent']
+
+        if self.walls:
+            self.walls_config = list(zip(self.walls['walls_pos'], self.walls['walls_dim']))
+        else:
+            self.walls_config = list()
 
         self.min_separation = self.config.get('humans')['radius'] * 2 + 0.05
         print('min separation: {}'.format(self.min_separation))
@@ -887,13 +976,8 @@ class NavigatePedestriansEnv(NavigateEnv):
             if self.pedestrians_can_see_robot:
                 ob += [self.get_robot_observable_state()]
                 #self.pedestrian_simulator.setAgentPosition(self.robot_as_pedestrian_id, tuple(self.robots[0].get_position()[:2]))
-
-            if self.walls:
-                walls_config = list(zip(self.walls['walls_pos'], self.walls['walls_dim']))
-            else:
-                walls_config = list()
                 
-            human_actions.append(human.act(ob, walls=walls_config, obstacles=self.obstacles))
+            human_actions.append(human.act(ob, walls=self.walls_config, obstacles=self.obstacles))
 
             # Set next goal if close to current one.
             if l2_distance(np.array(human.get_goal_position()), self.pedestrians[i].get_position()) < self.pedestrian_dist_tol:
@@ -918,10 +1002,12 @@ class NavigatePedestriansEnv(NavigateEnv):
         
         # collect reward
         reward, info = self.get_reward(collision_links, action, info)
+        
+        self.current_step += 1
 
         # check for a termination result
         done, info = self.get_termination(collision_links, info)
-        
+                
         # Update distance metrics
         self.time_elapsed += self.action_timestep
 
@@ -935,13 +1021,16 @@ class NavigatePedestriansEnv(NavigateEnv):
                 
         self.last_robot_px = robot_position[0]
         self.last_robot_py = robot_position[1]
-        
-        self.current_step += 1
-
-        if done:
-            #print(info)
+                
+        if done:            
             print("episodes:", self.current_episode, [(key, np.around(info[key][0], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
-
+            
+            delta_t = time.time() - self.episode_start_time
+            
+            print("FPS:", self.current_step / delta_t)
+            
+            self.episode_start_time = time.time()
+            
             if self.automatic_reset:
                 info['last_observation'] = state
                 state = self.reset()
@@ -1033,11 +1122,8 @@ class NavigatePedestriansEnv(NavigateEnv):
         info['ped_collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_collisions / self.current_episode,
         info['ped_hits_robot_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_hits_robot / self.current_episode,
         info['timeout_rate'] = 0 if self.current_episode == 0 else 100 * self.n_timeouts / self.current_episode,
-        info['shortest_path_length'] = None if self.current_episode == 0 else [self.spl]
-        
-        if self.success:
-            print(reward)
-                         
+        info['shortest_path_length'] = 0 if self.current_episode == 0 else [self.spl]
+ 
         return reward, info
 
     def update_pedestrian_goal_markers(self, pedestrian_goals):
@@ -1263,10 +1349,6 @@ class NavigatePedestriansEnv(NavigateEnv):
 
         # TODO: replace hard coded robot radius and personal space radius
         return ObservableState(px, py, theta, vx, vy, vr, 0.3, 0.6)
-
-#     def reset(self):
-#         return super(NavigatePedestriansEnv, self).reset()
-
     
 class InteractiveNavigateEnv(NavigateEnv):
     def __init__(self,
@@ -1958,7 +2040,7 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         nav_env.reset()
-        for i in range(nav_env.config.get('max_step', 500)):  # 500 steps, 50s world time
+        for i in range(nav_env.config.get('max_step', 100)):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             # action[:] = 0
             # if nav_env.stage == 0:
