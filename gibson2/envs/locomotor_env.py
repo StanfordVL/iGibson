@@ -139,7 +139,7 @@ class NavigateEnv(BaseEnv):
 
 # Master =======
 #         # ignore the agent's collision with these body ids, typically ids of the ground
-        self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', []))
+        self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', self.scene_ids))
         self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
 
         # discount factor
@@ -147,6 +147,15 @@ class NavigateEnv(BaseEnv):
         self.output = self.config['output']
         self.n_horizontal_rays = self.config.get('n_horizontal_rays', 128)
         self.n_vertical_beams = self.config.get('n_vertical_beams', 9)
+        
+
+        # obstacles
+        self.num_obstacles = self.config.get('num_obstacles', 0)        
+
+        # pedestrians
+        self.num_pedestrians = self.config.get('num_pedestrians', 0)
+        self.pedestrians_can_see_robot = self.config['pedestrians_can_see_robot']        
+        self.randomize_pedestrian_attributes = self.config.get('randomize_pedestrian_attributes', False)
 
         # TODO: sensor: observations that are passed as network input, e.g. target position in local frame
         # TODO: auxiliary sensor: observations that are not passed as network input, but used to maintain the same
@@ -242,6 +251,7 @@ class NavigateEnv(BaseEnv):
             observation_space['pedestrian'] = self.pedestrian_space
             
         if 'pedestrian_position' in self.output:
+            # print('NUMBER OF PEDESTRIANS called once: {}'.format(self.num_pedestrians))
             self.pedestrian_position_space = gym.spaces.Box(low=-np.inf, high=np.inf,
                                                    shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
                                                    dtype=np.float32)
@@ -303,10 +313,10 @@ class NavigateEnv(BaseEnv):
 
 
 
-        # if self.config.get('target_visual_object_visible_to_agent', False):
-            # self.simulator.import_object(self.target_pos_vis_obj, class_id=255)
-        # else:
-        self.target_pos_vis_obj.load()
+        if self.config.get('target_visual_object_visible_to_agent', False):
+            self.simulator.import_object(self.target_pos_vis_obj, class_id=255)
+        else:
+            self.target_pos_vis_obj.load()
     
     def get_additional_states(self):
         relative_position = self.current_target_position - self.robots[0].get_position()
@@ -378,38 +388,74 @@ class NavigateEnv(BaseEnv):
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
 
-        if 'scan' in self.output:
-            depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            state['scan'] = np.amin(depth_lidar, axis=1)
+        # if 'scan' in self.output:
+            # depth_lidar = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+            # state['scan'] = np.amin(depth_lidar, axis=1)
 
         # TODO: figure out why 'scan' consumes so much cpu
-        # if 'scan' in self.output:
-        #     assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
-        #     pose_camera = self.robots[0].parts['scan_link'].get_pose()
-        #     angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-        #     elev_bottom_angle = -30. * np.pi / 180.
-        #     elev_top_angle = 10. * np.pi / 180.
-        #     elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-        #                            (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
-        #     orig_offset = np.vstack([
-        #         np.vstack([np.cos(angle),
-        #                    np.sin(angle),
-        #                    np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
-        #     ])
-        #     transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-        #     offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-        #     pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+        if 'scan' in self.output:
+            """
+            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+            pose_camera = self.robots[0].parts['scan_link'].get_pose()
+            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+            elev_bottom_angle = -30. * np.pi / 180.
+            elev_top_angle = 10. * np.pi / 180.
+            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+            orig_offset = np.vstack([
+                np.vstack([np.cos(angle),
+                           np.sin(angle),
+                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+            ])
+            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
 
-        #     results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-        #     hit = np.array([item[0] for item in results])
-        #     dist = np.array([item[2] for item in results])
+            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            hit = np.array([item[0] for item in results])
+            dist = np.array([item[2] for item in results])
 
-        #     valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-        #     dist[~valid_pts] = 1.0  # zero out invalid pts
-        #     dist *= 30
+            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+            dist[~valid_pts] = 1.0  # zero out invalid pts
+            dist *= 30
 
-        #     xyz = np.expand_dims(dist, 1) * orig_offset
-        #     state['scan'] = xyz
+            xyz = np.expand_dims(dist, 1) * orig_offset
+            """
+            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+            pose_camera = self.robots[0].parts['scan_link'].get_pose()
+            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+            elev_bottom_angle = -15. * np.pi / 180.
+            elev_top_angle = 15. * np.pi / 180.
+            if self.n_vertical_beams > 1:
+                elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+            
+            else:
+                elev_angle = [0.0]
+            orig_offset = np.vstack([
+                np.vstack([np.cos(angle),
+                           np.sin(angle),
+                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+            ])
+            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+
+            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+            hit = np.array([item[0] for item in results])
+            dist = np.array([item[2] for item in results])
+                        
+            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+            dist[~valid_pts] = 1.0  # set invalid points to max range
+            
+            dist *= 30
+            
+            xyz = np.expand_dims(dist, 1) * orig_offset
+            #state_scan = xyz
+            
+            # state_scan = dist
+            state['scan'] = xyz
+
 
         if 'pedestrian' in self.output:
             ped_pos = self.get_ped_states()
@@ -464,10 +510,12 @@ class NavigateEnv(BaseEnv):
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
             elev_bottom_angle = -15. * np.pi / 180.
             elev_top_angle = 15. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+            if self.n_vertical_beams > 1:
+                elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
                                    (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
             
-            elev_angle = [0.0]
+            else:
+                elev_angle = [0.0]
             orig_offset = np.vstack([
                 np.vstack([np.cos(angle),
                            np.sin(angle),
@@ -491,9 +539,9 @@ class NavigateEnv(BaseEnv):
             
             state_scan = dist
 
-            state = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
+            state['concatenate'] = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
 
-            state /= 30.0 # normalize by the max lidar range
+            state['concatenate'] /= 30.0 # normalize by the max lidar range
         return state
 
         # if 'concatenate' in self.output:
@@ -665,8 +713,11 @@ class NavigateEnv(BaseEnv):
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
         # max_force = max([item[9] for item in collision_links_flatten]) if len(collision_links_flatten) > 0 else 0
 
+        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
+        
         if self.collision:
             print("COLLISION!")
+            assert self.current_step > 0, "Collision shouldn't be penalized during resetting!"
             done = True
             info['success'] = False
             
@@ -681,15 +732,14 @@ class NavigateEnv(BaseEnv):
             
         elif l2_distance(self.current_target_position, self.get_position_of_interest()) < self.dist_tol:
             print("SUCCESS!")
-
-        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
-        if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
-            print("GOAL")
+        # if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
+            # print("GOAL")
 
             done = True
             info['success'] = True
             self.n_successes += 1
 
+        # What is this branch?
         elif self.robots[0].get_position()[2] > floor_height + self.death_z_thresh:
             print("DEATH")
             done = True
@@ -707,6 +757,21 @@ class NavigateEnv(BaseEnv):
             info['collision_step'] = self.collision_step
             info['energy_cost'] = self.energy_cost
             info['stage'] = self.stage
+
+            info['episodes'] = self.current_episode
+            info['successes'] = self.n_successes,
+            info['collisions'] = self.n_collisions,
+            info['ped_collisions'] = self.n_ped_collisions,
+            info['ped_hits_robot'] = self.n_ped_hits_robot,
+            info['timeouts'] = self.n_timeouts,
+            info['personal_space_violations'] = 0 if self.distance_traveled == 0 else self.n_personal_space_violations / self.distance_traveled,
+            info['cutting_off'] = 0 if self.distance_traveled == 0 else self.n_cutting_off / self.distance_traveled,
+            info['success_rate'] = 0 if self.current_episode == 0 else 100 * self.n_successes / self.current_episode,
+            info['collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_collisions / self.current_episode,
+            info['ped_collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_collisions / self.current_episode,
+            info['ped_hits_robot_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_hits_robot / self.current_episode,
+            info['timeout_rate'] = 0 if self.current_episode == 0 else 100 * self.n_timeouts / self.current_episode,
+            info['shortest_path_length'] = None if self.current_episode == 0 else [self.spl]
 
             # Episode = collections.namedtuple('Episode',
             #                                  ['initial_pos',
@@ -819,19 +884,23 @@ class NavigateEnv(BaseEnv):
         """
         Reset the agent to a collision-free start point
         """
-        print('RESET')
+        # self.is_resetting = True
         self.current_episode += 1
         agent_reset = False
+        self.current_step = 0
+
         while not agent_reset:
-          agent_reset = self.reset_agent()
+            # print('reset agent!')
+            # print('is resetting: {}'.format(self.is_resetting))
+            agent_reset = self.reset_agent()
         state = self.get_state()
+        # self.is_resetting = False
 
         if self.reward_type == 'l2':
             self.potential = self.get_l2_potential()
         elif self.reward_type == 'dense':
             self.potential = self.get_potential()
 
-        self.current_step = 0
         self.collision_step = 0
         self.kinematic_disturbance = 0.0
         self.dynamic_disturbance_a = 0.0
@@ -1039,6 +1108,10 @@ class NavigatePedestriansEnv(NavigateEnv):
                 wall_dim = self.walls['walls_dim'][i]
                 box = BoxShape(pos=wall_pos, dim=wall_dim)
                 self.obstacle_ids.append(self.simulator.import_object(box))
+        print('=' * 100)
+        print('WALLS IDS: {}'.format(self.obstacle_ids))
+        print('SCENE IDS: {}'.format(self.scene_ids))
+        print('ROBOT IDS: {}'.format(self.robots[0].robot_ids[0]))
 
         ''' Obstacles '''
         self.obstacles = []
@@ -1091,7 +1164,9 @@ class NavigatePedestriansEnv(NavigateEnv):
     
     def step(self, action):
         # compute the next human actions from the current observations
+        # print('self.is_resetting: {}'.format(self.is_resetting))
         human_actions = []
+        # print('step is called!!!')
         
         for i, human in enumerate(self.humans):
             # get the positions and velocities of other humans
@@ -1130,13 +1205,29 @@ class NavigatePedestriansEnv(NavigateEnv):
         
         # get the next state
         state = self.get_state(collision_links)
+
+        # import matplotlib.pyplot as plt
+        # print('=' * 100)
+        # print('2D: {}'.format(state['sensor']))
+        # print('DEPTH: {}'.format(state['depth'][:, :, 0]))
+        # print('DEPTH shape: {}'.format(state['depth'].shape))
+        # plt.imshow(state['depth'][:, :, 0], cmap='gray')
+        # plt.show()
+        # xit(0)
+        # print('RGB: {}'.format(state['rgb']))
+        # print('=' * 100)
         
         # collect reward
         info = {}
+        # if not self.is_resetting:
         reward, info = self.get_reward(collision_links, action, info)
-        
         # check for a termination result
+        self.current_step += 1
         done, info = self.get_termination(collision_links, info)
+
+        # else:
+            # print('REWARD: {}'.format(reward))
+            # print('DONE: {}'.format(done))
 
         # Update distance metrics
         self.time_elapsed += self.action_timestep
@@ -1152,15 +1243,15 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.last_robot_px = robot_position[0]
         self.last_robot_py = robot_position[1]
         
-        self.current_step += 1
 
         if done:
-            #print(info)
-            print("episodes:", self.current_episode, [(key, np.around(info[key][0], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
-
+            # print('Episodes: {}\n--Return:{}\n--Success Rate: {}\n--COLLISION RATE: {}\n--TIMEOUT RATE: {}\n--PEDESTRIAN HIT ROBOT RATE:{}\n'.format())
+            print("Episodes:", self.current_episode, [(key, np.around(info[key][0], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
+            # TODO: add return here?
             if self.automatic_reset:
                 info['last_observation'] = state
                 state = self.reset()
+            print('=' * 100)
                     
         return state, reward, done, info
 
@@ -1376,7 +1467,7 @@ class NavigatePedestriansEnv(NavigateEnv):
             self.compute_metrics()
             
         # Select new positions for obstacles
-        self.reset_obstacles()
+        # self.reset_obstacles()
 
         # Select new positions and goals for pedestrians
         # self.reset_pedestrians()
@@ -1420,7 +1511,8 @@ class NavigatePedestriansEnv(NavigateEnv):
         # no_collision = len(collision_links) == 0
         no_collision = True
         for collision_link in collision_links:
-          no_collision = False
+            if collision_link != []:
+                no_collision = False
 
         # Compute the shortest distance to this goal (TODO: account for obstacles!)
         robot_position = self.robots[0].get_position()
@@ -1431,8 +1523,8 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.episode_distance = 0.0
         self.episode_time = 0.0
 
-        #return no_collision
-        return True
+        return no_collision
+        # return True
     
     def compute_metrics(self):
         if self.success:
@@ -2456,5 +2548,5 @@ if __name__ == '__main__':
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
                 break
-        print(time.time() - start)
+        # print(time.time() - start)
     nav_env.clean()

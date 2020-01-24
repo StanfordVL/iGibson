@@ -42,7 +42,9 @@ class Viewer:
 
         if not self.renderer is None:
             frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=('rgb', 'seg')), axis=1),
-                                 cv2.COLOR_RGB2BGR)
+                                cv2.COLOR_RGB2BGR)
+            # frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=('rgb', '3d')), axis=1),
+                                 # cv2.COLOR_RGB2BGR)
         else:
             frame = np.zeros((300, 300, 3)).astype(np.uint8)
         #cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
@@ -66,9 +68,15 @@ class Viewer:
             exit()
 
         if not self.renderer is None:
-            frames = self.renderer.render_robot_cameras(modes=('rgb', 'seg'))
+            # frames = self.renderer.render_robot_cameras(modes=('rgb', 'seg'))
+            frames = self.renderer.render_robot_cameras(modes=('rgb', '3d'))
+            # print('FRAMES LENGTH: {}'.format(len(frames)))
+            # print('FRAMES RGB: {}'.format(frames[0].shape))
+            # print('FRAMES DEPTH: {}'.format(frames[1].shape))
+            frame_rgb = frames[0][:, :, :3]
+            frame_depth = np.repeat(-frames[1][:, :, 2:3], 3, axis=2)
             if len(frames) > 0:
-                frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
+                frame = cv2.cvtColor(np.concatenate([frame_rgb, frame_depth], axis=1), cv2.COLOR_RGB2BGR)
                 cv2.imshow('robot_rgb_view', frame)
 
 
