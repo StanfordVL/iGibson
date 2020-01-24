@@ -206,13 +206,22 @@ class NavigateEnv(BaseEnv):
                                                      1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
-        if 'scan' in self.output:
-            self.scan_space = gym.spaces.Box(low=-np.inf,
-                                              high=np.inf,
-                                              shape=(self.config.get('resolution', 64),
-                                                     1),
-                                              dtype=np.float32)
-            observation_space['scan'] = self.scan_space
+        # if 'scan' in self.output:
+            # We use xyz position for now. If use distance, need to change last dimension to 1.
+            # self.scan_space = gym.spaces.Box(low=-np.inf,
+                                            # high=np.inf,
+                                            # shape=(self.config.get('n_vertical_beams', 1),
+                                                # self.config.get('n_horizontal_rays', 720),
+                                                # 3), 
+                                            # dtype=np.float32)
+            # print('=' * 100)
+            # print('scan space: {}'.format(self.scan_space))
+            # self.scan_space = gym.spaces.Box(low=-np.inf,
+                                            # high=np.inf,
+                                            # shape=(self.config.get('resolution', 64),
+                                                     # 1),
+                                              # dtype=np.float32)
+            # observation_space['scan'] = self.scan_space
             
         if 'seg' in self.output:
             self.seg_space = gym.spaces.Box(low=0.0,
@@ -230,12 +239,12 @@ class NavigateEnv(BaseEnv):
                                                          2),
                                                   dtype=np.float32)
             observation_space['depth_seg'] = self.depth_seg_space
-        # if 'scan' in self.output:
-        #     self.scan_space = gym.spaces.Box(low=-np.inf,
-        #                                      high=np.inf,
-        #                                      shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
-        #                                      dtype=np.float32)
-        #     observation_space['scan'] = self.scan_space
+        if 'scan' in self.output:
+            self.scan_space = gym.spaces.Box(low=-np.inf,
+                                             high=np.inf,
+                                             shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
+                                             dtype=np.float32)
+            observation_space['scan'] = self.scan_space
             
         if 'rgb_filled' in self.output:  # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
@@ -1246,7 +1255,7 @@ class NavigatePedestriansEnv(NavigateEnv):
 
         if done:
             # print('Episodes: {}\n--Return:{}\n--Success Rate: {}\n--COLLISION RATE: {}\n--TIMEOUT RATE: {}\n--PEDESTRIAN HIT ROBOT RATE:{}\n'.format())
-            print("Episodes:", self.current_episode, [(key, np.around(info[key][0], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
+            # print("Episodes:", self.current_episode, [(key, np.around(info[key][0], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
             # TODO: add return here?
             if self.automatic_reset:
                 info['last_observation'] = state

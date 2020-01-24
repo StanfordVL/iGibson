@@ -380,7 +380,6 @@ class Simulator:
         """
         Step the simulation and update positions in renderer
         """
-
         p.stepSimulation()
         for instance in self.renderer.instances:
             if instance.dynamic:

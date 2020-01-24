@@ -69,12 +69,16 @@ class Viewer:
 
         if not self.renderer is None:
             # frames = self.renderer.render_robot_cameras(modes=('rgb', 'seg'))
+            # just for our own use.
             frames = self.renderer.render_robot_cameras(modes=('rgb', '3d'))
             # print('FRAMES LENGTH: {}'.format(len(frames)))
             # print('FRAMES RGB: {}'.format(frames[0].shape))
             # print('FRAMES DEPTH: {}'.format(frames[1].shape))
             frame_rgb = frames[0][:, :, :3]
-            frame_depth = np.repeat(-frames[1][:, :, 2:3], 3, axis=2)
+            frame_depth = -frames[1][:, :, 2:3]
+            # frame_lidar = np.amin(frame_depth, axis=1)
+            frame_depth = np.repeat(frame_depth, 3, axis=2)
+            # frame_lidar = np.repeat(frame_lidar, 3, axis=2)
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate([frame_rgb, frame_depth], axis=1), cv2.COLOR_RGB2BGR)
                 cv2.imshow('robot_rgb_view', frame)
