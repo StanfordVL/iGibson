@@ -938,6 +938,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             door_angle_diff = new_door_angle - self.door_angles[self.door_idx]
             reward += door_angle_diff
             self.door_angles[self.door_idx] = new_door_angle
+        elif self.arena == 'obstacles':
+            new_obstacles_moved_dist = 0.0
+            for obstacle, original_obstacle_pose in zip(self.obstacles, self.obstacle_poses):
+                obstacle_pose = get_base_values(obstacle.body_id)
+                new_obstacles_moved_dist += l2_distance(np.array(obstacle_pose[:2]),
+                                                        original_obstacle_pose[:2])
+            obstacles_moved_dist_diff = new_obstacles_moved_dist - self.obstacles_moved_dist
+            reward += (obstacles_moved_dist_diff * 5.0)
+            # print('obstacles_moved_dist_diff', obstacles_moved_dist_diff)
+            self.obstacles_moved_dist = new_obstacles_moved_dist
 
         if not use_base:
             set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
@@ -999,6 +1009,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.obstacle_states = [None] * len(self.obstacles)
             for obstacle, obstacle_pose in zip(self.obstacles, self.obstacle_poses):
                 set_base_values_with_z(obstacle.body_id, [obstacle_pose[0], obstacle_pose[1], 0], 0.6)
+            self.obstacles_moved_dist = 0.0
 
     def reset(self):
         state = super(MotionPlanningBaseArmEnv, self).reset()
