@@ -580,7 +580,6 @@ class Fetch(LocomotorRobot):
         robot_id = self.robot_ids[0]
         arm_joints = joints_from_names(robot_id,
                                        [
-                                           'head_tilt_joint',
                                            'torso_lift_joint',
                                            'shoulder_pan_joint',
                                            'shoulder_lift_joint',
@@ -591,7 +590,6 @@ class Fetch(LocomotorRobot):
                                            'wrist_roll_joint'
                                        ])
         rest_position = (
-            np.pi / 12,
             0.02, np.pi / 2.0,
             np.pi / 2.0, 0.0,
             np.pi / 2.0, 0.0,

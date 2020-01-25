@@ -251,7 +251,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         #                                     1.7404867100093226, -0.0962895617312548,
         #                                     -1.4418232619629425, -1.6780152866247762)
         self.arm_default_joint_positions = (
-            np.pi / 12,
             0.02, np.pi / 2.0,
             np.pi / 2.0, 0.0,
             np.pi / 2.0, 0.0,
@@ -259,7 +258,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         )
         self.arm_joint_ids = joints_from_names(self.robot_id,
                                                [
-                                                   'head_tilt_joint',
                                                    'torso_lift_joint',
                                                    'shoulder_pan_joint',
                                                    'shoulder_lift_joint',
@@ -276,13 +274,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def prepare_scene(self):
         if self.scene.model_id == 'Avonia':
+            # push_door, button_door
             door_scales = [
                 1.0,
                 0.9,
             ]
             self.door_positions = [
-                [-3.5, 0, 0.0],
-                [-1.2, -2.47, 0.0],
+                [-3.5, 0, 0.02],
+                [-1.2, -2.47, 0.02],
             ]
             self.door_rotations = [np.pi / 2.0, -np.pi / 2.0]
             wall_poses = [
@@ -294,6 +293,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 [[0.5, 2.0], [-4.5, -3.0]],
             ]
 
+            # button_door
             button_scales = [
                 2.0,
                 2.0,
@@ -307,10 +307,25 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 0.0,
             ]
 
+            # obstacles
             self.obstacle_poses = [
                 [-3.5, 0.4, 0.6],
                 [-3.5, -0.3, 0.6],
                 [-3.5, -1.0, 0.6],
+            ]
+
+            # semantic_obstacles
+            self.semantic_obstacle_poses = [
+                [-3.5, 0.2, 0.6],
+                [-3.5, -1.0, 0.6],
+            ]
+            self.semantic_obstacle_masses = [
+                1.0,
+                10000.0,
+            ]
+            self.semantic_obstacle_colors = [
+                [1.0, 0.0, 0.0, 1],
+                [0.0, 1.0, 0.0, 1],
             ]
 
             # TODO: initial_pos and target_pos sampling should also be put here (scene-specific)
@@ -356,6 +371,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.obstacles = []
             for obstacle_pose in self.obstacle_poses:
                 obstacle = BoxShape(pos=obstacle_pose, dim=[0.25, 0.25, 0.5], mass=10, color=[1, 0.64, 0, 1])
+                self.simulator.import_interactive_object(obstacle, class_id=4)
+                p.changeDynamics(obstacle.body_id, -1, lateralFriction=0.5)
+                self.obstacles.append(obstacle)
+
+        elif self.arena == 'semantic_obstacles':
+            self.obstacles = []
+            for pose, mass, color in \
+                    zip(self.semantic_obstacle_poses, self.semantic_obstacle_masses, self.semantic_obstacle_colors):
+                obstacle = BoxShape(pos=pose, dim=[0.3, 0.3, 0.5], mass=mass, color=color)
                 self.simulator.import_interactive_object(obstacle, class_id=4)
                 p.changeDynamics(obstacle.body_id, -1, lateralFriction=0.5)
                 self.obstacles.append(obstacle)
@@ -697,7 +721,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                                restPoses=rest_position,
                                                                jointDamping=joint_damping,
                                                                solver=p.IK_DLS,
-                                                               maxNumIterations=100)[2:11]
+                                                               maxNumIterations=100)[2:10]
             set_joint_positions(self.robot_id, self.arm_joint_ids, arm_joint_positions)
 
             dist = l2_distance(self.robots[0].get_end_effector_position(), arm_subgoal)
@@ -772,7 +796,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if self.arena == 'button_door':
                 for i, button in enumerate(self.buttons):
                     self.button_states[i] = p.getJointState(button.body_id, self.button_axis_link_id)[0]
-        elif self.arena == 'obstacles':
+        elif self.arena in ['obstacles', 'semantic_obstacles']:
             for i, obstacle in enumerate(self.obstacles):
                 self.obstacle_states[i] = p.getBasePositionAndOrientation(obstacle.body_id)
 
@@ -790,14 +814,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 for button, button_state in zip(self.buttons, self.button_states):
                     p.resetJointState(button.body_id, self.button_axis_link_id,
                                       targetValue=button_state, targetVelocity=0.0)
-        elif self.arena == 'obstacles':
+        elif self.arena in ['obstacles', 'semantic_obstacles']:
             for obstacle, obstacle_state in zip(self.obstacles, self.obstacle_states):
                 p.resetBasePositionAndOrientation(obstacle.body_id, *obstacle_state)
 
     def get_ik_parameters(self):
-        max_limits = [0., 0., np.pi / 12] + get_max_limits(self.robot_id, self.arm_joint_ids)
-        min_limits = [0., 0., np.pi / 12] + get_min_limits(self.robot_id, self.arm_joint_ids)
-        rest_position = [0., 0., np.pi / 12] + list(get_joint_positions(self.robot_id, self.arm_joint_ids))
+        max_limits = [0., 0.] + get_max_limits(self.robot_id, self.arm_joint_ids)
+        min_limits = [0., 0.] + get_min_limits(self.robot_id, self.arm_joint_ids)
+        rest_position = [0., 0.] + list(get_joint_positions(self.robot_id, self.arm_joint_ids))
         joint_range = list(np.array(max_limits) - np.array(min_limits))
         joint_range = [item + 1 for item in joint_range]
         joint_damping = [0.1 for _ in joint_range]
@@ -832,14 +856,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                            restPoses=rest_position,
                                                            jointDamping=joint_damping,
                                                            solver=p.IK_DLS,
-                                                           maxNumIterations=100)[2:11]
+                                                           maxNumIterations=100)[2:10]
 
             # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
             self.simulator_step()
             set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
 
-            if self.arena == 'obstacles':
+            if self.arena in ['obstacles', 'semantic_obstacles']:
                 self.reset_obstacles_z()
 
             if self.eval:
@@ -948,6 +972,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             reward += (obstacles_moved_dist_diff * 5.0)
             # print('obstacles_moved_dist_diff', obstacles_moved_dist_diff)
             self.obstacles_moved_dist = new_obstacles_moved_dist
+        elif self.arena == 'semantic_obstacles':
+            new_obstacles_moved_dist = 0.0
+            for obstacle, original_obstacle_pose in zip(self.obstacles, self.semantic_obstacle_poses):
+                obstacle_pose = get_base_values(obstacle.body_id)
+                new_obstacles_moved_dist += l2_distance(np.array(obstacle_pose[:2]),
+                                                        original_obstacle_pose[:2])
+            obstacles_moved_dist_diff = new_obstacles_moved_dist - self.obstacles_moved_dist
+            reward += (obstacles_moved_dist_diff * 5.0)
+            # print('obstacles_moved_dist_diff', obstacles_moved_dist_diff)
+            self.obstacles_moved_dist = new_obstacles_moved_dist
 
         if not use_base:
             set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
@@ -964,7 +998,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return state, reward, done, info
 
     def reset_initial_and_target_pos(self):
-        if self.arena in ['button_door', 'push_door', 'obstacles']:
+        if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles']:
             floor_height = self.scene.get_floor_height(self.floor_num)
             self.initial_height = floor_height + self.random_init_z_offset
             self.initial_pos = np.array([1.2, 0.0, floor_height])
@@ -1005,11 +1039,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     button.set_position_rotation(button_pos, quatToXYZW(euler2quat(0, 0, button_rotation), 'wxyz'))
                     p.resetJointState(button.body_id, self.button_axis_link_id,
                                       targetValue=button_state, targetVelocity=0.0)
-        elif self.arena == 'obstacles':
+        elif self.arena in ['obstacles', 'semantic_obstacles']:
             self.obstacle_states = [None] * len(self.obstacles)
-            for obstacle, obstacle_pose in zip(self.obstacles, self.obstacle_poses):
-                set_base_values_with_z(obstacle.body_id, [obstacle_pose[0], obstacle_pose[1], 0], 0.6)
             self.obstacles_moved_dist = 0.0
+
+            if self.arena == 'semantic_obstacles':
+                np.random.shuffle(self.semantic_obstacle_poses)
+                obstacle_poses = self.semantic_obstacle_poses
+            else:
+                obstacle_poses = self.obstacle_poses
+
+            for obstacle, obstacle_pose in zip(self.obstacles, obstacle_poses):
+                set_base_values_with_z(obstacle.body_id, [obstacle_pose[0], obstacle_pose[1], 0], 0.6)
 
     def reset(self):
         state = super(MotionPlanningBaseArmEnv, self).reset()
@@ -1031,7 +1072,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--arena',
                         '-a',
-                        choices=['button_door', 'push_door', 'obstacles'],
+                        choices=['button_door', 'push_door', 'obstacles', 'semantic_obstacles'],
                         default='push_door',
                         help='which arena to train or test (default: push_door)')
 
