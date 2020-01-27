@@ -188,20 +188,20 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                        random_height=False,
                                                        device_idx=device_idx)
 
-        # # real sensor spec for Fetch
-        # resolution = self.config.get('resolution', 64)
-        # width = resolution
-        # height = int(width * (480.0 / 640.0))
-        # if 'rgb' in self.output:
-        #     self.observation_space.spaces['rgb'] = gym.spaces.Box(low=0.0,
-        #                                                           high=1.0,
-        #                                                           shape=(height, width, 3),
-        #                                                           dtype=np.float32)
-        # if 'depth' in self.output:
-        #     self.observation_space.spaces['depth'] = gym.spaces.Box(low=0.0,
-        #                                                             high=1.0,
-        #                                                             shape=(height, width, 1),
-        #                                                             dtype=np.float32)
+        # real sensor spec for Fetch
+        resolution = self.config.get('resolution', 64)
+        width = resolution
+        height = int(width * (480.0 / 640.0))
+        if 'rgb' in self.output:
+            self.observation_space.spaces['rgb'] = gym.spaces.Box(low=0.0,
+                                                                  high=1.0,
+                                                                  shape=(height, width, 3),
+                                                                  dtype=np.float32)
+        if 'depth' in self.output:
+            self.observation_space.spaces['depth'] = gym.spaces.Box(low=0.0,
+                                                                    high=1.0,
+                                                                    shape=(height, width, 1),
+                                                                    dtype=np.float32)
 
         self.arena = arena
         self.eval = eval
@@ -323,15 +323,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             # obstacles
             self.obstacle_poses = [
-                [-3.5, 0.4, 0.6],
-                [-3.5, -0.3, 0.6],
-                [-3.5, -1.0, 0.6],
+                [-3.5, 0.4, 0.7],
+                [-3.5, -0.3, 0.7],
+                [-3.5, -1.0, 0.7],
             ]
 
             # semantic_obstacles
             self.semantic_obstacle_poses = [
-                [-3.5, 0.15, 0.6],
-                [-3.5, -0.95, 0.6],
+                [-3.5, 0.15, 0.7],
+                [-3.5, -0.95, 0.7],
             ]
             self.semantic_obstacle_masses = [
                 1.0,
@@ -384,7 +384,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         elif self.arena == 'obstacles':
             self.obstacles = []
             for obstacle_pose in self.obstacle_poses:
-                obstacle = BoxShape(pos=obstacle_pose, dim=[0.25, 0.25, 0.5], mass=10, color=[1, 0.64, 0, 1])
+                obstacle = BoxShape(pos=obstacle_pose, dim=[0.25, 0.25, 0.6], mass=10, color=[1, 0.64, 0, 1])
                 self.simulator.import_interactive_object(obstacle, class_id=4)
                 p.changeDynamics(obstacle.body_id, -1, lateralFriction=0.5)
                 self.obstacles.append(obstacle)
@@ -393,7 +393,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.obstacles = []
             for pose, mass, color in \
                     zip(self.semantic_obstacle_poses, self.semantic_obstacle_masses, self.semantic_obstacle_colors):
-                obstacle = BoxShape(pos=pose, dim=[0.35, 0.35, 0.5], mass=mass, color=color)
+                obstacle = BoxShape(pos=pose, dim=[0.35, 0.35, 0.6], mass=mass, color=color)
                 self.simulator.import_interactive_object(obstacle, class_id=4)
                 p.changeDynamics(obstacle.body_id, -1, lateralFriction=0.5)
                 self.obstacles.append(obstacle)
@@ -403,7 +403,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.mesh_id = self.scene.mesh_body_id
         self.map_size = self.scene.trav_map_original_size * self.scene.trav_map_default_resolution
 
-        self.grid_resolution = 800
+        self.grid_resolution = 500
         self.occupancy_range = 5.0  # m
         robot_footprint_radius = 0.279
         self.robot_footprint_radius_in_map = int(robot_footprint_radius / self.occupancy_range * self.grid_resolution)
@@ -465,7 +465,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         scan = state['scan']
 
         scan_laser = unit_vector_laser * (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
-        scan_laser = np.concatenate([np.array([[0, 0 ,0]]), scan_laser, np.array([[0, 0, 0]])], axis=0)
+        # scan_laser = np.concatenate([np.array([[0, 0 ,0]]), scan_laser, np.array([[0, 0, 0]])], axis=0)
 
         laser_translation = laser_pose[:3]
         laser_rotation = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])
@@ -475,6 +475,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         base_rotation = quat2mat([base_pose[6], base_pose[3], base_pose[4], base_pose[5]])
         scan_local = base_rotation.T.dot((scan_world - base_translation).T).T
         scan_local = scan_local[:, :2]
+        scan_local = np.concatenate([np.array([[0, 0]]), scan_local, np.array([[0, 0]])], axis=0)
 
         # flip y axis
         scan_local[:, 1] *= -1
@@ -489,9 +490,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         cv2.circle(occupancy_grid, (self.grid_resolution // 2, self.grid_resolution // 2),
                    int(self.robot_footprint_radius_in_map), 1, -1)
 
-        cv2.rectangle(occupancy_grid, (self.grid_resolution // 2, self.grid_resolution // 2 - int(self.robot_footprint_radius_in_map + 2)),
-                      (self.grid_resolution // 2 + int(self.robot_footprint_radius_in_map), self.grid_resolution // 2 + int(self.robot_footprint_radius_in_map + 2)), \
-                      1, -1)
+        # cv2.rectangle(occupancy_grid, (self.grid_resolution // 2, self.grid_resolution // 2 - int(self.robot_footprint_radius_in_map + 2)),
+        #               (self.grid_resolution // 2 + int(self.robot_footprint_radius_in_map), self.grid_resolution // 2 + int(self.robot_footprint_radius_in_map + 2)), \
+        #               1, -1)
 
         # self.n_occ_img += 1
         # cv2.imwrite('occupancy_grid{:04d}.png'.format(self.n_occ_img), (occupancy_grid * 200).astype(np.uint8))
@@ -572,14 +573,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def get_state(self, collision_links=[]):
         state = super(MotionPlanningBaseArmEnv, self).get_state(collision_links)
-        # for modality in ['depth', 'pc']:
-        #     if modality in state:
-        #         img = state[modality]
-        #         width = img.shape[0]
-        #         height = int(width * (480.0 / 640.0))
-        #         half_diff = int((width - height) / 2)
-        #         img = img[half_diff:half_diff+height, :]
-        #         state[modality] = img
+        for modality in ['depth', 'pc']:
+            if modality in state:
+                img = state[modality]
+                width = img.shape[0]
+                height = int(width * (480.0 / 640.0))
+                half_diff = int((width - height) / 2)
+                img = img[half_diff:half_diff+height, :]
+                state[modality] = img
 
         # cv2.imshow('depth', state['depth'])
         # cv2.imshow('scan', state['scan'])
@@ -687,7 +688,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         arm_subgoal = transform_mat.dot(np.array([-point[2], -point[0], point[1], 1]))[:3]
         self.arm_marker.set_position(arm_subgoal)
 
-        push_vector_local = np.array([action[6], action[7]])  # [-1.0, 1.0]
+        push_vector_local = np.array([action[6], action[7]]) * 0.5  # [-0.5, 0.5]
         push_vector = rotate_vector_2d(push_vector_local, -self.robots[0].get_rpy()[2])
         push_vector = np.append(push_vector, 0.0)
         self.arm_interact_marker.set_position(arm_subgoal + push_vector)
@@ -782,9 +783,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         """
         Make all obstacles perpendicular to the ground
         """
-        for obstacle in self.obstacles:
+        if self.arena == 'semantic_obstacles':
+            obstacle_poses = self.semantic_obstacle_poses
+        elif self.arena == 'obstacles':
+            obstacle_poses = self.obstacle_poses
+        else:
+            assert False
+
+        for obstacle, obstacle_original_pose in zip(self.obstacles, obstacle_poses):
             obstacle_pose = get_base_values(obstacle.body_id)
-            set_base_values_with_z(obstacle.body_id, obstacle_pose, 0.6)
+            set_base_values_with_z(obstacle.body_id, obstacle_pose, obstacle_original_pose[2])
 
     def reach_arm_subgoal(self, arm_joint_positions):
         """
@@ -860,7 +868,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :param arm_subgoal: starting location of the interaction
         :return: None
         """
-        push_vector_local = np.array([action[6], action[7]])  # [-1.0, 1.0]
+        push_vector_local = np.array([action[6], action[7]]) * 0.5  # [-0.5, 0.5]
         push_vector = rotate_vector_2d(push_vector_local, -self.robots[0].get_rpy()[2])
         push_vector = np.append(push_vector, 0.0)
 
@@ -963,7 +971,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         use_base = action[0] > 0.0
 
         # add action noise before execution
-        # action[1:] = np.clip(action[1:] + np.random.normal(0.0, 0.05, action.shape[0] - 1), -1.0, 1.0)
+        action[1:] = np.clip(action[1:] + np.random.normal(0.0, 0.05, action.shape[0] - 1), -1.0, 1.0)
 
         if use_base:
             subgoal_success = self.move_base(action)
@@ -1089,7 +1097,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 obstacle_poses = self.obstacle_poses
 
             for obstacle, obstacle_pose in zip(self.obstacles, obstacle_poses):
-                set_base_values_with_z(obstacle.body_id, [obstacle_pose[0], obstacle_pose[1], 0], 0.6)
+                set_base_values_with_z(obstacle.body_id, [obstacle_pose[0], obstacle_pose[1], 0], obstacle_pose[2])
 
     def reset(self):
         state = super(MotionPlanningBaseArmEnv, self).reset()
