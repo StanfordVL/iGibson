@@ -246,6 +246,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                        length=0.1,
                                        initial_offset=[0, 0, 0.1 / 2.0])
         self.arm_marker.load()
+
+        self.arm_interact_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
+                                                rgba_color=[1, 0, 1, 1],
+                                                radius=0.1,
+                                                length=0.1,
+                                                initial_offset=[0, 0, 0.1 / 2.0])
+        self.arm_interact_marker.load()
+
         # self.arm_default_joint_positions = (0.38548146667743244, 1.1522793897208579,
         #                                     1.2576467971105596, -0.312703569911879,
         #                                     1.7404867100093226, -0.0962895617312548,
@@ -271,6 +279,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.failed_subgoal_penalty = -0.0
 
         self.prepare_scene()
+
+        self.times = {}
+        for key in ['get_base_subgoal', 'reach_base_subgoal', 'get_arm_subgoal', 'stash_object_states',
+                    'get_arm_joint_positions', 'reach_arm_subgoal', 'reset_object_states', 'interact']:
+            self.times[key] = []
 
     def prepare_scene(self):
         if self.scene.model_id == 'Avonia':
@@ -549,18 +562,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def get_state(self, collision_links=[]):
         state = super(MotionPlanningBaseArmEnv, self).get_state(collision_links)
-        for modality in ['depth', 'pc']:
-            if modality in state:
-                img = state[modality]
-                # width = img.shape[0]
-                # height = int(width * (480.0 / 640.0))
-                # half_diff = int((width - height) / 2)
-                # img = img[half_diff:half_diff+height, :]
-                if modality == 'depth':
-                    high = 20.0
-                    img[img > high] = high
-                    img /= high
-                state[modality] = img
+        # for modality in ['depth', 'pc']:
+        #     if modality in state:
+        #         img = state[modality]
+        #         width = img.shape[0]
+        #         height = int(width * (480.0 / 640.0))
+        #         half_diff = int((width - height) / 2)
+        #         img = img[half_diff:half_diff+height, :]
+        #         state[modality] = img
 
         # cv2.imshow('depth', state['depth'])
         # cv2.imshow('scan', state['scan'])
@@ -637,12 +646,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :return: whether base_subgoal is achieved
         """
         # print('base')
-        # start = time.time()
+        start = time.time()
         base_subgoal_pos, base_subgoal_orn = self.get_base_subgoal(action)
+        self.times['get_base_subgoal'].append(time.time() - start)
         # print('get_base_subgoal', time.time() - start)
 
-        # start = time.time()
+        start = time.time()
         subgoal_success = self.reach_base_subgoal(base_subgoal_pos, base_subgoal_orn)
+        self.times['reach_base_subgoal'].append(time.time() - start)
         # print('reach_base_subgoal', time.time() - start)
 
         return subgoal_success
@@ -666,6 +677,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                         quat=[camera_pose[6], camera_pose[3], camera_pose[4], camera_pose[5]])
         arm_subgoal = transform_mat.dot(np.array([-point[2], -point[0], point[1], 1]))[:3]
         self.arm_marker.set_position(arm_subgoal)
+
+        push_vector_local = np.array([action[6], action[7]])  # [-1.0, 1.0]
+        push_vector = rotate_vector_2d(push_vector_local, -self.robots[0].get_rpy()[2])
+        push_vector = np.append(push_vector, 0.0)
+        self.arm_interact_marker.set_position(arm_subgoal + push_vector)
+
         return arm_subgoal
 
     def is_collision_free(self, body_a, link_a_list, body_b=None, link_b_list=None):
@@ -844,8 +861,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         base_pose = get_base_values(self.robot_id)
 
         # self.simulator.set_timestep(0.002)
-        for i in range(100):
-            push_goal = np.array(arm_subgoal) + push_vector * i / 100.0
+        steps = 50
+        for i in range(steps):
+            push_goal = np.array(arm_subgoal) + push_vector * (i + 1) / float(steps)
 
             joint_positions = p.calculateInverseKinematics(self.robot_id,
                                                            self.robots[0].parts['gripper_link'].body_part_index,
@@ -876,8 +894,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :return: whether arm_subgoal is achieved
         """
         # print('arm')
-        # start = time.time()
+        start = time.time()
         arm_subgoal = self.get_arm_subgoal(action)
+        self.times['get_arm_subgoal'].append(time.time() - start)
         # print('get_arm_subgoal', time.time() - start)
 
         # start = time.time()
@@ -885,29 +904,36 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # state_id = p.saveState()
         # print('saveState', time.time() - start)
 
+        start = time.time()
         self.stash_object_states()
+        self.times['stash_object_states'].append(time.time() - start)
 
-        # start = time.time()
+        start = time.time()
         arm_joint_positions = self.get_arm_joint_positions(arm_subgoal)
+        self.times['get_arm_joint_positions'].append(time.time() - start)
         # print('get_arm_joint_positions', time.time() - start)
 
-        # start = time.time()
+        start = time.time()
         subgoal_success = self.reach_arm_subgoal(arm_joint_positions)
+        self.times['reach_arm_subgoal'].append(time.time() - start)
         # print('reach_arm_subgoal', time.time() - start)
 
         # start = time.time()
         # p.restoreState(stateId=state_id)
         # print('restoreState', time.time() - start)
 
-        # start = time.time()
+        start = time.time()
         self.reset_object_states()
+        self.times['reset_object_states'].append(time.time() - start)
+
         # print('reset_object_velocities', time.time() - start)
 
         if subgoal_success:
             # set_joint_positions(self.robot_id, self.arm_joint_ids, arm_joint_positions)
 
-            # start = time.time()
+            start = time.time()
             self.interact(action, arm_subgoal)
+            self.times['interact'].append(time.time() - start)
             # print('interact', time.time() - start)
 
         return subgoal_success
@@ -923,15 +949,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # action[5] = arm_img_v
         # action[6] = arm_push_vector_x
         # action[7] = arm_push_vector_y
-
+        # print('-' * 20)
         self.current_step += 1
         use_base = action[0] > 0.0
+
+        # add action noise before execution
+        # action[1:] = np.clip(action[1:] + np.random.normal(0.0, 0.05, action.shape[0] - 1), -1.0, 1.0)
+
         if use_base:
             subgoal_success = self.move_base(action)
+            print('move_base:', subgoal_success)
         else:
             subgoal_success = self.move_arm(action)
-
-        # print('subgoal success', subgoal_success)
+            print('move_arm:', subgoal_success)
 
         return self.compute_next_step(action, use_base, subgoal_success)
 
@@ -1086,7 +1116,7 @@ if __name__ == '__main__':
                                        arena=args.arena,
                                        )
 
-    for episode in range(100):
+    for episode in range(20):
         print('Episode: {}'.format(episode))
         start = time.time()
         state = nav_env.reset()
@@ -1106,4 +1136,8 @@ if __name__ == '__main__':
                 print('Episode finished after {} timesteps'.format(i + 1))
                 break
         print(time.time() - start)
+
+    for key in nav_env.times:
+        print(key, len(nav_env.times[key]), np.mean(nav_env.times[key]))
+
     nav_env.clean()

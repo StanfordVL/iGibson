@@ -48,6 +48,8 @@ resolution: 128
 fov: 120
 n_horizontal_rays: 220
 n_vertical_beams: 1
+scan_noise_rate: 0.0
+depth_noise_rate: 0.0
 
 # display
 use_filler: true
