@@ -2702,7 +2702,7 @@ def plan_base_motion(body, end_conf, base_limits, obstacles=[], direct=False,
 
 def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, grid_resolution, robot_footprint_radius_in_map,
                         obstacles=[], direct=False, weights=1 * np.ones(3), resolutions=0.05 * np.ones(3),
-                        max_distance=MAX_DISTANCE, **kwargs):
+                        max_distance=MAX_DISTANCE, min_goal_dist = 0.02, **kwargs):
     def sample_fn():
         x, y = np.random.uniform(*base_limits)
         theta = np.random.uniform(*CIRCULAR_LIMITS)
@@ -2738,6 +2738,10 @@ def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, gr
             yield q
 
     start_conf = get_base_values(body)
+
+    if np.abs(start_conf[0] - end_conf[0]) < min_goal_dist and np.abs(start_conf[1] - end_conf[1]) < min_goal_dist: 
+        # do not do plans that is smaller than 30mm
+        return None
 
     def collision_fn(q):
         # TODO: update this function
