@@ -264,7 +264,7 @@ class VisualObject(object):
 
 
 class BoxShape(object):
-    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], rgba_color=[1.0, 1.0, 1.0, 1.0], mass=1):
+    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], rgba_color=[1.0, 1.0, 1.0, 1.0], mass=1000):
         self.basePos = pos
         self.dimension = dim
 
