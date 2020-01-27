@@ -440,7 +440,6 @@ class NavigateEnv(BaseEnv):
             rob_pos = self.robots[0].get_position()
             ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
             # Crowdsim normalization for direct comparison
-            ped_robot_relative_pos /= (12.0 / np.sqrt(2.0))
             ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
             state['pedestrian_position'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
             
@@ -449,7 +448,6 @@ class NavigateEnv(BaseEnv):
             rob_vel = self.robots[0].get_velocity()
             ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
             # Crowdsim normalization for direct comparison
-            ped_robot_relative_vel /= (1.0 / np.sqrt(2.0))
             ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
             state['pedestrian_velocity'] = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
         
@@ -2551,7 +2549,7 @@ if __name__ == '__main__':
         nav_env = NavigatePedestriansEnv(config_file=config_filename,
                                     mode=args.mode,
                                     # layout=args.layout,
-                                    action_timestep=1.0 / 10.0,
+                                    action_timestep=1.0 / 20.0,
                                     physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random_obstacles':
         nav_env = NavigateRandomObstaclesEnv(config_file=config_filename,
@@ -2563,7 +2561,7 @@ if __name__ == '__main__':
         nav_env = InteractiveGibsonNavigateEnv(config_file=config_filename,
                                                mode=args.mode,
                                                action_timestep=1.0 / 10.0,
-                                               physics_timestep=1 / 40.0)
+                                               physics_timestep=1.0 / 40.0)
     else:
         nav_env = InteractiveNavigateEnv(config_file=config_filename,
                                          mode=args.mode,
@@ -2599,8 +2597,8 @@ if __name__ == '__main__':
             # debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
             # action[2:] = np.array(debug_param_values)
             #state, reward, done, info = nav_env.step([np.random.uniform(-1, 1), np.random.uniform(-1, 1)])
-            #with Profiler('simulator step'):        
-            state, reward, done, info = nav_env.step(action)
+            with Profiler('simulator step'):        
+                state, reward, done, info = nav_env.step(action)
             #state, reward, done, _ = nav_env.step([-0.9, 0.0])            
             # print(reward)
 

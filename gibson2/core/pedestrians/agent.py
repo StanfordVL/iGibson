@@ -29,7 +29,7 @@ class Agent(object):
         self.vy = None
         self.vr = None
         self.theta = 0.0
-        self.time_step = 0.1
+        self.time_step = 0.05
 
     def print_info(self):
         logging.info('Agent is {} and has {} kinematic constraint'.format(
