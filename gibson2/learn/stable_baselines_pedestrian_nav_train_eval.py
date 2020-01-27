@@ -97,7 +97,7 @@ flags.DEFINE_multi_string('gin_file', None,
 flags.DEFINE_multi_string('gin_param', None,
                           'Gin binding to pass through.')
 
-flags.DEFINE_integer('num_iterations', 500000,
+flags.DEFINE_integer('num_iterations', 1500000,
                      'Total number train/eval iterations to perform.')
 flags.DEFINE_integer('initial_collect_steps', 100,
                      'Number of steps to collect at the beginning of training using random policy')
@@ -107,7 +107,7 @@ flags.DEFINE_integer('num_parallel_environments', 1,
                      'Number of environments to run in parallel')
 flags.DEFINE_integer('num_parallel_environments_eval', 1,
                      'Number of environments to run in parallel for eval')
-flags.DEFINE_integer('replay_buffer_capacity', 50000,
+flags.DEFINE_integer('replay_buffer_capacity', 150000,
                      'Replay buffer capacity per env.')
 flags.DEFINE_integer('train_steps_per_iteration', 1,
                      'Number of training steps in every training iteration')
@@ -172,7 +172,7 @@ FLAGS = flags.FLAGS
 
 class CustomPolicy(FeedForwardPolicy):
     def __init__(self, *args, **kwargs):
-        super(CustomPolicy, self).__init__(*args, layers=[256, 128, 64], layer_norm=True, feature_extraction="mlp", **kwargs)
+        super(CustomPolicy, self).__init__(*args, layers=[256, 128, 64], layer_norm=False, feature_extraction="mlp", **kwargs)
 
 def string_to_filename(input):
     output = input.replace('"', '').replace('{', '').replace('}', '').replace(' ', '_').replace(',', '_')
@@ -265,8 +265,8 @@ def train_eval(
     gamma = 0.99
     params['learning_trials'] = learning_trials = 500000
     params['learning_rate'] = learning_rate = 0.0005
-    params['n_peds'] = 3
-    params['test'] = 'fixed_lidar_position'  
+    params['n_peds'] = 1
+    params['test'] = 'scan'  
 
     tb_log_dir = os.path.expanduser('~') + '/tensorboard_logs/sac_gibson_stable_baselines' + string_to_filename(json.dumps(params))
 

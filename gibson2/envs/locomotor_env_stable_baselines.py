@@ -126,9 +126,10 @@ class NavigateEnv(BaseEnv):
         self.sensor_dim = self.additional_states_dim
         self.action_dim = self.robots[0].action_dim
         
-        self.observation_space = gym.spaces.Box(low=-1.0,
-                                           high=1.0,
-                                           shape=(2 + self.config['n_horizontal_rays'] + 5 * self.num_pedestrians,),
+        self.observation_space = gym.spaces.Box(low=-np.inf,
+                                           high=np.inf,
+                                           shape=(2 + self.config['n_horizontal_rays'],),
+                                           #shape=(2 + self.config['n_horizontal_rays'] + 5 * self.num_pedestrians,),
                                            dtype=np.float32)
         
 #        observation_space = OrderedDict()
@@ -170,16 +171,16 @@ class NavigateEnv(BaseEnv):
 #                                                      self.config['resolution'], 1),
 #                                               dtype=np.float32)
 #             observation_space['depth'] = self.depth_space
-        if 'scan' in self.output:
-            # self.scan_space = gym.spaces.Box(low=-np.inf,
-            #                                  high=np.inf,
-            #                                  shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
-            #                                  dtype=np.float32)
-            self.scan_space = gym.spaces.Box(low=0.0,
-                                             high=1.0,
-                                             shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
-                                             dtype=np.float32)
-            observation_space['scan'] = self.scan_space
+#         if 'scan' in self.output:
+#             # self.scan_space = gym.spaces.Box(low=-np.inf,
+#             #                                  high=np.inf,
+#             #                                  shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
+#             #                                  dtype=np.float32)
+#             self.scan_space = gym.spaces.Box(low=-np.inf,
+#                                              high=np.inf,
+#                                              shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
+#                                              dtype=np.float32)
+#             observation_space['scan'] = self.scan_space
 #             
 #         if 'rgb_filled' in self.output:  # use filler
 #             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
@@ -463,29 +464,31 @@ class NavigateEnv(BaseEnv):
             # link_id = np.array([item[1] for item in results])
             hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
             state_scan = np.expand_dims(hit_fraction, 1)
-                        
-            # normalize goal coordinates using laser range
-            sensor_state /= laser_linear_range
-            
-            ped_pos = self.get_ped_positions()
-            rob_pos = self.robots[0].get_position()
-            ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
-            ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
-            ped_robot_relative_pos /= laser_linear_range
-            state_pedestrian_position = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
-
-            ped_vel = self.get_ped_velocities()
-            rob_vel = self.robots[0].get_velocity()
-            ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
-            ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
-            ped_robot_relative_vel /= laser_linear_range
-            state_pedestrian_velocity = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
-
-            ped_ttc = self.get_ped_time_to_collision()
-            ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
-            state_pedestrian_ttc = ped_robot_relative_ttc # [ttc1, ttc2, ...] in robot frame
+            state_scan *= laser_linear_range
                                     
-            state = np.concatenate([sensor_state[0:2], state_scan, state_pedestrian_position, state_pedestrian_velocity, state_pedestrian_ttc], axis=None).flatten()
+            # normalize goal coordinates using laser range
+            #sensor_state /= laser_linear_range
+            
+#             ped_pos = self.get_ped_positions()
+#             rob_pos = self.robots[0].get_position()
+#             ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+#             ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
+#             ped_robot_relative_pos /= laser_linear_range
+#             state_pedestrian_position = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
+#  
+#             ped_vel = self.get_ped_velocities()
+#             rob_vel = self.robots[0].get_velocity()
+#             ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
+#             ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
+#             ped_robot_relative_vel /= laser_linear_range
+#             state_pedestrian_velocity = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
+#  
+#             ped_ttc = self.get_ped_time_to_collision()
+#             ped_robot_relative_ttc = np.asarray(ped_ttc).flatten()
+#             state_pedestrian_ttc = ped_robot_relative_ttc # [ttc1, ttc2, ...] in robot frame
+                                    
+            #state = np.concatenate([sensor_state[0:2], state_scan, state_pedestrian_position, state_pedestrian_velocity, state_pedestrian_ttc], axis=None).flatten()
+            state = np.concatenate([sensor_state[0:2], state_scan], axis=None).flatten()
 
         return state
 
@@ -1022,8 +1025,11 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.last_robot_px = robot_position[0]
         self.last_robot_py = robot_position[1]
                 
-        if done:            
-            print("episodes:", self.current_episode, [(key, np.around(info[key][0], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
+        if done:
+            try:
+                print("episodes:", self.current_episode, [(key, np.around(info[key][0], 2)) for key in ['success_rate', 'ped_collision_rate', 'ped_hits_robot_rate', 'collision_rate', 'timeout_rate', 'personal_space_violations', 'shortest_path_length']])
+            except:
+                pass
             
             delta_t = time.time() - self.episode_start_time
             
@@ -1108,6 +1114,8 @@ class NavigatePedestriansEnv(NavigateEnv):
 
         #     if velocity_dist < velocity_dmin:
         #         velocity_dmin = velocity_dist
+        
+        test_episode = self.current_episode - 1
             
         info['episodes'] = self.current_episode
         info['successes'] = self.n_successes,
@@ -1117,12 +1125,12 @@ class NavigatePedestriansEnv(NavigateEnv):
         info['timeouts'] = self.n_timeouts,
         info['personal_space_violations'] = 0 if self.distance_traveled == 0 else self.n_personal_space_violations / self.distance_traveled,
         info['cutting_off'] = 0 if self.distance_traveled == 0 else self.n_cutting_off / self.distance_traveled,
-        info['success_rate'] = 0 if self.current_episode == 0 else 100 * self.n_successes / self.current_episode,
-        info['collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_collisions / self.current_episode,
-        info['ped_collision_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_collisions / self.current_episode,
-        info['ped_hits_robot_rate'] = 0 if self.current_episode == 0 else 100 * self.n_ped_hits_robot / self.current_episode,
-        info['timeout_rate'] = 0 if self.current_episode == 0 else 100 * self.n_timeouts / self.current_episode,
-        info['shortest_path_length'] = 0 if self.current_episode == 0 else [self.spl]
+        info['success_rate'] = 0 if test_episode <= 0 else 100 * self.n_successes / test_episode,
+        info['collision_rate'] = 0 if test_episode <= 0 else 100 * self.n_collisions / test_episode,
+        info['ped_collision_rate'] = 0 if test_episode <= 0 else 100 * self.n_ped_collisions / test_episode,
+        info['ped_hits_robot_rate'] = 0 if test_episode <= 0 else 100 * self.n_ped_hits_robot / test_episode,
+        info['timeout_rate'] = 0 if test_episode <= 0 else 100 * self.n_timeouts / test_episode,
+        info['shortest_path_length'] = 0 if test_episode <= 0 else [self.spl]
  
         return reward, info
 
