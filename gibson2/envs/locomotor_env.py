@@ -126,9 +126,13 @@ class NavigateEnv(BaseEnv):
 
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
+
+        # output: sensors
         self.output = self.config['output']
         self.n_horizontal_rays = self.config.get('n_horizontal_rays', 128)
         self.n_vertical_beams = self.config.get('n_vertical_beams', 9)
+        self.scan_noise_rate = self.config.get('scan_noise_rate', 0.0)
+        self.depth_noise_rate = self.config.get('depth_noise_rate', 0.0)
 
         # TODO: sensor: observations that are passed as network input, e.g. target position in local frame
         # TODO: auxiliary sensor: observations that are not passed as network input, but used to maintain the same
@@ -298,6 +302,163 @@ class NavigateEnv(BaseEnv):
     def get_auxiliary_sensor(self, collision_links=[]):
         return np.array([])
 
+    def add_naive_noise_to_sensor(self, sensor_reading, noise_rate):
+        if noise_rate <= 0.0:
+            return sensor_reading
+
+        assert len(sensor_reading[(sensor_reading < 0.0) | (sensor_reading > 1.0)]) == 0,\
+            'sensor reading has to be between [0.0, 1.0]'
+
+        valid_mask = np.random.choice(2, sensor_reading.shape, p=[noise_rate, 1.0 - noise_rate])
+        # set invalid values to be the maximum range (e.g. depth and scan)
+        sensor_reading[valid_mask == 0] = 1.0
+        return sensor_reading
+
+    def get_depth(self):
+        depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+        if self.config['robot'] == 'Turtlebot':
+            # ASUS Xtion PRO LIVE
+            low = 0.8
+            high = 3.5
+        elif self.config['robot'] == 'Fetch':
+            # Primesense Carmine 1.09 short-range RGBD sensor
+            low = 0.0
+            high = 20.0  # http://xtionprolive.com/primesense-carmine-1.09
+            # high = 1.4  # https://www.i3du.gr/pdf/primesense.pdf
+        else:
+            assert False, 'unknown robot for RGBD observation'
+
+        invalid = depth == 0.0
+        depth[depth < low] = low
+        depth[depth > high] = high
+        # depth[invalid] = high
+
+        # re-scale depth to [0.0, 1.0]
+        depth = (depth - low) / (high - low)
+        depth = self.add_naive_noise_to_sensor(depth, self.depth_noise_rate)
+
+        return depth
+
+    def get_rgb(self):
+        return self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+
+    def get_pc(self):
+        return self.simulator.renderer.render_robot_cameras(modes=('3d'))[0]
+
+    def get_normal(self):
+        return self.simulator.renderer.render_robot_cameras(modes='normal')
+
+    def get_seg(self):
+        seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
+        if self.num_object_classes is not None:
+            seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
+        return seg
+
+    def get_seg_pred(self):
+        rgb = self.get_rgb()
+        with torch.no_grad():
+            width = rgb.shape[0]
+            height = int(width * (480.0 / 640.0))
+            half_diff = int((width - height) / 2)
+            rgb_cropped = rgb[half_diff:half_diff + height, :]
+            rgb_cropped = (rgb_cropped * 255).astype(np.uint8)
+            tensor = transforms.ToTensor()(rgb_cropped)
+            img = self.seg_normalizer(tensor).unsqueeze(0).cuda()
+            seg_pred = self.seg_encoder(img)
+            seg_pred = seg_pred[0][0].permute(1, 2, 0).cpu().numpy()
+            return seg_pred
+
+            # # visualize predicted segmentation mask
+            # scores = self.seg_decoder(self.seg_encoder(img, return_feature_maps=True), segSize=(height, width))
+            # _, pred = torch.max(scores, dim=1)
+            # pred = pred.squeeze(0).cpu().numpy().astype(np.int32)
+            # pred_color = colorEncode(pred, self.seg_colors).astype(np.uint8)
+            # pred_color = cv2.cvtColor(pred_color, cv2.COLOR_RGB2BGR)
+            #
+            # depth_cropped = depth[half_diff:half_diff + height, :]
+            # low = 0.8
+            # high = 3.5
+            # invalid = depth_cropped == 0.0
+            # depth_cropped[depth_cropped < low] = low
+            # depth_cropped[depth_cropped > high] = high
+            # depth_cropped[invalid] = 0.0
+            # depth_cropped /= high
+            # depth_cropped = (depth_cropped * 255).astype(np.uint8)
+            # depth_cropped = np.tile(depth_cropped, (1, 1, 3))
+            #
+            # rgb_cropped = cv2.cvtColor(rgb_cropped, cv2.COLOR_RGB2BGR)
+            #
+            # vis = np.concatenate((rgb_cropped, depth_cropped, pred_color), axis=1)
+            # cv2.imshow('vis', vis)
+
+    def get_scan(self):
+        if self.config['robot'] == 'Turtlebot':
+            # Hokuyo URG-04LX-UG01
+            laser_linear_range = 5.6
+            laser_angular_range = 240.0
+            min_laser_dist = 0.05
+            laser_link_name = 'scan_link'
+        elif self.config['robot'] == 'Fetch':
+            # SICK TiM571-2050101 Laser Range Finder
+            laser_linear_range = 25.0
+            laser_angular_range = 220.0
+            min_laser_dist = 0.1
+            laser_link_name = 'laser_link'
+        else:
+            assert False, 'unknown robot for LiDAR observation'
+
+        assert self.n_vertical_beams == 1, 'scan can only handle one vertical beam for now.'
+
+        laser_angular_half_range = laser_angular_range / 2.0
+        laser_pose = self.robots[0].parts[laser_link_name].get_pose()
+
+        # self.scan_vis.set_position(pos=laser_pose[:3])
+
+        transform_matrix = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
+        angle = np.arange(-laser_angular_half_range / 180 * np.pi,
+                          laser_angular_half_range / 180 * np.pi,
+                          laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
+        unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+        unit_vector_world = transform_matrix.dot(unit_vector_local.T).T
+        start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
+        start_pose += unit_vector_world * min_laser_dist
+        end_pose = laser_pose[:3] + unit_vector_world * laser_linear_range
+        results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
+        # hit_object_id = np.array([item[0] for item in results])
+        # link_id = np.array([item[1] for item in results])
+        hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
+        hit_fraction = self.add_naive_noise_to_sensor(hit_fraction, self.scan_noise_rate)
+
+        scan = np.expand_dims(hit_fraction, 1)
+        return scan
+
+        # assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+        # pose_camera = self.robots[0].parts['scan_link'].get_pose()
+        # angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+        # elev_bottom_angle = -30. * np.pi / 180.
+        # elev_top_angle = 10. * np.pi / 180.
+        # elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+        #                        (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+        # orig_offset = np.vstack([
+        #     np.vstack([np.cos(angle),
+        #                np.sin(angle),
+        #                np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+        # ])
+        # transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+        # offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+        # pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+        #
+        # results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+        # hit = np.array([item[0] for item in results])
+        # dist = np.array([item[2] for item in results])
+        #
+        # valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+        # dist[~valid_pts] = 0.0  # zero out invalid pts
+        # dist *= 30
+        #
+        # xyz = np.expand_dims(dist, 1) * orig_offset
+        # state['scan'] = xyz
+
     def get_state(self, collision_links=[]):
         # calculate state
         sensor_state = self.get_additional_states()
@@ -328,9 +489,6 @@ class NavigateEnv(BaseEnv):
         # cv2.imshow('seg', seg)
 
         state = OrderedDict()
-        rgb = None
-        depth = None
-        seg = None
         if 'sensor' in self.output:
             state['sensor'] = sensor_state
         if 'auxiliary_sensor' in self.output:
@@ -338,37 +496,22 @@ class NavigateEnv(BaseEnv):
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
         if 'rgb' in self.output:
-            if rgb is None:
-                rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
-            state['rgb'] = rgb
+            state['rgb'] = self.get_rgb()
         if 'depth' in self.output:
-            if depth is None:
-                depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            state['depth'] = depth
+            state['depth'] = self.get_depth()
         if 'pc' in self.output:
-            pc = self.simulator.renderer.render_robot_cameras(modes=('3d'))[0]
-            state['pc'] = pc
+            state['pc'] = self.get_pc()
         if 'rgbd' in self.output:
-            if rgb is None:
-                rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
-            if depth is None:
-                depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+            rgb = self.get_rgb()
+            depth = self.get_depth()
             state['rgbd'] = np.concatenate((rgb, depth), axis=2)
         if 'normal' in self.output:
-            state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
+            state['normal'] = self.get_normal()
         if 'seg' in self.output:
-            if seg is None:
-                seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
-            if self.num_object_classes is not None:
-                seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
-            state['seg'] = seg
+            state['seg'] = self.get_seg()
         if 'depth_seg' in self.output:
-            if depth is None:
-                depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            depth = np.clip(depth / 5.0, 0.0, 1.0)
-            seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
-            if self.num_object_classes is not None:
-                seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
+            depth = self.get_depth()
+            seg = self.get_seg()
             depth_seg = np.concatenate((depth, seg), axis=2)
             state['depth_seg'] = depth_seg
         if 'rgb_filled' in self.output:
@@ -377,115 +520,11 @@ class NavigateEnv(BaseEnv):
                 rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
                 state['rgb_filled'] = rgb_filled
         if 'seg_pred' in self.output:
-            if rgb is None:
-                rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
-            with torch.no_grad():
-                width = rgb.shape[0]
-                height = int(width * (480.0 / 640.0))
-                half_diff = int((width - height) / 2)
-                rgb_cropped = rgb[half_diff:half_diff + height, :]
-                rgb_cropped = (rgb_cropped * 255).astype(np.uint8)
-                tensor = transforms.ToTensor()(rgb_cropped)
-                img = self.seg_normalizer(tensor).unsqueeze(0).cuda()
-                seg_pred = self.seg_encoder(img)
-                seg_pred = seg_pred[0][0].permute(1, 2, 0).cpu().numpy()
-                state['seg_pred'] = seg_pred
-
-                scores = self.seg_decoder(self.seg_encoder(img, return_feature_maps=True), segSize=(height, width))
-                _, pred = torch.max(scores, dim=1)
-                pred = pred.squeeze(0).cpu().numpy().astype(np.int32)
-                pred_color = colorEncode(pred, self.seg_colors).astype(np.uint8)
-                pred_color = cv2.cvtColor(pred_color, cv2.COLOR_RGB2BGR)
-
-                depth_cropped = depth[half_diff:half_diff + height, :]
-                low = 0.8
-                high = 3.5
-                invalid = depth_cropped == 0.0
-                depth_cropped[depth_cropped < low] = low
-                depth_cropped[depth_cropped > high] = high
-                depth_cropped[invalid] = 0.0
-                depth_cropped /= high
-                depth_cropped = (depth_cropped * 255).astype(np.uint8)
-                depth_cropped = np.tile(depth_cropped, (1, 1, 3))
-
-                rgb_cropped = cv2.cvtColor(rgb_cropped, cv2.COLOR_RGB2BGR)
-
-                vis = np.concatenate((rgb_cropped, depth_cropped, pred_color), axis=1)
-                cv2.imshow('vis', vis)
-                #
-                # # aggregate images and save
-                # im_vis = np.concatenate((rgb_cropped, pred_color), axis=1)
-                # if self.current_step % 10 == 0:
-                #     img_name = 'seg_results_area1/%d_%d.png' % (self.current_episode, self.current_step)
-                #     Image.fromarray(im_vis).save(img_name)
-
+            state['seg_pred'] = self.get_seg_pred()
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
-
-        # TODO: figure out why 'scan' consumes so much cpu
         if 'scan' in self.output:
-            if self.config['robot'] == 'Turtlebot':
-                # Hokuyo URG-04LX-UG01
-                laser_linear_range = 5.6
-                laser_angular_range = 240.0
-                min_laser_dist = 0.05
-                laser_link_name = 'scan_link'
-            elif self.config['robot'] == 'Fetch':
-                # SICK TiM571-2050101 Laser Range Finder
-                laser_linear_range = 25.0
-                laser_angular_range = 220.0
-                min_laser_dist = 0.1
-                laser_link_name = 'laser_link'
-            else:
-                assert False, 'unknown robot for LiDAR observation'
-
-            laser_angular_half_range = laser_angular_range / 2.0
-            laser_pose = self.robots[0].parts[laser_link_name].get_pose()
-
-            # self.scan_vis.set_position(pos=laser_pose[:3])
-
-            transform_matrix = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
-            angle = np.arange(-laser_angular_half_range / 180 * np.pi,
-                              laser_angular_half_range / 180 * np.pi,
-                              laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
-            unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
-            unit_vector_world = transform_matrix.dot(unit_vector_local.T).T
-            start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
-            start_pose += unit_vector_world * min_laser_dist
-            end_pose = laser_pose[:3] + unit_vector_world * laser_linear_range
-            results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
-            # hit_object_id = np.array([item[0] for item in results])
-            # link_id = np.array([item[1] for item in results])
-            hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
-            state['scan'] = np.expand_dims(hit_fraction, 1)
-
-            # assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
-            # pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            # angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-            # elev_bottom_angle = -30. * np.pi / 180.
-            # elev_top_angle = 10. * np.pi / 180.
-            # elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-            #                        (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
-            # orig_offset = np.vstack([
-            #     np.vstack([np.cos(angle),
-            #                np.sin(angle),
-            #                np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
-            # ])
-            # transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-            # offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-            # pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
-            #
-            # results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-            # hit = np.array([item[0] for item in results])
-            # dist = np.array([item[2] for item in results])
-            #
-            # valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-            # dist[~valid_pts] = 0.0  # zero out invalid pts
-            # dist *= 30
-            #
-            # xyz = np.expand_dims(dist, 1) * orig_offset
-            # state['scan'] = xyz
-
+            state['scan'] = self.get_scan()
         return state
 
     def run_simulation(self):
@@ -1163,26 +1202,6 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
             height = int(width * (480.0 / 640.0))
             half_diff = int((width - height) / 2)
             rgbd = rgbd[half_diff:half_diff+height, :]
-
-            if self.config['robot'] == 'Turtlebot':
-                # ASUS Xtion PRO LIVE
-                low = 0.8
-                high = 3.5
-            elif self.config['robot'] == 'Fetch':
-                # Primesense Carmine 1.09 short-range RGBD sensor
-                low = 0.35
-                high = 1.4
-            else:
-                assert False, 'unknown robot for RGBD observation'
-
-            depth = rgbd[:, :, 3]
-            invalid = depth == 0.0
-            depth[depth < low] = low
-            depth[depth > high] = high
-            depth[invalid] = 0.0
-            depth /= high
-            rgbd[:, :, 3] = depth
-
             state['rgbd'] = rgbd
         # cv2.imshow('depth', state['depth'])
         # cv2.imshow('scan', state['scan'])
