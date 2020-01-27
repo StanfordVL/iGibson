@@ -322,8 +322,8 @@ class NavigateEnv(BaseEnv):
             high = 3.5
         elif self.config['robot'] == 'Fetch':
             # Primesense Carmine 1.09 short-range RGBD sensor
-            low = 0.0
-            high = 20.0  # http://xtionprolive.com/primesense-carmine-1.09
+            low = 0.35
+            high = 3.0  # http://xtionprolive.com/primesense-carmine-1.09
             # high = 1.4  # https://www.i3du.gr/pdf/primesense.pdf
         else:
             assert False, 'unknown robot for RGBD observation'
@@ -331,7 +331,7 @@ class NavigateEnv(BaseEnv):
         invalid = depth == 0.0
         depth[depth < low] = low
         depth[depth > high] = high
-        # depth[invalid] = high
+        depth[invalid] = high
 
         # re-scale depth to [0.0, 1.0]
         depth = (depth - low) / (high - low)

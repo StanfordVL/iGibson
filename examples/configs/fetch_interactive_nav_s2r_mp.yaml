@@ -45,11 +45,11 @@ max_step: 20
 # sensor
 output: [sensor, rgb, depth, scan, pc]
 resolution: 128
-fov: 120
+fov: 57.5
 n_horizontal_rays: 220
 n_vertical_beams: 1
-scan_noise_rate: 0.0
-depth_noise_rate: 0.0
+scan_noise_rate: 0.02
+depth_noise_rate: 0.02
 
 # display
 use_filler: true
