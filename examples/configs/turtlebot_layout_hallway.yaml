@@ -8,7 +8,7 @@ scene: stadium
 
 automatic_reset: true
 
-collision_ignore_link_a_ids: [0, 1, 2, 3, 4]  # ignore the agent's collision with these body ids
+collision_ignore_link_a_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
 collision_ignore_body_ids: [0, 1, 2, 3] # for backward compatibility
 
 num_obstacles: 0
