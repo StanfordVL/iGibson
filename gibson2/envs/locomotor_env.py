@@ -208,8 +208,8 @@ class NavigateEnv(BaseEnv):
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
         if 'scan' in self.output:
-            self.scan_space = gym.spaces.Box(low=-1.0,
-                                              high=1.0,
+            self.scan_space = gym.spaces.Box(low=-np.inf,
+                                              high=np.inf,
                                               shape=(self.config.get('resolution', 64),
                                                      1),
                                               dtype=np.float32)
@@ -426,6 +426,7 @@ class NavigateEnv(BaseEnv):
             # link_id = np.array([item[1] for item in results])
             hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
             state['scan'] = np.expand_dims(hit_fraction, 1)
+            state['scan'] *= laser_linear_range
 
         if 'pedestrian' in self.output:
             ped_pos = self.get_ped_states()
@@ -1083,12 +1084,16 @@ class NavigatePedestriansEnv(NavigateEnv):
         if self.walls is not None:
             for i, wall_pos in enumerate(self.walls['walls_pos']):
                 wall_dim = self.walls['walls_dim'][i]
-                box = BoxShape(pos=wall_pos, dim=wall_dim, mass=0)
+                box = BoxShape(pos=wall_pos, dim=wall_dim, mass=10)
                 self.obstacle_ids.append(self.simulator.import_object(box))
         print('=' * 100)
         print('WALLS IDS: {}'.format(self.obstacle_ids))
         print('SCENE IDS: {}'.format(self.scene_ids))
         print('ROBOT IDS: {}'.format(self.robots[0].robot_ids[0]))
+        
+#         for body_id in self.collision_ignore_link_a_ids:
+#             p.setCollisionFilterGroupMask(body_id, -1, 0, 0)
+#             p.setCollisionFilterPair(0, body_id, -1, -1, 0)
 
         ''' Obstacles '''
         self.obstacles = []
@@ -1208,14 +1213,14 @@ class NavigatePedestriansEnv(NavigateEnv):
             # spawn pedestrians and get Gibson IDs
             self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
 
-        # disable collision checking between pedestrians and floor which speeds up simulation 5x
-        for pedestrian_id in self.pedestrian_gibson_ids:
-            self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', self.scene_ids))
-            self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
-
-            for ignore_body_id in self.collision_ignore_body_b_ids:
-                for ignore_link_id in self.collision_ignore_link_a_ids:                
-                    p.setCollisionFilterPair(pedestrian_id, ignore_body_id, ignore_link_id, 0, 0)
+#         # disable collision checking between pedestrians and floor which speeds up simulation 5x
+#         for pedestrian_id in self.pedestrian_gibson_ids:
+#             self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', self.scene_ids))
+#             self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
+# 
+#             for ignore_body_id in self.collision_ignore_body_b_ids:
+#                 for ignore_link_id in self.collision_ignore_link_a_ids:                
+#                     p.setCollisionFilterPair(pedestrian_id, ignore_body_id, ignore_link_id, 0, 0)
     
     def step(self, action):
         # compute the next human actions from the current observations
@@ -2594,8 +2599,8 @@ if __name__ == '__main__':
             # debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
             # action[2:] = np.array(debug_param_values)
             #state, reward, done, info = nav_env.step([np.random.uniform(-1, 1), np.random.uniform(-1, 1)])
-            with Profiler('simulator step'):        
-                state, reward, done, info = nav_env.step(action)
+            #with Profiler('simulator step'):        
+            state, reward, done, info = nav_env.step(action)
             #state, reward, done, _ = nav_env.step([-0.9, 0.0])            
             # print(reward)
 
