@@ -270,6 +270,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.arm_subgoal_threshold = 0.05
         self.failed_subgoal_penalty = -0.0
 
+        # self.n_occ_img = 0
         self.prepare_scene()
 
     def prepare_scene(self):
@@ -389,8 +390,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.mesh_id = self.scene.mesh_body_id
         self.map_size = self.scene.trav_map_original_size * self.scene.trav_map_default_resolution
 
-        self.grid_resolution = 400
-        self.occupancy_range = 8.0  # m
+        self.grid_resolution = 800
+        self.occupancy_range = 5.0  # m
         robot_footprint_radius = 0.279
         self.robot_footprint_radius_in_map = int(robot_footprint_radius / self.occupancy_range * self.grid_resolution)
 
@@ -435,7 +436,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             # SICK TiM571-2050101 Laser Range Finder
             laser_linear_range = 25.0
             laser_angular_range = 220.0
-            min_laser_dist = 0.1
+            min_laser_dist = 0
             laser_link_name = 'laser_link'
 
         laser_angular_half_range = laser_angular_range / 2.0
@@ -451,6 +452,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         scan = state['scan']
 
         scan_laser = unit_vector_laser * (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
+        scan_laser = np.concatenate([np.array([[0, 0 ,0]]), scan_laser, np.array([[0, 0, 0]])], axis=0)
 
         laser_translation = laser_pose[:3]
         laser_rotation = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])
@@ -460,7 +462,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         base_rotation = quat2mat([base_pose[6], base_pose[3], base_pose[4], base_pose[5]])
         scan_local = base_rotation.T.dot((scan_world - base_translation).T).T
         scan_local = scan_local[:, :2]
-        scan_local = np.concatenate([np.array([[0, 0]]), scan_local, np.array([[0, 0]])], axis=0)
 
         # flip y axis
         scan_local[:, 1] *= -1
@@ -469,10 +470,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.grid_resolution / 2)
         scan_local_in_map = scan_local_in_map.reshape((1, -1, 1, 2)).astype(np.int32)
         cv2.fillPoly(occupancy_grid, scan_local_in_map, True, 1)
+        #kernel = np.ones((7, 7), np.uint8) # require 6cm of clearance
+        #occupancy_grid = cv2.erode(occupancy_grid, kernel, iterations=1)
+
         cv2.circle(occupancy_grid, (self.grid_resolution // 2, self.grid_resolution // 2),
                    int(self.robot_footprint_radius_in_map), 1, -1)
 
-        # cv2.imwrite('occupancy_grid.png', occupancy_grid)
+        cv2.rectangle(occupancy_grid, (self.grid_resolution // 2, self.grid_resolution // 2 - int(self.robot_footprint_radius_in_map + 2)),
+                      (self.grid_resolution // 2 + int(self.robot_footprint_radius_in_map), self.grid_resolution // 2 + int(self.robot_footprint_radius_in_map + 2)), \
+                      1, -1)
+
+        # self.n_occ_img += 1
+        # cv2.imwrite('occupancy_grid{:04d}.png'.format(self.n_occ_img), (occupancy_grid * 200).astype(np.uint8))
+
         return occupancy_grid
 
     def get_additional_states(self):
@@ -611,7 +621,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :return: whether base_subgoal is achieved
         """
         original_pos = get_base_values(self.robot_id)
-
         path = self.plan_base_motion_2d(base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
         if path is not None:
             # print('base mp success')
