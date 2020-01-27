@@ -316,8 +316,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             # semantic_obstacles
             self.semantic_obstacle_poses = [
-                [-3.5, 0.2, 0.6],
-                [-3.5, -1.0, 0.6],
+                [-3.5, 0.15, 0.6],
+                [-3.5, -0.95, 0.6],
             ]
             self.semantic_obstacle_masses = [
                 1.0,
@@ -379,7 +379,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.obstacles = []
             for pose, mass, color in \
                     zip(self.semantic_obstacle_poses, self.semantic_obstacle_masses, self.semantic_obstacle_colors):
-                obstacle = BoxShape(pos=pose, dim=[0.3, 0.3, 0.5], mass=mass, color=color)
+                obstacle = BoxShape(pos=pose, dim=[0.35, 0.35, 0.5], mass=mass, color=color)
                 self.simulator.import_interactive_object(obstacle, class_id=4)
                 p.changeDynamics(obstacle.body_id, -1, lateralFriction=0.5)
                 self.obstacles.append(obstacle)
