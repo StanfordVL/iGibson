@@ -1,6 +1,6 @@
 # scene
 scene: building
-model_id: Avonia
+model_id: candcenter
 build_graph: true
 load_texture: true
 should_load_replaced_objects: false
@@ -75,7 +75,7 @@ fast_lq_render: true
 
 # visual objects
 visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: true
+target_visual_object_visible_to_agent: false
 
 # debug
 debug: false
