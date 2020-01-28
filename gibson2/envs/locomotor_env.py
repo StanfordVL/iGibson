@@ -463,7 +463,7 @@ class NavigateEnv(BaseEnv):
             # state_scan = dist
             state['scan'] = xyz
 
-
+            """
             assert laser_link_name in self.robots[0].parts, "Requested scan but no scan_link"
 
             laser_angular_half_range = laser_angular_range / 2.0
@@ -486,7 +486,7 @@ class NavigateEnv(BaseEnv):
             hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
             state['scan'] = np.expand_dims(hit_fraction, 1)
             state['scan'] *= laser_linear_range
-
+            """
         if 'pedestrian' in self.output:
             ped_pos = self.get_ped_states()
             rob_pos = self.robots[0].get_position()
@@ -1134,11 +1134,8 @@ class NavigatePedestriansEnv(NavigateEnv):
         if self.walls is not None:
             for i, wall_pos in enumerate(self.walls['walls_pos']):
                 wall_dim = self.walls['walls_dim'][i]
-<<<<<<< HEAD
                 box = BoxShape(pos=wall_pos, dim=wall_dim)
-=======
-                box = BoxShape(pos=wall_pos, dim=wall_dim, mass=10)
->>>>>>> c958d0899b63bb8de79920ed4084f407ca78a825
+                # box = BoxShape(pos=wall_pos, dim=wall_dim, mass=10)
                 self.obstacle_ids.append(self.simulator.import_object(box))
         print('=' * 100)
         print('WALLS IDS: {}'.format(self.obstacle_ids))
@@ -1197,8 +1194,6 @@ class NavigatePedestriansEnv(NavigateEnv):
             self.pedestrians = [Pedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]
             # spawn pedestrians and get Gibson IDs
             self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
-<<<<<<< HEAD
-=======
 
 #         # disable collision checking between pedestrians and floor which speeds up simulation 5x
 #         for pedestrian_id in self.pedestrian_gibson_ids:
@@ -1208,7 +1203,6 @@ class NavigatePedestriansEnv(NavigateEnv):
 #             for ignore_body_id in self.collision_ignore_body_b_ids:
 #                 for ignore_link_id in self.collision_ignore_link_a_ids:                
 #                     p.setCollisionFilterPair(pedestrian_id, ignore_body_id, ignore_link_id, 0, 0)
->>>>>>> c958d0899b63bb8de79920ed4084f407ca78a825
     
     def step(self, action):
         # compute the next human actions from the current observations
