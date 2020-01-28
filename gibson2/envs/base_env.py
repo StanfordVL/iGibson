@@ -52,6 +52,8 @@ class BaseEnv(gym.Env):
         elif self.config['scene'] == 'building':
             scene = BuildingScene(
                 self.config['model_id'],
+                waypoint_resolution=self.config.get('waypoint_resolution', 0.2),
+                num_waypoints=self.config.get('num_waypoints', 10),
                 build_graph=self.config.get('build_graph', False),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
                 should_load_replaced_objects=self.config.get('should_load_replaced_objects', False)

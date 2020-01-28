@@ -24,8 +24,8 @@ import collections
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from PIL import Image
-
-
+import string
+import random
 
 
 Episode = collections.namedtuple('Episode',
@@ -322,7 +322,7 @@ class NavigateEnv(BaseEnv):
             high = 3.5
         elif self.config['robot'] == 'Fetch':
             # Primesense Carmine 1.09 short-range RGBD sensor
-            low = 0.35
+            low = 0.1
             high = 3.0  # http://xtionprolive.com/primesense-carmine-1.09
             # high = 1.4  # https://www.i3du.gr/pdf/primesense.pdf
         else:
@@ -693,9 +693,17 @@ class NavigateEnv(BaseEnv):
         for _ in range(max_trials):
             self.robots[0].robot_specific_reset()
             self.reset_initial_and_target_pos()
-            if self.test_valid_position():
+            valid, collision_links_flatten = self.test_valid_position()
+            if valid:
                 return
-        raise Exception("Failed to reset robot without collision")
+
+        print('Failed to reset robot without collision' + '-' * 30)
+        for collision_link in collision_links_flatten:
+            print(collision_link)
+        random_string = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        p.saveBullet(random_string + '.bullet')
+        p.saveWorld(random_string + '.py')
+        # raise Exception("Failed to reset robot without collision")
 
     def reset_initial_and_target_pos(self):
         self.robots[0].set_position(pos=self.initial_pos)
@@ -704,7 +712,7 @@ class NavigateEnv(BaseEnv):
     def test_valid_position(self):
         collision_links = self.run_simulation()
         collision_links_flatten = [item for sublist in collision_links for item in sublist]
-        return len(collision_links_flatten) == 0
+        return len(collision_links_flatten) == 0, collision_links_flatten
 
     def before_reset_agent(self):
         return
@@ -1869,7 +1877,6 @@ if __name__ == '__main__':
     for episode in range(100):
         print('Episode: {}'.format(episode))
         start = time.time()
-        nav_env.reset()
         for step in range(1000):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             # action[:] = 1.0
