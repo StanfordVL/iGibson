@@ -269,6 +269,13 @@ class NavigateEnv(BaseEnv):
                                                    shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
                                                    dtype=np.float32)
             observation_space['pedestrian_velocity'] = self.pedestrian_velocity_space
+
+        if 'pedestrian_ttc' in self.output:
+            self.pedestrian_position_space = gym.spaces.Box(low=-np.inf, high=np.inf,
+                                                   shape=(self.num_pedestrians,), 
+                                                   dtype=np.float32)
+            observation_space['pedestrian_ttc'] = self.pedestrian_position_space
+            
             
         if 'waypoints' in self.output:
             self.waypoints_space = gym.spaces.Box(low=-np.inf, high=np.inf,
@@ -2583,12 +2590,13 @@ if __name__ == '__main__':
             # debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
             # action[2:] = np.array(debug_param_values)
             #state, reward, done, info = nav_env.step([np.random.uniform(-1, 1), np.random.uniform(-1, 1)])
+            #with Profiler('simulator step'):        
             state, reward, done, info = nav_env.step(action)
             #state, reward, done, _ = nav_env.step([-0.9, 0.0])            
             # print(reward)
 
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
+                print('Time taken:', time.time() - start)
                 break
-        # print(time.time() - start)
     nav_env.clean()

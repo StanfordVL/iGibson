@@ -45,7 +45,7 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 400
+max_step: 1000
 
 # sensor
 # output: [sensor, rgb, depth]
@@ -77,10 +77,6 @@ random:
   random_init_z_range: [-0.1, 0.1]
   random_init_rot_range: [-0.1, 0.1]
 
-speed:
-  timestep: 0.001
-  frameskip: 10
-
 mode: headless #gui|web_ui
 verbose: false
 fast_lq_render: true
@@ -102,14 +98,14 @@ humans:
   visible: true
   policy: orca
   radius: 0.3
-  v_pref: 2.0
+  v_pref: 1.0
   position_noise: 0.0
   velocity_noise: 0.0
   sensor: coordinates
   personal_space: 0.5
   min_separation: 0.25
-  max_linear_velocity: 4.0
-  max_angular_velocity: 2.0
+  max_linear_velocity: 2.0
+  max_angular_velocity: 1.0
   kinematics: holonomic
   # dist_tol: 0.5
 
