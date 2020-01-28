@@ -310,8 +310,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             ]
             self.door_rotations = [np.pi / 2.0, -np.pi / 2.0]
             wall_poses = [
-                [[-3.5, 0.45, 0.45], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz')],
-                [[-3.5, -0.4, 0.45], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz')],
+                [[-3.5, 0.47, 0.45], quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz')],
+                [[-3.5, -0.45, 0.45], quatToXYZW(euler2quat(0, 0, -np.pi / 2.0), 'wxyz')],
             ]
             self.door_target_pos = [
                 [[-5.5, -4.5], [-1.0, 1.0]],
@@ -368,7 +368,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             ]
             self.door_rotations = [np.pi]
 
-            wall_poses = []
+            wall_poses = [[[1.5, -2.2, 0.25], quatToXYZW(euler2quat(0, 0, 0), 'wxyz')]]
 
             self.door_target_pos = np.array([[[-1.0, 1.0], [-3, -5]]])
 
@@ -396,7 +396,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.walls = []
             for wall_pose in wall_poses:
                 wall = InteractiveObj(
-                    os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_quarter.urdf'),
+                    os.path.join(gibson2.assets_path, 'models', 'scene_components', 'walls_quarter_white.urdf'),
                     scale=0.3)
                 self.simulator.import_interactive_object(wall, class_id=3)
                 wall.set_position_rotation(wall_pose[0], wall_pose[1])
