@@ -54,7 +54,7 @@ max_step: 1000
 #output: [sensor, pedestrian_position, pedestrian_velocity]
 #output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
 #output: [concatenate]
-output: [sensor, scan]
+output: [sensor, scan, pedestrian_position]
 #scan_beams: 64 #128 
 #scan_vertical_beams: 1 #9 
 n_horizontal_rays: 128
@@ -98,14 +98,14 @@ humans:
   visible: true
   policy: orca
   radius: 0.3
-  v_pref: 2.0
+  v_pref: 1.0
   position_noise: 0.0
   velocity_noise: 0.0
   sensor: coordinates
   personal_space: 0.5
   min_separation: 0.25
-  max_linear_velocity: 4.0
-  max_angular_velocity: 2.0
+  max_linear_velocity: 2.0
+  max_angular_velocity: 1.0
   kinematics: holonomic
   # dist_tol: 0.5
 
