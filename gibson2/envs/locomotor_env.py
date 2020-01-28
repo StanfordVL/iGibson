@@ -260,7 +260,7 @@ class NavigateEnv(BaseEnv):
 
         if 'pedestrian_ttc' in self.output:
             self.pedestrian_position_space = gym.spaces.Box(low=-np.inf, high=np.inf,
-                                                   shape=(self.num_pedestrians*2,),  # num_pedestrians * len([x_pos, y_pos])
+                                                   shape=(self.num_pedestrians,), 
                                                    dtype=np.float32)
             observation_space['pedestrian_ttc'] = self.pedestrian_position_space
             
