@@ -353,7 +353,27 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 [0.0, 1.0, 0.0, 1],
             ]
 
+            self.initial_pos_range = np.array([[1.2,1.2], [0.0,0.0]])
+
             # TODO: initial_pos and target_pos sampling should also be put here (scene-specific)
+
+        elif self.scene.model_id == 'gates_jan20':
+            pass
+        elif self.scene.model_id == 'candcenter':
+            door_scales = [
+                1.03
+            ]
+            self.door_positions = [
+                [1.2,-2.15,0],
+            ]
+            self.door_rotations = [np.pi]
+
+            wall_poses = []
+
+            self.door_target_pos = np.array([[[-1.0, 1.0], [-3, -5]]])
+
+            self.initial_pos_range = np.array([[-1, 8], [-2, 4]])
+
 
         else:
             # TODO: handcraft environments for more scenes
@@ -369,6 +389,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.simulator.import_interactive_object(door, class_id=2)
                 door.set_position_rotation(position, quatToXYZW(euler2quat(0, 0, rotation), 'wxyz'))
                 self.doors.append(door)
+                # remove door collision with mesh
+                for i in range(p.getNumJoints(door.body_id)):
+                    p.setCollisionFilterPair(self.mesh_id, door.body_id, -1, i, 0)
 
             self.walls = []
             for wall_pose in wall_poses:
@@ -1096,8 +1119,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
     def reset_initial_and_target_pos(self):
         if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles']:
             floor_height = self.scene.get_floor_height(self.floor_num)
+
+            self.initial_pos = np.array([
+                np.random.uniform(self.initial_pos_range[0][0], self.initial_pos_range[0][1]),
+                np.random.uniform(self.initial_pos_range[1][0], self.initial_pos_range[1][1]),
+                floor_height
+            ])
+
             self.initial_height = floor_height + self.random_init_z_offset
-            self.initial_pos = np.array([1.2, 0.0, floor_height])
+
             self.robots[0].set_position(pos=[self.initial_pos[0],
                                              self.initial_pos[1],
                                              self.initial_height])
@@ -1114,6 +1144,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             else:
                 self.target_pos = np.array([-5.0, 0.0, floor_height])
         else:
+            floor_height = self.scene.get_floor_height(self.floor_num)
+            self.initial_height = floor_height + self.random_init_z_offset
             super(MotionPlanningBaseArmEnv, self).reset_initial_and_target_pos()
 
     def before_reset_agent(self):
@@ -1168,7 +1200,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--arena',
                         '-a',
-                        choices=['button_door', 'push_door', 'obstacles', 'semantic_obstacles'],
+                        choices=['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty'],
                         default='push_door',
                         help='which arena to train or test (default: push_door)')
 

@@ -139,11 +139,20 @@ class BuildingScene(Scene):
             else:
                 filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
         scaling = [1, 1, 1]
+
         collisionId = p.createCollisionShape(p.GEOM_MESH,
                                              fileName=filename,
                                              meshScale=scaling,
                                              flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
         visualId = -1
+        #p.createVisualShape(p.GEOM_MESH,
+        #                        fileName=filename,
+        #                        meshScale=scaling)
+
+        # texture_filename = os.path.join(get_model_path(self.model_id), "{}_mesh_texture.small.jpg".format(self.model_id))
+        # texture_id = p.loadTexture(texture_filename)
+        # print('pybullet texture id:', texture_id, texture_filename)
+
         boundaryUid = p.createMultiBody(baseCollisionShapeIndex=collisionId,
                                         baseVisualShapeIndex=visualId)
 
@@ -157,14 +166,18 @@ class BuildingScene(Scene):
         p.resetBasePositionAndOrientation(self.ground_plane_mjcf[0],
                                           posObj=[0, 0, 0],
                                           ornObj=[0, 0, 0, 1])
-        p.changeVisualShape(boundaryUid,
-                            -1,
-                            rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
-                            specularColor=[0.5, 0.5, 0.5])
+        # p.changeVisualShape(boundaryUid,
+        #                     -1,
+        #                     rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
+        #                     specularColor=[0.5, 0.5, 0.5])
+        # if texture_id >= 0:
+        #     p.changeVisualShape(boundaryUid,
+        #                     -1,
+        #                     textureUniqueId=texture_id)
 
         p.changeVisualShape(self.ground_plane_mjcf[0],
                             -1,
-                            rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
+                            rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 0.35],
                             specularColor=[0.5, 0.5, 0.5])
 
         floor_height_path = os.path.join(get_model_path(self.model_id), 'floors.txt')
