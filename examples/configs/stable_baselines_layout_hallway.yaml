@@ -12,14 +12,14 @@ collision_ignore_link_a_ids: [0, 1, 2, 3]  # ignore the agent's collision with t
 collision_ignore_body_ids: [0, 1, 2, 3] # for backward compatibility
 
 num_obstacles: 0
-num_pedestrians: 1
+num_pedestrians: 3
 pedestrians_can_see_robot: false
 randomize_pedestrian_attributes: false
 
 # robot
 robot: TurtlebotDifferentialDrive
-max_linear_velocity: 2.0
-max_angular_velocity: 4.0
+max_linear_velocity: 1.0
+max_angular_velocity: 2.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -53,8 +53,8 @@ max_step: 400
 #output: [sensor, pedestrian]
 #output: [sensor, pedestrian_position, pedestrian_velocity]
 #output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
-#output: [concatenate]
-output: [sensor, scan, pedestrian_position]
+#output: [sensor, scan]
+output: [concatenate]
 #scan_beams: 64 #128 
 #scan_vertical_beams: 1 #9 
 n_horizontal_rays: 128
@@ -102,14 +102,14 @@ humans:
   visible: true
   policy: orca
   radius: 0.3
-  v_pref: 2.0
+  v_pref: 1.0
   position_noise: 0.0
   velocity_noise: 0.0
   sensor: coordinates
   personal_space: 0.5
   min_separation: 0.25
-  max_linear_velocity: 4.0
-  max_angular_velocity: 2.0
+  max_linear_velocity: 3.0
+  max_angular_velocity: 1.0
   kinematics: holonomic
   # dist_tol: 0.5
 

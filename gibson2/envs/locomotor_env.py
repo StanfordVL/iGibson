@@ -213,6 +213,13 @@ class NavigateEnv(BaseEnv):
         #                                              1),
         #                                       dtype=np.float32)
         #     observation_space['scan'] = self.scan_space
+        if 'scan' in self.output:
+            self.scan_space = gym.spaces.Box(low=-np.inf,
+                                              high=np.inf,
+                                              shape=(self.config.get('resolution', 64),
+                                                     1),
+                                              dtype=np.float32)
+            observation_space['scan'] = self.scan_space
             
         if 'seg' in self.output:
             self.seg_space = gym.spaces.Box(low=0.0,
@@ -457,6 +464,29 @@ class NavigateEnv(BaseEnv):
             state['scan'] = xyz
 
 
+            assert laser_link_name in self.robots[0].parts, "Requested scan but no scan_link"
+
+            laser_angular_half_range = laser_angular_range / 2.0
+            laser_pose = self.robots[0].parts[laser_link_name].get_pose()
+
+            # self.scan_vis.set_position(pos=laser_pose[:3])
+
+            transform_matrix = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
+            angle = np.arange(-laser_angular_half_range / 180 * np.pi,
+                              laser_angular_half_range / 180 * np.pi,
+                              laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
+            unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+            unit_vector_world = transform_matrix.dot(unit_vector_local.T).T
+            start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
+            start_pose += unit_vector_world * min_laser_dist
+            end_pose = laser_pose[:3] + unit_vector_world * laser_linear_range
+            results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
+            # hit_object_id = np.array([item[0] for item in results])
+            # link_id = np.array([item[1] for item in results])
+            hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
+            state['scan'] = np.expand_dims(hit_fraction, 1)
+            state['scan'] *= laser_linear_range
+
         if 'pedestrian' in self.output:
             ped_pos = self.get_ped_states()
             rob_pos = self.robots[0].get_position()
@@ -469,7 +499,6 @@ class NavigateEnv(BaseEnv):
             rob_pos = self.robots[0].get_position()
             ped_robot_relative_pos = [rotate_vector_3d([ped_pos[i][0] - rob_pos[0], ped_pos[i][1] - rob_pos[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
             # Crowdsim normalization for direct comparison
-            ped_robot_relative_pos /= (12.0 / np.sqrt(2.0))
             ped_robot_relative_pos = np.asarray(ped_robot_relative_pos).flatten()
             state['pedestrian_position'] = ped_robot_relative_pos # [x1, y1, x2, y2,...] in robot frame
             
@@ -478,7 +507,6 @@ class NavigateEnv(BaseEnv):
             rob_vel = self.robots[0].get_velocity()
             ped_robot_relative_vel = [rotate_vector_3d([ped_vel[i][0] - rob_vel[0], ped_vel[i][1] - rob_vel[1], 0], *self.robots[0].get_rpy())[0:2] for i in range(self.num_pedestrians)]
             # Crowdsim normalization for direct comparison
-            ped_robot_relative_vel /= (1.0 / np.sqrt(2.0))
             ped_robot_relative_vel = np.asarray(ped_robot_relative_vel).flatten()
             state['pedestrian_velocity'] = ped_robot_relative_vel # [vx1, vy1, vx2, vy2,...] in robot frame
         
@@ -1106,12 +1134,20 @@ class NavigatePedestriansEnv(NavigateEnv):
         if self.walls is not None:
             for i, wall_pos in enumerate(self.walls['walls_pos']):
                 wall_dim = self.walls['walls_dim'][i]
+<<<<<<< HEAD
                 box = BoxShape(pos=wall_pos, dim=wall_dim)
+=======
+                box = BoxShape(pos=wall_pos, dim=wall_dim, mass=10)
+>>>>>>> c958d0899b63bb8de79920ed4084f407ca78a825
                 self.obstacle_ids.append(self.simulator.import_object(box))
         print('=' * 100)
         print('WALLS IDS: {}'.format(self.obstacle_ids))
         print('SCENE IDS: {}'.format(self.scene_ids))
         print('ROBOT IDS: {}'.format(self.robots[0].robot_ids[0]))
+        
+#         for body_id in self.collision_ignore_link_a_ids:
+#             p.setCollisionFilterGroupMask(body_id, -1, 0, 0)
+#             p.setCollisionFilterPair(0, body_id, -1, -1, 0)
 
         ''' Obstacles '''
         self.obstacles = []
@@ -1161,6 +1197,18 @@ class NavigatePedestriansEnv(NavigateEnv):
             self.pedestrians = [Pedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]
             # spawn pedestrians and get Gibson IDs
             self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
+<<<<<<< HEAD
+=======
+
+#         # disable collision checking between pedestrians and floor which speeds up simulation 5x
+#         for pedestrian_id in self.pedestrian_gibson_ids:
+#             self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', self.scene_ids))
+#             self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
+# 
+#             for ignore_body_id in self.collision_ignore_body_b_ids:
+#                 for ignore_link_id in self.collision_ignore_link_a_ids:                
+#                     p.setCollisionFilterPair(pedestrian_id, ignore_body_id, ignore_link_id, 0, 0)
+>>>>>>> c958d0899b63bb8de79920ed4084f407ca78a825
     
     def step(self, action):
         # compute the next human actions from the current observations
@@ -2493,7 +2541,7 @@ if __name__ == '__main__':
         nav_env = NavigatePedestriansEnv(config_file=config_filename,
                                     mode=args.mode,
                                     # layout=args.layout,
-                                    action_timestep=1.0 / 10.0,
+                                    action_timestep=1.0 / 20.0,
                                     physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random_obstacles':
         nav_env = NavigateRandomObstaclesEnv(config_file=config_filename,
@@ -2505,7 +2553,7 @@ if __name__ == '__main__':
         nav_env = InteractiveGibsonNavigateEnv(config_file=config_filename,
                                                mode=args.mode,
                                                action_timestep=1.0 / 10.0,
-                                               physics_timestep=1 / 40.0)
+                                               physics_timestep=1.0 / 40.0)
     else:
         nav_env = InteractiveNavigateEnv(config_file=config_filename,
                                          mode=args.mode,
