@@ -52,7 +52,7 @@ class ORCA(object):
         """
         super().__init__()
         self.name = 'ORCA'
-        self.time_step = 0.05 # TODO: get time_step from config file
+        self.time_step = 0.1 # TODO: get time_step from config file
         self.trainable = False
         self.multiagent_training = None
         self.kinematics = 'holonomic'
