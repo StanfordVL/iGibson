@@ -43,7 +43,7 @@ dist_tol: 0.5  # body width
 max_step: 20
 
 # sensor
-output: [sensor, rgb, depth, scan, pc]
+output: [sensor, rgb, depth, scan]
 resolution: 128
 fov: 57.5
 n_horizontal_rays: 220

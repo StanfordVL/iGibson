@@ -187,22 +187,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                        automatic_reset=automatic_reset,
                                                        random_height=False,
                                                        device_idx=device_idx)
-
-        # real sensor spec for Fetch
-        resolution = self.config.get('resolution', 64)
-        width = resolution
-        height = int(width * (480.0 / 640.0))
-        if 'rgb' in self.output:
-            self.observation_space.spaces['rgb'] = gym.spaces.Box(low=0.0,
-                                                                  high=1.0,
-                                                                  shape=(height, width, 3),
-                                                                  dtype=np.float32)
-        if 'depth' in self.output:
-            self.observation_space.spaces['depth'] = gym.spaces.Box(low=0.0,
-                                                                    high=1.0,
-                                                                    shape=(height, width, 1),
-                                                                    dtype=np.float32)
-
         self.arena = arena
         self.eval = eval
         self.visualize_waypoints = True
@@ -220,11 +204,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.collision_reward_weight = collision_reward_weight
 
         # action[0] = base_or_arm
-        # action[1] = base_subgoal_theta
-        # action[2] = base_subgoal_dist
+        # action[1] = base_subgoal_theta / base_img_v
+        # action[2] = base_subgoal_dist / base_img_u
         # action[3] = base_orn
-        # action[4] = arm_img_u
-        # action[5] = arm_img_v
+        # action[4] = arm_img_v
+        # action[5] = arm_img_u
         # action[6] = arm_push_vector_x
         # action[7] = arm_push_vector_y
         self.action_space = gym.spaces.Box(shape=(8,),
@@ -232,6 +216,32 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                            high=1.0,
                                            dtype=np.float32)
         self.prepare_motion_planner()
+
+        # real sensor spec for Fetch
+        resolution = self.config.get('resolution', 64)
+        width = resolution
+        height = int(width * (480.0 / 640.0))
+        if 'rgb' in self.output:
+            self.observation_space.spaces['rgb'] = gym.spaces.Box(low=0.0,
+                                                                  high=1.0,
+                                                                  shape=(height, width, 3),
+                                                                  dtype=np.float32)
+        if 'depth' in self.output:
+            self.observation_space.spaces['depth'] = gym.spaces.Box(low=0.0,
+                                                                    high=1.0,
+                                                                    shape=(height, width, 1),
+                                                                    dtype=np.float32)
+        if 'occupancy_grid' in self.output:
+            self.observation_space.spaces['occupancy_grid'] = gym.spaces.Box(low=0.0,
+                                                                             high=1.0,
+                                                                             shape=(self.grid_resolution,
+                                                                                    self.grid_resolution,
+                                                                                    1),
+                                                                             dtype=np.float32)
+            self.use_occupancy_grid = True
+        else:
+            self.use_occupancy_grid = False
+
 
         self.base_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                         rgba_color=[1, 0, 0, 1],
@@ -283,7 +293,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         self.times = {}
         for key in ['get_base_subgoal', 'reach_base_subgoal', 'get_arm_subgoal', 'stash_object_states',
-                    'get_arm_joint_positions', 'reach_arm_subgoal', 'reset_object_states', 'interact']:
+                    'get_arm_joint_positions', 'reach_arm_subgoal', 'reset_object_states', 'interact',
+                    'compute_next_step']:
             self.times[key] = []
 
     def prepare_scene(self):
@@ -422,8 +433,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         half_size = self.map_size / 2.0
         # if self.mode == 'gui':
         #     p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
-
-        grid = self.get_local_occupancy_grid()
+        if 'occupancy_grid' in self.output:
+            grid = self.state['occupancy_grid'].astype(np.uint8)
+        else:
+            grid = self.get_local_occupancy_grid()
         path = plan_base_motion_2d(self.robot_id, [x, y, theta], ((-half_size, -half_size), (half_size, half_size)),
                                    map_2d=grid, occupancy_range=self.occupancy_range,
                                    grid_resolution=self.grid_resolution,
@@ -436,9 +449,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return rotate_vector_3d(pos - cur_pos, *cur_rot)
 
     def get_local_occupancy_grid(self):
-        assert 'scan' in self.output
         assert self.config['robot'] in ['Turtlebot', 'Fetch']
-
         if self.config['robot'] == 'Turtlebot':
             # Hokuyo URG-04LX-UG01
             laser_linear_range = 5.6
@@ -461,8 +472,13 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                           laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
         unit_vector_laser = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
 
-        state = self.get_state()
-        scan = state['scan']
+        if 'scan' in self.output:
+            # state = self.get_state()
+            state = self.state
+            # print('get_occu_grid', state['current_step'])
+            scan = state['scan']
+        else:
+            scan = self.get_scan()
 
         scan_laser = unit_vector_laser * (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
         # scan_laser = np.concatenate([np.array([[0, 0 ,0]]), scan_laser, np.array([[0, 0, 0]])], axis=0)
@@ -541,6 +557,21 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         waypoints_local_xy = np.array([self.global_to_local(waypoint, cur_pos, cur_rot)[:2]
                                        for waypoint in shortest_path]).flatten()
+        target_pos_local_xy = target_pos_local[:2]
+
+        if self.use_occupancy_grid:
+            waypoints_img_vu = np.zeros_like(waypoints_local_xy)
+            target_pos_img_vu = np.zeros_like(target_pos_local_xy)
+
+            for i in range(self.scene.num_waypoints):
+                waypoints_img_vu[2 * i] = -waypoints_local_xy[2 * i + 1] / (self.occupancy_range / 2.0)
+                waypoints_img_vu[2 * i + 1] = waypoints_local_xy[2 * i] / (self.occupancy_range / 2.0)
+
+            target_pos_img_vu[0] = -target_pos_local_xy[1] / (self.occupancy_range / 2.0)
+            target_pos_img_vu[1] = target_pos_local_xy[0] / (self.occupancy_range / 2.0)
+
+            waypoints_local_xy = waypoints_img_vu
+            target_pos_local_xy = target_pos_img_vu
 
         # # convert Cartesian space to radian space
         # for i in range(waypoints_local_xy.shape[0] // 2):
@@ -559,7 +590,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         #     target_pos_local[1] = norm
 
         additional_states = np.concatenate((waypoints_local_xy,
-                                            target_pos_local[:2]))
+                                            target_pos_local_xy))
         # linear_velocity_local,
         # angular_velocity_local))
 
@@ -571,16 +602,21 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         return additional_states
 
+    def crop_rect_image(self, img):
+        width = img.shape[0]
+        height = int(width * (480.0 / 640.0))
+        half_diff = int((width - height) / 2)
+        img = img[half_diff:half_diff + height, :]
+        return img
+
     def get_state(self, collision_links=[]):
         state = super(MotionPlanningBaseArmEnv, self).get_state(collision_links)
-        for modality in ['depth', 'pc']:
+        for modality in ['rgb', 'depth']:
             if modality in state:
-                img = state[modality]
-                width = img.shape[0]
-                height = int(width * (480.0 / 640.0))
-                half_diff = int((width - height) / 2)
-                img = img[half_diff:half_diff+height, :]
-                state[modality] = img
+                state[modality] = self.crop_rect_image(state[modality])
+
+        if 'occupancy_grid' in self.output:
+            state['occupancy_grid'] = self.get_local_occupancy_grid().astype(np.float32)
 
         # cv2.imshow('depth', state['depth'])
         # cv2.imshow('scan', state['scan'])
@@ -604,12 +640,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :return: base_subgoal_pos [x, y] in the world frame
         :return: base_subgoal_orn yaw in the world frame
         """
-        # print('base')
+        if self.use_occupancy_grid:
+            base_img_v, base_img_u = action[1], action[2]
+            base_local_y = (-base_img_v) * self.occupancy_range / 2.0
+            base_local_x = base_img_u * self.occupancy_range / 2.0
+            base_subgoal_theta = np.arctan2(base_local_y, base_local_x)
+            base_subgoal_dist = np.linalg.norm([base_local_x, base_local_y])
+        else:
+            base_subgoal_theta = (action[1] * 110.0) / 180.0 * np.pi  # [-110.0, 110.0]
+            base_subgoal_dist = (action[2] + 1)  # [0.0, 2.0]
+
         yaw = self.robots[0].get_rpy()[2]
         robot_pos = self.robots[0].get_position()
-        base_subgoal_theta = (action[1] * 110.0) / 180.0 * np.pi  # [-110.0, 110.0]
         base_subgoal_theta += yaw
-        base_subgoal_dist = (action[2] + 1)  # [0.0, 2.0]
         base_subgoal_pos = np.array([np.cos(base_subgoal_theta), np.sin(base_subgoal_theta)])
         base_subgoal_pos *= base_subgoal_dist
         base_subgoal_pos = np.append(base_subgoal_pos, 0.0)
@@ -656,14 +699,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :return: whether base_subgoal is achieved
         """
         # print('base')
-        start = time.time()
+        # start = time.time()
         base_subgoal_pos, base_subgoal_orn = self.get_base_subgoal(action)
-        self.times['get_base_subgoal'].append(time.time() - start)
+        # self.times['get_base_subgoal'].append(time.time() - start)
         # print('get_base_subgoal', time.time() - start)
 
-        start = time.time()
+        # start = time.time()
         subgoal_success = self.reach_base_subgoal(base_subgoal_pos, base_subgoal_orn)
-        self.times['reach_base_subgoal'].append(time.time() - start)
+        # self.times['reach_base_subgoal'].append(time.time() - start)
         # print('reach_base_subgoal', time.time() - start)
 
         return subgoal_success
@@ -674,14 +717,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :param action: policy output
         :return: arm_subgoal [x, y, z] in the world frame
         """
-        state = self.get_state()
-        points = state['pc']
+        # print('get_arm_subgoal', state['current_step'])
+        points = self.crop_rect_image(self.get_pc())
         height, width = points.shape[0:2]
 
-        arm_img_u = np.clip(int((action[4] + 1) / 2.0 * height), 0, height - 1)
-        arm_img_v = np.clip(int((action[5] + 1) / 2.0 * width), 0, width - 1)
+        arm_img_v = np.clip(int((action[4] + 1) / 2.0 * height), 0, height - 1)
+        arm_img_u = np.clip(int((action[5] + 1) / 2.0 * width), 0, width - 1)
 
-        point = points[arm_img_u, arm_img_v]
+        point = points[arm_img_v, arm_img_u]
         camera_pose = (self.robots[0].parts['eyes'].get_pose())
         transform_mat = quat_pos_to_mat(pos=camera_pose[:3],
                                         quat=[camera_pose[6], camera_pose[3], camera_pose[4], camera_pose[5]])
@@ -911,9 +954,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :return: whether arm_subgoal is achieved
         """
         # print('arm')
-        start = time.time()
+        # start = time.time()
         arm_subgoal = self.get_arm_subgoal(action)
-        self.times['get_arm_subgoal'].append(time.time() - start)
+        # self.times['get_arm_subgoal'].append(time.time() - start)
         # print('get_arm_subgoal', time.time() - start)
 
         # start = time.time()
@@ -921,36 +964,36 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # state_id = p.saveState()
         # print('saveState', time.time() - start)
 
-        start = time.time()
+        # start = time.time()
         self.stash_object_states()
-        self.times['stash_object_states'].append(time.time() - start)
+        # self.times['stash_object_states'].append(time.time() - start)
 
-        start = time.time()
+        # start = time.time()
         arm_joint_positions = self.get_arm_joint_positions(arm_subgoal)
-        self.times['get_arm_joint_positions'].append(time.time() - start)
+        # self.times['get_arm_joint_positions'].append(time.time() - start)
         # print('get_arm_joint_positions', time.time() - start)
 
-        start = time.time()
+        # start = time.time()
         subgoal_success = self.reach_arm_subgoal(arm_joint_positions)
-        self.times['reach_arm_subgoal'].append(time.time() - start)
+        # self.times['reach_arm_subgoal'].append(time.time() - start)
         # print('reach_arm_subgoal', time.time() - start)
 
         # start = time.time()
         # p.restoreState(stateId=state_id)
         # print('restoreState', time.time() - start)
 
-        start = time.time()
+        # start = time.time()
         self.reset_object_states()
-        self.times['reset_object_states'].append(time.time() - start)
+        # self.times['reset_object_states'].append(time.time() - start)
 
         # print('reset_object_velocities', time.time() - start)
 
         if subgoal_success:
             # set_joint_positions(self.robot_id, self.arm_joint_ids, arm_joint_positions)
 
-            start = time.time()
+            # start = time.time()
             self.interact(action, arm_subgoal)
-            self.times['interact'].append(time.time() - start)
+            # self.times['interact'].append(time.time() - start)
             # print('interact', time.time() - start)
 
         return subgoal_success
@@ -959,11 +1002,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # print('-' * 30)
         # embed()
         # action[0] = base_or_arm
-        # action[1] = base_subgoal_theta
-        # action[2] = base_subgoal_dist
+        # action[1] = base_subgoal_theta / base_img_v
+        # action[2] = base_subgoal_dist / base_img_u
         # action[3] = base_orn
-        # action[4] = arm_img_u
-        # action[5] = arm_img_v
+        # action[4] = arm_img_v
+        # action[5] = arm_img_u
         # action[6] = arm_push_vector_x
         # action[7] = arm_push_vector_y
         # print('-' * 20)
@@ -975,19 +1018,23 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         if use_base:
             subgoal_success = self.move_base(action)
-            print('move_base:', subgoal_success)
+            # print('move_base:', subgoal_success)
         else:
             subgoal_success = self.move_arm(action)
-            print('move_arm:', subgoal_success)
+            # print('move_arm:', subgoal_success)
 
-        return self.compute_next_step(action, use_base, subgoal_success)
+        # start = time.time()
+        state, reward, done, info = self.compute_next_step(action, use_base, subgoal_success)
+        # self.times['compute_next_step'].append(time.time() - start)
+
+        return state, reward, done, info
 
     def compute_next_step(self, action, use_base, subgoal_success):
         self.simulator.sync()
 
         if use_base:
             # trigger re-computation of geodesic distance for get_reward
-            state = self.get_state()
+            self.state = self.get_state()
 
         info = {}
         if subgoal_success:
@@ -1032,17 +1079,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         if not use_base:
             set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
-            state = self.get_state()
+            self.state = self.get_state()
 
         if done and self.automatic_reset:
-            state = self.reset()
+            self.state = self.reset()
 
-        del state['pc']
+        # self.state['current_step'] = self.current_step
+
+        # print('compute_next_step', self.state['current_step'])
 
         # print('reward', reward)
         # time.sleep(3)
 
-        return state, reward, done, info
+        return self.state, reward, done, info
 
     def reset_initial_and_target_pos(self):
         if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles']:
@@ -1100,9 +1149,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 set_base_values_with_z(obstacle.body_id, [obstacle_pose[0], obstacle_pose[1], 0], obstacle_pose[2])
 
     def reset(self):
-        state = super(MotionPlanningBaseArmEnv, self).reset()
-        del state['pc']
-        return state
+        self.state = super(MotionPlanningBaseArmEnv, self).reset()
+        # self.state['current_step'] = self.current_step
+        return self.state
 
 
 if __name__ == '__main__':
@@ -1133,7 +1182,7 @@ if __name__ == '__main__':
                                        arena=args.arena,
                                        )
 
-    for episode in range(20):
+    for episode in range(100):
         print('Episode: {}'.format(episode))
         start = time.time()
         state = nav_env.reset()
@@ -1155,6 +1204,6 @@ if __name__ == '__main__':
         print(time.time() - start)
 
     for key in nav_env.times:
-        print(key, len(nav_env.times[key]), np.mean(nav_env.times[key]))
+        print(key, len(nav_env.times[key]), np.sum(nav_env.times[key]), np.mean(nav_env.times[key]))
 
     nav_env.clean()
