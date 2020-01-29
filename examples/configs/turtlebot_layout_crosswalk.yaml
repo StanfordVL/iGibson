@@ -7,14 +7,14 @@ scene: stadium
 # model_id: Ohoopee
 
 num_obstacles: 0
-num_pedestrians: 5
+num_pedestrians: 3
 pedestrians_can_see_robot: false
 randomize_pedestrian_attributes: false
 
 # robot
 robot: TurtlebotDifferentialDrive
-max_linear_velocity: 1.0
-max_angular_velocity: 2.0
+max_linear_velocity: 2.0
+max_angular_velocity: 4.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -40,7 +40,7 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 300
+max_step: 400
 
 # sensor
 # output: [sensor, rgb, depth]
@@ -50,10 +50,12 @@ max_step: 300
 #output: [sensor, pedestrian_position, pedestrian_velocity]
 #output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
 #output: [concatenate]
-output: [sensor, depth]
-scan_beams: 512 #128 
-scan_vertical_beams: 1 #9 
-resolution: 64
+output: [sensor, scan]
+#scan_beams: 64 #128 
+#scan_vertical_beams: 1 #9 
+n_horizontal_rays: 128
+n_vertical_beams: 1
+resolution: 128
 #waypoints: 5
 fov: 90
 
@@ -70,10 +72,6 @@ random:
   random_init_y_range: [-0.1, 0.1]
   random_init_z_range: [-0.1, 0.1]
   random_init_rot_range: [-0.1, 0.1]
-
-speed:
-  timestep: 0.001
-  frameskip: 10
 
 mode: headless #gui|web_ui
 verbose: false
@@ -101,9 +99,10 @@ humans:
   sensor: coordinates
   personal_space: 0.5
   min_separation: 0.25
-  max_linear_velocity: 3.0
+  max_linear_velocity: 2.0
   max_angular_velocity: 1.0
   kinematics: holonomic
+  # dist_tol: 0.5ic
   # dist_tol: 0.5
 
 ############ ROOM LAYOUT #################
