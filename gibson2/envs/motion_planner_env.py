@@ -353,12 +353,57 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 [0.0, 1.0, 0.0, 1],
             ]
 
-            self.initial_pos_range = np.array([[1.2,1.2], [0.0,0.0]])
+            self.initial_pos_range = np.array([[-1,1.5], [-1,1]])
+            self.target_pos_range = np.array([[-5.5, -4.5], [-1.0, 1.0]])
 
             # TODO: initial_pos and target_pos sampling should also be put here (scene-specific)
-
+            self.obstacle_dim = 0.35
         elif self.scene.model_id == 'gates_jan20':
-            pass
+            door_scales = [
+                0.95,
+                0.95,
+            ]
+            self.door_positions = [
+                [-29.95, 0.7, 0.05],
+                [-36, 0.7, 0.05],
+            ]
+            self.door_rotations = [np.pi, np.pi]
+            wall_poses = [
+            ]
+            self.door_target_pos = [
+                [[-30.5, -30], [-3, -1]],
+                [[-36.75, -36.25], [-3, -1]],
+            ]
+            self.initial_pos_range = np.array([[-25, -21], [4, 9]])
+            self.target_pos_range = np.array([[-40, -30], [1.25, 1.75]])
+
+            # button_door
+            button_scales = [
+                2.0,
+                2.0,
+            ]
+            self.button_positions = [
+                [[-29.2, -29.2], [0.86, 0.86]],
+                [[-35.2, -35.2], [0.86, 0.86]]
+            ]
+            self.button_rotations = [
+                0.0,
+                0.0,
+            ]
+
+            # semantic_obstacles
+            self.semantic_obstacle_poses = [
+                [-28.1, 1.45, 0.7],
+            ]
+            self.semantic_obstacle_masses = [
+                1.0,
+            ]
+            self.semantic_obstacle_colors = [
+                [1.0, 0.0, 0.0, 1],
+            ]
+
+            self.obstacle_dim = 0.25
+
         elif self.scene.model_id == 'candcenter':
             door_scales = [
                 1.03
@@ -370,10 +415,48 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             wall_poses = [[[1.5, -2.2, 0.25], quatToXYZW(euler2quat(0, 0, 0), 'wxyz')]]
 
-            self.door_target_pos = np.array([[[-1.0, 1.0], [-3, -5]]])
+            self.door_target_pos = np.array([[[-1.0, 1.0], [-5, -3]]])
 
             self.initial_pos_range = np.array([[-1, 8], [-2, 4]])
+            self.target_pos_range = np.array([[-3.75,-3.25],[-1,5.5]])
 
+            button_scales = [
+                1.7,
+            ]
+            self.button_positions = [
+                [[0.6, 0.6], [-2.1, -2.1]],
+            ]
+            self.button_rotations = [
+                0.0,
+            ]
+
+            # semantic_obstacles
+            self.semantic_obstacle_poses = [
+                [-2, 0, 0.7],
+                [-2, -0.8, 0.7],
+                [-2, -1.6, 0.7],
+                [-2, 5, 0.7],
+                [-2, 6, 0.7],
+                [-2, 7, 0.7],
+            ]
+            self.semantic_obstacle_masses = [
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                10000.0,
+                10000.0,
+            ]
+            self.semantic_obstacle_colors = [
+                [1.0, 0.0, 0.0, 1],
+                [1.0, 0.0, 0.0, 1],
+                [1.0, 0.0, 0.0, 1],
+                [1.0, 0.0, 0.0, 1],
+                [0.0, 1.0, 0.0, 1],
+                [0.0, 1.0, 0.0, 1],
+            ]
+            self.obstacle_dim = 0.35
 
         else:
             # TODO: handcraft environments for more scenes
@@ -427,7 +510,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.obstacles = []
             for pose, mass, color in \
                     zip(self.semantic_obstacle_poses, self.semantic_obstacle_masses, self.semantic_obstacle_colors):
-                obstacle = BoxShape(pos=pose, dim=[0.35, 0.35, 0.6], mass=mass, color=color)
+                obstacle = BoxShape(pos=pose, dim=[self.obstacle_dim, self.obstacle_dim, 0.6], mass=mass, color=color)
                 self.simulator.import_interactive_object(obstacle, class_id=4)
                 p.changeDynamics(obstacle.body_id, -1, lateralFriction=0.5)
                 self.obstacles.append(obstacle)
@@ -1117,6 +1200,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return self.state, reward, done, info
 
     def reset_initial_and_target_pos(self):
+        self.initial_orn_z = np.random.uniform(-np.pi, np.pi)
         if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles']:
             floor_height = self.scene.get_floor_height(self.floor_num)
 
@@ -1131,7 +1215,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.robots[0].set_position(pos=[self.initial_pos[0],
                                              self.initial_pos[1],
                                              self.initial_height])
-            self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.pi), 'wxyz'))
+            self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, self.initial_orn_z), 'wxyz'))
 
             if self.arena in ['button_door', 'push_door']:
                 self.door_idx = np.random.randint(0, len(self.doors))
@@ -1142,7 +1226,13 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     floor_height
                 ])
             else:
-                self.target_pos = np.array([-5.0, 0.0, floor_height])
+                #self.target_pos = np.array([-5.0, 0.0, floor_height]) Avonia target
+                self.target_pos = np.array([
+                    np.random.uniform(self.target_pos_range[0][0], self.target_pos_range[0][1]),
+                    np.random.uniform(self.target_pos_range[1][0], self.target_pos_range[1][1]),
+                    floor_height
+                ])
+
         else:
             floor_height = self.scene.get_floor_height(self.floor_num)
             self.initial_height = floor_height + self.random_init_z_offset
