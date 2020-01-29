@@ -7,14 +7,14 @@ scene: stadium
 # model_id: Ohoopee
 
 num_obstacles: 0
-num_pedestrians: 3
+num_pedestrians: 1
 pedestrians_can_see_robot: false
 randomize_pedestrian_attributes: false
 
 # robot
 robot: TurtlebotDifferentialDrive
-max_linear_velocity: 2.0
-max_angular_velocity: 4.0
+max_linear_velocity: 1.0
+max_angular_velocity: 2.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -99,10 +99,9 @@ humans:
   sensor: coordinates
   personal_space: 0.5
   min_separation: 0.25
-  max_linear_velocity: 2.0
+  max_linear_velocity: 3.0
   max_angular_velocity: 1.0
   kinematics: holonomic
-  # dist_tol: 0.5ic
   # dist_tol: 0.5
 
 ############ ROOM LAYOUT #################
@@ -117,13 +116,13 @@ components:
     center_x: 0.0
     center_y: 4.0
   entrance_2:
-    center_x: 4.0
+    center_x: 3.5
     center_y: 0.0
   entrance_3:
     center_x: 0.0
     center_y: -4.0
   entrance_4:
-    center_x: -4.0
+    center_x: -3.5
     center_y: 0.0
 
 # TODO: specify obstacles.
@@ -137,12 +136,12 @@ movements:
     initial_target: [['entrance_1', 'entrance_3'], ['entrance_3', 'entrance_1']]
     # x_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
     # y_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-    x_range_radius: 0.5
+    x_range_radius: 3.0
     y_range_radius: 0.5
     flip_prob: 0.5
   agent:
     initial_positions: 'entrance_2'
     target_positions: 'entrance_4'
-    x_range_radius: 1.0
-    y_range_radius: 1.0
+    x_range_radius: 0.5
+    y_range_radius: 3.0
         

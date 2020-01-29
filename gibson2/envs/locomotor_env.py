@@ -2556,7 +2556,7 @@ if __name__ == '__main__':
         nav_env = NavigatePedestriansEnv(config_file=config_filename,
                                     mode=args.mode,
                                     # layout=args.layout,
-                                    action_timestep=1.0 / 20.0,
+                                    action_timestep=1.0 / 10.0,
                                     physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random_obstacles':
         nav_env = NavigateRandomObstaclesEnv(config_file=config_filename,

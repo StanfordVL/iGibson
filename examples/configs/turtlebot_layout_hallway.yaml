@@ -12,14 +12,14 @@ collision_ignore_link_a_ids: [0, 1, 2, 3]  # ignore the agent's collision with t
 collision_ignore_body_ids: [0, 1, 2, 3] # for backward compatibility
 
 num_obstacles: 0
-num_pedestrians: 3
+num_pedestrians: 1
 pedestrians_can_see_robot: false
 randomize_pedestrian_attributes: false
 
 # robot
 robot: TurtlebotDifferentialDrive
-max_linear_velocity: 2.0
-max_angular_velocity: 4.0
+max_linear_velocity: 1.0
+max_angular_velocity: 2.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -54,7 +54,7 @@ max_step: 400
 #output: [sensor, pedestrian_position, pedestrian_velocity]
 #output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
 #output: [concatenate]
-output: [sensor, scan, pedestrian_position, pedestrian_velocity]
+output: [sensor, scan]
 #scan_beams: 64 #128 
 #scan_vertical_beams: 1 #9 
 n_horizontal_rays: 128
