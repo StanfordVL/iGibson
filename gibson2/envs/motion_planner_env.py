@@ -455,9 +455,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         if self.arena in ['push_door', 'button_door']:
             self.door_axis_link_id = 1
             self.doors = []
+            door_urdf = 'realdoor.urdf' if self.arena == 'push_door' else 'realdoor_closed.urdf'
             for scale, position, rotation in zip(door_scales, self.door_positions, self.door_rotations):
                 door = InteractiveObj(
-                    os.path.join(gibson2.assets_path, 'models', 'scene_components', 'realdoor.urdf'),
+                    os.path.join(gibson2.assets_path, 'models', 'scene_components', door_urdf),
                     scale=scale)
                 self.simulator.import_interactive_object(door, class_id=2)
                 door.set_position_rotation(position, quatToXYZW(euler2quat(0, 0, rotation), 'wxyz'))
@@ -1152,6 +1153,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             door_angle_diff = new_door_angle - self.door_angles[self.door_idx]
             reward += door_angle_diff
             self.door_angles[self.door_idx] = new_door_angle
+            if new_door_angle > (80.0 / 180.0 * np.pi):
+                print("PUSH OPEN DOOR")
         elif self.arena == 'obstacles':
             new_obstacles_moved_dist = 0.0
             for obstacle, original_obstacle_pose in zip(self.obstacles, self.obstacle_poses):
