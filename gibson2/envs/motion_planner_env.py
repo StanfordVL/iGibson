@@ -175,6 +175,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                  action_timestep=1 / 10.0,
                  physics_timestep=1 / 240.0,
                  device_idx=0,
+                 random_height=False,
                  automatic_reset=False,
                  eval=False,
                  arena=None,
@@ -185,7 +186,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                        action_timestep=action_timestep,
                                                        physics_timestep=physics_timestep,
                                                        automatic_reset=automatic_reset,
-                                                       random_height=False,
+                                                       random_height=random_height,
                                                        device_idx=device_idx)
         self.arena = arena
         self.eval = eval
@@ -1269,6 +1270,38 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return self.state
 
 
+class MotionPlanningBaseArmContinuousEnv(NavigateRandomEnv):
+    def __init__(self,
+                 config_file,
+                 model_id=None,
+                 collision_reward_weight=0.0,
+                 mode='headless',
+                 action_timestep=1 / 10.0,
+                 physics_timestep=1 / 240.0,
+                 device_idx=0,
+                 random_height=False,
+                 automatic_reset=False,
+                 eval=False,
+                 arena=None,
+                 ):
+        super(MotionPlanningBaseArmContinuousEnv, self).__init__(config_file,
+                                                                 model_id=model_id,
+                                                                 mode=mode,
+                                                                 action_timestep=action_timestep,
+                                                                 physics_timestep=physics_timestep,
+                                                                 automatic_reset=automatic_reset,
+                                                                 random_height=random_height,
+                                                                 device_idx=device_idx,
+                                                                 eval=eval,
+                                                                 arena=arena,
+                                                                 collision_reward_weight=collision_reward_weight,
+                                                                 )
+
+    def step(self, action):
+        embed()
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -1289,13 +1322,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    nav_env = MotionPlanningBaseArmEnv(config_file=args.config,
-                                       mode=args.mode,
-                                       action_timestep=1 / 500.0,
-                                       physics_timestep=1 / 500.0,
-                                       eval=args.mode == 'gui',
-                                       arena=args.arena,
-                                       )
+    # nav_env = MotionPlanningBaseArmEnv(config_file=args.config,
+    #                                    mode=args.mode,
+    #                                    action_timestep=1 / 500.0,
+    #                                    physics_timestep=1 / 500.0,
+    #                                    eval=args.mode == 'gui',
+    #                                    arena=args.arena,
+    #                                    )
+    nav_env = MotionPlanningBaseArmContinuousEnv(config_file=args.config,
+                                                 mode=args.mode,
+                                                 action_timestep=1 / 10.0,
+                                                 physics_timestep=1 / 100.0,
+                                                 eval=args.mode == 'gui',
+                                                 arena=args.arena,
+                                                 )
 
     for episode in range(100):
         print('Episode: {}'.format(episode))
