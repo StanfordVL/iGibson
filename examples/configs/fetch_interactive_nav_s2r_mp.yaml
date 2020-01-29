@@ -40,7 +40,7 @@ discount_factor: 0.99
 # termination condition
 death_z_thresh: 0.2
 dist_tol: 0.5  # body width
-max_step: 20
+max_step: 25
 
 # sensor
 output: [sensor, rgb, depth, scan]
