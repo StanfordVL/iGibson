@@ -374,7 +374,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 [[-30.5, -30], [-3, -1]],
                 [[-36.75, -36.25], [-3, -1]],
             ]
-            self.initial_pos_range = np.array([[-25, -21], [4, 9]])
+            self.initial_pos_range = np.array([[-24, -22.5], [6, 9]])
             self.target_pos_range = np.array([[-40, -30], [1.25, 1.75]])
 
             # button_door
@@ -409,17 +409,21 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 1.03
             ]
             self.door_positions = [
-                [1.2,-2.15,0],
+                [1.2, -2.15, 0],
             ]
             self.door_rotations = [np.pi]
-
-            wall_poses = [[[1.5, -2.2, 0.25], quatToXYZW(euler2quat(0, 0, 0), 'wxyz')]]
-
-            self.door_target_pos = np.array([[[-1.0, 1.0], [-5, -3]]])
-
-            self.initial_pos_range = np.array([[-1, 8], [-2, 4]])
-            self.target_pos_range = np.array([[-3.75,-3.25],[-1,5.5]])
-
+            wall_poses = [
+                [[1.5, -2.2, 0.25], quatToXYZW(euler2quat(0, 0, 0), 'wxyz')]
+            ]
+            self.door_target_pos = np.array([
+                [[-1.0, 1.0], [-5.0, -3.0]]
+            ])
+            self.initial_pos_range = np.array([
+                [5.0, 7.0], [-1.7, 0.3]
+            ])
+            self.target_pos_range = np.array([
+                [-3.75, -3.25], [-1, 0.0]
+            ])
             button_scales = [
                 1.7,
             ]
@@ -429,31 +433,17 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.button_rotations = [
                 0.0,
             ]
-
             # semantic_obstacles
             self.semantic_obstacle_poses = [
-                [-2, 0, 0.7],
-                [-2, -0.8, 0.7],
-                [-2, -1.6, 0.7],
-                [-2, 5, 0.7],
-                [-2, 6, 0.7],
-                [-2, 7, 0.7],
+                [-2, -1.25, 0.7],
+                [-2, -0.1, 0.7],
             ]
             self.semantic_obstacle_masses = [
                 1.0,
-                1.0,
-                1.0,
-                1.0,
-                1.0,
-                10000.0,
                 10000.0,
             ]
             self.semantic_obstacle_colors = [
                 [1.0, 0.0, 0.0, 1],
-                [1.0, 0.0, 0.0, 1],
-                [1.0, 0.0, 0.0, 1],
-                [1.0, 0.0, 0.0, 1],
-                [0.0, 1.0, 0.0, 1],
                 [0.0, 1.0, 0.0, 1],
             ]
             self.obstacle_dim = 0.35
