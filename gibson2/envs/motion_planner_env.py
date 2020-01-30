@@ -1306,7 +1306,7 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
                                            dtype=np.float32)
 
     def get_termination(self, collision_links=[], info={}):
-        done, info = super(MotionPlanningBaseArmEnv, self).get_termination(action)
+        done, info = super(MotionPlanningBaseArmEnv, self).get_termination(collision_links, info)
         if done:
             return done, info
         else:
