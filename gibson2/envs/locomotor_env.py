@@ -1816,9 +1816,9 @@ class InteractiveNavigateEnv(NavigateEnv):
             reward += self.success_reward  # |success_reward| = 10.0
 
         # death penalty
-        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
-        if self.robots[0].get_position()[2] > floor_height + self.death_z_thresh:
-            reward -= self.success_reward * 1.0
+        # floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
+        # if self.robots[0].get_position()[2] > floor_height + self.death_z_thresh:
+        #     reward -= self.success_reward * 1.0
 
         # push door the wrong way
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
