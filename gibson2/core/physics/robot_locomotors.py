@@ -494,8 +494,8 @@ class Freight(LocomotorRobot):
         self.config = config
         self.velocity = config.get("velocity", 1.0)
         LocomotorRobot.__init__(self,
-                            "fetch/freight.urdf",
-                            "base_link",
+                                "fetch/freight.urdf",
+                                "base_link",
                                 action_dim=2,
                                 sensor_dim=16,
                                 power=2.5,
@@ -541,14 +541,18 @@ class Fetch(LocomotorRobot):
 
     def __init__(self, config):
         self.config = config
-        self.velocity = config.get("velocity", 1.0)
+        self.wheel_velocity = config.get('wheel_velocity', 0.1)
+        self.torso_lift_velocity = config.get('torso_lift_velocity', 0.01)
+        self.arm_velocity = config.get('arm_velocity', 0.01)
         self.wheel_dim = 2
+        self.torso_lift_dim = 1
+        self.arm_dim = 7
         self.action_high = config.get("action_high", None)
         self.action_low = config.get("action_low", None)
         LocomotorRobot.__init__(self,
-                            "fetch/fetch.urdf",
-                            "base_link",
-                                action_dim=6,
+                                "fetch/fetch.urdf",
+                                "base_link",
+                                action_dim=self.wheel_dim + self.torso_lift_dim + self.arm_dim,
                                 sensor_dim=55,
                                 power=2.5,
                                 scale=config.get("robot_scale", self.default_scale),
@@ -562,9 +566,12 @@ class Fetch(LocomotorRobot):
             self.action_high = np.full(shape=self.wheel_dim, fill_value=self.action_high)
             self.action_low = np.full(shape=self.wheel_dim, fill_value=self.action_low)
         else:
-            self.action_high = np.full(shape=self.wheel_dim, fill_value=self.velocity)
+            self.action_high = np.array([self.wheel_velocity] * self.wheel_dim +
+                                        [self.torso_lift_velocity] * self.torso_lift_dim +
+                                        [self.arm_velocity] * self.arm_dim)
             self.action_low = -self.action_high
-        self.action_space = gym.spaces.Box(shape=(self.wheel_dim,),
+
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
@@ -592,7 +599,7 @@ class Fetch(LocomotorRobot):
         rest_position = (
             0.02, np.pi / 2.0,
             np.pi / 2.0, 0.0,
-            np.pi / 2.0, 0.0,
+            np.pi / 2.0 + 0.1, 0.0,
             np.pi / 2.0, 0.0
         )
         # rest_position = (0.38548146667743244, 1.1522793897208579, 1.2576467971105596, -0.312703569911879,

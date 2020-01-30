@@ -38,7 +38,8 @@ class MotionPlanningEnv(NavigateRandomEnv):
                  physics_timestep=1 / 240.0,
                  device_idx=0,
                  automatic_reset=False,
-                 eval=False
+                 eval=False,
+                 random_height=False
                  ):
         super(MotionPlanningEnv, self).__init__(config_file,
                                                 model_id=model_id,
@@ -46,7 +47,7 @@ class MotionPlanningEnv(NavigateRandomEnv):
                                                 action_timestep=action_timestep,
                                                 physics_timestep=physics_timestep,
                                                 automatic_reset=automatic_reset,
-                                                random_height=False,
+                                                random_height=random_height,
                                                 device_idx=device_idx)
 
         self.mp_loaded = False
@@ -1195,7 +1196,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def reset_initial_and_target_pos(self):
         self.initial_orn_z = np.random.uniform(-np.pi, np.pi)
-        if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles']:
+        if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty']:
             floor_height = self.scene.get_floor_height(self.floor_num)
 
             self.initial_pos = np.array([
@@ -1270,7 +1271,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return self.state
 
 
-class MotionPlanningBaseArmContinuousEnv(NavigateRandomEnv):
+class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
     def __init__(self,
                  config_file,
                  model_id=None,
@@ -1296,6 +1297,10 @@ class MotionPlanningBaseArmContinuousEnv(NavigateRandomEnv):
                                                                  arena=arena,
                                                                  collision_reward_weight=collision_reward_weight,
                                                                  )
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
 
     def step(self, action):
         embed()
