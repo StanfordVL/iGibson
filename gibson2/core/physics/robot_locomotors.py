@@ -609,9 +609,7 @@ class Fetch(LocomotorRobot):
 
 
     def apply_action(self, action):
-        denormalized_action = self.action_to_real_action(action)
-        real_action = np.zeros(self.action_dim)
-        real_action[:self.wheel_dim] = denormalized_action
+        real_action = self.action_to_real_action(action)
         self.apply_real_action(real_action)
 
     def calc_state(self):

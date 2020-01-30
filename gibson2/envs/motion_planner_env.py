@@ -1128,21 +1128,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         return state, reward, done, info
 
-    def compute_next_step(self, action, use_base, subgoal_success):
-        self.simulator.sync()
-
-        if use_base:
-            # trigger re-computation of geodesic distance for get_reward
-            self.state = self.get_state()
-
-        info = {}
-        if subgoal_success:
-            reward, info = self.get_reward([], action, info)
-        else:
-            # failed subgoal penalty
-            reward = self.failed_subgoal_penalty
-        done, info = self.get_termination([], info)
-
+    def get_reward(self, collision_links=[], action=None, info={}):
+        reward, info = super(NavigateRandomEnv, self).get_reward(collision_links, action, info)
         if self.arena == 'button_door':
             button_state = p.getJointState(self.buttons[self.door_idx].body_id, self.button_axis_link_id)[0]
             if not self.button_pressed and button_state < self.button_threshold:
@@ -1177,6 +1164,22 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             reward += (obstacles_moved_dist_diff * 5.0)
             # print('obstacles_moved_dist_diff', obstacles_moved_dist_diff)
             self.obstacles_moved_dist = new_obstacles_moved_dist
+        return reward, info
+
+    def compute_next_step(self, action, use_base, subgoal_success):
+        self.simulator.sync()
+
+        if use_base:
+            # trigger re-computation of geodesic distance for get_reward
+            self.state = self.get_state()
+
+        info = {}
+        if subgoal_success:
+            reward, info = self.get_reward([], action, info)
+        else:
+            # failed subgoal penalty
+            reward = self.failed_subgoal_penalty
+        done, info = self.get_termination([], info)
 
         if not use_base:
             set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
@@ -1302,9 +1305,27 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
                                            high=1.0,
                                            dtype=np.float32)
 
-    def step(self, action):
-        embed()
+    def get_termination(self, collision_links=[], info={}):
+        done, info = super(MotionPlanningBaseArmEnv, self).get_termination(action)
+        if done:
+            return done, info
+        else:
+            collision_links_flatten = [item for sublist in collision_links for item in sublist]
+            collision_links_flatten_filter = [item for item in collision_links_flatten
+                                              if item[2] != self.robots[0].robot_ids[0] and item[3] == -1]
+            # base collision with external objects
+            if len(collision_links_flatten_filter) > 0:
+                done = True
+                info['success'] = False
+                # print('base collision')
+                # episode = Episode(
+                #     success=float(info['success']),
+                # )
+                # self.stored_episodes.append(episode)
+            return done, info
 
+    def step(self, action):
+        return super(NavigateRandomEnv, self).step(action)
 
 
 if __name__ == '__main__':
@@ -1337,7 +1358,7 @@ if __name__ == '__main__':
     nav_env = MotionPlanningBaseArmContinuousEnv(config_file=args.config,
                                                  mode=args.mode,
                                                  action_timestep=1 / 10.0,
-                                                 physics_timestep=1 / 100.0,
+                                                 physics_timestep=1 / 40.0,
                                                  eval=args.mode == 'gui',
                                                  arena=args.arena,
                                                  )
@@ -1346,9 +1367,11 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         state = nav_env.reset()
-        for i in range(150):
+        for i in range(1000):
             # print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
+            # action[:] = 0.0
+            # action[:3] = 1.0
             state, reward, done, info = nav_env.step(action)
             # embed()
             # print('Reward:', reward)
