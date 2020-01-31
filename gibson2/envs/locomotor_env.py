@@ -291,10 +291,13 @@ class NavigateEnv(BaseEnv):
             assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
             pose_camera = self.robots[0].parts['scan_link'].get_pose()
             angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-            elev_bottom_angle = -30. * np.pi / 180.
-            elev_top_angle = 10. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+            if self.n_vertical_beams == 1:
+                elev_angle = np.array([0.])
+            else:
+                elev_bottom_angle = -30. * np.pi / 180.
+                elev_top_angle = 10. * np.pi / 180.
+                elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+                                       (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
             orig_offset = np.vstack([
                 np.vstack([np.cos(angle),
                            np.sin(angle),
