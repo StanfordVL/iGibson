@@ -91,6 +91,7 @@ class Simulator:
             self.cid = p.connect(p.DIRECT)
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
+        p.setPhysicsEngineParameter(enableFileCaching=0)
 
         if self.mode == 'gui' and not self.render_to_tensor:
             self.add_viewer()

@@ -111,7 +111,7 @@ setup(
             'Pillow>=3.3.0',
             'PyYAML>=3.12',
             'numpy>=1.13',
-            'pybullet==2.4.1',
+            'pybullet==2.6.4',
             'transforms3d>=0.3.1',
             'tqdm == 4.19.9',
             'Pillow>=4.2.1',
