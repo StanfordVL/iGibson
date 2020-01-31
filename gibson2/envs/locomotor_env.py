@@ -696,6 +696,10 @@ class NavigateEnv(BaseEnv):
             valid, collision_links_flatten = self.test_valid_position()
             if valid:
                 return
+            # for collision_link in collision_links_flatten:
+            #     print(collision_link)
+            # print('reset agent failed')
+            # embed()
 
         print('Failed to reset robot without collision' + '-' * 30)
         for collision_link in collision_links_flatten:
@@ -710,6 +714,9 @@ class NavigateEnv(BaseEnv):
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
 
     def test_valid_position(self):
+        # assume joint velocity control, set velocity to 0 when testing whether the initial configuration is valid
+        assert self.robots[0].control == 'velocity'
+        self.robots[0].apply_real_action(np.zeros(self.action_dim))
         collision_links = self.run_simulation()
         collision_links_flatten = [item for sublist in collision_links for item in sublist]
         return len(collision_links_flatten) == 0, collision_links_flatten
@@ -1809,9 +1816,9 @@ class InteractiveNavigateEnv(NavigateEnv):
             reward += self.success_reward  # |success_reward| = 10.0
 
         # death penalty
-        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
-        if self.robots[0].get_position()[2] > floor_height + self.death_z_thresh:
-            reward -= self.success_reward * 1.0
+        # floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
+        # if self.robots[0].get_position()[2] > floor_height + self.death_z_thresh:
+        #     reward -= self.success_reward * 1.0
 
         # push door the wrong way
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
