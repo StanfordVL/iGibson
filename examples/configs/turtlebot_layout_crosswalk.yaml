@@ -7,7 +7,7 @@ scene: stadium
 # model_id: Ohoopee
 
 num_obstacles: 0
-num_pedestrians: 5
+num_pedestrians: 1
 pedestrians_can_see_robot: false
 randomize_pedestrian_attributes: false
 
@@ -40,7 +40,7 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 300
+max_step: 400
 
 # sensor
 # output: [sensor, rgb, depth]
@@ -50,10 +50,12 @@ max_step: 300
 #output: [sensor, pedestrian_position, pedestrian_velocity]
 #output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
 #output: [concatenate]
-output: [sensor, depth]
-scan_beams: 512 #128 
-scan_vertical_beams: 1 #9 
-resolution: 64
+output: [sensor, scan]
+#scan_beams: 64 #128 
+#scan_vertical_beams: 1 #9 
+n_horizontal_rays: 128
+n_vertical_beams: 1
+resolution: 128
 #waypoints: 5
 fov: 90
 
@@ -70,10 +72,6 @@ random:
   random_init_y_range: [-0.1, 0.1]
   random_init_z_range: [-0.1, 0.1]
   random_init_rot_range: [-0.1, 0.1]
-
-speed:
-  timestep: 0.001
-  frameskip: 10
 
 mode: headless #gui|web_ui
 verbose: false
@@ -118,13 +116,13 @@ components:
     center_x: 0.0
     center_y: 4.0
   entrance_2:
-    center_x: 4.0
+    center_x: 3.5
     center_y: 0.0
   entrance_3:
     center_x: 0.0
     center_y: -4.0
   entrance_4:
-    center_x: -4.0
+    center_x: -3.5
     center_y: 0.0
 
 # TODO: specify obstacles.
@@ -138,12 +136,12 @@ movements:
     initial_target: [['entrance_1', 'entrance_3'], ['entrance_3', 'entrance_1']]
     # x_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
     # y_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-    x_range_radius: 0.5
+    x_range_radius: 3.0
     y_range_radius: 0.5
     flip_prob: 0.5
   agent:
     initial_positions: 'entrance_2'
     target_positions: 'entrance_4'
-    x_range_radius: 1.0
-    y_range_radius: 1.0
+    x_range_radius: 0.5
+    y_range_radius: 3.0
         

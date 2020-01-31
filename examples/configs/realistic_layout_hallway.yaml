@@ -12,7 +12,7 @@ collision_ignore_link_a_ids: [0, 1, 2, 3]  # ignore the agent's collision with t
 collision_ignore_body_ids: [0, 1, 2, 3] # for backward compatibility
 
 num_obstacles: 0
-num_pedestrians: 3
+num_pedestrians: 1
 pedestrians_can_see_robot: false
 randomize_pedestrian_attributes: false
 
@@ -54,6 +54,7 @@ max_step: 400
 #output: [sensor, pedestrian_position, pedestrian_velocity]
 #output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
 #output: [concatenate]
+#output: [sensor, scan]
 output: [sensor, scan, pedestrian_position, pedestrian_velocity, pedestrian_ttc]
 #scan_beams: 64 #128 
 #scan_vertical_beams: 1 #9 
@@ -112,7 +113,7 @@ humans:
 ############ ROOM LAYOUT #################
 # Walls configuration.
 walls:
-   walls_pos: [[0, 0.9, 0.6], [0, -0.9, 0.6], [10.5, 0, 0.6], [-10.5, 0, 0.6]]
+   walls_pos: [[0, 0.9, 0.6], [0, -0.9, 0.6], [12.3, 0, 0.6], [-12.3, 0, 0.6]]
    walls_dim: [[10, 0.25, 1.0], [10.0, 0.25, 1.0], [0.25, 6.0, 1.0], [0.25, 6.0, 1.0]]
 
 # Specify different parts of the room.
@@ -139,14 +140,12 @@ movements:
     initial_target: [['entrance_1', 'entrance_2'], ['entrance_2', 'entrance_1']]
     # x_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
     # y_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-    x_range_radius: 1.0
-    y_range_radius: 1.0
+    x_range_radius: 0.2
+    y_range_radius: 0.2
     flip_prob: 0.5
   agent:
-    # initial_positions: 'entrance_3'
-    # target_positions: 'entrance_4'
-    initial_target: [['entrance_3', 'entrance_4']]
-    x_range_radius: 0.5
-    y_range_radius: 0.5
-    # flip_prob: 1
+    initial_positions: 'entrance_3'
+    target_positions: 'entrance_4'
+    x_range_radius: 0.2
+    y_range_radius: 0.2
         
