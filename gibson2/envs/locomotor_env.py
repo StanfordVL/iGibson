@@ -584,8 +584,11 @@ class NavigateRandomEnv(NavigateEnv):
                                          self.initial_pos[2] + self.random_init_z_offset])
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
 
-    def reset(self):
-        self.floor_num = self.scene.get_random_floor()
+    def reset(self, floor_idx=None):
+        if floor_idx is None:
+            self.floor_num = self.scene.get_random_floor()
+        else:
+            self.floor_num = floor_idx
         self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.02)
         state = super(NavigateRandomEnv, self).reset()
         return state
