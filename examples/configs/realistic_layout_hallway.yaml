@@ -144,8 +144,9 @@ movements:
     y_range_radius: 0.2
     flip_prob: 0.5
   agent:
-    initial_positions: 'entrance_3'
-    target_positions: 'entrance_4'
+    # initial_positions: 'entrance_3'
+    # target_positions: 'entrance_4'
+    initial_target: [['entrance_3', 'entrance_4']]
     x_range_radius: 0.2
     y_range_radius: 0.2
         
