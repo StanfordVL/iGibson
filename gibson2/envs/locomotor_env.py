@@ -1524,14 +1524,15 @@ class NavigatePedestriansEnv(NavigateEnv):
         
         # Choose new start postion and goal location for robot
         reset_complete = False
-        initial, target = self.config.get('movements')['agent']['initial_target'][0]
+        initial, target = initial, target = random.choice(self.config.get('movements')['agent']['initial_target'])
+        # initial, target = self.config.get('movements')['agent']['initial_target'][0]
         target_x, target_y = self.config.get('components')[target]['center_x'], self.config.get('components')[target]['center_y']
-        self.current_target_position = np.array([np.random.uniform(target_x - self.agent_x_range_radius, target_x + self.agent_x_range_radius), np.random.uniform(target_y- self.agent_y_range_radius, target_y + self.agent_y_range_radius), 0.0])
-        dist = l2_distance(robot_position, self.current_target_position)
+        # self.current_target_position = np.array([np.random.uniform(target_x - self.agent_x_range_radius, target_x + self.agent_x_range_radius), np.random.uniform(target_y- self.agent_y_range_radius, target_y + self.agent_y_range_radius), 0.0])
+        # dist = l2_distance(robot_position, self.current_target_position)
         
 
-        if dist < 1.0:
-          target, initial = initial, target
+        # if dist < 1.0:
+          # target, initial = initial, target
 
         initial_x, initial_y = self.config.get('components')[initial]['center_x'], self.config.get('components')[initial]['center_y']
         pos = np.array([np.random.uniform(initial_x- self.agent_x_range_radius, initial_x + self.agent_x_range_radius), np.random.uniform(initial_y - self.agent_y_range_radius, initial_y + self.agent_y_range_radius), 0.0])
@@ -1540,6 +1541,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.robots[0].set_orientation(
             orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
         self.initial_pos = np.array(pos)
+
         while not reset_complete:
             
             # max_trials = 1000

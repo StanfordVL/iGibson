@@ -145,7 +145,7 @@ movements:
   agent:
     # initial_positions: 'entrance_3'
     # target_positions: 'entrance_4'
-    initial_target: [['entrance_3', 'entrance_4']]
+    initial_target: [['entrance_3', 'entrance_4'], ['entrance_4', 'entrance_3']]
     x_range_radius: 0.5
     y_range_radius: 0.5
     # flip_prob: 1
