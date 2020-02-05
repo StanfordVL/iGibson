@@ -10,6 +10,7 @@ trav_map_erosion: 3
 # robot
 robot: Fetch
 velocity: 0.1
+fine_motion_plan: true
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
