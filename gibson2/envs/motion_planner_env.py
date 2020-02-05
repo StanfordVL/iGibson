@@ -227,6 +227,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         # real sensor spec for Fetch
         resolution = self.config.get('resolution', 64)
+        self.fine_motion_plan = self.config.get('fine_motion_plan', False)
+
         width = resolution
         height = int(width * (480.0 / 640.0))
         if 'rgb' in self.output:
@@ -891,6 +893,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             arm_joint_positions = p.calculateInverseKinematics(self.robot_id,
                                                                self.robots[0].parts['gripper_link'].body_part_index,
                                                                arm_subgoal,
+                                                               self.robots[0].get_orientation(),
                                                                lowerLimits=min_limits,
                                                                upperLimits=max_limits,
                                                                jointRanges=joint_range,
@@ -955,11 +958,35 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         if arm_joint_positions is None:
             return False
 
-        arm_path = plan_joint_motion(self.robot_id,
+        mp_obstacles = []
+        mp_obstacles.append(self.mesh_id)
+        for door in self.doors:
+            mp_obstacles.append(door.body_id)
+
+        disabled_collisions = {
+            (link_from_name(self.robot_id, 'torso_lift_link'), link_from_name(self.robot_id, 'torso_fixed_link')),
+            (link_from_name(self.robot_id, 'torso_lift_link'), link_from_name(self.robot_id, 'shoulder_lift_link')),
+            (link_from_name(self.robot_id, 'torso_lift_link'), link_from_name(self.robot_id, 'upperarm_roll_link')),
+            (link_from_name(self.robot_id, 'torso_lift_link'), link_from_name(self.robot_id, 'forearm_roll_link')),
+            (link_from_name(self.robot_id, 'torso_lift_link'), link_from_name(self.robot_id, 'elbow_flex_link'))}
+
+        #print(mp_obstacles)
+        mp_obstacles = tuple(mp_obstacles)
+        if self.fine_motion_plan:
+            arm_path = plan_joint_motion(self.robot_id,
                                      self.arm_joint_ids,
                                      arm_joint_positions,
-                                     disabled_collisions=set(),
-                                     self_collisions=False)
+                                     disabled_collisions=disabled_collisions,
+                                     self_collisions=True,
+                                     obstacles=mp_obstacles)
+        else:
+            arm_path = plan_joint_motion(self.robot_id,
+                                         self.arm_joint_ids,
+                                         arm_joint_positions,
+                                         disabled_collisions=disabled_collisions,
+                                         self_collisions=False,
+                                         obstacles=[])
+
         if arm_path is not None:
             if self.eval:
                 for joint_way_point in arm_path:
@@ -1020,11 +1047,37 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         push_vector_local = np.array([action[6], action[7]]) * 0.5  # [-0.5, 0.5]
         push_vector = rotate_vector_2d(push_vector_local, -self.robots[0].get_rpy()[2])
         push_vector = np.append(push_vector, 0.0)
-
+        
         # push_vector = np.array([-0.5, 0.0, 0.0])
 
         max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
         base_pose = get_base_values(self.robot_id)
+
+        joint_positions_original = get_joint_positions(self.robot_id, self.arm_joint_ids)
+
+        # test arm_subgoal + push_vector reachability
+        joint_positions = p.calculateInverseKinematics(self.robot_id,
+                                                       self.robots[0].parts['gripper_link'].body_part_index,
+                                                       arm_subgoal + push_vector,
+                                                       self.robots[0].get_orientation(),
+                                                       lowerLimits=min_limits,
+                                                       upperLimits=max_limits,
+                                                       jointRanges=joint_range,
+                                                       restPoses=rest_position,
+                                                       jointDamping=joint_damping,
+                                                       solver=p.IK_DLS,
+                                                       maxNumIterations=100)[2:10]
+
+        set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
+        #ls = p.getLinkState(robotid, endEffectorId)
+        #newPos = ls[4]
+        #diff = [targetPos[0] - newPos[0], targetPos[1] - newPos[1], targetPos[2] - newPos[2]]
+        #dist2 = (diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2])
+        diff = l2_distance(arm_subgoal + push_vector, self.robots[0].get_end_effector_position())
+        set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions_original)
+        print(diff)
+        if diff > 0.03:
+            return
 
         # self.simulator.set_timestep(0.002)
         steps = 50
@@ -1034,6 +1087,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             joint_positions = p.calculateInverseKinematics(self.robot_id,
                                                            self.robots[0].parts['gripper_link'].body_part_index,
                                                            push_goal,
+                                                           self.robots[0].get_orientation(),
                                                            lowerLimits=min_limits,
                                                            upperLimits=max_limits,
                                                            jointRanges=joint_range,

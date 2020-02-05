@@ -2456,7 +2456,8 @@ def get_collision_fn(body, joints, obstacles, attachments, self_collisions, disa
     # TODO: convert most of these to keyword arguments
     check_link_pairs = get_self_link_pairs(body, joints, disabled_collisions) \
         if self_collisions else []
-    moving_links = frozenset(get_moving_links(body, joints))
+    moving_links = frozenset([item for item in get_moving_links(body, joints) if item != 19])
+    # TODO: This is a fetch specific change
     attached_bodies = [attachment.child for attachment in attachments]
     moving_bodies = [(body, moving_links)] + attached_bodies
     #moving_bodies = [body] + [attachment.child for attachment in attachments]
@@ -2477,11 +2478,12 @@ def get_collision_fn(body, joints, obstacles, attachments, self_collisions, disa
         for link1, link2 in check_link_pairs:
             # Self-collisions should not have the max_distance parameter
             if pairwise_link_collision(body, link1, body, link2): #, **kwargs):
-                print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
-                #return True
+                #print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
+                return True
         for body1, body2 in check_body_pairs:
             if pairwise_collision(body1, body2, **kwargs):
-                print(get_body_name(body1), get_body_name(body2))
+                #print(body1, body2)
+                #print(get_body_name(body1), get_body_name(body2))
                 return True
         return False
     return collision_fn
