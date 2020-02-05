@@ -213,10 +213,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # action[5] = arm_img_u
         # action[6] = arm_push_vector_x
         # action[7] = arm_push_vector_y
-        self.action_space = gym.spaces.Box(shape=(8,),
-                                           low=-1.0,
-                                           high=1.0,
-                                           dtype=np.float32)
+        if self.arena == 'random_nav':
+            self.action_space = gym.spaces.Box(shape=(3,),
+                                               low=-1.0,
+                                               high=1.0,
+                                               dtype=np.float32)
+        else:
+            self.action_space = gym.spaces.Box(shape=(8,),
+                                               low=-1.0,
+                                               high=1.0,
+                                               dtype=np.float32)
         self.prepare_motion_planner()
 
         # real sensor spec for Fetch
@@ -452,7 +458,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         else:
             # TODO: handcraft environments for more scenes
-            assert False, 'model_id unknown'
+            if self.arena != 'random_nav':
+                assert False, 'model_id unknown'
 
         if self.arena in ['push_door', 'button_door']:
             self.door_axis_link_id = 1
@@ -1110,9 +1117,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # action[7] = arm_push_vector_y
         # print('-' * 20)
         self.current_step += 1
-        use_base = action[0] > 0.0
 
-        # add action noise before execution
+        if self.arena == 'random_nav':
+            use_base = True
+            # append a dummy value to the front of the array to achieve compatibility
+            action = np.insert(action, 0, 0.0)
+        else:
+            use_base = action[0] > 0.0
+            # add action noise before execution
+
         action[1:] = np.clip(action[1:] + np.random.normal(0.0, 0.05, action.shape[0] - 1), -1.0, 1.0)
 
         if use_base:
@@ -1342,26 +1355,35 @@ if __name__ == '__main__':
 
     parser.add_argument('--arena',
                         '-a',
-                        choices=['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty'],
+                        choices=['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty', 'random_nav'],
                         default='push_door',
                         help='which arena to train or test (default: push_door)')
 
+    parser.add_argument('--action_type',
+                        '-t',
+                        choices=['high-level', 'low-level'],
+                        default='high-level',
+                        help='which action type to use (default: high-level)')
+
+
     args = parser.parse_args()
 
-    # nav_env = MotionPlanningBaseArmEnv(config_file=args.config,
-    #                                    mode=args.mode,
-    #                                    action_timestep=1 / 500.0,
-    #                                    physics_timestep=1 / 500.0,
-    #                                    eval=args.mode == 'gui',
-    #                                    arena=args.arena,
-    #                                    )
-    nav_env = MotionPlanningBaseArmContinuousEnv(config_file=args.config,
-                                                 mode=args.mode,
-                                                 action_timestep=1 / 10.0,
-                                                 physics_timestep=1 / 40.0,
-                                                 eval=args.mode == 'gui',
-                                                 arena=args.arena,
-                                                 )
+    if args.action_type == 'high-level':
+        nav_env = MotionPlanningBaseArmEnv(config_file=args.config,
+                                           mode=args.mode,
+                                           action_timestep=1 / 500.0,
+                                           physics_timestep=1 / 500.0,
+                                           eval=args.mode == 'gui',
+                                           arena=args.arena,
+                                           )
+    else:
+        nav_env = MotionPlanningBaseArmContinuousEnv(config_file=args.config,
+                                                     mode=args.mode,
+                                                     action_timestep=1 / 10.0,
+                                                     physics_timestep=1 / 40.0,
+                                                     eval=args.mode == 'gui',
+                                                     arena=args.arena,
+                                                     )
 
     for episode in range(100):
         print('Episode: {}'.format(episode))

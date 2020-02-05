@@ -302,7 +302,7 @@ class NavigateEnv(BaseEnv):
     def get_auxiliary_sensor(self, collision_links=[]):
         return np.array([])
 
-    def add_naive_noise_to_sensor(self, sensor_reading, noise_rate):
+    def add_naive_noise_to_sensor(self, sensor_reading, noise_rate, noise_value=1.0):
         if noise_rate <= 0.0:
             return sensor_reading
 
@@ -311,7 +311,7 @@ class NavigateEnv(BaseEnv):
 
         valid_mask = np.random.choice(2, sensor_reading.shape, p=[noise_rate, 1.0 - noise_rate])
         # set invalid values to be the maximum range (e.g. depth and scan)
-        sensor_reading[valid_mask == 0] = 1.0
+        sensor_reading[valid_mask == 0] = noise_value
         return sensor_reading
 
     def get_depth(self):
@@ -322,20 +322,19 @@ class NavigateEnv(BaseEnv):
             high = 3.5
         elif self.config['robot'] == 'Fetch':
             # Primesense Carmine 1.09 short-range RGBD sensor
-            low = 0.1
+            low = 0.35
             high = 3.0  # http://xtionprolive.com/primesense-carmine-1.09
             # high = 1.4  # https://www.i3du.gr/pdf/primesense.pdf
         else:
             assert False, 'unknown robot for RGBD observation'
 
-        invalid = depth == 0.0
-        depth[depth < low] = low
-        depth[depth > high] = high
-        depth[invalid] = high
+        # 0.0 is a special value for invalid entries
+        depth[depth < low] = 0.0
+        depth[depth > high] = 0.0
 
         # re-scale depth to [0.0, 1.0]
-        depth = (depth - low) / (high - low)
-        depth = self.add_naive_noise_to_sensor(depth, self.depth_noise_rate)
+        depth /= high
+        depth = self.add_naive_noise_to_sensor(depth, self.depth_noise_rate, noise_value=0.0)
 
         return depth
 
