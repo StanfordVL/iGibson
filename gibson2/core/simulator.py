@@ -156,6 +156,9 @@ class Simulator:
         :param class_id: class_id to show for semantic segmentation mask
         """
         new_object = object.load()
+        isSoft = False
+        if object.__class__.__name__ == 'SoftObject':
+            isSoft = True
         self.objects.append(new_object)
         for shape in p.getVisualShapeData(new_object):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
@@ -168,12 +171,14 @@ class Simulator:
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                                pybullet_uuid=new_object,
                                                class_id=class_id,
-                                               dynamic=True)
+                                               dynamic=True,
+                                               softbody=isSoft)
                 else:
                     self.renderer.add_instance(self.visual_objects[filename],
                                                pybullet_uuid=new_object,
                                                class_id=class_id,
-                                               dynamic=True)
+                                               dynamic=True,
+                                               softbody=isSoft)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
                 self.renderer.load_object(
