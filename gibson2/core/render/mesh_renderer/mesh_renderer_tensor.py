@@ -1,7 +1,7 @@
 import cv2
 import sys
 import numpy as np
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, GL
+from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, CGLUtils
 import torch
 from gibson2.core.render.mesh_renderer.get_available_devices import get_cuda_device
 
@@ -20,6 +20,7 @@ class MeshRendererG2G(MeshRenderer):
             self.normal_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
             self.seg_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
             self.pc_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
+        CGLUtils.glad_init()
 
     def readbuffer_to_tensor(self, modes=('rgb', 'normal', 'seg', '3d')):
         results = []
@@ -51,13 +52,12 @@ class MeshRendererG2G(MeshRenderer):
             hidden
 
         """
-        GL.glClearColor(0, 0, 0, 1)
-        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
-        GL.glEnable(GL.GL_DEPTH_TEST)
+        CGLUtils.render_tensor_pre()
 
         for instance in self.instances:
             if not instance in hidden:
                 instance.render()
-        GL.glDisable(GL.GL_DEPTH_TEST)
+
+        CGLUtils.render_tensor_post()
 
         return self.readbuffer_to_tensor(modes)
