@@ -147,6 +147,16 @@ class ORCA(object):
 
         self.sim.doStep()
         action = ActionXY(*self.sim.getAgentVelocity(0))
+        
+        # don't go backward from the goal
+        goal_x = self_state.gx - self_state.px
+        
+        if goal_x > 0:
+            new_vx = max(0, action.vx)
+        elif goal_x < 0:
+            new_vx = min(0, action.vx)
+
+        action = ActionXY(vx=new_vx, vy=action.vy)
         self.last_state = state
 
         return action

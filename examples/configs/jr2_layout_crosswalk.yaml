@@ -6,20 +6,21 @@ scene: stadium
 # scene: building
 # model_id: Ohoopee
 
-automatic_reset: true
-
 collision_ignore_link_a_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
+collision_ignore_link_b_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
 collision_ignore_body_ids: [0, 1, 2, 3] # for backward compatibility
 
 num_obstacles: 0
-num_pedestrians: 2
-pedestrians_can_see_robot: true
+num_pedestrians: 1
+pedestrians_can_see_robot: false
 randomize_pedestrian_attributes: false
 
 # robot
-robot: TurtlebotDifferentialDrive
-max_linear_velocity: 1.0
-max_angular_velocity: 2.0
+robot: JR2_Kinova
+wheel_velocity: 0.025
+arm_velocity: 0.005
+#max_linear_velocity: 1.0
+#max_angular_velocity: 2.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -51,10 +52,10 @@ max_step: 400
 # output: [sensor, rgb, depth]
 # output: [sensor, scan, pedestrian]
 #output: [sensor, pedestrian]
+#output: [sensor, scan]
 #output: [sensor, pedestrian_position, pedestrian_velocity]
 #output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
 #output: [concatenate]
-#output: [sensor, scan, pedestrian_position, pedestrian_velocity, pedestrian_ttc]
 output: [sensor, scan]
 #scan_beams: 64 #128 
 #scan_vertical_beams: 1 #9 
@@ -81,7 +82,6 @@ random:
 mode: headless #gui|web_ui
 verbose: false
 fast_lq_render: true
-render_to_tensor: true
 
 # visual objects
 visual_object_at_initial_pos: false
@@ -90,8 +90,8 @@ target_visual_object_visible_to_agent: true
 
 # debug
 debug: false
-# visual_object_at_initial_target_pos: true
-# target_visual_object_visible_to_agent: true
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: true
 
 
 ############ PEDESTRIANS #################
@@ -103,9 +103,9 @@ humans:
   position_noise: 0.0
   velocity_noise: 0.0
   sensor: coordinates
-  personal_space: 0.3
-  min_separation: 0.5
-  max_linear_velocity: 2.0
+  personal_space: 0.5
+  min_separation: 0.25
+  max_linear_velocity: 3.0
   max_angular_velocity: 1.0
   kinematics: holonomic
   # dist_tol: 0.5
@@ -113,22 +113,22 @@ humans:
 ############ ROOM LAYOUT #################
 # Walls configuration.
 walls:
-   walls_pos: [[0, 1.025, 0.6], [0, -1.025, 0.6], [10.0, 0, 0.6], [-10.0, 0, 0.6]]
-   walls_dim: [[20, 0.25, 2.0], [20.0, 0.25, 2.0], [0.25, 2.3, 2.0], [0.25, 2.3, 2.0]]
+  walls_pos: [[0, 5.25, 0.501], [0, -5.25, 0.501], [5.25, 0, 0.501], [-5.25, 0, 0.501]]
+  walls_dim: [[5, 0.25, 1.5], [5.0, 0.25, 1.5], [0.25, 5.0, 1.5], [0.25, 5.0, 1.5]]
 
 # Specify different parts of the room.
 components:
   entrance_1:
-    center_x: 8.0
-    center_y: 0.0
+    center_x: 0.0
+    center_y: 4.0
   entrance_2:
-    center_x: -8.0
+    center_x: 3.5
     center_y: 0.0
   entrance_3:
-    center_x: 6.0
-    center_y: 0.0
+    center_x: 0.0
+    center_y: -4.0
   entrance_4:
-    center_x: -6.0
+    center_x: -3.5
     center_y: 0.0
 
 # TODO: specify obstacles.
@@ -137,16 +137,17 @@ components:
 # Movements configuration
 movements:
   humans:
-    initial_target: [['entrance_1', 'entrance_2'], ['entrance_2', 'entrance_1']]
+    # initial_positions: ['entrance_1', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3']
+    # target_positions: ['entrance_3', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1', 'entrance_3', 'entrance_1']
+    initial_target: [['entrance_1', 'entrance_3'], ['entrance_3', 'entrance_1']]
     # x_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
     # y_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-    x_range_radius: 1.0
+    x_range_radius: 3.0
     y_range_radius: 0.5
     flip_prob: 0.5
   agent:
-    initial_positions: 'entrance_3'
+    initial_positions: 'entrance_2'
     target_positions: 'entrance_4'
-    #initial_target: [['entrance_3', 'entrance_4'], ['entrance_4', 'entrance_3']]
-    x_range_radius: 1.0
-    y_range_radius: 0.5
+    x_range_radius: 0.5
+    y_range_radius: 3.0
         

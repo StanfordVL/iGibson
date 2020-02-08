@@ -8,18 +8,18 @@ scene: stadium
 
 automatic_reset: true
 
-collision_ignore_link_a_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
+collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore the agent's collision with these body ids
 collision_ignore_body_ids: [0, 1, 2, 3] # for backward compatibility
 
 num_obstacles: 0
-num_pedestrians: 2
-pedestrians_can_see_robot: true
+num_pedestrians: 0
+pedestrians_can_see_robot: false
 randomize_pedestrian_attributes: false
 
 # robot
 robot: TurtlebotDifferentialDrive
-max_linear_velocity: 1.0
-max_angular_velocity: 2.0
+max_linear_velocity: 2.0
+max_angular_velocity: 4.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -45,20 +45,19 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 400
+max_step: 1000
 
 # sensor
 # output: [sensor, rgb, depth]
 # output: [sensor, scan, pedestrian]
 #output: [sensor, pedestrian]
+#output: [sensor, scan]
 #output: [sensor, pedestrian_position, pedestrian_velocity]
 #output: [sensor, pedestrian_position, pedestrian_velocity, pedestrian_ttc, concatenate]
-#output: [concatenate]
-#output: [sensor, scan, pedestrian_position, pedestrian_velocity, pedestrian_ttc]
-output: [sensor, scan]
+output: [concatentate]
 #scan_beams: 64 #128 
 #scan_vertical_beams: 1 #9 
-n_horizontal_rays: 128
+n_horizontal_rays: 32
 n_vertical_beams: 1
 resolution: 128
 #waypoints: 5
@@ -77,11 +76,10 @@ random:
   random_init_y_range: [-0.1, 0.1]
   random_init_z_range: [-0.1, 0.1]
   random_init_rot_range: [-0.1, 0.1]
-
+  
 mode: headless #gui|web_ui
 verbose: false
 fast_lq_render: true
-render_to_tensor: true
 
 # visual objects
 visual_object_at_initial_pos: false
@@ -103,18 +101,18 @@ humans:
   position_noise: 0.0
   velocity_noise: 0.0
   sensor: coordinates
-  personal_space: 0.3
-  min_separation: 0.5
-  max_linear_velocity: 2.0
-  max_angular_velocity: 1.0
+  personal_space: 0.5
+  min_separation: 0.25
+  max_linear_velocity: 4.0
+  max_angular_velocity: 2.0
   kinematics: holonomic
   # dist_tol: 0.5
 
 ############ ROOM LAYOUT #################
 # Walls configuration.
-walls:
-   walls_pos: [[0, 1.025, 0.6], [0, -1.025, 0.6], [10.0, 0, 0.6], [-10.0, 0, 0.6]]
-   walls_dim: [[20, 0.25, 2.0], [20.0, 0.25, 2.0], [0.25, 2.3, 2.0], [0.25, 2.3, 2.0]]
+#walls:
+#   walls_pos: [[0, 2.0, 0.501], [0, -2.0, 0.501], [10.25, 0, 0.501], [-10.25, 0, 0.501]]
+#   walls_dim: [[10, 0.25, 1.5], [10.0, 0.25, 1.5], [0.25, 5.0, 1.5], [0.25, 5.0, 1.5]]
 
 # Specify different parts of the room.
 components:
@@ -141,12 +139,11 @@ movements:
     # x_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
     # y_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
     x_range_radius: 1.0
-    y_range_radius: 0.5
+    y_range_radius: 1.0
     flip_prob: 0.5
   agent:
     initial_positions: 'entrance_3'
     target_positions: 'entrance_4'
-    #initial_target: [['entrance_3', 'entrance_4'], ['entrance_4', 'entrance_3']]
-    x_range_radius: 1.0
+    x_range_radius: 0.5
     y_range_radius: 0.5
         

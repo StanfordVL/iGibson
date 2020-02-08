@@ -113,7 +113,7 @@ class Pedestrian(object):
         return pos
     
 class CylinderPedestrian(object):
-    def __init__(self, radius=0.3, length=2.0, pos=[0, 0, 0],
+    def __init__(self, radius=0.3, length=2.0, pos=[0, 0, 1.0],
                  orn=[1, 0, 0, 0], rgba_color=[0, 1, 1, 0.8]):
 
         self.mass = 100
@@ -147,7 +147,7 @@ class CylinderPedestrian(object):
                                       -1,
                                       -1,
                                       -1,
-                                      p.JOINT_FIXED, [0, 0, 0], [0, 0, 0],
+                                      p.JOINT_FIXED, [0, 0, 0], [0, 0, self.length/2.0],
                                       self.pos,
                                       parentFrameOrientation=[1, 0, 0, 0])    # facing x axis
         return body_id
@@ -266,7 +266,7 @@ class VisualObject(object):
 class BoxShape(object):
     def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], rgba_color=[1.0, 1.0, 1.0, 1.0], mass=1000):
         self.basePos = pos
-        self.dimension = dim
+        self.dimension = [dim[i] / 2.0 for i in range(3)]
 
         self.rgba_color = rgba_color
         self.collision_id = None

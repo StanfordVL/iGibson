@@ -8,7 +8,7 @@ scene: stadium
 
 num_obstacles: 0
 num_pedestrians: 1
-pedestrians_can_see_robot: false
+pedestrians_can_see_robot: true
 randomize_pedestrian_attributes: false
 
 # robot
