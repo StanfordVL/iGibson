@@ -967,7 +967,7 @@ class NavigateObstaclesEnv(NavigateEnv):
     
         self.walls = []
         for box_pose in self.box_poses:
-            box = BoxShape(pos=box_pose[0], dim=[0.2, 0.3, 0.3], rgba_color=[1.0, 0.0, 0.0, 1.0], mass=10000)
+            box = BoxShape(pos=box_pose[0], dim=[0.2, 0.3, 0.3], rgba_color=[1.0, 0.0, 0.0, 0.7], mass=10000)
             self.obstacle_ids.append(self.simulator.import_interactive_object(box))
             self.walls += [box]
         
@@ -1023,7 +1023,7 @@ class NavigatePedestriansEnv(NavigateEnv):
 
         
         self.random_height = random_height
-        self.pedestrian_z = 1.0 # hard-coded.
+        self.pedestrian_z = 0.1 # hard-coded.
 
         self.num_pedestrians = self.config.get('num_pedestrians', 0)
         self.num_obstacles = self.config.get('num_obstacles', 0)
@@ -1096,7 +1096,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         if self.walls is not None:
             for i, wall_pos in enumerate(self.walls['walls_pos']):
                 wall_dim = self.walls['walls_dim'][i]
-                box = BoxShape(pos=wall_pos, dim=wall_dim, rgba_color=[1.0, 1.0, 1.0, 1.0])
+                box = BoxShape(pos=wall_pos, dim=wall_dim, rgba_color=[1.0, 1.0, 1.0, 0.7])
                 self.obstacle_ids.append(self.simulator.import_object(box))
         print('=' * 100)
         print('WALLS IDS: {}'.format(self.obstacle_ids))
@@ -1220,8 +1220,8 @@ class NavigatePedestriansEnv(NavigateEnv):
 
         # create pedestrian objects
         if len(self.pedestrians) == 0:
-            #self.pedestrians = [Pedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]
-            self.pedestrians = [CylinderPedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]            
+            self.pedestrians = [Pedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]
+            #self.pedestrians = [CylinderPedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]            
             # spawn pedestrians and get Gibson IDs
             self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
 
@@ -1530,7 +1530,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         # Then recreate them in new positions
         for _ in range(self.num_obstacles):
             _, pos = self.scene.get_random_point(min_xy=-2, max_xy=2)            
-            box = BoxShape(pos=pos, dim=self.initial_box_size, rgba_color=[1.0, 0.0, 0.0, 1.0])
+            box = BoxShape(pos=pos, dim=self.initial_box_size, rgba_color=[1.0, 0.0, 0.0, 0.7])
             self.obstacle_ids.append(self.simulator.import_interactive_object(box))
             self.obstacles.append(box)
         
@@ -2488,7 +2488,7 @@ class NavigateRandomObstaclesEnv(NavigateEnv):
         self.box_poses = []
 
         for _ in range(self.num_obstacles):
-            box = BoxShape(pos=initial_box_pose, dim=[self.box_x, self.box_y, self.box_z], rgba_color=[1.0, 0.0, 0.0, 1.0])
+            box = BoxShape(pos=initial_box_pose, dim=[self.box_x, self.box_y, self.box_z], rgba_color=[1.0, 0.0, 0.0, 0.7])
             self.obstacle_ids.append(self.simulator.import_interactive_object(box))
             self.boxes.append(box)
             self.box_poses.append(initial_box_pose)

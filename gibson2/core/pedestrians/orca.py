@@ -147,16 +147,20 @@ class ORCA(object):
 
         self.sim.doStep()
         action = ActionXY(*self.sim.getAgentVelocity(0))
+                
+        # Patrick's hack: don't go backward away from goal
+        orca_vel = np.array([action.vx, action.vy])
+        backward_component = np.dot(orca_vel, velocity)
         
-        # don't go backward from the goal
-        goal_x = self_state.gx - self_state.px
-        
-        if goal_x > 0:
-            new_vx = max(0, action.vx)
-        elif goal_x < 0:
-            new_vx = min(0, action.vx)
+        if backward_component < 0:
+            unit_vector_toward_goal = pref_vel * np.dot(orca_vel, pref_vel)
+            unit_vector_orthogonal_to_goal = np.array(unit_vector_toward_goal[1], -unit_vector_toward_goal[0])
+            new_vel = np.dot(orca_vel, unit_vector_orthogonal_to_goal)
+        else:
+            new_vel = orca_vel
 
-        action = ActionXY(vx=new_vx, vy=action.vy)
+        action = ActionXY(vx=new_vel[0], vy=new_vel[1])
+        
         self.last_state = state
 
         return action

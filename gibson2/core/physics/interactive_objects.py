@@ -113,7 +113,7 @@ class Pedestrian(object):
         return pos
     
 class CylinderPedestrian(object):
-    def __init__(self, radius=0.3, length=2.0, pos=[0, 0, 1.0],
+    def __init__(self, radius=0.3, length=2.0, pos=[0, 0, 0],
                  orn=[1, 0, 0, 0], rgba_color=[0, 1, 1, 0.8]):
 
         self.mass = 100
@@ -147,7 +147,7 @@ class CylinderPedestrian(object):
                                       -1,
                                       -1,
                                       -1,
-                                      p.JOINT_FIXED, [0, 0, 0], [0, 0, self.length/2.0],
+                                      p.JOINT_FIXED, [0, 0, 0], [0, 0, 0],
                                       self.pos,
                                       parentFrameOrientation=[1, 0, 0, 0])    # facing x axis
         return body_id

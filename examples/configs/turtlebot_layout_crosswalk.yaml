@@ -7,7 +7,7 @@ scene: stadium
 # model_id: Ohoopee
 
 num_obstacles: 0
-num_pedestrians: 1
+num_pedestrians: 5
 pedestrians_can_see_robot: true
 randomize_pedestrian_attributes: false
 
@@ -108,7 +108,7 @@ humans:
 # Walls configuration.
 walls:
   walls_pos: [[0, 5.25, 0.501], [0, -5.25, 0.501], [5.25, 0, 0.501], [-5.25, 0, 0.501]]
-  walls_dim: [[5, 0.25, 1.5], [5.0, 0.25, 1.5], [0.25, 5.0, 1.5], [0.25, 5.0, 1.5]]
+  walls_dim: [[10, 0.25, 2.0], [10.0, 0.25, 2.0], [0.25, 10.0, 2.0], [0.25, 10.0, 2.0]]
 
 # Specify different parts of the room.
 components:

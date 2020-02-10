@@ -45,7 +45,7 @@ collision_reward_weight: -1.0
 
 # termination condition
 dist_tol: 0.5
-max_step: 50
+max_step: 400
 
 # sensor
 # output: [sensor, rgb, depth]
@@ -113,13 +113,13 @@ humans:
 ############ ROOM LAYOUT #################
 # Walls configuration.
 walls:
-   walls_pos: [[0, 1.025, 0.6], [0, -1.025, 0.6], [-5.0, 0, 0.6], [7.05, 0, 0.6], [5.0, -3.05, 0.6], [5.0, 3.2, 0.6]]
-   walls_dim: [[10, 0.25, 2.0], [10.0, 0.25, 2.0], [0.25, 2.3, 2.0], [0.25, 10, 2.0], [0.25, 4.0, 2.0], [0.25, 4.0, 2.0]]
+   walls_pos: [[0, 1.025, 0.6], [0, -1.025, 0.6], [-5.0, 0, 0.6], [7.05, 0, 0.6], [4.875, -3.05, 0.6], [4.875, 3.15, 0.6], [5.95, 5.15, 0.6], [5.95, -5.15, 0.6]]
+   walls_dim: [[10, 0.25, 2.0], [10.0, 0.25, 2.0], [0.25, 2.3, 2.0], [0.25, 10, 2.0], [0.25, 4.0, 2.0], [0.25, 4.0, 2.0], [2.3, 0.25, 2.0], [2.3, 0.25, 2.0]]
 
 # Specify different parts of the room.
 components:
   entrance_1:
-    center_x: 5.0
+    center_x: 4.0
     center_y: 0.0
   entrance_2:
     center_x: -4.0
