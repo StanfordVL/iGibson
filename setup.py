@@ -126,7 +126,8 @@ setup(
             'pyassimp==4.1.3',
             'gputil'
     ],
-    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/core/render')],
+    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/core/render'), 
+    CMakeExtension('CGLUtils', sourcedir='gibson2/core/render')],
     cmdclass=dict(build_ext=CMakeBuild),
     tests_require=[],
 )  #yapf: disable
