@@ -302,7 +302,7 @@ class NavigateEnv(BaseEnv):
     def get_auxiliary_sensor(self, collision_links=[]):
         return np.array([])
 
-    def add_naive_noise_to_sensor(self, sensor_reading, noise_rate):
+    def add_naive_noise_to_sensor(self, sensor_reading, noise_rate, noise_value=1.0):
         if noise_rate <= 0.0:
             return sensor_reading
 
@@ -311,7 +311,7 @@ class NavigateEnv(BaseEnv):
 
         valid_mask = np.random.choice(2, sensor_reading.shape, p=[noise_rate, 1.0 - noise_rate])
         # set invalid values to be the maximum range (e.g. depth and scan)
-        sensor_reading[valid_mask == 0] = 1.0
+        sensor_reading[valid_mask == 0] = noise_value
         return sensor_reading
 
     def get_depth(self):
@@ -322,20 +322,23 @@ class NavigateEnv(BaseEnv):
             high = 3.5
         elif self.config['robot'] == 'Fetch':
             # Primesense Carmine 1.09 short-range RGBD sensor
-            low = 0.1
+            low = 0.35
             high = 3.0  # http://xtionprolive.com/primesense-carmine-1.09
             # high = 1.4  # https://www.i3du.gr/pdf/primesense.pdf
+        elif self.config['robot'] == 'Locobot':
+            # https://store.intelrealsense.com/buy-intel-realsense-depth-camera-d435.html
+            low = 0.1
+            high = 10.0
         else:
             assert False, 'unknown robot for RGBD observation'
 
-        invalid = depth == 0.0
-        depth[depth < low] = low
-        depth[depth > high] = high
-        depth[invalid] = high
+        # 0.0 is a special value for invalid entries
+        depth[depth < low] = 0.0
+        depth[depth > high] = 0.0
 
         # re-scale depth to [0.0, 1.0]
-        depth = (depth - low) / (high - low)
-        depth = self.add_naive_noise_to_sensor(depth, self.depth_noise_rate)
+        depth /= high
+        depth = self.add_naive_noise_to_sensor(depth, self.depth_noise_rate, noise_value=0.0)
 
         return depth
 
@@ -535,10 +538,30 @@ class NavigateEnv(BaseEnv):
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
-        return [[item for item in collision_per_sim_step
-                 if item[2] not in self.collision_ignore_body_b_ids and
-                 item[3] not in self.collision_ignore_link_a_ids]
-                for collision_per_sim_step in collision_links]
+        new_collision_links = []
+        for collision_per_sim_step in collision_links:
+            new_collision_per_sim_step = []
+            for item in collision_per_sim_step:
+                # ignore collision with body b
+                if item[2] in self.collision_ignore_body_b_ids:
+                    continue
+
+                # ignore collision with robot link a
+                if item[3] in self.collision_ignore_link_a_ids:
+                    continue
+
+                # ignore self collision with robot link a (body b is robot itself)
+                if item[2] == self.robots[0].robot_ids[0] and item[4] in self.collision_ignore_link_a_ids:
+                    continue
+
+                new_collision_per_sim_step.append(item)
+            new_collision_links.append(new_collision_per_sim_step)
+        return new_collision_links
+
+        # return [[item for item in collision_per_sim_step
+        #          if item[2] not in self.collision_ignore_body_b_ids and
+        #          item[3] not in self.collision_ignore_link_a_ids]
+        #         for collision_per_sim_step in collision_links]
 
     def get_position_of_interest(self):
         if self.config['task'] == 'pointgoal':
@@ -700,7 +723,6 @@ class NavigateEnv(BaseEnv):
             #     print(collision_link)
             # print('reset agent failed')
             # embed()
-
         print('Failed to reset robot without collision' + '-' * 30)
         for collision_link in collision_links_flatten:
             print(collision_link)
@@ -788,6 +810,7 @@ class NavigateRandomEnv(NavigateEnv):
 
     def reset_initial_and_target_pos(self):
         floor, self.initial_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
+
         max_trials = 100
         dist = 0.0
         # Need to change to 5 meter if we need to add obstacles
@@ -1063,6 +1086,17 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
                                                                        high=np.inf,
                                                                        shape=(height // 8, width // 8, 320),
                                                                        dtype=np.float32)
+        if 'rgb' in self.output:
+            self.observation_space.spaces['rgb'] = gym.spaces.Box(low=0.0,
+                                                                  high=1.0,
+                                                                  shape=(height, width, 3),
+                                                                  dtype=np.float32)
+        if 'depth' in self.output:
+            self.observation_space.spaces['depth'] = gym.spaces.Box(low=0.0,
+                                                                    high=1.0,
+                                                                    shape=(height, width, 1),
+                                                                    dtype=np.float32)
+
         # self.scan_vis = VisualMarker(rgba_color=[1, 0, 0, 1.0], radius=0.05)
         # self.scan_vis.load()
 
@@ -1173,8 +1207,8 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
         gt_pos = self.robots[0].get_position()[:2]
         source = gt_pos
         target = self.target_pos[:2]
-        # _, geodesic_dist = self.scene.get_shortest_path(self.floor_num, source, target)
-        geodesic_dist = 0.0
+        _, geodesic_dist = self.scene.get_shortest_path(self.floor_num, source, target)
+        # geodesic_dist = 0.0
         robot_z = self.robots[0].get_position()[2]
         if self.visualize_waypoints and self.mode == 'gui':
             for i in range(1000):
@@ -1205,22 +1239,23 @@ class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
                                             linear_velocity_local,
                                             angular_velocity_local))
         # cache results for reward calculation
+        additional_states = target_pos_local
         self.new_potential = geodesic_dist
         assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
         return additional_states
 
+    def crop_rect_image(self, img):
+        width = img.shape[0]
+        height = int(width * (480.0 / 640.0))
+        half_diff = int((width - height) / 2)
+        img = img[half_diff:half_diff + height, :]
+        return img
+
     def get_state(self, collision_links=[]):
         state = super(InteractiveGibsonNavigateSim2RealEnv, self).get_state(collision_links)
-        if 'rgbd' in state:
-            rgbd = state['rgbd']
-            width = rgbd.shape[0]
-            height = int(width * (480.0 / 640.0))
-            half_diff = int((width - height) / 2)
-            rgbd = rgbd[half_diff:half_diff+height, :]
-            state['rgbd'] = rgbd
-        # cv2.imshow('depth', state['depth'])
-        # cv2.imshow('scan', state['scan'])
-
+        for modality in ['rgb', 'rgbd', 'depth']:
+            if modality in state:
+                state[modality] = self.crop_rect_image(state[modality])
         return state
 
     def get_potential(self):
@@ -1882,13 +1917,14 @@ if __name__ == '__main__':
 
     step_time_list = []
     for episode in range(100):
+        nav_env.reset()
         print('Episode: {}'.format(episode))
         start = time.time()
-        for step in range(1000):  # 500 steps, 50s world time
+        for step in range(50):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
             # action[:] = 1.0
-            action[0] = -0.4666666666666666
-            action[1] = -0.2
+            # action[0] = -0.4666666666666666
+            # action[1] = -0.2
             # action[0] = 2.0 / 3.0
             # action[1] = -1.0
             # action[:] = 1.0
@@ -1901,12 +1937,8 @@ if __name__ == '__main__':
             # action = np.zeros(nav_env.action_space.shape)
             # debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
             # action[2:] = np.array(debug_param_values)
-
             state, reward, done, _ = nav_env.step(action)
-            print(state.keys())
-            print(state['sensor'])
-            # embed()
-            # print('reward', reward)
+            #print('reward', reward)
             if done:
                 print('Episode finished after {} timesteps'.format(step + 1))
                 break
