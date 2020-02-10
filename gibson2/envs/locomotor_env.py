@@ -1117,6 +1117,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         ''' Pedestrians '''
         self.humans = []
         self.pedestrians = []
+        self.pedestrian_can_see_robot = []        
         self.pedestrian_ids = []
         self.pedestrian_goal_ids = []
         self.pedestrian_goal_objects = []
@@ -1221,6 +1222,8 @@ class NavigatePedestriansEnv(NavigateEnv):
         # create pedestrian objects
         if len(self.pedestrians) == 0:
             self.pedestrians = [Pedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]
+            self.pedestrian_can_see_robot = [True for i in range(self.num_pedestrians)]            
+            
             #self.pedestrians = [CylinderPedestrian(pos = pedestrian_poses[i]) for i in range(self.num_pedestrians)]            
             # spawn pedestrians and get Gibson IDs
             self.pedestrian_gibson_ids = [self.simulator.import_object(ped) for ped in self.pedestrians]
@@ -1244,11 +1247,13 @@ class NavigatePedestriansEnv(NavigateEnv):
             # get the positions and velocities of other humans
             ob = [other_human.get_observable_state() for other_human in self.humans if other_human != human]
                       
-            #self.pedestrians_can_see_robot = np.random.uniform()
-            #if self.pedestrians_can_see_robot < 0.5:
+            can_see_flip = np.random.uniform()
+            if can_see_flip < 0.01:
+                self.pedestrian_can_see_robot[i] = not self.pedestrian_can_see_robot[i]
+                #print("Pedestrian " + str(i) + " sees robot? " + str(self.pedestrian_can_see_robot[i]))
             
             # can this person see the robot?
-            if self.pedestrians_can_see_robot:
+            if self.pedestrian_can_see_robot[i]:
                 ob += [self.get_robot_observable_state()]
                 #self.pedestrian_simulator.setAgentPosition(self.robot_as_pedestrian_id, tuple(self.robots[0].get_position()[:2]))
 
