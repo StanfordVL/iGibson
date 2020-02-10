@@ -614,7 +614,7 @@ class MeshRenderer:
             results.append(seg)
 
         if '3d' in modes:
-            pc = CGLUtils.readbuffer_meshrenderer('pc', self.width, self.height)
+            pc = CGLUtils.readbuffer_meshrenderer('3d', self.width, self.height)
             pc = pc.reshape(self.height, self.width, 4)[::-1, :]
             results.append(pc)
 
