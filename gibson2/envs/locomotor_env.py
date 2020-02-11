@@ -1127,7 +1127,18 @@ class NavigatePedestriansEnv(NavigateEnv):
         self.pedestrian_centers = [[], []]
         initial_target = humans['initial_target']
         for pedestrian in range(self.num_pedestrians):
-            initial, target = random.choice(initial_target)
+            if pedestrian == 0:
+              initial, target = random.choice(initial_target[:1])
+            elif pedestrian == 1:
+              initial, target = random.choice(initial_target[1:2])
+            elif 2 <= pedestrian < 4:
+              initial, target = random.choice(initial_target[2: 14])
+            elif pedestrian == 4:
+              initial, target = random.choice(initial_target[14:16])
+            elif pedestrian == 5:
+              initial, target = random.choice(initial_target[16:18])
+            else:
+              initial, target = random.choice(initial_target)
             print('pedestrian: {} initial {} target {}'.format(pedestrian, initial, target))
             self.pedestrian_centers[0].append(components[initial])
             self.pedestrian_centers[1].append(components[target])
@@ -1142,7 +1153,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         if self.walls is not None:
             for i, wall_pos in enumerate(self.walls['walls_pos']):
                 wall_dim = self.walls['walls_dim'][i]
-                box = BoxShape(pos=wall_pos, dim=wall_dim)
+                box = BoxShape(pos=wall_pos, dim=wall_dim, mass=0)
                 # box = BoxShape(pos=wall_pos, dim=wall_dim, mass=10)
                 self.obstacle_ids.append(self.simulator.import_object(box))
         print('=' * 100)
@@ -1180,7 +1191,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         # Visualize locations of different compoenents to debug.
         for component in components:
             component_pos = components[component]
-            p.addUserDebugText(component, [component_pos['center_x'], component_pos['center_y'], 2.0], [1, 0, 0])
+            # p.addUserDebugText(component, [component_pos['center_x'], component_pos['center_y'], 2.0], [1, 0, 0])
         
     def create_pedestrians(self, pedestrian_poses):
 #         # remove any existing pedestrians
@@ -1405,7 +1416,7 @@ class NavigatePedestriansEnv(NavigateEnv):
         if len(self.pedestrian_goal_objects) == 0:
             for ped_goal in pedestrian_goals:
                 pedestrian_goal_visual_obj = VisualObject(visual_shape=p.GEOM_CYLINDER,
-                                                          rgba_color=[1, 1, 0, 0.6],
+                                                          rgba_color=[1, 0, 0, 0.6],
                                                           radius=0.05,
                                                           length=0.5,
                                                           initial_offset=[0, 0, 0.25])

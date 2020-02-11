@@ -1,0 +1,190 @@
+# scene
+# scene: stadium_obstacle
+# scene: stadium_congested # remember to change target_pos
+#scene: stadium_difficult # remember to change target_pos
+scene: stadium
+# scene: building
+# model_id: Ohoopee
+
+automatic_reset: true
+
+collision_ignore_link_a_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
+collision_ignore_body_ids: [0, 1, 2, 3] # for backward compatibility
+
+num_obstacles: 0
+num_pedestrians: 6
+pedestrians_can_see_robot: false
+randomize_pedestrian_attributes: false
+
+# robot
+robot: TurtlebotDifferentialDrive
+max_linear_velocity: 1.0
+max_angular_velocity: 2.0
+
+# task, observation and action
+task: pointgoal # pointgoal|objectgoal|areagoal|reaching
+
+initial_pos: [-2.0, 2.0, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
+
+target_pos: [-2.0, 2.0, 0.0]
+target_orn: [0.0, 0.0, 0.0]
+
+is_discrete: false
+additional_states_dim: 2
+
+# reward
+success_reward: 1.0
+slack_reward: -0.001
+potential_reward_weight: 1.0
+#electricity_reward_weight: -0.02
+#stall_torque_reward_weight: -0.0001
+electricity_reward_weight: 0.0
+stall_torque_reward_weight: 0.0
+collision_reward_weight: -1.0
+
+# termination condition
+dist_tol: 0.5
+max_step: 400
+
+output: [sensor, scan, pedestrian_position, pedestrian_velocity, pedestrian_ttc]
+n_horizontal_rays: 128
+n_vertical_beams: 1
+resolution: 128
+#waypoints: 5
+fov: 90
+
+# display
+use_filler: true
+display_ui: false
+show_diagnostics: false
+ui_num: 2
+ui_components: [RGB_FILLED, DEPTH]
+random:
+  random_initial_pose : false
+  random_target_pose : false
+  random_init_x_range: [-0.1, 0.1]
+  random_init_y_range: [-0.1, 0.1]
+  random_init_z_range: [-0.1, 0.1]
+  random_init_rot_range: [-0.1, 0.1]
+
+mode: headless #gui|web_ui
+verbose: false
+fast_lq_render: true
+render_to_tensor: true
+
+# visual objects
+visual_object_at_initial_pos: false
+visual_object_at_target_pos: true
+target_visual_object_visible_to_agent: true
+
+# debug
+debug: false
+# visual_object_at_initial_target_pos: true
+# target_visual_object_visible_to_agent: true
+
+
+############ PEDESTRIANS #################
+humans:
+  visible: true
+  policy: orca
+  radius: 0.3
+  v_pref: 1.0
+  position_noise: 0.0
+  velocity_noise: 0.0
+  sensor: coordinates
+  personal_space: 0.5
+  min_separation: 0.25
+  max_linear_velocity: 2.0
+  max_angular_velocity: 1.0
+  kinematics: holonomic
+  # dist_tol: 0.5
+
+############ ROOM LAYOUT #################
+# Walls configuration.
+# Each square in Pybullet is 1.0 * 1.0 m^2.
+walls:
+   walls_pos: [[0, -11, 0.6], [0, -9, 0.6], [10.5, 0.5, 0.6], [-10.5, 0.5, 0.6], # hallway
+ [-5.5, 9, 0.6], [-5.5, 12, 0.6], [5.5, 9, 0.6], [5.5, 12, 0.6],  # crosswalk x
+ [1.5, 17, 0.6], [-1.5, 17, 0.6], [1.5, 4.0, 0.6], [-1.5, 4.0, 0.6], # crosswalk x
+[0.0, -1.0, 0.6], [0.0, 22, 0.6], # crosswalk | | 
+[-12.5, 22.0, 0.6], [12.5, 22.0, 0.6], [0.0, 25.0, 0.6], # door
+[-18, 20.5, 0.6], [18, 20.5, 0.6]] # door
+   # Dim is HALF-length.
+   walls_dim: [[10.0, 0.5, 1.0], [10.0, 0.5, 1.0], [0.5, 21.0, 1.0], [0.5, 21.0, 1.0],
+   [4.5, 0.5, 1.0], [4.5, 0.5, 1.0], [4.5, 0.5, 1.0], [4.5, 0.5, 1.0], 
+   [0.5, 4.5, 1.0], [0.5, 4.5, 1.0], [0.5, 4.5, 1.0], [0.5, 4.5, 1.0],
+   [4.0, 0.5, 1.0], [4.0, 0.5, 1.0],
+   [5.0, 0.5, 1.0], [5.0, 0.5, 1.0], [17.5, 0.5, 1.0],
+   [0.5, 5.0, 1.0], [0.5, 5.0, 1.0]]
+
+# Specify different parts of the room.
+components:
+  h1-ped:
+    center_x: 8.0
+    center_y: -10.0
+  h2-ped:
+    center_x: -8.0
+    center_y: -10.0
+  h1-rob:
+    center_x: 9.0
+    center_y: -10.0
+  h2-rob:
+    center_x: -9.0
+    center_y: -10.0
+  c1-ped:
+    center_x: -8.0
+    center_y: 10.5
+  c2-ped:
+    center_x: 0.0
+    center_y: 2.0
+  c3-ped:
+    center_x: 8.0
+    center_y: 10.5
+  c4-ped:
+    center_x: 0.0
+    center_y: 18.0
+  d1-ped:
+    center_x: -6.0
+    center_y: 18.0
+  d2-ped:
+    center_x: -6.0
+    center_y: 24.0
+  d3-ped:
+    center_x: 6.0
+    center_y: 18.0
+  d4-ped:
+    center_x: 6.0
+    center_y: 24.0
+  d1-rob:
+    center_x: 10.0
+    center_y: 23.0
+  d2-rob:
+    center_x: -10.0
+    center_y: 23.0
+
+# TODO: specify obstacles.
+
+############### MOVEMENTS ######################
+# Movements configuration
+movements:
+  humans:
+    initial_target: [['h1-ped', 'h2-ped'], ['h2-ped', 'h1-ped'],
+    ['c1-ped', 'c2-ped'], ['c2-ped', 'c1-ped'], ['c1-ped', 'c3-ped'], ['c3-ped', 'c1-ped'],
+    ['c1-ped', 'c4-ped'], ['c4-ped', 'c1-ped'], ['c2-ped', 'c3-ped'], ['c3-ped', 'c2-ped'],
+    ['c2-ped', 'c3-ped'], ['c3-ped', 'c2-ped'], ['c3-ped', 'c4-ped'], ['c4-ped', 'c3-ped'],
+    ['d1-ped', 'd2-ped'], ['d2-ped', 'd1-ped'], ['d3-ped', 'd4-ped'], ['d4-ped', 'd3-ped']]
+    # x_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    # y_range_radius: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    x_range_radius: 0.2
+    y_range_radius: 0.2
+    flip_prob: 0.5
+  agent:
+    # initial_positions: 'entrance_3'
+    # target_positions: 'entrance_4'
+    initial_target: [['h1-rob', 'h2-rob'], ['h2-rob', 'h1-rob'], 
+    ['c1-ped', 'c3-ped'], ['c3-ped', 'c1-ped'], ['c2-ped', 'c4-ped'], ['c4-ped', 'c2-ped'],
+    ['d1-rob', 'd2-rob'], ['d2-rob', 'd1-rob']]
+    x_range_radius: 0.2
+    y_range_radius: 0.2
+        
