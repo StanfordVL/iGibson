@@ -13,7 +13,7 @@ collision_ignore_body_ids: [0, 1, 2, 3] # for backward compatibility
 
 num_obstacles: 0
 num_pedestrians: 6
-pedestrians_can_see_robot: false
+pedestrians_can_see_robot: true
 randomize_pedestrian_attributes: false
 
 # robot
@@ -47,7 +47,8 @@ collision_reward_weight: -1.0
 dist_tol: 0.5
 max_step: 400
 
-output: [sensor, scan, pedestrian_position, pedestrian_velocity, pedestrian_ttc]
+output: [sensor, scan]
+# output: [sensor, scan, pedestrian_position, pedestrian_velocity, pedestrian_ttc]
 n_horizontal_rays: 128
 n_vertical_beams: 1
 resolution: 128
@@ -93,7 +94,7 @@ humans:
   position_noise: 0.0
   velocity_noise: 0.0
   sensor: coordinates
-  personal_space: 0.5
+  personal_space: 0.2
   min_separation: 0.25
   max_linear_velocity: 2.0
   max_angular_velocity: 1.0

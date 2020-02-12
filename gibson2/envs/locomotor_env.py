@@ -1497,6 +1497,7 @@ class NavigatePedestriansEnv(NavigateEnv):
             px = human.px
             py = human.py
             theta = human.theta
+            theta = np.arctan2(human.vy, human.vx)
         
             direction = p.getQuaternionFromEuler([0, 0, theta])
             self.pedestrians[i].reset_position_orientation([px, py, 0.03], direction)        
