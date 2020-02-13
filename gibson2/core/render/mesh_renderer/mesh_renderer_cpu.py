@@ -11,7 +11,7 @@ import numpy as np
 from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-from gibson2.core.render.mesh_renderer import MeshRendererContext, CGLUtils
+from gibson2.core.render.mesh_renderer import MeshRendererContext, CGLUtils, GLFWRendererContext
 from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
 from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTexture
 import gibson2.core.render.mesh_renderer as mesh_renderer
