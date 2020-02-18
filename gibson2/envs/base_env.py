@@ -1,4 +1,5 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch
+from gibson2.core.physics.robot_locomotors \
+    import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import BuildingScene, StadiumScene
 import gibson2
@@ -16,21 +17,31 @@ class BaseEnv(gym.Env):
                  config_file,
                  model_id=None,
                  mode='headless',
+                 action_timestep=1 / 10.0,
+                 physics_timestep=1 / 240.0,
                  device_idx=0):
         """
         :param config_file: config_file path
         :param model_id: override model_id in config file
         :param mode: headless or gui mode
-        :param device_idx: which GPU to run the simulation and rendering on
+        :param action_timestep: environment executes action per action_timestep second
+        :param physics_timestep: physics timestep for pybullet
+        :param device_idx: device_idx: which GPU to run the simulation and rendering on
         """
         self.config = parse_config(config_file)
         if model_id is not None:
             self.config['model_id'] = model_id
+
+        self.mode = mode
+        self.action_timestep = action_timestep
+        self.physics_timestep = physics_timestep
         self.simulator = Simulator(mode=mode,
+                                   timestep=physics_timestep,
                                    use_fisheye=self.config.get('fisheye', False),
                                    resolution=self.config.get('resolution', 64),
                                    fov=self.config.get('fov', 90),
                                    device_idx=device_idx)
+        self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.load()
 
     def reload(self, config_file):
@@ -77,6 +88,8 @@ class BaseEnv(gym.Env):
             robot = Freight(self.config)
         elif self.config['robot'] == 'Fetch':
             robot = Fetch(self.config)
+        elif self.config['robot'] == 'Locobot':
+            robot = Locobot(self.config)
         else:
             raise Exception('unknown robot type: {}'.format(self.config['robot']))
 
@@ -99,10 +112,16 @@ class BaseEnv(gym.Env):
         self.simulator.step()
 
     def step(self, action):
-        return NotImplementedError
+        """
+        Overwritten by subclasses
+        """
+        return NotImplementedError()
 
     def reset(self):
-        return NotImplementedError
+        """
+        Overwritten by subclasses
+        """
+        return NotImplementedError()
 
     def set_mode(self, mode):
         self.simulator.mode = mode

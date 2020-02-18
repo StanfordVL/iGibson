@@ -208,7 +208,7 @@ class InteractiveObj(object):
         org_pos, org_orn = p.getBasePositionAndOrientation(self.body_id)
         p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
 
-    def set_position_rotation(self, pos, orn):
+    def set_position_orientation(self, pos, orn):
         p.resetBasePositionAndOrientation(self.body_id, pos, orn)
 
 
