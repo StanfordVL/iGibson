@@ -7,7 +7,7 @@ from gibson2.core.pedestrians.action import ActionXY, ActionRot
 from gibson2.core.pedestrians.state import ObservableState, FullState
 
 class Agent(object):
-    def __init__(self, config, section):
+    def __init__(self, config, section, policy='orca'):
         """
         Base class for robot and human. Have the physical attributes of an agent.
 
@@ -20,6 +20,7 @@ class Agent(object):
         self.max_linear_velocity = config.get(section)['max_linear_velocity']
         self.max_angular_velocity = config.get(section)['max_angular_velocity']
         self.kinematics = config.get(section)['kinematics']
+        self.policy = policy_factory[policy]()
         self.px = None
         self.py = None
         self.gx = None
