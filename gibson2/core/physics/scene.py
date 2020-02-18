@@ -6,15 +6,18 @@ parentdir = os.path.dirname(currentdir)
 os.sys.path.insert(0, parentdir)
 import pybullet_data
 from gibson2.data.datasets import get_model_path
+from gibson2.utils.utils import l2_distance
+
 import numpy as np
 from PIL import Image
 import cv2
 import networkx as nx
 from IPython import embed
+import pickle
 
 class Scene:
     def load(self):
-        raise (NotImplementedError())
+        raise NotImplementedError()
 
 class EmptyScene(Scene):
     """
@@ -23,6 +26,7 @@ class EmptyScene(Scene):
     def load(self):
         planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
         self.ground_plane_mjcf = p.loadMJCF(planeName)
+        p.changeDynamics(self.ground_plane_mjcf[0], -1, lateralFriction=1)
         return [item for item in self.ground_plane_mjcf]
 
 class StadiumScene(Scene):
@@ -43,6 +47,9 @@ class StadiumScene(Scene):
 
         return [item for item in self.stadium] + [item for item in self.ground_plane_mjcf]
 
+    def get_random_floor(self):
+        return 0
+
     def get_random_point(self, random_height=False):
         return self.get_random_point_floor(0, random_height)
 
@@ -53,6 +60,17 @@ class StadiumScene(Scene):
             np.random.uniform(-5, 5),
             np.random.uniform(0.4, 0.8) if random_height else 0.0
         ])
+
+    def get_floor_height(self, floor):
+        del floor
+        return 0.0
+
+    def reset_floor(self, floor=0, additional_elevation=0.05, height=None):
+        return
+
+    def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
+        assert False, 'cannot compute shortest path in StadiumScene'
+
 
 class BuildingScene(Scene):
     """
@@ -89,9 +107,6 @@ class BuildingScene(Scene):
         self.should_load_replaced_objects = should_load_replaced_objects
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
-
-    def l2_distance(self, a, b):
-        return np.linalg.norm(np.array(a) - np.array(b))
 
     def load(self):
         """
@@ -141,39 +156,56 @@ class BuildingScene(Scene):
                 self.floors = sorted(list(map(float, f.readlines())))
                 print('floors', self.floors)
             for f in range(len(self.floors)):
-                trav_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(f)))
-                obstacle_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f)))
+                trav_map = np.array(Image.open(
+                    os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(f))
+                ))
+                obstacle_map = np.array(Image.open(
+                    os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f))
+                ))
                 if self.trav_map_original_size is None:
-                    width, height = trav_map.size
-                    assert width == height, 'trav map is not a square'
+                    height, width = trav_map.shape
+                    assert height == width, 'trav map is not a square'
                     self.trav_map_original_size = height
-                    self.trav_map_size = int(self.trav_map_original_size * self.trav_map_default_resolution / self.trav_map_resolution)
-                trav_map = np.array(trav_map.resize((self.trav_map_size, self.trav_map_size)))
-                obstacle_map = np.array(obstacle_map.resize((self.trav_map_size, self.trav_map_size)))
+                    self.trav_map_size = int(self.trav_map_original_size *
+                                             self.trav_map_default_resolution /
+                                             self.trav_map_resolution)
+
                 trav_map[obstacle_map == 0] = 0
+                trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
                 trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
+                trav_map[trav_map < 255] = 0
 
                 if self.build_graph:
-                    g = nx.Graph()
-                    for i in range(self.trav_map_size):
-                        for j in range(self.trav_map_size):
-                            if trav_map[i, j] > 0:
-                                g.add_node((i, j))
-                                # 8-connected graph
-                                neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
-                                for n in neighbors:
-                                    if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and \
-                                            trav_map[n[0], n[1]] > 0:
-                                        g.add_edge(n, (i, j), weight=self.l2_distance(n, (i, j)))
+                    graph_file = os.path.join(get_model_path(self.model_id), 'floor_trav_{}.p'.format(f))
 
-                    # only take the largest connected component
-                    largest_cc = max(nx.connected_components(g), key=len)
-                    g = g.subgraph(largest_cc).copy()
+                    if os.path.isfile(graph_file):
+                        print("load traversable graph")
+                        with open(graph_file, 'rb') as pfile:
+                            g = pickle.load(pfile)
+                    else:
+                        print("build traversable graph")
+                        g = nx.Graph()
+                        for i in range(self.trav_map_size):
+                            for j in range(self.trav_map_size):
+                                if trav_map[i, j] > 0:
+                                    g.add_node((i, j))
+                                    # 8-connected graph
+                                    neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
+                                    for n in neighbors:
+                                        if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and \
+                                                trav_map[n[0], n[1]] > 0:
+                                            g.add_edge(n, (i, j), weight=l2_distance(n, (i, j)))
+
+                        # only take the largest connected component
+                        largest_cc = max(nx.connected_components(g), key=len)
+                        g = g.subgraph(largest_cc).copy()
+                        with open(graph_file, 'wb') as pfile:
+                            pickle.dump(g, pfile, protocol=pickle.HIGHEST_PROTOCOL)
+
                     self.floor_graph.append(g)
-
                     # update trav_map accordingly
                     trav_map[:, :] = 0
-                    for node in largest_cc:
+                    for node in g.nodes:
                         trav_map[node[0], node[1]] = 255
 
                 self.floor_map.append(trav_map)
@@ -205,6 +237,11 @@ class BuildingScene(Scene):
     def world_to_map(self, xy):
         return np.flip((xy / self.trav_map_resolution + self.trav_map_size / 2.0)).astype(np.int)
 
+    def has_node(self, floor, world_xy):
+        map_xy = tuple(self.world_to_map(world_xy))
+        g = self.floor_graph[floor]
+        return g.has_node(map_xy)
+
     def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
         # print("called shortest path", source_world, target_world)
         assert self.build_graph, 'cannot get shortest path without building the graph'
@@ -216,20 +253,21 @@ class BuildingScene(Scene):
         if not g.has_node(target_map):
             nodes = np.array(g.nodes)
             closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - target_map, axis=1))])
-            g.add_edge(closest_node, target_map, weight=self.l2_distance(closest_node, target_map))
+            g.add_edge(closest_node, target_map, weight=l2_distance(closest_node, target_map))
 
         if not g.has_node(source_map):
             nodes = np.array(g.nodes)
             closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - source_map, axis=1))])
-            g.add_edge(closest_node, source_map, weight=self.l2_distance(closest_node, source_map))
+            g.add_edge(closest_node, source_map, weight=l2_distance(closest_node, source_map))
 
-        path_map = np.array(nx.astar_path(g, source_map, target_map, heuristic=self.l2_distance))
+        path_map = np.array(nx.astar_path(g, source_map, target_map, heuristic=l2_distance))
 
         path_world = self.map_to_world(path_map)
         geodesic_distance = np.sum(np.linalg.norm(path_world[1:] - path_world[:-1], axis=1))
+        path_world = path_world[::self.waypoint_interval]
 
         if not entire_path:
-            path_world = path_world[::self.waypoint_interval][:self.num_waypoints]
+            path_world = path_world[:self.num_waypoints]
             num_remaining_waypoints = self.num_waypoints - path_world.shape[0]
             if num_remaining_waypoints > 0:
                 remaining_waypoints = np.tile(target_world, (num_remaining_waypoints, 1))

@@ -110,7 +110,7 @@ setup(
             'gym==0.12',
             'Pillow==5.4.1',
             'PyYAML==5.3',
-            'pybullet==2.4.1',
+            'pybullet==2.4.9',
             'transforms3d==0.3.1',
             'tqdm==4.19.9',
             'Pillow==5.4.1',

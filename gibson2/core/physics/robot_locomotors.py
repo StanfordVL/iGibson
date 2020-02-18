@@ -95,6 +95,10 @@ class LocomotorRobot(BaseRobot):
     def set_orientation(self, orn):
         self.robot_body.set_orientation(orn)
 
+    def set_position_orientation(self, pos, orn):
+        self.robot_body.reset_position(pos)
+        self.robot_body.set_orientation(orn)
+
     def move_by(self, delta):
         new_pos = np.array(delta) + self.get_position()
         self.robot_body.reset_position(new_pos)
@@ -116,6 +120,10 @@ class LocomotorRobot(BaseRobot):
         orn = self.robot_body.get_orientation()
         new_orn = qmult((euler2quat(delta, 0, 0)), orn)
         self.robot_body.set_orientation(new_orn)
+
+    def keep_still(self):
+        for n, j in enumerate(self.ordered_joints):
+            j.set_motor_velocity(0.0)
 
     def get_rpy(self):
         return self.robot_body.get_rpy()
@@ -320,8 +328,8 @@ class Husky(LocomotorRobot):
         self.config = config
         self.torque = config.get("torque", 0.03)
         LocomotorRobot.__init__(self,
-                            "husky.urdf",
-                            "base_link",
+                                "husky.urdf",
+                                "base_link",
                                 action_dim=4,
                                 sensor_dim=17,
                                 power=2.5,
@@ -382,8 +390,8 @@ class Quadrotor(LocomotorRobot):
         self.config = config
         self.torque = config.get("torque", 0.02)
         LocomotorRobot.__init__(self,
-                            "quadrotor.urdf",
-                            "base_link",
+                                "quadrotor.urdf",
+                                "base_link",
                                 action_dim=6,
                                 sensor_dim=6,
                                 power=2.5,
@@ -436,8 +444,8 @@ class Turtlebot(LocomotorRobot):
         self.action_high = config.get("action_high", None)
         self.action_low = config.get("action_low", None)
         LocomotorRobot.__init__(self,
-                            "turtlebot/turtlebot.urdf",
-                            "base_link",
+                                "turtlebot/turtlebot.urdf",
+                                "base_link",
                                 action_dim=2,
                                 sensor_dim=16,
                                 power=2.5,
@@ -490,8 +498,8 @@ class Freight(LocomotorRobot):
         self.config = config
         self.velocity = config.get("velocity", 1.0)
         LocomotorRobot.__init__(self,
-                            "fetch/freight.urdf",
-                            "base_link",
+                                "fetch/freight.urdf",
+                                "base_link",
                                 action_dim=2,
                                 sensor_dim=16,
                                 power=2.5,
@@ -542,8 +550,8 @@ class Fetch(LocomotorRobot):
         self.action_high = config.get("action_high", None)
         self.action_low = config.get("action_low", None)
         LocomotorRobot.__init__(self,
-                            "fetch/fetch.urdf",
-                            "base_link",
+                                "fetch/fetch.urdf",
+                                "base_link",
                                 action_dim=6,
                                 sensor_dim=55,
                                 power=2.5,
@@ -595,8 +603,8 @@ class JR2(LocomotorRobot):
         self.config = config
         self.velocity = config.get('velocity', 0.1)
         LocomotorRobot.__init__(self,
-                            "jr2_urdf/jr2.urdf",
-                            "base_link",
+                                "jr2_urdf/jr2.urdf",
+                                "base_link",
                                 action_dim=4,
                                 sensor_dim=17,
                                 power=2.5,
@@ -646,8 +654,8 @@ class JR2_Kinova(LocomotorRobot):
         self.arm_dim = 5
 
         LocomotorRobot.__init__(self,
-                            "jr2_urdf/jr2_kinova.urdf",
-                            "base_link",
+                                "jr2_urdf/jr2_kinova.urdf",
+                                "base_link",
                                 action_dim=10,
                                 sensor_dim=46,
                                 power=2.5,
@@ -708,4 +716,71 @@ class JR2_Kinova(LocomotorRobot):
         for joint in range(p.getNumJoints(robot_id)):
             for j in range(16, 28):
                 p.setCollisionFilterPair(robot_id, robot_id, joint, j, 0)
+        return ids
+
+
+class Locobot(LocomotorRobot):
+    mjcf_scaling = 1
+    model_type = "URDF"
+    default_scale = 1
+
+    def __init__(self, config):
+        self.config = config
+        self.velocity = config.get('velocity', 0.1)
+        self.wheel_dim = 2
+        self.action_high = config.get("action_high", None)
+        self.action_low = config.get("action_low", None)
+        LocomotorRobot.__init__(self,
+                                "locobot/locobot.urdf",
+                                "base_link",
+                                action_dim=self.wheel_dim,
+                                sensor_dim=55,  # TODO: what is sensor_dim?
+                                power=2.5,
+                                scale=config.get("robot_scale", self.default_scale),
+                                resolution=config.get("resolution", 64),
+                                is_discrete=config.get("is_discrete", True),
+                                control="velocity",
+                                self_collision=False)
+
+    def set_up_continuous_action_space(self):
+        if self.action_high is not None and self.action_low is not None:
+            self.action_high = np.full(shape=self.wheel_dim, fill_value=self.action_high)
+            self.action_low = np.full(shape=self.wheel_dim, fill_value=self.action_low)
+        else:
+            self.action_high = np.array([self.velocity] * self.wheel_dim)
+            self.action_low = -self.action_high
+
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
+
+    def set_up_discrete_action_space(self):
+        assert False, "Locobot does not support discrete actions"
+
+    def apply_action(self, action):
+        real_action = self.action_to_real_action(action)
+        self.apply_real_action(real_action)
+
+    def calc_state(self):
+        base_state = LocomotorRobot.calc_state(self)
+        angular_velocity = self.robot_body.angular_velocity()
+        print(len(base_state), len(angular_velocity))
+        return np.concatenate((base_state, np.array(angular_velocity)))
+
+    def get_end_effector_position(self):
+        return self.parts['gripper_link'].get_position()
+
+    def load(self):
+        ids = self._load_model()
+        self.eyes = self.parts["eyes"]
+
+        robot_id = ids[0]
+
+        # disable collision for immediate parent
+        for joint in range(p.getNumJoints(robot_id)):
+            info = p.getJointInfo(robot_id, joint)
+            parent_id = info[-1]
+            p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)
+
         return ids
