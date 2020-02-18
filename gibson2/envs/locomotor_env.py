@@ -715,6 +715,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
                                                         random_height=False,
                                                         device_idx=device_idx)
         self.collision_reward_weight = collision_reward_weight
+
         assert track in ['static', 'interactive', 'dynamic'], 'unknown track'
         self.track = track
 
@@ -733,6 +734,33 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
 
             # dynamic objects will repeat their actions for 10 action timesteps
             self.dynamic_objects_action_repeat = 10
+
+        # By default Gibson only renders square images. We need to adapt to the camera sensor spec for different robots.
+        if self.config['robot'] == 'Turtlebot':
+            # ASUS Xtion PRO LIVE
+            self.image_aspect_ratio = 480.0 / 640.0
+        elif self.config['robot'] == 'Fetch':
+            # Primesense Carmine 1.09 short-range RGBD sensor
+            self.image_aspect_ratio = 480.0 / 640.0
+        elif self.config['robot'] == 'Locobot':
+            # https://store.intelrealsense.com/buy-intel-realsense-depth-camera-d435.html
+            self.image_aspect_ratio = 1080.0 / 1920.0
+        else:
+            assert False, 'unknown robot for RGB observation'
+
+        resolution = self.config.get('resolution', 64)
+        width = resolution
+        height = int(width * self.image_aspect_ratio)
+        if 'rgb' in self.output:
+            self.observation_space.spaces['rgb'] = gym.spaces.Box(low=0.0,
+                                                                  high=1.0,
+                                                                  shape=(height, width, 3),
+                                                                  dtype=np.float32)
+        if 'depth' in self.output:
+            self.observation_space.spaces['depth'] = gym.spaces.Box(low=0.0,
+                                                                    high=1.0,
+                                                                    shape=(height, width, 1),
+                                                                    dtype=np.float32)
 
     def load_interactive_objects(self):
         """
@@ -831,6 +859,28 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
             self.reset_dynamic_objects()
             state = self.get_state()
 
+        return state
+
+    def crop_center_image(self, img):
+        """
+        Crop the center of the square image based on the camera aspect ratio
+        :param img: original, square image
+        :return: cropped, potentially rectangular image
+        """
+        width = img.shape[0]
+        height = int(width * self.image_aspect_ratio)
+        half_diff = int((width - height) / 2)
+        img = img[half_diff:half_diff + height, :]
+        return img
+
+    def get_state(self, collision_links=[]):
+        """
+        By default Gibson only renders square images. Need to postprocess them by cropping the center.
+        """
+        state = super(NavigateRandomEnvSim2Real, self).get_state(collision_links)
+        for modality in ['rgb', 'depth']:
+            if modality in state:
+                state[modality] = self.crop_center_image(state[modality])
         return state
 
 if __name__ == '__main__':
