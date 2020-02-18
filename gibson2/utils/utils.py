@@ -32,6 +32,11 @@ def l2_distance(v1, v2):
     """Returns the L2 distance between vector v1 and v2."""
     return np.linalg.norm(np.array(v1) - np.array(v2))
 
+def cartesian_to_polar(x, y):
+    """Convert cartesian coordinate to polar coordinate"""
+    rho = np.sqrt(x ** 2 + y ** 2)
+    phi = np.arctan2(y, x)
+    return rho, phi
 
 def quatFromXYZW(xyzw, seq):
     """Convert quaternion from XYZW (pybullet convention) to arbitrary sequence."""

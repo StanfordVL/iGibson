@@ -1,7 +1,7 @@
 import gibson2
 from gibson2.core.physics.interactive_objects import VisualMarker, InteractiveObj, BoxShape
 from gibson2.core.physics.robot_locomotors import Turtlebot
-from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
+from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW, cartesian_to_polar
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -65,11 +65,12 @@ class NavigateEnv(BaseEnv):
         self.target_orn = np.array(self.config.get('target_orn', [0, 0, 0]))
 
         self.additional_states_dim = self.config.get('additional_states_dim', 0)
-        self.auxiliary_sensor_dim = self.config.get('auxiliary_sensor_dim', 0)
+        self.goal_format = self.config.get('goal_format', 'polar')
 
         # termination condition
         self.dist_tol = self.config.get('dist_tol', 0.2)
         self.max_step = self.config.get('max_step', 500)
+        self.max_collisions_allowed = self.config.get('max_collisions_allowed', 0)
 
         # reward
         self.reward_type = self.config.get('reward_type', 'geodesic')
@@ -77,7 +78,6 @@ class NavigateEnv(BaseEnv):
 
         self.success_reward = self.config.get('success_reward', 10.0)
         self.slack_reward = self.config.get('slack_reward', -0.01)
-        self.death_z_thresh = self.config.get('death_z_thresh', 0.1)
 
         # reward weight
         self.potential_reward_weight = self.config.get('potential_reward_weight', 10.0)
@@ -260,7 +260,10 @@ class NavigateEnv(BaseEnv):
         """
         :return: non-perception observation, such as goal location
         """
-        additional_states = self.global_to_local(self.target_pos)
+        additional_states = self.global_to_local(self.target_pos)[:2]
+        if self.goal_format == 'polar':
+            additional_states = np.array(cartesian_to_polar(additional_states[0], additional_states[1]))
+
         if self.config['task'] == 'reaching':
             end_effector_pos_local = self.global_to_local(self.robots[0].get_end_effector_position())
             additional_states = np.concatenate((additional_states, end_effector_pos_local))
@@ -476,13 +479,18 @@ class NavigateEnv(BaseEnv):
         self.collision_step += int(collision_reward)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
 
+        if self.scene.build_graph:
+            _, dist = self.get_shortest_path()
+        else:
+            dist = l2_distance(self.get_position_of_interest(), self.target_pos)
+
         # goal reached
-        if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
+        if dist < self.dist_tol:
             reward += self.success_reward  # |success_reward| = 10.0 per step
 
         return reward, info
 
-    def get_termination(self, collision_links=[], info={}):
+    def get_termination(self, collision_links=[], action=None, info={}):
         """
         :param collision_links: collisions from last time step
         :param info: a dictionary to store additional info
@@ -490,16 +498,23 @@ class NavigateEnv(BaseEnv):
         """
         done = False
         floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
-        if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
-            print("GOAL")
+
+        if self.scene.build_graph:
+            _, dist = self.get_shortest_path()
+        else:
+            dist = l2_distance(self.get_position_of_interest(), self.target_pos)
+
+        # goal reached
+        if dist < self.dist_tol:
             done = True
             info['success'] = True
 
-        elif self.robots[0].get_position()[2] > floor_height + self.death_z_thresh:
-            print("FLIP OVER")
+        # max collisions reached
+        if self.collision_step > self.max_collisions_allowed:
             done = True
             info['success'] = False
 
+        # time out
         elif self.current_step >= self.max_step:
             done = True
             info['success'] = False
@@ -557,7 +572,7 @@ class NavigateEnv(BaseEnv):
         state = self.get_state(collision_links)
         info = {}
         reward, info = self.get_reward(collision_links, action, info)
-        done, info = self.get_termination(collision_links, info)
+        done, info = self.get_termination(collision_links, action, info)
         self.step_visualization()
 
         if done and self.automatic_reset:
@@ -722,6 +737,8 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         if self.track == 'interactive':
             self.interactive_objects_num_dups = 2
             self.interactive_objects = self.load_interactive_objects()
+            # interactive objects pybullet id starts from 3
+            self.collision_ignore_body_b_ids |= set(range(3, 3 + len(self.interactive_objects)))
         elif self.track == 'dynamic':
             self.num_dynamic_objects = 1
             self.dynamic_objects = []

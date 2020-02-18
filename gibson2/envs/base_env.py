@@ -54,6 +54,15 @@ class BaseEnv(gym.Env):
         self.simulator.reload()
         self.load()
 
+    def reload_model(self, model_id):
+        """
+        Reload another model, this allows one to change the envrionment on the fly
+        :param model_id: new model_id
+        """
+        self.config['model_id'] = model_id
+        self.simulator.reload()
+        self.load()
+
     def load(self):
         """
         Load the scene and robot
