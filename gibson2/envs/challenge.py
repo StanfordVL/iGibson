@@ -12,17 +12,24 @@ class Challenge:
                                             track=sim2real_track)
 
     def submit(self, agent):
-        total_reward = 0
-        total_success = 0
-        for i in range(10):
+        total_reward = 0.0
+        total_success = 0.0
+        total_spl = 0.0
+        num_eval_episodes = 10
+        for i in range(num_eval_episodes):
+            print('Episode: {}/{}'.format(i + 1, num_eval_episodes))
             state = self.nav_env.reset()
-            for step in range(500):
+            while True:
                 action = agent.act(state)
                 state, reward, done, info = self.nav_env.step(action)
                 total_reward += reward
                 if done:
                     break
-            total_success +=  info['success']
-            print('episode done, total reward {}, total success {}'.format(total_reward, total_success))
+            total_success += info['success']
+            total_spl += info['spl']
 
+        avg_reward = total_reward / num_eval_episodes
+        avg_success = total_success / num_eval_episodes
+        avg_spl = total_spl / num_eval_episodes
+        print('eval done, avg reward {}, avg success {}, avg spl {}'.format(avg_reward, avg_success, avg_spl))
         return total_reward

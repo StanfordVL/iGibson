@@ -533,24 +533,28 @@ class NavigateEnv(BaseEnv):
 
         if done:
             info['episode_length'] = self.current_step
-            info['path_length'] = self.path_length
             info['collision_step'] = self.collision_step
+            info['path_length'] = self.path_length
+            info['spl'] = float(info['success']) * max(1.0, self.geodesic_dist / self.path_length)
 
         return done, info
 
     def before_simulation(self):
         """
-        Additional steps before physics simulation. Overwritten by subclasses.
+        Cache bookkeeping data before simulation
         :return: cache
         """
-        return None
+        return {'robot_position': self.robots[0].get_position()}
 
     def after_simulation(self, cache, collision_links):
         """
+        Accumulate evaluation stats
         :param cache: cache returned from before_simulation
         :param collision_links: collisions from last time step
         """
-        return
+        old_robot_position = cache['robot_position'][:2]
+        new_robot_position = self.robots[0].get_position()[:2]
+        self.path_length += l2_distance(old_robot_position, new_robot_position)
 
     def step_visualization(self):
         if self.mode != 'gui':
@@ -628,6 +632,7 @@ class NavigateEnv(BaseEnv):
         self.current_step = 0
         self.collision_step = 0
         self.path_length = 0.0
+        self.geodesic_dist = self.get_geodesic_potential()
 
     def reset(self):
         """
