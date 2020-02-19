@@ -726,8 +726,14 @@ class Locobot(LocomotorRobot):
 
     def __init__(self, config):
         self.config = config
-        self.velocity = config.get('velocity', 0.1)
+        # https://www.trossenrobotics.com/locobot-pyrobot-ros-rover.aspx
+        # Maximum translational velocity: 70 cm/s
+        # Maximum rotational velocity: 180 deg/s (>110 deg/s gyro performance will degrade)
+        self.linear_velocity = config.get('linear_velocity', 0.5)
+        self.angular_velocity = config.get('angular_velocity', np.pi / 2.0)
         self.wheel_dim = 2
+        self.wheel_axis_half = 0.125  # half of the distance between two wheels
+        self.ang_to_lin_vel_constant = 9.0
         self.action_high = config.get("action_high", None)
         self.action_low = config.get("action_low", None)
         LocomotorRobot.__init__(self,
@@ -743,12 +749,10 @@ class Locobot(LocomotorRobot):
                                 self_collision=False)
 
     def set_up_continuous_action_space(self):
-        if self.action_high is not None and self.action_low is not None:
-            self.action_high = np.full(shape=self.wheel_dim, fill_value=self.action_high)
-            self.action_low = np.full(shape=self.wheel_dim, fill_value=self.action_low)
-        else:
-            self.action_high = np.array([self.velocity] * self.wheel_dim)
-            self.action_low = -self.action_high
+        self.action_high = np.zeros(self.wheel_dim)
+        self.action_high[0] = self.linear_velocity
+        self.action_high[1] = self.angular_velocity
+        self.action_low = -self.action_high
 
         self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
@@ -759,8 +763,12 @@ class Locobot(LocomotorRobot):
         assert False, "Locobot does not support discrete actions"
 
     def apply_action(self, action):
-        real_action = self.action_to_real_action(action)
-        self.apply_real_action(real_action)
+        body_velocity = self.action_to_real_action(action)
+        lin_vel, ang_vel = body_velocity[0], body_velocity[1]
+        wheel_velocity = np.zeros(self.wheel_dim)
+        wheel_velocity[0] = (lin_vel - ang_vel * self.wheel_axis_half) / self.ang_to_lin_vel_constant
+        wheel_velocity[1] = (lin_vel + ang_vel * self.wheel_axis_half) / self.ang_to_lin_vel_constant
+        self.apply_real_action(wheel_velocity)
 
     def calc_state(self):
         base_state = LocomotorRobot.calc_state(self)

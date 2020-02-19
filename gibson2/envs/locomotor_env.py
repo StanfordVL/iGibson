@@ -71,6 +71,7 @@ class NavigateEnv(BaseEnv):
         self.dist_tol = self.config.get('dist_tol', 0.2)
         self.max_step = self.config.get('max_step', 500)
         self.max_collisions_allowed = self.config.get('max_collisions_allowed', 0)
+        self.stop_threshold = self.config.get('stop_threshold', 0.99)
 
         # reward
         self.reward_type = self.config.get('reward_type', 'geodesic')
@@ -186,9 +187,10 @@ class NavigateEnv(BaseEnv):
 
     def load_action_space(self):
         """
-        Load action space
+        Load action space, need one more dimension than the robot action space for STOP action
         """
         self.action_space = self.robots[0].action_space
+        self.action_space.shape = (self.robots[0].action_space.shape[0] + 1,)
 
     def load_visualization(self):
         """
@@ -479,14 +481,16 @@ class NavigateEnv(BaseEnv):
         self.collision_step += int(collision_reward)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
 
-        if self.scene.build_graph:
-            _, dist = self.get_shortest_path()
-        else:
-            dist = l2_distance(self.get_position_of_interest(), self.target_pos)
+        stop = action[-1] > self.stop_threshold
+        if stop:
+            if self.scene.build_graph:
+                _, dist = self.get_shortest_path()
+            else:
+                dist = l2_distance(self.get_position_of_interest(), self.target_pos)
 
-        # goal reached
-        if dist < self.dist_tol:
-            reward += self.success_reward  # |success_reward| = 10.0 per step
+            # goal reached
+            if dist < self.dist_tol:
+                reward += self.success_reward  # |success_reward| = 10.0 per step
 
         return reward, info
 
@@ -498,26 +502,34 @@ class NavigateEnv(BaseEnv):
         """
         done = False
         floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
+        stop = action[-1] > self.stop_threshold
 
-        if self.scene.build_graph:
-            _, dist = self.get_shortest_path()
+        # active termination
+        if stop:
+            if self.scene.build_graph:
+                _, dist = self.get_shortest_path()
+            else:
+                dist = l2_distance(self.get_position_of_interest(), self.target_pos)
+
+            # goal reached
+            if dist < self.dist_tol:
+                done = True
+                info['success'] = True
+            else:
+                done = True
+                info['success'] = False
+
+        # passive termination
         else:
-            dist = l2_distance(self.get_position_of_interest(), self.target_pos)
+            # max collisions reached
+            if self.collision_step > self.max_collisions_allowed:
+                done = True
+                info['success'] = False
 
-        # goal reached
-        if dist < self.dist_tol:
-            done = True
-            info['success'] = True
-
-        # max collisions reached
-        if self.collision_step > self.max_collisions_allowed:
-            done = True
-            info['success'] = False
-
-        # time out
-        elif self.current_step >= self.max_step:
-            done = True
-            info['success'] = False
+            # time out
+            elif self.current_step >= self.max_step:
+                done = True
+                info['success'] = False
 
         if done:
             info['episode_length'] = self.current_step
@@ -564,7 +576,7 @@ class NavigateEnv(BaseEnv):
         :return: state, reward, done, info
         """
         self.current_step += 1
-        self.robots[0].apply_action(action)
+        self.robots[0].apply_action(action[:-1])
         cache = self.before_simulation()
         collision_links = self.run_simulation()
         self.after_simulation(cache, collision_links)
@@ -942,12 +954,12 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         nav_env.reset()
-        for step in range(50):  # 500 steps, 50s world time
+        while True:
             action = nav_env.action_space.sample()
             state, reward, done, _ = nav_env.step(action)
             # print('reward', reward)
             if done:
-                print('Episode finished after {} timesteps'.format(step + 1))
+                print('Episode finished after {} timesteps'.format(nav_env.current_step))
                 break
         print(time.time() - start)
     nav_env.clean()

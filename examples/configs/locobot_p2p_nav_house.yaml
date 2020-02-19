@@ -7,7 +7,8 @@ trav_map_erosion: 2
 
 # robot
 robot: Locobot
-velocity: 0.1
+linear_velocity: 0.5
+angular_velocity: 1.5707963267948966
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -32,6 +33,7 @@ discount_factor: 0.99
 dist_tol: 0.36  # body width
 max_step: 500
 max_collisions_allowed: 0
+stop_threshold: 0.99
 
 # sensor
 output: [sensor, rgb, depth]
