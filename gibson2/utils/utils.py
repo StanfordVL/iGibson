@@ -45,7 +45,6 @@ def quatFromXYZW(xyzw, seq):
     inds = ['xyzw'.index(axis) for axis in seq]
     return xyzw[inds]
 
-
 def quatToXYZW(orn, seq):
     """Convert quaternion from arbitrary sequence to XYZW (pybullet convention)."""
     assert len(seq) == 4 and 'x' in seq and 'y' in seq and 'z' in seq and 'w' in seq, \
