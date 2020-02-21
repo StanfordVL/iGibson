@@ -11,8 +11,8 @@ class MeshRendererG2G(MeshRenderer):
     pytorch installation is required.
     """
 
-    def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False):
-        super(MeshRendererG2G, self).__init__(width, height, fov, device_idx, use_fisheye)
+    def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False, msaa=False):
+        super(MeshRendererG2G, self).__init__(width, height, fov, device_idx, use_fisheye, msaa)
         self.cuda_idx = get_cuda_device(self.device_minor)
         print("Using cuda device {}".format(self.cuda_idx))
         with torch.cuda.device(self.cuda_idx):
@@ -52,12 +52,17 @@ class MeshRendererG2G(MeshRenderer):
             hidden
 
         """
-        CGLUtils.render_tensor_pre()
+        if self.msaa:
+            CGLUtils.render_tensor_pre(1, self.fbo_ms, self.fbo)
+        else:
+            CGLUtils.render_tensor_pre(0, 0, self.fbo)
 
         for instance in self.instances:
             if not instance in hidden:
                 instance.render()
 
         CGLUtils.render_tensor_post()
+        if self.msaa:
+            CGLUtils.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
         return self.readbuffer_to_tensor(modes)
