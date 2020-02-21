@@ -440,7 +440,7 @@ class Turtlebot(LocomotorRobot):
 
     def __init__(self, config):
         self.config = config
-        self.velocity = config.get("velocity", 1.0)
+        self.velocity = config.get("velocity", 0.1)
         self.action_high = config.get("action_high", None)
         self.action_low = config.get("action_low", None)
         LocomotorRobot.__init__(self,
