@@ -15,7 +15,7 @@ task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 fisheye: false
 
 is_discrete: false
-additional_states_dim: 2
+additional_states_dim: 4
 goal_format: polar
 
 # reward
@@ -37,7 +37,7 @@ stop_threshold: 0.99
 
 # sensor
 output: [sensor, rgb, depth]
-resolution: 320
+resolution: 160
 fov: 69.4
 
 # display
