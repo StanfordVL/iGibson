@@ -907,6 +907,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         shortest_path, _ = self.get_shortest_path(entire_path=True)
         floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
         for robot in self.dynamic_objects:
+            reset_success = False
             for _ in range(max_trials):
                 pos = shortest_path[np.random.choice(shortest_path.shape[0])]
                 pos = np.array([pos[0], pos[1], floor_height])
