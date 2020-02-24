@@ -187,10 +187,9 @@ class NavigateEnv(BaseEnv):
 
     def load_action_space(self):
         """
-        Load action space, need one more dimension than the robot action space for STOP action
+        Load action space
         """
         self.action_space = self.robots[0].action_space
-        self.action_space.shape = (self.robots[0].action_space.shape[0] + 1,)
 
     def load_visualization(self):
         """
@@ -266,10 +265,19 @@ class NavigateEnv(BaseEnv):
         if self.goal_format == 'polar':
             additional_states = np.array(cartesian_to_polar(additional_states[0], additional_states[1]))
 
+        # linear velocity along the x-axis
+        linear_velocity = rotate_vector_3d(self.robots[0].robot_body.velocity(),
+                                           *self.robots[0].get_rpy())[0]
+        # angular velocity along the z-axis
+        angular_velocity = rotate_vector_3d(self.robots[0].robot_body.angular_velocity(),
+                                            *self.robots[0].get_rpy())[2]
+        additional_states = np.append(additional_states, [linear_velocity, angular_velocity])
+
         if self.config['task'] == 'reaching':
             end_effector_pos_local = self.global_to_local(self.robots[0].get_end_effector_position())
-            additional_states = np.concatenate((additional_states, end_effector_pos_local))
-        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
+            additional_states = np.append(additional_states, end_effector_pos_local)
+
+        assert additional_states.shape[0] == self.additional_states_dim, 'additional states dimension mismatch'
         return additional_states
 
     def add_naive_noise_to_sensor(self, sensor_reading, noise_rate, noise_value=1.0):
@@ -459,6 +467,9 @@ class NavigateEnv(BaseEnv):
         """
         return l2_distance(self.target_pos, self.get_position_of_interest())
 
+    def is_goal_reached(self):
+        return l2_distance(self.get_position_of_interest(), self.target_pos) < self.dist_tol
+
     def get_reward(self, collision_links=[], action=None, info={}):
         """
         :param collision_links: collisions from last time step
@@ -481,16 +492,8 @@ class NavigateEnv(BaseEnv):
         self.collision_step += int(collision_reward)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
 
-        stop = action[-1] > self.stop_threshold
-        if stop:
-            if self.scene.build_graph:
-                _, dist = self.get_shortest_path()
-            else:
-                dist = l2_distance(self.get_position_of_interest(), self.target_pos)
-
-            # goal reached
-            if dist < self.dist_tol:
-                reward += self.success_reward  # |success_reward| = 10.0 per step
+        if self.is_goal_reached():
+            reward += self.success_reward  # |success_reward| = 10.0 per step
 
         return reward, info
 
@@ -501,35 +504,21 @@ class NavigateEnv(BaseEnv):
         :return: done, info
         """
         done = False
-        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
-        stop = action[-1] > self.stop_threshold
 
-        # active termination
-        if stop:
-            if self.scene.build_graph:
-                _, dist = self.get_shortest_path()
-            else:
-                dist = l2_distance(self.get_position_of_interest(), self.target_pos)
+        # goal reached
+        if self.is_goal_reached():
+            done = True
+            info['success'] = True
 
-            # goal reached
-            if dist < self.dist_tol:
-                done = True
-                info['success'] = True
-            else:
-                done = True
-                info['success'] = False
+        # max collisions reached
+        if self.collision_step > self.max_collisions_allowed:
+            done = True
+            info['success'] = False
 
-        # passive termination
-        else:
-            # max collisions reached
-            if self.collision_step > self.max_collisions_allowed:
-                done = True
-                info['success'] = False
-
-            # time out
-            elif self.current_step >= self.max_step:
-                done = True
-                info['success'] = False
+        # time out
+        elif self.current_step >= self.max_step:
+            done = True
+            info['success'] = False
 
         if done:
             info['episode_length'] = self.current_step
@@ -580,7 +569,7 @@ class NavigateEnv(BaseEnv):
         :return: state, reward, done, info
         """
         self.current_step += 1
-        self.robots[0].apply_action(action[:-1])
+        self.robots[0].apply_action(action)
         cache = self.before_simulation()
         collision_links = self.run_simulation()
         self.after_simulation(cache, collision_links)
@@ -600,29 +589,106 @@ class NavigateEnv(BaseEnv):
         """
         Reset the robot's joint configuration and base pose until no collision
         """
+        reset_success = False
         max_trials = 100
         for _ in range(max_trials):
-            self.robots[0].robot_specific_reset()
             self.reset_initial_and_target_pos()
-            if self.test_valid_position():
-                return
-        print("WARNING: Failed to reset robot without collision")
+            if self.test_valid_position('robot', self.robots[0], self.initial_pos, self.initial_orn) and \
+                    self.test_valid_position('robot', self.robots[0], self.target_pos):
+                reset_success = True
+                break
+
+        if not reset_success:
+            print("WARNING: Failed to reset robot without collision")
+
+        self.land('robot', self.robots[0], self.initial_pos, self.initial_orn)
 
     def reset_initial_and_target_pos(self):
         """
-        Reset the robot's base pose
+        Reset initial_pos, initial_orn and target_pos
         """
-        self.robots[0].set_position(pos=self.initial_pos)
-        self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
+        return
 
-    def test_valid_position(self):
+    def check_collision(self, body_id):
         """
-        :return: if initialization is valid (collision-free)
+        :param body_id: pybullet body id
+        :return: whether the given body_id has no collision
         """
-        self.robots[0].keep_still()
-        collision_links = self.run_simulation()
-        collision_links_flatten = [item for sublist in collision_links for item in sublist]
-        return len(collision_links_flatten) == 0
+        for _ in range(self.check_collision_loop):
+            self.simulator_step()
+            if len(p.getContactPoints(bodyA=body_id)) > 0:
+                return False
+        return True
+
+    def set_pos_orn_with_z_offset(self, obj, pos, orn=None, offset=None):
+        """
+        Reset position and orientation for the robot or the object
+        :param obj: an instance of robot or object
+        :param pos: position
+        :param orn: orientation
+        :param offset: z offset
+        """
+        if orn is None:
+            orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
+
+        if offset is None:
+            offset = self.initial_pos_z_offset
+
+        obj.set_position_orientation([pos[0], pos[1], pos[2] + offset],
+                                     quatToXYZW(euler2quat(*orn), 'wxyz'))
+
+    def test_valid_position(self, obj_type, obj, pos, orn=None):
+        """
+        Test if the robot or the object can be placed with no collision
+        :param obj_type: string "robot" or "obj"
+        :param obj: an instance of robot or object
+        :param pos: position
+        :param orn: orientation
+        :return: validity
+        """
+        assert obj_type in ['robot', 'obj']
+
+        self.set_pos_orn_with_z_offset(obj, pos, orn)
+
+        if obj_type == 'robot':
+            obj.robot_specific_reset()
+            obj.keep_still()
+
+        body_id = obj.robot_ids[0] if obj_type == 'robot' else obj.body_id
+        return self.check_collision(body_id)
+
+    def land(self, obj_type, obj, pos, orn):
+        """
+        Land the robot or the object onto the floor, given a valid position and orientation
+        :param obj_type: string "robot" or "obj"
+        :param obj: an instance of robot or object
+        :param pos: position
+        :param orn: orientation
+        """
+        assert obj_type in ['robot', 'obj']
+
+        self.set_pos_orn_with_z_offset(obj, pos, orn)
+
+        if obj_type == 'robot':
+            obj.robot_specific_reset()
+            obj.keep_still()
+
+        body_id = obj.robot_ids[0] if obj_type == 'robot' else obj.body_id
+
+        land_success = False
+        # land for maximum 1 second, should fall down ~5 meters
+        max_simulator_step = int(1.0 / self.physics_timestep)
+        for _ in range(max_simulator_step):
+            self.simulator_step()
+            if len(p.getContactPoints(bodyA=body_id)) > 0:
+                land_success = True
+                break
+
+        if not land_success:
+            print("WARNING: Failed to land")
+
+        if obj_type == 'robot':
+            obj.robot_specific_reset()
 
     def reset_variables(self):
         """
@@ -686,15 +752,16 @@ class NavigateRandomEnv(NavigateEnv):
         self.target_dist_max = self.config.get('target_dist_max', 10.0)
 
         self.initial_pos_z_offset = self.config.get('initial_pos_z_offset', 0.1)
-        falling_distance_in_one_action_step = 0.5 * 9.8 * action_timestep * action_timestep
-        assert self.initial_pos_z_offset > falling_distance_in_one_action_step * 1.5,\
-            'initial_pos_z_offset for robot and objects should be larger than the falling distance in one action step'
+        check_collision_distance = self.initial_pos_z_offset * 0.5
+        # s = 0.5 * G * (t ** 2)
+        check_collision_distance_time = np.sqrt(check_collision_distance / (0.5 * 9.8))
+        self.check_collision_loop = int(check_collision_distance_time / self.physics_timestep)
 
     def reset_initial_and_target_pos(self):
         """
-        Reset the robot's base to a random empty position on a random floor with a random orientation
+        Reset initial_pos, initial_orn and target_pos through randomization
         The geodesic distance (or L2 distance if traversable map graph is not built)
-        has to be between [self.target_dist_min, self.target_dist_max]
+        between initial_pos and target_pos has to be between [self.target_dist_min, self.target_dist_max]
         """
         _, self.initial_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
         max_trials = 100
@@ -709,11 +776,7 @@ class NavigateRandomEnv(NavigateEnv):
                 break
         if not (self.target_dist_min < dist < self.target_dist_max):
             print("WARNING: Failed to sample initial and target positions")
-
-        self.robots[0].set_position(pos=[self.initial_pos[0],
-                                         self.initial_pos[1],
-                                         self.initial_pos[2] + self.initial_pos_z_offset])
-        self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, np.random.uniform(0, np.pi * 2)), 'wxyz'))
+        self.initial_orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
 
     def reset(self):
         """
@@ -823,18 +886,18 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         """
         max_trials = 100
         for obj in self.interactive_objects:
+            reset_success = False
             for _ in range(max_trials):
                 _, pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
-                obj.set_position_orientation([pos[0], pos[1], pos[2] + self.initial_pos_z_offset],
-                                             quatToXYZW(euler2quat(0.0, 0.0, 0.0), 'wxyz'))
-                has_collision = False
-                for _ in range(self.simulator_loop):
-                    self.simulator_step()
-                    if len(p.getContactPoints(bodyA=obj.body_id)) > 0:
-                        has_collision = True
-                        break
-                if not has_collision:
+                orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
+                if self.test_valid_position('obj', obj, pos, orn):
+                    reset_success = True
                     break
+
+            if not reset_success:
+                print("WARNING: Failed to reset interactive obj without collision")
+
+            self.land('obj', obj, pos, orn)
 
     def reset_dynamic_objects(self):
         """
@@ -843,20 +906,19 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         max_trials = 100
         shortest_path, _ = self.get_shortest_path(entire_path=True)
         floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
-        for obj in self.dynamic_objects:
+        for robot in self.dynamic_objects:
             for _ in range(max_trials):
-                obj.robot_specific_reset()
                 pos = shortest_path[np.random.choice(shortest_path.shape[0])]
-                obj.set_position_orientation([pos[0], pos[1], floor_height + self.initial_pos_z_offset],
-                                             quatToXYZW(euler2quat(0.0, 0.0, 0.0), 'wxyz'))
-                has_collision = False
-                for _ in range(self.simulator_loop):
-                    self.simulator_step()
-                    if len(p.getContactPoints(bodyA=obj.robot_ids[0])) > 0:
-                        has_collision = True
-                        break
-                if not has_collision:
+                pos = np.array([pos[0], pos[1], floor_height])
+                orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
+                if self.test_valid_position('robot', robot, pos, orn):
+                    reset_success = True
                     break
+
+            if not reset_success:
+                print("WARNING: Failed to reset dynamic obj without collision")
+
+            self.land('robot', robot, pos, orn)
 
     def step_dynamic_objects(self):
         """
@@ -882,7 +944,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         """
         self.floor_num = self.scene.get_random_floor()
         # reset "virtual floor" to the correct height
-        self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.05)
+        self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.02)
 
         if self.track == 'interactive':
             self.reset_interactive_objects()
@@ -941,17 +1003,17 @@ if __name__ == '__main__':
     if args.env_type == 'deterministic':
         nav_env = NavigateEnv(config_file=args.config,
                               mode=args.mode,
-                              action_timestep=1.0 / 10.0,
+                              action_timestep=1.0 / 5.0,
                               physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random':
         nav_env = NavigateRandomEnv(config_file=args.config,
                                     mode=args.mode,
-                                    action_timestep=1.0 / 10.0,
+                                    action_timestep=1.0 / 5.0,
                                     physics_timestep=1.0 / 40.0)
     elif args.env_type == 'sim2real':
         nav_env = NavigateRandomEnvSim2Real(config_file=args.config,
                                             mode=args.mode,
-                                            action_timestep=1.0 / 10.0,
+                                            action_timestep=1.0 / 5.0,
                                             physics_timestep=1.0 / 40.0,
                                             track=args.sim2real_track)
 
@@ -959,12 +1021,12 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         nav_env.reset()
-        while True:
+        for _ in range(50):  # 10 seconds
             action = nav_env.action_space.sample()
             state, reward, done, _ = nav_env.step(action)
-            # print('reward', reward)
+            print('reward', reward)
             if done:
-                print('Episode finished after {} timesteps'.format(nav_env.current_step))
                 break
+        print('Episode finished after {} timesteps'.format(nav_env.current_step))
         print(time.time() - start)
     nav_env.clean()
