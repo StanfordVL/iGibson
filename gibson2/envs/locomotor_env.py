@@ -524,7 +524,7 @@ class NavigateEnv(BaseEnv):
             info['episode_length'] = self.current_step
             info['collision_step'] = self.collision_step
             info['path_length'] = self.path_length
-            info['spl'] = float(info['success']) * max(1.0, self.geodesic_dist / self.path_length)
+            info['spl'] = float(info['success']) * min(1.0, self.geodesic_dist / self.path_length)
 
         return done, info
 
