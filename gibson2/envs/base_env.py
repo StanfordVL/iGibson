@@ -1,4 +1,4 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, TurtlebotDifferentialDrive
+from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, TurtlebotDifferentialDrive, JR2DifferentialDrive
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import BuildingScene, StadiumScene
 import gibson2
@@ -66,6 +66,8 @@ class BaseEnv(gym.Env):
             robot = Turtlebot(self.config)
         elif self.config['robot'] == 'TurtlebotDifferentialDrive':
             robot = TurtlebotDifferentialDrive(self.config)
+        elif self.config['robot'] == 'JR2DifferentialDrive':
+            robot = JR2DifferentialDrive(self.config)
         elif self.config['robot'] == 'Husky':
             robot = Husky(self.config)
         elif self.config['robot'] == 'Ant':

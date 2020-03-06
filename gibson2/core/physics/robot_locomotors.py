@@ -138,24 +138,20 @@ class LocomotorRobot(BaseRobot):
                 j.set_motor_position(action[n])
         elif self.control == 'differential':
             assert len(action) == 2, "Differential drive must have only two joints"
-            # hardcode Turtlebot parameters for now
-            wheel_track = 0.235   # meters
-            half_track = wheel_track / 2.0
-            wheel_radius = 0.025 # meters
             linear_velocity = (action[0] + 1.0) / 2.0  # m/s
             angular_velocity = action[1] # rad/s
             
             if linear_velocity == 0:
                 # turn in place
-                right = angular_velocity * half_track / (2.0 * np.pi * wheel_radius)
+                right = angular_velocity * self.half_track / (2.0 * np.pi * self.wheel_radius)
                 left = -right
             elif angular_velocity == 0:
                 # pure forward/backward motion
-                left = right = linear_velocity / (2.0 * np.pi * wheel_radius)
+                left = right = linear_velocity / (2.0 * np.pi * self.wheel_radius)
             else:
                 # Rotation about a point in space
-                left = (linear_velocity - angular_velocity * half_track)  / (2.0 * np.pi * wheel_radius)
-                right = (linear_velocity + angular_velocity * half_track)  / (2.0 * np.pi * wheel_radius)
+                left = (linear_velocity - angular_velocity * self.half_track)  / (2.0 * np.pi * self.wheel_radius)
+                right = (linear_velocity + angular_velocity * self.half_track)  / (2.0 * np.pi * self.wheel_radius)
                 
             left = 2 * np.pi * left / 360
             right = 2 * np.pi * right / 360
@@ -572,13 +568,16 @@ class TurtlebotDifferentialDrive(LocomotorRobot):
     def __init__(self, config):
         self.config = config
         self.max_linear_velocity = config.get("max_linear_velocity", 1.0)
-        self.max_angular_velocity = config.get("max_angular_velocity", 3.0)        
+        self.max_angular_velocity = config.get("max_angular_velocity", 3.0)
+        self.wheel_track = 0.235
+        self.half_track = self.wheel_track / 2.0
+        self.wheel_radius = 0.025
         LocomotorRobot.__init__(self,
                             "turtlebot/turtlebot.urdf",
                             "base_link",
                             action_dim=2,
                             sensor_dim=16,
-                            power=2.5,
+                            power=1.9,
                             scale=config.get("robot_scale", self.default_scale),
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", False),
@@ -713,6 +712,58 @@ class JR2(LocomotorRobot):
             (ord('a'),): 3,  ## turn left
             (): 4
         }
+        
+class JR2DifferentialDrive(LocomotorRobot):
+    mjcf_scaling = 1
+    model_type = "URDF"
+    default_scale = 1
+
+    def __init__(self, config):
+        self.config = config
+        self.max_linear_velocity = config.get("max_linear_velocity", 1.0)
+        self.max_angular_velocity = config.get("max_angular_velocity", 3.0)
+        self.wheel_track = 0.5421
+        self.half_track = self.wheel_track / 2.0
+        self.wheel_radius = 0.2406
+        LocomotorRobot.__init__(self,
+                            "jr2_urdf/jr2.urdf",
+                            "base_link",
+                            action_dim=2,
+                            sensor_dim=16,
+                            power=1.0,
+                            scale=config.get("robot_scale", self.default_scale),
+                            resolution=config.get("resolution", 64),
+                            is_discrete=config.get("is_discrete", False),
+                            control="differential")
+
+    def set_up_continuous_action_space(self):
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
+        self.action_high = np.array([self.max_linear_velocity, self.max_angular_velocity])
+        self.action_low = -self.action_high
+
+    def set_up_discrete_action_space(self):
+        self.action_list = [[self.velocity, self.velocity], [-self.velocity, -self.velocity],
+                            [self.velocity * 0.5, -self.velocity * 0.5],
+                            [-self.velocity * 0.5, self.velocity * 0.5], [0, 0]]
+        self.action_space = gym.spaces.Discrete(len(self.action_list))
+        self.setup_keys_to_action()
+
+    def setup_keys_to_action(self):
+        self.keys_to_action = {
+            (ord('w'),): 0,  # forward
+            (ord('s'),): 1,  # backward
+            (ord('d'),): 2,  # turn right
+            (ord('a'),): 3,  # turn left
+            (): 4  # stay still
+        }
+
+    def calc_state(self):
+        base_state = LocomotorRobot.calc_state(self)
+        angular_velocity = self.robot_body.angular_velocity()
+        return np.concatenate((base_state, np.array(angular_velocity)))
 
 
 # TODO: set up joint id and name mapping
