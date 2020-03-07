@@ -40,7 +40,7 @@ class Challenge:
         results["avg_success"] = avg_success
 
         if os.path.exists('/results'):
-            with open('/results/eval_result.json', 'w') as f:
+            with open('/results/eval_result_{}.json'.format(self.sim2real_track), 'w') as f:
                 json.dump(results, f)
 
         print('eval done, avg reward {}, avg success {}, avg spl {}'.format(avg_reward, avg_success, avg_spl))
