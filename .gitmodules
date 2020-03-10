@@ -1,3 +1,6 @@
 [submodule "gibson2/core/render/pybind11"]
 	path = gibson2/core/render/pybind11
 	url = https://github.com/pybind/pybind11.git
+[submodule "gibson2/core/render/glfw"]
+	path = gibson2/core/render/glfw
+	url = https://github.com/glfw/glfw
