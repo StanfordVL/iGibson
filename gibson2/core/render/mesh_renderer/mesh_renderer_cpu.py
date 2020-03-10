@@ -11,7 +11,7 @@ import numpy as np
 from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-from gibson2.core.render.mesh_renderer import MeshRendererContext, CGLUtils
+from gibson2.core.render.mesh_renderer import MeshRendererContext, CGLUtils, GLFWRendererContext
 from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
 from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTexture
 import gibson2.core.render.mesh_renderer as mesh_renderer
@@ -107,7 +107,13 @@ class InstanceGroup(object):
                     texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
                     if texture_id is None:
                         texture_id = -1
-                    CGLUtils.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(), texture_id, self.renderer.texUnitUniform, self.renderer.VAOs[object_idx], self.renderer.faces[object_idx].size, self.renderer.faces[object_idx])
+
+                    if self.renderer.msaa:
+                        buffer = self.renderer.fbo_ms
+                    else:
+                        buffer = self.renderer.fbo
+
+                    CGLUtils.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(), texture_id, self.renderer.texUnitUniform, self.renderer.VAOs[object_idx], self.renderer.faces[object_idx].size, self.renderer.faces[object_idx], buffer)
 
                 finally:
                     CGLUtils.cglBindVertexArray(0)
@@ -211,7 +217,13 @@ class Instance(object):
                 texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
                 if texture_id is None:
                     texture_id = -1
-                CGLUtils.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(), texture_id, self.renderer.texUnitUniform, self.renderer.VAOs[object_idx], self.renderer.faces[object_idx].size, self.renderer.faces[object_idx])
+
+                if self.renderer.msaa:
+                    buffer = self.renderer.fbo_ms
+                else:
+                    buffer = self.renderer.fbo
+
+                CGLUtils.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(), texture_id, self.renderer.texUnitUniform, self.renderer.VAOs[object_idx], self.renderer.faces[object_idx].size, self.renderer.faces[object_idx], buffer)
 
             finally:
                 CGLUtils.cglBindVertexArray(0)
@@ -258,7 +270,7 @@ class MeshRenderer:
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
-    def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False):
+    def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False, msaa=False):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -296,6 +308,8 @@ class MeshRenderer:
 
         self.device_idx = device_idx
         self.device_minor = device
+        self.msaa = msaa
+        #self.r = GLFWRendererContext.GLFWRendererContext(width, height)
         self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
@@ -343,7 +357,12 @@ class MeshRenderer:
         """
         Set up RGB, surface normal, depth and segmentation framebuffers for the renderer
         """
-        [self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d, self.depth_tex] = CGLUtils.setup_framebuffer_meshrenderer(self.width, self.height)
+        [self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
+         self.depth_tex] = CGLUtils.setup_framebuffer_meshrenderer(self.width, self.height)
+
+        if self.msaa:
+            [self.fbo_ms, self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
+             self.depth_tex_ms] = CGLUtils.setup_framebuffer_meshrenderer_ms(self.width, self.height)
 
     def load_object(self,
                     obj_path,
@@ -404,7 +423,8 @@ class MeshRenderer:
                 if load_texture:
                     materials_fn[i + material_count] = item.diffuse_texname
                     dir = os.path.dirname(obj_path)
-                    texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
+                    #texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
+                    texture = CGLUtils.loadTexture(os.path.join(dir, item.diffuse_texname))
                     material = Material('texture', texture_id=texture)
                     self.textures.append(texture)
                 else:
@@ -599,22 +619,22 @@ class MeshRenderer:
         """
         results = []
         if 'rgb' in modes:
-            frame = CGLUtils.readbuffer_meshrenderer('rgb', self.width, self.height)
+            frame = CGLUtils.readbuffer_meshrenderer('rgb', self.width, self.height, self.fbo)
             frame = frame.reshape(self.height, self.width, 4)[::-1, :]
             results.append(frame)
 
         if 'normal' in modes:
-            normal = CGLUtils.readbuffer_meshrenderer('normal', self.width, self.height)
+            normal = CGLUtils.readbuffer_meshrenderer('normal', self.width, self.height, self.fbo)
             normal = normal.reshape(self.height, self.width, 4)[::-1, :]
             results.append(normal)
 
         if 'seg' in modes:
-            seg = CGLUtils.readbuffer_meshrenderer('seg', self.width, self.height)
+            seg = CGLUtils.readbuffer_meshrenderer('seg', self.width, self.height, self.fbo)
             seg = seg.reshape(self.height, self.width, 4)[::-1, :]
             results.append(seg)
 
         if '3d' in modes:
-            pc = CGLUtils.readbuffer_meshrenderer('3d', self.width, self.height)
+            pc = CGLUtils.readbuffer_meshrenderer('3d', self.width, self.height, self.fbo)
             pc = pc.reshape(self.height, self.width, 4)[::-1, :]
             results.append(pc)
 
@@ -629,13 +649,18 @@ class MeshRenderer:
             hidden
 
         """
-        CGLUtils.render_meshrenderer_pre()
+        if self.msaa:
+            CGLUtils.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
+        else:
+            CGLUtils.render_meshrenderer_pre(0, 0, self.fbo)
 
         for instance in self.instances:
             if not instance in hidden:
                 instance.render()
 
         CGLUtils.render_meshrenderer_post()
+        if self.msaa:
+            CGLUtils.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
         return self.readbuffer(modes)
 
@@ -665,7 +690,15 @@ class MeshRenderer:
             self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
             self.depth_tex
         ]
-        CGLUtils.clean_meshrenderer(clean_list, self.textures, [self.fbo], self.VAOs, self.VBOs)
+        fbo_list = [self.fbo]
+        if self.msaa:
+            clean_list += [
+            self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
+            self.depth_tex_ms
+        ]
+            fbo_list += [self.fbo_ms]
+
+        CGLUtils.clean_meshrenderer(clean_list, self.textures, fbo_list, self.VAOs, self.VBOs)
         self.color_tex_rgb = None
         self.color_tex_normal = None
         self.color_tex_semantics = None

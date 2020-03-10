@@ -6,12 +6,22 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 namespace py = pybind11;
 
-void render_meshrenderer_pre() {
+void render_meshrenderer_pre(bool msaa, GLuint fb1, GLuint fb2) {
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fb2);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    if (msaa) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fb1);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    }
     glEnable(GL_DEPTH_TEST);
 }
 
@@ -30,7 +40,20 @@ std::string getstring_meshrenderer() {
     return reinterpret_cast<char const *>(glGetString(GL_VERSION));
 }
 
-py::array_t<float> readbuffer_meshrenderer(char* mode, int width, int height) {
+void blit_buffer(int width, int height, GLuint fb1, GLuint fb2) {
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fb1);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb2);
+    glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+    for (int i = 0; i < 4; i++) {
+        glReadBuffer(GL_COLOR_ATTACHMENT0+i);
+		glDrawBuffer(GL_COLOR_ATTACHMENT0+i);
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
+}
+
+py::array_t<float> readbuffer_meshrenderer(char* mode, int width, int height, GLuint fb2) {
+    glBindFramebuffer(GL_FRAMEBUFFER, fb2);
     if (!strcmp(mode, "rgb")) {
         glReadBuffer(GL_COLOR_ATTACHMENT0);
     }
@@ -89,6 +112,51 @@ py::list setup_framebuffer_meshrenderer(int width, int height) {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, color_tex_semantics, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, color_tex_3d, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth_tex, 0);
+    glViewport(0, 0, width, height);
+    GLenum *bufs = (GLenum*)malloc(4 * sizeof(GLenum));
+    bufs[0] = GL_COLOR_ATTACHMENT0;
+    bufs[1] = GL_COLOR_ATTACHMENT1;
+    bufs[2] = GL_COLOR_ATTACHMENT2;
+    bufs[3] = GL_COLOR_ATTACHMENT3;
+    glDrawBuffers(4, bufs);
+    assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+    py::list result;
+    result.append(fbo);
+    result.append(color_tex_rgb);
+    result.append(color_tex_normal);
+    result.append(color_tex_semantics);
+    result.append(color_tex_3d);
+    result.append(depth_tex);
+    return result;
+}
+
+py::list setup_framebuffer_meshrenderer_ms(int width, int height) {
+    GLuint *fbo_ptr = (GLuint*)malloc(sizeof(GLuint));
+    GLuint *texture_ptr = (GLuint*)malloc(5 * sizeof(GLuint));
+    glGenFramebuffers(1, fbo_ptr);
+    glGenTextures(5, texture_ptr);
+    int fbo = fbo_ptr[0];
+    int color_tex_rgb = texture_ptr[0];
+    int color_tex_normal = texture_ptr[1];
+    int color_tex_semantics = texture_ptr[2];
+    int color_tex_3d = texture_ptr[3];
+    int depth_tex = texture_ptr[4];
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_rgb);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA, width, height, GL_TRUE);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_normal);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA, width, height, GL_TRUE);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_semantics);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA, width, height, GL_TRUE);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_3d);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA, width, height, GL_TRUE);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, depth_tex);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_DEPTH24_STENCIL8, width, height, GL_TRUE);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, color_tex_rgb, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, color_tex_normal, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D_MULTISAMPLE, color_tex_semantics, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D_MULTISAMPLE, color_tex_3d, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE, depth_tex, 0);
     glViewport(0, 0, width, height);
     GLenum *bufs = (GLenum*)malloc(4 * sizeof(GLenum));
     bufs[0] = GL_COLOR_ATTACHMENT0;
@@ -206,11 +274,12 @@ void init_material_instance(int shaderProgram, float instance_color, py::array_t
     glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
 }
 
-void draw_elements_instance(bool flag, int texture_id, int texUnitUniform, int vao, int face_size, py::array_t<unsigned int> faces) {
+void draw_elements_instance(bool flag, int texture_id, int texUnitUniform, int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
     glActiveTexture(GL_TEXTURE0);
     if (flag) glBindTexture(GL_TEXTURE_2D, texture_id);
     glUniform1i(texUnitUniform, 0);
     glBindVertexArray(vao);
+    glBindFramebuffer(GL_FRAMEBUFFER, fb);
     unsigned int *ptr = (unsigned int *) faces.request().ptr;
     glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, ptr);
 
@@ -239,11 +308,21 @@ void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans
     glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
 }
 
-void render_tensor_pre() {
-    glClearColor(0, 0, 0, 1);
+
+void render_tensor_pre(bool msaa, GLuint fb1, GLuint fb2) {
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fb2);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    if (msaa) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fb1);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    }
     glEnable(GL_DEPTH_TEST);
 }
+
 
 void render_tensor_post() {
     glDisable(GL_DEPTH_TEST);
@@ -257,6 +336,50 @@ void cglUseProgram(int shaderProgram) {
     glUseProgram(shaderProgram);
 }
 
+int loadTexture(std::string filename) {
+//    img = Image.open(path).transpose(Image.FLIP_TOP_BOTTOM)
+//    w, h = img.size
+//
+//    img = img.resize((int(w * scale), int(h * scale)), Image.BICUBIC)
+
+//    img_data = np.frombuffer(img.tobytes(), np.uint8)
+//    #print(img_data.shape)
+    //width, height = img.size
+    // glTexImage2D expects the first element of the image data to be the
+    // bottom-left corner of the image.  Subsequent elements go left to right,
+    // with subsequent lines going from bottom to top.
+
+    // However, the image data was created with PIL Image tostring and numpy's
+    // fromstring, which means we have to do a bit of reorganization. The first
+    // element in the data output by tostring() will be the top-left corner of
+    // the image, with following values going left-to-right and lines going
+    // top-to-bottom.  So, we need to flip the vertical coordinate (y).
+
+    int w;
+    int h;
+    int comp;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char* image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb);
+
+    if(image == nullptr)
+        throw(std::string("Failed to load texture"));
+
+
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB,
+                    GL_UNSIGNED_BYTE, image);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    stbi_image_free(image);
+    return texture;
+}
+
 PYBIND11_MODULE(CGLUtils, m) {
     m.doc() = "C++ OpenGL bindings";
 
@@ -268,8 +391,12 @@ PYBIND11_MODULE(CGLUtils, m) {
     m.def("glad_init", &glad_init, "init glad");
     m.def("clean_meshrenderer", &clean_meshrenderer, "clean meshrenderer");
     m.def("setup_framebuffer_meshrenderer", &setup_framebuffer_meshrenderer, "setup framebuffer in meshrenderer");
+    m.def("setup_framebuffer_meshrenderer_ms", &setup_framebuffer_meshrenderer_ms, "setup framebuffer in meshrenderer with MSAA");
+    m.def("blit_buffer", &blit_buffer, "blit buffer");
+
     m.def("compile_shader_meshrenderer", &compile_shader_meshrenderer, "compile vertex and fragment shader");
     m.def("load_object_meshrenderer", &load_object_meshrenderer, "load object into VAO and VBO");
+    m.def("loadTexture", &loadTexture, "load texture function");
 
     // class MeshRendererG2G
     m.def("render_tensor_pre", &render_tensor_pre, "pre-executed functions in MeshRendererG2G.render");
@@ -288,4 +415,5 @@ PYBIND11_MODULE(CGLUtils, m) {
     // misc
     m.def("cglBindVertexArray", &cglBindVertexArray, "binding function");
     m.def("cglUseProgram", &cglUseProgram, "binding function");
+
 }
