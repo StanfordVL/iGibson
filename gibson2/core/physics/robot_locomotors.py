@@ -138,8 +138,17 @@ class LocomotorRobot(BaseRobot):
                 j.set_motor_position(action[n])
         elif self.control == 'differential':
             assert len(action) == 2, "Differential drive must have only two joints"
-            linear_velocity = (action[0] + 1.0) / 2.0  # m/s
+                
+            linear_velocity = (action[0] + self.max_linear_velocity) / 2.0 # m/s
+            #linear_velocity = 0.15 * action[0] + 0.35
             angular_velocity = action[1] # rad/s
+
+#             try:
+#                 if linear_velocity > self.min_velocity:
+#                     self.min_velocity = linear_velocity
+#                 print(self.min_velocity)
+#             except:
+#                 self.min_velocity = linear_velocity
             
             if linear_velocity == 0:
                 # turn in place
@@ -187,12 +196,9 @@ class LocomotorRobot(BaseRobot):
             # self.action_space is usually [-1, 1]
             action = np.clip(action, self.action_space.low, self.action_space.high)
             
-            real_action = self.action_high * action
-
-# GIBSON MASTER           
-#             # scale action to appropriate, robot specific scale
-#             real_action = (self.action_high - self.action_low) / 2.0 * action + \
-#                           (self.action_high + self.action_low) / 2.0
+            # scale action to appropriate, robot specific scale
+            real_action = (self.action_high - self.action_low) / 2.0 * action + \
+                          (self.action_high + self.action_low) / 2.0
         return real_action
 
     def apply_action(self, action):
