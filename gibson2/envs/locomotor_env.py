@@ -723,13 +723,14 @@ class NavigateEnv(BaseEnv):
             #     print(collision_link)
             # print('reset agent failed')
             # embed()
-        print('Failed to reset robot without collision' + '-' * 30)
-        for collision_link in collision_links_flatten:
-            print(collision_link)
-        random_string = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-        p.saveBullet(random_string + '.bullet')
-        p.saveWorld(random_string + '.py')
+        # print('Failed to reset robot without collision' + '-' * 30)
+        # for collision_link in collision_links_flatten:
+        #     print(collision_link)
+        # random_string = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        # p.saveBullet(random_string + '.bullet')
+        # p.saveWorld(random_string + '.py')
         # raise Exception("Failed to reset robot without collision")
+        print("WARNING: Failed to reset robot without collision")
 
     def reset_initial_and_target_pos(self):
         self.robots[0].set_position(pos=self.initial_pos)
