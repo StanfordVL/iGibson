@@ -218,6 +218,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                low=-1.0,
                                                high=1.0,
                                                dtype=np.float32)
+        elif self.arena == 'random_manip':
+            self.action_space = gym.spaces.Box(shape=(4,),
+                                               low=-1.0,
+                                               high=1.0,
+                                               dtype=np.float32)
         else:
             self.action_space = gym.spaces.Box(shape=(8,),
                                                low=-1.0,
@@ -227,7 +232,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         # real sensor spec for Fetch
         resolution = self.config.get('resolution', 64)
-        self.fine_motion_plan = self.config.get('fine_motion_plan', False)
+        self.fine_motion_plan = self.config.get('fine_motion_plan', True)
 
         width = resolution
         height = int(width * (480.0 / 640.0))
@@ -251,7 +256,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.use_occupancy_grid = True
         else:
             self.use_occupancy_grid = False
-
 
         self.base_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                         rgba_color=[1, 0, 0, 1],
@@ -278,12 +282,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         #                                     1.2576467971105596, -0.312703569911879,
         #                                     1.7404867100093226, -0.0962895617312548,
         #                                     -1.4418232619629425, -1.6780152866247762)
-        self.arm_default_joint_positions = (
-            0.02, np.pi / 2.0,
-            np.pi / 2.0, 0.0,
-            np.pi / 2.0, 0.0,
-            np.pi / 2.0, 0.0
-        )
+        # self.arm_default_joint_positions = (
+        #     0.02, np.pi / 2.0,
+        #     np.pi / 2.0, 0.0,
+        #     np.pi / 2.0, 0.0,
+        #     np.pi / 2.0, 0.0
+        # )
+        self.arm_default_joint_positions = (0.30322468280792236, -1.414019864768982,
+                                            1.5178184935241699, 0.8189625336474915,
+                                            2.200358942909668, 2.9631312579803466,
+                                            -1.2862852996643066, 0.0008453550418615341)
         self.arm_joint_ids = joints_from_names(self.robot_id,
                                                [
                                                    'torso_lift_joint',
@@ -363,7 +371,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 [0.0, 1.0, 0.0, 1],
             ]
 
-            self.initial_pos_range = np.array([[-1,1.5], [-1,1]])
+            self.initial_pos_range = np.array([[-1, 1.5], [-1, 1]])
             self.target_pos_range = np.array([[-5.5, -4.5], [-1.0, 1.0]])
 
             # TODO: initial_pos and target_pos sampling should also be put here (scene-specific)
@@ -431,6 +439,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.initial_pos_range = np.array([
                 [5.0, 7.0], [-1.7, 0.3]
             ])
+            self.initial_pos_range_near_door = np.array([
+                [1.0, 1.4], [-1.6, -1.4]
+            ])
+            self.initial_orn_range_near_door = np.array([
+                -np.pi / 2.0 - np.pi / 12.0, -np.pi / 2.0 + np.pi / 12.0,
+            ])
             self.target_pos_range = np.array([
                 [-3.75, -3.25], [-1, 0.0]
             ])
@@ -463,10 +477,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if self.arena != 'random_nav':
                 assert False, 'model_id unknown'
 
-        if self.arena in ['push_door', 'button_door']:
+        if self.arena in ['push_door', 'button_door', 'random_manip']:
             self.door_axis_link_id = 1
             self.doors = []
-            door_urdf = 'realdoor.urdf' if self.arena == 'push_door' else 'realdoor_closed.urdf'
+            door_urdf = 'realdoor.urdf' if self.arena in ['push_door', 'random_manip'] else 'realdoor_closed.urdf'
             for scale, position, rotation in zip(door_scales, self.door_positions, self.door_rotations):
                 door = InteractiveObj(
                     os.path.join(gibson2.assets_path, 'models', 'scene_components', door_urdf),
@@ -608,8 +622,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.grid_resolution / 2)
         scan_local_in_map = scan_local_in_map.reshape((1, -1, 1, 2)).astype(np.int32)
         cv2.fillPoly(occupancy_grid, scan_local_in_map, True, 1)
-        #kernel = np.ones((7, 7), np.uint8) # require 6cm of clearance
-        #occupancy_grid = cv2.erode(occupancy_grid, kernel, iterations=1)
+        # kernel = np.ones((7, 7), np.uint8) # require 6cm of clearance
+        # occupancy_grid = cv2.erode(occupancy_grid, kernel, iterations=1)
 
         cv2.circle(occupancy_grid, (self.grid_resolution // 2, self.grid_resolution // 2),
                    int(self.robot_footprint_radius_in_map), 1, -1)
@@ -970,15 +984,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             (link_from_name(self.robot_id, 'torso_lift_link'), link_from_name(self.robot_id, 'forearm_roll_link')),
             (link_from_name(self.robot_id, 'torso_lift_link'), link_from_name(self.robot_id, 'elbow_flex_link'))}
 
-        #print(mp_obstacles)
+        # print(mp_obstacles)
         mp_obstacles = tuple(mp_obstacles)
         if self.fine_motion_plan:
             arm_path = plan_joint_motion(self.robot_id,
-                                     self.arm_joint_ids,
-                                     arm_joint_positions,
-                                     disabled_collisions=disabled_collisions,
-                                     self_collisions=True,
-                                     obstacles=mp_obstacles)
+                                         self.arm_joint_ids,
+                                         arm_joint_positions,
+                                         disabled_collisions=disabled_collisions,
+                                         self_collisions=True,
+                                         obstacles=mp_obstacles)
         else:
             arm_path = plan_joint_motion(self.robot_id,
                                          self.arm_joint_ids,
@@ -1000,7 +1014,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             return False
 
     def stash_object_states(self):
-        if self.arena in ['push_door', 'button_door']:
+        if self.arena in ['push_door', 'button_door', 'random_manip']:
             for i, door in enumerate(self.doors):
                 self.door_angles[i] = p.getJointState(door.body_id, self.door_axis_link_id)[0]
             if self.arena == 'button_door':
@@ -1014,7 +1028,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         """
         Remove any accumulated velocities or forces of objects resulting from arm motion planner
         """
-        if self.arena in ['push_door', 'button_door']:
+        if self.arena in ['push_door', 'button_door', 'random_manip']:
             for door, door_angle in zip(self.doors, self.door_angles):
                 p.resetJointState(door.body_id, self.door_axis_link_id,
                                   targetValue=door_angle, targetVelocity=0.0)
@@ -1047,7 +1061,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         push_vector_local = np.array([action[6], action[7]]) * 0.5  # [-0.5, 0.5]
         push_vector = rotate_vector_2d(push_vector_local, -self.robots[0].get_rpy()[2])
         push_vector = np.append(push_vector, 0.0)
-        
+
         # push_vector = np.array([-0.5, 0.0, 0.0])
 
         max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
@@ -1069,13 +1083,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                        maxNumIterations=100)[2:10]
 
         set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
-        #ls = p.getLinkState(robotid, endEffectorId)
-        #newPos = ls[4]
-        #diff = [targetPos[0] - newPos[0], targetPos[1] - newPos[1], targetPos[2] - newPos[2]]
-        #dist2 = (diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2])
+        # ls = p.getLinkState(robotid, endEffectorId)
+        # newPos = ls[4]
+        # diff = [targetPos[0] - newPos[0], targetPos[1] - newPos[1], targetPos[2] - newPos[2]]
+        # dist2 = (diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2])
         diff = l2_distance(arm_subgoal + push_vector, self.robots[0].get_end_effector_position())
         set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions_original)
-        print(diff)
         if diff > 0.03:
             return
 
@@ -1159,8 +1172,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return subgoal_success
 
     def step(self, action):
-        # print('-' * 30)
-        # embed()
         # action[0] = base_or_arm
         # action[1] = base_subgoal_theta / base_img_v
         # action[2] = base_subgoal_dist / base_img_u
@@ -1172,14 +1183,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # print('-' * 20)
         self.current_step += 1
 
-        if self.arena == 'random_nav':
-            use_base = True
-            # append a dummy value to the front of the array to achieve compatibility
-            action = np.insert(action, 0, 0.0)
-        else:
-            use_base = action[0] > 0.0
-            # add action noise before execution
+        if self.arena in ['random_nav', 'random_manip']:
+            new_action = np.zeros(8)
+            if self.arena == 'random_nav':
+                new_action[0] = 1.0
+                new_action[1:4] = action
+            else:
+                new_action[0] = -1.0
+                new_action[4:8] = action
 
+            action = new_action
+
+        use_base = action[0] > 0.0
+        # add action noise before execution
         action[1:] = np.clip(action[1:] + np.random.normal(0.0, 0.05, action.shape[0] - 1), -1.0, 1.0)
 
         if use_base:
@@ -1204,13 +1220,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.button_pressed = True
                 self.doors[self.door_idx].set_position([100.0, 100.0, 0.0])
                 reward += self.button_reward
-        elif self.arena == 'push_door':
+        elif self.arena in ['push_door', 'random_manip']:
             new_door_angle = p.getJointState(self.doors[self.door_idx].body_id, self.door_axis_link_id)[0]
             door_angle_diff = new_door_angle - self.door_angles[self.door_idx]
             reward += door_angle_diff
             self.door_angles[self.door_idx] = new_door_angle
-            if new_door_angle > (80.0 / 180.0 * np.pi):
+            if new_door_angle > (60.0 / 180.0 * np.pi):
                 print("PUSH OPEN DOOR")
+                if self.arena == 'random_manip':
+                    reward += self.success_reward
         elif self.arena == 'obstacles':
             new_obstacles_moved_dist = 0.0
             for obstacle, original_obstacle_pose in zip(self.obstacles, self.obstacle_poses):
@@ -1265,24 +1283,36 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return self.state, reward, done, info
 
     def reset_initial_and_target_pos(self):
-        self.initial_orn_z = np.random.uniform(-np.pi, np.pi)
-        if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty']:
+        if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty', 'random_manip']:
             floor_height = self.scene.get_floor_height(self.floor_num)
 
-            self.initial_pos = np.array([
-                np.random.uniform(self.initial_pos_range[0][0], self.initial_pos_range[0][1]),
-                np.random.uniform(self.initial_pos_range[1][0], self.initial_pos_range[1][1]),
-                floor_height
-            ])
+            if self.arena == 'random_manip':
+                self.initial_pos = np.array([
+                    np.random.uniform(self.initial_pos_range_near_door[0][0], self.initial_pos_range_near_door[0][1]),
+                    np.random.uniform(self.initial_pos_range_near_door[1][0], self.initial_pos_range_near_door[1][1]),
+                    floor_height
+                ])
+            else:
+                self.initial_pos = np.array([
+                    np.random.uniform(self.initial_pos_range[0][0], self.initial_pos_range[0][1]),
+                    np.random.uniform(self.initial_pos_range[1][0], self.initial_pos_range[1][1]),
+                    floor_height
+                ])
 
             self.initial_height = floor_height + self.random_init_z_offset
-
             self.robots[0].set_position(pos=[self.initial_pos[0],
                                              self.initial_pos[1],
                                              self.initial_height])
+
+            if self.arena == 'random_manip':
+                self.initial_orn_z = np.random.uniform(self.initial_orn_range_near_door[0],
+                                                       self.initial_orn_range_near_door[1])
+            else:
+                self.initial_orn_z = np.random.uniform(-np.pi, np.pi)
+
             self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(0, 0, self.initial_orn_z), 'wxyz'))
 
-            if self.arena in ['button_door', 'push_door']:
+            if self.arena in ['button_door', 'push_door', 'random_manip']:
                 self.door_idx = np.random.randint(0, len(self.doors))
                 door_target_pos = self.door_target_pos[self.door_idx]
                 self.target_pos = np.array([
@@ -1291,7 +1321,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     floor_height
                 ])
             else:
-                #self.target_pos = np.array([-5.0, 0.0, floor_height]) Avonia target
+                # self.target_pos = np.array([-5.0, 0.0, floor_height]) Avonia target
                 self.target_pos = np.array([
                     np.random.uniform(self.target_pos_range[0][0], self.target_pos_range[0][1]),
                     np.random.uniform(self.target_pos_range[1][0], self.target_pos_range[1][1]),
@@ -1304,7 +1334,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             super(MotionPlanningBaseArmEnv, self).reset_initial_and_target_pos()
 
     def before_reset_agent(self):
-        if self.arena in ['push_door', 'button_door']:
+        if self.arena in ['push_door', 'button_door', 'random_manip']:
             self.door_angles = np.zeros(len(self.doors))
             for door, angle, pos, orn in zip(self.doors, self.door_angles, self.door_positions, self.door_rotations):
                 p.resetJointState(door.body_id, self.door_axis_link_id, targetValue=angle, targetVelocity=0.0)
@@ -1339,6 +1369,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.state = super(MotionPlanningBaseArmEnv, self).reset()
         # self.state['current_step'] = self.current_step
         return self.state
+
+    def get_termination(self, collision_links=[], info={}):
+        done, info = super(MotionPlanningBaseArmEnv, self).get_termination(collision_links, info)
+        if self.arena == 'random_manip':
+            new_door_angle = p.getJointState(self.doors[self.door_idx].body_id, self.door_axis_link_id)[0]
+            if new_door_angle > (60.0 / 180.0 * np.pi):
+                done = True
+                info['success'] = True
+        return done, info
 
 
 class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
@@ -1409,7 +1448,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--arena',
                         '-a',
-                        choices=['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty', 'random_nav'],
+                        choices=['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty', 'random_nav',
+                                 'random_manip'],
                         default='push_door',
                         help='which arena to train or test (default: push_door)')
 
@@ -1418,7 +1458,6 @@ if __name__ == '__main__':
                         choices=['high-level', 'low-level'],
                         default='high-level',
                         help='which action type to use (default: high-level)')
-
 
     args = parser.parse_args()
 
@@ -1450,7 +1489,7 @@ if __name__ == '__main__':
             # action[:3] = 1.0
             state, reward, done, info = nav_env.step(action)
             # embed()
-            # print('Reward:', reward)
+            print('Reward:', reward)
             # time.sleep(0.05)
             # nav_env.step()
             # for step in range(50):  # 500 steps, 50s world time
