@@ -36,19 +36,19 @@ public:
 		// Hide GLFW window by default
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-		GLFWwindow* window = glfwCreateWindow(m_windowHeight, m_windowHeight, "Gibson VR Renderer", NULL, NULL);
+		GLFWwindow* window = glfwCreateWindow(m_windowHeight, m_windowHeight, "Gibson Renderer", NULL, NULL);
 		if (window == NULL) {
 			fprintf(stderr, "Failed to create GLFW window.\n");
 			exit(EXIT_FAILURE);
 		}
 		glfwMakeContextCurrent(window);
 
-		// Load all OpenGL function pointers through GLAD
-		if (!gladLoadGL(glfwGetProcAddress))
-		{
-			fprintf(stderr, "Failed to load OpenGL function pointers through GLAD.\n");
+		if (!gladLoadGL(glfwGetProcAddress)) {
+			fprintf(stderr, "failed to load GL with glad.\n");
 			exit(EXIT_FAILURE);
 		}
+
+		fprintf(stderr, reinterpret_cast<char const*>(glGetString(GL_VERSION)));
 
 		printf("Succesfully initialized GLFW context and window!\n");
 

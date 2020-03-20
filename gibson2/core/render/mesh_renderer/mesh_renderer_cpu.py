@@ -4,22 +4,26 @@ import ctypes
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
-import gibson2.core.render.mesh_renderer.glutils.glcontext as glcontext
+#import gibson2.core.render.mesh_renderer.glutils.glcontext as glcontext
 import cv2
 import numpy as np
 #from pyassimp import load, release
 from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-from gibson2.core.render.mesh_renderer import MeshRendererContext, CGLUtils, GLFWRendererContext
-from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
+# TODO: Add back in MeshRendererContext and make it platform-dependent
+# TODO: Move all Python extensions to the mesh_renderer folder following build in setup.py
+import CGLUtils
+import GLFWRendererContext
+import tinyobjloader
+#from gibson2.core.render.mesh_renderer import CGLUtils, GLFWRendererContext
+#from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
 from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTexture
 import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
 import gibson2
 import os
-from gibson2.core.render.mesh_renderer import tinyobjloader
-import torch
+#import torch
 
 class VisualObject(object):
     """
@@ -296,26 +300,29 @@ class MeshRenderer:
         self.faces = []
         self.instances = []
         self.fisheye = use_fisheye
+        # TODO: Make this platform-dependent
         # self.context = glcontext.Context()
         # self.context.create_opengl_context((self.width, self.height))
-        available_devices = get_available_devices()
-        if device_idx < len(available_devices):
-            device = available_devices[device_idx]
-            print("using device {}".format(device))
-        else:
-            print("device index is larger than number of devices, falling back to use 0")
-            device = 0
+        #available_devices = get_available_devices()
+        #if device_idx < len(available_devices):
+        #    device = available_devices[device_idx]
+        #    print("using device {}".format(device))
+        #else:
+        #    print("device index is larger than number of devices, falling back to use 0")
+        #    device = 0
 
-        self.device_idx = device_idx
-        self.device_minor = device
+        #self.device_idx = device_idx
+        #self.device_minor = device
         self.msaa = msaa
-        #self.r = GLFWRendererContext.GLFWRendererContext(width, height)
-        self.r = MeshRendererContext.MeshRendererContext(width, height, device)
+        # TODO: Add an option for changing this, perhaps as an init argument
+        self.r = GLFWRendererContext.GLFWRendererContext(width, height)
+        #self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
         CGLUtils.glad_init()
         self.glstring = CGLUtils.getstring_meshrenderer()
-        self.colors = colormap
+        print(self.glstring)
+        '''self.colors = colormap
         self.lightcolor = [1, 1, 1]
 
         print("fisheye", self.fisheye)
@@ -351,7 +358,7 @@ class MeshRenderer:
         self.V = np.ascontiguousarray(V, np.float32)
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
-        self.mesh_materials = []
+        self.mesh_materials = []'''
 
     def setup_framebuffer(self):
         """
