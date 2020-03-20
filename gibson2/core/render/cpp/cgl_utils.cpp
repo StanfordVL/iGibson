@@ -1,8 +1,12 @@
 // compile this file: c++ -O3 -Wall -shared -std=c++11 -fPIC `python3 -m pybind11 --includes` cgl_utils.cpp ../glad/gl.cpp -o CGLUtils`python3-config --extension-suffix`
 #include <assert.h>
+
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
 #include <glad/gl.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
+//#include <EGL/egl.h>
+//#include <EGL/eglext.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
@@ -29,11 +33,17 @@ void render_meshrenderer_post() {
     glDisable(GL_DEPTH_TEST);
 }
 
+
 void glad_init() {
-    if (!gladLoadGL(eglGetProcAddress)) {
+    /* if (!gladLoadGL(eglGetProcAddress)) {
         fprintf(stderr, "failed to load GL with glad.\n");
         exit(EXIT_FAILURE);
-    }
+    } */
+
+	if (!gladLoadGL(glfwGetProcAddress)) {
+		fprintf(stderr, "failed to load GL with glad.\n");
+		exit(EXIT_FAILURE);
+	}
 }
 
 std::string getstring_meshrenderer() {
