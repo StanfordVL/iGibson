@@ -164,12 +164,17 @@ class BoxShape(object):
 
 class InteractiveObj(object):
     def __init__(self, filename, scale=1):
+    #def __init__(self, filename, texture_filename=None, scale=1):
         self.filename = filename
+        #self.texture_filename = texture_filename
         self.scale = scale
 
     def load(self):
-        self.body_id = p.loadURDF(self.filename, globalScaling=self.scale)
+        self.body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.mass = p.getDynamicsInfo(self.body_id, -1)[0]
+        #if self.texture_filename:
+        #    texture_id = p.loadTexture(self.texture_filename)
+        #    p.changeVisualShape(self.body_id, -1, textureUniqueId=texture_id)
         return self.body_id
 
     def get_position(self):

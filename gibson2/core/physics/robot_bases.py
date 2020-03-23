@@ -126,10 +126,9 @@ class BaseRobot:
         return parts, joints, ordered_joints, self.robot_body, robot_mass
 
     def _load_model(self):
+        flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL
         if self.self_collision:
-            flags = p.URDF_USE_SELF_COLLISION + p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT
-        else:
-            flags = 0
+            flags = flags | p.URDF_USE_SELF_COLLISION | p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT
 
         if self.model_type == "MJCF":
             self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file),

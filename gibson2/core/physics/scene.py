@@ -100,15 +100,21 @@ class BuildingScene(Scene):
             print('Using down-sampled mesh!')
         else:
             if self.should_load_replaced_objects:
-                filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_cleaned.obj")
+                filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_cleaned_mapped.obj")
+                texture_filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_cleaned_mapped_color.png")
             else:
                 filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
+                texture_filename = os.path.join(get_model_path(self.model_id), "{}_mesh_texture.small.jpg".format(self.model_id))
+
         scaling = [1, 1, 1]
         collisionId = p.createCollisionShape(p.GEOM_MESH,
                                              fileName=filename,
                                              meshScale=scaling,
                                              flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
-        visualId = -1
+        #visualId = -1
+        visualId = p.createVisualShape(p.GEOM_MESH,
+                                       fileName=filename,
+                                       meshScale=scaling)
         boundaryUid = p.createMultiBody(baseCollisionShapeIndex=collisionId,
                                         baseVisualShapeIndex=visualId)
         p.changeDynamics(boundaryUid, -1, lateralFriction=1)
@@ -120,14 +126,19 @@ class BuildingScene(Scene):
         p.resetBasePositionAndOrientation(self.ground_plane_mjcf[0],
                                           posObj=[0, 0, 0],
                                           ornObj=[0, 0, 0, 1])
-        p.changeVisualShape(boundaryUid,
-                            -1,
-                            rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
-                            specularColor=[0.5, 0.5, 0.5])
+        #texture_filename = os.path.join(get_model_path(self.model_id), "{}_mesh_texture.small.jpg".format(self.model_id))
+        #print('texture_filename', texture_filename)
+        texture_id = p.loadTexture(texture_filename)
+        #print('texture_id', texture_id)
+        p.changeVisualShape(boundaryUid, -1, textureUniqueId=texture_id)
+        #p.changeVisualShape(boundaryUid,
+        #                    -1,
+        #                    rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
+        #                    specularColor=[0.5, 0.5, 0.5])
 
         p.changeVisualShape(self.ground_plane_mjcf[0],
                             -1,
-                            rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
+                            rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 0.0],
                             specularColor=[0.5, 0.5, 0.5])
 
         floor_height_path = os.path.join(get_model_path(self.model_id), 'floors.txt')

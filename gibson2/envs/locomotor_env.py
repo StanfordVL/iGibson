@@ -676,7 +676,10 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         num_dupicates = 2
         for _ in range(num_dupicates):
             for urdf_model in self.additional_objects_path:
-                obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
+                urdf_filename = os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model)
+                obj = InteractiveObj(urdf_filename)
+                #texture_filename = os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model.replace('object', 'texture').replace('urdf', 'png'))
+                #obj = InteractiveObj(urdf_filename, texture_filename=texture_filename)
                 self.simulator.import_object(obj, class_id=self.class_map[urdf_model])
                 self.additional_objects.append(obj)
 
