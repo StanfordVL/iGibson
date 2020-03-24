@@ -1,4 +1,3 @@
-from gibson2.core.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 import cv2
 import sys
@@ -6,8 +5,8 @@ import numpy as np
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import VisualObject, InstanceGroup, MeshRenderer
 import time
 
-renderer = MeshRendererVR(MeshRenderer)
-""" renderer.load_object("C:\\Users\\shen\\Desktop\\GibsonVRStuff\\gibsonv2\\gibson2\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj")
+renderer = MeshRenderer(width=512, height=512)
+renderer.load_object("C:\\Users\\shen\\Desktop\\GibsonVRStuff\\gibsonv2\\gibson2\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj")
 renderer.add_instance(0)
 
 print(renderer.visual_objects, renderer.instances)
@@ -44,7 +43,7 @@ cv2.namedWindow('GLFW Renderer Test')
 cv2.setMouseCallback('test', change_dir)
 
 while True:
-    frame = renderer.render(vrMode=False)
+    frame = renderer.render(modes=('rgb'))
     cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
     q = cv2.waitKey(1)
     if q == ord('w'):
@@ -58,8 +57,6 @@ while True:
     elif q == ord('q'):
         break
     camera_pose = np.array([px, py, 1.2])
-    print("new camera pose")
-    print(camera_pose)
     renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
 
-renderer.release()"""
+renderer.release()

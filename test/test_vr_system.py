@@ -1,4 +1,4 @@
-from VRUtils import VRSystem
+from CGLUtils import VRSystem
 
 vrsys = VRSystem()
 recommendedWidth, recommendedHeight = vrsys.initVR()

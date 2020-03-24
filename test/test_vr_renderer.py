@@ -1,10 +1,8 @@
-from mesh_renderer_vr import MeshRendererVR
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.core.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
 import cv2
 import sys
 import numpy as np
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import VisualObject, InstanceGroup, MeshRenderer
-import time
 
 renderer = MeshRendererVR(MeshRenderer)
 # Note that it is necessary to load the full path of an object!
@@ -17,30 +15,20 @@ view_direction = np.array([1, 0, 0])
 renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
 renderer.set_fov(90)
 
-renderer.setupDebugFramebuffer()
+renderer.setup_debug_framebuffer()
 
-#camera_pose = np.array([0, 0, 1.2])
-#renderer.set_vr_camera(camera_pose)
+camera_pose = np.array([0, 0, 1.2])
+renderer.set_vr_camera(camera_pose)
 
 while True:
-    renderer.renderDebugFramebuffer()
-    #frame = renderer.render(vrMode=False)
+#    renderer.renderDebugFramebuffer()
+    # vrMode is set to True by default if you leave out the argument
+    frame = renderer.render(vrMode=True)
+    #renderer.render_good_boi()
+    #renderer.render_debug_framebuffer()
 
     #cv2.imshow('VR Output (left eye - right eye)', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
     # Needed to actually display the image
-    q = cv2.waitKey(50)
+    #q = cv2.waitKey(1)
 
 renderer.release()
-
-# print(renderer.visual_objects, renderer.instances)
-# print(renderer.materials_mapping, renderer.mesh_materials)
-# camera_pose = np.array([0, 0, 1.2])
-# view_direction = np.array([1, 0, 0])
-# renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
-# renderer.set_fov(90)
-
-# while True:
-#     frame = renderer.render(modes=('rgb'))
-#     cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
-
-# renderer.release()
