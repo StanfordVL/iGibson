@@ -235,17 +235,17 @@ class NavigateEnv(BaseEnv):
         sensor_state = self.get_additional_states()
         auxiliary_sensor = self.get_auxiliary_sensor(collision_links)
 
-        # rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
-        # rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
-        # depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-        # depth = np.clip(depth / 5.0, 0.0, 1.0)
+        rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+        rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
+        depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+        depth = np.clip(depth / 5.0, 0.0, 1.0)
         # depth = 1.0 - depth  # flip black/white
-        # seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
-        # if self.num_object_classes is not None:
-        #     seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
-        # cv2.imshow('rgb', rgb)
-        # cv2.imshow('depth', depth)
-        # cv2.imshow('seg', seg)
+        seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
+        if self.num_object_classes is not None:
+            seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
+        cv2.imshow('rgb', rgb)
+        cv2.imshow('depth', depth)
+        cv2.imshow('seg', seg)
 
         state = OrderedDict()
         if 'sensor' in self.output:
@@ -267,11 +267,17 @@ class NavigateEnv(BaseEnv):
                 seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
             state['seg'] = seg
         if 'depth_seg' in self.output:
-            depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            depth = np.clip(depth / 5.0, 0.0, 1.0)
-            seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
-            if self.num_object_classes is not None:
-                seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
+            if depth is None:
+                depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+                depth = np.clip(depth / 5.0, 0.0, 1.0)
+            depth = cv2.resize(depth, (68, 68))
+            depth = np.expand_dims(depth, axis=2)
+            if seg is None:
+                seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
+                if self.num_object_classes is not None:
+                    seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
+            seg = cv2.resize(seg, (68, 68))
+            seg = np.expand_dims(seg, axis=2)
             depth_seg = np.concatenate((depth, seg), axis=2)
             state['depth_seg'] = depth_seg
         if 'rgb_filled' in self.output:
@@ -655,8 +661,8 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
         if not self.should_load_replaced_objects:
             return
         scene_path = os.path.join(gibson2.assets_path, 'dataset', self.scene.model_id)
-        urdf_files = [item for item in os.listdir(scene_path) if item[-4:] == 'urdf']
-        position_files = [item[:-4].replace('alignment_centered', 'pos') + 'txt' for item in urdf_files]
+        urdf_files = [item for item in os.listdir(scene_path) if item[-9:] == '_new.urdf']
+        position_files = [item[:-9].replace('alignment_centered', 'pos') + '.txt' for item in urdf_files]
 
         for urdf_file, position_file in zip(urdf_files, position_files):
             with open(os.path.join(scene_path, position_file)) as f:
@@ -664,7 +670,7 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
                 # filter out duplicate annotations for the same object
                 if len(self.replaced_objects_pos) == 0 or \
                         np.min(np.linalg.norm(np.array(self.replaced_objects_pos) - pos, axis=1)) > 0.5:
-                    class_id = urdf_file.split('.')[0].split('_')[-1]
+                    class_id = urdf_file.split('.')[0].split('_')[-2]
                     obj = InteractiveObj(os.path.join(scene_path, urdf_file))
                     self.simulator.import_object(obj, class_id=self.class_map[class_id])
                     self.replaced_objects.append(obj)

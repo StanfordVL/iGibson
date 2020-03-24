@@ -47,8 +47,8 @@ class Simulator:
         self.load()
 
     def load(self):
-        self.renderer = MeshRenderer(width=self.resolution,
-                                     height=self.resolution,
+        self.renderer = MeshRenderer(width=384,
+                                     height=384,
                                      fov=self.fov,
                                      device_idx=self.device_idx,
                                      use_fisheye=self.use_fisheye)

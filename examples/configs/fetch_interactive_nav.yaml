@@ -48,7 +48,7 @@ max_step: 500
 
 # sensor
 output: [sensor, depth_seg]
-resolution: 512
+resolution: 68
 fov: 120
 
 # display
