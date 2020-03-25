@@ -3,6 +3,7 @@ import cv2
 import sys
 import numpy as np
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import VisualObject, InstanceGroup, MeshRenderer
+import time
 
 renderer = MeshRendererVR(MeshRenderer)
 # Note that it is necessary to load the full path of an object!
@@ -21,11 +22,14 @@ vr_camera_pose = np.array([0, 0, 1.2])
 #renderer.set_vr_camera(vr_camera_pose)
 
 while True:
+    startFrame = time.time()
     # vrMode is set to True by default if you leave out the argument
-    frame = renderer.render(vrMode=True)
+    renderer.render(vrMode=True)
 
-    cv2.imshow('VR Output (left eye)', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
-    # Needed to actually display the image
-    q = cv2.waitKey(1)
+    endFrame = time.time()
+    deltaT = endFrame - startFrame
+    fps = 1/float(deltaT)
+
+    print("Current fps: %f" % fps)
 
 renderer.release()
