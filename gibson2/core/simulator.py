@@ -1,14 +1,18 @@
 from gibson2.core.physics.scene import StadiumScene
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat, xyz2mat
-from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
+#from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
+from gibson2.core.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
 from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject, RBOObject, Pedestrian, ShapeNetObject, BoxShape
-from gibson2.core.render.viewer import Viewer
+from gibson2.core.render.viewer import Viewer, ViewerVR
 import pybullet as p
 import gibson2
 import os
 import numpy as np
+import time
 
-
+# Note: pass in mode='vr' to use the simulator in VR mode
+# Note 2: vrWidth and vrHeight can be set to manually change the VR resolution
+# It is, however, recommended to use the VR headset's native 2016 x 2240 resolution where possible
 class Simulator:
     def __init__(self,
                  gravity=9.8,
@@ -18,7 +22,9 @@ class Simulator:
                  resolution=256,
                  fov=90,
                  device_idx=0,
-                 render_to_tensor=False):
+                 render_to_tensor=False,
+                 vrWidth=None,
+                 vrHeight=None):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -38,6 +44,8 @@ class Simulator:
         self.mode = mode
         # renderer
         self.resolution = resolution
+        self.vrWidth = vrWidth
+        self.vrHeight = vrHeight
         self.fov = fov
         self.device_idx = device_idx
         self.use_fisheye = use_fisheye
@@ -56,7 +64,10 @@ class Simulator:
         Attach a debugging viewer to the renderer. This will make the step much slower so should be avoided when
         training agents
         """
-        self.viewer = Viewer()
+        if self.mode == 'vr':
+            self.viewer = ViewerVR()
+        else:
+            self.viewer = Viewer()
         self.viewer.renderer = self.renderer
 
     def reload(self):
@@ -78,6 +89,9 @@ class Simulator:
                                          fov=self.fov,
                                          device_idx=self.device_idx,
                                          use_fisheye=self.use_fisheye)
+        elif self.mode == 'vr':
+            # TODO: Add options to change the mesh renderer that VR renderer takes in here
+            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight)
         else:
             self.renderer = MeshRenderer(width=self.resolution,
                                      height=self.resolution,
@@ -85,14 +99,17 @@ class Simulator:
                                      device_idx=self.device_idx,
                                      use_fisheye=self.use_fisheye)
 
-        if self.mode == 'gui':
+        # Connect directly to pybullet when using VR
+        if self.mode == 'vr':
+            self.cid = p.connect(p.DIRECT)
+        elif self.mode == 'gui':
             self.cid = p.connect(p.GUI)
         else:
             self.cid = p.connect(p.DIRECT)
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
 
-        if self.mode == 'gui' and not self.render_to_tensor:
+        if (self.mode == 'gui' or self.mode == 'vr') and not self.render_to_tensor:
             self.add_viewer()
 
         self.visual_objects = {}
@@ -123,8 +140,8 @@ class Simulator:
                         self.renderer.load_object(filename,
                                                   texture_scale=texture_scale,
                                                   load_texture=load_texture)
-                        self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                        self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                        self.visual_objects[filename] = len(self.renderer.get_visual_objects()) - 1
+                        self.renderer.add_instance(len(self.renderer.get_visual_objects()) - 1,
                                                    pybullet_uuid=new_object,
                                                    class_id=class_id)
 
@@ -142,7 +159,7 @@ class Simulator:
                     #                           transform_pos=rel_pos,
                     #                           input_kd=color[:3],
                     #                           scale=[100, 100, 0.01])
-                    # self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                    # self.renderer.add_instance(len(self.renderer.get_visual_objects()) - 1,
                     #                            pybullet_uuid=new_object,
                     #                            class_id=class_id,
                     #                            dynamic=True)
@@ -167,8 +184,8 @@ class Simulator:
                 print(filename, self.visual_objects)
                 if not filename in self.visual_objects.keys():
                     self.renderer.load_object(filename)
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                    self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                    self.visual_objects[filename] = len(self.renderer.get_visual_objects()) - 1
+                    self.renderer.add_instance(len(self.renderer.get_visual_objects()) - 1,
                                                pybullet_uuid=new_object,
                                                class_id=class_id,
                                                dynamic=True,
@@ -185,7 +202,7 @@ class Simulator:
                     filename,
                     input_kd=color[:3],
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
-                self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                self.renderer.add_instance(len(self.renderer.get_visual_objects()) - 1,
                                            pybullet_uuid=new_object,
                                            class_id=class_id,
                                            dynamic=True)
@@ -197,7 +214,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
-                self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                self.renderer.add_instance(len(self.renderer.get_visual_objects()) - 1,
                                            pybullet_uuid=new_object,
                                            class_id=class_id,
                                            dynamic=True)
@@ -208,7 +225,7 @@ class Simulator:
                                           transform_pos=rel_pos,
                                           input_kd=color[:3],
                                           scale=[dimensions[0], dimensions[1], dimensions[2]])
-                self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                self.renderer.add_instance(len(self.renderer.get_visual_objects()) - 1,
                                            pybullet_uuid=new_object,
                                            class_id=class_id,
                                            dynamic=True)
@@ -243,8 +260,8 @@ class Simulator:
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
 
-                    visual_objects.append(len(self.renderer.visual_objects) - 1)
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+                    visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
+                    self.visual_objects[filename] = len(self.renderer.get_visual_objects()) - 1
                 else:
                     visual_objects.append(self.visual_objects[filename])
                 link_ids.append(link_id)
@@ -257,7 +274,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
@@ -268,7 +285,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
@@ -278,7 +295,7 @@ class Simulator:
                                           transform_pos=rel_pos,
                                           input_kd=color[:3],
                                           scale=[dimensions[0], dimensions[1], dimensions[2]])
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
             if link_id == -1:
                 pos, orn = p.getBasePositionAndOrientation(id)
@@ -324,8 +341,8 @@ class Simulator:
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
 
-                    visual_objects.append(len(self.renderer.visual_objects) - 1)
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+                    visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
+                    self.visual_objects[filename] = len(self.renderer.get_visual_objects()) - 1
                 else:
                     visual_objects.append(self.visual_objects[filename])
                 link_ids.append(link_id)
@@ -338,8 +355,8 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
-                # self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
+                # self.visual_objects[filename] = len(self.renderer.get_visual_objects()) - 1
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
@@ -350,7 +367,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
@@ -360,7 +377,7 @@ class Simulator:
                                           transform_pos=rel_pos,
                                           input_kd=color[:3],
                                           scale=[dimensions[0], dimensions[1], dimensions[2]])
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
 
             if link_id == -1:
@@ -381,17 +398,25 @@ class Simulator:
 
         return ids
 
-    def step(self):
+    def step(self, should_measure_fps=False):
         """
         Step the simulation and update positions in renderer
         """
-
+        step_start_time = None
+        step_end_time = None
+        if (should_measure_fps):
+            step_start_time = time.time()
         p.stepSimulation()
-        for instance in self.renderer.instances:
+        # TODO: Explain change to getInstances function - so it can pass through VR layer
+        for instance in self.renderer.get_instances():
             if instance.dynamic:
                 self.update_position(instance)
-        if self.mode == 'gui' and not self.viewer is None:
+        if (self.mode == 'gui' or self.mode == 'vr') and not self.viewer is None:
             self.viewer.update()
+        if (should_measure_fps):
+            step_end_time = time.time()
+            fps = 1/float(step_end_time - step_start_time)
+            print("Current fps: %f" % fps)
 
     @staticmethod
     def update_position(instance):

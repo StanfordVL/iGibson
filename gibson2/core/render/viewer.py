@@ -1,7 +1,19 @@
 import cv2
 import numpy as np
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.core.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
 
+class ViewerVR:
+    def __init__(self):
+        self.renderer = None
+    
+    def update(self, should_reset_vr_camera=False, vr_camera_pos=None):
+        if should_reset_vr_camera:
+            self.renderer.reset_vr_camera()
+        elif vr_camera_pos is not None:
+            self.renderer.set_vr_camera(vr_camera_pos)
+
+        self.renderer.render()
 
 class Viewer:
     def __init__(self):
