@@ -674,7 +674,14 @@ class MeshRenderer:
     
     def render_companion_window(self):
         self.r.renderCompanionWindow(self.windowShaderProgram, self.color_tex_rgb)
+        # TODO: Figure out if we need flush/swap
         #self.r.flush_swap_glfw()
+    
+    def get_visual_objects(self):
+        return self.visual_objects
+
+    def get_instances(self):
+        return self.instances
 
     def set_light_pos(self, light):
         self.lightpos = light

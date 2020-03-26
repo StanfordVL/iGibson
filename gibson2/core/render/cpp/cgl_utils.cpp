@@ -181,6 +181,7 @@ public:
 	bool hasSetCamera;
 	glm::vec3 currCameraPos;
 
+	// Device data stored in VR coordinates
 	struct DeviceData {
 		// standard 4x4 transform
 		glm::mat4 deviceTransform;
@@ -323,38 +324,38 @@ public:
 		updateVRData();
 	}
 
-	// Returns device data in order: isValidData, transform, position, rotation
+	// Returns device data in order: isValidData, position, rotation
 	// Device type can be either hmd, left_controller or right_controller
+	// Coordinates converted to Gibson ROS system from VR (OpenGL) coordinate system
 	// TIMELINE: Call at any time after postRenderVR to poll the VR system for device data
 	py::list getDataForVRDevice(char* deviceType) {
 		bool isValid = false;
 
-		py::array_t<float> transformData;
 		py::array_t<float> positionData;
 		py::array_t<float> rotationData;
 
+		// TODO: Extend this to work with multiple headsets in future
 		if (!strcmp(deviceType, "hmd")) {
-			transformData = py::array_t<float>({ 4,4 }, glm::value_ptr(hmdData.deviceTransform));
-			positionData = py::array_t<float>({ 3, }, glm::value_ptr(hmdData.devicePos));
-			rotationData = py::array_t<float>({ 4, }, glm::value_ptr(hmdData.deviceRot));
+			glm::vec3 transformedPos(vrToGib * glm::vec4(hmdData.devicePos, 1.0));
+			positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
+			rotationData = py::array_t<float>({ 4, }, glm::value_ptr(vrToGib * hmdData.deviceRot));
 			isValid = hmdData.isValidData;
 		}
 		else if (!strcmp(deviceType, "left_controller")) {
-			transformData = py::array_t<float>({ 4,4 }, glm::value_ptr(leftControllerData.deviceTransform));
-			positionData = py::array_t<float>({ 3, }, glm::value_ptr(leftControllerData.devicePos));
-			rotationData = py::array_t<float>({ 4, }, glm::value_ptr(leftControllerData.deviceRot));
+			glm::vec3 transformedPos(vrToGib * glm::vec4(leftControllerData.devicePos, 1.0));
+			positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
+			rotationData = py::array_t<float>({ 4, }, glm::value_ptr(vrToGib * leftControllerData.deviceRot));
 			isValid = leftControllerData.isValidData;
 		}
 		else if (!strcmp(deviceType, "right_controller")) {
-			transformData = py::array_t<float>({ 4,4 }, glm::value_ptr(rightControllerData.deviceTransform));
-			positionData = py::array_t<float>({ 3, }, glm::value_ptr(rightControllerData.devicePos));
-			rotationData = py::array_t<float>({ 4, }, glm::value_ptr(rightControllerData.deviceRot));
+			glm::vec3 transformedPos(vrToGib * glm::vec4(rightControllerData.devicePos, 1.0));
+			positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
+			rotationData = py::array_t<float>({ 4, }, glm::value_ptr(vrToGib * rightControllerData.deviceRot));
 			isValid = rightControllerData.isValidData;
 		}
 
 		py::list deviceData;
 		deviceData.append(isValid);
-		deviceData.append(transformData);
 		deviceData.append(positionData);
 		deviceData.append(rotationData);
 

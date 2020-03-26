@@ -6,11 +6,14 @@ from gibson2.core.render.mesh_renderer.glutils.meshutil import frustum
 # VR wrapper class on top of Gibson Mesh Renderers
 class MeshRendererVR():
     # Init takes in a renderer type to use for VR (which can be of type MeshRenderer or something else as long as it conforms to the same interface)
-    def __init__(self, rendererType):
+    def __init__(self, rendererType, vrWidth=None, vrHeight=None):
         self.vrsys = VRSystem()
         # Default recommended is 2016 x 2240
         self.width, self.height = self.vrsys.initVR()
-        self.renderer = rendererType(width=self.width, height=self.height, shouldHideWindow=False)
+        if vrWidth is not None and vrHeight is not None:
+            self.renderer = rendererType(width=vrWidth, height=vrHeight, shouldHideWindow=False)
+        else:
+            self.renderer = rendererType(width=self.width, height=self.height, shouldHideWindow=False)
 
         # Debugging variable for simple color test
         self.colorTex = None
@@ -49,7 +52,8 @@ class MeshRendererVR():
                      class_id=0,
                      pose_rot=np.eye(4),
                      pose_trans=np.eye(4),
-                     dynamic=False):
+                     dynamic=False,
+                     softbody=False):
         self.renderer.add_instance(object_id, pybullet_uuid, class_id, pose_rot, pose_trans, dynamic)
 
     # Add instance group through renderer
@@ -102,10 +106,6 @@ class MeshRendererVR():
 
         # Boolean indicates whether system should hand off to compositor
         self.vrsys.postRenderVRUpdate(False)
-    
-    # Creates a frustum projection matrix from raw eye projection data from VR system
-    def createProjMatrixFromRawValues(self, left, right, bottom, top, near, far):
-        return frustum(left, right, bottom, top, near, far)
 
     # Renders VR scenes and returns the left eye frame
     def render(self):
@@ -151,6 +151,14 @@ class MeshRendererVR():
     # Set pose of a specific object
     def set_pose(self, pose, idx):
         self.renderer.set_pose(pose, idx)
+
+    # Return instances stored in renderer
+    def get_instances(self):
+        return self.renderer.get_instances()
+    
+    # Return visual objects stored in renderer
+    def get_visual_objects(self):
+        return self.renderer.get_visual_objects()
 
     # Releases VR system and renderer
     def release(self):
