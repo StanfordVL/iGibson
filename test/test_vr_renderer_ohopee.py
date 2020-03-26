@@ -4,20 +4,11 @@ import sys
 import numpy as np
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import VisualObject, InstanceGroup, MeshRenderer
 import time
-import os
 
 renderer = MeshRendererVR(MeshRenderer)
-
-model_path = "C:\\Users\\shen\\Desktop\\GibsonVRStuff\\vr_branch\\gibsonv2\\gibson2\\assets\\datasets\\Rs_interactive\\Rs_interactive"
-files = os.listdir(model_path)
-files = [item for item in files if item.endswith('obj')]
-
-for i,fn in enumerate(files):
-    renderer.load_object(os.path.join(model_path, fn))
-    renderer.add_instance(i)
 # Note that it is necessary to load the full path of an object!
-#renderer.load_object("C:\\Users\\shen\\Desktop\\GibsonVRStuff\\vr_branch\\gibsonv2\\gibson2\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj")
-#renderer.add_instance(0)
+renderer.load_object("C:\\Users\\shen\\Desktop\\GibsonVRStuff\\vr_branch\\gibsonv2\\gibson2\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj")
+renderer.add_instance(0)
 
 camera_pose = np.array([0, 0, 1.2])
 view_direction = np.array([1, 0, 0])
