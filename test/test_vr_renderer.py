@@ -23,13 +23,12 @@ vr_camera_pose = np.array([0, 0, 1.2])
 
 while True:
     startFrame = time.time()
-    # vrMode is set to True by default if you leave out the argument
-    renderer.render(vrMode=True)
+    renderer.render()
 
     endFrame = time.time()
     deltaT = endFrame - startFrame
     fps = 1/float(deltaT)
 
-    print("Current fps: %f" % fps)
+    #print("Current fps: %f" % fps)
 
 renderer.release()
