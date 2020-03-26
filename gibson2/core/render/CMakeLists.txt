@@ -4,11 +4,7 @@ set (USE_GLAD TRUE)
 
 include_directories(glad)
 
-if (NOT USE_GLAD)
-  find_package(OpenGL)
-else()
-  add_definitions(-DUSE_GLAD) 
-endif()
+find_package(OpenGL REQUIRED)
 
 add_subdirectory(pybind11)
 
@@ -47,23 +43,23 @@ include_directories("${OPENVR_INCLUDE_DIR}")
 #cuda_add_library(MeshRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/Mesh_renderer.cpp)
 add_library(CGLUtils MODULE glad/gl.cpp cpp/cgl_utils.cpp)
 add_library(tinyobjloader MODULE cpp/tinyobjloader/tiny_obj_loader.cc cpp/tinyobjloader/bindings.cc)
-add_library(GLFWRendererContext MODULE glad/gl.cpp cpp/glfw_mesh_renderer.cpp)
-add_library(VRUtils MODULE glad/gl.cpp cpp/vr_utils.cpp)
+#add_library(GLFWRendererContext MODULE glad/gl.cpp cpp/glfw_mesh_renderer.cpp)
+#add_library(VRUtils MODULE glad/gl.cpp cpp/vr_utils.cpp)
 
 # TODO: Got rid of use_glad if statement - could add this back in at some point
 #target_link_libraries(MeshRendererContext PRIVATE pybind11::module ${CMAKE_DL_LIBS} pthread  EGL ${OPENGL_LIBRARIES})
-target_link_libraries(CGLUtils PRIVATE pybind11::module ${CMAKE_DL_LIBS} glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES})
-target_link_libraries(GLFWRendererContext PRIVATE pybind11::module ${CMAKE_DL_LIBS} glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES})
-target_link_libraries(VRUtils PRIVATE pybind11::module ${CMAKE_DL_LIBS} glfw ${GLFW_LIBRARIES} ${OPENVR_LIBRARIES} ${OPENGL_LIBRARIES})
+target_link_libraries(CGLUtils PRIVATE pybind11::module ${CMAKE_DL_LIBS} glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES} ${OPENVR_LIBRARIES})
+#target_link_libraries(GLFWRendererContext PRIVATE pybind11::module ${CMAKE_DL_LIBS} glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES})
+#target_link_libraries(VRUtils PRIVATE pybind11::module ${CMAKE_DL_LIBS} glfw ${GLFW_LIBRARIES} ${OPENVR_LIBRARIES} ${OPENGL_LIBRARIES})
 
 target_link_libraries(tinyobjloader PRIVATE pybind11::module)
 
 #set_target_properties(MeshRendererContext PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
                                          #SUFFIX "${PYTHON_MODULE_EXTENSION}")
-set_target_properties(GLFWRendererContext PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
-                                         SUFFIX "${PYTHON_MODULE_EXTENSION}")
-set_target_properties(VRUtils PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
-                                         SUFFIX "${PYTHON_MODULE_EXTENSION}")
+#set_target_properties(GLFWRendererContext PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
+                                         #SUFFIX "${PYTHON_MODULE_EXTENSION}")
+#set_target_properties(VRUtils PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
+                                         #SUFFIX "${PYTHON_MODULE_EXTENSION}")
 set_target_properties(CGLUtils PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
                                          SUFFIX "${PYTHON_MODULE_EXTENSION}")
 set_target_properties(tinyobjloader PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"

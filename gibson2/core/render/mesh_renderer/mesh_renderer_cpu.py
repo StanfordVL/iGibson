@@ -13,8 +13,9 @@ from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
 # TODO: Add back in MeshRendererContext and make it platform-dependent
 # TODO: Move all Python extensions to the mesh_renderer folder following build in setup.py
+#from GLUtils import CGLUtils, GLFWRendererContext
 import CGLUtils
-import GLFWRendererContext
+from CGLUtils import GLFWRendererContext
 import tinyobjloader
 #from gibson2.core.render.mesh_renderer import CGLUtils, GLFWRendererContext
 #from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
@@ -274,7 +275,7 @@ class MeshRenderer:
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
-    def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False, msaa=False):
+    def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False, msaa=False, shouldHideWindow=True):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -283,6 +284,7 @@ class MeshRenderer:
         :param use_fisheye: use fisheye shader or not
         """
         self.shaderProgram = None
+        self.windowShaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
         self.depth_tex = None
@@ -300,29 +302,18 @@ class MeshRenderer:
         self.faces = []
         self.instances = []
         self.fisheye = use_fisheye
-        # TODO: Make this platform-dependent
-        # self.context = glcontext.Context()
-        # self.context.create_opengl_context((self.width, self.height))
-        #available_devices = get_available_devices()
-        #if device_idx < len(available_devices):
-        #    device = available_devices[device_idx]
-        #    print("using device {}".format(device))
-        #else:
-        #    print("device index is larger than number of devices, falling back to use 0")
-        #    device = 0
-
-        #self.device_idx = device_idx
-        #self.device_minor = device
         self.msaa = msaa
-        # TODO: Add an option for changing this, perhaps as an init argument
-        self.r = GLFWRendererContext.GLFWRendererContext(width, height)
-        #self.r = MeshRendererContext.MeshRendererContext(width, height, device)
-        self.r.init()
+        self.shouldHideWindow = shouldHideWindow
 
+        self.r = GLFWRendererContext(width, height)
+        self.r.init(shouldHideWindow)
         CGLUtils.glad_init()
+
+        if not shouldHideWindow:
+            self.r.setupCompanionWindow()
+
         self.glstring = CGLUtils.getstring_meshrenderer()
-        print(self.glstring)
-        '''self.colors = colormap
+        self.colors = colormap
         self.lightcolor = [1, 1, 1]
 
         print("fisheye", self.fisheye)
@@ -346,6 +337,15 @@ class MeshRenderer:
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/frag.shader')).readlines()))
 
+        if not shouldHideWindow:
+            [self.windowShaderProgram, _] = CGLUtils.compile_shader_meshrenderer(
+                        "".join(open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                        'shaders/companion_window_vert.shader')).readlines()),
+                        "".join(open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                        'shaders/companion_window_frag.shader')).readlines()))
+
         self.lightpos = [0, 0, 0]
         self.setup_framebuffer()
         self.fov = fov
@@ -358,7 +358,7 @@ class MeshRenderer:
         self.V = np.ascontiguousarray(V, np.float32)
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
-        self.mesh_materials = []'''
+        self.mesh_materials = []
 
     def setup_framebuffer(self):
         """
@@ -647,7 +647,7 @@ class MeshRenderer:
 
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
+    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), shouldReadBuffer=True):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -669,7 +669,12 @@ class MeshRenderer:
         if self.msaa:
             CGLUtils.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
-        return self.readbuffer(modes)
+        if (shouldReadBuffer):
+            return self.readbuffer(modes)
+    
+    def render_companion_window(self):
+        self.r.renderCompanionWindow(self.windowShaderProgram, self.color_tex_rgb)
+        #self.r.flush_swap_glfw()
 
     def set_light_pos(self, light):
         self.lightpos = light

@@ -21,6 +21,7 @@
 
 namespace py = pybind11;
 
+// NOTE: This class is now included in CGLUtils
 // Class containing values and functions needed to run VR around Gibson renderer
 class VRSystem {
 public:
@@ -144,10 +145,16 @@ public:
 		if (!strcmp(eye, "left")) {
 			vr::Texture_t leftEyeTexture = { (void*)(uintptr_t)texID, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
 			vr::EVRCompositorError err = vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture);
+			if (err != 0) {
+				fprintf(stderr, "Compositor error: %d\n", err);
+			}
 		}
 		else if (!strcmp(eye, "right")) {
 			vr::Texture_t rightEyeTexture = { (void*)(uintptr_t)texID, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };;
 			vr::EVRCompositorError err = vr::VRCompositor()->Submit(vr::Eye_Right, &rightEyeTexture);
+			if (err != 0) {
+				fprintf(stderr, "Compositor error: %d\n", err);
+			}
 		}
 	}
 	
