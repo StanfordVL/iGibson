@@ -417,6 +417,24 @@ class Simulator:
             step_end_time = time.time()
             fps = 1/float(step_end_time - step_start_time)
             print("Current fps: %f" % fps)
+    
+    # Call this before step - returns all VR events that have happened since last step call
+    # Returns a list of lists. Each sub-list contains deviceType and eventType. List is empty is all events are invalid
+    # deviceType: left_controller, right_controller
+    # eventType: grip_press, grip_unpress, trigger_press, trigger_unpress, touchpad_press, touchpad_unpress,
+    # touchpad_touch, touchpad_untouch, menu_press, menu_unpress (menu is the application button)
+    def pollVREvents(self):
+        if self.mode != 'vr':
+            return []
+
+        eventData = self.renderer.vrsys.pollVREvents()
+        return eventData
+
+    # Call this after step - returns all VR device data for a specific device
+    # Return isValid (indicating validity of data), translation and rotation in Gibson world space
+    def getDataForVRDevice(self, deviceName):
+        isValid, translation, rotation = self.renderer.vrsys.getDataForVRDevice(deviceName)
+        return [isValid, translation, rotation]
 
     @staticmethod
     def update_position(instance):

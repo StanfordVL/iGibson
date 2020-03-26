@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <iostream>
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
@@ -363,9 +364,27 @@ public:
 	}
 
 	// Polls for VR events, such as button presses
-	// TODO: Implement this for button/trigger interactivity!
-	void pollVREvents() {
-		printf("VR event system not implemented yet!");
+	// TIMELINE: Ideally call before rendering (eg. before simulator step function)
+	py::list pollVREvents() {
+		vr::VREvent_t vrEvent;
+		py::list eventData;
+
+		while (m_pHMD->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
+			std::string deviceType, eventType;
+			processVREvent(vrEvent, deviceType, eventType);
+			
+			if (deviceType == "invalid" || eventType == "invalid") {
+				continue;
+			}
+
+			py::list singleEventData;
+			singleEventData.append(deviceType);
+			singleEventData.append(eventType);
+
+			eventData.append(singleEventData);
+		}
+
+		return eventData;
 	}
 
 	// Releases and cleans up VR system
@@ -421,6 +440,102 @@ private:
 					rightControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
 				}
 			}
+		}
+	}
+
+	// Processes a single VR event
+	void processVREvent(vr::VREvent_t& vrEvent, std::string& deviceType, std::string& eventType) {
+		vr::ETrackedDeviceClass trackedDeviceClass = m_pHMD->GetTrackedDeviceClass(vrEvent.trackedDeviceIndex);
+
+		// Exit if we found a non-controller event
+		if (trackedDeviceClass != vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
+			deviceType = "invalid";
+			return;
+		}
+
+		vr::ETrackedControllerRole role = m_pHMD->GetControllerRoleForTrackedDeviceIndex(vrEvent.trackedDeviceIndex);
+		if (role == vr::TrackedControllerRole_Invalid) {
+			deviceType = "invalid";
+		}
+		else if (role == vr::TrackedControllerRole_LeftHand) {
+			deviceType = "left_controller";
+		}
+		else if (role == vr::TrackedControllerRole_RightHand) {
+			deviceType = "right_controller";
+		}
+
+		switch (vrEvent.data.controller.button) {
+		case vr::k_EButton_Grip:
+			switch (vrEvent.eventType) {
+			case vr::VREvent_ButtonPress:
+				eventType = "grip_press";
+				break;
+
+			case vr::VREvent_ButtonUnpress:
+				eventType = "grip_unpress";
+				break;
+			default:
+				eventType = "invalid";
+				break;
+			}
+			break;
+
+		case vr::k_EButton_SteamVR_Trigger:
+			switch (vrEvent.eventType) {
+			case vr::VREvent_ButtonPress:
+				eventType = "trigger_press";
+				break;
+
+			case vr::VREvent_ButtonUnpress:
+				eventType = "trigger_unpress";
+				break;
+			default:
+				eventType = "invalid";
+				break;
+			}
+			break;
+
+		case vr::k_EButton_SteamVR_Touchpad:
+			switch (vrEvent.eventType) {
+			case vr::VREvent_ButtonPress:
+				eventType = "touchpad_press";
+				break;
+
+			case vr::VREvent_ButtonUnpress:
+				eventType = "touchpad_unpress";
+				break;
+
+			case vr::VREvent_ButtonTouch:
+				eventType = "touchpad_touch";
+				break;
+
+			case vr::VREvent_ButtonUntouch:
+				eventType = "touchpad_untouch";
+				break;
+			default:
+				eventType = "invalid";
+				break;
+			}
+			break;
+
+		case vr::k_EButton_ApplicationMenu:
+			switch (vrEvent.eventType) {
+			case vr::VREvent_ButtonPress:
+				eventType = "menu_press";
+				break;
+
+			case vr::VREvent_ButtonUnpress:
+				eventType = "menu_unpress";
+				break;
+			default:
+				eventType = "invalid";
+				break;
+			}
+			break;
+
+		default:
+			eventType = "invalid";
+			break;
 		}
 	}
 
