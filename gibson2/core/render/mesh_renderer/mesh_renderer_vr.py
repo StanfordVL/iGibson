@@ -1,24 +1,31 @@
 import numpy as np
-from VRUtils import VRSystem
+import CGLUtils
+from CGLUtils import VRSystem
+from gibson2.core.render.mesh_renderer.glutils.meshutil import frustum
 
+# VR wrapper class on top of Gibson Mesh Renderers
 class MeshRendererVR():
     # Init takes in a renderer type to use for VR (which can be of type MeshRenderer or something else as long as it conforms to the same interface)
     def __init__(self, rendererType):
         self.vrsys = VRSystem()
-        recommendedWidth, recommendedHeight = self.vrsys.initVR()
+        # Default recommended is 2016 x 2240
+        self.width, self.height = self.vrsys.initVR()
+        self.renderer = rendererType(width=self.width, height=self.height, shouldHideWindow=False)
 
-        # Need GLFW context since VR mesh renderer runs on Windows
-        self.renderer = rendererType(width=recommendedWidth, height=recommendedHeight)
-    
-        # Variables used for debugging the HMD display
-        self.colorFbo = None
-        self.colorTexId = None
+        # Debugging variable for simple color test
+        self.colorTex = None
 
-        print("Finished init!")
+        # Debugging image for testing VR compositor
+        imgPath = "C:\\Users\\shen\\Desktop\\GibsonVRStuff\\vr_branch\\gibsonv2\\gibson2\\core\\render\\mesh_renderer\\good_boi.png"
+        self.testTexId = CGLUtils.loadTextureWithAlpha(imgPath)
+        print("Loaded good boi texture with id:")
+        print(self.testTexId)
 
     # Sets the position of the VR camera to the position argument given
     def set_vr_camera(self, pos):
-        self.vrsys.setVRCamera(pos[0], pos[1], pos[2])
+        # Gibson coordinate system is rotated from OpenGL
+        # So we map (vr from gib) x<-y, y<-z and z<-x
+        self.vrsys.setVRCamera(pos[1], pos[2], pos[0])
 
     # Resets the position of the VR camera
     def reset_vr_camera(self):
@@ -69,53 +76,61 @@ class MeshRendererVR():
                   robot=None):
         self.renderer.add_robot(object_ids, link_ids, class_id, poses_rot, poses_trans, pybullet_uuid, dynamic, robot)
 
-    # Debugging function for creating simple color framebuffer in PyOpenGL
-    def setupDebugFramebuffer(self):
-        self.colorFbo = GL.glGenFramebuffers(1)
-        self.colorTexId = GL.glGenTextures(1)
+    # Set up debugging framebuffer
+    def setup_debug_framebuffer(self):
+        self.colorFbo, self.colorTex = CGLUtils.setup_color_framebuffer(self.width, self.height)
 
-        GL.glBindTexture(GL.GL_TEXTURE_2D, self.colorTexId)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.renderer.width, self.renderer.height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
-        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.colorFbo)
-        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_TEXTURE_2D, self.colorTexId, 0)
-        GL.glViewport(0, 0, self.renderer.width, self.renderer.height)
-        GL.glDrawBuffers(1, [GL.GL_COLOR_ATTACHMENT0])
+    # Render debugging framebuffer
+    def render_debug_framebuffer(self):
+        leftProj, leftView, rightProj, rightView = self.vrsys.preRenderVR()
 
-        assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
+        CGLUtils.render_simple_color_to_fbo(self.colorFbo)
 
-    # Debugging function for rendering simple color framebuffer in PyOpenGL
-    def renderDebugFramebuffer(self):
-        GL.glClearColor(1.0, 0.0, 0.0, 1.0)
-        GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+        self.vrsys.postRenderVRForEye("left", self.colorTex)
+        self.vrsys.postRenderVRForEye("right", self.colorTex)
 
-        self.vrsys.postRenderVRForEye("left", self.colorTexId)
-        self.vrsys.postRenderVRForEye("right", self.colorTexId)
-        self.vrsys.postRenderVRUpdate(True)
+        self.renderer.r.flush_swap_glfw()
+
+        self.vrsys.postRenderVRUpdate(False)
+    
+    # Test of loading an image with alpha
+    def render_good_boi(self):
+        leftProj, leftView, rightProj, rightView = self.vrsys.preRenderVR()
+
+        self.vrsys.postRenderVRForEye("left", self.testTexId)
+        self.vrsys.postRenderVRForEye("right", self.testTexId)
+
+        # Boolean indicates whether system should hand off to compositor
+        self.vrsys.postRenderVRUpdate(False)
+    
+    # Creates a frustum projection matrix from raw eye projection data from VR system
+    def createProjMatrixFromRawValues(self, left, right, bottom, top, near, far):
+        return frustum(left, right, bottom, top, near, far)
 
     # Renders VR scenes and returns the left eye frame
-    # vrMode boolean causes the renderer to operate like a non-VR renderer for debugging purposes
-    def render(self, vrMode=True):
-        if not vrMode:
-            return self.renderer.render(modes=('rgb'))
-
+    def render(self):
         leftProj, leftView, rightProj, rightView = self.vrsys.preRenderVR()
 
         # Render and submit left eye
         self.renderer.V = leftView
         self.renderer.P = leftProj
-        leftFrames = self.renderer.render(modes=('rgb'))
-        #self.vrsys.postRenderVRForEye("left", self.renderer.color_tex_rgb)
+        
+        self.renderer.render(modes=('rgb'), shouldReadBuffer=False)
+        self.vrsys.postRenderVRForEye("left", self.renderer.color_tex_rgb)
 
         # Render and submit right eye
         self.renderer.V = rightView
         self.renderer.P = rightProj
-        self.renderer.render(modes=('rgb'))
-        #self.vrsys.postRenderVRForEye("right", self.renderer.color_tex_rgb)
+        
+        self.renderer.render(modes=('rgb'), shouldReadBuffer=False)
+        self.vrsys.postRenderVRForEye("right", self.renderer.color_tex_rgb)
 
-        # Currently hands off to the compositor
-        self.vrsys.postRenderVRUpdate(True)
+        # Render companion window
+        self.renderer.render_companion_window()
 
-        return leftFrames
+        # Boolean indicates whether system should hand off to compositor
+        # TODO: Play around with this value
+        self.vrsys.postRenderVRUpdate(False)
 
     # Sets camera position - only to be used in non-vr debugging mode
     def set_camera(self, camera, target, up):
@@ -139,5 +154,5 @@ class MeshRendererVR():
 
     # Releases VR system and renderer
     def release(self):
-        renderer.release()
+        self.renderer.release()
         self.vrsys.releaseVR()

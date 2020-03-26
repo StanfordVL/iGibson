@@ -15,6 +15,7 @@
 
 namespace py = pybind11;
 
+// NOTE: This class is now included in CGLUtils
 class GLFWRendererContext {
 public:
 	GLFWRendererContext(int w, int h) :m_windowHeight(h), m_windowWidth(w) {};
@@ -44,13 +45,11 @@ public:
 		glfwMakeContextCurrent(window);
 
 		if (!gladLoadGL(glfwGetProcAddress)) {
-			fprintf(stderr, "failed to load GL with glad.\n");
+			fprintf(stderr, "Failed to load GL with glad.\n");
 			exit(EXIT_FAILURE);
 		}
 
-		fprintf(stderr, reinterpret_cast<char const*>(glGetString(GL_VERSION)));
-
-		printf("Succesfully initialized GLFW context and window!\n");
+		printf("Succesfully initialized both GLFW context and window!\n");
 
 		return 0;
 	}
