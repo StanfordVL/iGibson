@@ -29,6 +29,6 @@ while True:
     deltaT = endFrame - startFrame
     fps = 1/float(deltaT)
 
-    #print("Current fps: %f" % fps)
+    print("Current fps: %f" % fps)
 
 renderer.release()
