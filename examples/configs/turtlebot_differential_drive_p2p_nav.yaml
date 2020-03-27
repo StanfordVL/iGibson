@@ -1,0 +1,293 @@
+scene: stadium
+
+automatic_reset: true
+
+collision_ignore_link_a_ids: [0, 1, 2, 3]  # ignore the agent's collision with these body ids
+collision_ignore_body_ids: [0, 1, 2, 3] # for backward compatibility
+
+num_obstacles: 0
+num_pedestrians: 
+  hallway: 0
+  crossing: 0
+  doorway: 0
+pedestrians_can_see_robot: true
+randomize_pedestrian_attributes: false
+
+# robot
+robot: TurtlebotDifferentialDrive
+max_linear_velocity: 1
+max_angular_velocity: 1.5
+
+# task, observation and action
+task: pointgoal # pointgoal|objectgoal|areagoal|reaching
+
+initial_pos: [-2.0, 2.0, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
+
+target_pos: [-2.0, 2.0, 0.0]
+target_orn: [0.0, 0.0, 0.0]
+
+is_discrete: false
+additional_states_dim: 2
+
+# reward
+success_reward: 1.0
+slack_reward: -0.001
+potential_reward_weight: 1.0
+electricity_reward_weight: 0.0
+stall_torque_reward_weight: 0.0
+collision_reward_weight: -1.0
+hard_psv_reward_weight: 0.00
+soft_psv_reward_weight: 0.0
+personal_space_threshold: 1.0
+robot_pedestrians_min_separation: 2.0
+
+# termination condition
+dist_tol: 0.5
+max_step: 400
+
+sensor_inputs: [sensor, scan]
+sensor_noise: False
+# sensor_inputs: [sensor, scan, pedestrian_position, pedestrian_velocity, pedestrian_ttc]
+n_horizontal_rays: 512
+n_vertical_beams: 1
+resolution: 128
+#waypoints: 5
+scan_mode: xyz
+fov: 90
+
+# display
+use_filler: true
+display_ui: false
+show_diagnostics: false
+# ui_num: 2
+# ui_components: [RGB_FILLED, DEPTH]
+
+
+mode: headless #gui|web_ui
+verbose: false
+fast_lq_render: true
+render_to_tensor: true
+
+# visual objects
+visualize_initial: false
+visualize_target: false
+target_visible_to_agent: false
+
+# debug
+debug: false
+
+
+############ PEDESTRIANS #################
+pedestrians_dynamics:
+  visible: true
+  policy: orca
+  radius: 0.3
+  v_pref: 1.0
+  position_noise: 0.0
+  velocity_noise: 0.0
+  sensor: coordinates
+  personal_space: 0.3
+  min_separation: 0.3
+  max_linear_velocity: 2.0
+  max_angular_velocity: 1.0
+  kinematics: holonomic
+  dist_tol: 0.3
+
+############ ROOM LAYOUT #################
+# Walls configuration.
+# Each square in Pybullet is 1.0 * 1.0 m^2.
+# TODO: Write into urdf file.
+walls:
+   walls_pos: [[0, -11.5, 0.6], [0, -8.5, 0.6], [10.5, 0.5, 0.6], [-10.5, 0.5, 0.6], # hallway
+ [-5.5, 9, 0.6], [-5.5, 12, 0.6], [5.5, 9, 0.6], [5.5, 12, 0.6],  # crosswalk x
+ [1.5, 17, 0.6], [-1.5, 17, 0.6], [1.5, 4.0, 0.6], [-1.5, 4.0, 0.6], # crosswalk x
+[0.0, -1.0, 0.6], [0.0, 22, 0.6], # crosswalk | | 
+[-12.5, 22.0, 0.6], [12.5, 22.0, 0.6], [0.0, 25.0, 0.6], # door
+[-18, 20.5, 0.6], [18, 20.5, 0.6]] # door
+   # Dim is HALF-length.
+   walls_dim: [[10.0, 0.5, 1.0], [10.0, 0.5, 1.0], [0.5, 21.0, 1.0], [0.5, 21.0, 1.0],
+   [4.5, 0.5, 1.0], [4.5, 0.5, 1.0], [4.5, 0.5, 1.0], [4.5, 0.5, 1.0], 
+   [0.5, 4.5, 1.0], [0.5, 4.5, 1.0], [0.5, 4.5, 1.0], [0.5, 4.5, 1.0],
+   [5.5, 0.5, 1.0], [5.5, 0.5, 1.0],
+   [5.5, 0.5, 1.0], [5.5, 0.5, 1.0], [17.5, 0.5, 1.0],
+   [0.5, 5.0, 1.0], [0.5, 5.0, 1.0]]
+
+# Specify different parts of the room.
+locations:
+  h1-ped:
+    center_x: 6.5
+    center_y: -10.0
+    x_range_radius: 3.0
+    y_range_radius: 0.5
+  h2-ped:
+    center_x: -6.5
+    center_y: -10.0
+    x_range_radius: 3.0
+    y_range_radius: 0.5
+  h1-rob:
+    center_x: 6.5
+    center_y: -10.0
+    x_range_radius: 3.0
+    y_range_radius: 0.5
+  h2-rob:
+    center_x: -6.5
+    center_y: -10.0
+    x_range_radius: 3.0
+    y_range_radius: 0.5
+  c1-ped:
+    center_x: -6.5
+    center_y: 10.5
+    x_range_radius: 3.0
+    y_range_radius: 0.5
+  c2-ped:
+    center_x: 0.0
+    center_y: 4.5
+    x_range_radius: 0.5
+    y_range_radius: 3.0
+  c3-ped:
+    center_x: 6.5
+    center_y: 10.5
+    x_range_radius: 3.0
+    y_range_radius: 0.5
+  c4-ped:
+    center_x: 0.0
+    center_y: 15.5
+    x_range_radius: 0.5
+    y_range_radius: 3.0
+  c1-rob:
+    center_x: -6.5
+    center_y: 10.5
+    x_range_radius: 3.0
+    y_range_radius: 0.5
+  c2-rob:
+    center_x: 0.0
+    center_y: 4.5
+    x_range_radius: 0.5
+    y_range_radius: 3.0
+  c3-rob:
+    center_x: 6.5
+    center_y: 10.5
+    x_range_radius: 3.0
+    y_range_radius: 0.5
+  c4-rob:
+    center_x: 0.0
+    center_y: 15.5
+    x_range_radius: 0.5
+    y_range_radius: 3.0
+  c-mid:
+    center_x: 0.0
+    center_y: 10.0
+    x_range_radius: 0.5
+    y_range_radius: 0.5
+  d1-ped:
+    center_x: -6.0
+    center_y: 16.0
+    x_range_radius: 1.0
+    y_range_radius: 1.0
+  d2-ped:
+    center_x: -6.0
+    center_y: 23.5
+    x_range_radius: 0.1
+    y_range_radius: 0.1
+  d3-ped:
+    center_x: 6.0
+    center_y: 16.0
+    x_range_radius: 1.0
+    y_range_radius: 1.0
+  d4-ped:
+    center_x: 6.0
+    center_y: 23.5
+    x_range_radius: 0.1
+    y_range_radius: 0.1
+  d5-ped:
+    center_x: -14.0
+    center_y: 23.5
+    x_range_radius: 3.0
+    y_range_radius: 0.1
+  d6-ped:
+    center_x: 14.0
+    center_y: 23.5
+    x_range_radius: 3.0
+    y_range_radius: 0.1
+  d1-rob:
+    center_x: -6.0
+    center_y: 16.0
+    x_range_radius: 1.0
+    y_range_radius: 1.0
+  d2-rob:
+    center_x: -6.0
+    center_y: 23.5
+    x_range_radius: 3.0
+    y_range_radius: 0.1
+  d3-rob:
+    center_x: 6.0
+    center_y: 16.0
+    x_range_radius: 1.0
+    y_range_radius: 1.0
+  d4-rob:
+    center_x: 6.0
+    center_y: 23.5
+    x_range_radius: 3.0
+    y_range_radius: 0.1
+  d5-rob:
+    center_x: -14.0
+    center_y: 23.5
+    x_range_radius: 3.0
+    y_range_radius: 0.1
+  d6-rob:
+    center_x: 14.0
+    center_y: 23.5
+    x_range_radius: 3.0
+    y_range_radius: 0.1
+
+
+
+connectivity:
+  h1-ped: ['h2-ped']
+  h2-ped: ['h1-ped']
+  h1-rob: ['h2-rob']
+  h2-rob: ['h1-rob']
+  c1-rob: ['c2-rob', 'c3-rob', 'c4-rob']
+  c2-rob: ['c1-rob', 'c3-rob', 'c4-rob']
+  c3-rob: ['c1-rob', 'c2-rob', 'c4-rob']
+  c4-rob: ['c1-rob', 'c2-rob', 'c3-rob']
+  c1-ped: ['c-mid']
+  c2-ped: ['c-mid']
+  c3-ped: ['c-mid']
+  c4-ped: ['c-mid']
+  c-mid: ['c1-ped', 'c2-ped', 'c3-ped', 'c4-ped']
+  d1-ped: ['d2-ped']
+  d2-ped: ['d1-ped', 'd4-ped', 'd5-ped', 'd6-ped']
+  d3-ped: ['d4-ped']
+  d4-ped: ['d3-ped', 'd2-ped', 'd6-ped', 'd5-ped']
+  d5-ped: ['d2-ped', 'd4-ped', 'd6-ped']
+  d6-ped: ['d2-ped', 'd4-ped', 'd5-ped']
+  d1-rob: ['d2-rob', 'd4-rob', 'd5-rob', 'd6-rob']
+  d2-rob: ['d1-rob', 'd4-rob', 'd6-rob', 'd5-rob']
+  d3-rob: ['d4-rob', 'd2-rob', 'd5-rob', 'd6-rob']
+  d4-rob: ['d3-rob', 'd2-rob', 'd5-rob', 'd6-rob']
+  d5-rob: ['d1-rob', 'd2-rob', 'd3-rob', 'd4-rob', 'd6-rob']
+  d6-rob: ['d1-rob', 'd2-rob', 'd3-rob', 'd4-rob', 'd5-rob']
+
+
+
+############### MOVEMENTS ######################
+# Movements configuration
+movements:
+  pedestrians:
+    hallway:
+      sources: ['h1-ped', 'h2-ped']
+    crossing:
+      sources: ['c1-ped', 'c2-ped', 'c3-ped', 'c4-ped']
+    doorway:
+      sources: ['d1-ped',  'd3-ped',  'd5-ped', 'd6-ped']
+    flip_prob: 0.5
+  agent:
+    # This is only a placeholder. Sources will be updated based on number
+    # of pedestrians in each location & sources per location.
+    sources: ['h1-rob', 'h2-rob', 'c1-rob', 'c2-rob', 'c3-rob', 'c4-rob', 'd1-rob', 'd2-rob']
+    sources_per_location: 
+      hallway: ['h1-rob', 'h2-rob']
+      crossing: ['c1-rob', 'c2-rob', 'c3-rob', 'c4-rob']
+      doorway: ['d1-rob', 'd2-rob', 'd3-rob', 'd4-rob', 'd5-rob', 'd6-rob']

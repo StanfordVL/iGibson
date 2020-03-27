@@ -65,6 +65,7 @@ class ShapeNetObject(object):
         return body_id
 
 
+# This class is detached from gibson.
 class Pedestrian(object):
     def __init__(self, style='standing', pos=[0, 0, 0]):
         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
