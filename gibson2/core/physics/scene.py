@@ -64,6 +64,22 @@ class StadiumScene(Scene):
 
     def get_floor_height(self, floor):
         return 0.0
+      
+      
+
+class InteractiveBuildingScene(Scene):
+    """
+    A simple stadium scene for debugging
+    """
+
+    def __init__(self, path):
+        self.path = path
+        
+    def load(self):
+        filename = self.path
+        body_id = p.loadURDF(filename, flags=p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS)
+        return [body_id]
+
 
 
 class StadiumSceneInteractive(Scene):

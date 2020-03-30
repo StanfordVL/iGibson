@@ -72,3 +72,4 @@ gibson/assets
 .cache
 notebook
 build
+dist
