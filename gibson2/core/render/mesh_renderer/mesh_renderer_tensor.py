@@ -1,7 +1,7 @@
 import cv2
 import sys
 import numpy as np
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, CGLUtils
+from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 import torch
 from gibson2.core.render.mesh_renderer.get_available_devices import get_cuda_device
 
@@ -20,7 +20,7 @@ class MeshRendererG2G(MeshRenderer):
             self.normal_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
             self.seg_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
             self.pc_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
-        CGLUtils.glad_init()
+        self.r.glad_init()
 
     def readbuffer_to_tensor(self, modes=('rgb', 'normal', 'seg', '3d')):
         results = []
@@ -53,16 +53,16 @@ class MeshRendererG2G(MeshRenderer):
 
         """
         if self.msaa:
-            CGLUtils.render_tensor_pre(1, self.fbo_ms, self.fbo)
+            self.r.render_tensor_pre(1, self.fbo_ms, self.fbo)
         else:
-            CGLUtils.render_tensor_pre(0, 0, self.fbo)
+            self.r.render_tensor_pre(0, 0, self.fbo)
 
         for instance in self.instances:
             if not instance in hidden:
                 instance.render()
 
-        CGLUtils.render_tensor_post()
+        self.r.render_tensor_post()
         if self.msaa:
-            CGLUtils.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
+            self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
         return self.readbuffer_to_tensor(modes)

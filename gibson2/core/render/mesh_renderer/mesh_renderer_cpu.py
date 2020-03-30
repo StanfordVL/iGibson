@@ -11,7 +11,7 @@ import numpy as np
 from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-from gibson2.core.render.mesh_renderer import MeshRendererContext, CGLUtils, GLFWRendererContext
+from gibson2.core.render.mesh_renderer import MeshRendererContext, GLFWRendererContext
 from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
 from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTexture
 import gibson2.core.render.mesh_renderer as mesh_renderer
@@ -96,12 +96,12 @@ class InstanceGroup(object):
         if self.renderer is None:
             return
 
-        CGLUtils.initvar_instance_group(self.renderer.shaderProgram, self.renderer.V, self.renderer.P, self.renderer.lightpos, self.renderer.lightcolor)
+        self.renderer.r.initvar_instance_group(self.renderer.shaderProgram, self.renderer.V, self.renderer.P, self.renderer.lightpos, self.renderer.lightcolor)
 
         for i, visual_object in enumerate(self.objects):
             for object_idx in visual_object.VAO_ids:
                 
-                CGLUtils.init_material_pos_instance(self.renderer.shaderProgram, self.poses_trans[i], self.poses_rot[i], float(self.class_id) / 255.0, self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3], float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
+                self.renderer.r.init_material_pos_instance(self.renderer.shaderProgram, self.poses_trans[i], self.poses_rot[i], float(self.class_id) / 255.0, self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3], float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
 
                 try:
                     texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
@@ -113,11 +113,11 @@ class InstanceGroup(object):
                     else:
                         buffer = self.renderer.fbo
 
-                    CGLUtils.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(), texture_id, self.renderer.texUnitUniform, self.renderer.VAOs[object_idx], self.renderer.faces[object_idx].size, self.renderer.faces[object_idx], buffer)
+                    self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(), texture_id, self.renderer.texUnitUniform, self.renderer.VAOs[object_idx], self.renderer.faces[object_idx].size, self.renderer.faces[object_idx], buffer)
 
                 finally:
-                    CGLUtils.cglBindVertexArray(0)
-        CGLUtils.cglUseProgram(0)
+                    self.renderer.r.cglBindVertexArray(0)
+        self.renderer.r.cglUseProgram(0)
 
     def get_pose_in_camera(self):
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
@@ -205,13 +205,13 @@ class Instance(object):
             self.pose_rot = np.eye(4)
 
             # update buffer data into VBO
-            CGLUtils.render_softbody_instance(self.renderer.VAOs[object_idx], self.renderer.VBOs[object_idx], new_data)
+            self.renderer.r.render_softbody_instance(self.renderer.VAOs[object_idx], self.renderer.VBOs[object_idx], new_data)
 
-        CGLUtils.initvar_instance(self.renderer.shaderProgram, self.renderer.V, self.renderer.P, self.pose_trans, self.pose_rot, self.renderer.lightpos, self.renderer.lightcolor)
+        self.renderer.r.initvar_instance(self.renderer.shaderProgram, self.renderer.V, self.renderer.P, self.pose_trans, self.pose_rot, self.renderer.lightpos, self.renderer.lightcolor)
 
         for object_idx in self.object.VAO_ids:
 
-            CGLUtils.init_material_instance(self.renderer.shaderProgram, float(self.class_id) / 255.0, self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd, float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
+            self.renderer.r.init_material_instance(self.renderer.shaderProgram, float(self.class_id) / 255.0, self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd, float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
 
             try:
                 texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
@@ -223,12 +223,12 @@ class Instance(object):
                 else:
                     buffer = self.renderer.fbo
 
-                CGLUtils.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(), texture_id, self.renderer.texUnitUniform, self.renderer.VAOs[object_idx], self.renderer.faces[object_idx].size, self.renderer.faces[object_idx], buffer)
+                self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(), texture_id, self.renderer.texUnitUniform, self.renderer.VAOs[object_idx], self.renderer.faces[object_idx].size, self.renderer.faces[object_idx], buffer)
 
             finally:
-                CGLUtils.cglBindVertexArray(0)
+                self.renderer.r.cglBindVertexArray(0)
 
-        CGLUtils.cglUseProgram(0)
+        self.renderer.r.cglUseProgram(0)
 
     def get_pose_in_camera(self):
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
@@ -313,15 +313,15 @@ class MeshRenderer:
         self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
-        CGLUtils.glad_init()
-        self.glstring = CGLUtils.getstring_meshrenderer()
+        self.r.glad_init()
+        self.glstring = self.r.getstring_meshrenderer()
         self.colors = colormap
         self.lightcolor = [1, 1, 1]
 
         print("fisheye", self.fisheye)
 
         if self.fisheye:
-            [self.shaderProgram, self.texUnitUniform] = CGLUtils.compile_shader_meshrenderer(
+            [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/fisheye_vert.shader')).readlines()).replace(
@@ -331,7 +331,7 @@ class MeshRenderer:
                                         'shaders/fisheye_frag.shader')).readlines()).replace(
                                             "FISHEYE_SIZE", str(self.width / 2)))
         else:
-            [self.shaderProgram, self.texUnitUniform] = CGLUtils.compile_shader_meshrenderer(
+            [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/vert.shader')).readlines()),
@@ -358,11 +358,11 @@ class MeshRenderer:
         Set up RGB, surface normal, depth and segmentation framebuffers for the renderer
         """
         [self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-         self.depth_tex] = CGLUtils.setup_framebuffer_meshrenderer(self.width, self.height)
+         self.depth_tex] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
 
         if self.msaa:
             [self.fbo_ms, self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
-             self.depth_tex_ms] = CGLUtils.setup_framebuffer_meshrenderer_ms(self.width, self.height)
+             self.depth_tex_ms] = self.r.setup_framebuffer_meshrenderer_ms(self.width, self.height)
 
     def load_object(self,
                     obj_path,
@@ -399,8 +399,8 @@ class MeshRenderer:
 
         attrib = reader.GetAttrib()
         print("attrib.vertices = ", len(attrib.vertices))
-        print("attrib.normals = ", len(attrib.normals))
-        print("attrib.texcoords = ", len(attrib.texcoords))
+        #print("attrib.normals = ", len(attrib.normals))
+        #print("attrib.texcoords = ", len(attrib.texcoords))
 
         materials = reader.GetMaterials()
         print("Num materials: ", len(materials))
@@ -424,7 +424,7 @@ class MeshRenderer:
                     materials_fn[i + material_count] = item.diffuse_texname
                     dir = os.path.dirname(obj_path)
                     #texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
-                    texture = CGLUtils.loadTexture(os.path.join(dir, item.diffuse_texname))
+                    texture = self.r.loadTexture(os.path.join(dir, item.diffuse_texname))
                     material = Material('texture', texture_id=texture)
                     self.textures.append(texture)
                 else:
@@ -440,20 +440,20 @@ class MeshRenderer:
         elif len(materials) == 0:  # urdf material not specified, but it is required
             self.materials_mapping[len(materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5])
 
-        print(self.materials_mapping)
+        #print(self.materials_mapping)
         VAO_ids = []
 
         vertex_position = np.array(attrib.vertices).reshape((len(attrib.vertices)//3, 3))
         vertex_normal = np.array(attrib.normals).reshape((len(attrib.normals)//3, 3))
         vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
-        print(vertex_position.shape, vertex_normal.shape, vertex_texcoord.shape)
+        #print(vertex_position.shape, vertex_normal.shape, vertex_texcoord.shape)
 
 
         for shape in shapes:
-            print(shape.name)
+            #print(shape.name)
             material_id = shape.mesh.material_ids[0] # assume one shape only have one material
-            print("material_id = {}".format(material_id))
-            print("num_indices = {}".format(len(shape.mesh.indices)))
+            #print("material_id = {}".format(material_id))
+            #print("num_indices = {}".format(len(shape.mesh.indices)))
             n_indices = len(shape.mesh.indices)
             np_indices = shape.mesh.numpy_indices().reshape((n_indices,3))
 
@@ -486,7 +486,7 @@ class MeshRenderer:
 
             vertexData = vertices.astype(np.float32)
 
-            [VAO, VBO] = CGLUtils.load_object_meshrenderer(self.shaderProgram, vertexData)
+            [VAO, VBO] = self.r.load_object_meshrenderer(self.shaderProgram, vertexData)
 
             self.VAOs.append(VAO)
             self.VBOs.append(VBO)
@@ -499,7 +499,7 @@ class MeshRenderer:
             else:
                 self.mesh_materials.append(material_id + material_count)
 
-            print('mesh_materials', self.mesh_materials)
+            #print('mesh_materials', self.mesh_materials)
             VAO_ids.append(self.get_num_objects() - 1)
 
         #release(scene)
@@ -619,22 +619,22 @@ class MeshRenderer:
         """
         results = []
         if 'rgb' in modes:
-            frame = CGLUtils.readbuffer_meshrenderer('rgb', self.width, self.height, self.fbo)
+            frame = self.r.readbuffer_meshrenderer('rgb', self.width, self.height, self.fbo)
             frame = frame.reshape(self.height, self.width, 4)[::-1, :]
             results.append(frame)
 
         if 'normal' in modes:
-            normal = CGLUtils.readbuffer_meshrenderer('normal', self.width, self.height, self.fbo)
+            normal = self.r.readbuffer_meshrenderer('normal', self.width, self.height, self.fbo)
             normal = normal.reshape(self.height, self.width, 4)[::-1, :]
             results.append(normal)
 
         if 'seg' in modes:
-            seg = CGLUtils.readbuffer_meshrenderer('seg', self.width, self.height, self.fbo)
+            seg = self.r.readbuffer_meshrenderer('seg', self.width, self.height, self.fbo)
             seg = seg.reshape(self.height, self.width, 4)[::-1, :]
             results.append(seg)
 
         if '3d' in modes:
-            pc = CGLUtils.readbuffer_meshrenderer('3d', self.width, self.height, self.fbo)
+            pc = self.r.readbuffer_meshrenderer('3d', self.width, self.height, self.fbo)
             pc = pc.reshape(self.height, self.width, 4)[::-1, :]
             results.append(pc)
 
@@ -650,17 +650,17 @@ class MeshRenderer:
 
         """
         if self.msaa:
-            CGLUtils.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
+            self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
         else:
-            CGLUtils.render_meshrenderer_pre(0, 0, self.fbo)
+            self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
         for instance in self.instances:
             if not instance in hidden:
                 instance.render()
 
-        CGLUtils.render_meshrenderer_post()
+        self.r.render_meshrenderer_post()
         if self.msaa:
-            CGLUtils.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
+            self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
         return self.readbuffer(modes)
 
@@ -698,7 +698,7 @@ class MeshRenderer:
         ]
             fbo_list += [self.fbo_ms]
 
-        CGLUtils.clean_meshrenderer(clean_list, self.textures, fbo_list, self.VAOs, self.VBOs)
+        self.r.clean_meshrenderer(clean_list, self.textures, fbo_list, self.VAOs, self.VBOs)
         self.color_tex_rgb = None
         self.color_tex_normal = None
         self.color_tex_semantics = None
