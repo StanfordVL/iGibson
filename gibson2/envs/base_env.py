@@ -1,4 +1,5 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch
+from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, \
+    Locobot
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import BuildingScene, StadiumScene
 import gibson2
@@ -52,6 +53,8 @@ class BaseEnv(gym.Env):
         elif self.config['scene'] == 'building':
             scene = BuildingScene(
                 self.config['model_id'],
+                waypoint_resolution=self.config.get('waypoint_resolution', 0.2),
+                num_waypoints=self.config.get('num_waypoints', 10),
                 build_graph=self.config.get('build_graph', False),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
                 should_load_replaced_objects=self.config.get('should_load_replaced_objects', False)
@@ -77,6 +80,8 @@ class BaseEnv(gym.Env):
             robot = Freight(self.config)
         elif self.config['robot'] == 'Fetch':
             robot = Fetch(self.config)
+        elif self.config['robot'] == 'Locobot':
+            robot = Locobot(self.config)
         else:
             raise Exception('unknown robot type: {}'.format(self.config['robot']))
 

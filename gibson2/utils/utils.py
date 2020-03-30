@@ -1,6 +1,6 @@
 import numpy as np
 import yaml
-
+from scipy.spatial.transform import Rotation as R
 
 # File I/O related
 def parse_config(config):
@@ -11,11 +11,22 @@ def parse_config(config):
 
 # Geometry related
 def rotate_vector_3d(v, r, p, y):
-    """Rotates vector by roll, pitch and yaw counterclockwise"""
-    rot_x = np.array([[1, 0, 0], [0, np.cos(-r), -np.sin(-r)], [0, np.sin(-r), np.cos(-r)]])
-    rot_y = np.array([[np.cos(-p), 0, np.sin(-p)], [0, 1, 0], [-np.sin(-p), 0, np.cos(-p)]])
-    rot_z = np.array([[np.cos(-y), -np.sin(-y), 0], [np.sin(-y), np.cos(-y), 0], [0, 0, 1]])
-    return np.dot(rot_x, np.dot(rot_y, np.dot(rot_z, v)))
+    local_to_global = R.from_euler('xyz', [r, p, y]).as_dcm()
+    global_to_local = local_to_global.T
+    return np.dot(global_to_local, v)
+
+
+def rotate_vector_2d(v, yaw):
+    local_to_global = R.from_euler('z', yaw).as_dcm()
+    global_to_local = local_to_global.T
+    global_to_local = global_to_local[:2, :2]
+    if len(v.shape) == 1:
+        return np.dot(global_to_local, v)
+    elif len(v.shape) == 2:
+        return np.dot(global_to_local, v.T).T
+    else:
+        print(v.shape)
+        raise Exception('invalid shape for v')
 
 
 def l2_distance(v1, v2):

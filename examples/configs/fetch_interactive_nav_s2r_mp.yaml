@@ -1,10 +1,16 @@
 # scene
 scene: building
-model_id: Avonia
+model_id: candcenter
+build_graph: true
+load_texture: true
+should_load_replaced_objects: false
+should_load_additional_objects: false
+trav_map_erosion: 3
 
 # robot
-robot: Turtlebot
+robot: Fetch
 velocity: 0.1
+fine_motion_plan: true
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -17,29 +23,34 @@ target_pos: [1.0, 1.0, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
-additional_states_dim: 3
+additional_states_dim: 22
 
 # reward
+reward_type: dense
 success_reward: 10.0
-slack_reward: -0.01
-potential_reward_weight: 30.0
-#electricity_reward_weight: -0.02
-#stall_torque_reward_weight: -0.0001
+slack_reward: 0.0
+potential_reward_weight: 1.0
 electricity_reward_weight: 0.0
 stall_torque_reward_weight: 0.0
-collision_reward_weight: 0.0
+collision_reward_weight: -0.0
+collision_ignore_link_a_ids: [0, 1, 2, 3, 20, 21, 22]  # ignore collision with these agent's link ids
 
 # discount factor
 discount_factor: 0.99
 
 # termination condition
-dist_tol: 0.2
-max_step: 500
+death_z_thresh: 0.2
+dist_tol: 0.5  # body width
+max_step: 25
 
 # sensor
-output: [sensor, rgb, depth, pc]
+output: [sensor, rgb, depth, scan]
 resolution: 128
-fov: 120
+fov: 57.5
+n_horizontal_rays: 220
+n_vertical_beams: 1
+scan_noise_rate: 0.02
+depth_noise_rate: 0.02
 
 # display
 use_filler: true
@@ -65,7 +76,7 @@ fast_lq_render: true
 
 # visual objects
 visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: true
+target_visual_object_visible_to_agent: false
 
 # debug
 debug: false

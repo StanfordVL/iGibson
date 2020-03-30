@@ -8,7 +8,11 @@ from transforms3d.euler import euler2quat, euler2mat
 from transforms3d.quaternions import quat2mat, qmult
 import transforms3d.quaternions as quat
 import sys
-
+from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_name, set_joint_position, \
+    set_joint_positions, add_data_path, connect, plan_base_motion, plan_joint_motion, enable_gravity, \
+    joint_controller, dump_body, load_model, joints_from_names, user_input, disconnect, get_joint_positions, \
+    get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, \
+    set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_base_values
 
 class LocomotorRobot(BaseRobot):
     """ Built on top of BaseRobot
@@ -490,8 +494,8 @@ class Freight(LocomotorRobot):
         self.config = config
         self.velocity = config.get("velocity", 1.0)
         LocomotorRobot.__init__(self,
-                            "fetch/freight.urdf",
-                            "base_link",
+                                "fetch/freight.urdf",
+                                "base_link",
                                 action_dim=2,
                                 sensor_dim=16,
                                 power=2.5,
@@ -537,29 +541,37 @@ class Fetch(LocomotorRobot):
 
     def __init__(self, config):
         self.config = config
-        self.velocity = config.get("velocity", 1.0)
+        self.wheel_velocity = config.get('wheel_velocity', 0.1)
+        self.torso_lift_velocity = config.get('torso_lift_velocity', 0.01)
+        self.arm_velocity = config.get('arm_velocity', 0.01)
         self.wheel_dim = 2
+        self.torso_lift_dim = 1
+        self.arm_dim = 7
         self.action_high = config.get("action_high", None)
         self.action_low = config.get("action_low", None)
         LocomotorRobot.__init__(self,
-                            "fetch/fetch.urdf",
-                            "base_link",
-                                action_dim=6,
+                                "fetch/fetch.urdf",
+                                "base_link",
+                                action_dim=self.wheel_dim + self.torso_lift_dim + self.arm_dim,
                                 sensor_dim=55,
                                 power=2.5,
                                 scale=config.get("robot_scale", self.default_scale),
                                 resolution=config.get("resolution", 64),
                                 is_discrete=config.get("is_discrete", True),
-                                control="velocity")
+                                control="velocity",
+                                self_collision=True)
 
     def set_up_continuous_action_space(self):
         if self.action_high is not None and self.action_low is not None:
             self.action_high = np.full(shape=self.wheel_dim, fill_value=self.action_high)
             self.action_low = np.full(shape=self.wheel_dim, fill_value=self.action_low)
         else:
-            self.action_high = np.full(shape=self.wheel_dim, fill_value=self.velocity)
+            self.action_high = np.array([self.wheel_velocity] * self.wheel_dim +
+                                        [self.torso_lift_velocity] * self.torso_lift_dim +
+                                        [self.arm_velocity] * self.arm_dim)
             self.action_low = -self.action_high
-        self.action_space = gym.spaces.Box(shape=(self.wheel_dim,),
+
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
@@ -569,14 +581,39 @@ class Fetch(LocomotorRobot):
 
     def robot_specific_reset(self):
         super(Fetch, self).robot_specific_reset()
+        for j in self.ordered_joints:
+            j.reset_joint_state(0.0, 0.0)
         # roll the arm to its body
-        for i in range(2, 6):
-            self.ordered_joints[i].reset_joint_state(np.pi / 2.0, 0.0)
+        robot_id = self.robot_ids[0]
+        arm_joints = joints_from_names(robot_id,
+                                       [
+                                           'torso_lift_joint',
+                                           'shoulder_pan_joint',
+                                           'shoulder_lift_joint',
+                                           'upperarm_roll_joint',
+                                           'elbow_flex_joint',
+                                           'forearm_roll_joint',
+                                           'wrist_flex_joint',
+                                           'wrist_roll_joint'
+                                       ])
+        # rest_position = (
+        #     0.02, np.pi / 2.0,
+        #     np.pi / 2.0, 0.0,
+        #     np.pi / 2.0 + 0.1, 0.0,
+        #     np.pi / 2.0, 0.0
+        # )
+        # rest_position = (0.38548146667743244, 1.1522793897208579, 1.2576467971105596, -0.312703569911879,
+        #                  1.7404867100093226, -0.0962895617312548, -1.4418232619629425, -1.6780152866247762)
+        rest_position = (0.30322468280792236, -1.414019864768982,
+                         1.5178184935241699, 0.8189625336474915,
+                         2.200358942909668, 2.9631312579803466,
+                         -1.2862852996643066, 0.0008453550418615341)
+
+        set_joint_positions(robot_id, arm_joints, rest_position)
+
 
     def apply_action(self, action):
-        denormalized_action = self.action_to_real_action(action)
-        real_action = np.zeros(self.action_dim)
-        real_action[:self.wheel_dim] = denormalized_action
+        real_action = self.action_to_real_action(action)
         self.apply_real_action(real_action)
 
     def calc_state(self):
@@ -584,6 +621,26 @@ class Fetch(LocomotorRobot):
         angular_velocity = self.robot_body.angular_velocity()
         print(len(base_state), len(angular_velocity))
         return np.concatenate((base_state, np.array(angular_velocity)))
+
+    def get_end_effector_position(self):
+        return self.parts['gripper_link'].get_position()
+
+    def load(self):
+        ids = self._load_model()
+        self.eyes = self.parts["eyes"]
+
+        robot_id = ids[0]
+
+        # disable collision for immediate parent
+        for joint in range(p.getNumJoints(robot_id)):
+            info = p.getJointInfo(robot_id, joint)
+            parent_id = info[-1]
+            p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)
+
+        # disable collision for torso_lift_joint and shoulder_lift_joint
+        p.setCollisionFilterPair(robot_id, robot_id, 3, 13, 0)
+
+        return ids
 
 
 class JR2(LocomotorRobot):
@@ -631,7 +688,6 @@ class JR2(LocomotorRobot):
         }
 
 
-# TODO: set up joint id and name mapping
 class JR2_Kinova(LocomotorRobot):
     mjcf_scaling = 1
     model_type = "URDF"
@@ -708,4 +764,71 @@ class JR2_Kinova(LocomotorRobot):
         for joint in range(p.getNumJoints(robot_id)):
             for j in range(16, 28):
                 p.setCollisionFilterPair(robot_id, robot_id, joint, j, 0)
+        return ids
+
+
+class Locobot(LocomotorRobot):
+    mjcf_scaling = 1
+    model_type = "URDF"
+    default_scale = 1
+
+    def __init__(self, config):
+        self.config = config
+        self.wheel_velocity = config.get('wheel_velocity', 0.1)
+        self.wheel_dim = 2
+        self.action_high = config.get("action_high", None)
+        self.action_low = config.get("action_low", None)
+        LocomotorRobot.__init__(self,
+                                "locobot/locobot.urdf",
+                                "base_link",
+                                action_dim=self.wheel_dim,
+                                sensor_dim=55, # TODO: what is sensor_dim?
+                                power=2.5,
+                                scale=config.get("robot_scale", self.default_scale),
+                                resolution=config.get("resolution", 64),
+                                is_discrete=config.get("is_discrete", True),
+                                control="velocity",
+                                self_collision=False)
+
+    def set_up_continuous_action_space(self):
+        if self.action_high is not None and self.action_low is not None:
+            self.action_high = np.full(shape=self.wheel_dim, fill_value=self.action_high)
+            self.action_low = np.full(shape=self.wheel_dim, fill_value=self.action_low)
+        else:
+            self.action_high = np.array([self.wheel_velocity] * self.wheel_dim)
+            self.action_low = -self.action_high
+
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
+
+    def set_up_discrete_action_space(self):
+        assert False, "Locobot does not support discrete actions"
+
+    def apply_action(self, action):
+        real_action = self.action_to_real_action(action)
+        self.apply_real_action(real_action)
+
+    def calc_state(self):
+        base_state = LocomotorRobot.calc_state(self)
+        angular_velocity = self.robot_body.angular_velocity()
+        print(len(base_state), len(angular_velocity))
+        return np.concatenate((base_state, np.array(angular_velocity)))
+
+    def get_end_effector_position(self):
+        return self.parts['gripper_link'].get_position()
+
+    def load(self):
+        ids = self._load_model()
+        self.eyes = self.parts["eyes"]
+
+        robot_id = ids[0]
+
+        # disable collision for immediate parent
+        for joint in range(p.getNumJoints(robot_id)):
+            info = p.getJointInfo(robot_id, joint)
+            parent_id = info[-1]
+            p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)
+
         return ids

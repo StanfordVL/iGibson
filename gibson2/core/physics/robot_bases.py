@@ -106,6 +106,7 @@ class BaseRobot:
                                     force=0)
             _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, part_name, _, _, _, _ = p.getJointInfo(
                 bodies[0], j)
+            print(p.getJointInfo(bodies[0], j))
             joint_name = joint_name.decode("utf8")
             part_name = part_name.decode("utf8")
 
@@ -252,7 +253,7 @@ class BodyPart:
         if link_id == -1:
             (x, y, z), (a, b, c, d) = p.getBasePositionAndOrientation(body_id)
         else:
-            (x, y, z), (a, b, c, d), _, _, _, _ = p.getLinkState(body_id, link_id)
+            _, _, _, _, (x, y, z), (a, b, c, d) = p.getLinkState(body_id, link_id)
         x, y, z = x * self.scale, y * self.scale, z * self.scale
         return np.array([x, y, z, a, b, c, d])
 
@@ -356,14 +357,6 @@ class Joint:
             vx *= self.scale
         return x, vx, trq
 
-    def set_state(self, x, vx):
-        """Set state of joint
-           x is defined in real world scale """
-        if self.joint_type == p.JOINT_PRISMATIC:
-            x /= self.scale
-            vx /= self.scale
-        p.resetJointState(self.bodies[self.body_index], self.joint_index, x, vx)
-
     def get_relative_state(self):
         pos, vel, trq = self.get_state()
 
@@ -405,7 +398,21 @@ class Joint:
                                 force=torque)    # , positionGain=0.1, velocityGain=0.1)
 
     def reset_state(self, pos, vel):
-        self.set_state(pos, vel)
+        """
+        Reset pos and vel of joint
+        """
+        if self.joint_type == p.JOINT_PRISMATIC:
+            pos /= self.scale
+            vel /= self.scale
+
+        # resetJointState does not reset targetVelocity correctly, so we need to also call setJointMotorControl2.
+        p.resetJointState(self.bodies[self.body_index], self.joint_index, targetValue=pos, targetVelocity=vel)
+        p.setJointMotorControl2(bodyIndex=self.bodies[self.body_index],
+                                jointIndex=self.joint_index,
+                                controlMode=p.POSITION_CONTROL,
+                                targetPosition=pos,
+                                targetVelocity=vel,
+                                force=0)
 
     def disable_motor(self):
         p.setJointMotorControl2(self.bodies[self.body_index],

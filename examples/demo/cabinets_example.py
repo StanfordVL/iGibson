@@ -9,35 +9,52 @@ from gibson2.core.render.profiler import Profiler
 import pytest
 import pybullet as p
 import numpy as np
+from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_name, set_joint_position, \
+    set_joint_positions, add_data_path, connect, plan_base_motion, plan_joint_motion, enable_gravity, \
+    joint_controller, dump_body, load_model, joints_from_names, user_input, disconnect, get_joint_positions, \
+    get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, set_point, create_box, stable_z, control_joints
+
+import time
+import numpy as np
 
 config = parse_config('../configs/jr_interactive_nav.yaml')
-s = Simulator(mode='headless', timestep=1 / 240.0)
+s = Simulator(mode='gui', timestep=1 / 240.0)
 scene = EmptyScene()
 s.import_scene(scene)
 jr = JR2_Kinova(config)
 s.import_robot(jr)
 jr.robot_body.reset_position([0,0,0])
 jr.robot_body.reset_orientation([0,0,1,0])
-fetch = Fetch(config)
-s.import_robot(fetch)
-fetch.robot_body.reset_position([0,1,0])
-fetch.robot_body.reset_orientation([0,0,1,0])
+
+obstacles = []
 obj = InteractiveObj(filename='/data4/mdv0/cabinet/0007/part_objs/cabinet_0007.urdf')
-s.import_interactive_object(obj)
+ids = s.import_interactive_object(obj)
+obstacles.append(ids)
+
 obj.set_position([-2,0,0.5])
 obj = InteractiveObj(filename='/data4/mdv0/cabinet/0007/part_objs/cabinet_0007.urdf')
-s.import_interactive_object(obj)
+ids = s.import_interactive_object(obj)
+obstacles.append(ids)
+
 obj.set_position([-2,2,0.5])
 obj = InteractiveObj(filename='/data4/mdv0/cabinet/0004/part_objs/cabinet_0004.urdf')
-s.import_interactive_object(obj)
+ids = s.import_interactive_object(obj)
+obstacles.append(ids)
+
 obj.set_position([-2.1, 1.6, 2])
 obj = InteractiveObj(filename='/data4/mdv0/cabinet/0004/part_objs/cabinet_0004.urdf')
-s.import_interactive_object(obj)
+ids = s.import_interactive_object(obj)
+obstacles.append(ids)
 obj.set_position([-2.1, 0.4, 2])
+
 obj = BoxShape([-2.05,1,0.5], [0.35,0.6,0.5])
-s.import_interactive_object(obj)
+ids = s.import_interactive_object(obj)
+obstacles.append(ids)
+
 obj = BoxShape([-2.45,1,1.5], [0.01,2,1.5])
-s.import_interactive_object(obj)
+ids = s.import_interactive_object(obj)
+obstacles.append(ids)
+
 p.createConstraint(0,-1,obj.body_id, -1, p.JOINT_FIXED, [0,0,1], [-2.55,1,1.5], [0,0,0])
 obj = YCBObject('003_cracker_box')
 s.import_object(obj)
@@ -59,11 +76,13 @@ while path is None:
     set_point(robot_id, [-3, -1, 0.0]) # Sets the z position of the robot
     set_joint_positions(robot_id, arm_joints, rest_position)
 
+
     path = plan_base_motion(robot_id, [-1,1.5,np.pi], ((-6, -6), (6, 6)), obstacles=obstacles, restarts=10, iterations=50, smooth=30)
 
 for bq in path:
     set_base_values(robot_id, [bq[0], bq[1], bq[2]])
     set_joint_positions(robot_id, arm_joints, rest_position)
+
     time.sleep(0.05)
     s.step()
 

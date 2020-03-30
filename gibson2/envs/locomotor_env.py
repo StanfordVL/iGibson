@@ -1,6 +1,9 @@
 from gibson2.core.physics.interactive_objects import VisualMarker, InteractiveObj, BoxShape
+#from semantic_segmentation_pytorch.models import ModelBuilder
+#from semantic_segmentation_pytorch.utils import colorEncode
+#import semantic_segmentation_pytorch
 import gibson2
-from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
+from gibson2.utils.utils import parse_config, rotate_vector_3d, rotate_vector_2d, l2_distance, quatToXYZW
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -18,27 +21,31 @@ from IPython import embed
 import cv2
 import time
 import collections
-
-
+import matplotlib.pyplot as plt
+from scipy.io import loadmat
+from PIL import Image
+import string
+import random
 
 
 Episode = collections.namedtuple('Episode',
-                                 ['env',
-                                  'agent',
-                                  'initial_pos',
-                                  'target_pos',
-                                  'geodesic_distance',
-                                  'shortest_path',
-                                  'agent_trajectory',
-                                  'object_files',
-                                  'object_trajectory',
-                                  'success',
-                                  'path_efficiency',
-                                  'kinematic_disturbance',
-                                  'dynamic_disturbance_a',
-                                  'dynamic_disturbance_b',
-                                  'collision_step',
-                                  ])
+                                 [
+                                     # 'env',
+                                     # 'agent',
+                                     # 'initial_pos',
+                                     # 'target_pos',
+                                     # 'geodesic_distance',
+                                     # 'shortest_path',
+                                     # 'agent_trajectory',
+                                     # 'object_files',
+                                     # 'object_trajectory',
+                                     'success',
+                                     # 'path_efficiency',
+                                     # 'kinematic_disturbance',
+                                     # 'dynamic_disturbance_a',
+                                     # 'dynamic_disturbance_b',
+                                     # 'collision_step',
+                                 ])
 
 
 class NavigateEnv(BaseEnv):
@@ -119,9 +126,13 @@ class NavigateEnv(BaseEnv):
 
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 1.0)
+
+        # output: sensors
         self.output = self.config['output']
         self.n_horizontal_rays = self.config.get('n_horizontal_rays', 128)
         self.n_vertical_beams = self.config.get('n_vertical_beams', 9)
+        self.scan_noise_rate = self.config.get('scan_noise_rate', 0.0)
+        self.depth_noise_rate = self.config.get('depth_noise_rate', 0.0)
 
         # TODO: sensor: observations that are passed as network input, e.g. target position in local frame
         # TODO: auxiliary sensor: observations that are not passed as network input, but used to maintain the same
@@ -157,13 +168,27 @@ class NavigateEnv(BaseEnv):
                                             dtype=np.float32)
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
-            self.depth_space = gym.spaces.Box(low=-np.inf,
-                                              high=np.inf,
+            # self.depth_space = gym.spaces.Box(low=-np.inf,
+            #                                   high=np.inf,
+            #                                   shape=(self.config.get('resolution', 64),
+            #                                          self.config.get('resolution', 64),
+            #                                          1),
+            #                                   dtype=np.float32)
+            self.depth_space = gym.spaces.Box(low=0.0,
+                                              high=1.0,
                                               shape=(self.config.get('resolution', 64),
                                                      self.config.get('resolution', 64),
                                                      1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
+        if 'rgbd' in self.output:
+            self.rgbd_space = gym.spaces.Box(low=0.0,
+                                             high=1.0,
+                                             shape=(self.config.get('resolution', 64),
+                                                    self.config.get('resolution', 64),
+                                                    4),
+                                             dtype=np.float32)
+            observation_space['rgbd'] = self.rgbd_space
         if 'seg' in self.output:
             self.seg_space = gym.spaces.Box(low=0.0,
                                             high=1.0,
@@ -181,9 +206,13 @@ class NavigateEnv(BaseEnv):
                                                   dtype=np.float32)
             observation_space['depth_seg'] = self.depth_seg_space
         if 'scan' in self.output:
-            self.scan_space = gym.spaces.Box(low=-np.inf,
-                                             high=np.inf,
-                                             shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
+            # self.scan_space = gym.spaces.Box(low=-np.inf,
+            #                                  high=np.inf,
+            #                                  shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
+            #                                  dtype=np.float32)
+            self.scan_space = gym.spaces.Box(low=0.0,
+                                             high=1.0,
+                                             shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
                                              dtype=np.float32)
             observation_space['scan'] = self.scan_space
         if 'rgb_filled' in self.output:  # use filler
@@ -192,6 +221,46 @@ class NavigateEnv(BaseEnv):
             self.comp.load_state_dict(
                 torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
+        # if 'seg_pred' in self.output:
+        #     # torch.cuda.set_device(1)
+        #     encoder_weights = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__),
+        #                                    # 'ckpt/ade20k-resnet18dilated-ppm_deepsup/encoder_epoch_20.pth')
+        #                                    'ckpt/ade20k-mobilenetv2dilated-c1_deepsup/encoder_epoch_20.pth')
+        #
+        #     self.seg_encoder = ModelBuilder.build_encoder(
+        #         arch='mobilenetv2dilated',
+        #         # arch='resnet18dilated',
+        #         weights=encoder_weights)
+        #     self.seg_encoder.cuda()
+        #     self.seg_encoder.eval()
+        #
+        #     decoder_weights = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__),
+        #                                    # 'ckpt/ade20k-resnet18dilated-ppm_deepsup/decoder_epoch_20.pth')
+        #                                    'ckpt/ade20k-mobilenetv2dilated-c1_deepsup/decoder_epoch_20.pth')
+        #     self.seg_decoder = ModelBuilder.build_decoder(
+        #         # arch='ppm_deepsup',
+        #         # fc_dim=512,
+        #         arch='c1_deepsup',
+        #         fc_dim=320,
+        #         num_class=150,
+        #         weights=decoder_weights,
+        #         use_softmax=True)
+        #     self.seg_decoder.cuda()
+        #     self.seg_decoder.eval()
+        #     color_path = os.path.join(os.path.dirname(semantic_segmentation_pytorch.__file__), 'data/color150.mat')
+        #     self.seg_colors = loadmat(color_path)['colors']
+        #
+        #     self.seg_normalizer = transforms.Normalize(
+        #         mean=[0.485, 0.456, 0.406],
+        #         std=[0.229, 0.224, 0.225])
+        #
+        #     self.seg_pred_space = gym.spaces.Box(low=0.0,
+        #                                          high=1.0,
+        #                                          shape=(self.config.get('resolution', 64) // 8,
+        #                                                 self.config.get('resolution', 64) // 8,
+        #                                                 320),
+        #                                          dtype=np.float32)
+        #     observation_space['seg_pred'] = self.seg_pred_space
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.action_space = self.robots[0].action_space
@@ -233,20 +302,192 @@ class NavigateEnv(BaseEnv):
     def get_auxiliary_sensor(self, collision_links=[]):
         return np.array([])
 
+    def add_naive_noise_to_sensor(self, sensor_reading, noise_rate, noise_value=1.0):
+        if noise_rate <= 0.0:
+            return sensor_reading
+
+        assert len(sensor_reading[(sensor_reading < 0.0) | (sensor_reading > 1.0)]) == 0,\
+            'sensor reading has to be between [0.0, 1.0]'
+
+        valid_mask = np.random.choice(2, sensor_reading.shape, p=[noise_rate, 1.0 - noise_rate])
+        # set invalid values to be the maximum range (e.g. depth and scan)
+        sensor_reading[valid_mask == 0] = noise_value
+        return sensor_reading
+
+    def get_depth(self):
+        depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+        if self.config['robot'] == 'Turtlebot':
+            # ASUS Xtion PRO LIVE
+            low = 0.8
+            high = 3.5
+        elif self.config['robot'] == 'Fetch':
+            # Primesense Carmine 1.09 short-range RGBD sensor
+            low = 0.35
+            high = 3.0  # http://xtionprolive.com/primesense-carmine-1.09
+            # high = 1.4  # https://www.i3du.gr/pdf/primesense.pdf
+        elif self.config['robot'] == 'Locobot':
+            # https://store.intelrealsense.com/buy-intel-realsense-depth-camera-d435.html
+            low = 0.1
+            high = 10.0
+        else:
+            assert False, 'unknown robot for RGBD observation'
+
+        # 0.0 is a special value for invalid entries
+        depth[depth < low] = 0.0
+        depth[depth > high] = 0.0
+
+        # re-scale depth to [0.0, 1.0]
+        depth /= high
+        depth = self.add_naive_noise_to_sensor(depth, self.depth_noise_rate, noise_value=0.0)
+
+        return depth
+
+    def get_rgb(self):
+        return self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+
+    def get_pc(self):
+        return self.simulator.renderer.render_robot_cameras(modes=('3d'))[0]
+
+    def get_normal(self):
+        return self.simulator.renderer.render_robot_cameras(modes='normal')
+
+    def get_seg(self):
+        seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
+        if self.num_object_classes is not None:
+            seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
+        return seg
+
+    def get_seg_pred(self):
+        rgb = self.get_rgb()
+        with torch.no_grad():
+            width = rgb.shape[0]
+            height = int(width * (480.0 / 640.0))
+            half_diff = int((width - height) / 2)
+            rgb_cropped = rgb[half_diff:half_diff + height, :]
+            rgb_cropped = (rgb_cropped * 255).astype(np.uint8)
+            tensor = transforms.ToTensor()(rgb_cropped)
+            img = self.seg_normalizer(tensor).unsqueeze(0).cuda()
+            seg_pred = self.seg_encoder(img)
+            seg_pred = seg_pred[0][0].permute(1, 2, 0).cpu().numpy()
+            return seg_pred
+
+            # # visualize predicted segmentation mask
+            # scores = self.seg_decoder(self.seg_encoder(img, return_feature_maps=True), segSize=(height, width))
+            # _, pred = torch.max(scores, dim=1)
+            # pred = pred.squeeze(0).cpu().numpy().astype(np.int32)
+            # pred_color = colorEncode(pred, self.seg_colors).astype(np.uint8)
+            # pred_color = cv2.cvtColor(pred_color, cv2.COLOR_RGB2BGR)
+            #
+            # depth_cropped = depth[half_diff:half_diff + height, :]
+            # low = 0.8
+            # high = 3.5
+            # invalid = depth_cropped == 0.0
+            # depth_cropped[depth_cropped < low] = low
+            # depth_cropped[depth_cropped > high] = high
+            # depth_cropped[invalid] = 0.0
+            # depth_cropped /= high
+            # depth_cropped = (depth_cropped * 255).astype(np.uint8)
+            # depth_cropped = np.tile(depth_cropped, (1, 1, 3))
+            #
+            # rgb_cropped = cv2.cvtColor(rgb_cropped, cv2.COLOR_RGB2BGR)
+            #
+            # vis = np.concatenate((rgb_cropped, depth_cropped, pred_color), axis=1)
+            # cv2.imshow('vis', vis)
+
+    def get_scan(self):
+        if self.config['robot'] == 'Turtlebot':
+            # Hokuyo URG-04LX-UG01
+            laser_linear_range = 5.6
+            laser_angular_range = 240.0
+            min_laser_dist = 0.05
+            laser_link_name = 'scan_link'
+        elif self.config['robot'] == 'Fetch':
+            # SICK TiM571-2050101 Laser Range Finder
+            laser_linear_range = 25.0
+            laser_angular_range = 220.0
+            min_laser_dist = 0.0
+            laser_link_name = 'laser_link'
+        else:
+            assert False, 'unknown robot for LiDAR observation'
+
+        assert self.n_vertical_beams == 1, 'scan can only handle one vertical beam for now.'
+
+        laser_angular_half_range = laser_angular_range / 2.0
+        laser_pose = self.robots[0].parts[laser_link_name].get_pose()
+
+        # self.scan_vis.set_position(pos=laser_pose[:3])
+
+        transform_matrix = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
+        angle = np.arange(-laser_angular_half_range / 180 * np.pi,
+                          laser_angular_half_range / 180 * np.pi,
+                          laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
+        unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+        unit_vector_world = transform_matrix.dot(unit_vector_local.T).T
+        start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
+        start_pose += unit_vector_world * min_laser_dist
+        end_pose = laser_pose[:3] + unit_vector_world * laser_linear_range
+        results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
+        # hit_object_id = np.array([item[0] for item in results])
+        # link_id = np.array([item[1] for item in results])
+        hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
+        hit_fraction = self.add_naive_noise_to_sensor(hit_fraction, self.scan_noise_rate)
+
+        scan = np.expand_dims(hit_fraction, 1)
+        return scan
+
+        # assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
+        # pose_camera = self.robots[0].parts['scan_link'].get_pose()
+        # angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
+        # elev_bottom_angle = -30. * np.pi / 180.
+        # elev_top_angle = 10. * np.pi / 180.
+        # elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
+        #                        (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
+        # orig_offset = np.vstack([
+        #     np.vstack([np.cos(angle),
+        #                np.sin(angle),
+        #                np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+        # ])
+        # transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+        # offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+        # pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+        #
+        # results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
+        # hit = np.array([item[0] for item in results])
+        # dist = np.array([item[2] for item in results])
+        #
+        # valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+        # dist[~valid_pts] = 0.0  # zero out invalid pts
+        # dist *= 30
+        #
+        # xyz = np.expand_dims(dist, 1) * orig_offset
+        # state['scan'] = xyz
+
     def get_state(self, collision_links=[]):
         # calculate state
         sensor_state = self.get_additional_states()
         auxiliary_sensor = self.get_auxiliary_sensor(collision_links)
 
         # rgb = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
-        # rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
+        # rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        #
         # depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-        # depth = np.clip(depth / 5.0, 0.0, 1.0)
+        # depth = np.clip(depth / 8.0, 0.0, 1.0)
         # depth = 1.0 - depth  # flip black/white
         # seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
         # if self.num_object_classes is not None:
         #     seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
         # cv2.imshow('rgb', rgb)
+        # cv2.imwrite('test.jpg', (rgb * 255).astype(np.uint8))
+        # cv2.imwrite('test_depth.jpg', (depth * 255).astype(np.uint8))
+
+        # print(cv2.imwrite('button/%d_%d.jpg' % (self.current_episode, self.current_step), (rgb * 255).astype(np.uint8)))
+        # print(cv2.imwrite('button/%d_%d_depth.jpg' % (self.current_episode, self.current_step), (depth * 255).astype(np.uint8)))
+        # assert False
+        # cv2.imshow('rgb', rgb)
+        # cv2.imshow('depth', depth)
+
+        # assert False
+
         # cv2.imshow('depth', depth)
         # cv2.imshow('seg', seg)
 
@@ -258,23 +499,22 @@ class NavigateEnv(BaseEnv):
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
         if 'rgb' in self.output:
-            state['rgb'] = self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+            state['rgb'] = self.get_rgb()
         if 'depth' in self.output:
-            depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            state['depth'] = depth
+            state['depth'] = self.get_depth()
+        if 'pc' in self.output:
+            state['pc'] = self.get_pc()
+        if 'rgbd' in self.output:
+            rgb = self.get_rgb()
+            depth = self.get_depth()
+            state['rgbd'] = np.concatenate((rgb, depth), axis=2)
         if 'normal' in self.output:
-            state['normal'] = self.simulator.renderer.render_robot_cameras(modes='normal')
+            state['normal'] = self.get_normal()
         if 'seg' in self.output:
-            seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
-            if self.num_object_classes is not None:
-                seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
-            state['seg'] = seg
+            state['seg'] = self.get_seg()
         if 'depth_seg' in self.output:
-            depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-            depth = np.clip(depth / 5.0, 0.0, 1.0)
-            seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
-            if self.num_object_classes is not None:
-                seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
+            depth = self.get_depth()
+            seg = self.get_seg()
             depth_seg = np.concatenate((depth, seg), axis=2)
             state['depth_seg'] = depth_seg
         if 'rgb_filled' in self.output:
@@ -282,39 +522,12 @@ class NavigateEnv(BaseEnv):
                 tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
                 rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
                 state['rgb_filled'] = rgb_filled
-
+        if 'seg_pred' in self.output:
+            state['seg_pred'] = self.get_seg_pred()
         if 'pointgoal' in self.output:
             state['pointgoal'] = sensor_state[:2]
-
-        # TODO: figure out why 'scan' consumes so much cpu
         if 'scan' in self.output:
-            assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
-            pose_camera = self.robots[0].parts['scan_link'].get_pose()
-            angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-            elev_bottom_angle = -30. * np.pi / 180.
-            elev_top_angle = 10. * np.pi / 180.
-            elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-                                   (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
-            orig_offset = np.vstack([
-                np.vstack([np.cos(angle),
-                           np.sin(angle),
-                           np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
-            ])
-            transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-            offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-            pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
-
-            results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-            hit = np.array([item[0] for item in results])
-            dist = np.array([item[2] for item in results])
-
-            valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-            dist[~valid_pts] = 0.0  # zero out invalid pts
-            dist *= 30
-
-            xyz = np.expand_dims(dist, 1) * orig_offset
-            state['scan'] = xyz
-
+            state['scan'] = self.get_scan()
         return state
 
     def run_simulation(self):
@@ -325,10 +538,30 @@ class NavigateEnv(BaseEnv):
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
-        return [[item for item in collision_per_sim_step
-                 if item[2] not in self.collision_ignore_body_b_ids and
-                 item[3] not in self.collision_ignore_link_a_ids]
-                for collision_per_sim_step in collision_links]
+        new_collision_links = []
+        for collision_per_sim_step in collision_links:
+            new_collision_per_sim_step = []
+            for item in collision_per_sim_step:
+                # ignore collision with body b
+                if item[2] in self.collision_ignore_body_b_ids:
+                    continue
+
+                # ignore collision with robot link a
+                if item[3] in self.collision_ignore_link_a_ids:
+                    continue
+
+                # ignore self collision with robot link a (body b is robot itself)
+                if item[2] == self.robots[0].robot_ids[0] and item[4] in self.collision_ignore_link_a_ids:
+                    continue
+
+                new_collision_per_sim_step.append(item)
+            new_collision_links.append(new_collision_per_sim_step)
+        return new_collision_links
+
+        # return [[item for item in collision_per_sim_step
+        #          if item[2] not in self.collision_ignore_body_b_ids and
+        #          item[3] not in self.collision_ignore_link_a_ids]
+        #         for collision_per_sim_step in collision_links]
 
     def get_position_of_interest(self):
         if self.config['task'] == 'pointgoal':
@@ -370,7 +603,6 @@ class NavigateEnv(BaseEnv):
         # goal reached
         if l2_distance(self.target_pos, self.get_position_of_interest()) < self.dist_tol:
             reward += self.success_reward  # |success_reward| = 10.0 per step
-
         return reward, info
 
     def get_termination(self, collision_links=[], info={}):
@@ -407,56 +639,42 @@ class NavigateEnv(BaseEnv):
         #     info['success'] = False
 
         if done:
-            info['episode_length'] = self.current_step
-            info['path_length'] = self.path_length
-            info['collision_step'] = self.collision_step
-            info['energy_cost'] = self.energy_cost
-            info['stage'] = self.stage
-
-            # Episode = collections.namedtuple('Episode',
-            #                                  ['initial_pos',
-            #                                   'target_pos',
-            #                                   'geodesic_distance',
-            #                                   'shortest_path',
-            #                                   'trajectory',
-            #                                   'success',
-            #                                   'path_efficiency',
-            #                                   'kinematic_disturbance',
-            #                                   'dynamic_disturbance_a',
-            #                                   'dynamic_disturbance_b',
-            #                                   'collision_step',
-            #                                   ])
-
-            # shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
-            #                                                                 self.initial_pos[:2],
-            #                                                                 self.target_pos[:2],
-            #                                                                 entire_path=True)
-            # floor_height = self.scene.get_floor_height(self.floor_num)
-            # shortest_path = np.array([np.array([path[0], path[1], floor_height]) for path in shortest_path])
-            # min_kin_dist = self.path_length * self.robots[0].robot_mass
-            # kinematic_disturbance = min_kin_dist / (min_kin_dist + self.kinematic_disturbance)
-            # min_dyn_dist = self.current_step * self.robots[0].robot_mass * 9.8
-            # dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
-            # dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
-            # object_files = [obj.filename for obj in self.interactive_objects]
-            # episode = Episode(
-            #     env=self.scene.model_id,
-            #     agent=self.robots[0].model_file,
-            #     initial_pos=self.initial_pos,
-            #     target_pos=self.target_pos,
-            #     geodesic_distance=geodesic_distance,
-            #     shortest_path=shortest_path,
-            #     agent_trajectory=np.array(self.agent_trajectory),
-            #     object_files=object_files,
-            #     object_trajectory=np.array(self.object_trajectory),
-            #     success=float(info['success']),
-            #     path_efficiency=min(1.0, geodesic_distance / self.path_length),
-            #     kinematic_disturbance=kinematic_disturbance,
-            #     dynamic_disturbance_a=dynamic_disturbance_a,
-            #     dynamic_disturbance_b=dynamic_disturbance_b,
-            #     collision_step=self.collision_step,
-            # )
-            # self.stored_episodes.append(episode)
+        #     info['episode_length'] = self.current_step
+        #     info['path_length'] = self.path_length
+        #     info['collision_step'] = self.collision_step
+        #     info['energy_cost'] = self.energy_cost
+        #     info['stage'] = self.stage
+        #
+        #     shortest_path, geodesic_distance = self.scene.get_shortest_path(self.floor_num,
+        #                                                                     self.initial_pos[:2],
+        #                                                                     self.target_pos[:2],
+        #                                                                     entire_path=True)
+        #     floor_height = self.scene.get_floor_height(self.floor_num)
+        #     shortest_path = np.array([np.array([path[0], path[1], floor_height]) for path in shortest_path])
+        #     min_kin_dist = self.path_length * self.robots[0].robot_mass
+        #     kinematic_disturbance = min_kin_dist / (min_kin_dist + self.kinematic_disturbance)
+        #     min_dyn_dist = self.current_step * self.robots[0].robot_mass * 9.8
+        #     dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
+        #     dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
+        #     object_files = [obj.filename for obj in self.interactive_objects]
+            episode = Episode(
+                # env=self.scene.model_id,
+                # agent=self.robots[0].model_file,
+                # initial_pos=self.initial_pos,
+                # target_pos=self.target_pos,
+                # geodesic_distance=geodesic_distance,
+                # shortest_path=shortest_path,
+                # agent_trajectory=np.array(self.agent_trajectory),
+                # object_files=object_files,
+                # object_trajectory=np.array(self.object_trajectory),
+                success=float(info['success']),
+                # path_efficiency=min(1.0, geodesic_distance / self.path_length),
+                # kinematic_disturbance=kinematic_disturbance,
+                # dynamic_disturbance_a=dynamic_disturbance_a,
+                # dynamic_disturbance_b=dynamic_disturbance_b,
+                # collision_step=self.collision_step,
+            )
+            self.stored_episodes.append(episode)
 
         return done, info
 
@@ -477,7 +695,8 @@ class NavigateEnv(BaseEnv):
         :return: state: state, reward, done, info
         """
         self.current_step += 1
-        self.robots[0].apply_action(action)
+        if action is not None:
+            self.robots[0].apply_action(action)
         cache = self.before_simulation()
         collision_links = self.run_simulation()
         self.after_simulation(cache, collision_links)
@@ -497,18 +716,39 @@ class NavigateEnv(BaseEnv):
         for _ in range(max_trials):
             self.robots[0].robot_specific_reset()
             self.reset_initial_and_target_pos()
-            if self.test_valid_position():
+            valid, collision_links_flatten = self.test_valid_position()
+            if valid:
                 return
-        raise Exception("Failed to reset robot without collision")
+            # for collision_link in collision_links_flatten:
+            #     print(collision_link)
+            # print('reset agent failed')
+            # embed()
+        # print('Failed to reset robot without collision' + '-' * 30)
+        # for collision_link in collision_links_flatten:
+        #     print(collision_link)
+        # random_string = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        # p.saveBullet(random_string + '.bullet')
+        # p.saveWorld(random_string + '.py')
+        # raise Exception("Failed to reset robot without collision")
+        print("WARNING: Failed to reset robot without collision")
 
     def reset_initial_and_target_pos(self):
         self.robots[0].set_position(pos=self.initial_pos)
         self.robots[0].set_orientation(orn=quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
 
     def test_valid_position(self):
+        # assume joint velocity control, set velocity to 0 when testing whether the initial configuration is valid
+        assert self.robots[0].control == 'velocity'
+        self.robots[0].apply_real_action(np.zeros(self.action_dim))
         collision_links = self.run_simulation()
         collision_links_flatten = [item for sublist in collision_links for item in sublist]
-        return len(collision_links_flatten) == 0
+        return len(collision_links_flatten) == 0, collision_links_flatten
+
+    def before_reset_agent(self):
+        return
+
+    def after_reset_agent(self):
+        return
 
     def reset(self):
         """
@@ -516,7 +756,16 @@ class NavigateEnv(BaseEnv):
         """
 
         self.current_episode += 1
+        self.before_reset_agent()
         self.reset_agent()
+        self.after_reset_agent()
+
+        # set position for visual objects
+        if self.visual_object_at_initial_target_pos:
+            self.initial_pos_vis_obj.set_position(self.initial_pos)
+            self.target_pos_vis_obj.set_position(self.target_pos)
+
+        self.simulator.sync()
         state = self.get_state()
 
         if self.reward_type == 'l2':
@@ -534,11 +783,6 @@ class NavigateEnv(BaseEnv):
         self.object_trajectory = []
         self.interactive_objects_collided = set()
         self.energy_cost = 0.0
-
-        # set position for visual objects
-        if self.visual_object_at_initial_target_pos:
-            self.initial_pos_vis_obj.set_position(self.initial_pos)
-            self.target_pos_vis_obj.set_position(self.target_pos)
 
         return state
 
@@ -567,8 +811,10 @@ class NavigateRandomEnv(NavigateEnv):
 
     def reset_initial_and_target_pos(self):
         floor, self.initial_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
+
         max_trials = 100
         dist = 0.0
+        # Need to change to 5 meter if we need to add obstacles
         for _ in range(max_trials):  # if initial and target positions are < 1 meter away from each other, reinitialize
             _, self.target_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
             dist = l2_distance(self.initial_pos, self.target_pos)
@@ -784,6 +1030,329 @@ class InteractiveGibsonNavigateEnv(NavigateRandomEnv):
             for obj, prev_pos in zip(self.interactive_objects, object_positions)
             if obj.body_id in self.interactive_objects_collided
         ])
+
+
+class InteractiveGibsonNavigateSim2RealEnv(NavigateRandomEnv):
+    def __init__(self,
+                 config_file,
+                 model_id=None,
+                 collision_reward_weight=0.0,
+                 mode='headless',
+                 action_timestep=1 / 10.0,
+                 physics_timestep=1 / 240.0,
+                 device_idx=0,
+                 automatic_reset=False,
+                 ):
+        super(InteractiveGibsonNavigateSim2RealEnv, self).__init__(config_file,
+                                                                   model_id=model_id,
+                                                                   mode=mode,
+                                                                   action_timestep=action_timestep,
+                                                                   physics_timestep=physics_timestep,
+                                                                   automatic_reset=automatic_reset,
+                                                                   random_height=False,
+                                                                   device_idx=device_idx)
+        self.collision_reward_weight = collision_reward_weight
+
+        self.replaced_objects = []
+        self.replaced_objects_pos = []
+        self.additional_objects = []
+        self.class_map = {}
+
+        self.should_load_replaced_objects = self.config.get('should_load_replaced_objects', False)
+        self.should_load_additional_objects = self.config.get('should_load_additional_objects', False)
+
+        self.build_class_map()
+        self.load_replaced_objects()
+        self.load_additional_objects()
+        self.interactive_objects = self.replaced_objects + self.additional_objects
+        self.new_potential = None
+
+        self.gt_pos = []
+        self.ns_pos = []
+        # self.linear_vel = []
+        # self.angular_vel = []
+
+        # self.eyes_vis = VisualMarker(rgba_color=[1, 0, 0, 1.0], radius=0.03)
+        # self.eyes_vis.load()
+        resolution = self.config.get('resolution', 64)
+        width = resolution
+        height = int(width * (480.0 / 640.0))
+        if 'rgbd' in self.output:
+            self.observation_space.spaces['rgbd'] = gym.spaces.Box(low=0.0,
+                                                                   high=1.0,
+                                                                   shape=(height, width, 4),
+                                                                   dtype=np.float32)
+        if 'seg_pred' in self.output:
+            self.observation_space.spaces['seg_pred'] = gym.spaces.Box(low=-np.inf,
+                                                                       high=np.inf,
+                                                                       shape=(height // 8, width // 8, 320),
+                                                                       dtype=np.float32)
+        if 'rgb' in self.output:
+            self.observation_space.spaces['rgb'] = gym.spaces.Box(low=0.0,
+                                                                  high=1.0,
+                                                                  shape=(height, width, 3),
+                                                                  dtype=np.float32)
+        if 'depth' in self.output:
+            self.observation_space.spaces['depth'] = gym.spaces.Box(low=0.0,
+                                                                    high=1.0,
+                                                                    shape=(height, width, 1),
+                                                                    dtype=np.float32)
+
+        # self.scan_vis = VisualMarker(rgba_color=[1, 0, 0, 1.0], radius=0.05)
+        # self.scan_vis.load()
+
+        self.visualize_waypoints = True
+        if self.visualize_waypoints and self.mode == 'gui':
+            cyl_length = 0.2
+            self.waypoints_vis = [VisualMarker(visual_shape=p.GEOM_CYLINDER,
+                                               rgba_color=[0, 1, 0, 0.3],
+                                               radius=0.1,
+                                               length=cyl_length,
+                                               initial_offset=[0, 0, cyl_length / 2.0]) for _ in range(1000)]
+            for waypoint in self.waypoints_vis:
+                waypoint.load()
+
+        # cv2.namedWindow('depth', cv2.WINDOW_NORMAL)
+        # cv2.resizeWindow('depth', 400, 400)
+        # cv2.namedWindow('scan', cv2.WINDOW_NORMAL)
+        # cv2.resizeWindow('scan', 400, 400)
+        # cv2.namedWindow('collision', cv2.WINDOW_NORMAL)
+        # cv2.resizeWindow('collision', 400, 400)
+
+    def build_class_map(self):
+        # 0 and 1 are reserved for mesh and robot
+        init_class_id = 2
+
+        if self.should_load_replaced_objects:
+            self.replaced_object_classes = [
+                '03001627',  # chair
+                '04256520',  # couch
+                '04379243',  # table / desk
+                '00000001',  # door
+            ]
+            for item in self.replaced_object_classes:
+                self.class_map[item] = init_class_id
+                init_class_id += 1
+
+        if self.should_load_additional_objects:
+            self.additional_objects_path = [
+                'object_2eZY2JqYPQE.urdf',
+                'object_lGzQi2Pk5uC.urdf',
+                'object_ZU6u5fvE8Z1.urdf',
+                'object_H3ygj6efM8V.urdf',
+                'object_RcqC01G24pR.urdf'
+            ]
+
+            for item in self.additional_objects_path:
+                self.class_map[item] = init_class_id
+                init_class_id += 1
+
+        self.num_object_classes = init_class_id
+
+    def load_replaced_objects(self):
+        if not self.should_load_replaced_objects:
+            return
+        scene_path = os.path.join(gibson2.assets_path, 'dataset', self.scene.model_id)
+        urdf_files = [item for item in os.listdir(scene_path) if item[-4:] == 'urdf']
+        position_files = [item[:-4].replace('alignment_centered', 'pos') + 'txt' for item in urdf_files]
+
+        for urdf_file, position_file in zip(urdf_files, position_files):
+            with open(os.path.join(scene_path, position_file)) as f:
+                pos = np.array([float(item) for item in f.readlines()[0].strip().split()])
+                # filter out duplicate annotations for the same object
+                if len(self.replaced_objects_pos) == 0 or \
+                        np.min(np.linalg.norm(np.array(self.replaced_objects_pos) - pos, axis=1)) > 0.5:
+                    class_id = urdf_file.split('.')[0].split('_')[-1]
+                    obj = InteractiveObj(os.path.join(scene_path, urdf_file))
+                    self.simulator.import_object(obj, class_id=self.class_map[class_id])
+                    self.replaced_objects.append(obj)
+                    self.replaced_objects_pos.append(pos)
+
+    def load_additional_objects(self):
+        if not self.should_load_additional_objects:
+            return
+        num_dupicates = 2
+        for _ in range(num_dupicates):
+            for urdf_model in self.additional_objects_path:
+                obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
+                self.simulator.import_object(obj, class_id=self.class_map[urdf_model])
+                self.additional_objects.append(obj)
+
+    def global_to_local(self, pos, cur_pos, cur_rot):
+        return rotate_vector_3d(pos - cur_pos, *cur_rot)
+
+    def get_additional_states(self):
+        pos_noise = 0.0
+        cur_pos = self.robots[0].get_position()
+        cur_pos[:2] += np.random.normal(0, pos_noise, 2)
+        # self.gt_pos.append(self.robots[0].get_position())
+        # self.ns_pos.append(cur_pos)
+
+        rot_noise = 0.0 / 180.0 * np.pi
+        cur_rot = self.robots[0].get_rpy()
+        cur_rot = (cur_rot[0], cur_rot[1], cur_rot[2] + np.random.normal(0, rot_noise))
+
+        target_pos_local = self.global_to_local(self.target_pos, cur_pos, cur_rot)[:2]
+        linear_velocity_local = rotate_vector_3d(self.robots[0].robot_body.velocity(), *cur_rot)[:2]
+        angular_velocity_local = rotate_vector_3d(self.robots[0].robot_body.angular_velocity(), *cur_rot)[2:3]
+        # print('linear', self.robots[0].robot_body.velocity())
+        # print('linear_local', linear_velocity_local)
+        # print('angular', self.robots[0].robot_body.angular_velocity())
+        # print('angular_local', angular_velocity_local)
+
+        # linear_vel = np.linalg.norm(self.robots[0].robot_body.velocity())
+        # angular_vel = np.linalg.norm(self.robots[0].robot_body.angular_velocity())
+        # self.linear_vel.append(linear_vel)
+        # self.angular_vel.append(angular_vel)
+
+        gt_pos = self.robots[0].get_position()[:2]
+        source = gt_pos
+        target = self.target_pos[:2]
+        _, geodesic_dist = self.scene.get_shortest_path(self.floor_num, source, target)
+        # geodesic_dist = 0.0
+        robot_z = self.robots[0].get_position()[2]
+        if self.visualize_waypoints and self.mode == 'gui':
+            for i in range(1000):
+                self.waypoints_vis[i].set_position(pos=np.array([0.0, 0.0, 0.0]))
+            for i in range(min(1000, self.shortest_path.shape[0])):
+                self.waypoints_vis[i].set_position(pos=np.array([self.shortest_path[i][0],
+                                                                 self.shortest_path[i][1],
+                                                                 robot_z]))
+        # self.eyes_vis.set_position(pos=self.robots[0].eyes.get_position())
+
+        closest_idx = np.argmin(np.linalg.norm(cur_pos[:2] - self.shortest_path, axis=1))
+        # approximate geodesic_dist to speed up training
+        # geodesic_dist = np.sum(
+        #     np.linalg.norm(self.shortest_path[closest_idx:-1] - self.shortest_path[closest_idx + 1:], axis=1)
+        # )
+        shortest_path = self.shortest_path[closest_idx:closest_idx + self.scene.num_waypoints]
+        num_remaining_waypoints = self.scene.num_waypoints - shortest_path.shape[0]
+        if num_remaining_waypoints > 0:
+            remaining_waypoints = np.tile(self.target_pos[:2], (num_remaining_waypoints, 1))
+            shortest_path = np.concatenate((shortest_path, remaining_waypoints), axis=0)
+
+        shortest_path = np.concatenate((shortest_path, robot_z * np.ones((shortest_path.shape[0], 1))), axis=1)
+
+        waypoints_local_xy = np.array([self.global_to_local(waypoint, cur_pos, cur_rot)[:2]
+                                       for waypoint in shortest_path]).flatten()
+        additional_states = np.concatenate((waypoints_local_xy,
+                                            target_pos_local,
+                                            linear_velocity_local,
+                                            angular_velocity_local))
+        # cache results for reward calculation
+        additional_states = target_pos_local
+        self.new_potential = geodesic_dist
+        assert len(additional_states) == self.additional_states_dim, 'additional states dimension mismatch'
+        return additional_states
+
+    def crop_rect_image(self, img):
+        width = img.shape[0]
+        height = int(width * (480.0 / 640.0))
+        half_diff = int((width - height) / 2)
+        img = img[half_diff:half_diff + height, :]
+        return img
+
+    def get_state(self, collision_links=[]):
+        state = super(InteractiveGibsonNavigateSim2RealEnv, self).get_state(collision_links)
+        for modality in ['rgb', 'rgbd', 'depth']:
+            if modality in state:
+                state[modality] = self.crop_rect_image(state[modality])
+        return state
+
+    def get_potential(self):
+        return self.new_potential
+
+    def reset_additional_objects(self):
+        for obj in self.additional_objects:
+            while True:
+                # _, pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
+                pos_without_z = self.shortest_path[np.random.randint(self.shortest_path.shape[0])]
+                pos = [
+                    pos_without_z[0] + np.random.uniform(-0.2, 0.2),
+                    pos_without_z[1] + np.random.uniform(-0.2, 0.2),
+                    self.scene.get_floor_height(self.floor_num)
+                ]
+                obj.set_position_rotation([pos[0], pos[1], pos[2] + self.random_init_z_offset],
+                                          quatToXYZW(euler2quat(0.0, 0.0, 0.0), 'wxyz'))
+                has_collision = False
+                for _ in range(self.simulator_loop):
+                    self.simulator_step()
+                    if len(p.getContactPoints(bodyA=obj.body_id)) > 0:
+                        has_collision = True
+                        break
+                if not has_collision:
+                    break
+
+    def reset_replaced_objects(self):
+        for obj, pos in zip(self.replaced_objects, self.replaced_objects_pos):
+            obj.set_position_rotation([pos[0], pos[1], pos[2] + self.random_init_z_offset],
+                                      quatToXYZW(euler2quat(0.0, 0.0, 0.0), 'wxyz'))
+
+    def reset(self):
+        self.floor_num = self.scene.get_random_floor()
+        self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.05)
+        self.reset_replaced_objects()
+        # self.reset_additional_objects()
+        self.new_potential = None
+        # if len(self.linear_vel) > 0:
+        #     print('linear', np.mean(self.linear_vel), np.max(self.linear_vel))
+        #     print('angular', np.mean(self.angular_vel), np.max(self.angular_vel))
+        # if len(self.gt_pos) > 0:
+        #     self.gt_pos = np.array(self.gt_pos)
+        #     self.ns_pos = np.array(self.ns_pos)
+        #     plt.figure()
+        #     plt.scatter(self.gt_pos[:, 0], self.gt_pos[:, 1], c='r')
+        #     plt.scatter(self.ns_pos[:, 0], self.ns_pos[:, 1], c='b')
+        #     plt.show()
+        #     self.gt_pos = []
+        #     self.ns_pos = []
+
+        state = NavigateEnv.reset(self)
+        return state
+
+    def after_reset_agent(self):
+        source = self.robots[0].get_position()[:2]
+        target = self.target_pos[:2]
+        shortest_path, _ = self.scene.get_shortest_path(self.floor_num, source, target, entire_path=True)
+        self.shortest_path = shortest_path
+        self.reset_additional_objects()
+        # robot_z = self.robots[0].get_position()[2]
+        # if self.visualize_waypoints and self.mode == 'gui':
+        #     for i in range(1000):
+        #         self.waypoints_vis[i].set_position(pos=np.array([0.0, 0.0, 0.0]))
+        #     for i in range(min(1000, self.shortest_path.shape[0])):
+        #         self.waypoints_vis[i].set_position(pos=np.array([self.shortest_path[i][0],
+        #                                                          self.shortest_path[i][1],
+        #                                                          robot_z]))
+
+    def before_simulation(self):
+        robot_position = self.robots[0].get_position()
+        object_positions = [obj.get_position() for obj in self.interactive_objects]
+        return robot_position, object_positions
+
+    def after_simulation(self, cache, collision_links):
+        robot_position, object_positions = cache
+
+        # collision_links_flatten = [item for sublist in collision_links for item in sublist]
+        # if len(collision_links_flatten) > 0:
+        #     self.dynamic_disturbance_a += np.mean([
+        #         np.linalg.norm(
+        #             np.sum([elem[9] * np.array(elem[7]) for elem in sublist], axis=0)  # sum of all forces
+        #         )
+        #         for sublist in collision_links])
+        #     collision_objects = set([col[2] for col in collision_links_flatten])
+        #     self.dynamic_disturbance_b += len(collision_objects)
+        #     self.interactive_objects_collided |= collision_objects
+        #
+        # self.agent_trajectory.append(np.concatenate((self.robots[0].get_position(), self.robots[0].get_orientation())))
+        # self.object_trajectory.append([np.concatenate((obj.get_position(), obj.get_orientation()))
+        #                                for obj in self.interactive_objects])
+        self.path_length += np.linalg.norm(self.robots[0].get_position() - robot_position)
+        # self.kinematic_disturbance += np.sum([
+        #     obj.mass * np.linalg.norm(np.array(obj.get_position()) - np.array(prev_pos))
+        #     for obj, prev_pos in zip(self.interactive_objects, object_positions)
+        #     if obj.body_id in self.interactive_objects_collided
+        # ])
 
 
 class InteractiveNavigateEnv(NavigateEnv):
@@ -1275,6 +1844,7 @@ class InteractiveNavigateEnv(NavigateEnv):
         self.collision_step += int(len(collision_links_flatten) > 0)
         reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
         info['collision_reward'] = collision_reward * self.collision_reward_weight  # expose collision reward to info
+
         # self.reward_stats.append(np.abs(collision_reward * self.collision_reward_weight))
 
         # goal reached
@@ -1282,9 +1852,9 @@ class InteractiveNavigateEnv(NavigateEnv):
             reward += self.success_reward  # |success_reward| = 10.0
 
         # death penalty
-        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
-        if self.robots[0].get_position()[2] > floor_height + self.death_z_thresh:
-            reward -= self.success_reward * 1.0
+        # floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
+        # if self.robots[0].get_position()[2] > floor_height + self.death_z_thresh:
+        #     reward -= self.success_reward * 1.0
 
         # push door the wrong way
         # door_angle = p.getJointState(self.door.body_id, self.door_axis_link_id)[0]
@@ -1297,51 +1867,40 @@ class InteractiveNavigateEnv(NavigateEnv):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--robot',
-                        '-r',
-                        choices=['turtlebot', 'jr'],
-                        required=True,
-                        help='which robot [turtlebot|jr]')
-    parser.add_argument(
-        '--config',
-        '-c',
-        help='which config file to use [default: use yaml files in examples/configs]')
-    parser.add_argument('--mode',
-                        '-m',
+    parser.add_argument('--config', '-c',
+                        help='which config file to use [default: use yaml files in examples/configs]', required=True)
+    parser.add_argument('--env_type',
+                        choices=['deterministic', 'random', 'interactive', 'ig', 'ig_s2r'],
+                        default='deterministic',
+                        help='which environment type (deterministic | random | interactive | ig', required=True)
+    parser.add_argument('--mode', '-m',
                         choices=['headless', 'gui'],
                         default='headless',
                         help='which mode for simulation (default: headless)')
-    parser.add_argument('--env_type',
-                        choices=['deterministic', 'random', 'interactive', 'ig'],
-                        default='deterministic',
-                        help='which environment type (deterministic | random | interactive | ig')
     args = parser.parse_args()
 
-    if args.robot == 'turtlebot':
-        config_filename = os.path.join(os.path.dirname(gibson2.__file__),
-                                       '../examples/configs/turtlebot_p2p_nav_discrete.yaml') \
-            if args.config is None else args.config
-    elif args.robot == 'jr':
-        config_filename = os.path.join(os.path.dirname(gibson2.__file__),
-                                       '../examples/configs/jr2_reaching.yaml') \
-            if args.config is None else args.config
     if args.env_type == 'deterministic':
-        nav_env = NavigateEnv(config_file=config_filename,
+        nav_env = NavigateEnv(config_file=args.config,
                               mode=args.mode,
                               action_timestep=1.0 / 10.0,
                               physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random':
-        nav_env = NavigateRandomEnv(config_file=config_filename,
+        nav_env = NavigateRandomEnv(config_file=args.config,
                                     mode=args.mode,
                                     action_timestep=1.0 / 10.0,
                                     physics_timestep=1.0 / 40.0)
     elif args.env_type == 'ig':
-        nav_env = InteractiveGibsonNavigateEnv(config_file=config_filename,
+        nav_env = InteractiveGibsonNavigateEnv(config_file=args.config,
                                                mode=args.mode,
                                                action_timestep=1.0 / 10.0,
-                                               physics_timestep=1 / 40.0)
-    else:
-        nav_env = InteractiveNavigateEnv(config_file=config_filename,
+                                               physics_timestep=1.0 / 40.0)
+    elif args.env_type == 'ig_s2r':
+        nav_env = InteractiveGibsonNavigateSim2RealEnv(config_file=args.config,
+                                                       mode=args.mode,
+                                                       action_timestep=1.0 / 10.0,
+                                                       physics_timestep=1.0 / 40.0)
+    elif args.env_type == 'interactive':
+        nav_env = InteractiveNavigateEnv(config_file=args.config,
                                          mode=args.mode,
                                          action_timestep=1.0 / 10.0,
                                          random_position=False,
@@ -1357,14 +1916,19 @@ if __name__ == '__main__':
     #     p.addUserDebugParameter('link5', -1.0, 1.0, 0.0),
     # ]
 
+    step_time_list = []
     for episode in range(100):
+        nav_env.reset()
         print('Episode: {}'.format(episode))
         start = time.time()
-        nav_env.reset()
         for step in range(50):  # 500 steps, 50s world time
             action = nav_env.action_space.sample()
-            # action[:] = 0.5
-            # action[:] = -1.0
+            # action[:] = 1.0
+            # action[0] = -0.4666666666666666
+            # action[1] = -0.2
+            # action[0] = 2.0 / 3.0
+            # action[1] = -1.0
+            # action[:] = 1.0
             # action[:] = -1.0 / 3
             # if nav_env.stage == 0:
             #     action[:2] = 0.5
@@ -1374,11 +1938,20 @@ if __name__ == '__main__':
             # action = np.zeros(nav_env.action_space.shape)
             # debug_param_values = [p.readUserDebugParameter(debug_param) for debug_param in debug_params]
             # action[2:] = np.array(debug_param_values)
-
             state, reward, done, _ = nav_env.step(action)
-            # print('reward', reward)
+            #print('reward', reward)
             if done:
                 print('Episode finished after {} timesteps'.format(step + 1))
                 break
-        print(time.time() - start)
+        episode_time = time.time() - start
+        step_time = episode_time / 100.0
+        fps = 1.0 / step_time
+        print('episode_time', episode_time)
+        print('step_time', step_time)
+        print('fps', fps)
+        if episode != 0:
+            step_time_list.append(step_time)
+
+    print('avg_step_time', np.mean(step_time_list))
+    print('avg_fps', 1.0 / np.mean(step_time_list))
     nav_env.clean()

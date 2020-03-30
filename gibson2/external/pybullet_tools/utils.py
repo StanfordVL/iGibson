@@ -21,6 +21,7 @@ directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(directory, '../motion'))
 from motion_planners.rrt_connect import birrt, direct_path
 #from ..motion.motion_planners.rrt_connect import birrt, direct_path
+import cv2
 
 # from future_builtins import map, filter
 # from builtins import input # TODO - use future
@@ -972,7 +973,7 @@ def base_values_from_pose(pose, tolerance=1e-3):
     (point, quat) = pose
     x, y, _ = point
     roll, pitch, yaw = euler_from_quat(quat)
-    assert (abs(roll) < tolerance) and (abs(pitch) < tolerance)
+    #assert (abs(roll) < tolerance) and (abs(pitch) < tolerance)
     return (x, y, yaw)
 
 pose2d_from_pose = base_values_from_pose
@@ -1078,6 +1079,11 @@ def pose_from_pose2d(pose2d):
 
 def set_base_values(body, values):
     _, _, z = get_point(body)
+    x, y, theta = values
+    set_point(body, (x, y, z))
+    set_quat(body, z_rotation(theta))
+
+def set_base_values_with_z(body, values, z):
     x, y, theta = values
     set_point(body, (x, y, z))
     set_quat(body, z_rotation(theta))
@@ -2450,7 +2456,8 @@ def get_collision_fn(body, joints, obstacles, attachments, self_collisions, disa
     # TODO: convert most of these to keyword arguments
     check_link_pairs = get_self_link_pairs(body, joints, disabled_collisions) \
         if self_collisions else []
-    moving_links = frozenset(get_moving_links(body, joints))
+    moving_links = frozenset([item for item in get_moving_links(body, joints) if item != 19])
+    # TODO: This is a fetch specific change
     attached_bodies = [attachment.child for attachment in attachments]
     moving_bodies = [(body, moving_links)] + attached_bodies
     #moving_bodies = [body] + [attachment.child for attachment in attachments]
@@ -2461,8 +2468,10 @@ def get_collision_fn(body, joints, obstacles, attachments, self_collisions, disa
     # TODO: test self collision with the holding
     def collision_fn(q):
         if not all_between(lower_limits, q, upper_limits):
-            #print('Joint limits violated')
-            return True
+            pass
+            # print(lower_limits, q, upper_limits)
+            # print('Joint limits violated')
+            #return True
         set_joint_positions(body, joints, q)
         for attachment in attachments:
             attachment.assign()
@@ -2473,6 +2482,7 @@ def get_collision_fn(body, joints, obstacles, attachments, self_collisions, disa
                 return True
         for body1, body2 in check_body_pairs:
             if pairwise_collision(body1, body2, **kwargs):
+                #print(body1, body2)
                 #print(get_body_name(body1), get_body_name(body2))
                 return True
         return False
@@ -2507,10 +2517,10 @@ def plan_direct_joint_motion(body, joints, end_conf, **kwargs):
 
 def check_initial_end(start_conf, end_conf, collision_fn):
     if collision_fn(start_conf):
-        print("Warning: initial configuration is in collision")
+        #print("Warning: initial configuration is in collision")
         return False
     if collision_fn(end_conf):
-        print("Warning: end configuration is in collision")
+        #print("Warning: end configuration is in collision")
         return False
     return True
 
@@ -2652,13 +2662,27 @@ def plan_base_motion(body, end_conf, base_limits, obstacles=[], direct=False,
     distance_fn = get_base_distance_fn(weights=weights)
 
     def extend_fn(q1, q2):
-        steps = np.abs(np.divide(difference_fn(q2, q1), resolutions))
-        n = int(np.max(steps)) + 1
-        q = q1
-        for i in range(n):
-            q = tuple((1. / (n - i)) * np.array(difference_fn(q2, q)) + q)
+        target_theta = np.arctan2(q2[1]-q1[1], q2[0]-q1[0])
+
+        n1 = int(np.abs(circular_difference(target_theta, q1[2]) / resolutions[2])) + 1
+        n3 = int(np.abs(circular_difference(q2[2], target_theta) / resolutions[2])) + 1
+        steps2 = np.abs(np.divide(difference_fn(q2, q1), resolutions))
+        n2 = int(np.max(steps2)) + 1
+
+        for i in range(n1):
+            q = (i / (n1)) * np.array(difference_fn((q1[0], q1[1], target_theta), q1)) + np.array(q1)
+            q = tuple(q)
             yield q
-            # TODO: should wrap these joints
+
+        for i in range(n2):
+            q = (i / (n2)) * np.array(difference_fn((q2[0], q2[1], target_theta), (q1[0], q1[1], target_theta))) +  np.array((q1[0], q1[1], target_theta))
+            q = tuple(q)
+            yield q
+
+        for i in range(n3):
+            q = (i / (n3)) * np.array(difference_fn(q2, (q2[0], q2[1], target_theta))) + np.array((q2[0], q2[1], target_theta))
+            q = tuple(q)
+            yield q
 
     def collision_fn(q):
         # TODO: update this function
@@ -2667,15 +2691,100 @@ def plan_base_motion(body, end_conf, base_limits, obstacles=[], direct=False,
 
     start_conf = get_base_values(body)
     if collision_fn(start_conf):
-        print("Warning: initial configuration is in collision")
+        #print("Warning: initial configuration is in collision")
         return None
     if collision_fn(end_conf):
-        print("Warning: end configuration is in collision")
+        #print("Warning: end configuration is in collision")
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
     return birrt(start_conf, end_conf, distance_fn,
                  sample_fn, extend_fn, collision_fn, **kwargs)
+
+
+def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, grid_resolution, robot_footprint_radius_in_map,
+                        obstacles=[], direct=False, weights=1 * np.ones(3), resolutions=0.05 * np.ones(3),
+                        max_distance=MAX_DISTANCE, min_goal_dist = 0.02, **kwargs):
+    def sample_fn():
+        x, y = np.random.uniform(*base_limits)
+        theta = np.random.uniform(*CIRCULAR_LIMITS)
+        return (x, y, theta)
+
+    difference_fn = get_base_difference_fn()
+    distance_fn = get_base_distance_fn(weights=weights)
+
+    def extend_fn(q1, q2):
+        target_theta = np.arctan2(q2[1] - q1[1], q2[0] - q1[0])
+
+        n1 = int(np.abs(circular_difference(target_theta, q1[2]) / resolutions[2])) + 1
+        n3 = int(np.abs(circular_difference(q2[2], target_theta) / resolutions[2])) + 1
+        steps2 = np.abs(np.divide(difference_fn(q2, q1), resolutions))
+        n2 = int(np.max(steps2)) + 1
+
+        for i in range(n1):
+            q = (i / (n1)) * np.array(difference_fn((q1[0], q1[1], target_theta), q1)) + np.array(q1)
+            q = tuple(q)
+            yield q
+
+        for i in range(n2):
+            q = (i / (n2)) * np.array(
+                difference_fn((q2[0], q2[1], target_theta), (q1[0], q1[1], target_theta))) + np.array(
+                (q1[0], q1[1], target_theta))
+            q = tuple(q)
+            yield q
+
+        for i in range(n3):
+            q = (i / (n3)) * np.array(difference_fn(q2, (q2[0], q2[1], target_theta))) + np.array(
+                (q2[0], q2[1], target_theta))
+            q = tuple(q)
+            yield q
+
+    start_conf = get_base_values(body)
+
+    if np.abs(start_conf[0] - end_conf[0]) < min_goal_dist and np.abs(start_conf[1] - end_conf[1]) < min_goal_dist: 
+        # do not do plans that is smaller than 30mm
+        return None
+
+    def collision_fn(q):
+        # TODO: update this function
+        # set_base_values(body, q)
+        # return any(pairwise_collision(body, obs, max_distance=max_distance) for obs in obstacles)
+        delta = np.array(q)[:2] - np.array(start_conf)[:2]
+        theta = start_conf[2]
+        x_dir = np.array([np.sin(theta), -np.cos(theta)])
+        y_dir = np.array([np.cos(theta), np.sin(theta)])
+        end_in_start_frame = [x_dir.dot(delta), y_dir.dot(delta)]
+        pts = np.array(end_in_start_frame) / (occupancy_range / 2) * (grid_resolution / 2) + grid_resolution / 2
+        pts = pts.astype(np.int32)
+        #print(pts)
+
+        if pts[0] < robot_footprint_radius_in_map or pts[1] < robot_footprint_radius_in_map \
+                or pts[0] > grid_resolution - robot_footprint_radius_in_map - 1 or pts[
+            1] > grid_resolution - robot_footprint_radius_in_map - 1:
+            return True
+
+        # plt.figure()
+        # plt.imshow(map_2d[pts[0]-1:pts[0]+1, pts[1]-1:pts[1]+1])
+        # plt.colorbar()
+        mask = np.zeros((robot_footprint_radius_in_map * 2 + 1, robot_footprint_radius_in_map * 2 + 1))
+        cv2.circle(mask, (robot_footprint_radius_in_map, robot_footprint_radius_in_map), robot_footprint_radius_in_map,
+                   1, -1)
+        mask = mask.astype(np.bool)
+        return np.any(map_2d[pts[0] - robot_footprint_radius_in_map:pts[0] + robot_footprint_radius_in_map + 1,
+                      pts[1] - robot_footprint_radius_in_map:pts[1] + robot_footprint_radius_in_map + 1][mask] == 0)
+
+    if collision_fn(start_conf):
+        # print("Warning: initial configuration is in collision")
+        return None
+    if collision_fn(end_conf):
+        # print("Warning: end configuration is in collision")
+        return None
+    if direct:
+        return direct_path(start_conf, end_conf, extend_fn, collision_fn)
+    return birrt(start_conf, end_conf, distance_fn,
+                 sample_fn, extend_fn, collision_fn, **kwargs)
+
+
 
 #####################################
 
@@ -2772,6 +2881,34 @@ def get_constraints():
     """
     return [p.getConstraintUniqueId(i, physicsClientId=CLIENT)
             for i in range(p.getNumConstraints(physicsClientId=CLIENT))]
+
+def add_p2p_constraint(body, body_link, robot, robot_link, max_force=None):
+    if body_link == -1:
+        body_pose = get_pose(body)
+    else:
+        body_pose = get_com_pose(body, link=body_link)
+    #end_effector_pose = get_link_pose(robot, robot_link)
+    end_effector_pose = get_com_pose(robot, robot_link)
+    grasp_pose = multiply(invert(end_effector_pose), body_pose)
+    point, quat = grasp_pose
+    # TODO: can I do this when I'm not adjacent?
+    # joint axis in local frame (ignored for JOINT_FIXED)
+    #return p.createConstraint(robot, robot_link, body, body_link,
+    #                          p.JOINT_FIXED, jointAxis=unit_point(),
+    #                          parentFramePosition=unit_point(),
+    #                          childFramePosition=point,
+    #                          parentFrameOrientation=unit_quat(),
+    #                          childFrameOrientation=quat)
+    constraint = p.createConstraint(robot, robot_link, body, body_link,  # Both seem to work
+                                    p.JOINT_POINT2POINT, jointAxis=unit_point(),
+                                    parentFramePosition=point,
+                                    childFramePosition=unit_point(),
+                                    parentFrameOrientation=quat,
+                                    childFrameOrientation=unit_quat(),
+                                    physicsClientId=CLIENT)
+    if max_force is not None:
+        p.changeConstraint(constraint, maxForce=max_force, physicsClientId=CLIENT)
+    return constraint
 
 def remove_constraint(constraint):
     p.removeConstraint(constraint, physicsClientId=CLIENT)
@@ -2912,13 +3049,13 @@ def control_joints(body, joints, positions):
     # TODO: the whole PR2 seems to jitter
     #kp = 1.0
     #kv = 0.3
-    #forces = [get_max_force(body, joint) for joint in joints]
+    forces = [get_max_force(body, joint) * 100 for joint in joints]
     #forces = [5000]*len(joints)
     #forces = [20000]*len(joints)
     return p.setJointMotorControlArray(body, joints, p.POSITION_CONTROL,
                                        targetPositions=positions,
                                        targetVelocities=[0.0] * len(joints),
-                                       physicsClientId=CLIENT) #,
+                                       physicsClientId=CLIENT, forces=forces) #,
                                         #positionGains=[kp] * len(joints),
                                         #velocityGains=[kv] * len(joints),)
                                         #forces=forces)
