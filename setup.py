@@ -101,33 +101,32 @@ class PostInstallCommand(install):
 
 setup(
     name='gibson2',
-    version=find_version('gibson2', '__init__.py'),
+    version='0.0.2',
     author='Stanford University',
     zip_safe=False,
+    packages=find_packages(),
     install_requires=[
-            'numpy>=1.10.4',
-            'pyglet>=1.2.0',
             'gym==0.12',
-            'Pillow>=3.3.0',
             'PyYAML>=3.12',
             'numpy>=1.13',
             'pybullet==2.4.1',
             'transforms3d>=0.3.1',
             'tqdm == 4.19.9',
-            'Pillow>=4.2.1',
+            'Pillow==6.1',
             'matplotlib>=2.1.0',
             'cloudpickle>=0.4.1',
-            'pygame>=1.9.3',
             'opencv-python',
-            'torchvision==0.2.2',
             'aenum',
-            'pyopengl==3.1.0',
-            'pyopengl-accelerate==3.1.0',
-            'pyassimp==4.1.3',
-            'gputil'
+            'gputil',
+            'ipython',
+            'networkx==2.0'
     ],
-    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/core/render'), 
-    CMakeExtension('CGLUtils', sourcedir='gibson2/core/render')],
+    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/core/render')],
     cmdclass=dict(build_ext=CMakeBuild),
     tests_require=[],
+    package_data={'': [
+    'gibson2/global_config.yaml',
+    'gibson2/core/render/mesh_renderer/shaders/*'
+    ]},
+    include_package_data=True,
 )  #yapf: disable
