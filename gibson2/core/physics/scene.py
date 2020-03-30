@@ -11,6 +11,7 @@ from PIL import Image
 import cv2
 import networkx as nx
 from IPython import embed
+import pickle
 
 class Scene:
     def load(self):
@@ -23,6 +24,7 @@ class EmptyScene(Scene):
     def load(self):
         planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
         self.ground_plane_mjcf = p.loadMJCF(planeName)
+        p.changeDynamics(self.ground_plane_mjcf[0], -1, lateralFriction=1)
         return [item for item in self.ground_plane_mjcf]
 
 class StadiumScene(Scene):
@@ -46,6 +48,9 @@ class StadiumScene(Scene):
     def get_random_point(self, random_height=False):
         return self.get_random_point_floor(0, random_height)
 
+    def get_random_floor(self):
+        return 0
+
     def get_random_point_floor(self, floor, random_height=False):
         del floor
         return 0, np.array([
@@ -54,6 +59,13 @@ class StadiumScene(Scene):
             np.random.uniform(0.4, 0.8) if random_height else 0.0
         ])
 
+    def reset_floor(self, floor=0, additional_elevation=0.05, height=None):
+        return
+
+    def get_floor_height(self, floor):
+        return 0.0
+      
+      
 
 class InteractiveBuildingScene(Scene):
     """
@@ -67,6 +79,27 @@ class InteractiveBuildingScene(Scene):
         filename = self.path
         body_id = p.loadURDF(filename, flags=p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS)
         return [body_id]
+
+
+
+class StadiumSceneInteractive(Scene):
+    zero_at_running_strip_start_line = True    # if False, center of coordinates (0,0,0) will be at the middle of the stadium
+    stadium_halflen = 105 * 0.25    # FOOBALL_FIELD_HALFLEN
+    stadium_halfwidth = 50 * 0.25    # FOOBALL_FIELD_HALFWID
+
+    def load(self):
+        filename = os.path.join(pybullet_data.getDataPath(), "stadium_no_collision.sdf")
+        self.stadium = p.loadSDF(filename)
+        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+        self.ground_plane_mjcf = p.loadMJCF(planeName)
+        for i in self.ground_plane_mjcf:
+            pos, orn = p.getBasePositionAndOrientation(i)
+            p.resetBasePositionAndOrientation(i, [pos[0], pos[1], pos[2] - 0.005], orn)
+
+        for i in self.ground_plane_mjcf:
+            p.changeVisualShape(i, -1, rgbaColor=[1, 1, 1, 0.5])
+
+        return [item for item in self.stadium] + [item for item in self.ground_plane_mjcf]
 
 
 class BuildingScene(Scene):
@@ -104,6 +137,7 @@ class BuildingScene(Scene):
         self.should_load_replaced_objects = should_load_replaced_objects
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
+        self.mesh_body_id = None
 
     def l2_distance(self, a, b):
         return np.linalg.norm(np.array(a) - np.array(b))
@@ -121,13 +155,24 @@ class BuildingScene(Scene):
             else:
                 filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
         scaling = [1, 1, 1]
+
         collisionId = p.createCollisionShape(p.GEOM_MESH,
                                              fileName=filename,
                                              meshScale=scaling,
                                              flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
         visualId = -1
+        #p.createVisualShape(p.GEOM_MESH,
+        #                        fileName=filename,
+        #                        meshScale=scaling)
+
+        # texture_filename = os.path.join(get_model_path(self.model_id), "{}_mesh_texture.small.jpg".format(self.model_id))
+        # texture_id = p.loadTexture(texture_filename)
+        # print('pybullet texture id:', texture_id, texture_filename)
+
         boundaryUid = p.createMultiBody(baseCollisionShapeIndex=collisionId,
                                         baseVisualShapeIndex=visualId)
+
+        self.mesh_body_id = boundaryUid
         p.changeDynamics(boundaryUid, -1, lateralFriction=1)
 
         planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
@@ -137,14 +182,18 @@ class BuildingScene(Scene):
         p.resetBasePositionAndOrientation(self.ground_plane_mjcf[0],
                                           posObj=[0, 0, 0],
                                           ornObj=[0, 0, 0, 1])
-        p.changeVisualShape(boundaryUid,
-                            -1,
-                            rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
-                            specularColor=[0.5, 0.5, 0.5])
+        # p.changeVisualShape(boundaryUid,
+        #                     -1,
+        #                     rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
+        #                     specularColor=[0.5, 0.5, 0.5])
+        # if texture_id >= 0:
+        #     p.changeVisualShape(boundaryUid,
+        #                     -1,
+        #                     textureUniqueId=texture_id)
 
         p.changeVisualShape(self.ground_plane_mjcf[0],
                             -1,
-                            rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
+                            rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 0.35],
                             specularColor=[0.5, 0.5, 0.5])
 
         floor_height_path = os.path.join(get_model_path(self.model_id), 'floors.txt')
@@ -156,39 +205,54 @@ class BuildingScene(Scene):
                 self.floors = sorted(list(map(float, f.readlines())))
                 print('floors', self.floors)
             for f in range(len(self.floors)):
-                trav_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(f)))
-                obstacle_map = Image.open(os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f)))
+                trav_map = np.array(Image.open(
+                    os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(f))
+                ))
+                obstacle_map = np.array(Image.open(
+                    os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f))
+                ))
                 if self.trav_map_original_size is None:
-                    width, height = trav_map.size
-                    assert width == height, 'trav map is not a square'
+                    height, width = trav_map.shape
+                    assert height == width, 'trav map is not a square'
                     self.trav_map_original_size = height
-                    self.trav_map_size = int(self.trav_map_original_size * self.trav_map_default_resolution / self.trav_map_resolution)
-                trav_map = np.array(trav_map.resize((self.trav_map_size, self.trav_map_size)))
-                obstacle_map = np.array(obstacle_map.resize((self.trav_map_size, self.trav_map_size)))
+                    self.trav_map_size = int(self.trav_map_original_size *
+                                             self.trav_map_default_resolution /
+                                             self.trav_map_resolution)
                 trav_map[obstacle_map == 0] = 0
+                trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
                 trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
+                trav_map[trav_map < 255] = 0
 
                 if self.build_graph:
-                    g = nx.Graph()
-                    for i in range(self.trav_map_size):
-                        for j in range(self.trav_map_size):
-                            if trav_map[i, j] > 0:
-                                g.add_node((i, j))
-                                # 8-connected graph
-                                neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
-                                for n in neighbors:
-                                    if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and \
-                                            trav_map[n[0], n[1]] > 0:
-                                        g.add_edge(n, (i, j), weight=self.l2_distance(n, (i, j)))
+                    graph_file = os.path.join(get_model_path(self.model_id), 'floor_trav_{}.p'.format(f))
+                    if os.path.isfile(graph_file):
+                        print("load traversable graph")
+                        with open(graph_file, 'rb') as pfile:
+                            g = pickle.load(pfile)
+                    else:
+                        print("build traversable graph")
+                        g = nx.Graph()
+                        for i in range(self.trav_map_size):
+                            for j in range(self.trav_map_size):
+                                if trav_map[i, j] > 0:
+                                    g.add_node((i, j))
+                                    # 8-connected graph
+                                    neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
+                                    for n in neighbors:
+                                        if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and \
+                                                trav_map[n[0], n[1]] > 0:
+                                            g.add_edge(n, (i, j), weight=self.l2_distance(n, (i, j)))
 
-                    # only take the largest connected component
-                    largest_cc = max(nx.connected_components(g), key=len)
-                    g = g.subgraph(largest_cc).copy()
+                        # only take the largest connected component
+                        largest_cc = max(nx.connected_components(g), key=len)
+                        g = g.subgraph(largest_cc).copy()
+                        with open(graph_file, 'wb') as pfile:
+                            pickle.dump(g, pfile, protocol=pickle.HIGHEST_PROTOCOL)
+
                     self.floor_graph.append(g)
-
                     # update trav_map accordingly
                     trav_map[:, :] = 0
-                    for node in largest_cc:
+                    for node in g.nodes:
                         trav_map[node[0], node[1]] = 255
 
                 self.floor_map.append(trav_map)
@@ -220,6 +284,11 @@ class BuildingScene(Scene):
     def world_to_map(self, xy):
         return np.flip((xy / self.trav_map_resolution + self.trav_map_size / 2.0)).astype(np.int)
 
+    def has_node(self, floor, world_xy):
+        map_xy = tuple(self.world_to_map(world_xy))
+        g = self.floor_graph[floor]
+        return g.has_node(map_xy)
+
     def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
         # print("called shortest path", source_world, target_world)
         assert self.build_graph, 'cannot get shortest path without building the graph'
@@ -242,13 +311,15 @@ class BuildingScene(Scene):
 
         path_world = self.map_to_world(path_map)
         geodesic_distance = np.sum(np.linalg.norm(path_world[1:] - path_world[:-1], axis=1))
+        path_world = path_world[::self.waypoint_interval]
 
         if not entire_path:
-            path_world = path_world[::self.waypoint_interval][:self.num_waypoints]
+            path_world = path_world[:self.num_waypoints]
             num_remaining_waypoints = self.num_waypoints - path_world.shape[0]
             if num_remaining_waypoints > 0:
                 remaining_waypoints = np.tile(target_world, (num_remaining_waypoints, 1))
                 path_world = np.concatenate((path_world, remaining_waypoints), axis=0)
+
         return path_world, geodesic_distance
 
     def reset_floor(self, floor=0, additional_elevation=0.05, height=None):

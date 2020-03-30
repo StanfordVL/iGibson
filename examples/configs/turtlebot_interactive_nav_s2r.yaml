@@ -1,45 +1,59 @@
 # scene
 scene: building
-model_id: Avonia
+#model_id: Kerrtown
+model_id: area1
+#model_id: Albertville
+build_graph: true
+load_texture: true
+should_load_replaced_objects: false
+should_load_additional_objects: true
+trav_map_erosion: 2
 
 # robot
 robot: Turtlebot
-velocity: 0.1
+
+action_high: 0.1
+action_low: -0.05
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 fisheye: false
 
-initial_pos: [-1.0, -1.0, 0.0]
+initial_pos: [0, 0, 0.0]
 initial_orn: [0.0, 0.0, 0.0]
 
-target_pos: [1.0, 1.0, 0.0]
+target_pos: [0, 2, 0.0]
 target_orn: [0.0, 0.0, 0.0]
 
 is_discrete: false
-additional_states_dim: 3
+additional_states_dim: 25
 
 # reward
+reward_type: dense
 success_reward: 10.0
-slack_reward: -0.01
-potential_reward_weight: 30.0
-#electricity_reward_weight: -0.02
-#stall_torque_reward_weight: -0.0001
+slack_reward: 0.0
+potential_reward_weight: 1.0
 electricity_reward_weight: 0.0
 stall_torque_reward_weight: 0.0
-collision_reward_weight: 0.0
+collision_reward_weight: -0.0
+collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collision with these agent's link ids
 
 # discount factor
 discount_factor: 0.99
 
 # termination condition
-dist_tol: 0.2
+death_z_thresh: 0.2
+dist_tol: 0.333  # body width
 max_step: 500
 
 # sensor
-output: [sensor, rgb, depth, pc]
-resolution: 128
-fov: 120
+output: [sensor, rgbd, scan, seg_pred]
+resolution: 96
+#output: [sensor, rgbd, seg_pred]
+#resolution: 320
+fov: 58
+n_horizontal_rays: 228
+n_vertical_beams: 1
 
 # display
 use_filler: true
@@ -65,7 +79,7 @@ fast_lq_render: true
 
 # visual objects
 visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: true
+target_visual_object_visible_to_agent: false
 
 # debug
 debug: false
