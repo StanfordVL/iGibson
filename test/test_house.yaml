@@ -1,6 +1,7 @@
 # scene
 scene: building
 model_id: Ohoopee
+build_graph: true
 
 # robot
 robot: Turtlebot

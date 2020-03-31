@@ -256,7 +256,7 @@ class Humanoid(LocomotorRobot):
                 humanoidId = i
         ## Spherical radiance/glass shield to protect the robot's camera
 
-        LocomotorRobot.robot_specific_reset(self)
+        super(Humanoid, self).robot_specific_reset()
 
         if self.glass_id is None:
             glass_path = os.path.join(self.physics_model_dir, "glass.xml")
@@ -344,9 +344,6 @@ class Husky(LocomotorRobot):
             return -0.1
         else:
             return 0
-
-    def robot_specific_reset(self):
-        LocomotorRobot.robot_specific_reset(self)
 
     def alive_bonus(self, z, pitch):
         top_xyz = self.parts["top_bumper_link"].get_position()
@@ -465,7 +462,7 @@ class Turtlebot(LocomotorRobot):
         }
 
     def calc_state(self):
-        base_state = LocomotorRobot.calc_state(self)
+        base_state = super(Turtlebot, self).calc_state()
         angular_velocity = self.robot_body.angular_velocity()
         return np.concatenate((base_state, np.array(angular_velocity)))
 
@@ -513,7 +510,7 @@ class Freight(LocomotorRobot):
         }
 
     def calc_state(self):
-        base_state = LocomotorRobot.calc_state(self)
+        base_state = super(Freight, self).calc_state()
         angular_velocity = self.robot_body.angular_velocity()
         return np.concatenate((base_state, np.array(angular_velocity)))
 
@@ -564,8 +561,7 @@ class Fetch(LocomotorRobot):
 
     def robot_specific_reset(self):
         super(Fetch, self).robot_specific_reset()
-        for j in self.ordered_joints:
-            j.reset_joint_state(0.0, 0.0)
+
         # roll the arm to its body
         robot_id = self.robot_ids[0]
         arm_joints = joints_from_names(robot_id,
@@ -579,23 +575,18 @@ class Fetch(LocomotorRobot):
                                            'wrist_flex_joint',
                                            'wrist_roll_joint'
                                        ])
-        # rest_position = (
-        #     0.02, np.pi / 2.0,
-        #     np.pi / 2.0, 0.0,
-        #     np.pi / 2.0 + 0.1, 0.0,
-        #     np.pi / 2.0, 0.0
-        # )
-        # rest_position = (0.38548146667743244, 1.1522793897208579, 1.2576467971105596, -0.312703569911879,
-        #                  1.7404867100093226, -0.0962895617312548, -1.4418232619629425, -1.6780152866247762)
-        rest_position = (0.30322468280792236, -1.414019864768982,
-                         1.5178184935241699, 0.8189625336474915,
-                         2.200358942909668, 2.9631312579803466,
-                         -1.2862852996643066, 0.0008453550418615341)
+
+        rest_position = (0.02, np.pi / 2.0 - 0.4, np.pi / 2.0 - 0.1, -0.4, np.pi / 2.0 + 0.1, 0.0, np.pi / 2.0, 0.0)
+        # might be a better pose to initiate manipulation
+        # rest_position = (0.30322468280792236, -1.414019864768982,
+        #                  1.5178184935241699, 0.8189625336474915,
+        #                  2.200358942909668, 2.9631312579803466,
+        #                  -1.2862852996643066, 0.0008453550418615341)
 
         set_joint_positions(robot_id, arm_joints, rest_position)
 
     def calc_state(self):
-        base_state = LocomotorRobot.calc_state(self)
+        base_state = super(Fetch, self).calc_state()
         angular_velocity = self.robot_body.angular_velocity()
         return np.concatenate((base_state, np.array(angular_velocity)))
 
@@ -603,19 +594,13 @@ class Fetch(LocomotorRobot):
         return self.parts['gripper_link'].get_position()
 
     def load(self):
-        ids = self._load_model()
-        self.eyes = self.parts["eyes"]
-
-        robot_id = ids[0]
-
-        # disable collision for immediate parent
-        for joint in range(p.getNumJoints(robot_id)):
-            info = p.getJointInfo(robot_id, joint)
-            parent_id = info[-1]
-            p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)
+        ids = super(Fetch, self).load()
+        robot_id = self.robot_ids[0]
 
         # disable collision for torso_lift_joint and shoulder_lift_joint
+        #                   for torso_lift_joint and torso_fixed_joint
         p.setCollisionFilterPair(robot_id, robot_id, 3, 13, 0)
+        p.setCollisionFilterPair(robot_id, robot_id, 3, 22, 0)
 
         return ids
 
@@ -721,24 +706,6 @@ class JR2_Kinova(LocomotorRobot):
         self.ordered_joints[5].reset_joint_state(np.pi / 2.0, 0.0)
         self.ordered_joints[6].reset_joint_state(0.0, 0.0)
 
-    def load(self):
-        ids = self._load_model()
-        self.eyes = self.parts["eyes"]
-
-        robot_id = ids[0]
-
-        # disable collision for immediate parent
-        for joint in range(p.getNumJoints(robot_id)):
-            info = p.getJointInfo(robot_id, joint)
-            parent_id = info[-1]
-            p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)
-
-        # disable collision in the head / camera region
-        for joint in range(p.getNumJoints(robot_id)):
-            for j in range(16, 28):
-                p.setCollisionFilterPair(robot_id, robot_id, joint, j, 0)
-        return ids
-
 
 class Locobot(LocomotorRobot):
     mjcf_scaling = 1
@@ -790,25 +757,11 @@ class Locobot(LocomotorRobot):
         self.apply_real_action(wheel_velocity)
 
     def calc_state(self):
-        base_state = LocomotorRobot.calc_state(self)
+        base_state = super(Locobot, self).calc_state()
         angular_velocity = self.robot_body.angular_velocity()
         print(len(base_state), len(angular_velocity))
         return np.concatenate((base_state, np.array(angular_velocity)))
 
     def get_end_effector_position(self):
         return self.parts['gripper_link'].get_position()
-
-    def load(self):
-        ids = self._load_model()
-        self.eyes = self.parts["eyes"]
-
-        robot_id = ids[0]
-
-        # disable collision for immediate parent
-        for joint in range(p.getNumJoints(robot_id)):
-            info = p.getJointInfo(robot_id, joint)
-            parent_id = info[-1]
-            p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)
-
-        return ids
 
