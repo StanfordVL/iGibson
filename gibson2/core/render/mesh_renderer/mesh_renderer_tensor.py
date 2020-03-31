@@ -1,7 +1,7 @@
 import cv2
 import sys
 import numpy as np
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, GL
+from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 import torch
 from gibson2.core.render.mesh_renderer.get_available_devices import get_cuda_device
 
@@ -11,8 +11,8 @@ class MeshRendererG2G(MeshRenderer):
     pytorch installation is required.
     """
 
-    def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False):
-        super(MeshRendererG2G, self).__init__(width, height, fov, device_idx, use_fisheye)
+    def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False, msaa=False):
+        super(MeshRendererG2G, self).__init__(width, height, fov, device_idx, use_fisheye, msaa)
         self.cuda_idx = get_cuda_device(self.device_minor)
         print("Using cuda device {}".format(self.cuda_idx))
         with torch.cuda.device(self.cuda_idx):
@@ -20,6 +20,7 @@ class MeshRendererG2G(MeshRenderer):
             self.normal_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
             self.seg_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
             self.pc_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
+        self.r.glad_init()
 
     def readbuffer_to_tensor(self, modes=('rgb', 'normal', 'seg', '3d')):
         results = []
@@ -51,13 +52,17 @@ class MeshRendererG2G(MeshRenderer):
             hidden
 
         """
-        GL.glClearColor(0, 0, 0, 1)
-        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
-        GL.glEnable(GL.GL_DEPTH_TEST)
+        if self.msaa:
+            self.r.render_tensor_pre(1, self.fbo_ms, self.fbo)
+        else:
+            self.r.render_tensor_pre(0, 0, self.fbo)
 
         for instance in self.instances:
             if not instance in hidden:
                 instance.render()
-        GL.glDisable(GL.GL_DEPTH_TEST)
+
+        self.r.render_tensor_post()
+        if self.msaa:
+            self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
         return self.readbuffer_to_tensor(modes)
