@@ -36,6 +36,7 @@ class Simulator:
         self.gravity = gravity
         self.timestep = timestep
         self.mode = mode
+
         # renderer
         self.resolution = resolution
         self.fov = fov
@@ -63,8 +64,7 @@ class Simulator:
         """
         Destroy the MeshRenderer and physics simulator and start again.
         """
-        self.renderer.release()
-        p.disconnect(self.cid)
+        self.disconnect()
         self.load()
 
     def load(self):
@@ -91,6 +91,7 @@ class Simulator:
             self.cid = p.connect(p.DIRECT)
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
+        p.setPhysicsEngineParameter(enableFileCaching=0)
 
         if self.mode == 'gui' and not self.render_to_tensor:
             self.add_viewer()
@@ -110,14 +111,13 @@ class Simulator:
 
     @load_without_pybullet_vis
     def import_scene(self, scene, texture_scale=1.0, load_texture=True, class_id=0):
-
         """
         Import a scene. A scene could be a synthetic one or a realistic Gibson Environment.
 
         :param scene: Scene object
         :param texture_scale: Option to scale down the texture for rendering
         :param load_texture: If you don't need rgb output, texture loading could be skipped to make rendering faster
-        :param class_id: The class_id for background for rendering semantics.
+        :param class_id: Class id for rendering semantic segmentation
         """
 
         new_objects = scene.load()
@@ -165,7 +165,7 @@ class Simulator:
     def import_object(self, object, class_id=0):
         """
         :param object: Object to load
-        :param class_id: class_id to show for semantic segmentation mask
+        :param class_id: Class id for rendering semantic segmentation
         """
         new_object = object.load()
         self.objects.append(new_object)
@@ -228,7 +228,7 @@ class Simulator:
         Import a robot into Simulator
 
         :param robot: Robot
-        :param class_id: class_id to show for semantic segmentation mask
+        :param class_id: Class id for rendering semantic segmentation
         :return: id for robot in pybullet
         """
 
@@ -312,7 +312,7 @@ class Simulator:
         Import articulated objects into simulator
 
         :param obj:
-        :param class_id: class_id to show for semantic segmentation mask
+        :param class_id: Class id for rendering semantic segmentation
         :return: pybulet id
         """
         ids = obj.load()
@@ -447,5 +447,6 @@ class Simulator:
         clean up the simulator
         """
         if self.isconnected():
+            p.resetSimulation(physicsClientId=self.cid)
             p.disconnect(self.cid)
         self.renderer.release()

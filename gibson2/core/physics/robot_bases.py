@@ -1,5 +1,3 @@
-# Author: pybullet, Zhiyang He
-
 import pybullet as p
 import gym, gym.spaces, gym.utils
 import numpy as np
@@ -40,13 +38,12 @@ class BaseRobot:
         self.physics_model_dir = os.path.join(gibson2.assets_path, "models")
         self.scale = scale
         self.eyes = None
-        print(self.model_file)
+        print('Robot model file:', self.model_file)
         if self.model_file[-4:] == 'urdf':
             self.model_type = 'URDF'
         else:
             self.model_type = 'MJCF'
         self.config = None
-        self.np_random = None
         self.self_collision = self_collision
 
     def load(self):
@@ -55,6 +52,7 @@ class BaseRobot:
         :return: body id in pybullet
         """
         ids = self._load_model()
+        assert "eyes" in self.parts, 'please add a linked named "eyes" in your robot URDF file with the same pose as the onboard camera'
         self.eyes = self.parts["eyes"]
         return ids
 
@@ -106,7 +104,7 @@ class BaseRobot:
                                     force=0)
             _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, part_name, _, _, _, _ = p.getJointInfo(
                 bodies[0], j)
-            print(p.getJointInfo(bodies[0], j))
+            print('Robot joint:', p.getJointInfo(bodies[0], j))
             joint_name = joint_name.decode("utf8")
             part_name = part_name.decode("utf8")
 
@@ -145,10 +143,9 @@ class BaseRobot:
         """
         Actual function to load urdf into pybullet
         """
+        flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL
         if self.self_collision:
-            flags = p.URDF_USE_SELF_COLLISION + p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT
-        else:
-            flags = 0
+            flags = flags | p.URDF_USE_SELF_COLLISION | p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT
 
         if self.model_type == "MJCF":
             self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file),
@@ -165,52 +162,6 @@ class BaseRobot:
 
     def calc_state(self):
         raise NotImplementedError
-
-    def reset(self):
-        if self.robot_ids is None:
-            self._load_model()
-
-        self.robot_body.reset_orientation(
-            quatToXYZW(euler2quat(*self.config["initial_orn"]), 'wxyz'))
-        self.robot_body.reset_position(self.config["initial_pos"])
-        self.reset_random_pos()
-        self.robot_specific_reset()
-
-        state = self.calc_state()
-        return state
-
-    def reset_random_pos(self):
-        '''Add randomness to resetted initial position
-        '''
-        if not self.config["random"]["random_initial_pose"]:
-            return
-
-        pos = self.robot_body.get_position()
-        orn = self.robot_body.get_orientation()
-
-        x_range = self.config["random"]["random_init_x_range"]
-        y_range = self.config["random"]["random_init_y_range"]
-        z_range = self.config["random"]["random_init_z_range"]
-        r_range = self.config["random"]["random_init_rot_range"]
-
-        new_pos = [
-            pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
-            pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
-            pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])
-        ]
-        new_orn = quaternions.qmult(
-            quaternions.axangle2quat([1, 0, 0],
-                                     self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
-
-        self.robot_body.reset_orientation(new_orn)
-        self.robot_body.reset_position(new_pos)
-
-    def reset_new_pose(self, pos, orn):
-        self.robot_body.reset_orientation(orn)
-        self.robot_body.reset_position(pos)
-
-    def calc_potential(self):
-        return 0
 
 
 class Pose_Helper:
@@ -293,19 +244,19 @@ class BodyPart:
     def set_pose(self, position, orientation):
         self._set_fields_of_pose_of(position, orientation)
 
-    def current_position(self):    # Synonym method
+    def current_position(self):  # Synonym method
         return self.get_position()
 
-    def current_orientation(self):    # Synonym method
+    def current_orientation(self):  # Synonym method
         return self.get_orientation()
 
-    def reset_position(self, position):    # Backward compatibility
+    def reset_position(self, position):  # Backward compatibility
         self.set_position(position)
 
-    def reset_orientation(self, orientation):    # Backward compatibility
+    def reset_orientation(self, orientation):  # Backward compatibility
         self.set_orientation(orientation)
 
-    def reset_pose(self, position, orientation):    # Backward compatibility
+    def reset_pose(self, position, orientation):  # Backward compatibility
         self.set_pose(position, orientation)
 
     def velocity(self):
@@ -389,13 +340,13 @@ class Joint:
         p.setJointMotorControl2(self.bodies[self.body_index],
                                 self.joint_index,
                                 p.VELOCITY_CONTROL,
-                                targetVelocity=velocity)    # , positionGain=0.1, velocityGain=0.1)
+                                targetVelocity=velocity)
 
     def set_torque(self, torque):
         p.setJointMotorControl2(bodyIndex=self.bodies[self.body_index],
                                 jointIndex=self.joint_index,
                                 controlMode=p.TORQUE_CONTROL,
-                                force=torque)    # , positionGain=0.1, velocityGain=0.1)
+                                force=torque)
 
     def reset_state(self, pos, vel):
         """
@@ -424,29 +375,30 @@ class Joint:
                                 velocityGain=0.1,
                                 force=0)
 
-    def get_joint_relative_state(self):    # Synonym method
+    def get_joint_relative_state(self):  # Synonym method
         return self.get_relative_state()
 
-    def set_motor_position(self, pos):    # Synonym method
+    def set_motor_position(self, pos):  # Synonym method
         return self.set_position(pos)
 
-    def set_motor_torque(self, torque):    # Synonym method
+    def set_motor_torque(self, torque):  # Synonym method
         return self.set_torque(torque)
 
-    def set_motor_velocity(self, vel):    # Synonym method
+    def set_motor_velocity(self, vel):  # Synonym method
         return self.set_velocity(vel)
 
-    def reset_joint_state(self, position, velocity):    # Synonym method
+    def reset_joint_state(self, position, velocity):  # Synonym method
         return self.reset_state(position, velocity)
 
-    def current_position(self):    # Backward compatibility
+    def current_position(self):  # Backward compatibility
         return self.get_state()
 
-    def current_relative_position(self):    # Backward compatibility
+    def current_relative_position(self):  # Backward compatibility
         return self.get_relative_state()
 
-    def reset_current_position(self, position, velocity):    # Backward compatibility
+    def reset_current_position(self, position, velocity):  # Backward compatibility
         self.reset_state(position, velocity)
 
-    def reset_position(self, position, velocity):    # Backward compatibility
+    def reset_position(self, position, velocity):  # Backward compatibility
         self.reset_state(position, velocity)
+

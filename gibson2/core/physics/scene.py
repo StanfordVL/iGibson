@@ -6,6 +6,8 @@ parentdir = os.path.dirname(currentdir)
 os.sys.path.insert(0, parentdir)
 import pybullet_data
 from gibson2.data.datasets import get_model_path
+from gibson2.utils.utils import l2_distance
+
 import numpy as np
 from PIL import Image
 import cv2
@@ -15,7 +17,7 @@ import pickle
 
 class Scene:
     def load(self):
-        raise (NotImplementedError())
+        raise NotImplementedError()
 
 class EmptyScene(Scene):
     """
@@ -45,11 +47,11 @@ class StadiumScene(Scene):
 
         return [item for item in self.stadium] + [item for item in self.ground_plane_mjcf]
 
-    def get_random_point(self, random_height=False):
-        return self.get_random_point_floor(0, random_height)
-
     def get_random_floor(self):
         return 0
+
+    def get_random_point(self, random_height=False):
+        return self.get_random_point_floor(0, random_height)
 
     def get_random_point_floor(self, floor, random_height=False):
         del floor
@@ -59,31 +61,15 @@ class StadiumScene(Scene):
             np.random.uniform(0.4, 0.8) if random_height else 0.0
         ])
 
+    def get_floor_height(self, floor):
+        del floor
+        return 0.0
+
     def reset_floor(self, floor=0, additional_elevation=0.05, height=None):
         return
 
-    def get_floor_height(self, floor):
-        return 0.0
-
-
-class StadiumSceneInteractive(Scene):
-    zero_at_running_strip_start_line = True    # if False, center of coordinates (0,0,0) will be at the middle of the stadium
-    stadium_halflen = 105 * 0.25    # FOOBALL_FIELD_HALFLEN
-    stadium_halfwidth = 50 * 0.25    # FOOBALL_FIELD_HALFWID
-
-    def load(self):
-        filename = os.path.join(pybullet_data.getDataPath(), "stadium_no_collision.sdf")
-        self.stadium = p.loadSDF(filename)
-        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-        self.ground_plane_mjcf = p.loadMJCF(planeName)
-        for i in self.ground_plane_mjcf:
-            pos, orn = p.getBasePositionAndOrientation(i)
-            p.resetBasePositionAndOrientation(i, [pos[0], pos[1], pos[2] - 0.005], orn)
-
-        for i in self.ground_plane_mjcf:
-            p.changeVisualShape(i, -1, rgbaColor=[1, 1, 1, 0.5])
-
-        return [item for item in self.stadium] + [item for item in self.ground_plane_mjcf]
+    def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
+        assert False, 'cannot compute shortest path in StadiumScene'
 
 
 class BuildingScene(Scene):
@@ -98,6 +84,7 @@ class BuildingScene(Scene):
                  should_load_replaced_objects=False,
                  num_waypoints=10,
                  waypoint_resolution=0.2,
+                 pybullet_show_texture=False,
                  ):
         """
         Load a building scene and compute traversability
@@ -122,9 +109,7 @@ class BuildingScene(Scene):
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
         self.mesh_body_id = None
-
-    def l2_distance(self, a, b):
-        return np.linalg.norm(np.array(a) - np.array(b))
+        self.pybullet_show_texture = pybullet_show_texture
 
     def load(self):
         """
@@ -140,41 +125,34 @@ class BuildingScene(Scene):
                 filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
         scaling = [1, 1, 1]
 
-        collisionId = p.createCollisionShape(p.GEOM_MESH,
+        collision_id = p.createCollisionShape(p.GEOM_MESH,
                                              fileName=filename,
                                              meshScale=scaling,
                                              flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
-        visualId = -1
-        #p.createVisualShape(p.GEOM_MESH,
-        #                        fileName=filename,
-        #                        meshScale=scaling)
+        if self.pybullet_show_texture:
+            visual_id = p.createVisualShape(p.GEOM_MESH,
+                                           fileName=filename,
+                                           meshScale=scaling)
+            texture_filename = os.path.join(get_model_path(self.model_id), "{}_mesh_texture.small.jpg".format(self.model_id))
+            texture_id = p.loadTexture(texture_filename)
+        else:
+            visual_id = -1
+            texture_id = -1
 
-        # texture_filename = os.path.join(get_model_path(self.model_id), "{}_mesh_texture.small.jpg".format(self.model_id))
-        # texture_id = p.loadTexture(texture_filename)
-        # print('pybullet texture id:', texture_id, texture_filename)
-
-        boundaryUid = p.createMultiBody(baseCollisionShapeIndex=collisionId,
-                                        baseVisualShapeIndex=visualId)
-
-        self.mesh_body_id = boundaryUid
-        p.changeDynamics(boundaryUid, -1, lateralFriction=1)
+        boundary_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
+                                        baseVisualShapeIndex=visual_id)
+        self.mesh_body_id = boundary_id
+        p.changeDynamics(boundary_id, -1, lateralFriction=1)
+        if self.pybullet_show_texture:
+            p.changeVisualShape(boundary_id,
+                                -1,
+                                textureUniqueId=texture_id)
 
         planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-
         self.ground_plane_mjcf = p.loadMJCF(planeName)
-
         p.resetBasePositionAndOrientation(self.ground_plane_mjcf[0],
                                           posObj=[0, 0, 0],
                                           ornObj=[0, 0, 0, 1])
-        # p.changeVisualShape(boundaryUid,
-        #                     -1,
-        #                     rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
-        #                     specularColor=[0.5, 0.5, 0.5])
-        # if texture_id >= 0:
-        #     p.changeVisualShape(boundaryUid,
-        #                     -1,
-        #                     textureUniqueId=texture_id)
-
         p.changeVisualShape(self.ground_plane_mjcf[0],
                             -1,
                             rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 0.35],
@@ -225,7 +203,7 @@ class BuildingScene(Scene):
                                     for n in neighbors:
                                         if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and \
                                                 trav_map[n[0], n[1]] > 0:
-                                            g.add_edge(n, (i, j), weight=self.l2_distance(n, (i, j)))
+                                            g.add_edge(n, (i, j), weight=l2_distance(n, (i, j)))
 
                         # only take the largest connected component
                         largest_cc = max(nx.connected_components(g), key=len)
@@ -241,7 +219,7 @@ class BuildingScene(Scene):
 
                 self.floor_map.append(trav_map)
 
-        return [boundaryUid] + [item for item in self.ground_plane_mjcf]
+        return [boundary_id] + [item for item in self.ground_plane_mjcf]
 
     def get_random_floor(self):
         return np.random.randint(0, high=len(self.floors))
@@ -274,7 +252,6 @@ class BuildingScene(Scene):
         return g.has_node(map_xy)
 
     def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
-        # print("called shortest path", source_world, target_world)
         assert self.build_graph, 'cannot get shortest path without building the graph'
         source_map = tuple(self.world_to_map(source_world))
         target_map = tuple(self.world_to_map(target_world))
@@ -284,14 +261,14 @@ class BuildingScene(Scene):
         if not g.has_node(target_map):
             nodes = np.array(g.nodes)
             closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - target_map, axis=1))])
-            g.add_edge(closest_node, target_map, weight=self.l2_distance(closest_node, target_map))
+            g.add_edge(closest_node, target_map, weight=l2_distance(closest_node, target_map))
 
         if not g.has_node(source_map):
             nodes = np.array(g.nodes)
             closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - source_map, axis=1))])
-            g.add_edge(closest_node, source_map, weight=self.l2_distance(closest_node, source_map))
+            g.add_edge(closest_node, source_map, weight=l2_distance(closest_node, source_map))
 
-        path_map = np.array(nx.astar_path(g, source_map, target_map, heuristic=self.l2_distance))
+        path_map = np.array(nx.astar_path(g, source_map, target_map, heuristic=l2_distance))
 
         path_world = self.map_to_world(path_map)
         geodesic_distance = np.sum(np.linalg.norm(path_world[1:] - path_world[:-1], axis=1))
@@ -314,3 +291,4 @@ class BuildingScene(Scene):
 
     def get_floor_height(self, floor):
         return self.floors[floor]
+
