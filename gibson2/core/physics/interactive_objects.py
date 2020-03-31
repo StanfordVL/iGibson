@@ -22,7 +22,7 @@ class YCBObject(object):
 
         body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=visual_id,
-                                    basePosition=[0, 0, 0],
+                                    basePosition=[0.2, 0.2, 1.5],
                                     baseMass=0.1)
 
         self.body_id = body_id
@@ -196,7 +196,7 @@ class InteractiveObj(object):
         self.body_id = None
 
     def load(self):
-        self.body_id = p.loadURDF(self.filename, globalScaling=self.scale)
+        self.body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.mass = p.getDynamicsInfo(self.body_id, -1)[0]
         return self.body_id
 
@@ -214,6 +214,41 @@ class InteractiveObj(object):
 
     def set_position_orientation(self, pos, orn):
         p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+
+
+class SoftObject(object):
+    def __init__(self, filename, basePosition=[0,0,0], baseOrientation=[0,0,0,1], scale=-1, mass=-1, collisionMargin=-1, useMassSpring=0, useBendingSprings=0, useNeoHookean=0, springElasticStiffness=1, springDampingStiffness=0.1, springBendingStiffness=0.1, NeoHookeanMu=1, NeoHookeanLambda=1, NeoHookeanDamping=0.1, frictionCoeff=0, useFaceContact=0, useSelfCollision=0):
+        self.filename = filename
+        self.scale = scale
+        self.basePosition = basePosition
+        self.baseOrientation = baseOrientation
+        self.mass = mass
+        self.collisionMargin = collisionMargin
+        self.useMassSpring = useMassSpring
+        self.useBendingSprings = useBendingSprings
+        self.useNeoHookean = useNeoHookean
+        self.springElasticStiffness = springElasticStiffness
+        self.springDampingStiffness = springDampingStiffness
+        self.springBendingStiffness = springBendingStiffness
+        self.NeoHookeanMu = NeoHookeanMu
+        self.NeoHookeanLambda = NeoHookeanLambda
+        self.NeoHookeanDamping = NeoHookeanDamping
+        self.frictionCoeff = frictionCoeff
+        self.useFaceContact = useFaceContact
+        self.useSelfCollision = useSelfCollision
+        self.body_id = None
+
+    def load(self):
+        self.body_id = p.loadSoftBody(self.filename, scale = self.scale, basePosition = self.basePosition, baseOrientation = self.baseOrientation, mass=self.mass, collisionMargin=self.collisionMargin, useMassSpring=self.useMassSpring, useBendingSprings=self.useBendingSprings, useNeoHookean=self.useNeoHookean, springElasticStiffness=self.springElasticStiffness, springDampingStiffness=self.springDampingStiffness, springBendingStiffness=self.springBendingStiffness, NeoHookeanMu=self.NeoHookeanMu, NeoHookeanLambda=self.NeoHookeanLambda, NeoHookeanDamping=self.NeoHookeanDamping, frictionCoeff=self.frictionCoeff, useFaceContact=self.useFaceContact, useSelfCollision=self.useSelfCollision)
+
+        # Set signed distance function voxel size (integrate to Simulator class?)
+        p.setPhysicsEngineParameter(sparseSdfVoxelSize=0.1)
+
+        return self.body_id
+
+    def addAnchor(self, nodeIndex=-1, bodyUniqueId=-1, linkIndex=-1, bodyFramePosition=[0,0,0], physicsClientId=0):
+        p.createSoftBodyAnchor(self.body_id, nodeIndex, bodyUniqueId, linkIndex, bodyFramePosition, physicsClientId)
+
 
 
 class RBOObject(InteractiveObj):
