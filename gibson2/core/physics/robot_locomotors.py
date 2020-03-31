@@ -16,9 +16,6 @@ from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_na
 
 class LocomotorRobot(BaseRobot):
     """ Built on top of BaseRobot
-    Handles action_dim, sensor_dim, scene
-    base_position, apply_action, calc_state
-    reward
     """
 
     def __init__(
@@ -28,7 +25,6 @@ class LocomotorRobot(BaseRobot):
             action_dim,  # action dimension
             power,
             scale,
-            sensor_dim=None,
             resolution=64,
             control='torque',
             is_discrete=True,
@@ -43,20 +39,8 @@ class LocomotorRobot(BaseRobot):
         self.normalize_state = normalize_state
         self.clip_state = clip_state
 
-        assert type(action_dim) == int, "Action dimension must be int, got {}".format(
-            type(action_dim))
+        assert type(action_dim) == int, "Action dimension must be int, got {}".format(type(action_dim))
         self.action_dim = action_dim
-
-        # deprecated
-        self.obs_dim = [self.resolution, self.resolution, 0]
-        obs_high = np.inf * np.ones(self.obs_dim)
-        self.observation_space = gym.spaces.Box(-obs_high, obs_high, dtype=np.float32)
-
-        assert type(sensor_dim) == int, "Sensor dimension must be int, got {}".format(
-            type(sensor_dim))
-        self.sensor_dim = sensor_dim
-        sensor_high = np.inf * np.ones([self.sensor_dim])
-        self.sensor_space = gym.spaces.Box(-sensor_high, sensor_high, dtype=np.float32)
 
         if self.is_discrete:
             self.set_up_discrete_action_space()
@@ -64,7 +48,6 @@ class LocomotorRobot(BaseRobot):
             self.set_up_continuous_action_space()
 
         self.power = power
-        self.camera_x = 0
         self.scale = scale
 
     def set_up_continuous_action_space(self):
@@ -94,9 +77,13 @@ class LocomotorRobot(BaseRobot):
         return self.robot_body.get_orientation()
 
     def set_position(self, pos):
-        self.robot_body.reset_position(pos)
+        self.robot_body.set_position(pos)
 
     def set_orientation(self, orn):
+        self.robot_body.set_orientation(orn)
+
+    def set_position_orientation(self, pos, orn):
+        self.robot_body.set_position(pos)
         self.robot_body.set_orientation(orn)
 
     def move_by(self, delta):
@@ -121,6 +108,10 @@ class LocomotorRobot(BaseRobot):
         new_orn = qmult((euler2quat(delta, 0, 0)), orn)
         self.robot_body.set_orientation(new_orn)
 
+    def keep_still(self):
+        for n, j in enumerate(self.ordered_joints):
+            j.set_motor_velocity(0.0)
+
     def get_rpy(self):
         return self.robot_body.get_rpy()
 
@@ -134,9 +125,8 @@ class LocomotorRobot(BaseRobot):
         elif self.control == 'position':
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_position(action[n])
-        elif type(self.control) is list or type(
-                self.control) is tuple:  # if control is a tuple, set different control
-            # type for each joint
+        elif type(self.control) is list or type(self.control) is tuple:
+            # if control is a tuple, set different control type for each joint
             for n, j in enumerate(self.ordered_joints):
                 if self.control[n] == 'torque':
                     j.set_motor_torque(self.power * j.power_coef *
@@ -203,7 +193,6 @@ class Ant(LocomotorRobot):
             "ant.xml",
             "torso",
             action_dim=8,
-            sensor_dim=28,
             power=2.5,
             scale=config.get("robot_scale", self.default_scale),
             resolution=config.get("resolution", 64),
@@ -238,7 +227,6 @@ class Humanoid(LocomotorRobot):
             "humanoid.xml",
             "torso",
             action_dim=17,
-            sensor_dim=40,
             power=0.41,
             scale=config.get("robot_scale", self.default_scale),
             resolution=config.get("resolution", 64),
@@ -324,10 +312,9 @@ class Husky(LocomotorRobot):
         self.config = config
         self.torque = config.get("torque", 0.03)
         LocomotorRobot.__init__(self,
-                            "husky.urdf",
-                            "base_link",
+                                "husky.urdf",
+                                "base_link",
                                 action_dim=4,
-                                sensor_dim=17,
                                 power=2.5,
                                 scale=config.get("robot_scale", self.default_scale),
                                 resolution=config.get("resolution", 64),
@@ -386,10 +373,9 @@ class Quadrotor(LocomotorRobot):
         self.config = config
         self.torque = config.get("torque", 0.02)
         LocomotorRobot.__init__(self,
-                            "quadrotor.urdf",
-                            "base_link",
+                                "quadrotor.urdf",
+                                "base_link",
                                 action_dim=6,
-                                sensor_dim=6,
                                 power=2.5,
                                 scale=config.get("robot_scale", self.default_scale),
                                 resolution=config.get("resolution", 64),
@@ -436,14 +422,13 @@ class Turtlebot(LocomotorRobot):
 
     def __init__(self, config):
         self.config = config
-        self.velocity = config.get("velocity", 1.0)
+        self.velocity = config.get("velocity", 0.1)
         self.action_high = config.get("action_high", None)
         self.action_low = config.get("action_low", None)
         LocomotorRobot.__init__(self,
-                            "turtlebot/turtlebot.urdf",
-                            "base_link",
+                                "turtlebot/turtlebot.urdf",
+                                "base_link",
                                 action_dim=2,
-                                sensor_dim=16,
                                 power=2.5,
                                 scale=config.get("robot_scale", self.default_scale),
                                 resolution=config.get("resolution", 64),
@@ -497,7 +482,6 @@ class Freight(LocomotorRobot):
                                 "fetch/freight.urdf",
                                 "base_link",
                                 action_dim=2,
-                                sensor_dim=16,
                                 power=2.5,
                                 scale=config.get("robot_scale", self.default_scale),
                                 resolution=config.get("resolution", 64),
@@ -553,7 +537,6 @@ class Fetch(LocomotorRobot):
                                 "fetch/fetch.urdf",
                                 "base_link",
                                 action_dim=self.wheel_dim + self.torso_lift_dim + self.arm_dim,
-                                sensor_dim=55,
                                 power=2.5,
                                 scale=config.get("robot_scale", self.default_scale),
                                 resolution=config.get("resolution", 64),
@@ -611,15 +594,9 @@ class Fetch(LocomotorRobot):
 
         set_joint_positions(robot_id, arm_joints, rest_position)
 
-
-    def apply_action(self, action):
-        real_action = self.action_to_real_action(action)
-        self.apply_real_action(real_action)
-
     def calc_state(self):
         base_state = LocomotorRobot.calc_state(self)
         angular_velocity = self.robot_body.angular_velocity()
-        print(len(base_state), len(angular_velocity))
         return np.concatenate((base_state, np.array(angular_velocity)))
 
     def get_end_effector_position(self):
@@ -652,10 +629,9 @@ class JR2(LocomotorRobot):
         self.config = config
         self.velocity = config.get('velocity', 0.1)
         LocomotorRobot.__init__(self,
-                            "jr2_urdf/jr2.urdf",
-                            "base_link",
+                                "jr2_urdf/jr2.urdf",
+                                "base_link",
                                 action_dim=4,
-                                sensor_dim=17,
                                 power=2.5,
                                 scale=config.get("robot_scale", self.default_scale),
                                 resolution=config.get("resolution", 64),
@@ -702,10 +678,9 @@ class JR2_Kinova(LocomotorRobot):
         self.arm_dim = 5
 
         LocomotorRobot.__init__(self,
-                            "jr2_urdf/jr2_kinova.urdf",
-                            "base_link",
+                                "jr2_urdf/jr2_kinova.urdf",
+                                "base_link",
                                 action_dim=10,
-                                sensor_dim=46,
                                 power=2.5,
                                 scale=config.get("robot_scale", self.default_scale),
                                 resolution=config.get("resolution", 64),
@@ -718,8 +693,6 @@ class JR2_Kinova(LocomotorRobot):
     def set_up_continuous_action_space(self):
         self.action_high = np.array([self.wheel_velocity] * self.wheel_dim + [self.arm_velocity] * self.arm_dim)
         self.action_low = -self.action_high
-        # self.action_high = np.array([np.pi] * (self.wheel_dim + self.arm_dim))
-        # self.action_low = -self.action_high
         self.action_space = gym.spaces.Box(shape=(self.wheel_dim + self.arm_dim,),
                                            low=-1.0,
                                            high=1.0,
@@ -774,15 +747,20 @@ class Locobot(LocomotorRobot):
 
     def __init__(self, config):
         self.config = config
-        self.wheel_velocity = config.get('wheel_velocity', 0.1)
+        # https://www.trossenrobotics.com/locobot-pyrobot-ros-rover.aspx
+        # Maximum translational velocity: 70 cm/s
+        # Maximum rotational velocity: 180 deg/s (>110 deg/s gyro performance will degrade)
+        self.linear_velocity = config.get('linear_velocity', 0.5)
+        self.angular_velocity = config.get('angular_velocity', np.pi / 2.0)
         self.wheel_dim = 2
+        self.wheel_axis_half = 0.125  # half of the distance between two wheels
+        self.ang_to_lin_vel_constant = 9.0
         self.action_high = config.get("action_high", None)
         self.action_low = config.get("action_low", None)
         LocomotorRobot.__init__(self,
                                 "locobot/locobot.urdf",
                                 "base_link",
                                 action_dim=self.wheel_dim,
-                                sensor_dim=55, # TODO: what is sensor_dim?
                                 power=2.5,
                                 scale=config.get("robot_scale", self.default_scale),
                                 resolution=config.get("resolution", 64),
@@ -791,13 +769,10 @@ class Locobot(LocomotorRobot):
                                 self_collision=False)
 
     def set_up_continuous_action_space(self):
-        if self.action_high is not None and self.action_low is not None:
-            self.action_high = np.full(shape=self.wheel_dim, fill_value=self.action_high)
-            self.action_low = np.full(shape=self.wheel_dim, fill_value=self.action_low)
-        else:
-            self.action_high = np.array([self.wheel_velocity] * self.wheel_dim)
-            self.action_low = -self.action_high
-
+        self.action_high = np.zeros(self.wheel_dim)
+        self.action_high[0] = self.linear_velocity
+        self.action_high[1] = self.angular_velocity
+        self.action_low = -self.action_high
         self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
@@ -807,8 +782,12 @@ class Locobot(LocomotorRobot):
         assert False, "Locobot does not support discrete actions"
 
     def apply_action(self, action):
-        real_action = self.action_to_real_action(action)
-        self.apply_real_action(real_action)
+        body_velocity = self.action_to_real_action(action)
+        lin_vel, ang_vel = body_velocity[0], body_velocity[1]
+        wheel_velocity = np.zeros(self.wheel_dim)
+        wheel_velocity[0] = (lin_vel - ang_vel * self.wheel_axis_half) / self.ang_to_lin_vel_constant
+        wheel_velocity[1] = (lin_vel + ang_vel * self.wheel_axis_half) / self.ang_to_lin_vel_constant
+        self.apply_real_action(wheel_velocity)
 
     def calc_state(self):
         base_state = LocomotorRobot.calc_state(self)
@@ -832,3 +811,4 @@ class Locobot(LocomotorRobot):
             p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)
 
         return ids
+
