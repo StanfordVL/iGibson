@@ -64,6 +64,12 @@ class NavigateEnv(BaseEnv):
         self.target_pos = np.array(self.config.get('target_pos', [5, 5, 0]))
         self.target_orn = np.array(self.config.get('target_orn', [0, 0, 0]))
 
+        self.initial_pos_z_offset = self.config.get('initial_pos_z_offset', 0.1)
+        check_collision_distance = self.initial_pos_z_offset * 0.5
+        # s = 0.5 * G * (t ** 2)
+        check_collision_distance_time = np.sqrt(check_collision_distance / (0.5 * 9.8))
+        self.check_collision_loop = int(check_collision_distance_time / self.physics_timestep)
+
         self.additional_states_dim = self.config.get('additional_states_dim', 0)
         self.goal_format = self.config.get('goal_format', 'polar')
 
@@ -74,7 +80,7 @@ class NavigateEnv(BaseEnv):
         self.stop_threshold = self.config.get('stop_threshold', 0.99)
 
         # reward
-        self.reward_type = self.config.get('reward_type', 'geodesic')
+        self.reward_type = self.config.get('reward_type', 'l2')
         assert self.reward_type in ['geodesic', 'l2', 'sparse']
 
         self.success_reward = self.config.get('success_reward', 10.0)
@@ -237,13 +243,7 @@ class NavigateEnv(BaseEnv):
         self.current_step = 0
         self.collision_step = 0
         self.current_episode = 0
-        self.floor_num = None
-        # self.path_length = 0.0
-        # self.agent_trajectory = []
-        # self.stage = None
-        # self.floor_num = None
-        # self.num_object_classes = None
-        # self.interactive_objects = []
+        self.floor_num = 0
 
     def load(self):
         """
@@ -284,7 +284,8 @@ class NavigateEnv(BaseEnv):
             end_effector_pos_local = self.global_to_local(self.robots[0].get_end_effector_position())
             additional_states = np.append(additional_states, end_effector_pos_local)
 
-        assert additional_states.shape[0] == self.additional_states_dim, 'additional states dimension mismatch'
+        assert additional_states.shape[0] == self.additional_states_dim, \
+            'additional states dimension mismatch {} v.s. {}'.format(additional_states.shape[0], self.additional_states_dim)
         return additional_states
 
     def add_naive_noise_to_sensor(self, sensor_reading, noise_rate, noise_value=1.0):
@@ -570,7 +571,7 @@ class NavigateEnv(BaseEnv):
 
     def step(self, action):
         """
-        apply robot's action and get state, reward, done and info, following PpenAI gym's convention
+        apply robot's action and get state, reward, done and info, following OpenAI gym's convention
         :param action: a list of control signals
         :return: state, reward, done, info
         """
@@ -757,12 +758,6 @@ class NavigateRandomEnv(NavigateEnv):
 
         self.target_dist_min = self.config.get('target_dist_min', 1.0)
         self.target_dist_max = self.config.get('target_dist_max', 10.0)
-
-        self.initial_pos_z_offset = self.config.get('initial_pos_z_offset', 0.1)
-        check_collision_distance = self.initial_pos_z_offset * 0.5
-        # s = 0.5 * G * (t ** 2)
-        check_collision_distance_time = np.sqrt(check_collision_distance / (0.5 * 9.8))
-        self.check_collision_loop = int(check_collision_distance_time / self.physics_timestep)
 
     def reset_initial_and_target_pos(self):
         """
@@ -1027,11 +1022,10 @@ if __name__ == '__main__':
 
     step_time_list = []
     for episode in range(100):
+        print('Episode: {}'.format(episode))
         start = time.time()
         nav_env.reset()
-        print('Episode: {}'.format(episode))
-        nav_env.reset()
-        for _ in range(50):  # 10 seconds
+        for _ in range(100):  # 10 seconds
             action = nav_env.action_space.sample()
             state, reward, done, _ = nav_env.step(action)
             print('reward', reward)

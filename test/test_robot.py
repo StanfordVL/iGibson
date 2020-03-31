@@ -19,7 +19,7 @@ def test_fetch():
     fetch = Fetch(config)
     s.import_robot(fetch)
     for i in range(100):
-        fetch.apply_action(np.array([0] * 2))
+        fetch.apply_action(np.array([0] * 10))
         fetch.calc_state()
         s.step()
     s.disconnect()

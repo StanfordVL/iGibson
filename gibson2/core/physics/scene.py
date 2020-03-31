@@ -64,8 +64,13 @@ class StadiumScene(Scene):
     def get_floor_height(self, floor):
         del floor
         return 0.0
-      
-      
+
+    def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
+        print('WARNING: trying to compute the shortest path in StadiumScene (assuming empty space)')
+        shortest_path = np.stack((source_world, target_world))
+        geodesic_distance = l2_distance(source_world, target_world)
+        return shortest_path, geodesic_distance
+
 
 class InteractiveBuildingScene(Scene):
     """
@@ -74,7 +79,7 @@ class InteractiveBuildingScene(Scene):
 
     def __init__(self, path):
         self.path = path
-        
+
     def load(self):
         filename = self.path
         body_id = p.loadURDF(filename, flags=p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS)
@@ -83,9 +88,6 @@ class InteractiveBuildingScene(Scene):
 
     def reset_floor(self, floor=0, additional_elevation=0.05, height=None):
         return
-
-    def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
-        assert False, 'cannot compute shortest path in StadiumScene'
 
 
 class BuildingScene(Scene):

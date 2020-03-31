@@ -145,7 +145,7 @@ class BaseRobot:
         """
         flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL
         if self.self_collision:
-            flags = flags | p.URDF_USE_SELF_COLLISION | p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT
+            flags = flags | p.URDF_USE_SELF_COLLISION | p.URDF_USE_SELF_COLLISION_EXCLUDE_PARENT
 
         if self.model_type == "MJCF":
             self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file),
