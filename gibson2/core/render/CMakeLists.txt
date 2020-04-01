@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(CppMeshRenderer)
 set (USE_GLAD TRUE)
+set (USE_CUDA TRUE)
 
 include_directories(glad)
 
@@ -8,6 +9,10 @@ if (NOT USE_GLAD)
   find_package(OpenGL)
 else()
   add_definitions(-DUSE_GLAD) 
+endif()
+
+if (USE_CUDA)
+  add_definitions(-DUSE_CUDA) 
 endif()
 
 add_subdirectory(pybind11)
@@ -21,10 +26,14 @@ set(GLFW_INSTALL OFF CACHE INTERNAL "Generate installation target")
 add_subdirectory("${GLFW_DIR}")
 include_directories("${GLFW_DIR}/include")
 
-find_package(CUDA REQUIRED)
-set(CUDA_LIBRARIES PUBLIC ${CUDA_LIBRARIES})
+if (USE_CUDA)
+  find_package(CUDA REQUIRED)
+  set(CUDA_LIBRARIES PUBLIC ${CUDA_LIBRARIES})
+  cuda_add_library(MeshRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/Mesh_renderer.cpp)
+else()
+  add_library(MeshRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/Mesh_renderer.cpp)
+endif()
 
-cuda_add_library(MeshRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/Mesh_renderer.cpp)
 add_library(tinyobjloader MODULE cpp/tinyobjloader/tiny_obj_loader.cc cpp/tinyobjloader/bindings.cc)
 add_library(GLFWRendererContext MODULE glad/gl.cpp cpp/glfw_mesh_renderer.cpp)
 

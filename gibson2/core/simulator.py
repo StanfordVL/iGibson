@@ -141,7 +141,7 @@ class Simulator:
                         self.renderer.add_instance(self.visual_objects[filename],
                                                    pybullet_uuid=new_object,
                                                    class_id=class_id)
-        
+
 
                 elif type == p.GEOM_PLANE:
                     pass #don't load plane, it will cause z fighting
