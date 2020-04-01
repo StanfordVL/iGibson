@@ -12,7 +12,7 @@ import random
 
 config = parse_config('../configs/turtlebot_p2p_nav.yaml')
 
-s = Simulator(mode='gui', resolution=512, render_to_tensor=False)
+s = Simulator(mode='gui', image_width=512, image_height=512, render_to_tensor=False)
 scene = BuildingScene('Ohoopee')
 s.import_scene(scene)
 turtlebot = Turtlebot(config)
