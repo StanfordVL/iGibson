@@ -20,8 +20,10 @@
 #include <pybind11/stl.h>
 #include <cstdint>
 
-#include <cuda_runtime.h>
-#include <cuda_gl_interop.h>
+#ifdef USE_CUDA
+  #include <cuda_runtime.h>
+  #include <cuda_gl_interop.h>
+#endif
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -68,7 +70,10 @@ public:
 
 
     EGLInternalData2* m_data = NULL;
+
+#ifdef USE_CUDA
     cudaGraphicsResource* cuda_res[MAX_NUM_RESOURCES];
+#endif
 
     int init() {
 
@@ -109,8 +114,10 @@ public:
         EGL_NONE,
     };
 
+#ifdef USE_CUDA
     for (int i = 0; i < MAX_NUM_RESOURCES; i++)
         cuda_res[i] = NULL;
+#endif
 
     // Load EGL functions
 #ifdef USE_GLAD
@@ -242,6 +249,7 @@ public:
     void release(){
         eglTerminate(m_data->egl_display);
         delete m_data;
+#ifdef USE_CUDA        
         for (int i = 0; i < MAX_NUM_RESOURCES; i++)
           {
             if (cuda_res[i])
@@ -253,6 +261,7 @@ public:
               }
             }
           }
+#endif
     }
 
 
@@ -291,6 +300,7 @@ public:
         std::fill(x.mutable_data(), x.mutable_data() + x.size(), 42);
     }
 
+#ifdef USE_CUDA
     void map_tensor(GLuint tid, int width, int height, std::size_t data)
     {
        cudaError_t err;
@@ -368,7 +378,7 @@ public:
          std::cout << "cudaGraphicsUnmapResources failed: " << err << std::endl;
        }
     }
-
+#endif
 
     void render_meshrenderer_pre(bool msaa, GLuint fb1, GLuint fb2) {
 
@@ -748,9 +758,11 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         pymodule.def(py::init<int, int, int>());
         pymodule.def("init", &MeshRendererContext::init);
         pymodule.def("release", &MeshRendererContext::release);
+
+#ifdef USE_CUDA
         pymodule.def("map_tensor", &MeshRendererContext::map_tensor);
         pymodule.def("map_tensor_float", &MeshRendererContext::map_tensor_float);
-
+#endif
         // class MeshRenderer
         pymodule.def("render_meshrenderer_pre", &MeshRendererContext::render_meshrenderer_pre, "pre-executed functions in MeshRenderer.render");
         pymodule.def("render_meshrenderer_post", &MeshRendererContext::render_meshrenderer_post, "post-executed functions in MeshRenderer.render");
