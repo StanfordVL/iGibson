@@ -34,6 +34,7 @@ class StadiumScene(Scene):
     A simple stadium scene for debugging
     """
     def load(self):
+        self.build_graph = False
         filename = os.path.join(pybullet_data.getDataPath(), "stadium_no_collision.sdf")
         self.stadium = p.loadSDF(filename)
         planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
@@ -71,6 +72,9 @@ class StadiumScene(Scene):
         geodesic_distance = l2_distance(source_world, target_world)
         return shortest_path, geodesic_distance
 
+    def reset_floor(self, floor=0, additional_elevation=0.05, height=None):
+        return
+
 
 class InteractiveBuildingScene(Scene):
     """
@@ -84,10 +88,6 @@ class InteractiveBuildingScene(Scene):
         filename = self.path
         body_id = p.loadURDF(filename, flags=p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS)
         return [body_id]
-
-
-    def reset_floor(self, floor=0, additional_elevation=0.05, height=None):
-        return
 
 
 class BuildingScene(Scene):

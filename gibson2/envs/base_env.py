@@ -38,8 +38,9 @@ class BaseEnv(gym.Env):
         self.simulator = Simulator(mode=mode,
                                    timestep=physics_timestep,
                                    use_fisheye=self.config.get('fisheye', False),
-                                   resolution=self.config.get('resolution', 64),
-                                   fov=self.config.get('fov', 90),
+                                   image_width=self.config.get('image_width', 128),
+                                   image_height=self.config.get('image_height', 128),
+                                   vertical_fov=self.config.get('vertical_fov', 90),
                                    device_idx=device_idx)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.load()

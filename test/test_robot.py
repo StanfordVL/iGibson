@@ -15,7 +15,6 @@ def test_fetch():
     s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
-    config = parse_config(os.path.join(gibson2.root_path, '../test/test_continuous.yaml'))
     fetch = Fetch(config)
     s.import_robot(fetch)
     for i in range(100):
@@ -23,6 +22,7 @@ def test_fetch():
         fetch.calc_state()
         s.step()
     s.disconnect()
+
 
 def test_turtlebot():
     s = Simulator(mode='headless')

@@ -74,10 +74,9 @@ class NavigateEnv(BaseEnv):
         self.goal_format = self.config.get('goal_format', 'polar')
 
         # termination condition
-        self.dist_tol = self.config.get('dist_tol', 0.2)
+        self.dist_tol = self.config.get('dist_tol', 0.5)
         self.max_step = self.config.get('max_step', 500)
-        self.max_collisions_allowed = self.config.get('max_collisions_allowed', 0)
-        self.stop_threshold = self.config.get('stop_threshold', 0.99)
+        self.max_collisions_allowed = self.config.get('max_collisions_allowed', 500)
 
         # reward
         self.reward_type = self.config.get('reward_type', 'l2')
@@ -87,8 +86,8 @@ class NavigateEnv(BaseEnv):
         self.slack_reward = self.config.get('slack_reward', -0.01)
 
         # reward weight
-        self.potential_reward_weight = self.config.get('potential_reward_weight', 10.0)
-        self.collision_reward_weight = self.config.get('collision_reward_weight', 0.0)
+        self.potential_reward_weight = self.config.get('potential_reward_weight', 1.0)
+        self.collision_reward_weight = self.config.get('collision_reward_weight', -0.1)
 
         # ignore the agent's collision with these body ids
         self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', []))
@@ -96,13 +95,15 @@ class NavigateEnv(BaseEnv):
         self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
 
         # discount factor
-        self.discount_factor = self.config.get('discount_factor', 1.0)
+        self.discount_factor = self.config.get('discount_factor', 0.99)
 
     def load_observation_space(self):
         """
         Load observation space
         """
         self.output = self.config['output']
+        self.image_width = self.config.get('image_width', 128)
+        self.image_height = self.config.get('image_height', 128)
         observation_space = OrderedDict()
         if 'sensor' in self.output:
             self.sensor_dim = self.additional_states_dim
@@ -120,49 +121,28 @@ class NavigateEnv(BaseEnv):
         if 'rgb' in self.output:
             self.rgb_space = gym.spaces.Box(low=0.0,
                                             high=1.0,
-                                            shape=(self.config.get('resolution', 64),
-                                                   self.config.get('resolution', 64),
-                                                   3),
+                                            shape=(self.image_height, self.image_width, 3),
                                             dtype=np.float32)
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
             self.depth_noise_rate = self.config.get('depth_noise_rate', 0.0)
-            if self.config['robot'] == 'Turtlebot':
-                # ASUS Xtion PRO LIVE
-                self.depth_low = 0.8
-                self.depth_high = 3.5
-            elif self.config['robot'] == 'Fetch':
-                # Primesense Carmine 1.09 short-range RGBD sensor
-                self.depth_low = 0.35
-                self.depth_high = 3.0  # http://xtionprolive.com/primesense-carmine-1.09
-                # self.depth_high = 1.4  # https://www.i3du.gr/pdf/primesense.pdf
-            elif self.config['robot'] == 'Locobot':
-                # https://store.intelrealsense.com/buy-intel-realsense-depth-camera-d435.html
-                self.depth_low = 0.1
-                self.depth_high = 10.0
-            else:
-                assert False, 'unknown robot for depth observation'
+            self.depth_low = self.config.get('depth_low', 0.5)
+            self.depth_high = self.config.get('depth_high', 5.0)
             self.depth_space = gym.spaces.Box(low=0.0,
                                               high=1.0,
-                                              shape=(self.config.get('resolution', 64),
-                                                     self.config.get('resolution', 64),
-                                                     1),
+                                              shape=(self.image_height, self.image_width, 1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
         if 'rgbd' in self.output:
             self.rgbd_space = gym.spaces.Box(low=0.0,
                                              high=1.0,
-                                             shape=(self.config.get('resolution', 64),
-                                                    self.config.get('resolution', 64),
-                                                    4),
+                                             shape=(self.image_height, self.image_width, 4),
                                              dtype=np.float32)
             observation_space['rgbd'] = self.rgbd_space
         if 'seg' in self.output:
             self.seg_space = gym.spaces.Box(low=0.0,
                                             high=1.0,
-                                            shape=(self.config.get('resolution', 64),
-                                                   self.config.get('resolution', 64),
-                                                   1),
+                                            shape=(self.image_height, self.image_width, 1),
                                             dtype=np.float32)
             observation_space['seg'] = self.seg_space
         if 'scan' in self.output:
@@ -170,26 +150,23 @@ class NavigateEnv(BaseEnv):
             self.n_horizontal_rays = self.config.get('n_horizontal_rays', 128)
             self.n_vertical_beams = self.config.get('n_vertical_beams', 1)
             assert self.n_vertical_beams == 1, 'scan can only handle one vertical beam for now'
-            if self.config['robot'] == 'Turtlebot':
-                # Hokuyo URG-04LX-UG01
-                self.laser_linear_range = 5.6
-                self.laser_angular_range = 240.0
-                self.min_laser_dist = 0.05
-                self.laser_link_name = 'scan_link'
-            elif self.config['robot'] == 'Fetch':
-                # SICK TiM571-2050101 Laser Range Finder
-                self.laser_linear_range = 25.0
-                self.laser_angular_range = 220.0
-                self.min_laser_dist = 0.0
-                self.laser_link_name = 'laser_link'
-            else:
-                assert False, 'unknown robot for LiDAR observation'
+            self.laser_linear_range = self.config.get('laser_linear_range', 10.0)
+            self.laser_angular_range = self.config.get('laser_angular_range', 180.0)
+            self.min_laser_dist = self.config.get('min_laser_dist', 0.05)
+            self.laser_link_name = self.config.get('laser_link_name', 'scan_link')
             self.scan_space = gym.spaces.Box(low=0.0,
                                              high=1.0,
                                              shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
                                              dtype=np.float32)
             observation_space['scan'] = self.scan_space
         if 'rgb_filled' in self.output:  # use filler
+            try:
+                import torch.nn as nn
+                import torch
+                from torchvision import datasets, transforms
+            except:
+                raise Exception('Trying to use rgb_filled ("the goggle"), but torch is not installed. Try "pip install torch torchvision"')
+
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
             self.comp.load_state_dict(
@@ -353,6 +330,8 @@ class NavigateEnv(BaseEnv):
         :return: LiDAR sensor reading, normalized to [0.0, 1.0]
         """
         laser_angular_half_range = self.laser_angular_range / 2.0
+        if self.laser_link_name not in self.robots[0].parts:
+            raise Exception('Trying to simulate LiDAR sensor, but laser_link_name cannot be found in the robot URDF file. Please add a link named laser_link_name at the intended laser pose. Feel free to check out assets/models/turtlebot/turtlebot.urdf and examples/configs/turtlebot_p2p_nav.yaml for examples.')
         laser_pose = self.robots[0].parts[self.laser_link_name].get_pose()
         angle = np.arange(-laser_angular_half_range / 180 * np.pi,
                           laser_angular_half_range / 180 * np.pi,
@@ -559,15 +538,16 @@ class NavigateEnv(BaseEnv):
         self.initial_pos_vis_obj.set_position(self.initial_pos)
         self.target_pos_vis_obj.set_position(self.target_pos)
 
-        shortest_path, _ = self.get_shortest_path(entire_path=True)
-        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
-        num_nodes = min(self.num_waypoints_vis, shortest_path.shape[0])
-        for i in range(num_nodes):
-            self.waypoints_vis[i].set_position(pos=np.array([shortest_path[i][0],
-                                                             shortest_path[i][1],
-                                                             floor_height]))
-        for i in range(num_nodes, self.num_waypoints_vis):
-            self.waypoints_vis[i].set_position(pos=np.array([0.0, 0.0, 100.0]))
+        if self.scene.build_graph:
+            shortest_path, _ = self.get_shortest_path(entire_path=True)
+            floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
+            num_nodes = min(self.num_waypoints_vis, shortest_path.shape[0])
+            for i in range(num_nodes):
+                self.waypoints_vis[i].set_position(pos=np.array([shortest_path[i][0],
+                                                                 shortest_path[i][1],
+                                                                 floor_height]))
+            for i in range(num_nodes, self.num_waypoints_vis):
+                self.waypoints_vis[i].set_position(pos=np.array([0.0, 0.0, 100.0]))
 
     def step(self, action):
         """
@@ -617,14 +597,19 @@ class NavigateEnv(BaseEnv):
         """
         return
 
-    def check_collision(self, body_id):
+    def check_collision(self, body_id, verbose=False):
         """
         :param body_id: pybullet body id
         :return: whether the given body_id has no collision
         """
         for _ in range(self.check_collision_loop):
             self.simulator_step()
-            if len(p.getContactPoints(bodyA=body_id)) > 0:
+            collisions = list(p.getContactPoints(bodyA=body_id))
+            if verbose:
+                for item in collisions:
+                    print('bodyA:{}, bodyB:{}, linkA:{}, linkB:{}'.format(item[1], item[2], item[3], item[4]))
+
+            if len(collisions) > 0:
                 return False
         return True
 
@@ -834,33 +819,6 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
             # dynamic objects will repeat their actions for 10 action timesteps
             self.dynamic_objects_action_repeat = 10
 
-        # By default Gibson only renders square images. We need to adapt to the camera sensor spec for different robots.
-        if self.config['robot'] == 'Turtlebot':
-            # ASUS Xtion PRO LIVE
-            self.image_aspect_ratio = 480.0 / 640.0
-        elif self.config['robot'] == 'Fetch':
-            # Primesense Carmine 1.09 short-range RGBD sensor
-            self.image_aspect_ratio = 480.0 / 640.0
-        elif self.config['robot'] == 'Locobot':
-            # https://store.intelrealsense.com/buy-intel-realsense-depth-camera-d435.html
-            self.image_aspect_ratio = 1080.0 / 1920.0
-        else:
-            assert False, 'unknown robot for RGB observation'
-
-        resolution = self.config.get('resolution', 64)
-        width = resolution
-        height = int(width * self.image_aspect_ratio)
-        if 'rgb' in self.output:
-            self.observation_space.spaces['rgb'] = gym.spaces.Box(low=0.0,
-                                                                  high=1.0,
-                                                                  shape=(height, width, 3),
-                                                                  dtype=np.float32)
-        if 'depth' in self.output:
-            self.observation_space.spaces['depth'] = gym.spaces.Box(low=0.0,
-                                                                    high=1.0,
-                                                                    shape=(height, width, 1),
-                                                                    dtype=np.float32)
-
     def load_interactive_objects(self):
         """
         Load interactive objects
@@ -960,27 +918,6 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
 
         return state
 
-    def crop_center_image(self, img):
-        """
-        Crop the center of the square image based on the camera aspect ratio
-        :param img: original, square image
-        :return: cropped, potentially rectangular image
-        """
-        width = img.shape[0]
-        height = int(width * self.image_aspect_ratio)
-        half_diff = int((width - height) / 2)
-        img = img[half_diff:half_diff + height, :]
-        return img
-
-    def get_state(self, collision_links=[]):
-        """
-        By default Gibson only renders square images. Need to postprocess them by cropping the center.
-        """
-        state = super(NavigateRandomEnvSim2Real, self).get_state(collision_links)
-        for modality in ['rgb', 'depth']:
-            if modality in state:
-                state[modality] = self.crop_center_image(state[modality])
-        return state
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

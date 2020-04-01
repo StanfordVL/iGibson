@@ -6,15 +6,16 @@ load_texture: true
 trav_map_erosion: 2
 
 # robot
-robot: Turtlebot
-velocity: 0.1
+robot: Locobot
+linear_velocity: 0.5
+angular_velocity: 1.5707963267948966
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 target_dist_min: 1.0
 target_dist_max: 10.0
 initial_pos_z_offset: 0.1
-is_discrete: True
+is_discrete: false
 additional_states_dim: 4
 
 # reward
@@ -35,31 +36,20 @@ max_collisions_allowed: 500
 goal_format: polar
 
 # sensor spec
-output: [sensor, rgb, depth, scan]
+output: [sensor, rgb, depth]
 # image
-# ASUS Xtion PRO LIVE
-# https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE
+# Intel® RealSense™ Depth Camera D435
+# https://store.intelrealsense.com/buy-intel-realsense-depth-camera-d435.html
 fisheye: false
-image_width: 160 
-image_height: 120 
-vertical_fov: 45
+image_width: 160
+image_height: 90
+vertical_fov: 42.5
 # depth
-depth_low: 0.8
-depth_high: 3.5
-# scan
-# Hokuyo URG-04LX-UG01
-# https://www.hokuyo-aut.jp/search/single.php?serial=166
-# n_horizontal_rays is originally 683, sub-sampled 1/3
-n_horizontal_rays: 228
-n_vertical_beams: 1
-laser_linear_range: 5.6
-laser_angular_range: 240.0
-min_laser_dist: 0.05
-laser_link_name: scan_link
+depth_low : 0.1
+depth_high: 10.0
 
-# sensor noise 
+# sensor noise
 depth_noise_rate: 0.0
-scan_noise_rate: 0.0
 
 # visual objects
 visual_object_at_initial_target_pos: true

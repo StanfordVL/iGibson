@@ -52,7 +52,7 @@ class BaseRobot:
         :return: body id in pybullet
         """
         ids = self._load_model()
-        assert "eyes" in self.parts, 'please add a linked named "eyes" in your robot URDF file with the same pose as the onboard camera'
+        assert "eyes" in self.parts, 'Please add a link named "eyes" in your robot URDF file with the same pose as the onboard camera. Feel free to check out assets/models/turtlebot/turtlebot.urdf for an example.'
         self.eyes = self.parts["eyes"]
         return ids
 
