@@ -1,5 +1,12 @@
 import gibson2
 import os
+
+def get_model_path(model_id):
+    data_path = gibson2.dataset_path
+    assert (model_id in os.listdir(data_path)
+            ) or model_id == 'stadium', "Model {} does not exist".format(model_id)
+    return os.path.join(data_path, model_id)
+
 def download_data():
     if not os.path.exists(gibson2.assets_path):
         os.system('wget https://storage.googleapis.com/gibsonassets/assets_gibson_v2.tar.gz -O /tmp/assets_gibson_v2.tar.gz')

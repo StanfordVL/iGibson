@@ -5,7 +5,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 os.sys.path.insert(0, parentdir)
 import pybullet_data
-from gibson2.data.datasets import get_model_path
+from gibson2.utils.assets_utils import get_model_path
 from gibson2.utils.utils import l2_distance
 
 import numpy as np
