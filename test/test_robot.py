@@ -14,26 +14,22 @@ download_data()
 
 config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 
-@pytest.fixture(scope="function")
-def get_s():
-    return Simulator(mode='headless')
 
 
 def test_fetch():
-    s = get_s()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     config = parse_config(os.path.join(gibson2.root_path, '../test/test_continuous.yaml'))
     fetch = Fetch(config)
     s.import_robot(fetch)
     for i in range(100):
-        fetch.apply_action(np.array([0] * 10))
         fetch.calc_state()
         s.step()
     s.disconnect()
 
 def test_turtlebot():
-    s = get_s()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     turtlebot = Turtlebot(config)
@@ -44,7 +40,7 @@ def test_turtlebot():
 
 
 def test_jr2():
-    s = get_s()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     jr2 = JR2(config)
@@ -55,7 +51,7 @@ def test_jr2():
 
 
 def test_ant():
-    s = get_s()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     ant = Ant(config)
@@ -66,14 +62,12 @@ def test_ant():
     nbody = p.getNumBodies()
     for i in range(100):
         s.step()
-        #ant.apply_action(np.random.randint(17))
-        #ant2.apply_action(np.random.randint(17))
     s.disconnect()
     assert nbody == 6
 
 
 def test_husky():
-    s = get_s()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     husky = Husky(config)
@@ -84,7 +78,7 @@ def test_husky():
 
 
 def test_humanoid():
-    s = get_s()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     humanoid = Humanoid(config)
@@ -95,7 +89,7 @@ def test_humanoid():
 
 
 def test_quadrotor():
-    s = get_s()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     quadrotor = Quadrotor(config)
@@ -106,7 +100,7 @@ def test_quadrotor():
 
 
 def test_turtlebot_position():
-    s = get_s()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     turtlebot = Turtlebot(config)
@@ -122,7 +116,7 @@ def test_turtlebot_position():
 
 
 def test_humanoid_position():
-    s = get_s()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     humanoid = Humanoid(config)
@@ -137,7 +131,7 @@ def test_humanoid_position():
 
 
 def test_multiagent():
-    s = get_s()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     turtlebot1 = Turtlebot(config)
@@ -154,9 +148,6 @@ def test_multiagent():
 
     nbody = p.getNumBodies()
     for i in range(100):
-        #turtlebot1.apply_action(1)
-        #turtlebot2.apply_action(1)
-        #turtlebot3.apply_action(1)
         s.step()
 
     s.disconnect()
@@ -164,7 +155,7 @@ def test_multiagent():
 
 
 def show_action_sensor_space():
-    s = get_s()
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
 
