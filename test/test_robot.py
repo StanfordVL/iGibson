@@ -8,8 +8,13 @@ import pybullet as p
 import numpy as np
 import gibson2
 import os
+from gibson2.utils.assets_utils import download_data
+
+download_data()
 
 config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
+
+
 
 def test_fetch():
     s = Simulator(mode='headless')
@@ -18,7 +23,6 @@ def test_fetch():
     fetch = Fetch(config)
     s.import_robot(fetch)
     for i in range(100):
-        fetch.apply_action(np.array([0] * 10))
         fetch.calc_state()
         s.step()
     s.disconnect()
@@ -47,7 +51,7 @@ def test_jr2():
 
 
 def test_ant():
-    s = Simulator(mode='headless', timestep=1 / 40.0)
+    s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
     ant = Ant(config)
@@ -58,8 +62,6 @@ def test_ant():
     nbody = p.getNumBodies()
     for i in range(100):
         s.step()
-        #ant.apply_action(np.random.randint(17))
-        #ant2.apply_action(np.random.randint(17))
     s.disconnect()
     assert nbody == 6
 
@@ -146,9 +148,6 @@ def test_multiagent():
 
     nbody = p.getNumBodies()
     for i in range(100):
-        #turtlebot1.apply_action(1)
-        #turtlebot2.apply_action(1)
-        #turtlebot3.apply_action(1)
         s.step()
 
     s.disconnect()

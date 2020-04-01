@@ -4,7 +4,6 @@ import ctypes
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
-import gibson2.core.render.mesh_renderer.glutils.glcontext as glcontext
 import cv2
 import numpy as np
 #from pyassimp import load, release
@@ -13,7 +12,6 @@ from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
 from gibson2.core.render.mesh_renderer import MeshRendererContext, GLFWRendererContext
 from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
-from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTexture
 import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
 import gibson2
@@ -248,7 +246,7 @@ class Instance(object):
         return self.__str__()
 
 
-class Material:
+class Material(object):
     def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=None):
         self.type = type
         self.kd = kd
@@ -265,7 +263,7 @@ class Material:
         return self.__str__()
 
 
-class MeshRenderer:
+class MeshRenderer(object):
     """
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
@@ -315,7 +313,8 @@ class MeshRenderer:
 
         self.r.glad_init()
         self.glstring = self.r.getstring_meshrenderer()
-        self.colors = colormap
+        self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
         self.lightcolor = [1, 1, 1]
 
         print("fisheye", self.fisheye)
