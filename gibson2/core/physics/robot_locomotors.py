@@ -522,8 +522,8 @@ class Fetch(LocomotorRobot):
 
     def __init__(self, config):
         self.config = config
-        self.wheel_velocity = config.get('wheel_velocity', 0.1)
-        self.torso_lift_velocity = config.get('torso_lift_velocity', 0.01)
+        self.wheel_velocity = config.get('wheel_velocity', 0.05)
+        self.torso_lift_velocity = config.get('torso_lift_velocity', 0.0001)
         self.arm_velocity = config.get('arm_velocity', 0.01)
         self.wheel_dim = 2
         self.torso_lift_dim = 1
@@ -597,10 +597,20 @@ class Fetch(LocomotorRobot):
         ids = super(Fetch, self).load()
         robot_id = self.robot_ids[0]
 
-        # disable collision for torso_lift_joint and shoulder_lift_joint
-        #                   for torso_lift_joint and torso_fixed_joint
+        # disable collision between torso_lift_joint and shoulder_lift_joint
+        #                   between torso_lift_joint and torso_fixed_joint
+        #                   between caster_wheel_joint and estop_joint
+        #                   between caster_wheel_joint and laser_joint
+        #                   between caster_wheel_joint and torso_fixed_joint
+        #                   between caster_wheel_joint and l_wheel_joint
+        #                   between caster_wheel_joint and r_wheel_joint
         p.setCollisionFilterPair(robot_id, robot_id, 3, 13, 0)
         p.setCollisionFilterPair(robot_id, robot_id, 3, 22, 0)
+        p.setCollisionFilterPair(robot_id, robot_id, 0, 20, 0)
+        p.setCollisionFilterPair(robot_id, robot_id, 0, 21, 0)
+        p.setCollisionFilterPair(robot_id, robot_id, 0, 22, 0)
+        p.setCollisionFilterPair(robot_id, robot_id, 0, 1, 0)
+        p.setCollisionFilterPair(robot_id, robot_id, 0, 2, 0)
 
         return ids
 
@@ -705,6 +715,25 @@ class JR2_Kinova(LocomotorRobot):
         self.ordered_joints[4].reset_joint_state(np.pi / 2.0, 0.0)
         self.ordered_joints[5].reset_joint_state(np.pi / 2.0, 0.0)
         self.ordered_joints[6].reset_joint_state(0.0, 0.0)
+
+    def load(self):
+        ids = super(JR2_Kinova, self).load()
+        robot_id = self.robot_ids[0]
+
+        # disable collision between base_chassis_joint and pan_joint
+        #                   between base_chassis_joint and tilt_joint
+        #                   between base_chassis_joint and camera_joint
+        #                   between jr2_fixed_body_joint and pan_joint
+        #                   between jr2_fixed_body_joint and tilt_joint
+        #                   between jr2_fixed_body_joint and camera_joint
+        p.setCollisionFilterPair(robot_id, robot_id, 0, 17, 0)
+        p.setCollisionFilterPair(robot_id, robot_id, 0, 18, 0)
+        p.setCollisionFilterPair(robot_id, robot_id, 0, 19, 0)
+        p.setCollisionFilterPair(robot_id, robot_id, 1, 17, 0)
+        p.setCollisionFilterPair(robot_id, robot_id, 1, 18, 0)
+        p.setCollisionFilterPair(robot_id, robot_id, 1, 19, 0)
+
+        return ids
 
 
 class Locobot(LocomotorRobot):

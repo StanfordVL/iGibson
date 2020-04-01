@@ -15,8 +15,9 @@ class Simulator:
                  timestep=1 / 240.0,
                  use_fisheye=False,
                  mode='gui',
-                 resolution=256,
-                 fov=90,
+                 image_width=128,
+                 image_height=128,
+                 vertical_fov=90,
                  device_idx=0,
                  render_to_tensor=False):
         """
@@ -27,8 +28,9 @@ class Simulator:
         :param timestep: timestep of physical simulation
         :param use_fisheye: use fisheye
         :param mode: choose mode from gui or headless
-        :param resolution: resolution of camera (square)
-        :param fov: field of view of camera in degree
+        :param image_width: width of the camera image
+        :param image_height: height of the camera image
+        :param vertical_fov: vertical field of view of the camera image in degrees
         :param device_idx: GPU device index to run rendering on
         :param render_to_tensor: Render to GPU tensors
         """
@@ -38,8 +40,9 @@ class Simulator:
         self.mode = mode
 
         # renderer
-        self.resolution = resolution
-        self.fov = fov
+        self.image_width = image_width
+        self.image_height = image_height
+        self.vertical_fov = vertical_fov
         self.device_idx = device_idx
         self.use_fisheye = use_fisheye
         self.render_to_tensor = render_to_tensor
@@ -73,17 +76,17 @@ class Simulator:
         Set up MeshRenderer and physics simulation client. Initialize the list of objects.
         """
         if self.render_to_tensor:
-            self.renderer = MeshRendererG2G(width=self.resolution,
-                                         height=self.resolution,
-                                         fov=self.fov,
+            self.renderer = MeshRendererG2G(width=self.image_width,
+                                            height=self.image_height,
+                                            vertical_fov=self.vertical_fov,
+                                            device_idx=self.device_idx,
+                                            use_fisheye=self.use_fisheye)
+        else:
+            self.renderer = MeshRenderer(width=self.image_width,
+                                         height=self.image_height,
+                                         vertical_fov=self.vertical_fov,
                                          device_idx=self.device_idx,
                                          use_fisheye=self.use_fisheye)
-        else:
-            self.renderer = MeshRenderer(width=self.resolution,
-                                     height=self.resolution,
-                                     fov=self.fov,
-                                     device_idx=self.device_idx,
-                                     use_fisheye=self.use_fisheye)
 
         if self.mode == 'gui':
             self.cid = p.connect(p.GUI)
@@ -141,11 +144,13 @@ class Simulator:
                         self.renderer.add_instance(self.visual_objects[filename],
                                                    pybullet_uuid=new_object,
                                                    class_id=class_id)
-        
-
                 elif type == p.GEOM_PLANE:
-                    pass #don't load plane, it will cause z fighting
-                    #filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                    pass
+                    # By default, we add an additional floor surface to "smooth out" that of the original mesh.
+                    # Normally you don't need to render this additionally added floor surface.
+                    # However, if you do want to render it for some reason, you can uncomment the block below.
+
+                    # filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                     # self.renderer.load_object(filename,
                     #                           transform_orn=rel_orn,
                     #                           transform_pos=rel_pos,
@@ -153,11 +158,8 @@ class Simulator:
                     #                           scale=[100, 100, 0.01])
                     # self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                     #                            pybullet_uuid=new_object,
-                    #                            class_id=class_id,
-                    #                            dynamic=True)
+                    #                            class_id=class_id)
 
-                    # Uncomment the above block if you want to render the additionally added floor
-                    pass
         self.scene = scene
         return new_objects
 

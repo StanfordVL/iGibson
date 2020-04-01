@@ -100,7 +100,7 @@ class InstanceGroup(object):
 
         for i, visual_object in enumerate(self.objects):
             for object_idx in visual_object.VAO_ids:
-                
+
                 self.renderer.r.init_material_pos_instance(self.renderer.shaderProgram, self.poses_trans[i], self.poses_rot[i], float(self.class_id) / 255.0, self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3], float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
 
                 try:
@@ -270,11 +270,11 @@ class MeshRenderer:
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
-    def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False, msaa=False):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
-        :param fov: vertical field of view for the renderer
+        :param vertical_fov: vertical field of view for the renderer
         :param device_idx: which GPU to run the renderer on
         :param use_fisheye: use fisheye shader or not
         """
@@ -341,11 +341,11 @@ class MeshRenderer:
 
         self.lightpos = [0, 0, 0]
         self.setup_framebuffer()
-        self.fov = fov
+        self.vertical_fov = vertical_fov
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
-        P = perspective(self.fov, float(self.width) / float(self.height), 0.01, 100)
+        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.01, 100)
         V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
@@ -410,7 +410,7 @@ class MeshRenderer:
 
         shapes = reader.GetShapes()
         print("Num shapes: ", len(shapes))
-       
+
         material_count = len(self.materials_mapping)
         materials_fn = {}
 
@@ -429,7 +429,7 @@ class MeshRenderer:
                     self.textures.append(texture)
                 else:
                     material = Material('color', kd=kd)
-                
+
                 self.materials_mapping[i + material_count] = material
 
             if not is_texture:
@@ -467,7 +467,7 @@ class MeshRenderer:
                 shape_normal = np.zeros((shape_vertex.shape[0], 3)) #dummy normal if normal is not available
             else:
                 shape_normal = vertex_normal[shape_normal_index]
-            
+
             if len(vertex_texcoord) == 0:
                 shape_texcoord = np.zeros((shape_vertex.shape[0], 2)) #dummy texcoord if texcoord is not available
             else:
@@ -583,9 +583,8 @@ class MeshRenderer:
         self.V = np.ascontiguousarray(V, np.float32)
 
     def set_fov(self, fov):
-        self.fov = fov
-        # this is vertical fov
-        P = perspective(self.fov, float(self.width) / float(self.height), 0.01, 100)
+        self.vertical_fov = fov
+        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.01, 100)
         self.P = np.ascontiguousarray(P, np.float32)
 
     def set_light_color(self, color):
@@ -754,3 +753,4 @@ class MeshRenderer:
                 for item in self.render(modes=modes, hidden=[instance]):
                     frames.append(item)
         return frames
+
