@@ -31,7 +31,7 @@ class Demo(object):
     def run_demo(self):
         config = parse_config(os.path.join(gibson2.assets_path,'turtlebot_p2p_nav_house.yaml'))
         
-        s = Simulator(mode='gui', resolution=700)
+        s = Simulator(mode='gui', image_width=700, image_height=700)
         scene = BuildingScene('Rs')
         s.import_scene(scene)
         turtlebot = Turtlebot(config)
