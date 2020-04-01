@@ -6,7 +6,9 @@ import yaml
 import gibson2
 import os
 from gibson2.utils.utils import parse_config
+from gibson2.utils.assets_utils import download_data
 
+download_data()
 
 def test_import_object():
     s = Simulator(mode='headless')
