@@ -142,38 +142,23 @@ class LocomotorRobot(BaseRobot):
                 j.set_motor_position(action[n])
         elif self.control == 'differential':
             assert len(action) == 2, "Differential drive must have only two joints"
-
+            
             linear_velocity = (action[0] + self.max_linear_velocity) / 2.0 # m/s
-            #linear_velocity = 0.15 * action[0] + 0.35
             angular_velocity = action[1] # rad/s
 
-#             try:
-#                 if linear_velocity > self.min_velocity:
-#                     self.min_velocity = linear_velocity
-#                 print(self.min_velocity)
-#             except:
-#                 self.min_velocity = linear_velocity
-
-            if linear_velocity == 0:
-                # turn in place
-                right = angular_velocity * self.half_track / (2.0 * np.pi * self.wheel_radius)
-                left = -right
-            elif angular_velocity == 0:
-                # pure forward/backward motion
-                left = right = linear_velocity / (2.0 * np.pi * self.wheel_radius)
-            else:
-                # Rotation about a point in space
-                left = (linear_velocity - angular_velocity * self.half_track)  / (2.0 * np.pi * self.wheel_radius)
-                right = (linear_velocity + angular_velocity * self.half_track)  / (2.0 * np.pi * self.wheel_radius)
-
-            left = 2 * np.pi * left / 360
-            right = 2 * np.pi * right / 360
+            # compute wheel velocities
+            left = (linear_velocity - angular_velocity * self.half_track)  / self.wheel_radius
+            right = (linear_velocity + angular_velocity * self.half_track)  / self.wheel_radius
 
             for n, j in enumerate(self.ordered_joints):
                 if n == 0:
-                    j.set_motor_velocity(self.power * j.power_coef * float(np.clip(left, -1, +1)))
+                    j.set_motor_velocity(float(left))
                 else:
-                    j.set_motor_velocity(self.power * j.power_coef * float(np.clip(right, -1, +1)))
+                    j.set_motor_velocity(float(right))
+#                 if n == 0:
+#                     j.set_motor_velocity(self.power * j.power_coef * float(np.clip(left, -1, +1)))
+#                 else:
+#                     j.set_motor_velocity(self.power * j.power_coef * float(np.clip(right, -1, +1)))
         elif type(self.control) is list or type(
                 self.control) is tuple:  # if control is a tuple, set different control
             # type for each joint
@@ -583,15 +568,15 @@ class TurtlebotDifferentialDrive(LocomotorRobot):
         self.config = config
         self.max_linear_velocity = config.get("max_linear_velocity", 1.0)
         self.max_angular_velocity = config.get("max_angular_velocity", 3.0)
-        self.wheel_track = 0.235
+        self.wheel_track = 0.23
         self.half_track = self.wheel_track / 2.0
-        self.wheel_radius = 0.025
+        self.wheel_radius = 0.0352
         LocomotorRobot.__init__(self,
                             "turtlebot/turtlebot.urdf",
                             "base_link",
                             action_dim=2,
                             sensor_dim=16,
-                            power=1.9,
+                            power=2.5,
                             scale=config.get("robot_scale", self.default_scale),
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", False),
@@ -626,7 +611,6 @@ class TurtlebotDifferentialDrive(LocomotorRobot):
         return np.concatenate((base_state, np.array(angular_velocity)))
 
 
-
 class JR2DifferentialDrive(LocomotorRobot):
     mjcf_scaling = 1
     model_type = "URDF"
@@ -644,7 +628,7 @@ class JR2DifferentialDrive(LocomotorRobot):
                             "base_link",
                             action_dim=2,
                             sensor_dim=16,
-                            power=1.0,
+                            power=2.5,
                             scale=config.get("robot_scale", self.default_scale),
                             resolution=config.get("resolution", 64),
                             is_discrete=config.get("is_discrete", False),
