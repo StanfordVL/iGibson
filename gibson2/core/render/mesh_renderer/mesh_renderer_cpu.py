@@ -17,7 +17,6 @@ import pybullet as p
 import gibson2
 import os
 from gibson2.core.render.mesh_renderer import tinyobjloader
-import torch
 
 class VisualObject(object):
     """
