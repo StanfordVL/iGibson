@@ -5,10 +5,12 @@ from gibson2.core.physics.scene import StadiumScene, BuildingScene
 from gibson2.core.physics.interactive_objects import YCBObject, InteractiveObj
 from gibson2.core.simulator import Simulator
 from gibson2.utils.utils import parse_config
+from gibson2 import assets_path
 import numpy as np
 
 configs_folder = '..\\configs\\'
-bullet_obj_folder = 'C:\\Users\\shen\\Desktop\\GibsonVRStuff\\vr_branch\\gibsonv2\\gibson2\\assets\\models\\bullet_models\\data\\'
+bullet_obj_folder = assets_path + '\\models\\bullet_models\\data\\'
+sample_urdf_folder = assets_path + '\\models\\sample_urdfs\\'
 config = parse_config(configs_folder + 'fetch_interactive_nav.yaml')
 
 s = Simulator(mode='vr')
@@ -16,7 +18,10 @@ scene = StadiumScene()
 s.import_scene(scene)
 fetch = Fetch(config)
 s.import_robot(fetch)
-fetch.set_position([0,0.5,0])
+fetch.set_position([0,1,0])
+
+# Gravity set to 0 to show off interaction
+p.setGravity(0,0,0)
 
 # Poles represent hands
 # Left hand
@@ -31,7 +36,7 @@ right_pole = InteractiveObj(bullet_obj_folder + 'pole.urdf', scale=0.7)
 s.import_object(right_pole)
 right_pole_id = right_pole.body_id
 
-# TODO: Change this constraint?
+# TODO: Change this constraint? Make it less springy?
 rpole_cid = p.createConstraint(right_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
 
 def multQuatLists(q0, q1):
@@ -45,14 +50,23 @@ def multQuatLists(q0, q1):
 
     return [x,y,z,w]
 
-obj = YCBObject('006_mustard_bottle')
+# Load objects in the environment
+bottle = YCBObject('006_mustard_bottle')
 
-for i in range(2):
-    s.import_object(obj)
+s.import_object(bottle)
+_, org_orn = p.getBasePositionAndOrientation(bottle.body_id)
+bottle_pos = [0.7,0,1]
+p.resetBasePositionAndOrientation(bottle.body_id, bottle_pos, org_orn)
 
-obj = YCBObject('002_master_chef_can')
-for i in range(2):
-    s.import_object(obj)
+can = YCBObject('002_master_chef_can')
+s.import_object(can)
+_, org_orn = p.getBasePositionAndOrientation(can.body_id)
+can_pos = [0,-0.7,1]
+p.resetBasePositionAndOrientation(can.body_id, can_pos, org_orn)
+
+basket = InteractiveObj(sample_urdf_folder + 'object_2eZY2JqYPQE.urdf')
+s.import_object(basket)
+basket.set_position([-0.7,0,1])
 
 # Rotates poles to correct orientation relative to VR controller
 pole_correction_quat = p.getQuaternionFromEuler([0, 1.57, 0])
