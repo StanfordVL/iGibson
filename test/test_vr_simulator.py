@@ -28,4 +28,6 @@ for i in range(2):
 while True:
     s.step(should_measure_fps=True)
 
+    lIsValid, lTrans, lRot = s.getDataForVRDevice('left_controller')
+
 s.disconnect()
