@@ -6,7 +6,7 @@ There are two steps to get iGibson, the Interactive Gibson Environment, on your 
 
 #### Installing the Environment
 
-There are two methods to install iGiboson.
+We provide two methods to install iGibson.
 
 First, iGibson can be installed as a python package using pip:
 
