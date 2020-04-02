@@ -1,10 +1,10 @@
-.. GibsonEnvV2 documentation master file, created by
+.. InteractiveGibsonEnv documentation master file, created by
    sphinx-quickstart on Tue Nov 19 14:38:54 2019.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to GibsonEnvV2's documentation!
-=======================================
+Welcome to InteractiveGibsonEnv's documentation!
+==================================================
 
 .. toctree::
    :maxdepth: 1
