@@ -120,7 +120,7 @@ Gibson provides a set of methods for you to define your own environments. You ca
 
 
 
-Create a docker image for gibson v2
+Create a docker image for Interactive Gibson
 =======================================
 
 
