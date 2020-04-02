@@ -15,13 +15,13 @@ os.sys.path.insert(0, parentdir)
 
 class BaseRobot:
     """
-    Base class for mujoco .xml/ROS urdf based agents.
+    Base class for mujoco xml/ROS urdf based agents.
     Handles object loading
     """
 
     def __init__(self, model_file, base_name=None, scale=1, self_collision=False):
         """
-        :param model_file: model urdf file name
+        :param model_file: model filename
         :param base_name: name of the base link
         :param scale: scale, default to 1
         :param self_collision: use self collision or not
@@ -50,13 +50,24 @@ class BaseRobot:
 
     def load(self):
         """
-        Load the robot urdf model into pybullet
+        Load the robot model into pybullet
         :return: body id in pybullet
         """
-        ids = self._load_model()
+        flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL
+        if self.self_collision:
+            flags = flags | p.URDF_USE_SELF_COLLISION | p.URDF_USE_SELF_COLLISION_EXCLUDE_PARENT
+
+        if self.model_type == "MJCF":
+            self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file), flags=flags)
+        if self.model_type == "URDF":
+            self.robot_ids = (p.loadURDF(os.path.join(self.physics_model_dir, self.model_file), globalScaling=self.scale, flags=flags),)
+
+        self.parts, self.jdict, self.ordered_joints, self.robot_body, self.robot_mass = self.parse_robot(self.robot_ids)
+
         assert "eyes" in self.parts, 'Please add a link named "eyes" in your robot URDF file with the same pose as the onboard camera. Feel free to check out assets/models/turtlebot/turtlebot.urdf for an example.'
         self.eyes = self.parts["eyes"]
-        return ids
+
+        return self.robot_ids
 
     def parse_robot(self, bodies):
         """
@@ -137,22 +148,6 @@ class BaseRobot:
             raise Exception('robot body not initialized.')
 
         return parts, joints, ordered_joints, self.robot_body, robot_mass
-
-    def _load_model(self):
-        """
-        Actual function to load urdf into pybullet
-        """
-        flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL
-        if self.self_collision:
-            flags = flags | p.URDF_USE_SELF_COLLISION | p.URDF_USE_SELF_COLLISION_EXCLUDE_PARENT
-
-        if self.model_type == "MJCF":
-            self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file), flags=flags)
-        if self.model_type == "URDF":
-            self.robot_ids = (p.loadURDF(os.path.join(self.physics_model_dir, self.model_file), globalScaling=self.scale, flags=flags),)
-
-        self.parts, self.jdict, self.ordered_joints, self.robot_body, self.robot_mass = self.parse_robot(self.robot_ids)
-        return self.robot_ids
 
     def robot_specific_reset(self):
         raise NotImplementedError
@@ -255,6 +250,12 @@ class Joint:
         self.body_index = body_index
         self.joint_index = joint_index
         self.joint_name = joint_name
+
+        # read joint type and joint limit from the URDF file
+        # lower_limit, upper_limit, max_velocity, max_torque = <limit lower=... upper=... velocity=... effort=.../>
+        # "effort" is approximately torque (revolute) / force (prismatic), but not exactly (ref: http://wiki.ros.org/pr2_controller_manager/safety_limits).
+        # if <limit /> does not exist, the following will be the default value
+        # lower_limit, upper_limit, max_velocity, max_torque = 0.0, -1.0, 0.0, 0.0
         _, _, self.joint_type, _, _, _, _, _, self.lower_limit, self.upper_limit, self.max_torque, self.max_velocity, _, _, _, _, _ \
             = p.getJointInfo(self.bodies[self.body_index], self.joint_index)
         self.joint_has_limit = self.lower_limit < self.upper_limit
