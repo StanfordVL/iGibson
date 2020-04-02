@@ -1,6 +1,6 @@
 # scene
 scene: building
-model_id: Ohoopee
+model_id: Rs
 build_graph: true
 load_texture: true
 trav_map_erosion: 3
