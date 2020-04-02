@@ -2,9 +2,13 @@
 Installation
 =================
 
-#### Installation Method
+There are two steps to get iGibson, the Interactive Gibson Environment, on your computer. First, you need to install the simulation environment. Then, you need to download some 3D reconstructed large environments for your agents to train.
 
-InteractiveGibsonEnv can be installed as a python package:
+#### Installing the Environment
+
+There are two methods to install iGiboson.
+
+First, iGibson can be installed as a python package using pip:
 
 ```bash
 pip install gibson2
@@ -13,7 +17,7 @@ python -m gibson2.envs.demo
 python -m gibson2.envs.demo_interactive
 ```
 
-Alternatively, it can be compiled from source:
+Alternatively, it can be compiled from source based on this repository:
 
 ```bash
 git clone https://github.com/StanfordVL/iGibson --recursive
@@ -23,8 +27,9 @@ conda create -n py3-gibson python=3.6 anaconda
 source activate py3-gibson
 pip install -e .
 ```
+We recommend the second method if you plan to modify iGibson for your project. If you plan to use it as-is to train navigation and manipulation agents, the pip installation should meet your requirements.
 
-#### System requirements
+#### System Requirements
 
 The minimum system requirements are the following:
 
@@ -33,9 +38,11 @@ The minimum system requirements are the following:
 - Nvidia driver >= 384
 - CUDA >= 9.0, CuDNN >= v7
 
-#### Download data
+Other system configurations may work, but haven't been extensively tested and we won't be able to provide support. We have been able to install on Windows.
 
-First, our environment core assets data are available [here](https://storage.googleapis.com/gibsonassets/assets_gibson_v2.tar.gz).  You can set the path in `global_config.yaml`.  The `assets` folder stores necessary data (agent models, environments, etc) to run gibson environment. Assets data can be downloaded and extracted with a single command:
+#### Download Dataset of 3D Environments
+
+Our environment core assets data are available [here](https://storage.googleapis.com/gibsonassets/assets_gibson_v2.tar.gz).  You can set the path in `global_config.yaml`.  The `assets` folder stores necessary data (agent models, environments, etc) to run gibson environment. Assets data can be downloaded and extracted with a single command:
 
 ```bash
 python -m gibson2.utis.assets_utils
@@ -48,7 +55,9 @@ assets_path: assets #put either absolute path or relative to current directory
 dataset_path: assets/dataset
 ```
 
-#### Download sample scenes
+#### Download Full Interactive Scene
+
+We include
 
 By running:
 ```bash
