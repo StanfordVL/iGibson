@@ -12,7 +12,7 @@ import gibson2
 class DemoInteractive(object):
     def __init__(self):
         self.download_assets()
-        
+
     def download_assets(self):
         if not os.path.exists(gibson2.assets_path):
             os.system('wget https://storage.googleapis.com/gibsonassets/assets_gibson_v2.tar.gz -O /tmp/assets_gibson_v2.tar.gz')
@@ -35,7 +35,7 @@ class DemoInteractive(object):
         s.import_scene(scene)
         turtlebot = Turtlebot(config)
         s.import_robot(turtlebot)
-        
+
         for i in range(1000):
             turtlebot.apply_action([0.1,0.5])
             s.step()
