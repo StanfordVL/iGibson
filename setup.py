@@ -101,7 +101,7 @@ class PostInstallCommand(install):
 
 setup(
     name='gibson2',
-    version='0.0.2',
+    version='0.0.2b',
     author='Stanford University',
     zip_safe=False,
     packages=find_packages(),

@@ -29,7 +29,7 @@ class DemoInteractive(object):
 
     def run_demo(self):
         config = parse_config(os.path.join(gibson2.assets_path,'turtlebot_p2p_nav_house.yaml'))
-        s = Simulator(mode='gui', resolution=700)
+        s = Simulator(mode='gui', image_width=700, image_height=700)
         model_path = os.path.join(gibson2.dataset_path, 'Rs_interactive', 'rs_interactive.urdf')
         scene = InteractiveBuildingScene(model_path)
         s.import_scene(scene)

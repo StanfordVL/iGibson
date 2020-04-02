@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.12)
 project(CppMeshRenderer)
 set (USE_GLAD TRUE)
 set (USE_CUDA TRUE)
+set (USE_GLFW FALSE)
 
 include_directories(glad)
 
@@ -13,18 +14,22 @@ endif()
 
 if (USE_CUDA)
   add_definitions(-DUSE_CUDA) 
+  find_package(OpenGL) 
+  #OpenGL is still needed for cuda-gl interoperation
 endif()
 
 add_subdirectory(pybind11)
 
-# Find GLFW and OpenVR
-set(GLFW_DIR glfw)
-set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "Build the GLFW example programs")
-set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "Build the GLFW test programs")
-set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "Build the GLFW documentation")
-set(GLFW_INSTALL OFF CACHE INTERNAL "Generate installation target")
-add_subdirectory("${GLFW_DIR}")
-include_directories("${GLFW_DIR}/include")
+if (USE_GLFW)
+  # Find GLFW and OpenVR
+  set(GLFW_DIR glfw)
+  set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "Build the GLFW example programs")
+  set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "Build the GLFW test programs")
+  set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "Build the GLFW documentation")
+  set(GLFW_INSTALL OFF CACHE INTERNAL "Generate installation target")
+  add_subdirectory("${GLFW_DIR}")
+  include_directories("${GLFW_DIR}/include")
+endif()
 
 if (USE_CUDA)
   find_package(CUDA REQUIRED)
@@ -35,22 +40,33 @@ else()
 endif()
 
 add_library(tinyobjloader MODULE cpp/tinyobjloader/tiny_obj_loader.cc cpp/tinyobjloader/bindings.cc)
-add_library(GLFWRendererContext MODULE glad/gl.cpp cpp/glfw_mesh_renderer.cpp)
+if (USE_GLFW)
+  add_library(GLFWRendererContext MODULE glad/gl.cpp cpp/glfw_mesh_renderer.cpp)
+endif()
+
 
 if (USE_GLAD)
   target_link_libraries(MeshRendererContext PRIVATE pybind11::module dl pthread)
-  target_link_libraries(GLFWRendererContext PRIVATE pybind11::module dl glfw ${GLFW_LIBRARIES})
+  if (USE_GLFW)
+    target_link_libraries(GLFWRendererContext PRIVATE pybind11::module dl glfw ${GLFW_LIBRARIES})
+  endif()
 else ()
   target_link_libraries(MeshRendererContext PRIVATE pybind11::module dl pthread  EGL ${OPENGL_LIBRARIES})
-  target_link_libraries(GLFWRendererContext PRIVATE pybind11::module dl glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES})
+  if (USE_GLFW)
+    target_link_libraries(GLFWRendererContext PRIVATE pybind11::module dl glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES})
+  endif()
 endif()
 
 target_link_libraries(tinyobjloader PRIVATE pybind11::module)
 
 set_target_properties(MeshRendererContext PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
                                          SUFFIX "${PYTHON_MODULE_EXTENSION}")
+
+if (USE_GLFW)
 set_target_properties(GLFWRendererContext PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
                                          SUFFIX "${PYTHON_MODULE_EXTENSION}")
+endif()
+
 set_target_properties(tinyobjloader PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
                                          SUFFIX "${PYTHON_MODULE_EXTENSION}")
 

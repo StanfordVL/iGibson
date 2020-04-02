@@ -55,11 +55,7 @@ def depth_loader(path):
     return img
 
 
-def get_model_path(model_id):
-    data_path = gibson2.dataset_path
-    assert (model_id in os.listdir(data_path)
-            ) or model_id == 'stadium', "Model {} does not exist".format(model_id)
-    return os.path.join(data_path, model_id)
+
 
 
 def get_item_fn(inds, select, root, loader, transform, off_3d, target_transform, depth_trans,
