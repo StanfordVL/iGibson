@@ -51,7 +51,7 @@ Third, you need to download some large 3D reconstructed real-world environments 
 Alternatively, the robot and object models, together with the R's interactive and non-interactive versions can be downloaded and extracted in the assets folder indicated in `your_installation_path/gibson2/global_config.yaml` with a single command:
 
 ```bash
-python -m gibson2.utis.assets_utils
+python -m gibson2.utils.assets_utils
 ```
 
 Uninstalling
