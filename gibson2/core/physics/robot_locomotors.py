@@ -127,17 +127,30 @@ class LocomotorRobot(BaseRobot):
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_position(action[n])
         elif self.control == 'differential_drive':
-            assert action.shape[0] == 2 and len(self.ordered_joints) == 2, 'differential drive only supports two wheels'
+            # assume self.ordered_joints = [left_wheel, right_wheel]
+            assert action.shape[0] == 2 and len(self.ordered_joints) == 2, 'differential drive requires the first two joints to be two wheels'
             lin_vel, ang_vel = action
             if not hasattr(self, 'wheel_axle_half') or not hasattr(self, 'wheel_radius'):
                 raise Exception('Trying to use differential drive, but wheel_axle_half and wheel_radius are not specified.')
             left_wheel_ang_vel = (lin_vel - ang_vel * self.wheel_axle_half) / self.wheel_radius
             right_wheel_ang_vel = (lin_vel + ang_vel * self.wheel_axle_half) / self.wheel_radius
-            # assume self.ordered_joints = [left_wheel, right_wheel]
             self.ordered_joints[0].set_motor_velocity(left_wheel_ang_vel)
             self.ordered_joints[1].set_motor_velocity(right_wheel_ang_vel)
         elif type(self.control) is list or type(self.control) is tuple:
             # if control is a tuple, set different control type for each joint
+
+            if 'differential_drive' in self.control:
+                # assume self.ordered_joints = [left_wheel, right_wheel, joint_1, joint_2, ...]
+                assert action.shape[0] >= 2 and len(self.ordered_joints) >= 2, 'differential drive requires the first two joints to be two wheels'
+                assert self.control[0] == self.control[1] == 'differential_drive', 'differential drive requires the first two joints to be two wheels'
+                lin_vel, ang_vel = action[:2]
+                if not hasattr(self, 'wheel_axle_half') or not hasattr(self, 'wheel_radius'):
+                    raise Exception('Trying to use differential drive, but wheel_axle_half and wheel_radius are not specified.')
+                left_wheel_ang_vel = (lin_vel - ang_vel * self.wheel_axle_half) / self.wheel_radius
+                right_wheel_ang_vel = (lin_vel + ang_vel * self.wheel_axle_half) / self.wheel_radius
+                self.ordered_joints[0].set_motor_velocity(left_wheel_ang_vel)
+                self.ordered_joints[1].set_motor_velocity(right_wheel_ang_vel)
+
             for n, j in enumerate(self.ordered_joints):
                 if self.control[n] == 'torque':
                     j.set_motor_torque(self.torque_coef * j.max_torque * float(np.clip(action[n], -1, +1)))
@@ -146,7 +159,7 @@ class LocomotorRobot(BaseRobot):
                 elif self.control[n] == 'position':
                     j.set_motor_position(action[n])
         else:
-            pass
+            raise Exception('unknown control type: {}'.format(self.control))
 
     def policy_action_to_robot_action(self, action):
         if self.is_discrete:
