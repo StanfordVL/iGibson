@@ -1,12 +1,6 @@
 import gibson2
 import os
 
-def get_model_path(model_id):
-    data_path = gibson2.dataset_path
-    assert (model_id in os.listdir(data_path)
-            ) or model_id == 'stadium', "Model {} does not exist".format(model_id)
-    return os.path.join(data_path, model_id)
-
 def download_data():
     if not os.path.exists(gibson2.assets_path):
         os.system('wget https://storage.googleapis.com/gibsonassets/assets_gibson_v2.tar.gz -O /tmp/assets_gibson_v2.tar.gz')
@@ -20,3 +14,6 @@ def download_data():
     if not os.path.exists(os.path.join(gibson2.assets_path, 'turtlebot_p2p_nav_house.yaml')):
         os.system('wget https://storage.googleapis.com/gibson_scenes/turtlebot_p2p_nav_house.yaml \
         -O {}/turtlebot_p2p_nav_house.yaml'.format(gibson2.assets_path))
+
+if __name__ == "__main__":
+    download_data()

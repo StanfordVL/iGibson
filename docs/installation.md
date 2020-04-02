@@ -7,8 +7,17 @@ Installation
 InteractiveGibsonEnv can be installed as a python package:
 
 ```bash
-git clone https://github.com/StanfordVL/InteractiveGibsonEnv --recursive
-cd InteractiveGibsonEnv
+pip install gibson2
+# run the demo
+python -m gibson2.envs.demo
+python -m gibson2.envs.demo_interactive
+```
+
+Alternatively, it can be compiled from source:
+
+```bash
+git clone https://github.com/StanfordVL/iGibson --recursive
+cd iGibson
 
 conda create -n py3-gibson python=3.6 anaconda
 source activate py3-gibson
@@ -26,7 +35,11 @@ The minimum system requirements are the following:
 
 #### Download data
 
-First, our environment core assets data are available [here](https://storage.googleapis.com/gibsonassets/assets_gibson_v2.tar.gz).  You can store the data where you want and put the path in `global_config.yaml`.  The `assets` folder stores necessary data (agent models, environments, etc) to run gibson environment. 
+First, our environment core assets data are available [here](https://storage.googleapis.com/gibsonassets/assets_gibson_v2.tar.gz).  You can set the path in `global_config.yaml`.  The `assets` folder stores necessary data (agent models, environments, etc) to run gibson environment. Assets data can be downloaded and extracted with a single command:
+
+```bash
+python -m gibson2.utis.assets_utils
+```
 
 Users can add more environments files into `dataset` folder and put the path in `global_config.yaml` to run gibson on more environments. Visit the [database readme](https://forms.gle/YTbzXjNtmmsra9KY6) for downloading more spaces. Please sign the [license agreement](https://forms.gle/YTbzXjNtmmsra9KY6) before using Gibson's database. The default path is:
 
@@ -37,10 +50,12 @@ dataset_path: assets/dataset
 
 #### Download sample scenes
 
+By running:
+```bash
+python -m gibson2.utis.assets_utils
 ```
-wget https://storage.googleapis.com/gibsonassets/gibson_mesh/Ohopee.tar.gz
-```
-Put the downloaded `Ohopee` scene into `dataset_path` and you should be able to run all the tests and some examples. Full dataset will can be downloaded [here](https://forms.gle/YTbzXjNtmmsra9KY6).
+
+You will download `Rs` scene and `Rs_interactive` into `dataset_path` and you should be able to run all the tests and some examples. Full dataset will can be downloaded [here](https://forms.gle/YTbzXjNtmmsra9KY6).
 
 
 Uninstalling
