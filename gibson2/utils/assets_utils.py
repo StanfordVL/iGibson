@@ -9,8 +9,8 @@ def get_model_path(model_id):
 
 def download_data():
     if not os.path.exists(gibson2.assets_path):
-        os.system('wget https://storage.googleapis.com/gibsonassets/assets_gibson_v2.tar.gz -O /tmp/assets_gibson_v2.tar.gz')
-        os.system('tar -zxf /tmp/assets_gibson_v2.tar.gz --directory {}'.format(os.path.dirname(gibson2.assets_path)))
+        os.system('wget https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz -O /tmp/assets_igibson.tar.gz')
+        os.system('tar -zxf /tmp/assets_igibson.tar.gz --directory {}'.format(os.path.dirname(gibson2.assets_path)))
 
     if not os.path.exists(gibson2.dataset_path):
         os.makedirs(gibson2.dataset_path)
