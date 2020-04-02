@@ -10,10 +10,10 @@ cd test
 pytest # the tests should pass, it will take a few minutes
 ```
 
-Gibson v2 Framerate
+Interactive Gibson Env Framerate
 ----
 
-Gibson v2 framerate compared with gibson v1 is shown in the table below:
+Interactive Gibson Env framerate compared with gibson v1 is shown in the table below:
 
 |                     | Gibson V2 | Gibson V1 |
 |---------------------|-----------|-----------|

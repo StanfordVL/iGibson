@@ -13,6 +13,8 @@ Welcome to InteractiveGibsonEnv's documentation!
    overview.md
    installation.md
    quickstart.md
+   dataset.md
+   ros.md
    projects.md
    
 .. toctree::
