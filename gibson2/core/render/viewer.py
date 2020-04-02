@@ -7,22 +7,26 @@ class Viewer:
     def __init__(self):
         self.px = 0
         self.py = 0
+        self.pz = 1.2
         self._mouse_ix, self._mouse_iy = -1, -1
-        self.down = False
+        self.left_down = False
+        self.middle_down = False
         self.view_direction = np.array([1, 0, 0])
 
-        cv2.namedWindow('test')
-        cv2.namedWindow('robots')
-        cv2.setMouseCallback('test', self.change_dir)
+        cv2.namedWindow('ExternalView')
+        cv2.moveWindow("ExternalView", 0,0);
+        cv2.namedWindow('RobotView')
+        cv2.setMouseCallback('ExternalView', self.change_dir)
 
         self.renderer = None
 
     def change_dir(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
             self._mouse_ix, self._mouse_iy = x, y
-            self.down = True
+            self.left_down = True
+
         if event == cv2.EVENT_MOUSEMOVE:
-            if self.down:
+            if self.left_down:
                 dx = (x - self._mouse_ix) / 100.0
                 dy = (y - self._mouse_iy) / 100.0
                 self._mouse_ix = x
@@ -32,11 +36,20 @@ class Viewer:
                 r2 = np.array([[np.cos(-dx), -np.sin(-dx), 0], [np.sin(-dx),
                                                                 np.cos(-dx), 0], [0, 0, 1]])
                 self.view_direction = r1.dot(r2).dot(self.view_direction)
+            if self.middle_down:
+                dz = (y - self._mouse_iy) / 100.0
+                self._mouse_iy = y
+                self.pz += dz
         elif event == cv2.EVENT_LBUTTONUP:
-            self.down = False
+            self.left_down = False
+        elif event == cv2.EVENT_MBUTTONDOWN:
+            self._mouse_ix, self._mouse_iy = x, y
+            self.middle_down = True
+        elif event == cv2.EVENT_MBUTTONUP:
+            self.middle_down = False
 
     def update(self):
-        camera_pose = np.array([self.px, self.py, 1.2])
+        camera_pose = np.array([self.px, self.py, self.pz])
         if not self.renderer is None:
             self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, [0, 0, 1])
 
@@ -46,12 +59,12 @@ class Viewer:
         else:
             frame = np.zeros((300, 300, 3)).astype(np.uint8)
         #cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
-        cv2.putText(frame, "px {:1.1f} py {:1.1f}".format(self.px, self.py), (10, 20),
+        cv2.putText(frame, "px {:1.1f} py {:1.1f} pz {:1.1f}".format(self.px, self.py, self.pz), (10, 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
         cv2.putText(frame, "[{:1.1f} {:1.1f} {:1.1f}]".format(*self.view_direction), (10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
-        cv2.imshow('test', frame)
+        cv2.imshow('ExternalView', frame)
 
         q = cv2.waitKey(1)
         if q == ord('w'):
@@ -69,7 +82,7 @@ class Viewer:
             frames = self.renderer.render_robot_cameras(modes=('rgb'))
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
-                cv2.imshow('robots', frame)
+                cv2.imshow('RobotView', frame)
 
 
 if __name__ == '__main__':
