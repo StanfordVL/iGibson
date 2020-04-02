@@ -3,7 +3,7 @@ scene: stadium
 
 # robot
 robot: Turtlebot
-velocity: 0.1
+velocity: 1.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching

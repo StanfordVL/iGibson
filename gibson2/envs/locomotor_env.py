@@ -250,10 +250,10 @@ class NavigateEnv(BaseEnv):
             additional_states = np.array(cartesian_to_polar(additional_states[0], additional_states[1]))
 
         # linear velocity along the x-axis
-        linear_velocity = rotate_vector_3d(self.robots[0].robot_body.velocity(),
+        linear_velocity = rotate_vector_3d(self.robots[0].get_linear_velocity(),
                                            *self.robots[0].get_rpy())[0]
         # angular velocity along the z-axis
-        angular_velocity = rotate_vector_3d(self.robots[0].robot_body.angular_velocity(),
+        angular_velocity = rotate_vector_3d(self.robots[0].get_angular_velocity(),
                                             *self.robots[0].get_rpy())[2]
         additional_states = np.append(additional_states, [linear_velocity, angular_velocity])
 
