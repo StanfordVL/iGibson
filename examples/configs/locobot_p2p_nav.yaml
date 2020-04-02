@@ -1,5 +1,6 @@
 # scene
-scene: building
+scene: stadium
+#scene: building
 model_id: Ohoopee
 build_graph: true
 load_texture: true
