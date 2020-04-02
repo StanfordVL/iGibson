@@ -40,35 +40,22 @@ The minimum system requirements are the following:
 
 Other system configurations may work, but haven't been extensively tested and we won't be able to provide support. We have been able to install on Windows.
 
-#### Download Dataset of 3D Environments
+#### Download Assets: Models of Robots, Objects and Environments
 
-Our environment core assets data are available [here](https://storage.googleapis.com/gibsonassets/assets_gibson_v2.tar.gz).  You can set the path in `global_config.yaml`.  The `assets` folder stores necessary data (agent models, environments, etc) to run gibson environment. Assets data can be downloaded and extracted with a single command:
+First, create a folder to contain all the assets (robotic agents, objects, 3D environments, etc.) and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/assets`).
+
+Second, you can download our robot models and objects from [here](https://storage.googleapis.com/gibsonassets/assets_gibson_v2.tar.gz) and unpack it in the assets folder.
+
+Third, you need to download some large 3D reconstructed environments (houses, offices) from our dataset for your agents to be trained in. Create a new folder for those environments and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/assets/dataset`). You can get access and download the full Gibson and iGibson (interactive furniture) datasets by filling up the following [license agreement](https://forms.gle/YTbzXjNtmmsra9KY6). Alternatively, you can download a single [high quality small environment](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz), R's, together with a [fully interactive version](https://storage.googleapis.com/gibson_scenes/Rs_interactive.tar.gz). 
+
+Alternatively, the robot and object models, together with the R's interactive and non-interactive versions can be downloaded and extracted in the assets folder indicated in `your_installation_path/gibson2/global_config.yaml` with a single command:
 
 ```bash
 python -m gibson2.utis.assets_utils
 ```
-
-Users can add more environments files into `dataset` folder and put the path in `global_config.yaml` to run gibson on more environments. Visit the [database readme](https://forms.gle/YTbzXjNtmmsra9KY6) for downloading more spaces. Please sign the [license agreement](https://forms.gle/YTbzXjNtmmsra9KY6) before using Gibson's database. The default path is:
-
-```yaml
-assets_path: assets #put either absolute path or relative to current directory
-dataset_path: assets/dataset
-```
-
-#### Download Full Interactive Scene
-
-We include
-
-By running:
-```bash
-python -m gibson2.utis.assets_utils
-```
-
-You will download `Rs` scene and `Rs_interactive` into `dataset_path` and you should be able to run all the tests and some examples. Full dataset will can be downloaded [here](https://forms.gle/YTbzXjNtmmsra9KY6).
-
 
 Uninstalling
 ----
 
-Uninstall gibson is easy with `pip uninstall gibson2`
+Uninstall iGibson is easy: `pip uninstall gibson2`
 
