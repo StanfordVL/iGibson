@@ -7,9 +7,9 @@ trav_map_erosion: 3
 
 # robot
 robot: Fetch
-wheel_velocity: 0.05
-torso_lift_velocity: 0.0001
-arm_velocity: 0.01
+wheel_velocity: 1.0
+torso_lift_velocity: 1.0
+arm_velocity: 1.0
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
