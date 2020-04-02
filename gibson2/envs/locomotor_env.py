@@ -9,7 +9,6 @@ import argparse
 from gibson2.learn.completion import CompletionNet, identity_init, Perceptual
 import torch.nn as nn
 import torch
-from torchvision import datasets, transforms
 from transforms3d.quaternions import quat2mat, qmult
 import gym
 import numpy as np

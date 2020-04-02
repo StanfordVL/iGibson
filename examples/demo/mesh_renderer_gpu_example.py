@@ -4,7 +4,6 @@ import numpy as np
 from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.core.render.profiler import Profiler
 import matplotlib.pyplot as plt
-import torch
 
 if __name__ == '__main__':
     model_path = sys.argv[1]
