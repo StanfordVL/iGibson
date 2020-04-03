@@ -24,11 +24,11 @@ import gibson2
 
 
 
-project = 'InteractiveGibsonEnv'
+project = 'iGibson'
 copyright = 'Stanford University 2018-2020'
 author = 'Fei Xia, William B. Shen, Chengshu Li, Micael Tchapmi, Lyne Tchapmi, Noriaki Hirose, Kevin Chen, Junyoung Gwak Priya Kasimbeg, Alexander Toshev,  Amir R. Zamir, Roberto Martı́n-Martı́n, Li Fei-Fei, Silvio Savarese'
 
-github_doc_root = 'https://github.com/StanfordVL/InteractiveGibsonEnv'
+github_doc_root = 'https://github.com/StanfordVL/iGibson'
 
 # The short X.Y version
 version = gibson2.__version__

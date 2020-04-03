@@ -2,7 +2,7 @@
 Installing iGibson
 =================
 
-There are two steps to get iGibson, the Interactive Gibson Environment, on your computer. First, you need to install the simulation environment. Then, you need to download the assets: models of the robotic agents, the interactive objects and 3D reconstructed real-world large environments for your agents to train.
+There are two steps to install iGibson, the Interactive Gibson Environment, on your computer. First, you need to install the simulation environment. Then, you need to download the assets: models of the robotic agents, the interactive objects and 3D reconstructed real-world large environments for your agents to train.
 
 #### Installing the Environment
 
@@ -23,8 +23,8 @@ Alternatively, it can be compiled from source based on this repository:
 git clone https://github.com/StanfordVL/iGibson --recursive
 cd iGibson
 
-conda create -n py3-gibson python=3.6 anaconda
-source activate py3-gibson
+conda create -n py3-igibson python=3.6 anaconda
+source activate py3-igibson
 pip install -e .
 ```
 We recommend the second method if you plan to modify iGibson's simulator in your project. If you plan to use it as-is to train navigation and manipulation agents, the pip installation should meet your requirements.
