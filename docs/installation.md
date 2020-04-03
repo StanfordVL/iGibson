@@ -2,7 +2,7 @@
 Installing iGibson
 =================
 
-There are two steps to get iGibson, the Interactive Gibson Environment, on your computer. First, you need to install the simulation environment. Then, you need to download the assets: models of the robotic agents, the interactive objects and 3D reconstructed real-world large environments for your agents to train.
+There are two steps to install iGibson, the Interactive Gibson Environment, on your computer. First, you need to install the simulation environment. Then, you need to download the assets: models of the robotic agents, the interactive objects and 3D reconstructed real-world large environments for your agents to train.
 
 #### Installing the Environment
 
