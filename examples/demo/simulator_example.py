@@ -8,20 +8,24 @@ import pybullet as p
 import numpy as np
 from gibson2.core.render.profiler import Profiler
 
-config = parse_config('../configs/turtlebot_p2p_nav.yaml')
 
-s = Simulator(mode='gui', image_width=512, image_height=512, render_to_tensor=False)
-scene = BuildingScene('Rs')
-s.import_scene(scene)
-turtlebot = Turtlebot(config)
-s.import_robot(turtlebot)
+def main():
+    config = parse_config('../configs/turtlebot_p2p_nav.yaml')
 
-p.resetBasePositionAndOrientation(scene.ground_plane_mjcf[0], posObj=[0, 0, -10], ornObj=[0, 0, 0, 1])
+    s = Simulator(mode='gui', image_width=512, image_height=512, render_to_tensor=False)
+    scene = BuildingScene('Rs')
+    s.import_scene(scene)
+    turtlebot = Turtlebot(config)
+    s.import_robot(turtlebot)
 
-for i in range(2000):
-    with Profiler('simulator step'):
-        turtlebot.apply_action([0.1,0.1])
-        s.step()
-        rgb = s.renderer.render_robot_cameras(modes=('rgb'))
+    for i in range(1000):
+        with Profiler('Simulator step'):
+            turtlebot.apply_action([0.1,0.1])
+            s.step()
+            rgb = s.renderer.render_robot_cameras(modes=('rgb'))
 
-s.disconnect()
+    s.disconnect()
+
+
+if __name__ == '__main__':
+    main()

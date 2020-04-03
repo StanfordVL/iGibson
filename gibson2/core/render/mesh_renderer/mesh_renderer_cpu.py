@@ -614,26 +614,17 @@ class MeshRenderer(object):
         :return: a list of numpy arrays depending corresponding to `modes`
         """
         results = []
-        if 'rgb' in modes:
-            frame = self.r.readbuffer_meshrenderer('rgb', self.width, self.height, self.fbo)
+
+        # single mode
+        if isinstance(modes, str):
+            modes = [modes]
+
+        for mode in modes:
+            if mode not in ['rgb', 'normal', 'seg', '3d']:
+                raise Exception('unknown rendering mode: {}'.format(mode))
+            frame = self.r.readbuffer_meshrenderer(mode, self.width, self.height, self.fbo)
             frame = frame.reshape(self.height, self.width, 4)[::-1, :]
             results.append(frame)
-
-        if 'normal' in modes:
-            normal = self.r.readbuffer_meshrenderer('normal', self.width, self.height, self.fbo)
-            normal = normal.reshape(self.height, self.width, 4)[::-1, :]
-            results.append(normal)
-
-        if 'seg' in modes:
-            seg = self.r.readbuffer_meshrenderer('seg', self.width, self.height, self.fbo)
-            seg = seg.reshape(self.height, self.width, 4)[::-1, :]
-            results.append(seg)
-
-        if '3d' in modes:
-            pc = self.r.readbuffer_meshrenderer('3d', self.width, self.height, self.fbo)
-            pc = pc.reshape(self.height, self.width, 4)[::-1, :]
-            results.append(pc)
-
         return results
 
     def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):

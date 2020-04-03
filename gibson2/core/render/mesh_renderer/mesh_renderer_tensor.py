@@ -26,25 +26,33 @@ try:
 
         def readbuffer_to_tensor(self, modes=('rgb', 'normal', 'seg', '3d')):
             results = []
-            with torch.cuda.device(self.cuda_idx):
-                if 'rgb' in modes:
-                    self.r.map_tensor(int(self.color_tex_rgb), int(self.width), int(self.height),
-                                      self.image_tensor.data_ptr())
-                    results.append(self.image_tensor.clone())
-                if 'normal' in modes:
-                    self.r.map_tensor(int(self.color_tex_normal), int(self.width), int(self.height),
-                                      self.normal_tensor.data_ptr())
-                    results.append(self.normal_tensor.clone())
-                if 'seg' in modes:
-                    self.r.map_tensor(int(self.color_tex_semantics), int(self.width), int(self.height),
-                                      self.seg_tensor.data_ptr())
-                    results.append(self.seg_tensor.clone())
-                if '3d' in modes:
-                    self.r.map_tensor_float(int(self.color_tex_3d), int(self.width), int(self.height),
-                                      self.pc_tensor.data_ptr())
-                    results.append(self.pc_tensor.clone())
 
+            # single mode
+            if isinstance(modes, str):
+                modes = [modes]
+
+            with torch.cuda.device(self.cuda_idx):
+                for mode in modes:
+                    if mode not in ['rgb', 'normal', 'seg', '3d']:
+                        raise Exception('unknown rendering mode: {}'.format(mode))
+                    if mode == 'rgb':
+                        self.r.map_tensor(int(self.color_tex_rgb), int(self.width), int(self.height),
+                                          self.image_tensor.data_ptr())
+                        results.append(self.image_tensor.clone())
+                    elif mode == 'normal':
+                        self.r.map_tensor(int(self.color_tex_normal), int(self.width), int(self.height),
+                                          self.normal_tensor.data_ptr())
+                        results.append(self.normal_tensor.clone())
+                    elif mode == 'seg':
+                        self.r.map_tensor(int(self.color_tex_semantics), int(self.width), int(self.height),
+                                          self.seg_tensor.data_ptr())
+                        results.append(self.seg_tensor.clone())
+                    elif mode == '3d':
+                        self.r.map_tensor_float(int(self.color_tex_3d), int(self.width), int(self.height),
+                                                self.pc_tensor.data_ptr())
+                        results.append(self.pc_tensor.clone())
             return results
+
         def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
             """
             A function to render all the instances in the renderer and read the output from framebuffer into pytorch tensor.
