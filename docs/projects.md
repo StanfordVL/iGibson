@@ -1,7 +1,7 @@
 Projects using Gibson Environment
 ===================================
 
-It is exciting to see people using Gibson Environment in embodied AI research. Here is a list of projects using Gibson Environment or Interactive Gibson Environment.
+It is exciting to see people using Gibson Environment in embodied AI research. Here is a list of projects using Gibson or iGibson environments:
 
 - K. Chen, J. P. de Vicente, G. Sepulveda, F. Xia, A. Soto, M. Vazquez, and S. Savarese. [A behavioral approach to visual navigation with graph localization networks](https://arxiv.org/pdf/1903.00445.pdf). In RSS, 2019.
 - Hirose, Noriaki, et al. [Deep Visual MPC-Policy Learning for Navigation.](https://arxiv.org/pdf/1903.02749.pdf) arXiv preprint arXiv:1903.02749 (2019). IROS 2019.
@@ -16,7 +16,7 @@ It is exciting to see people using Gibson Environment in embodied AI research. H
 - Xia, Fei, et al. [Interactive Gibson: A Benchmark for Interactive Navigation in Cluttered Environments.](https://arxiv.org/pdf/1910.14442.pdf) arXiv preprint arXiv:1910.14442 (2019).
 
 
-These papers tested policies trained in Gibson Env on real robot:
+These papers tested policies trained in Gibson in real robots in the physical world:
 
 - Xiangyun Meng, Nathan Ratliff, Yu Xiang and Dieter Fox. [Scaling Local Control to Large-Scale Topological Navigation](https://arxiv.org/pdf/1909.12329.pdf)
 - X. Meng, N. Ratliff, Y. Xiang, and D. Fox, [Neural autonomous navigation with riemannian motion policy,](https://arxiv.org/pdf/1904.01762.pdf) in IEEE International Conference on Robotics and Automation (ICRA), 2019.
@@ -24,16 +24,19 @@ These papers tested policies trained in Gibson Env on real robot:
 - Hirose, Noriaki, et al. [Deep Visual MPC-Policy Learning for Navigation.](https://arxiv.org/pdf/1903.02749.pdf) arXiv preprint arXiv:1903.02749 (2019). IROS 2019.
 
 
-If you use Gibson environment simulator or assets, please consider citing the following papers:
+If you use Gibson or iGibson or their assets, please consider citing the following papers for iGibson, the Interactive Gibson Environment:
 
-````text
-@inproceedings{xia2018gibson,
-  title={Gibson env: Real-world perception for embodied agents},
-  author={Xia, Fei and Zamir, Amir R and He, Zhiyang and Sax, Alexander and Malik, Jitendra and Savarese, Silvio},
-  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
-  pages={9068--9079},
-  year={2018}
-}
+````
+@article{xia2020interactive,
+           title={Interactive Gibson Benchmark: A Benchmark for Interactive Navigation in Cluttered Environments},
+           author={Xia, Fei and Shen, William B and Li, Chengshu and Kasimbeg, Priya and Tchapmi, Micael Edmond and Toshev, Alexander and Mart{\'\i}n-Mart{\'\i}n, Roberto and Savarese, Silvio},
+           journal={IEEE Robotics and Automation Letters},
+           volume={5},
+           number={2},
+           pages={713--720},
+           year={2020},
+           publisher={IEEE}
+         }
 ````
 
 ````text
@@ -44,5 +47,17 @@ If you use Gibson environment simulator or assets, please consider citing the fo
            year = {2019},
            institution = {Stanford University},
            month = {6},
+}
+````
+
+and the following paper for the first Gibson paper:
+
+````text
+@inproceedings{xia2018gibson,
+  title={Gibson env: Real-world perception for embodied agents},
+  author={Xia, Fei and Zamir, Amir R and He, Zhiyang and Sax, Alexander and Malik, Jitendra and Savarese, Silvio},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={9068--9079},
+  year={2018}
 }
 ````
