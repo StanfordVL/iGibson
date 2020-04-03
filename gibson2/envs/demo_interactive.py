@@ -23,7 +23,7 @@ class DemoInteractive(object):
             os.system('tar -zxf /tmp/Rs_interactive.tar.gz --directory {}'.format(gibson2.dataset_path))
 
     def run_demo(self):
-        config = parse_config(os.path.join(gibson2.assets_path, '../../examples/configs/turtlebot_p2p_nav.yaml'))
+        config = parse_config(os.path.join(gibson2.assets_path, '../../examples/configs/turtlebot_demo.yaml'))
         s = Simulator(mode='gui', image_width=700, image_height=700)
         model_path = os.path.join(gibson2.dataset_path, 'Rs_interactive', 'rs_interactive.urdf')
         scene = InteractiveBuildingScene(model_path)

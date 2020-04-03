@@ -26,7 +26,7 @@ def main():
     renderer.set_fov(90)
     for i in range(3000):
         with Profiler('Render'):
-            frame = renderer.render(modes=('rgb', 'seg', 'normal', '3d'))
+            frame = renderer.render(modes=('rgb', 'normal', '3d'))
 
     print(frame)
     img_np = frame[0].flip(0).data.cpu().numpy().reshape(renderer.height, renderer.width, 4)

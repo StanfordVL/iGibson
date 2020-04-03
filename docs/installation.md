@@ -1,10 +1,9 @@
+# Installation
+There are two steps to install iGibson, the Interactive Gibson Environment, on your computer.
 
-Installing iGibson
-=================
+First, you need to install the simulation environment. Then, you need to download the assets: models of the robotic agents, the interactive objects and 3D reconstructed real-world large environments for your agents to train.
 
-There are two steps to install iGibson, the Interactive Gibson Environment, on your computer. First, you need to install the simulation environment. Then, you need to download the assets: models of the robotic agents, the interactive objects and 3D reconstructed real-world large environments for your agents to train.
-
-#### Installing the Environment
+### Installing the Environment
 
 We provide two methods to install the simulator.
 
@@ -17,7 +16,7 @@ python -m gibson2.envs.demo
 python -m gibson2.envs.demo_interactive
 ```
 
-Alternatively, it can be compiled from source based on this repository:
+Alternatively, it can be compiled from source: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson)
 
 ```bash
 git clone https://github.com/StanfordVL/iGibson --recursive
@@ -27,7 +26,7 @@ conda create -n py3-igibson python=3.6 anaconda
 source activate py3-igibson
 pip install -e .
 ```
-We recommend the second method if you plan to modify iGibson's simulator in your project. If you plan to use it as-is to train navigation and manipulation agents, the pip installation should meet your requirements.
+We recommend the second method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation should meet your requirements.
 
 #### System Requirements
 
@@ -38,9 +37,14 @@ The minimum system requirements are the following:
 - Nvidia driver >= 384
 - CUDA >= 9.0, CuDNN >= v7
 
-Other system configurations may work, but haven't been extensively tested and we won't be able to provide extensive support. We have been able to install on Windows.
+Other system configurations may work, but we haven't tested them extensively and we probably won't be able to provide as much support as we want.
 
-#### Downloading Assets: Models of Robots, Objects and Environments
+### Downloading the Assets
+TODO: @fei
+1. Change default value of global_config.yaml to be gibson2/assets and gibson2/dataset
+2. Users should always use assets_utils to download assets and Rs and Rs_interactive
+3. Users need to fill up the form to download Gibson houses: a) 10 interactive ones, b) 572 static ones
+4. Put them into gibson2/dataset
 
 First, create a folder to contain all the iGibson's assets (robotic agents, objects, 3D environments, etc.) and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/assets`).
 
@@ -54,8 +58,6 @@ Alternatively, the robot and object models, together with the R's interactive an
 python -m gibson2.utils.assets_utils
 ```
 
-Uninstalling
-----
-
-Uninstall iGibson is easy: `pip uninstall gibson2`
+### Uninstalling
+Uninstalling iGibson is easy: `pip uninstall gibson2`
 

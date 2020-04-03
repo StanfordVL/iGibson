@@ -1,4 +1,4 @@
-Objects
+Object
 ==========
 
 YCBObject

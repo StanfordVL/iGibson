@@ -1,5 +1,5 @@
-Examples of simulator
-=======================
+(Deprecated) Examples of simulator
+==================================
 
 Create a simple simulated environment
 ---------------------------------------

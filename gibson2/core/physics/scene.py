@@ -5,7 +5,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 os.sys.path.insert(0, parentdir)
 import pybullet_data
-from gibson2.utils.assets_utils import get_model_path
+from gibson2.utils.assets_utils import get_model_path, get_texture_file
 from gibson2.utils.utils import l2_distance
 
 import numpy as np
@@ -102,7 +102,7 @@ class BuildingScene(Scene):
                  should_load_replaced_objects=False,
                  num_waypoints=10,
                  waypoint_resolution=0.2,
-                 pybullet_show_texture=False,
+                 pybullet_load_texture=False,
                  ):
         """
         Load a building scene and compute traversability
@@ -114,6 +114,7 @@ class BuildingScene(Scene):
         :param should_load_replaced_objects: load CAD objects for parts of the meshes
         :param num_waypoints: number of way points returned
         :param waypoint_resolution: resolution of adjacent way points
+        :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect what the robots see
         """
         print("building scene: %s" % model_id)
         self.model_id = model_id
@@ -127,7 +128,7 @@ class BuildingScene(Scene):
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
         self.mesh_body_id = None
-        self.pybullet_show_texture = pybullet_show_texture
+        self.pybullet_load_texture = pybullet_load_texture
 
     def load(self):
         """
@@ -147,11 +148,12 @@ class BuildingScene(Scene):
                                              fileName=filename,
                                              meshScale=scaling,
                                              flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
-        if self.pybullet_show_texture:
+        if self.pybullet_load_texture:
             visual_id = p.createVisualShape(p.GEOM_MESH,
                                            fileName=filename,
                                            meshScale=scaling)
-            texture_filename = os.path.join(get_model_path(self.model_id), "{}_mesh_texture.small.jpg".format(self.model_id))
+            texture_filename = get_texture_file(filename)
+            print('texture_file', texture_filename)
             texture_id = p.loadTexture(texture_filename)
         else:
             visual_id = -1
@@ -161,7 +163,7 @@ class BuildingScene(Scene):
                                         baseVisualShapeIndex=visual_id)
         self.mesh_body_id = boundary_id
         p.changeDynamics(boundary_id, -1, lateralFriction=1)
-        if self.pybullet_show_texture:
+        if self.pybullet_load_texture:
             p.changeVisualShape(boundary_id,
                                 -1,
                                 textureUniqueId=texture_id)

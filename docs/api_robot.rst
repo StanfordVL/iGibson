@@ -1,4 +1,4 @@
-Robots
+Robot
 ================
 
 BaseRobot
