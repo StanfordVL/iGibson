@@ -1,2 +1,2 @@
 assets_path: assets # put either absolute path or relative to current directory
-dataset_path: assets/dataset
+dataset_path: dataset
