@@ -1,5 +1,5 @@
-Examples of navigation tasks
-==============================
+(Deprecated) Examples of navigation tasks
+=========================================
 
 Point2Point Navigation
 ---------------------------

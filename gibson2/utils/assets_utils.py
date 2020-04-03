@@ -6,6 +6,24 @@ def get_model_path(model_id):
     assert model_id in os.listdir(data_path) or model_id == 'stadium', "Model {} does not exist".format(model_id)
     return os.path.join(data_path, model_id)
 
+def get_texture_file(mesh_file):
+    model_dir = os.path.dirname(mesh_file)
+    with open(mesh_file, 'r') as f:
+        lines = [line.strip() for line in f.readlines() if 'mtllib' in line]
+        if len(lines) == 0:
+            return
+        mtl_file = lines[0].split()[1]
+        mtl_file = os.path.join(model_dir, mtl_file)
+
+    with open(mtl_file, 'r') as f:
+        lines = [line.strip() for line in f.readlines() if 'map_Kd' in line]
+        if len(lines) == 0:
+            return
+        texture_file = lines[0].split()[1]
+        texture_file = os.path.join(model_dir, texture_file)
+
+    return texture_file
+
 def download_data():
     if not os.path.exists(gibson2.assets_path):
         os.system('wget https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz -O /tmp/assets_igibson.tar.gz')

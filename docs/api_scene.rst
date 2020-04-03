@@ -1,4 +1,4 @@
-Scenes
+Scene
 =============
 
 Scene manages the environment where the agent trains. We include a`StadiumScene` and a `BuildingScene`.

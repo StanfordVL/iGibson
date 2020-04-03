@@ -1,5 +1,8 @@
-Using iGibson with ROS
+ROS Integration
 ============
+
+TODO: @fei
+Make sure everything is up-to-date
 
 
 Introduction

@@ -77,13 +77,16 @@ class BaseEnv(gym.Env):
                 num_waypoints=self.config.get('num_waypoints', 10),
                 build_graph=self.config.get('build_graph', False),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
-                should_load_replaced_objects=self.config.get('should_load_replaced_objects', False)
+                should_load_replaced_objects=self.config.get('should_load_replaced_objects', False),
+                pybullet_load_texture=self.config.get('pybullet_load_texture', False),
             )
 
         # scene: class_id = 0
         # robot: class_id = 1
         # objects: class_id > 1
-        self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True), class_id=0)
+        self.simulator.import_scene(scene,
+                                    load_texture=self.config.get('load_texture', True),
+                                    class_id=0)
         if self.config['robot'] == 'Turtlebot':
             robot = Turtlebot(self.config)
         elif self.config['robot'] == 'Husky':

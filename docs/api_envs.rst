@@ -1,4 +1,4 @@
-Environments
+Env
 =============
 
 .. automodule:: gibson2.envs

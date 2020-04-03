@@ -22,11 +22,11 @@ If you use iGibson or its assets and models, consider citing the following publi
 ```
 
 
-### Release
-This is the repository for iGibson (gibson2) 0.0.1 release. Bug reports, suggestions for improvement, as well as community developments are encouraged and appreciated. Here is the [Changelog](misc/CHANGELOG.md). The support for our previous version of the environment, [Gibson v1](http://github.com/StanfordVL/GibsonEnv/), will be moved to this repository.
+### Code Release
+The GitHub repository of iGibson can be found here: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson). Bug reports, suggestions for improvement, as well as community developments are encouraged and appreciated. The support for our previous version of the environment, [Gibson v1](http://github.com/StanfordVL/GibsonEnv/), will be moved there.
 
 ### Documentation
-The documentation for this repository can be found here: [iGibson Environment Documentation](http://svl.stanford.edu/igibson/docs/). It includes installation guide (including data download), quickstart guide, code examples, and APIs.
+This is the documentation webpage for iGibson. It includes installation guide (including data download), quickstart guide, code examples, and APIs.
 
 If you want to know more about iGibson, you can also check out [our webpage](http://svl.stanford.edu/igibson), [our RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442) and [our (outdated) technical report](http://svl.stanford.edu/igibson/assets/gibsonv2paper.pdf).
 

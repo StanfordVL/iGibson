@@ -15,7 +15,7 @@ class Demo(object):
         download_data()
 
     def run_demo(self):
-        config = parse_config(os.path.join(gibson2.assets_path, '../../examples/configs/turtlebot_p2p_nav.yaml'))
+        config = parse_config(os.path.join(gibson2.assets_path, '../../examples/configs/turtlebot_demo.yaml'))
 
         s = Simulator(mode='gui', image_width=700, image_height=700)
         scene = BuildingScene('Rs')

@@ -1,5 +1,8 @@
-Interactive Gibson Environment Dataset
+Dataset
 ==========================================
+
+TODO: @fei
+Make sure everything is up-to-date.
 
 Full Gibson Environment Dataset consists of 572 models and 1440 floors. We cover a diverse set of models including households, offices, hotels, venues, museums, hospitals, construction sites, etc. A diverse set of visualization of all spaces in Gibson can be seen [here](http://gibsonenv.stanford.edu/database/).
  

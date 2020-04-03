@@ -1,5 +1,5 @@
-Examples of renderer
-=====================
+(Deprecated) Examples of renderer
+=================================
 
 Use the mesh renderer
 ---------------------
