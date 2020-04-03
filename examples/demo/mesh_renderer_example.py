@@ -1,11 +1,20 @@
 import cv2
 import sys
+import os
 import numpy as np
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from gibson2.core.render.profiler import Profiler
+from gibson2.utils.assets_utils import get_model_path
 
-if __name__ == '__main__':
-    model_path = sys.argv[1]
+
+def main():
+    global _mouse_ix, _mouse_iy, down, view_direction
+
+    if len(sys.argv) > 1:
+        model_path = sys.argv[1]
+    else:
+        model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
+
     renderer = MeshRenderer(width=512, height=512)
     renderer.load_object(model_path)
     renderer.add_instance(0)
@@ -40,7 +49,6 @@ if __name__ == '__main__':
         elif event == cv2.EVENT_LBUTTONUP:
             down = False
 
-
     cv2.namedWindow('test')
     cv2.setMouseCallback('test', change_dir)
 
@@ -63,3 +71,7 @@ if __name__ == '__main__':
         renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
 
     renderer.release()
+
+
+if __name__ == '__main__':
+    main()

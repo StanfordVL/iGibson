@@ -24,22 +24,18 @@ class Profiler(object):
 
     def __exit__(self, exception_type, exception_value, traceback):
         if self.enable:
-            self.summarize_step(self.start, step_name="complete")
+            self.summarize_step(self.start)
 
-    def summarize_step(self, start, step_name="", level=None):
+    def summarize_step(self, start, level=None):
         duration = time.time() - start
-        step_semicolon = ':' if step_name else ""
         if self.logger:
             level = level or self.level
-            self.logger.log(
-                self.level,
-                "{name}{step}: {fps:.2f} fps".format(name=self.name,
-                                                     step=step_semicolon + " " + step_name,
-                                                     secs=1 / duration))
+            self.logger.log(self.level,
+                            "{name}: {fps:.2f} fps, {duration:.5f} seconds".format(name=self.name,
+                                                                                   fps=1 / duration,
+                                                                                   duration=duration))
         else:
-            print("{name}{step}: {fps:.2f} fps, {duration:.5f} seconds".format(name=self.name,
-                                                                               step=step_semicolon +
-                                                                               " " + step_name,
-                                                                               fps=1 / duration,
-                                                                               duration=duration))
+            print("{name}: {fps:.2f} fps, {duration:.5f} seconds".format(name=self.name,
+                                                                         fps=1 / duration,
+                                                                         duration=duration))
         return duration
