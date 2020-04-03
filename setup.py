@@ -109,7 +109,7 @@ setup(
             'numpy==1.16.6',
             'scipy==1.2.3',
             'gym==0.12',
-            'PyYAML==5.3',
+            'PyYAML',
             'pybullet==2.6.4',
             'transforms3d==0.3.1',
             'tqdm==4.19.9',
