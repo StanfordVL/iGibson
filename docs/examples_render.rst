@@ -4,7 +4,7 @@ Examples of renderer
 Use the mesh renderer
 ---------------------
 
-You can use the mesh renderer to render a Gibson mesh within lines of code:
+You can use the mesh renderer to render an iGibson mesh within lines of code:
 
 .. code-block:: python
 
@@ -106,7 +106,7 @@ Sample rendering results with 'Ribera' scene would look like below:
 Use the mesh renderer to render to tensor
 --------------------------------------------
 
-You can use gibson's mesh renderer to render to a pytorch tensor, and it is extremely fast. Pytorch installation is required (otherwise, gibson simulator is not dependent on pytorch.)
+You can use iGibson's mesh renderer to render to a pytorch tensor, and it is extremely fast. Pytorch installation is required (otherwise, iGibson's simulator is not dependent on pytorch.)
 
 The code can be found in `examples/demo/mesh_renderer_example.py`.
 

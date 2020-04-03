@@ -1,7 +1,7 @@
 Scenes
 =============
 
-Scene manages an environment that agents stays in, There are `StadiumScene` and `BuildingScene`.
+Scene manages the environment where the agent trains. We include a`StadiumScene` and a `BuildingScene`.
 
 .. automodule:: gibson2.core.physics.scene
 
