@@ -1,7 +1,7 @@
 # Objects
 
 ### Overview
-We provide a wide variety of **Objects** that can be imported into a scene.
+We provide a wide variety of **Objects** that can be imported into the **Simulator**.
 - `YCBObject`
 - `RBOObject`
 - `ShapeNetObject`
@@ -11,7 +11,9 @@ We provide a wide variety of **Objects** that can be imported into a scene.
 - `BoxShape`
 - `VisualMarker`
 
-Typically, they take in the name or the path of an object (in `gibson2.assets_path`) and provide a `load` function that be invoked externally (usually by `import_object` and `import_articulated_object` of the `Simulator`). The `load` function imports the object into PyBullet. Some **Objects** (e.g. `InteractiveObj`) also provide APIs to get and set the object pose.
+Typically, they take in the name or the path of an object (in `gibson2.assets_path`) and provide a `load` function that be invoked externally (usually by `import_object` and `import_articulated_object` of `Simulator`). The `load` function imports the object into PyBullet. Some **Objects** (e.g. `InteractiveObj`) also provide APIs to get and set the object pose.
+
+Most of the code can be found here: [gibson2/core/physics/interactive_objects.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/physics/interactive_objects.py).
 
 ### Examples
 In this example, we import three objects into PyBullet, two of which are articulated objects. The code can be found here: [examples/demo/object_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/object_example.py).
@@ -27,6 +29,9 @@ def main():
     p.connect(p.GUI)
     p.setGravity(0,0,-9.8)
     p.setTimeStep(1./240.)
+
+    floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+    p.loadMJCF(floor)
 
     cabinet_0007 = os.path.join(gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf')
     cabinet_0004 = os.path.join(gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf')

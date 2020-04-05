@@ -14,7 +14,6 @@ Welcome to iGibson's documentation!
    installation.md
    quickstart.md
    overview.md
-   quickstart_old.md
 
 .. toctree::
    :maxdepth: 1
@@ -31,9 +30,6 @@ Welcome to iGibson's documentation!
    environments.md
    algorithms.md
    ros.md
-   examples_render.rst
-   examples_simulator.rst
-   examples_tasks.rst
 
 .. toctree::
    :maxdepth: 1

@@ -1,7 +1,7 @@
 from gibson2.core.physics.robot_locomotors \
     import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot
 from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import BuildingScene, StadiumScene
+from gibson2.core.physics.scene import EmptyScene, StadiumScene, BuildingScene
 import gibson2
 from gibson2.utils.utils import parse_config
 import gym
@@ -68,7 +68,9 @@ class BaseEnv(gym.Env):
         """
         Load the scene and robot
         """
-        if self.config['scene'] == 'stadium':
+        if self.config['scene'] == 'empty':
+            scene = EmptyScene()
+        elif self.config['scene'] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
             scene = BuildingScene(
