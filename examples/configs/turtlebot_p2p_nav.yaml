@@ -1,12 +1,15 @@
 # scene
 scene: building
 model_id: Rs
+is_interactive: false
 build_graph: true
 load_texture: true
+trav_map_resolution: 0.1
 trav_map_erosion: 2
 
 # robot
 robot: Turtlebot
+is_discrete: false
 velocity: 1.0
 
 # task, observation and action
@@ -14,7 +17,6 @@ task: pointgoal # pointgoal|objectgoal|areagoal|reaching
 target_dist_min: 1.0
 target_dist_max: 10.0
 initial_pos_z_offset: 0.1
-is_discrete: false
 additional_states_dim: 4
 
 # reward
