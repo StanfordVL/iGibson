@@ -3,9 +3,11 @@
 ### Overview
 We provide three types of scenes.
 - `EmptyScene` and `StadiumScene`: they are simple scenes with flat grounds and no obstacles, very good for debugging.
-- `BuildingScene`: it loads most of the realistic 3D scenes from `gibson2.dataset_path`.
+- `BuildingScene`: it loads realistic 3D scenes from `gibson2.dataset_path`.
 
-To be more specific, `BuildingScene`
+Typically, they take in the `model_id` of a scene and provide a `load` function that be invoked externally (usually by `import_scene` of the `Simulator`).
+
+To be more specific, the `load` function of `BuildingScene`
 - stores the floor information (we have many multistory houses in our dataset)
 - loads the scene mesh into PyBullet
 - builds an internal traversability graph for each floor based on the traversability maps stored in the scene folder (e.g. `dataset/Rs/floor_trav_0.png`)

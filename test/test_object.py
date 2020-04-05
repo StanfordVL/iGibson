@@ -45,17 +45,17 @@ def test_import_rbo_object():
         s.import_scene(scene)
 
         obj = RBOObject('book')
-        s.import_interactive_object(obj)
+        s.import_articulated_object(obj)
 
         obj2 = RBOObject('microwave')
-        s.import_interactive_object(obj2)
+        s.import_articulated_object(obj2)
 
         obj.set_position([0, 0, 2])
         obj2.set_position([0, 1, 2])
 
         obj3 = InteractiveObj(
             os.path.join(gibson2.assets_path, 'models', 'scene_components', 'door.urdf'))
-        s.import_interactive_object(obj3)
+        s.import_articulated_object(obj3)
 
         for i in range(100):
             s.step()

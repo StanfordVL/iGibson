@@ -14,4 +14,4 @@ In the next layer, we have **Environment**. **Environment** follows the [OpenAI 
 
 In the top and final layer, we have **Algorithm** and **ROS**. **Algorithm** can be any algorithms (from optimal control to model-free reinforcement leanring) that accommodate OpenAI gym interface. We also provide tight integration with **ROS** that allows for evaluation and visualization of, say, ROS Navigation Stack, in iGibson. More info can be found here: [Algorithm](algorithms.md) and [ROS](ros.md).
 
-We really recommend you go through each of the Modules below for more details and code examples!
+We highly recommend you go through each of the Modules below for more details and code examples.
