@@ -456,7 +456,7 @@ class Simulator:
         for instance in self.renderer.instances:
             if instance.dynamic:
                 self.update_position(instance)
-        if self.mode == 'gui' and not self.viewer is None:
+        if self.mode == 'gui' and self.viewer is not None:
             self.viewer.update()
 
     @staticmethod

@@ -3,15 +3,42 @@ import os
 import gibson2
 import numpy as np
 
+class Object(object):
+    def __init__(self):
+        self.body_id = None
 
-class YCBObject(object):
+    def load(self):
+        return NotImplementedError()
+
+    def get_position(self):
+        pos, _ = p.getBasePositionAndOrientation(self.body_id)
+        return pos
+
+    def get_orientation(self):
+        _, orn = p.getBasePositionAndOrientation(self.body_id)
+        return orn
+
+    def set_position(self, pos):
+        _, old_orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, old_orn)
+
+    def set_orientation(self, orn):
+        old_pos, _ = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, old_pos, orn)
+
+    def set_position_orientation(self, pos, orn):
+        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+
+
+class YCBObject(Object):
     def __init__(self, name, scale=1):
+        super(YCBObject, self).__init__()
         self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
                                      'textured_simple.obj')
         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
                                      'textured_simple_vhacd.obj')
         self.scale = scale
-        self.body_id = None
+
     def load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH,
                                               fileName=self.collision_filename,
@@ -29,10 +56,10 @@ class YCBObject(object):
         return body_id
 
 
-class ShapeNetObject(object):
+class ShapeNetObject(Object):
     def __init__(self, path, scale=1., position=[0, 0, 0], orientation=[0, 0, 0]):
+        super(ShapeNetObject, self).__init__()
         self.filename = path
-
         self.scale = scale
         self.position = position
         self.orientation = orientation
@@ -50,7 +77,6 @@ class ShapeNetObject(object):
             'position': pose[0],
             'orientation_quat': pose[1],
         }
-        self.body_id = None
 
     def load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH,
@@ -65,16 +91,15 @@ class ShapeNetObject(object):
         return body_id
 
 
-class Pedestrian(object):
+class Pedestrian(Object):
     def __init__(self, style='standing', pos=[0, 0, 0]):
+        super(Pedestrian, self).__init__()
         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
                                                'person_{}'.format(style), 'meshes',
                                                'person_vhacd.obj')
         self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
                                             'person_{}'.format(style), 'meshes', 'person.obj')
-        self.body_id = None
         self.cid = None
-
         self.pos = pos
 
     def load(self):
@@ -102,7 +127,7 @@ class Pedestrian(object):
         p.changeConstraint(self.cid, pos, orn)
 
 
-class VisualMarker(object):
+class VisualMarker(Object):
     def __init__(self,
                  visual_shape=p.GEOM_SPHERE,
                  rgba_color=[1, 0, 0, 0.5],
@@ -120,13 +145,13 @@ class VisualMarker(object):
         :param length: parameters for pybullet.GEOM_BOX, pybullet.GEOM_CYLINDER or pybullet.GEOM_CAPSULE
         :param initial_offset: visualFramePosition for the marker
         """
+        super(VisualMarker, self).__init__()
         self.visual_shape = visual_shape
         self.rgba_color = rgba_color
         self.radius = radius
         self.half_extents = half_extents
         self.length = length
         self.initial_offset = initial_offset
-        self.body_id = None
 
     def load(self):
         if self.visual_shape == p.GEOM_BOX:
@@ -157,11 +182,11 @@ class VisualMarker(object):
         p.changeVisualShape(self.body_id, -1, rgbaColor=color)
 
 
-class BoxShape(object):
+class BoxShape(Object):
     def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], visual_only=False, mass=1000, color=[1, 1, 1, 1]):
+        super(BoxShape, self).__init__()
         self.basePos = pos
         self.dimension = dim
-        self.body_id = None
         self.visual_only = visual_only
         self.mass = mass
         self.color = color
@@ -186,38 +211,23 @@ class BoxShape(object):
         p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
 
 
-class InteractiveObj(object):
+class InteractiveObj(Object):
     """
     Interactive Objects are represented as a urdf, but doesn't have motors
     """
     def __init__(self, filename, scale=1):
+        super(InteractiveObj, self).__init__()
         self.filename = filename
         self.scale = scale
-        self.body_id = None
 
     def load(self):
         self.body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.mass = p.getDynamicsInfo(self.body_id, -1)[0]
         return self.body_id
 
-    def get_position(self):
-        pos, _ = p.getBasePositionAndOrientation(self.body_id)
-        return pos
-
-    def get_orientation(self):
-        _, orn = p.getBasePositionAndOrientation(self.body_id)
-        return orn
-
-    def set_position(self, pos):
-        org_pos, org_orn = p.getBasePositionAndOrientation(self.body_id)
-        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
-
-    def set_position_orientation(self, pos, orn):
-        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
-
-
-class SoftObject(object):
+class SoftObject(Object):
     def __init__(self, filename, basePosition=[0,0,0], baseOrientation=[0,0,0,1], scale=-1, mass=-1, collisionMargin=-1, useMassSpring=0, useBendingSprings=0, useNeoHookean=0, springElasticStiffness=1, springDampingStiffness=0.1, springBendingStiffness=0.1, NeoHookeanMu=1, NeoHookeanLambda=1, NeoHookeanDamping=0.1, frictionCoeff=0, useFaceContact=0, useSelfCollision=0):
+        super(SoftObject, self).__init__()
         self.filename = filename
         self.scale = scale
         self.basePosition = basePosition
@@ -236,7 +246,6 @@ class SoftObject(object):
         self.frictionCoeff = frictionCoeff
         self.useFaceContact = useFaceContact
         self.useSelfCollision = useSelfCollision
-        self.body_id = None
 
     def load(self):
         self.body_id = p.loadSoftBody(self.filename, scale = self.scale, basePosition = self.basePosition, baseOrientation = self.baseOrientation, mass=self.mass, collisionMargin=self.collisionMargin, useMassSpring=self.useMassSpring, useBendingSprings=self.useBendingSprings, useNeoHookean=self.useNeoHookean, springElasticStiffness=self.springElasticStiffness, springDampingStiffness=self.springDampingStiffness, springBendingStiffness=self.springBendingStiffness, NeoHookeanMu=self.NeoHookeanMu, NeoHookeanLambda=self.NeoHookeanLambda, NeoHookeanDamping=self.NeoHookeanDamping, frictionCoeff=self.frictionCoeff, useFaceContact=self.useFaceContact, useSelfCollision=self.useSelfCollision)
@@ -248,7 +257,6 @@ class SoftObject(object):
 
     def addAnchor(self, nodeIndex=-1, bodyUniqueId=-1, linkIndex=-1, bodyFramePosition=[0,0,0], physicsClientId=0):
         p.createSoftBodyAnchor(self.body_id, nodeIndex, bodyUniqueId, linkIndex, bodyFramePosition, physicsClientId)
-
 
 
 class RBOObject(InteractiveObj):

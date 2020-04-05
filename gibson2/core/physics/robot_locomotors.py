@@ -607,7 +607,7 @@ class JR2_Kinova(LocomotorRobot):
 
         LocomotorRobot.__init__(self,
                                 "jr2_urdf/jr2_kinova.urdf",
-                                action_dim=10,
+                                action_dim=self.wheel_dim + self.arm_dim,
                                 scale=config.get("robot_scale", 1.0),
                                 is_discrete=config.get("is_discrete", False),
                                 control='velocity',
