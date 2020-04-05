@@ -15,7 +15,7 @@ Simulator
    .. automethod:: import_scene
    .. automethod:: import_object
    .. automethod:: import_robot
-   .. automethod:: import_interactive_object
+   .. automethod:: import_articulated_object
    .. automethod:: step
    .. automethod:: update_position
    .. automethod:: isconnected

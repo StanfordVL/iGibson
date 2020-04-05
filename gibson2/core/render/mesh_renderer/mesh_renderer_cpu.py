@@ -496,7 +496,7 @@ class MeshRenderer(object):
             else:
                 self.mesh_materials.append(material_id + material_count)
 
-            #print('mesh_materials', self.mesh_materials)
+            # print('mesh_materials', self.mesh_materials)
             VAO_ids.append(self.get_num_objects() - 1)
 
         #release(scene)

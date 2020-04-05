@@ -1,4 +1,4 @@
-ROS Integration
+ROS
 ============
 
 TODO: @fei

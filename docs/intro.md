@@ -35,5 +35,5 @@ There are several datasets of 3D reconstructed large real-world environments (ho
 
 You will have access to ten environments with annotated instances of furniture (chairs, tables, desks, doors, sofas) that can be interacted with, and to the original 572 reconstructed 3D environments without annotated objects from [Gibson v1](http://github.com/StanfordVL/GibsonEnv/).
 
-You will also have access to a [fully annotated environment: Rs_interactive](https://storage.googleapis.com/gibson_scenes/Rs_interactive.tar.gz) where close to 200 articulated objects are placed in their original locations of a real house and ready for interaction. ([The original environment: Rs](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) is also available). More info can be found in the [installation guide](http://svl.stanford.edu/igibson/docs/installation.html).
+You will also have access to a [fully annotated environment: Rs_interactive](https://storage.googleapis.com/gibson_scenes/Rs_interactive.tar.gz) where close to 200 articulated objects are placed in their original locations of a real house and ready for interaction. ([The original environment: Rs](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) is also available). More info can be found in the [installation guide](installation.md).
 

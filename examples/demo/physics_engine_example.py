@@ -1,16 +1,3 @@
-# Physics Engine
-
-### Overview
-We use the open-sourced [PyBullet](http://www.pybullet.org/) as our underlying physics engine. It can simulate rigid body collision and joint actuation for robots and articulated objects in an accurate and efficient manner. Since we are using MeshRenderer for rendering and PyBullet for physics simulation, we need to keep them synchronized at all time. Our code have already handled this for you.
-
-Typically, we use `p.createMultiBody` and `p.loadURDF` to load scenes, objects and robots into PyBullet, use `p.resetBasePositionAndOrientation` to set the base pose of robots and objects, `p.resetJointState` to set joint position of robots and articulated objects, and `p.setJointMotorControl2` to control the robots and articulated objects.
-
-More info can be found in here: [PyBullet documentation](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA).
-
-### Examples
-In this example, we import a scene, a robot and an object into PyBullet and step through a few seconds of simulation. The code can be found here:[examples/demo/physics_engine_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/physics_engine_example.py).
-
-```python
 import pybullet as p
 from gibson2.utils.assets_utils import get_model_path, get_texture_file
 import gibson2
@@ -70,8 +57,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-```
-
-You will see the PyBullet interface like this. In the scene, there is a Turtlebot, together with a blue food can next to the robot.
-![physics_engine.png](images/physics_engine.png)
 

@@ -103,6 +103,7 @@ class Simulator:
         self.robots = []
         self.scene = None
         self.objects = []
+        self.next_class_id = 0
 
     def load_without_pybullet_vis(load_func):
         def wrapped_load_func(*args, **kwargs):
@@ -113,7 +114,7 @@ class Simulator:
         return wrapped_load_func
 
     @load_without_pybullet_vis
-    def import_scene(self, scene, texture_scale=1.0, load_texture=True, class_id=0):
+    def import_scene(self, scene, texture_scale=1.0, load_texture=True, class_id=None):
         """
         Import a scene. A scene could be a synthetic one or a realistic Gibson Environment.
 
@@ -123,9 +124,14 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         """
 
+        if class_id is None:
+            class_id = self.next_class_id
+        self.next_class_id += 1
+
         new_objects = scene.load()
         for item in new_objects:
             self.objects.append(item)
+
         for new_object in new_objects:
             for shape in p.getVisualShapeData(new_object):
                 id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
@@ -160,25 +166,55 @@ class Simulator:
                     #                            pybullet_uuid=new_object,
                     #                            class_id=class_id)
 
+        if scene.is_interactive:
+            for obj in scene.scene_objects:
+                class_id = self.next_class_id
+                self.next_class_id += 1
+
+                # obj.load() should have already been called in scene.load()
+                new_object = obj.body_id
+
+                is_soft = False
+                if obj.__class__.__name__ == 'SoftObject':
+                    is_soft = True
+                self.objects.append(new_object)
+                for shape in p.getVisualShapeData(new_object):
+                    id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
+                    if type == p.GEOM_MESH:
+                        filename = filename.decode('utf-8')
+                        # print(filename, self.visual_objects)
+                        self.renderer.load_object(filename)
+                        self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+                        self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                                                   pybullet_uuid=new_object,
+                                                   class_id=class_id,
+                                                   dynamic=True,
+                                                   softbody=is_soft)
+
         self.scene = scene
         return new_objects
 
     @load_without_pybullet_vis
-    def import_object(self, object, class_id=0):
+    def import_object(self, object, class_id=None):
         """
         :param object: Object to load
         :param class_id: Class id for rendering semantic segmentation
         """
+
+        if class_id is None:
+            class_id = self.next_class_id
+        self.next_class_id += 1
+
         new_object = object.load()
-        isSoft = False
+        is_soft = False
         if object.__class__.__name__ == 'SoftObject':
-            isSoft = True
+            is_soft = True
         self.objects.append(new_object)
         for shape in p.getVisualShapeData(new_object):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                print(filename, self.visual_objects)
+                # print(filename, self.visual_objects)
                 if not filename in self.visual_objects.keys():
                     self.renderer.load_object(filename)
                     self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
@@ -186,13 +222,13 @@ class Simulator:
                                                pybullet_uuid=new_object,
                                                class_id=class_id,
                                                dynamic=True,
-                                               softbody=isSoft)
+                                               softbody=is_soft)
                 else:
                     self.renderer.add_instance(self.visual_objects[filename],
                                                pybullet_uuid=new_object,
                                                class_id=class_id,
                                                dynamic=True,
-                                               softbody=isSoft)
+                                               softbody=is_soft)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
                 self.renderer.load_object(
@@ -230,7 +266,7 @@ class Simulator:
         return new_object
 
     @load_without_pybullet_vis
-    def import_robot(self, robot, class_id=0):
+    def import_robot(self, robot, class_id=None):
         """
         Import a robot into Simulator
 
@@ -238,6 +274,10 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         :return: id for robot in pybullet
         """
+
+        if class_id is None:
+            class_id = self.next_class_id
+        self.next_class_id += 1
 
         ids = robot.load()
         visual_objects = []
@@ -251,7 +291,7 @@ class Simulator:
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 if not filename in self.visual_objects.keys():
-                    print(filename, rel_pos, rel_orn, color, dimensions)
+                    # print(filename, rel_pos, rel_orn, color, dimensions)
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
@@ -265,7 +305,7 @@ class Simulator:
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
-                print(filename, dimensions, rel_pos, rel_orn, color)
+                # print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -276,7 +316,7 @@ class Simulator:
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
-                print(filename, dimensions, rel_pos, rel_orn, color)
+                # print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -287,7 +327,7 @@ class Simulator:
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
-                print(filename, dimensions, rel_pos, rel_orn, color)
+                # print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(filename,
                                           transform_orn=rel_orn,
                                           transform_pos=rel_pos,
@@ -314,7 +354,7 @@ class Simulator:
         return ids
 
     @load_without_pybullet_vis
-    def import_interactive_object(self, obj, class_id=0):
+    def import_articulated_object(self, obj, class_id=None):
         """
         Import articulated objects into simulator
 
@@ -322,6 +362,11 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         :return: pybulet id
         """
+
+        if class_id is None:
+            class_id = self.next_class_id
+        self.next_class_id += 1
+
         ids = obj.load()
         visual_objects = []
         link_ids = []
@@ -333,7 +378,7 @@ class Simulator:
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 if not filename in self.visual_objects.keys():
-                    print(filename, rel_pos, rel_orn, color, dimensions)
+                    # print(filename, rel_pos, rel_orn, color, dimensions)
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
@@ -347,7 +392,7 @@ class Simulator:
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
-                print(filename, dimensions, rel_pos, rel_orn, color)
+                # print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -355,11 +400,10 @@ class Simulator:
                     input_kd=color[:3],
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
-                # self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
-                print(filename, dimensions, rel_pos, rel_orn, color)
+                # print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -370,7 +414,7 @@ class Simulator:
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
-                print(filename, dimensions, rel_pos, rel_orn, color)
+                # print(filename, dimensions, rel_pos, rel_orn, color)
                 self.renderer.load_object(filename,
                                           transform_orn=rel_orn,
                                           transform_pos=rel_pos,
