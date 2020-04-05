@@ -76,8 +76,9 @@ class BaseEnv(gym.Env):
                 waypoint_resolution=self.config.get('waypoint_resolution', 0.2),
                 num_waypoints=self.config.get('num_waypoints', 10),
                 build_graph=self.config.get('build_graph', False),
+                trav_map_resolution=self.config.get('trav_map_resolution', 0.1),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
-                should_load_replaced_objects=self.config.get('should_load_replaced_objects', False),
+                is_interactive=self.config.get('is_interactive', False),
                 pybullet_load_texture=self.config.get('pybullet_load_texture', False),
             )
         self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))

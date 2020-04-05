@@ -9,7 +9,7 @@ from gibson2.core.render.profiler import Profiler
 
 def main():
     config_filename = os.path.join(os.path.dirname(gibson2.__file__),
-                                   '../examples/configs/turtlebot_demo.yaml')
+                                   '../examples/configs/turtlebot_interactive_demo.yaml')
     nav_env = NavigateRandomEnv(config_file=config_filename, mode='gui')
     for j in range(10):
         nav_env.reset()

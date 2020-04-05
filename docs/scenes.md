@@ -12,6 +12,8 @@ To be more specific, `BuildingScene`
 - loads the scene objects and places them in their original locations if the scene is interactive
 - provides APIs for sampling a random location in the scene, and for computing the shortest path between two locations in the scene.
 
+Most of the code can be found here: [gibson2/core/physics/scene.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/physics/scene.py).
+
 ### Examples
 
 #### Stadium Scenes
@@ -99,7 +101,7 @@ For example, in the scene `Placida` below, the couches, the coffee table, the di
 
 #### Visualize Traversability Map
 
-In this example, we visuliaze the traversability map of a scene. We use this map to build an internal traversability graph for each floor so that we can compute the shortest path between two locations, and place robots and objects at valid locations inside the scene. The code can be found here [examples/demo/trav_map_vis_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/trav_map_vis_example.py).
+In this example, we visuliaze the traversability map of a scene. We use this map to build an internal traversability graph for each floor so that we can compute the shortest path between two locations, and place robots and objects at valid locations inside the scene. The code can be found here: [examples/demo/trav_map_vis_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/trav_map_vis_example.py).
 
 The traversability map of the scene `Rs` looks like this:
 ![trav_map_vis](images/trav_map_vis.png)

@@ -769,8 +769,14 @@ class NavigateRandomEnv(NavigateEnv):
         Reset episode
         """
         self.floor_num = self.scene.get_random_floor()
-        # reset "virtual floor" to the correct height
-        self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.02)
+
+        if self.scene.is_interactive:
+            # reset scene objects
+            self.scene.reset_scene_objects()
+        else:
+            # reset "virtual floor" to the correct height
+            self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.02)
+
         state = super(NavigateRandomEnv, self).reset()
         return state
 
@@ -803,15 +809,15 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         if self.track == 'interactive':
             self.interactive_objects_num_dups = 2
             self.interactive_objects = self.load_interactive_objects()
-            # interactive objects pybullet id starts from 3
-            self.collision_ignore_body_b_ids |= set(range(3, 3 + len(self.interactive_objects)))
+            # does not penalize collision with these interactive objects
+            self.collision_ignore_body_b_ids |= set([obj.body_id for obj in self.interactive_objects])
         elif self.track == 'dynamic':
             self.num_dynamic_objects = 1
             self.dynamic_objects = []
             self.dynamic_objects_last_actions = []
             for _ in range(self.num_dynamic_objects):
                 robot = Turtlebot(self.config)
-                self.simulator.import_robot(robot, class_id=1)
+                self.simulator.import_robot(robot)
                 self.dynamic_objects.append(robot)
                 self.dynamic_objects_last_actions.append(robot.action_space.sample())
 
@@ -835,7 +841,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         for _ in range(self.interactive_objects_num_dups):
             for urdf_model in interactive_objects_path:
                 obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
-                self.simulator.import_object(obj, class_id=2)
+                self.simulator.import_object(obj)
                 interactive_objects.append(obj)
         return interactive_objects
 
@@ -903,8 +909,13 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         Reset episode
         """
         self.floor_num = self.scene.get_random_floor()
-        # reset "virtual floor" to the correct height
-        self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.02)
+
+        if self.scene.is_interactive:
+            # reset scene objects
+            self.scene.reset_scene_objects()
+        else:
+            # reset "virtual floor" to the correct height
+            self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.02)
 
         if self.track == 'interactive':
             self.reset_interactive_objects()
