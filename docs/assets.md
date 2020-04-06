@@ -4,7 +4,7 @@
 
 Assets includes necessary files for constructing a scene in iGibson simulator. The files include robot models, interactive objects, articulated objects and mesh files for tests. These files are too large to include in a version control system so we distribute them separately. The assets file can be downloaded to the path set in `your_installation_path/gibson2/global_config.yaml` (default to `your_installation_path/gibson2/assets`) with running 
 ```bash 
-python -m gibson2.utils.assets_utils
+python -m gibson2.utils.assets_utils --download_assets
 ```
 
 The folder structure will look like below (in the future we might add more models):
