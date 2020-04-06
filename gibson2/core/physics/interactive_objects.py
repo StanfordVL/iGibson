@@ -6,6 +6,7 @@ import numpy as np
 class Object(object):
     def __init__(self):
         self.body_id = None
+        self.loaded = False
 
     def load(self):
         return NotImplementedError()
@@ -43,20 +44,22 @@ class YCBObject(Object):
         self.scale = scale
 
     def load(self):
-        collision_id = p.createCollisionShape(p.GEOM_MESH,
-                                              fileName=self.collision_filename,
-                                              meshScale=self.scale)
-        visual_id = p.createVisualShape(p.GEOM_MESH,
-                                              fileName=self.visual_filename,
-                                              meshScale=self.scale)
+        if not self.loaded:
+            collision_id = p.createCollisionShape(p.GEOM_MESH,
+                                                  fileName=self.collision_filename,
+                                                  meshScale=self.scale)
+            visual_id = p.createVisualShape(p.GEOM_MESH,
+                                                  fileName=self.visual_filename,
+                                                  meshScale=self.scale)
 
-        body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
-                                    baseVisualShapeIndex=visual_id,
-                                    basePosition=[0.2, 0.2, 1.5],
-                                    baseMass=0.1)
+            body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
+                                        baseVisualShapeIndex=visual_id,
+                                        basePosition=[0.2, 0.2, 1.5],
+                                        baseMass=0.1)
 
-        self.body_id = body_id
-        return body_id
+            self.body_id = body_id
+            self.loaded = True
+        return self.body_id
 
 
 class ShapeNetObject(Object):
@@ -82,16 +85,19 @@ class ShapeNetObject(Object):
         }
 
     def load(self):
-        collision_id = p.createCollisionShape(p.GEOM_MESH,
-                                              fileName=self.filename,
-                                              meshScale=self.scale)
-        body_id = p.createMultiBody(basePosition=self.pose['position'],
-                                    baseOrientation=self.pose['orientation_quat'],
-                                    baseMass=self._default_mass,
-                                    baseCollisionShapeIndex=collision_id,
-                                    baseVisualShapeIndex=-1)
-        self.body_id = body_id
-        return body_id
+        if not self.loaded:
+            collision_id = p.createCollisionShape(p.GEOM_MESH,
+                                                  fileName=self.filename,
+                                                  meshScale=self.scale)
+            body_id = p.createMultiBody(basePosition=self.pose['position'],
+                                        baseOrientation=self.pose['orientation_quat'],
+                                        baseMass=self._default_mass,
+                                        baseCollisionShapeIndex=collision_id,
+                                        baseVisualShapeIndex=-1)
+            self.body_id = body_id
+            self.loaded = True
+
+        return self.body_id
 
 
 class Pedestrian(Object):
@@ -106,25 +112,28 @@ class Pedestrian(Object):
         self.pos = pos
 
     def load(self):
-        collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename)
-        visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
-        body_id = p.createMultiBody(basePosition=[0, 0, 0],
-                                    baseMass=60,
-                                    baseCollisionShapeIndex=collision_id,
-                                    baseVisualShapeIndex=visual_id)
-        self.body_id = body_id
+        if not self.loaded:
+            collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename)
+            visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
+            body_id = p.createMultiBody(basePosition=[0, 0, 0],
+                                        baseMass=60,
+                                        baseCollisionShapeIndex=collision_id,
+                                        baseVisualShapeIndex=visual_id)
+            self.body_id = body_id
 
-        p.resetBasePositionAndOrientation(self.body_id, self.pos, [-0.5, -0.5, -0.5, 0.5])
+            p.resetBasePositionAndOrientation(self.body_id, self.pos, [-0.5, -0.5, -0.5, 0.5])
 
-        self.cid = p.createConstraint(self.body_id,
-                                      -1,
-                                      -1,
-                                      -1,
-                                      p.JOINT_FIXED, [0, 0, 0], [0, 0, 0],
-                                      self.pos,
-                                      parentFrameOrientation=[-0.5, -0.5, -0.5,
-                                                              0.5])    # facing x axis
-        return body_id
+            self.cid = p.createConstraint(self.body_id,
+                                          -1,
+                                          -1,
+                                          -1,
+                                          p.JOINT_FIXED, [0, 0, 0], [0, 0, 0],
+                                          self.pos,
+                                          parentFrameOrientation=[-0.5, -0.5, -0.5,
+                                                                  0.5])    # facing x axis
+            self.loaded = True
+
+        return self.body_id
 
     def reset_position_orientation(self, pos, orn):
         p.changeConstraint(self.cid, pos, orn)
@@ -157,23 +166,26 @@ class VisualMarker(Object):
         self.initial_offset = initial_offset
 
     def load(self):
-        if self.visual_shape == p.GEOM_BOX:
-            shape = p.createVisualShape(self.visual_shape,
-                                        rgbaColor=self.rgba_color,
-                                        halfExtents=self.half_extents,
-                                        visualFramePosition=self.initial_offset)
-        elif self.visual_shape in [p.GEOM_CYLINDER, p.GEOM_CAPSULE]:
-            shape = p.createVisualShape(self.visual_shape,
-                                        rgbaColor=self.rgba_color,
-                                        radius=self.radius,
-                                        length=self.length,
-                                        visualFramePosition=self.initial_offset)
-        else:
-            shape = p.createVisualShape(self.visual_shape,
-                                        rgbaColor=self.rgba_color,
-                                        radius=self.radius,
-                                        visualFramePosition=self.initial_offset)
-        self.body_id = p.createMultiBody(baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1)
+        if not self.loaded:
+            if self.visual_shape == p.GEOM_BOX:
+                shape = p.createVisualShape(self.visual_shape,
+                                            rgbaColor=self.rgba_color,
+                                            halfExtents=self.half_extents,
+                                            visualFramePosition=self.initial_offset)
+            elif self.visual_shape in [p.GEOM_CYLINDER, p.GEOM_CAPSULE]:
+                shape = p.createVisualShape(self.visual_shape,
+                                            rgbaColor=self.rgba_color,
+                                            radius=self.radius,
+                                            length=self.length,
+                                            visualFramePosition=self.initial_offset)
+            else:
+                shape = p.createVisualShape(self.visual_shape,
+                                            rgbaColor=self.rgba_color,
+                                            radius=self.radius,
+                                            visualFramePosition=self.initial_offset)
+            self.body_id = p.createMultiBody(baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1)
+            self.loaded = True
+
         return self.body_id
 
     def set_position(self, pos, new_orn=None):
@@ -195,18 +207,21 @@ class BoxShape(Object):
         self.color = color
 
     def load(self):
-        baseOrientation = [0, 0, 0, 1]
-        colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
-        visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
-        if self.visual_only:
-            self.body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
-                                             baseVisualShapeIndex=visualShapeId)
-        else:
-            self.body_id = p.createMultiBody(baseMass=self.mass,
-                                             baseCollisionShapeIndex=colBoxId,
-                                             baseVisualShapeIndex=visualShapeId)
+        if not self.loaded:
+            baseOrientation = [0, 0, 0, 1]
+            colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
+            visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
+            if self.visual_only:
+                self.body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
+                                                 baseVisualShapeIndex=visualShapeId)
+            else:
+                self.body_id = p.createMultiBody(baseMass=self.mass,
+                                                 baseCollisionShapeIndex=colBoxId,
+                                                 baseVisualShapeIndex=visualShapeId)
 
-        p.resetBasePositionAndOrientation(self.body_id, self.basePos, baseOrientation)
+            p.resetBasePositionAndOrientation(self.body_id, self.basePos, baseOrientation)
+            self.loaded = True
+
         return self.body_id
 
     def set_position(self, pos):
@@ -224,8 +239,11 @@ class InteractiveObj(Object):
         self.scale = scale
 
     def load(self):
-        self.body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-        self.mass = p.getDynamicsInfo(self.body_id, -1)[0]
+        if not self.loaded:
+            self.body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+            self.mass = p.getDynamicsInfo(self.body_id, -1)[0]
+            self.loaded = True
+
         return self.body_id
 
 class SoftObject(Object):
@@ -251,10 +269,12 @@ class SoftObject(Object):
         self.useSelfCollision = useSelfCollision
 
     def load(self):
-        self.body_id = p.loadSoftBody(self.filename, scale = self.scale, basePosition = self.basePosition, baseOrientation = self.baseOrientation, mass=self.mass, collisionMargin=self.collisionMargin, useMassSpring=self.useMassSpring, useBendingSprings=self.useBendingSprings, useNeoHookean=self.useNeoHookean, springElasticStiffness=self.springElasticStiffness, springDampingStiffness=self.springDampingStiffness, springBendingStiffness=self.springBendingStiffness, NeoHookeanMu=self.NeoHookeanMu, NeoHookeanLambda=self.NeoHookeanLambda, NeoHookeanDamping=self.NeoHookeanDamping, frictionCoeff=self.frictionCoeff, useFaceContact=self.useFaceContact, useSelfCollision=self.useSelfCollision)
+        if not self.loaded:
+            self.body_id = p.loadSoftBody(self.filename, scale = self.scale, basePosition = self.basePosition, baseOrientation = self.baseOrientation, mass=self.mass, collisionMargin=self.collisionMargin, useMassSpring=self.useMassSpring, useBendingSprings=self.useBendingSprings, useNeoHookean=self.useNeoHookean, springElasticStiffness=self.springElasticStiffness, springDampingStiffness=self.springDampingStiffness, springBendingStiffness=self.springBendingStiffness, NeoHookeanMu=self.NeoHookeanMu, NeoHookeanLambda=self.NeoHookeanLambda, NeoHookeanDamping=self.NeoHookeanDamping, frictionCoeff=self.frictionCoeff, useFaceContact=self.useFaceContact, useSelfCollision=self.useSelfCollision)
 
-        # Set signed distance function voxel size (integrate to Simulator class?)
-        p.setPhysicsEngineParameter(sparseSdfVoxelSize=0.1)
+            # Set signed distance function voxel size (integrate to Simulator class?)
+            p.setPhysicsEngineParameter(sparseSdfVoxelSize=0.1)
+            self.loaded = True
 
         return self.body_id
 
