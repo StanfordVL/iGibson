@@ -53,7 +53,6 @@ def download_dataset(url):
     os.system('mv {}/{}/* {}'.format(gibson2.dataset_path, os.path.splitext(file_name)[0], gibson2.dataset_path))
 
 if __name__ == "__main__":
-    #download_data()
     parser = argparse.ArgumentParser()
     parser.add_argument('--download_assets', action='store_true', help='download assets file')
     parser.add_argument('--download_demo_data', action='store_true', help='download demo data Rs and Rs_interactive')

@@ -1,14 +1,14 @@
 from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import BuildingScene, StadiumScene
+from gibson2.core.physics.scene import StadiumScene
 from gibson2.core.physics.interactive_objects import BoxShape, YCBObject, RBOObject, InteractiveObj, Pedestrian
 from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
 import yaml
 import gibson2
 import os
 from gibson2.utils.utils import parse_config
-from gibson2.utils.assets_utils import download_data
+from gibson2.utils.assets_utils import download_assets
 
-download_data()
+download_assets()
 
 def test_import_object():
     s = Simulator(mode='headless')

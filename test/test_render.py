@@ -7,9 +7,6 @@ import gibson2
 import GPUtil
 
 test_dir = os.path.join(gibson2.assets_path, 'test')
-from gibson2.utils.assets_utils import download_data
-
-download_data()
 
 def test_render_loading_cleaning():
     renderer = MeshRenderer(width=800, height=600)
