@@ -169,31 +169,31 @@ class Simulator:
 
         if scene.is_interactive:
             for obj in scene.scene_objects:
-                class_id = self.next_class_id
-                self.next_class_id += 1
-
-                # obj.load() should have already been called in scene.load()
-                new_object = obj.body_id
-
-                is_soft = False
-                if obj.__class__.__name__ == 'SoftObject':
-                    is_soft = True
-                self.objects.append(new_object)
-                for shape in p.getVisualShapeData(new_object):
-                    id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
-                    if type == p.GEOM_MESH:
-                        filename = filename.decode('utf-8')
-                        # print(filename, self.visual_objects)
-                        self.renderer.load_object(filename,
-                                                  transform_orn=rel_orn,
-                                                  transform_pos=rel_pos,
-                                                  scale=np.array(dimensions))
-                        self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                        self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
-                                                   pybullet_uuid=new_object,
-                                                   class_id=class_id,
-                                                   dynamic=True,
-                                                   softbody=is_soft)
+                #class_id = self.next_class_id
+                #self.next_class_id += 1
+                self.import_articulated_object(obj)
+                # # obj.load() should have already been called in scene.load()
+                # new_object = obj.body_id
+                #
+                # is_soft = False
+                # if obj.__class__.__name__ == 'SoftObject':
+                #     is_soft = True
+                # self.objects.append(new_object)
+                # for shape in p.getVisualShapeData(new_object):
+                #     id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
+                #     if type == p.GEOM_MESH:
+                #         filename = filename.decode('utf-8')
+                #         # print(filename, self.visual_objects)
+                #         self.renderer.load_object(filename,
+                #                                   transform_orn=rel_orn,
+                #                                   transform_pos=rel_pos,
+                #                                   scale=np.array(dimensions))
+                #         self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+                #         self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                #                                    pybullet_uuid=new_object,
+                #                                    class_id=class_id,
+                #                                    dynamic=True,
+                #                                    softbody=is_soft)
 
         self.scene = scene
         return new_objects
