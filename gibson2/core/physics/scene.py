@@ -75,19 +75,6 @@ class StadiumScene(Scene):
     def reset_floor(self, floor=0, additional_elevation=0.05, height=None):
         return
 
-# TODO: Merge InteractiveBuildingScene into BuildingScene
-class InteractiveBuildingScene(Scene):
-    """
-    A simple stadium scene for debugging
-    """
-
-    def __init__(self, path):
-        self.path = path
-
-    def load(self):
-        filename = self.path
-        body_id = p.loadURDF(filename, flags=p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS)
-        return [body_id]
 
 
 class BuildingScene(Scene):
@@ -128,6 +115,7 @@ class BuildingScene(Scene):
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
         self.mesh_body_id = None
+        self.floor_body_ids = []
         self.pybullet_load_texture = pybullet_load_texture
 
     def load_floor_metadata(self):
@@ -174,7 +162,6 @@ class BuildingScene(Scene):
                                 textureUniqueId=texture_id)
 
     def load_floor_planes(self):
-        self.floor_body_ids = []
         if self.is_interactive:
             for f in range(len(self.floors)):
                 # load the floor plane with the original floor texture for each floor
@@ -273,26 +260,37 @@ class BuildingScene(Scene):
         self.scene_objects = []
         self.scene_objects_pos = []
         scene_path = get_model_path(self.model_id)
-        urdf_files = [item for item in os.listdir(scene_path) if item[-4:] == 'urdf']
+        urdf_files = [item for item in os.listdir(scene_path) if item[-4:] == 'urdf' and item != 'scene.urdf']
         position_files = [item[:-4].replace('alignment_centered', 'pos') + 'txt' for item in urdf_files]
         for urdf_file, position_file in zip(urdf_files, position_files):
+            print('loading urdf file {}'.format(urdf_file))
             with open(os.path.join(scene_path, position_file)) as f:
                 pos = np.array([float(item) for item in f.readlines()[0].strip().split()])
                 # filter out duplicate annotations for the same object
-                if len(self.scene_objects_pos) == 0 or \
-                        np.min(np.linalg.norm(np.array(self.scene_objects_pos) - pos, axis=1)) > 0.5:
-                    obj = InteractiveObj(os.path.join(scene_path, urdf_file))
-                    obj.load()
-                    self.scene_objects.append(obj)
-                    self.scene_objects_pos.append(pos)
+                #if len(self.scene_objects_pos) == 0 or \
+                #        np.min(np.linalg.norm(np.array(self.scene_objects_pos) - pos, axis=1)) > 0.5:
+                obj = InteractiveObj(os.path.join(scene_path, urdf_file))
+                obj.load()
+                self.scene_objects.append(obj)
+                self.scene_objects_pos.append(pos)
+
+    def load_scene_urdf(self):
+        self.mesh_body_id = p.loadURDF(os.path.join(get_model_path(self.model_id), 'scene.urdf'))
+
+    def has_scene_urdf(self):
+        return os.path.exists(os.path.join(get_model_path(self.model_id), 'scene.urdf'))
 
     def load(self):
         """
         Initialize scene
         """
         self.load_floor_metadata()
-        self.load_scene_mesh()
-        self.load_floor_planes()
+        if self.has_scene_urdf():
+            self.load_scene_urdf()
+        else:
+            self.load_scene_mesh()
+            self.load_floor_planes()
+
         self.load_trav_map()
         self.load_scene_objects()
         self.reset_scene_objects()

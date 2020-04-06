@@ -8,11 +8,12 @@ import pybullet as p
 import numpy as np
 import os
 import gibson2
-from gibson2.utils.assets_utils import download_data
+from gibson2.utils.assets_utils import download_assets,download_demo_data
 
 class Demo(object):
     def __init__(self):
-        download_data()
+        download_assets()
+        download_demo_data()
 
     def run_demo(self):
         config = parse_config(os.path.join(gibson2.assets_path, '../../examples/configs/turtlebot_demo.yaml'))

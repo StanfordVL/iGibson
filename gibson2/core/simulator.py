@@ -184,7 +184,10 @@ class Simulator:
                     if type == p.GEOM_MESH:
                         filename = filename.decode('utf-8')
                         # print(filename, self.visual_objects)
-                        self.renderer.load_object(filename)
+                        self.renderer.load_object(filename,
+                                                  transform_orn=rel_orn,
+                                                  transform_pos=rel_pos,
+                                                  scale=np.array(dimensions))
                         self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                         self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                                    pybullet_uuid=new_object,
