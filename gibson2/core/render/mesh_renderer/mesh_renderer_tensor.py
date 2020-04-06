@@ -13,8 +13,8 @@ try:
         pytorch installation is required.
         """
 
-        def __init__(self, width=512, height=512, fov=90, device_idx=0, use_fisheye=False, msaa=False):
-            super(MeshRendererG2G, self).__init__(width, height, fov, device_idx, use_fisheye, msaa)
+        def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False):
+            super(MeshRendererG2G, self).__init__(width, height, vertical_fov, device_idx, use_fisheye, msaa)
             self.cuda_idx = get_cuda_device(self.device_minor)
             print("Using cuda device {}".format(self.cuda_idx))
             with torch.cuda.device(self.cuda_idx):
