@@ -1,30 +1,60 @@
 Dataset
 ==========================================
 
-TODO: @fei
-Make sure everything is up-to-date.
-
-Full Gibson Environment Dataset consists of 572 models and 1440 floors. We cover a diverse set of models including households, offices, hotels, venues, museums, hospitals, construction sites, etc. A diverse set of visualization of all spaces in Gibson can be seen [here](http://gibsonenv.stanford.edu/database/).
- 
-<img src=../../misc/spaces.png width="800">
-
-
-Download Gibson Database of Spaces
-----
+Download Gibson Data
+------------------------
 
 The link will first take you to the license agreement and then to the data.
 
-[[ Download the full Gibson Database of Spaces ]](https://goo.gl/forms/OxAQHbl1v97BJ3Sg1)  [[ checksums ]](https://github.com/StanfordVL/GibsonEnv/wiki/Checksum-Values-for-Data.md)
+[[ Get download link for Gibson Data ]](https://goo.gl/forms/OxAQHbl1v97BJ3Sg1)  
 
 License Note: The dataset license is included in the above link. The license in this repository covers only the provided software.
 
-**Stanford 2D-3D-Semantics Dataset:** the download link of 2D-3D-Semantics as Gibson asset files is included in the [same link ](https://goo.gl/forms/OxAQHbl1v97BJ3Sg1) as above. 
+Files included in this distribution:
 
-**Matterport3D Dataset:** Please fill and sign the corresponding [Terms of Use agreement](http://dovahkiin.stanford.edu/matterport/public/MP_TOS.pdf) form and send it to [matterport3d@googlegroups.com](matterport3d@googlegroups.com). Please put "use with GIBSON simulator" in your email. You'll then recieve a python script via email in response. Use the invocation `python download_mp.py --task_data gibson -o .` with the received script to download the data (39.09GB). Matterport3D webpage: [link](https://niessner.github.io/Matterport/).
+- All scenes, 572 scenes (108GB): gibson_v2_all.tar.gz
+- 4+ partition, 106 Scenes, with textures better packed (2.6GB): gibson_v2_4+.tar.gz
+- Gibson V2 environments with interactive objects, 10 Scenes (<1GB): interactive_dataset.tar.gz
+- Demo scenes, `Rs` and `Rs_interactive`
 
 
-Dataset Metadata
-----
+New Interactive Gibson Environment Dataset
+--------------------------------------------------
+
+Using a semi-automatic pipeline introduced in our [ICRA20 paper](https://ieeexplore.ieee.org/document/8954627), we annotated for five object categories (chairs, desks, doors, sofas, and tables) in ten buildings (more coming soon!)
+
+Replaced objects are visualized in these topdown views:
+
+![topdown.jpg](images/topdown.jpg)
+
+#### Dataset Format
+
+The dataset format is similar to original gibson dataset, with additional of cleaned scene mesh, floor plane and replaced objects. Files in one folder are listed as below:
+
+```
+mesh_z_up.obj               # 3d mesh of the environment, it is also associated with an mtl file and a texture file, omitted here
+mesh_z_up_cleaned.obj       # 3d mesh of the environment, with annotated furnitures removed
+alignment_centered_{}.urdf  # replaced furniture models as urdf files
+pos_{}.txt                  # xyz position to load above urdf models
+floors.txt                  # floor height
+plane_z_up_{}.obj           # floor plane for each floor, used for filling holes
+floor_render_{}.png         # top down views of each floor
+floor_{}.png                # top down views of obstacles for each floor
+floor_trav_{}.png           # top down views of traversable areas for each floor  
+```
+
+Original Gibson Environment Dataset (Non-interactive)
+-------------------------------------------------------
+
+Original Gibson Environment Dataset has been updated to use with iGibson simulator.
+
+Full Gibson Environment Dataset consists of 572 models and 1440 floors. We cover a diverse set of models including households, offices, hotels, venues, museums, hospitals, construction sites, etc. A diverse set of visualization of all spaces in Gibson can be seen [here](http://gibsonenv.stanford.edu/database/).
+ 
+
+![spaces.png](images/spaces.png)
+
+
+#### Dataset Metadata
 
 Each space in the database has some metadata with the following attributes associated with it. The metadata is available in this [JSON file](https://raw.githubusercontent.com/StanfordVL/GibsonEnv/master/gibson/data/data.json). 
 ```
@@ -40,25 +70,20 @@ split_medium            # if the space is in train/val/test/none split of Medium
 split_tiny              # if the space is in train/val/test/none split of Tiny partition 
 ```
 
-Dataset Format
-----
+#### Dataset Format
 
 Each space in the database has its own folder. All the modalities and metadata for each space are contained in that folder. 
 ```
-/pano
-  /points                 # camera metadata
-  /rgb                    # rgb images
-  /mist                   # depth images
-mesh.obj                  # 3d mesh
-mesh_z_up.obj             # 3d mesh for physics engine
-camera_poses.csv          # camera locations
-semantic.obj (optional)   # 3d mesh with semantic annotation
+mesh_z_up.obj             # 3d mesh of the environment, it is also associated with an mtl file and a texture file, omitted here
+floors.txt                # floor height
+floor_render_{}.png       # top down views of each floor
+floor_{}.png              # top down views of obstacles for each floor
+floor_trav_{}.png         # top down views of traversable areas for each floor  
 ```
 
+For the maps, each pixel represents 0.01m, and the center of the image correspond to `(0,0)` in the mesh, as well as in the pybullet coordinate system. 
 
-Dataset Metrics
--------------
-
+#### Dataset Metrics
 
 
 **Floor Number** Total number of floors in each model.
