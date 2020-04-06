@@ -15,6 +15,9 @@ class Object(object):
         return pos
 
     def get_orientation(self):
+        """Return object orientation
+        :return: quaternion in xyzw
+        """
         _, orn = p.getBasePositionAndOrientation(self.body_id)
         return orn
 

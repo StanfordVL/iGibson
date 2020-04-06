@@ -69,6 +69,7 @@ class LocomotorRobot(BaseRobot):
 
     def get_orientation(self):
         '''Return robot orientation
+        :return: quaternion in xyzw
         '''
         return self.robot_body.get_orientation()
 
@@ -205,7 +206,7 @@ class Ant(LocomotorRobot):
         self.torque = config.get("torque", 1.0)
         LocomotorRobot.__init__(
             self,
-            "ant.xml",
+            "ant/ant.xml",
             action_dim=8,
             torque_coef=2.5,
             scale=config.get("robot_scale", 1.0),
@@ -233,7 +234,7 @@ class Humanoid(LocomotorRobot):
         self.glass_offset = 0.3
         LocomotorRobot.__init__(
             self,
-            "humanoid.xml",
+            "humanoid/humanoid.xml",
             action_dim=17,
             torque_coef=0.41,
             scale=config.get("robot_scale", 1.0),
@@ -267,7 +268,7 @@ class Humanoid(LocomotorRobot):
         super(Humanoid, self).robot_specific_reset()
 
         if self.glass_id is None:
-            glass_path = os.path.join(self.physics_model_dir, "glass.xml")
+            glass_path = os.path.join(self.physics_model_dir, "humanoid/glass.xml")
             glass_id = p.loadMJCF(glass_path)[0]
             self.glass_id = glass_id
             p.changeVisualShape(self.glass_id, -1, rgbaColor=[0, 0, 0, 0])
@@ -315,7 +316,7 @@ class Husky(LocomotorRobot):
         self.config = config
         self.torque = config.get("torque", 0.03)
         LocomotorRobot.__init__(self,
-                                "husky.urdf",
+                                "husky/husky.urdf",
                                 action_dim=4,
                                 torque_coef=2.5,
                                 scale=config.get("robot_scale", 1.0),
@@ -367,7 +368,7 @@ class Quadrotor(LocomotorRobot):
         self.config = config
         self.torque = config.get("torque", 0.02)
         LocomotorRobot.__init__(self,
-                                "quadrotor.urdf",
+                                "quadrotor/quadrotor.urdf",
                                 action_dim=6,
                                 torque_coef=2.5,
                                 scale=config.get("robot_scale", 1.0),

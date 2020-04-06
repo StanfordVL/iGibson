@@ -1,30 +1,30 @@
-ROS
+ROS Integration
 ============
-
-TODO: @fei
-Make sure everything is up-to-date
-
 
 Introduction
 ----------------
 
 [ROS](http://www.ros.org) is a set of well-engineered software libraries for building robotics applications. It includes a wide variety of packages, from low level drivers to efficient implementations of state of the art algorithms. As we strive to build intelligent agents and transfer them to real-world (on a real robot), we need to take advantage of ROS packages to complete the robot application pipeline. 
 
+There are three key applications of integrating iGibson with ROS. 
 
-As a starter, we provide an example of integrating iGibson with ROS. This is a ros package integrates iGibson Env with ros navigation stack. It follows the same node topology and topics as `turtlebot_navigation` package. As shown below, so after a policy is trained in iGibson, it requires minimal changes to deploy onto a turtlebot.
+- Benchmark existing algorithms in a controlled realistic simulation environment. And this allows comparing learning-based methods with traditional methods in simulation environments.
+- Comparing robot in simulation with robot in real world. In simulation, iGibson can simulate sensors of a robot and publish as messages. In the real world, a real robot publish sensor messages. So it is possible to only change the message subscribed and benchmark the performance of downstream applications. This helps locating domain gap and debugging algorithms.
+- Using ROS functions in simulation, such as many motion planning implementations.
 
-![](misc/node_topo.jpg)
+The possibility of using iGibson with ROS is unlimited. As a starter, we provide an example of integrating iGibson with ROS for navigation. This is a ros package integrates iGibson Env with ros navigation stack. It follows the same node topology and topics as `turtlebot_navigation` package. As shown below, so after a policy is trained in iGibson, it requires minimal changes to deploy onto a turtlebot.
+
+![](images/node_topo.jpg)
 
 Environment Setup
 ----------------
-
 
 Here is all the steps you need to perform to install gibson and ros. Note that here you will need to install using `pip install -e .` and use __python2.7__. If you did it differntly when installing iGibson, you will need to do it again. python3 is known to not being able to work with ros.
 
 ## Preparation
  
 1. Install ROS: in this package, we use navigation stack from ros kinetic. Please follow the [instructions](http://wiki.ros.org/kinetic/Installation/Ubuntu).  
-2. Install iGibson __from source__ following [installation guide](../../README.md) in __python2.7__. However, as ROS only supports `python2.7` at the moment, you need to create python2.7 virtual environment instead of python3.5.
+2. Install iGibson __from source__ following [installation guide](installation.md) in __python2.7__. However, as ROS only supports `python2.7` at the moment, you need to create python2.7 virtual environment instead of python3.x.
 3. If you use annaconda for setting up python environment, some tweaks of `PATH` and `PYTHONPATH` variable are required to avoid conflict. In particular:
 	1. For `PATH`: conda related needs to be removed from `PATH`
 	```bash
@@ -71,11 +71,11 @@ roslaunch gibson2-ros turtlebot_gt_navigation.launch #Run the navigation stack w
 
 The following screenshot is captured when running the bare minimal bringup example.
 
-![](misc/sensing.png)
+![](images/sensing.png)
 
 The following screenshot is captured when running the gmapping example.
 
-![](misc/slam.png)
+![](images/slam.png)
 
 
 Topics

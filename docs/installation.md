@@ -41,7 +41,6 @@ Other system configurations may work, but we haven't tested them extensively and
 
 ### Downloading the Assets
 TODO: @fei
-1. Change default value of global_config.yaml to be gibson2/assets and gibson2/dataset
 2. Users should always use assets_utils to download assets and Rs and Rs_interactive
 3. Users need to fill up the form to download Gibson houses: a) 10 interactive ones, b) 572 static ones
 4. Put them into gibson2/dataset

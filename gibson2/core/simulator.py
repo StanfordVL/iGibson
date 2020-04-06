@@ -1,5 +1,6 @@
 from gibson2.core.physics.scene import StadiumScene
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat, xyz2mat
+from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat,\
+    xyz2mat, xyzw2wxyz
 from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject, RBOObject, Pedestrian, ShapeNetObject, BoxShape
 from gibson2.core.render.viewer import Viewer
@@ -339,7 +340,7 @@ class Simulator:
                 pos, orn = p.getBasePositionAndOrientation(id)
             else:
                 _, _, _, _, pos, orn = p.getLinkState(id, link_id)
-            poses_rot.append(np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
+            poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
             poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
         self.renderer.add_robot(object_ids=visual_objects,
@@ -427,7 +428,7 @@ class Simulator:
                 pos, orn = p.getBasePositionAndOrientation(id)
             else:
                 _, _, _, _, pos, orn = p.getLinkState(id, link_id)
-            poses_rot.append(np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
+            poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
             poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
         self.renderer.add_instance_group(object_ids=visual_objects,
@@ -467,9 +468,9 @@ class Simulator:
         :param instance: Instance in the renderer
         """
         if isinstance(instance, Instance):
-            pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
+            pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid) # orn is in x,y,z,w
             instance.set_position(pos)
-            instance.set_rotation([orn[-1], orn[0], orn[1], orn[2]])
+            instance.set_rotation(xyzw2wxyz(orn))
         elif isinstance(instance, InstanceGroup):
             poses_rot = []
             poses_trans = []
@@ -480,7 +481,7 @@ class Simulator:
                 else:
                     _, _, _, _, pos, orn = p.getLinkState(instance.pybullet_uuid, link_id)
                 poses_rot.append(
-                    np.ascontiguousarray(quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])))
+                    np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
                 poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
                 # print(instance.pybullet_uuid, link_id, pos, orn)
 

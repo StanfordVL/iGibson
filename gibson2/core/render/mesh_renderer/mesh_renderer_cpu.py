@@ -7,7 +7,8 @@ Image.MAX_IMAGE_PIXELS = None
 import cv2
 import numpy as np
 #from pyassimp import load, release
-from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
+from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
+    safemat2quat, xyzw2wxyz
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
 from gibson2.core.render.mesh_renderer import MeshRendererContext
@@ -130,14 +131,14 @@ class InstanceGroup(object):
 
         self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
 
-    def set_rotation(self, rot):
+    def set_rotation(self, quat):
         """
         Set rotations for each part of this InstanceGroup
 
-        :param rot: New rotation matrices
+        :param quat: New quaternion in w,x,y,z
         """
 
-        self.pose_rot = np.ascontiguousarray(quat2rotmat(rot))
+        self.pose_rot = np.ascontiguousarray(quat2rotmat(quat))
 
     def __str__(self):
         return "InstanceGroup({}) -> Objects({})".format(
@@ -235,8 +236,11 @@ class Instance(object):
     def set_position(self, pos):
         self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
 
-    def set_rotation(self, rot):
-        self.pose_rot = np.ascontiguousarray(quat2rotmat(rot))
+    def set_rotation(self, quat):
+        """
+        :param quat: New quaternion in w,x,y,z
+        """
+        self.pose_rot = np.ascontiguousarray(quat2rotmat(quat))
 
     def __str__(self):
         return "Instance({}) -> Object({})".format(self.id, self.object.id)
@@ -475,8 +479,7 @@ class MeshRenderer(object):
 
             faces = np.array(range(len(vertices))).reshape((len(vertices)//3, 3))
             if not transform_orn is None:
-                orn = quat2rotmat(
-                    [transform_orn[-1], transform_orn[0], transform_orn[1], transform_orn[2]])
+                orn = quat2rotmat(xyzw2wxyz(transform_orn))
                 vertices[:, :3] = vertices[:, :3].dot(orn[:3, :3].T)
             if not transform_pos is None:
                 vertices[:, :3] += np.array(transform_pos)
@@ -735,7 +738,7 @@ class MeshRenderer(object):
             if isinstance(instance, Robot):
                 camera_pos = instance.robot.eyes.get_position()
                 orn = instance.robot.eyes.get_orientation()
-                mat = quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])[:3, :3]
+                mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
                 for item in self.render(modes=modes, hidden=[instance]):
