@@ -12,11 +12,22 @@ License Note: The dataset license is included in the above link. The license in 
 
 Files included in this distribution:
 
-- All scenes, 572 scenes (108GB): gibson_v2_all.tar.gz
-- 4+ partition, 106 Scenes, with textures better packed (2.6GB): gibson_v2_4+.tar.gz
-- Gibson V2 environments with interactive objects, 10 Scenes (<1GB): interactive_dataset.tar.gz
-- Demo scenes, `Rs` and `Rs_interactive`
+1. All scenes, 572 scenes (108GB): gibson_v2_all.tar.gz
+2. 4+ partition, 106 Scenes, with textures better packed (2.6GB): gibson_v2_4+.tar.gz
+3. Gibson V2 environments with interactive objects, 10 Scenes (<1GB): interactive_dataset.tar.gz
+4. Demo scenes, `Rs` and `Rs_interactive`
 
+To download 1,2 and 3, you need to fill in the agreement and get the download link `URL`, after which you can manually download and store them in the path set in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/dataset`). You can run a single command to download the dataset, this script automatically download, decompress, and put the dataset to correct place.
+
+```bash
+python -m gibson2.utils.assets_utils --download_dataset URL
+```
+
+To download 4, you can run:
+
+```bash
+python -m gibson2.utils.assets_utils --download_demo_data
+```
 
 New Interactive Gibson Environment Dataset
 --------------------------------------------------
