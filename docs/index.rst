@@ -29,7 +29,8 @@ Welcome to iGibson's documentation!
    simulators.md
    environments.md
    algorithms.md
-   ros.md
+   ros_integration.md
+   tests.md
 
 .. toctree::
    :maxdepth: 1

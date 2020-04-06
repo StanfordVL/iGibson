@@ -8,12 +8,10 @@ import pybullet as p
 import numpy as np
 import gibson2
 import os
-from gibson2.utils.assets_utils import download_data
+from gibson2.utils.assets_utils import download_assets
 
-download_data()
-
+download_assets()
 config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
-
 
 
 def test_fetch():

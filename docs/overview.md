@@ -12,6 +12,6 @@ In the next layer, we have **Scene**, **Object**, **Robot**, and **Simulator**. 
 
 In the next layer, we have **Environment**. **Environment** follows the [OpenAI gym](https://github.com/openai/gym) convention and provides an API interface for applications such as **Algorithms** and **ROS**. **Environment** usually defines a task for an agent to solve, which includes observation_space, action space, reward, termination condition, etc. More info can be found here: [Environment](environments.md).
 
-In the top and final layer, we have **Algorithm** and **ROS**. **Algorithm** can be any algorithms (from optimal control to model-free reinforcement leanring) that accommodate OpenAI gym interface. We also provide tight integration with **ROS** that allows for evaluation and visualization of, say, ROS Navigation Stack, in iGibson. More info can be found here: [Algorithm](algorithms.md) and [ROS](ros.md).
+In the top and final layer, we have **Algorithm** and **ROS**. **Algorithm** can be any algorithms (from optimal control to model-free reinforcement leanring) that accommodate OpenAI gym interface. We also provide tight integration with **ROS** that allows for evaluation and visualization of, say, ROS Navigation Stack, in iGibson. More info can be found here: [Algorithm](algorithms.md) and [ROS](ros_integration.md).
 
 We highly recommend you go through each of the Modules below for more details and code examples.
