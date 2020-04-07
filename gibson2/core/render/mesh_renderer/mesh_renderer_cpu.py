@@ -627,7 +627,7 @@ class MeshRenderer(object):
         Read framebuffer of rendering.
 
         :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d').
-        :return: a list of numpy arrays depending corresponding to `modes`
+        :return: a list of numpy arrays corresponding to `modes`
         """
         results = []
 
@@ -650,7 +650,7 @@ class MeshRenderer(object):
         :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d').
         :param hidden: Hidden instances to skip. When rendering from a robot's perspective, it's own body can be
             hidden
-        :return: a list of float32 numpy arrays of shape (H, W, 4) depending corresponding to `modes`, where last channel is alpha
+        :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
         if self.msaa:
             self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
