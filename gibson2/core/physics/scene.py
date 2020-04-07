@@ -266,9 +266,6 @@ class BuildingScene(Scene):
             print('loading urdf file {}'.format(urdf_file))
             with open(os.path.join(scene_path, position_file)) as f:
                 pos = np.array([float(item) for item in f.readlines()[0].strip().split()])
-                # filter out duplicate annotations for the same object
-                #if len(self.scene_objects_pos) == 0 or \
-                #        np.min(np.linalg.norm(np.array(self.scene_objects_pos) - pos, axis=1)) > 0.5:
                 obj = InteractiveObj(os.path.join(scene_path, urdf_file))
                 obj.load()
                 self.scene_objects.append(obj)

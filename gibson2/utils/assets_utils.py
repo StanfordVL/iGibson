@@ -25,14 +25,6 @@ def get_texture_file(mesh_file):
 
     return texture_file
 
-def download_data():
-    download_assets()
-    if not os.path.exists(gibson2.dataset_path):
-        os.makedirs(gibson2.dataset_path)
-    if not os.path.exists(os.path.join(gibson2.dataset_path, 'Rs')):
-        os.system('wget https://storage.googleapis.com/gibson_scenes/Rs.tar.gz -O /tmp/Rs.tar.gz')
-        os.system('tar -zxf /tmp/Rs.tar.gz --directory {}'.format(gibson2.dataset_path))
-
 def download_assets():
     if not os.path.exists(gibson2.assets_path):
         os.system('wget https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz -O /tmp/assets_igibson.tar.gz')
