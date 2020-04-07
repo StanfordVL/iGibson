@@ -94,13 +94,20 @@ class InstanceGroup(object):
         if self.renderer is None:
             return
 
-        self.renderer.r.initvar_instance_group(self.renderer.shaderProgram, self.renderer.V, self.renderer.P, self.renderer.lightpos, self.renderer.lightcolor)
+        self.renderer.r.initvar_instance_group(self.renderer.shaderProgram,
+                                               self.renderer.V,
+                                               self.renderer.P,
+                                               self.renderer.lightpos,
+                                               self.renderer.lightcolor)
 
         for i, visual_object in enumerate(self.objects):
             for object_idx in visual_object.VAO_ids:
-
-                self.renderer.r.init_material_pos_instance(self.renderer.shaderProgram, self.poses_trans[i], self.poses_rot[i], float(self.class_id) / 255.0, self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3], float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
-
+                self.renderer.r.init_material_pos_instance(self.renderer.shaderProgram,
+                                                           self.poses_trans[i],
+                                                           self.poses_rot[i],
+                                                           float(self.class_id) / 255.0,
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3],
+                                                           float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
                 try:
                     texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
                     if texture_id is None:
@@ -111,8 +118,13 @@ class InstanceGroup(object):
                     else:
                         buffer = self.renderer.fbo
 
-                    self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(), texture_id, self.renderer.texUnitUniform, self.renderer.VAOs[object_idx], self.renderer.faces[object_idx].size, self.renderer.faces[object_idx], buffer)
-
+                    self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                                                           texture_id,
+                                                           self.renderer.texUnitUniform,
+                                                           self.renderer.VAOs[object_idx],
+                                                           self.renderer.faces[object_idx].size,
+                                                           self.renderer.faces[object_idx],
+                                                           buffer)
                 finally:
                     self.renderer.r.cglBindVertexArray(0)
         self.renderer.r.cglUseProgram(0)
@@ -159,7 +171,7 @@ class Robot(InstanceGroup):
 
 class Instance(object):
     """
-    InstanceGroup is one instance of a visual object. One visual object can have multiple instances to save memory.
+    Instance is one instance of a visual object. One visual object can have multiple instances to save memory.
     """
     def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic, softbody):
         self.object = object
@@ -181,7 +193,6 @@ class Instance(object):
 
         # softbody: reload vertex position
         if self.softbody:
-
             # construct new vertex position into shape format
             object_idx = self.object.VAO_ids[0]
             vertices = p.getMeshData(self.pybullet_uuid)[1]
@@ -205,12 +216,19 @@ class Instance(object):
             # update buffer data into VBO
             self.renderer.r.render_softbody_instance(self.renderer.VAOs[object_idx], self.renderer.VBOs[object_idx], new_data)
 
-        self.renderer.r.initvar_instance(self.renderer.shaderProgram, self.renderer.V, self.renderer.P, self.pose_trans, self.pose_rot, self.renderer.lightpos, self.renderer.lightcolor)
+        self.renderer.r.initvar_instance(self.renderer.shaderProgram,
+                                         self.renderer.V,
+                                         self.renderer.P,
+                                         self.pose_trans,
+                                         self.pose_rot,
+                                         self.renderer.lightpos,
+                                         self.renderer.lightcolor)
 
         for object_idx in self.object.VAO_ids:
-
-            self.renderer.r.init_material_instance(self.renderer.shaderProgram, float(self.class_id) / 255.0, self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd, float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
-
+            self.renderer.r.init_material_instance(self.renderer.shaderProgram,
+                                                   float(self.class_id) / 255.0,
+                                                   self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd,
+                                                   float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
             try:
                 texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
                 if texture_id is None:
@@ -221,8 +239,13 @@ class Instance(object):
                 else:
                     buffer = self.renderer.fbo
 
-                self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(), texture_id, self.renderer.texUnitUniform, self.renderer.VAOs[object_idx], self.renderer.faces[object_idx].size, self.renderer.faces[object_idx], buffer)
-
+                self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                                                       texture_id,
+                                                       self.renderer.texUnitUniform,
+                                                       self.renderer.VAOs[object_idx],
+                                                       self.renderer.faces[object_idx].size,
+                                                       self.renderer.faces[object_idx],
+                                                       buffer)
             finally:
                 self.renderer.r.cglBindVertexArray(0)
 
@@ -380,7 +403,7 @@ class MeshRenderer(object):
         :param scale: scale, default 1
         :param transform_orn: rotation for loading, 3x3 matrix
         :param transform_pos: translation for loading, it is a list of length 3
-        :param input_kd: If loading texture is not successful, the color to use, it is a list of length 3
+        :param input_kd: if loading material fails, use this default material. input_kd should be a list of length 3
         :param texture_scale: texture scale for the object, downsample to save memory.
         :param load_texture: load texture or not
         :return: VAO_ids
@@ -416,29 +439,20 @@ class MeshRenderer(object):
         materials_fn = {}
 
         for i, item in enumerate(materials):
-            is_texture = False
-            kd = item.diffuse
+            if item.diffuse_texname != '' and load_texture:
+                materials_fn[i + material_count] = item.diffuse_texname
+                obj_dir = os.path.dirname(obj_path)
+                #texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
+                texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
+                self.textures.append(texture)
+                material = Material('texture', texture_id=texture)
+            else:
+                material = Material('color', kd=item.diffuse)
+            self.materials_mapping[i + material_count] = material
 
-            if item.diffuse_texname != '':
-                is_texture = True
-                if load_texture:
-                    materials_fn[i + material_count] = item.diffuse_texname
-                    dir = os.path.dirname(obj_path)
-                    #texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
-                    texture = self.r.loadTexture(os.path.join(dir, item.diffuse_texname))
-                    material = Material('texture', texture_id=texture)
-                    self.textures.append(texture)
-                else:
-                    material = Material('color', kd=kd)
-
-                self.materials_mapping[i + material_count] = material
-
-            if not is_texture:
-                self.materials_mapping[i + material_count] = Material('color', kd=kd)
-
-        if input_kd is not None:  # urdf material
+        if input_kd is not None:  # append the default material in the end, in case material loading fails
             self.materials_mapping[len(materials) + material_count] = Material('color', kd=input_kd)
-        elif len(materials) == 0:  # urdf material not specified, but it is required
+        else:
             self.materials_mapping[len(materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5])
 
         #print(self.materials_mapping)
@@ -449,10 +463,9 @@ class MeshRenderer(object):
         vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
         #print(vertex_position.shape, vertex_normal.shape, vertex_texcoord.shape)
 
-
         for shape in shapes:
             #print(shape.name)
-            material_id = shape.mesh.material_ids[0] # assume one shape only have one material
+            material_id = shape.mesh.material_ids[0]  # assume one shape only has one material
             #print("material_id = {}".format(material_id))
             #print("num_indices = {}".format(len(shape.mesh.indices)))
             n_indices = len(shape.mesh.indices)
@@ -494,7 +507,7 @@ class MeshRenderer(object):
             self.objects.append(obj_path)
             self.vertex_data.append(vertexData)
             self.shapes.append(shape)
-            if material_id == -1:  # if no material, use urdf color as material
+            if material_id == -1:  # if material loading fails, use the default material
                 self.mesh_materials.append(len(materials) + material_count)
             else:
                 self.mesh_materials.append(material_id + material_count)
