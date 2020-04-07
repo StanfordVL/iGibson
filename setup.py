@@ -98,11 +98,16 @@ class PostInstallCommand(install):
                 check_call("bash realenv/envs/build.sh".split())
                 install.run(self)
 '''
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 setup(
     name='gibson2',
-    version='0.0.2b',
+    version='0.0.4',
     author='Stanford University',
+    long_description_content_type="text/markdown",
+    long_description=long_description,
+    url='https://github.com/StanfordVL/iGibson',
     zip_safe=False,
     packages=find_packages(),
     install_requires=[

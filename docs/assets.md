@@ -34,11 +34,12 @@ assets
 │   └── ycb
 ├── networks
 │   └── model.pth
-└── test
-    └── mesh
+├── test
+│   └── mesh
+└── example_configs
+    └── {}.yaml
 
 ```
-
 `models` contains robot models and interactive objects, `networks` contain the neural network filler used in Gibson V1, `test` contains files for performing tests of installation. 
 
 ## Models
@@ -67,3 +68,7 @@ We also include [YCB objects](http://www.ycbbenchmarks.com/object-models/) in `y
 ## Test meshes
 
 In `test` folder we save a mesh file to test the renderer is compiled correctly, it is used by `test/test_render.py`.
+
+## Example configs
+
+Sample config files to be used with the demo.
