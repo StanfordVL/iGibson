@@ -16,14 +16,14 @@ class DemoInteractive(object):
         download_demo_data()
 
     def run_demo(self):
-        config = parse_config(os.path.join(gibson2.assets_path, '../../examples/configs/turtlebot_demo.yaml'))
+        config = parse_config(os.path.join(gibson2.assets_path, 'example_configs/turtlebot_demo.yaml'))
         s = Simulator(mode='gui', image_width=700, image_height=700)
         scene = BuildingScene('Rs_interactive', is_interactive=True)
         s.import_scene(scene)
         turtlebot = Turtlebot(config)
         s.import_robot(turtlebot)
 
-        for i in range(1000):
+        for i in range(10000):
             turtlebot.apply_action([0.1,0.5])
             s.step()
 

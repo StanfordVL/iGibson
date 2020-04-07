@@ -14,7 +14,7 @@ class Viewer:
         self.view_direction = np.array([1, 0, 0])
 
         cv2.namedWindow('ExternalView')
-        cv2.moveWindow("ExternalView", 0,0);
+        cv2.moveWindow("ExternalView", 0,0)
         cv2.namedWindow('RobotView')
         cv2.setMouseCallback('ExternalView', self.change_dir)
 
