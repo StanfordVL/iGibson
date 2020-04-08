@@ -18,28 +18,22 @@ s = Simulator(mode='vr')
 scene = EmptyScene()
 s.import_scene(scene)
 
-s.renderer.load_object(ohopee_path)
-s.renderer.add_instance(0)
+gripper = InteractiveObj(assets_path + '\\gripper.urdf')
+s.import_object(gripper)
+gripper_id = gripper.body_id
+print("Gripper id is %d" % gripper_id)
 
-fetch = Fetch(config)
-s.import_robot(fetch)
-fetch.set_position([0,0.5,0])
+#s.renderer.load_object(ohopee_path)
+#s.renderer.add_instance(0)
 
-# Poles represent hands
-# Left hand
-left_pole = InteractiveObj(bullet_obj_folder + 'pole.urdf', scale=0.7)
-s.import_object(left_pole)
-left_pole_id = left_pole.body_id
+#fetch = Fetch(config)
+#s.import_robot(fetch)
+#fetch.set_position([0,0.5,0])
 
-lpole_cid = p.createConstraint(left_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
-
-# Right hand
-right_pole = InteractiveObj(bullet_obj_folder + 'pole.urdf', scale=0.7)
-s.import_object(right_pole)
-right_pole_id = right_pole.body_id
+# Grippers represent hands
 
 # TODO: Change this constraint?
-rpole_cid = p.createConstraint(right_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
+#rpole_cid = p.createConstraint(right_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
 
 def multQuatLists(q0, q1):
     x0, y0, z0, w0 = q0
@@ -62,7 +56,7 @@ for i in range(2):
     s.import_object(obj)
 
 # Rotates poles to correct orientation relative to VR controller
-pole_correction_quat = p.getQuaternionFromEuler([0, 1.57, 0])
+#pole_correction_quat = p.getQuaternionFromEuler([0, 1.57, 0])
 
 # Runs simulation and measures fps
 while True:
@@ -79,12 +73,12 @@ while True:
     lIsValid, lTrans, lRot = s.getDataForVRDevice('left_controller')
     rIsValid, rTrans, rRot = s.getDataForVRDevice('right_controller')
 
-    if lIsValid:
-        final_rot = multQuatLists(lRot, pole_correction_quat)
-        p.changeConstraint(lpole_cid, lTrans, final_rot, maxForce=500)
+    #if lIsValid:
+    #    final_rot = multQuatLists(lRot, pole_correction_quat)
+    #    p.changeConstraint(lpole_cid, lTrans, final_rot, maxForce=500)
 
-    if rIsValid:
-        final_rot = multQuatLists(rRot, pole_correction_quat)
-        p.changeConstraint(rpole_cid, rTrans, final_rot, maxForce=500)
+    #if rIsValid:
+    #    final_rot = multQuatLists(rRot, pole_correction_quat)
+    #    p.changeConstraint(rpole_cid, rTrans, final_rot, maxForce=500)
         
 s.disconnect()
