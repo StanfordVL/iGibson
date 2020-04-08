@@ -22,7 +22,7 @@ class MeshRendererVR():
     def set_vr_camera(self, pos):
         # Gibson coordinate system is rotated from OpenGL
         # So we map (vr from gib) x<-y, y<-z and z<-x
-        self.vrsys.setVRCamera(pos[1], pos[2], pos[0])
+        self.vrsys.setVRCamera(-pos[1], pos[2], -pos[0])
 
     # Resets the position of the VR camera
     def reset_vr_camera(self):

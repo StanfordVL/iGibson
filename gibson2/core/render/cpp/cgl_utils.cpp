@@ -201,6 +201,9 @@ public:
 	DeviceData leftControllerData;
 	DeviceData rightControllerData;
 
+	// Indicates where the headset actually is in the room, irrespective of whether the VR camera has been set or not
+	glm::vec3 hmdActualPos;
+
 	// View matrices for both left and right eyes (only proj and view are actually returned to the user)
 	glm::mat4 leftEyeProj;
 	glm::mat4 leftEyePos;
@@ -326,7 +329,7 @@ public:
 		updateVRData();
 	}
 
-	// Returns device data in order: isValidData, position, rotation
+	// Returns device data in order: isValidData, position, rotation, hmdActualPos (valid only if hmd)
 	// Device type can be either hmd, left_controller or right_controller
 	// Coordinates are kept in OpenGL coordinate system to synchronize with PyBullet
 	// TIMELINE: Call at any time after postRenderVR to poll the VR system for device data
@@ -335,12 +338,15 @@ public:
 
 		py::array_t<float> positionData;
 		py::array_t<float> rotationData;
+		py::array_t<float> hmdActualPosData;
 
 		// TODO: Extend this to work with multiple headsets in future
 		if (!strcmp(deviceType, "hmd")) {
 			glm::vec3 transformedPos(vrToGib * glm::vec4(hmdData.devicePos, 1.0));
 			positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
 			rotationData = py::array_t<float>({ 4, }, glm::value_ptr(vrToGib * hmdData.deviceRot));
+			glm::vec3 transformedHmdPos(vrToGib * glm::vec4(hmdActualPos, 1.0));
+			hmdActualPosData = py::array_t<float>({ 3, }, glm::value_ptr(transformedHmdPos));
 			isValid = hmdData.isValidData;
 		}
 		else if (!strcmp(deviceType, "left_controller")) {
@@ -360,6 +366,7 @@ public:
 		deviceData.append(isValid);
 		deviceData.append(positionData);
 		deviceData.append(rotationData);
+		deviceData.append(hmdActualPosData);
 
 		return deviceData;
 	}
@@ -414,6 +421,7 @@ private:
 			if (trackedDeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_HMD) {
 				hmdData.index = idx;
 				hmdData.isValidData = true;
+				hmdActualPos = getPositionFromSteamVRMatrix(transformMat);
 				if (hasSetCamera) {
 					SetSteamVRMatrixPos(currCameraPos, transformMat);
 				}

@@ -93,5 +93,8 @@ Should end printing 'Successfully installed gibson2'
 
 $ python test_vr_renderer_ohopee.py
 
+Other notes
+===========
+Use \ instead of / in paths on Windows! For example use assets\datasets instead of assets/datasets
 
 Have vr fun!
