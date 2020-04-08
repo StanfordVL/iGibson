@@ -87,7 +87,7 @@ class MeshRendererVR():
         self.vrsys.postRenderVRForEye("left", self.colorTex)
         self.vrsys.postRenderVRForEye("right", self.colorTex)
 
-        self.renderer.r.flush_swap_glfw()
+        self.renderer.r.post_render_glfw()
 
         self.vrsys.postRenderVRUpdate(False)
 
