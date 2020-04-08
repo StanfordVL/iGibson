@@ -433,8 +433,18 @@ class Simulator:
     # Call this after step - returns all VR device data for a specific device
     # Return isValid (indicating validity of data), translation and rotation in Gibson world space
     def getDataForVRDevice(self, deviceName):
-        isValid, translation, rotation = self.renderer.vrsys.getDataForVRDevice(deviceName)
-        return [isValid, translation, rotation]
+        isValid, translation, rotation, hmdActualPos = self.renderer.vrsys.getDataForVRDevice(deviceName)
+        return [isValid, translation, rotation, hmdActualPos]
+
+    # Sets the VR camera to a specific position, eg. the head of a robot
+    def setVRCamera(self, pos=None, shouldReset=False):
+        if self.mode is not 'vr':
+            return
+        
+        if shouldReset == False and pos is not None:
+            self.renderer.set_vr_camera(pos)
+        elif shouldReset == True:
+            self.renderer.reset_vr_camera()
 
     @staticmethod
     def update_position(instance):

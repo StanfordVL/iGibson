@@ -82,9 +82,9 @@ while True:
     s.step(should_measure_fps=False)
 
     # Always call after step
-    hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')
-    lIsValid, lTrans, lRot = s.getDataForVRDevice('left_controller')
-    rIsValid, rTrans, rRot = s.getDataForVRDevice('right_controller')
+    hmdIsValid, hmdTrans, hmdRot, _ = s.getDataForVRDevice('hmd')
+    lIsValid, lTrans, lRot, _ = s.getDataForVRDevice('left_controller')
+    rIsValid, rTrans, rRot, _ = s.getDataForVRDevice('right_controller')
 
     if lIsValid:
         final_rot = multQuatLists(lRot, pole_correction_quat)
