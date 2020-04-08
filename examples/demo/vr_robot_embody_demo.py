@@ -28,14 +28,15 @@ building = BuildingObj(ohopee_path)
 s.import_object(building)
 
 fetch = Fetch(config)
-s.import_robot(fetch)
+fetch_id = s.import_robot(fetch)[0]
+print("Fetch robot id:")
+print(fetch_id)
 fetch.set_position([-0.2,-0.1,0])
 fetch.robot_specific_reset()
 fetch_parts = fetch.parts
 eye_part = fetch_parts['eyes']
-head_pan = fetch_parts['head_pan_link']
-head_tilt = fetch_parts['head_tilt_link']
-head_camera = fetch_parts['head_camera_link']
+gripper_part = fetch_parts['gripper_link']
+gripper_part_link_index = gripper_part.body_part_index
 
 fetch_height = 1.08
 
@@ -103,6 +104,18 @@ while True:
         hmdDiffVec = subtract_vector_list(hmdTrans, hmdActualPos)
         rTransAdjusted = add_vector_list(rTrans, hmdDiffVec)
 
-        p.resetBasePositionAndOrientation(test_id, rTransAdjusted, rRot)
+        #p.resetBasePositionAndOrientation(test_id, rTransAdjusted, rRot)
+
+        joint_pos = p.calculateInverseKinematics(fetch_id, gripper_part_link_index, rTransAdjusted, rRot)
+
+        for i in range(len(joint_pos)):
+            p.setJointMotorControl2(fetch_id,
+                                i,
+                                p.POSITION_CONTROL,
+                                targetPosition=joint_pos[i],
+                                targetVelocity=0,
+                                positionGain=0.15,
+                                velocityGain=1.0,
+                                force=500) 
         
 s.disconnect()
