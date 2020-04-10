@@ -54,7 +54,7 @@ def main():
 
     while True:
         with Profiler('Render'):
-            frame = renderer.render(modes=('rgb', 'normal', '3d'))
+            frame = renderer.render(modes=('rgb'))
         cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
         q = cv2.waitKey(1)
         if q == ord('w'):
