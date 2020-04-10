@@ -11,7 +11,7 @@ from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, look
     safemat2quat, xyzw2wxyz
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-from gibson2.core.render.mesh_renderer import MeshRendererContext
+from gibson2.core.render.mesh_renderer import MeshRendererContext, GLFWRendererContext
 from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
 import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
@@ -333,10 +333,12 @@ class MeshRenderer(object):
         self.device_idx = device_idx
         self.device_minor = device
         self.msaa = msaa
-        self.r = MeshRendererContext.MeshRendererContext(width, height, device)
+        self.r = GLFWRendererContext.GLFWRendererContext(width, height)
+        
+        #self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
-        self.r.glad_init()
+        #self.r.glad_init()
         self.glstring = self.r.getstring_meshrenderer()
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
