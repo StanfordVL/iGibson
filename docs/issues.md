@@ -25,5 +25,6 @@ If the original installation doesn't work, try the following:
 2. Are openGL libraries visible? You can do so by
 `export LD_LIBRARY_PATH=/usr/lib/nvidia-<vvv>:$LD_LIBRARY_PATH`
 3. There are two ways of setting up openGL library, if the current installation doesn't work, you can try to install with USE_GLAD set to FALSE in [here](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/render/CMakeLists.txt)
+4. If you want to render in headless mode, make sure `$DISPLAY` environment variable is unset, otherwise you might have error `Failed to EGL with glad`, because EGL is sensitive to `$DISPLAY` environment variable.
 
 Also, the EGL setup part is borrowed from Erwin Coumans [egl_example](https://github.com/erwincoumans/egl_example). It would be informative to see if that repository can run on your machine.
