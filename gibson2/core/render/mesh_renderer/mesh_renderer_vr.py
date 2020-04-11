@@ -1,22 +1,18 @@
 import numpy as np
-import CGLUtils
-from CGLUtils import VRSystem
-from gibson2.core.render.mesh_renderer.glutils.meshutil import frustum
+from gibson2.core.render.mesh_renderer.Release import MeshRendererContext
 
 # VR wrapper class on top of Gibson Mesh Renderers
 class MeshRendererVR():
     # Init takes in a renderer type to use for VR (which can be of type MeshRenderer or something else as long as it conforms to the same interface)
-    def __init__(self, rendererType, vrWidth=None, vrHeight=None):
-        self.vrsys = VRSystem()
+    def __init__(self, rendererType, vrWidth=None, vrHeight=None, msaa=False):
+        self.msaa = msaa
+        self.vrsys = MeshRendererContext.VRSystem()
         # Default recommended is 2016 x 2240
         self.width, self.height = self.vrsys.initVR()
         if vrWidth is not None and vrHeight is not None:
             self.renderer = rendererType(width=vrWidth, height=vrHeight, shouldHideWindow=False)
         else:
             self.renderer = rendererType(width=self.width, height=self.height, shouldHideWindow=False)
-
-        # Debugging variable for simple color test
-        self.colorTex = None
 
     # Sets the position of the VR camera to the position argument given
     def set_vr_camera(self, pos):
@@ -73,23 +69,6 @@ class MeshRendererVR():
                   dynamic=False,
                   robot=None):
         self.renderer.add_robot(object_ids, link_ids, class_id, poses_rot, poses_trans, pybullet_uuid, dynamic, robot)
-
-    # Set up debugging framebuffer
-    def setup_debug_framebuffer(self):
-        self.colorFbo, self.colorTex = CGLUtils.setup_color_framebuffer(self.width, self.height)
-
-    # Render debugging framebuffer
-    def render_debug_framebuffer(self):
-        leftProj, leftView, rightProj, rightView = self.vrsys.preRenderVR()
-
-        CGLUtils.render_simple_color_to_fbo(self.colorFbo)
-
-        self.vrsys.postRenderVRForEye("left", self.colorTex)
-        self.vrsys.postRenderVRForEye("right", self.colorTex)
-
-        self.renderer.r.post_render_glfw()
-
-        self.vrsys.postRenderVRUpdate(False)
 
     # Renders VR scenes and returns the left eye frame
     def render(self):

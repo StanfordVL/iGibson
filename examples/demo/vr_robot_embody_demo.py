@@ -12,7 +12,7 @@ import pybullet_data
 
 # TODO: More work needs to be done to make Ohopee have physics!
 configs_folder = '..\\configs\\'
-ohopee_path = '..\\..\\gibson2\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj'
+ohopee_path = dataset_path + '\\Ohoopee\\Ohoopee_mesh_texture.obj'
 bullet_obj_folder = assets_path + '\\models\\bullet_models\\data\\'
 gripper_folder = assets_path + '\\models\\pybullet_gripper\\'
 models_path = assets_path + '\\models\\'
@@ -88,7 +88,7 @@ while True:
         print("Device " + deviceType + " had event " + eventType)
 
     # Set should_measure_fps to True to measure the current fps
-    s.step(should_measure_fps=False)
+    s.step()
 
     # Always call after step
     hmdIsValid, hmdTrans, hmdRot, hmdActualPos = s.getDataForVRDevice('hmd')
