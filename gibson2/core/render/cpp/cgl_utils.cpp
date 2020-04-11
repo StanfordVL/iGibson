@@ -158,9 +158,10 @@ public:
 		glViewport(0, 0, renderWidth, renderHeight);
 	}
 
-	void flush_swap_glfw() {
+	void post_render_glfw() {
 		glFlush();
-		glfwSwapBuffers(window);
+		//glfwSwapBuffers(window);
+		glfwPollEvents();
 	}
 
 	void release() {
@@ -199,6 +200,9 @@ public:
 	DeviceData hmdData;
 	DeviceData leftControllerData;
 	DeviceData rightControllerData;
+
+	// Indicates where the headset actually is in the room, irrespective of whether the VR camera has been set or not
+	glm::vec3 hmdActualPos;
 
 	// View matrices for both left and right eyes (only proj and view are actually returned to the user)
 	glm::mat4 leftEyeProj;
@@ -325,21 +329,24 @@ public:
 		updateVRData();
 	}
 
-	// Returns device data in order: isValidData, position, rotation
+	// Returns device data in order: isValidData, position, rotation, hmdActualPos (valid only if hmd)
 	// Device type can be either hmd, left_controller or right_controller
-	// Coordinates converted to Gibson ROS system from VR (OpenGL) coordinate system
+	// Coordinates are kept in OpenGL coordinate system to synchronize with PyBullet
 	// TIMELINE: Call at any time after postRenderVR to poll the VR system for device data
 	py::list getDataForVRDevice(char* deviceType) {
 		bool isValid = false;
 
 		py::array_t<float> positionData;
 		py::array_t<float> rotationData;
+		py::array_t<float> hmdActualPosData;
 
 		// TODO: Extend this to work with multiple headsets in future
 		if (!strcmp(deviceType, "hmd")) {
 			glm::vec3 transformedPos(vrToGib * glm::vec4(hmdData.devicePos, 1.0));
 			positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
 			rotationData = py::array_t<float>({ 4, }, glm::value_ptr(vrToGib * hmdData.deviceRot));
+			glm::vec3 transformedHmdPos(vrToGib * glm::vec4(hmdActualPos, 1.0));
+			hmdActualPosData = py::array_t<float>({ 3, }, glm::value_ptr(transformedHmdPos));
 			isValid = hmdData.isValidData;
 		}
 		else if (!strcmp(deviceType, "left_controller")) {
@@ -359,6 +366,7 @@ public:
 		deviceData.append(isValid);
 		deviceData.append(positionData);
 		deviceData.append(rotationData);
+		deviceData.append(hmdActualPosData);
 
 		return deviceData;
 	}
@@ -413,6 +421,7 @@ private:
 			if (trackedDeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_HMD) {
 				hmdData.index = idx;
 				hmdData.isValidData = true;
+				hmdActualPos = getPositionFromSteamVRMatrix(transformMat);
 				if (hasSetCamera) {
 					SetSteamVRMatrixPos(currCameraPos, transformMat);
 				}
@@ -566,13 +575,13 @@ private:
 	glm::vec4 getRotationFromSteamVRMatrix(vr::HmdMatrix34_t& matrix) {
 		glm::vec4 q;
 
-		q[0] = (float)sqrt(fmax(0, 1 + matrix.m[0][0] + matrix.m[1][1] + matrix.m[2][2])) / 2;
-		q[1] = (float)sqrt(fmax(0, 1 + matrix.m[0][0] - matrix.m[1][1] - matrix.m[2][2])) / 2;
-		q[2] = (float)sqrt(fmax(0, 1 - matrix.m[0][0] + matrix.m[1][1] - matrix.m[2][2])) / 2;
-		q[3] = (float)sqrt(fmax(0, 1 - matrix.m[0][0] - matrix.m[1][1] + matrix.m[2][2])) / 2;
-		q[1] = copysign(q[1], matrix.m[2][1] - matrix.m[1][2]);
-		q[2] = copysign(q[2], matrix.m[0][2] - matrix.m[2][0]);
-		q[3] = copysign(q[2], matrix.m[1][0] - matrix.m[0][1]);
+		q.w = (float)sqrt(fmax(0, 1 + matrix.m[0][0] + matrix.m[1][1] + matrix.m[2][2])) / 2;
+		q.x = (float)sqrt(fmax(0, 1 + matrix.m[0][0] - matrix.m[1][1] - matrix.m[2][2])) / 2;
+		q.y = (float)sqrt(fmax(0, 1 - matrix.m[0][0] + matrix.m[1][1] - matrix.m[2][2])) / 2;
+		q.z = (float)sqrt(fmax(0, 1 - matrix.m[0][0] - matrix.m[1][1] + matrix.m[2][2])) / 2;
+		q.x = copysign(q.x, matrix.m[2][1] - matrix.m[1][2]);
+		q.y = copysign(q.y, matrix.m[0][2] - matrix.m[2][0]);
+		q.z = copysign(q.z, matrix.m[1][0] - matrix.m[0][1]);
 
 		return q;
 	}
@@ -614,14 +623,14 @@ private:
 
 	// Sets coordinate transform matrices
 	void setCoordinateTransformMatrices() {
-		gibToVR[0] = glm::vec4(0.0, 0.0, 1.0, 0.0);
-		gibToVR[1] = glm::vec4(1.0, 0.0, 0.0, 0.0);
+		gibToVR[0] = glm::vec4(0.0, 0.0, -1.0, 0.0);
+		gibToVR[1] = glm::vec4(-1.0, 0.0, 0.0, 0.0);
 		gibToVR[2] = glm::vec4(0.0, 1.0, 0.0, 0.0);
 		gibToVR[3] = glm::vec4(0.0, 0.0, 0.0, 1.0);
 
-		vrToGib[0] = glm::vec4(0.0, 1.0, 0.0, 0.0);
+		vrToGib[0] = glm::vec4(0.0, -1.0, 0.0, 0.0);
 		vrToGib[1] = glm::vec4(0.0, 0.0, 1.0, 0.0);
-		vrToGib[2] = glm::vec4(1.0, 0.0, 0.0, 0.0);
+		vrToGib[2] = glm::vec4(-1.0, 0.0, 0.0, 0.0);
 		vrToGib[3] = glm::vec4(0.0, 0.0, 0.0, 1.0);
 	}
 };
@@ -1069,7 +1078,7 @@ PYBIND11_MODULE(CGLUtils, m) {
 		.def("init", &GLFWRendererContext::init)
 		.def("setupCompanionWindow", &GLFWRendererContext::setupCompanionWindow)
 		.def("renderCompanionWindow", &GLFWRendererContext::renderCompanionWindow)
-		.def("flush_swap_glfw", &GLFWRendererContext::flush_swap_glfw)
+		.def("post_render_glfw", &GLFWRendererContext::post_render_glfw)
 		.def("release", &GLFWRendererContext::release);
 
 	// VR system class

@@ -1,38 +1,73 @@
 import pybullet as p
 import os
+import pybullet_data
 import gibson2
 import numpy as np
 
 
-class YCBObject(object):
-    def __init__(self, name, scale=1):
-        self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
-                                     'textured_simple.obj')
-        self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
-                                     'textured_simple_vhacd.obj')
-        self.scale = scale
+class Object(object):
+    def __init__(self):
         self.body_id = None
+        self.loaded = False
+
     def load(self):
+        if self.loaded:
+            return self.body_id
+        self.body_id = self._load()
+        self.loaded = True
+        return self.body_id
+
+    def get_position(self):
+        pos, _ = p.getBasePositionAndOrientation(self.body_id)
+        return pos
+
+    def get_orientation(self):
+        """Return object orientation
+        :return: quaternion in xyzw
+        """
+        _, orn = p.getBasePositionAndOrientation(self.body_id)
+        return orn
+
+    def set_position(self, pos):
+        _, old_orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, old_orn)
+
+    def set_orientation(self, orn):
+        old_pos, _ = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, old_pos, orn)
+
+    def set_position_orientation(self, pos, orn):
+        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+
+
+class YCBObject(Object):
+    def __init__(self, name, scale=1):
+        super(YCBObject, self).__init__()
+        self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
+                                            'textured_simple.obj')
+        self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
+                                               'textured_simple_vhacd.obj')
+        self.scale = scale
+
+    def _load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH,
                                               fileName=self.collision_filename,
                                               meshScale=self.scale)
         visual_id = p.createVisualShape(p.GEOM_MESH,
-                                              fileName=self.visual_filename,
-                                              meshScale=self.scale)
+                                        fileName=self.visual_filename,
+                                        meshScale=self.scale)
 
         body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=visual_id,
                                     basePosition=[0.2, 0.2, 1.5],
                                     baseMass=0.1)
-
-        self.body_id = body_id
         return body_id
 
 
-class ShapeNetObject(object):
+class ShapeNetObject(Object):
     def __init__(self, path, scale=1., position=[0, 0, 0], orientation=[0, 0, 0]):
+        super(ShapeNetObject, self).__init__()
         self.filename = path
-
         self.scale = scale
         self.position = position
         self.orientation = orientation
@@ -50,9 +85,8 @@ class ShapeNetObject(object):
             'position': pose[0],
             'orientation_quat': pose[1],
         }
-        self.body_id = None
 
-    def load(self):
+    def _load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH,
                                               fileName=self.filename,
                                               meshScale=self.scale)
@@ -61,48 +95,43 @@ class ShapeNetObject(object):
                                     baseMass=self._default_mass,
                                     baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=-1)
-        self.body_id = body_id
         return body_id
 
 
-class Pedestrian(object):
+class Pedestrian(Object):
     def __init__(self, style='standing', pos=[0, 0, 0]):
+        super(Pedestrian, self).__init__()
         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
                                                'person_{}'.format(style), 'meshes',
                                                'person_vhacd.obj')
         self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
                                             'person_{}'.format(style), 'meshes', 'person.obj')
-        self.body_id = None
         self.cid = None
-
         self.pos = pos
 
-    def load(self):
+    def _load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename)
         visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
         body_id = p.createMultiBody(basePosition=[0, 0, 0],
                                     baseMass=60,
                                     baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=visual_id)
-        self.body_id = body_id
-
-        p.resetBasePositionAndOrientation(self.body_id, self.pos, [-0.5, -0.5, -0.5, 0.5])
-
-        self.cid = p.createConstraint(self.body_id,
+        p.resetBasePositionAndOrientation(body_id, self.pos, [-0.5, -0.5, -0.5, 0.5])
+        self.cid = p.createConstraint(body_id,
                                       -1,
                                       -1,
                                       -1,
                                       p.JOINT_FIXED, [0, 0, 0], [0, 0, 0],
                                       self.pos,
-                                      parentFrameOrientation=[-0.5, -0.5, -0.5,
-                                                              0.5])    # facing x axis
+                                      parentFrameOrientation=[-0.5, -0.5, -0.5, 0.5])  # facing x axis
+
         return body_id
 
     def reset_position_orientation(self, pos, orn):
         p.changeConstraint(self.cid, pos, orn)
 
 
-class VisualMarker(object):
+class VisualMarker(Object):
     def __init__(self,
                  visual_shape=p.GEOM_SPHERE,
                  rgba_color=[1, 0, 0, 0.5],
@@ -120,15 +149,15 @@ class VisualMarker(object):
         :param length: parameters for pybullet.GEOM_BOX, pybullet.GEOM_CYLINDER or pybullet.GEOM_CAPSULE
         :param initial_offset: visualFramePosition for the marker
         """
+        super(VisualMarker, self).__init__()
         self.visual_shape = visual_shape
         self.rgba_color = rgba_color
         self.radius = radius
         self.half_extents = half_extents
         self.length = length
         self.initial_offset = initial_offset
-        self.body_id = None
 
-    def load(self):
+    def _load(self):
         if self.visual_shape == p.GEOM_BOX:
             shape = p.createVisualShape(self.visual_shape,
                                         rgbaColor=self.rgba_color,
@@ -145,46 +174,60 @@ class VisualMarker(object):
                                         rgbaColor=self.rgba_color,
                                         radius=self.radius,
                                         visualFramePosition=self.initial_offset)
-        self.body_id = p.createMultiBody(baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1)
-        return self.body_id
+        body_id = p.createMultiBody(baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1)
 
-    def set_position(self, pos, new_orn=None):
-        if new_orn is None:
-            _, new_orn = p.getBasePositionAndOrientation(self.body_id)
-        p.resetBasePositionAndOrientation(self.body_id, pos, new_orn)
+        return body_id
 
     def set_color(self, color):
         p.changeVisualShape(self.body_id, -1, rgbaColor=color)
 
 
-class BoxShape(object):
-    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3]):
+class BoxShape(Object):
+    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], visual_only=False, mass=1000, color=[1, 1, 1, 1]):
+        super(BoxShape, self).__init__()
         self.basePos = pos
         self.dimension = dim
-        self.body_id = None
+        self.visual_only = visual_only
+        self.mass = mass
+        self.color = color
 
-    def load(self):
-        mass = 1000
+    def _load(self):
         baseOrientation = [0, 0, 0, 1]
-
         colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
-        visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension)
+        visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
+        if self.visual_only:
+            body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
+                                        baseVisualShapeIndex=visualShapeId)
+        else:
+            body_id = p.createMultiBody(baseMass=self.mass,
+                                        baseCollisionShapeIndex=colBoxId,
+                                        baseVisualShapeIndex=visualShapeId)
 
-        self.body_id = p.createMultiBody(baseMass=mass,
-                                         baseCollisionShapeIndex=colBoxId,
-                                         baseVisualShapeIndex=visualShapeId)
+        p.resetBasePositionAndOrientation(body_id, self.basePos, baseOrientation)
 
-        p.resetBasePositionAndOrientation(self.body_id, self.basePos, baseOrientation)
-        return self.body_id
-
-    def set_position(self, pos):
-        _, org_orn = p.getBasePositionAndOrientation(self.body_id)
-        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
+        return body_id
 
 
-class InteractiveObj(object):
+class InteractiveObj(Object):
     """
     Interactive Objects are represented as a urdf, but doesn't have motors
+    """
+
+    def __init__(self, filename, scale=1):
+        super(InteractiveObj, self).__init__()
+        self.filename = filename
+        self.scale = scale
+
+    def _load(self):
+        body_id = p.loadURDF(self.filename, globalScaling=self.scale,
+                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+        self.mass = p.getDynamicsInfo(body_id, -1)[0]
+
+        return body_id
+
+class BuildingObj(object):
+    """
+    Buildings Objects are a simple physics representation of a Gibson building
     """
     def __init__(self, filename, scale=1):
         self.filename = filename
@@ -192,8 +235,35 @@ class InteractiveObj(object):
         self.body_id = None
 
     def load(self):
-        self.body_id = p.loadURDF(self.filename, globalScaling=self.scale)
-        self.mass = p.getDynamicsInfo(self.body_id, -1)[0]
+        scaling = [self.scale, self.scale, self.scale]
+        collisionId = p.createCollisionShape(p.GEOM_MESH,
+                                        fileName=self.filename,
+                                        meshScale=scaling,
+                                        flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
+        visualId = -1
+        boundaryUid = p.createMultiBody(baseCollisionShapeIndex=collisionId,
+                                baseVisualShapeIndex=visualId)
+        p.changeDynamics(boundaryUid, -1, lateralFriction=1)
+
+        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+
+        ground_plane_mjcf = p.loadMJCF(planeName)
+
+        p.resetBasePositionAndOrientation(ground_plane_mjcf[0],
+                                    posObj=[0, 0, 0],
+                                    ornObj=[0, 0, 0, 1])
+
+        p.changeVisualShape(boundaryUid,
+                    -1,
+                    rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
+                    specularColor=[0.5, 0.5, 0.5])
+
+        p.changeVisualShape(ground_plane_mjcf[0],
+                    -1,
+                    rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
+                    specularColor=[0.5, 0.5, 0.5])
+
+        self.body_id = boundaryUid
         return self.body_id
 
     def get_position(self):
@@ -211,9 +281,12 @@ class InteractiveObj(object):
     def set_position_rotation(self, pos, orn):
         p.resetBasePositionAndOrientation(self.body_id, pos, orn)
 
-
-class SoftObject(object):
-    def __init__(self, filename, basePosition=[0,0,0], baseOrientation=[0,0,0,1], scale=-1, mass=-1, collisionMargin=-1, useMassSpring=0, useBendingSprings=0, useNeoHookean=0, springElasticStiffness=1, springDampingStiffness=0.1, springBendingStiffness=0.1, NeoHookeanMu=1, NeoHookeanLambda=1, NeoHookeanDamping=0.1, frictionCoeff=0, useFaceContact=0, useSelfCollision=0):
+class SoftObject(Object):
+    def __init__(self, filename, basePosition=[0, 0, 0], baseOrientation=[0, 0, 0, 1], scale=-1, mass=-1,
+                 collisionMargin=-1, useMassSpring=0, useBendingSprings=0, useNeoHookean=0, springElasticStiffness=1,
+                 springDampingStiffness=0.1, springBendingStiffness=0.1, NeoHookeanMu=1, NeoHookeanLambda=1,
+                 NeoHookeanDamping=0.1, frictionCoeff=0, useFaceContact=0, useSelfCollision=0):
+        super(SoftObject, self).__init__()
         self.filename = filename
         self.scale = scale
         self.basePosition = basePosition
@@ -232,19 +305,26 @@ class SoftObject(object):
         self.frictionCoeff = frictionCoeff
         self.useFaceContact = useFaceContact
         self.useSelfCollision = useSelfCollision
-        self.body_id = None
 
-    def load(self):
-        self.body_id = p.loadSoftBody(self.filename, scale = self.scale, basePosition = self.basePosition, baseOrientation = self.baseOrientation, mass=self.mass, collisionMargin=self.collisionMargin, useMassSpring=self.useMassSpring, useBendingSprings=self.useBendingSprings, useNeoHookean=self.useNeoHookean, springElasticStiffness=self.springElasticStiffness, springDampingStiffness=self.springDampingStiffness, springBendingStiffness=self.springBendingStiffness, NeoHookeanMu=self.NeoHookeanMu, NeoHookeanLambda=self.NeoHookeanLambda, NeoHookeanDamping=self.NeoHookeanDamping, frictionCoeff=self.frictionCoeff, useFaceContact=self.useFaceContact, useSelfCollision=self.useSelfCollision)
+    def _load(self):
+        body_id = p.loadSoftBody(self.filename, scale=self.scale, basePosition=self.basePosition,
+                                 baseOrientation=self.baseOrientation, mass=self.mass,
+                                 collisionMargin=self.collisionMargin, useMassSpring=self.useMassSpring,
+                                 useBendingSprings=self.useBendingSprings, useNeoHookean=self.useNeoHookean,
+                                 springElasticStiffness=self.springElasticStiffness,
+                                 springDampingStiffness=self.springDampingStiffness,
+                                 springBendingStiffness=self.springBendingStiffness,
+                                 NeoHookeanMu=self.NeoHookeanMu, NeoHookeanLambda=self.NeoHookeanLambda,
+                                 NeoHookeanDamping=self.NeoHookeanDamping, frictionCoeff=self.frictionCoeff,
+                                 useFaceContact=self.useFaceContact, useSelfCollision=self.useSelfCollision)
 
         # Set signed distance function voxel size (integrate to Simulator class?)
         p.setPhysicsEngineParameter(sparseSdfVoxelSize=0.1)
 
-        return self.body_id
+        return body_id
 
-    def addAnchor(self, nodeIndex=-1, bodyUniqueId=-1, linkIndex=-1, bodyFramePosition=[0,0,0], physicsClientId=0):
+    def addAnchor(self, nodeIndex=-1, bodyUniqueId=-1, linkIndex=-1, bodyFramePosition=[0, 0, 0], physicsClientId=0):
         p.createSoftBodyAnchor(self.body_id, nodeIndex, bodyUniqueId, linkIndex, bodyFramePosition, physicsClientId)
-
 
 
 class RBOObject(InteractiveObj):

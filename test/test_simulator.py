@@ -3,6 +3,9 @@ from gibson2.core.physics.scene import StadiumScene, BuildingScene
 from gibson2.core.physics.interactive_objects import YCBObject
 from gibson2.core.simulator import Simulator
 
+from gibson2.utils.assets_utils import download_assets
+
+download_assets()
 
 def test_simulator():
     s = Simulator(mode='headless')
