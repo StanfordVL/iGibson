@@ -10,7 +10,7 @@ import numpy as np
 import os
 import pybullet_data
 
-# TODO: Need to add a better hand URDF in future
+# TODO: Need to add a better hand URDF in future!
 configs_folder = '..\\configs\\'
 ohopee_path = '..\\..\\gibson2\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj'
 bullet_obj_folder = assets_path + '\\models\\bullet_models\\data\\'
@@ -26,24 +26,59 @@ s = Simulator(mode='vr')
 building = BuildingObj(ohopee_path)
 s.import_object(building)
 
+#gripper = InteractiveObj(assets_path + '\\gripper.urdf')
+#s.import_object(gripper)
+#gripper_id = gripper.body_id
+#print("Gripper id is %d" % gripper_id)
+
+#s.renderer.load_object(ohopee_path)
+#s.renderer.add_instance(0)
+
+#fetch = Fetch(config)
+#s.import_robot(fetch)
+#fetch.set_position([0,0.5,0])
+
+# Grippers represent h
+# TODO: Change this back! :)
+p.setGravity(0,0,0)
+
+# TODO: Change this constraint?
+#rpole_cid = p.createConstraint(right_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
+
+# Load gripper
+gripper = InteractiveObj(gripper_folder + 'gripper.urdf')
+s.import_object(gripper)
+gripper.set_position([0,0.5,1.5])
+gripper_id = gripper.body_id
+joint_positions = [0.550569, 0.000000, 0.549657, 0.000000]
+
+#for joint_index in range(p.getNumJoints(gripper_id)):
+#    p.resetJointState(gripper_id, joint_index, joint_positions[joint_index])
+
+#gripper_cid = p.createConstraint(gripper_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0 -0.2, 0], [-0.700000,-0.500000, 0.300006])
+#gripper_cid = p.createConstraint(gripper_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0 -0.2, 0], [-0.700000,-0.500000, 0.300006])
+
+##gripper_cid = p.createConstraint(gripper_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0.2, 0, 0],
+                             #[0.500000, 0.300006, 0.700000])
+
 # Poles represent hands
 # Left hand
-left_pole = InteractiveObj(bullet_obj_folder + 'pole.urdf', scale=0.7)
-s.import_object(left_pole)
-left_pole_id = left_pole.body_id
-left_pole.set_position([0,0,1.5])
+##left_pole = InteractiveObj(bullet_obj_folder + 'pole.urdf', scale=0.7)
+#s.import_object(left_pole)
+#left_pole_id = left_pole.body_id
+#left_pole.set_position([0,0,1.5])
 
 # Right hand
-right_pole = InteractiveObj(bullet_obj_folder + 'pole.urdf', scale=0.7)
-s.import_object(right_pole)
-right_pole_id = right_pole.body_id
-right_pole.set_position([0,0.5,1.5])
+#right_pole = InteractiveObj(bullet_obj_folder + 'pole.urdf', scale=0.7)
+#s.import_object(right_pole)
+#right_pole_id = right_pole.body_id
+#right_pole.set_position([0,0.5,1.5])
 
-lpole_cid = p.createConstraint(left_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
-rpole_cid = p.createConstraint(right_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
+#lpole_cid = p.createConstraint(left_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
+#rpole_cid = p.createConstraint(right_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
 
 # Rotates poles to correct orientation relative to VR controller
-pole_correction_quat = p.getQuaternionFromEuler([0, 1.57, 0])
+#pole_correction_quat = p.getQuaternionFromEuler([0, 1.57, 0])
 
 def multQuatLists(q0, q1):
     x0, y0, z0, w0 = q0
@@ -75,7 +110,10 @@ s.import_object(basket)
 basket.set_position([-0.8,0.8,1])
 
 # Rotates poles to correct orientation relative to VR controller
-pole_correction_quat = p.getQuaternionFromEuler([0, 1.57, 0])
+# TODO: Use this for the gripper?
+#pole_correction_quat = p.getQuaternionFromEuler([0, 1.57, 0])
+
+gripper_max_joint = 0.550569
 
 while True:
     # Always call before step
@@ -93,11 +131,16 @@ while True:
     rIsValid, rTrans, rRot, _ = s.getDataForVRDevice('right_controller')
 
     if lIsValid:
-        final_rot = multQuatLists(lRot, pole_correction_quat)
-        p.changeConstraint(lpole_cid, lTrans, final_rot, maxForce=500)
+        x = 3
+        #final_rot = multQuatLists(lRot, pole_correction_quat)
+        #p.changeConstraint(lpole_cid, lTrans, final_rot, maxForce=500)
+        #p.changeConstraint(gripper_cid, lTrans, lRot, maxForce=500)
+        #p.setJointMotorControl2
 
-    if rIsValid:
-        final_rot = multQuatLists(rRot, pole_correction_quat)
-        p.changeConstraint(rpole_cid, rTrans, final_rot, maxForce=500)
+    # Print out gripper locations
+    shapes = p.getVisualShapeData(gripper_id)
+    print("Shape positions:")
+    for i in range(5):
+        print(shapes[i][5])
         
 s.disconnect()
