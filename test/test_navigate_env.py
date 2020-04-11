@@ -9,7 +9,10 @@ from time import time
 import numpy as np
 from time import time
 import os
+from gibson2.utils.assets_utils import download_assets, download_demo_data
 
+download_assets()
+download_demo_data()
 
 def test_env():
     config_filename = os.path.join(gibson2.root_path, '../test/test_house.yaml')

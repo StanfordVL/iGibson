@@ -6,7 +6,13 @@ import numpy as np
 from transforms3d import quaternions
 from transforms3d.quaternions import axangle2quat, mat2quat
 
-
+def xyzw2wxyz(orn):
+    """
+    :param orn: quaternion in xyzw
+    :return: quaternion in wxyz
+    """
+    return [orn[-1], orn[0], orn[1], orn[2]]
+    
 def frustum(left, right, bottom, top, znear, zfar):
     """Create view frustum matrix."""
     assert right != left
@@ -173,15 +179,13 @@ def normalize_mesh(mesh):
 
 
 def quat2rotmat(quat):
-    quat_mat = np.eye(4)
-    quat_mat[:3, :3] = quaternions.quat2mat(quat)
-    return quat_mat
-
-
-def quat2rotmat(quat):
-    quat_mat = np.eye(4)
-    quat_mat[:3, :3] = quaternions.quat2mat(quat)
-    return quat_mat
+    """
+    :param quat: quaternion in w,x,y,z
+    :return: rotation matrix 4x4
+    """
+    rot_mat = np.eye(4)
+    rot_mat[:3, :3] = quaternions.quat2mat(quat)
+    return rot_mat
 
 
 def xyz2mat(xyz):
@@ -197,6 +201,10 @@ def mat2xyz(mat):
 
 
 def safemat2quat(mat):
+    """
+    :param mat:4x4 matrix
+    :return: quaternion in w,x,y,z
+    """
     quat = np.array([1, 0, 0, 0])
     try:
         quat = mat2quat(mat)

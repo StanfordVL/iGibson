@@ -97,37 +97,43 @@ class PostInstallCommand(install):
                 check_call("bash realenv/envs/build.sh".split())
                 install.run(self)
 '''
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 setup(
     name='gibson2',
-    version=find_version('gibson2', '__init__.py'),
+    version='0.0.4',
     author='Stanford University',
+    long_description_content_type="text/markdown",
+    long_description=long_description,
+    url='https://github.com/StanfordVL/iGibson',
     zip_safe=False,
+    packages=find_packages(),
     install_requires=[
-            'numpy>=1.10.4',
-            'pyglet>=1.2.0',
             'gym==0.12',
-            'Pillow>=3.3.0',
-            'PyYAML>=3.12',
-            'numpy>=1.13',
-            'pybullet==2.4.1',
+            'numpy>=1.16.0',
+            'scipy>=1.2.1',
+            'pybullet>=2.6.4',
             'transforms3d>=0.3.1',
-            'tqdm == 4.19.9',
-            'Pillow>=4.2.1',
-            'matplotlib>=2.1.0',
-            'cloudpickle>=0.4.1',
-            'pygame>=1.9.3',
-            'opencv-python',
-            #'torchvision==0.2.2',
+            'opencv-python>=4.0.0',
+            'Pillow>=5.4.0',
+            'networkx>=2.0',
+            'PyYAML',
+            'tqdm',
+            'matplotlib',
+            'cloudpickle',
             'aenum',
-            'pyopengl==3.1.0',
-            'pyopengl-accelerate==3.1.0',
-            'pyassimp==4.1.3',
-            'gputil'
+            'GPUtil',
+            'ipython',
+            'pytest',
+            'future',
     ],
-    ext_modules=[CMakeExtension('GLFWRendererContext', sourcedir='gibson2/core/render'),
-    CMakeExtension('VRUtils', sourcedir='gibson2/core/render'),
-    CMakeExtension('CGLUtils', sourcedir='gibson2/core/render')],
+    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/core/render')],
     cmdclass=dict(build_ext=CMakeBuild),
     tests_require=[],
-)  #yapf: disable
+    package_data={'': [
+    'gibson2/global_config.yaml',
+    'gibson2/core/render/mesh_renderer/shaders/*'
+    ]},
+    include_package_data=True,
+)   #yapf: disable
