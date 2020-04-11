@@ -49,8 +49,8 @@ def download_dataset(url):
 
     file_name = url.split('/')[-1]
     os.system('wget {} -O /tmp/{}'.format(url, file_name))
-    os.system('tar -zxf /tmp/{} --directory {}'.format(file_name, gibson2.dataset_path))
-    os.system('mv {}/{}/* {}'.format(gibson2.dataset_path, file_name.split('.')[0], gibson2.dataset_path))
+    os.system('tar -zxf /tmp/{} --strip-components=1 --directory {}'.format(file_name, gibson2.dataset_path))
+    # these datasets comes as folders, in these folder there are scenes, so --strip-components are needed. 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
