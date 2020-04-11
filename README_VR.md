@@ -11,7 +11,7 @@ but are tailored to run the VR components in Windows.
 VR Station
 ==========
 
-Install Steam, Steam VR, Connect VR headset and base stations, set up VR room
+Install Steam and Steam VR, connect VR headset and base stations, set up VR room
 Run steam performance test.
 
 https://www.vive.com/eu/support/vive/category_howto/setting-up-for-the-first-time.html
@@ -34,7 +34,7 @@ C:\Users\C\anaconda3
 C:\Users\C\anaconda3\Scripts
 C:\Users\C\anaconda3\Library\bin
 
-Lack of the later produced error:
+Lack of the latter produced the following error:
 HTTP 000 CONNECTION FAILED for url <https://repo.anaconda.com/pkgs/main/win-64/current_repodata.json> Elapsed
 
 * Build Tools for Visual Studio:
@@ -44,7 +44,7 @@ This is needed for bullet
 
 * cmake:
 https://cmake.org/download/
-Needed for  GLFWRendererContext, VRUtils, CGLUtils
+Needed for building MeshRendererContext and Pybind.
 
 
 Gibson
@@ -53,7 +53,7 @@ Gibson
 * Get codebase and assets:
 
 ```
-$ git clone git@github.com:fxia22/gibsonv2.git
+$ git clone git@github.com:fxia22/iGibson.git
 $ cd gibsonv2
 $ git checkout vr
 $ git submodule update --init --recursive
@@ -74,7 +74,7 @@ $ conda create -n gibsonvr python=3.6
 ```
 Activate conda env:
 ```
-$ activate gibsonvr
+$ source activate gibsonvr
 ```
 
 * Install Gibson in anaconda env:
@@ -88,8 +88,10 @@ $ pip install -e .
 
 Should end printing 'Successfully installed gibson2'
 
-* Run ohopee demo:
+You can find VR tests in gibsonv2/test and VR demos in gibsonv2/examples/demo
 
-$ python test_vr_renderer_ohopee.py
+* Example: run the stadium interaction demo in the folder gibsonv2/examples/demo:
 
-Have vr fun!
+$ python vr_interaction_demo_stadium.py
+
+Have fun in VR!
