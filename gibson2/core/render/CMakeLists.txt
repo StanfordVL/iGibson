@@ -1,10 +1,18 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(CppMeshRenderer)
 set (USE_GLAD TRUE)
+set (USE_CUDA TRUE)
+set (USE_GLFW FALSE)
 
 include_directories(glad)
 
 find_package(OpenGL REQUIRED)
+
+if (USE_CUDA)
+  add_definitions(-DUSE_CUDA) 
+  find_package(OpenGL) 
+  #OpenGL is still needed for cuda-gl interoperation
+endif()
 
 add_subdirectory(pybind11)
 
