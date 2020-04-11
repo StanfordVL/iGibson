@@ -59,11 +59,10 @@ $ git checkout vr
 $ git submodule update --init --recursive
 ```
 
-Download openvr from https://github.com/ValveSoftware/openvr and place it in a folder called openvr in core/render
-
 After this you should have content at:
 core/render/glfw
 core/render/pybind11
+core/render/openvr
 
 Download Gibson assets and copy to gibsonv2/gibson2/assets/
 Download enviroments (scenes) and copy to gibsonv2/gibson2/assets/dataset
@@ -92,9 +91,5 @@ Should end printing 'Successfully installed gibson2'
 * Run ohopee demo:
 
 $ python test_vr_renderer_ohopee.py
-
-Other notes
-===========
-Use \ instead of / in paths on Windows! For example use assets\datasets instead of assets/datasets
 
 Have vr fun!
