@@ -54,7 +54,7 @@ Gibson
 
 ```
 $ git clone git@github.com:fxia22/iGibson.git
-$ cd gibsonv2
+$ cd iGibson
 $ git checkout vr
 $ git submodule update --init --recursive
 ```
@@ -64,8 +64,8 @@ core/render/glfw
 core/render/pybind11
 core/render/openvr
 
-Download Gibson assets and copy to gibsonv2/gibson2/assets/
-Download enviroments (scenes) and copy to gibsonv2/gibson2/assets/dataset
+Download Gibson assets and copy to iGibson/gibson2/assets/
+Download enviroments (scenes) and copy to iGibson/gibson2/assets/dataset
 
 * Create anaconda env:
 
@@ -79,18 +79,18 @@ $ source activate gibsonvr
 
 * Install Gibson in anaconda env:
 ```
-$ cd gibsonv2
+$ cd iGibson
 ```
-- If you followed the instructions, gibsonv2 is at the vr branch
+- If you followed the instructions, iGibson is at the vr branch
 ```
 $ pip install -e .
 ```
 
 Should end printing 'Successfully installed gibson2'
 
-You can find VR tests in gibsonv2/test and VR demos in gibsonv2/examples/demo
+You can find VR tests in iGibson/test and VR demos iGibson/examples/demo
 
-* Example: run the stadium interaction demo in the folder gibsonv2/examples/demo:
+* Example: run the stadium interaction demo in the folder iGibson/examples/demo:
 
 $ python vr_interaction_demo_stadium.py
 
