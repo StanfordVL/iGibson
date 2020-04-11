@@ -16,7 +16,7 @@ It is exciting to see people using Gibson Environment in embodied AI research. H
 - Xia, Fei, et al. [Interactive Gibson: A Benchmark for Interactive Navigation in Cluttered Environments.](https://arxiv.org/pdf/1910.14442.pdf) arXiv preprint arXiv:1910.14442 (2019).
 
 
-These papers tested policies trained in Gibson on real robots in the physical world:
+These papers tested policies trained in Gibson v1 on real robots in the physical world:
 
 - Xiangyun Meng, Nathan Ratliff, Yu Xiang and Dieter Fox. [Scaling Local Control to Large-Scale Topological Navigation](https://arxiv.org/pdf/1909.12329.pdf)
 - X. Meng, N. Ratliff, Y. Xiang, and D. Fox, [Neural autonomous navigation with riemannian motion policy,](https://arxiv.org/pdf/1904.01762.pdf) in IEEE International Conference on Robotics and Automation (ICRA), 2019.
