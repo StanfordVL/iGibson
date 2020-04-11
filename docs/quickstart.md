@@ -4,7 +4,7 @@
 Let's get our hands dirty and see iGibson in action.
 
 ```bash
-cd gibson2/demo/examples
+cd demo/examples
 python env_example.py
 ```
 You should see something like this:
