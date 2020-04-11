@@ -10,7 +10,7 @@ import numpy as np
 import os
 import pybullet_data
 
-# TODO: More work needs to be done to make Ohopee have physics!
+# TODO: Need to add a better hand URDF in future!
 configs_folder = '..\\configs\\'
 ohopee_path = '..\\..\\gibson2\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj'
 bullet_obj_folder = assets_path + '\\models\\bullet_models\\data\\'
@@ -21,24 +21,31 @@ sample_urdf_folder = assets_path + '\\models\\sample_urdfs\\'
 config = parse_config(configs_folder + 'fetch_interactive_nav.yaml')
 
 s = Simulator(mode='vr')
-p.setGravity(0,0,-9.81)
 
 # Import Ohoopee manually for simple demo
 building = BuildingObj(ohopee_path)
 s.import_object(building)
 
-fetch = Fetch(config)
-fetch_id = s.import_robot(fetch)[0]
-print("Fetch robot id:")
-print(fetch_id)
-fetch.set_position([-0.2,-0.1,0])
-fetch.robot_specific_reset()
-fetch_parts = fetch.parts
-eye_part = fetch_parts['eyes']
-gripper_part = fetch_parts['gripper_link']
-gripper_part_link_index = gripper_part.body_part_index
+# Poles represent hands
+# Left hand
+left_pole = InteractiveObj(bullet_obj_folder + 'pole.urdf', scale=0.7)
+s.import_object(left_pole)
+left_pole_id = left_pole.body_id
+left_pole.set_position([0,0,1.5])
 
-fetch_height = 1.08
+# Right hand
+right_pole = InteractiveObj(bullet_obj_folder + 'pole.urdf', scale=0.7)
+s.import_object(right_pole)
+right_pole_id = right_pole.body_id
+right_pole.set_position([0,0.5,1.5])
+
+lpole_cid = p.createConstraint(left_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
+rpole_cid = p.createConstraint(right_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
+
+# Rotates poles to correct orientation relative to VR controller
+pole_correction_quat = p.getQuaternionFromEuler([0, 1.57, 0])
+
+p.setGravity(0,0,-9.81)
 
 def multQuatLists(q0, q1):
     x0, y0, z0, w0 = q0
@@ -56,29 +63,24 @@ bottle = YCBObject('006_mustard_bottle')
 
 s.import_object(bottle)
 _, org_orn = p.getBasePositionAndOrientation(bottle.body_id)
-bottle_pos = [1.1,0.5,1]
+bottle_pos = [-0.3,-1.0,1]
 p.resetBasePositionAndOrientation(bottle.body_id, bottle_pos, org_orn)
 
 can = YCBObject('002_master_chef_can')
 s.import_object(can)
 _, org_orn = p.getBasePositionAndOrientation(can.body_id)
-can_pos = [1.1,0.7,1]
+can_pos = [-0.5,-1.0,1]
 p.resetBasePositionAndOrientation(can.body_id, can_pos, org_orn)
 
 basket = InteractiveObj(sample_urdf_folder + 'object_2eZY2JqYPQE.urdf')
 s.import_object(basket)
 basket.set_position([-0.8,0.8,1])
 
-controllerTestObj = YCBObject('006_mustard_bottle')
+# Rotates poles to correct orientation relative to VR controller
+# TODO: Use this for the gripper?
+#pole_correction_quat = p.getQuaternionFromEuler([0, 1.57, 0])
 
-s.import_object(controllerTestObj)
-test_id = controllerTestObj.body_id
-
-def subtract_vector_list(v1, v2):
-    return [v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2]]
-
-def add_vector_list(v1, v2):
-    return [v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2]]
+gripper_max_joint = 0.550569
 
 while True:
     # Always call before step
@@ -88,34 +90,19 @@ while True:
         print("Device " + deviceType + " had event " + eventType)
 
     # Set should_measure_fps to True to measure the current fps
-    s.step(should_measure_fps=False)
+    s.step(should_measure_fps=True)
 
     # Always call after step
-    hmdIsValid, hmdTrans, hmdRot, hmdActualPos = s.getDataForVRDevice('hmd')
+    hmdIsValid, hmdTrans, hmdRot, _ = s.getDataForVRDevice('hmd')
+    lIsValid, lTrans, lRot, _ = s.getDataForVRDevice('left_controller')
     rIsValid, rTrans, rRot, _ = s.getDataForVRDevice('right_controller')
 
-    # Set HMD to Fetch's eyes
-    eye_pos = eye_part.get_position()
-    s.setVRCamera(eye_pos)
-
-    # Control Fetch arm with only the right controller
+    if lIsValid:
+        final_rot = multQuatLists(lRot, pole_correction_quat)
+        p.changeConstraint(lpole_cid, lTrans, final_rot, maxForce=500)
+    
     if rIsValid:
-        # Subtract headset position from controller to get position adjusted for new HMD location
-        hmdDiffVec = subtract_vector_list(hmdTrans, hmdActualPos)
-        rTransAdjusted = add_vector_list(rTrans, hmdDiffVec)
-
-        #p.resetBasePositionAndOrientation(test_id, rTransAdjusted, rRot)
-        # TODO: Add in inverse kinematics later!
-        #joint_pos = p.calculateInverseKinematics(fetch_id, gripper_part_link_index, rTransAdjusted, rRot)
-
-        #for i in range(len(joint_pos)):
-        #    p.setJointMotorControl2(fetch_id,
-        #                        i,
-        #                        p.POSITION_CONTROL,
-        #                        targetPosition=joint_pos[i],
-        #                        targetVelocity=0,
-        #                        positionGain=0.15,
-        #                        velocityGain=1.0,
-        #                        force=500) 
+        final_rot = multQuatLists(rRot, pole_correction_quat)
+        p.changeConstraint(rpole_cid, rTrans, final_rot, maxForce=500)
         
 s.disconnect()
