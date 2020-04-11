@@ -1,20 +1,20 @@
 Dataset
 ==========================================
 
-Download Gibson Data
+Download iGibson Data
 ------------------------
 
 The link will first take you to the license agreement and then to the data.
 
-[[ Get download link for Gibson Data ]](https://goo.gl/forms/OxAQHbl1v97BJ3Sg1)  
+[[ Get download link for iGibson Data ]](https://goo.gl/forms/OxAQHbl1v97BJ3Sg1)  
 
 License Note: The dataset license is included in the above link. The license in this repository covers only the provided software.
 
 Files included in this distribution:
 
 1. All scenes, 572 scenes (108GB): gibson_v2_all.tar.gz
-2. 4+ partition, 106 Scenes, with textures better packed (2.6GB): gibson_v2_4+.tar.gz
-3. Gibson V2 environments with interactive objects, 10 Scenes (<1GB): interactive_dataset.tar.gz
+2. 4+ partition, 106 scenes, with textures better packed (2.6GB): gibson_v2_4+.tar.gz
+3. 10 scenes with interactive objects, 10 Scenes (<1GB): interactive_dataset.tar.gz
 4. Demo scenes, `Rs` and `Rs_interactive`
 
 To download 1,2 and 3, you need to fill in the agreement and get the download link `URL`, after which you can manually download and store them in the path set in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/dataset`). You can run a single command to download the dataset, this script automatically download, decompress, and put the dataset to correct place.

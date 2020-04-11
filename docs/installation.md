@@ -62,11 +62,11 @@ python -m gibson2.utils.assets_utils --download_dataset URL
 
 
 
-### (Optional) Create a docker image for Interactive Gibson
+### (Optional) Create a docker image for iGibson
 
 
 If you want to install gibson for cross-platform use and don't want to set up the dependencies. You can use the
-following Dockerfile to create a docker image for using Gibson.  `nvidia-docker` is required to run this docker image.
+following Dockerfile to create a docker image for using iGibson.  `nvidia-docker` is required to run this docker image.
 
 ```text
 from nvidia/cudagl:10.0-base-ubuntu18.04
