@@ -18,17 +18,11 @@ class MeshRendererVR():
         # Debugging variable for simple color test
         self.colorTex = None
 
-        # Debugging image for testing VR compositor
-        imgPath = "C:\\Users\\shen\\Desktop\\GibsonVRStuff\\vr_branch\\gibsonv2\\gibson2\\core\\render\\mesh_renderer\\good_boi.png"
-        self.testTexId = CGLUtils.loadTextureWithAlpha(imgPath)
-        print("Loaded good boi texture with id:")
-        print(self.testTexId)
-
     # Sets the position of the VR camera to the position argument given
     def set_vr_camera(self, pos):
         # Gibson coordinate system is rotated from OpenGL
         # So we map (vr from gib) x<-y, y<-z and z<-x
-        self.vrsys.setVRCamera(pos[1], pos[2], pos[0])
+        self.vrsys.setVRCamera(-pos[1], pos[2], -pos[0])
 
     # Resets the position of the VR camera
     def reset_vr_camera(self):
@@ -93,18 +87,8 @@ class MeshRendererVR():
         self.vrsys.postRenderVRForEye("left", self.colorTex)
         self.vrsys.postRenderVRForEye("right", self.colorTex)
 
-        self.renderer.r.flush_swap_glfw()
+        self.renderer.r.post_render_glfw()
 
-        self.vrsys.postRenderVRUpdate(False)
-    
-    # Test of loading an image with alpha
-    def render_good_boi(self):
-        leftProj, leftView, rightProj, rightView = self.vrsys.preRenderVR()
-
-        self.vrsys.postRenderVRForEye("left", self.testTexId)
-        self.vrsys.postRenderVRForEye("right", self.testTexId)
-
-        # Boolean indicates whether system should hand off to compositor
         self.vrsys.postRenderVRUpdate(False)
 
     # Renders VR scenes and returns the left eye frame

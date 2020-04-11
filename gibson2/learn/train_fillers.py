@@ -8,7 +8,7 @@ from torchvision import datasets, transforms
 import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 import torchvision.utils as vutils
-from gibson2.data.datasets import PairDataset
+from gibson2.data_utils.datasets import PairDataset
 from gibson2.learn.completion import CompletionNet, identity_init, Perceptual
 from tensorboardX import SummaryWriter
 from datetime import datetime

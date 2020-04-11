@@ -1,13 +1,19 @@
 import cv2
 import sys
+import os
 import numpy as np
 from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.core.render.profiler import Profiler
+from gibson2.utils.assets_utils import get_model_path
 import matplotlib.pyplot as plt
-import torch
 
-if __name__ == '__main__':
-    model_path = sys.argv[1]
+
+def main():
+    if len(sys.argv) > 1:
+        model_path = sys.argv[1]
+    else:
+        model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
+
     renderer = MeshRendererG2G(width=512, height=512, device_idx=0)
     renderer.load_object(model_path)
     renderer.add_instance(0)
@@ -20,7 +26,7 @@ if __name__ == '__main__':
     renderer.set_fov(90)
     for i in range(3000):
         with Profiler('Render'):
-            frame = renderer.render(modes=('rgb', 'normal'))
+            frame = renderer.render(modes=('rgb', 'normal', '3d'))
 
     print(frame)
     img_np = frame[0].flip(0).data.cpu().numpy().reshape(renderer.height, renderer.width, 4)
@@ -28,4 +34,6 @@ if __name__ == '__main__':
     plt.imshow(np.concatenate([img_np, normal_np], axis=1))
     plt.show()
 
-    renderer.release()
+
+if __name__ == '__main__':
+    main()

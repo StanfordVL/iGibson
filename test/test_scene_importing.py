@@ -6,11 +6,15 @@ from gibson2.utils.utils import parse_config
 import os
 import gibson2
 
+from gibson2.utils.assets_utils import download_assets, download_demo_data
+
+download_assets()
+download_demo_data()
 config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 
 def test_import_building():
     s = Simulator(mode='headless')
-    scene = BuildingScene('Ohoopee')
+    scene = BuildingScene('Rs')
     s.import_scene(scene, texture_scale=0.4)
     for i in range(15):
         s.step()
@@ -20,7 +24,7 @@ def test_import_building():
 
 def test_import_building_big():
     s = Simulator(mode='headless')
-    scene = BuildingScene('Ohoopee')
+    scene = BuildingScene('Rs')
     s.import_scene(scene, texture_scale=1)
     assert s.objects == list(range(2))
     s.disconnect()
@@ -37,7 +41,7 @@ def test_import_stadium():
 
 def test_import_building_viewing():
     s = Simulator(mode='headless')
-    scene = BuildingScene('Ohoopee')
+    scene = BuildingScene('Rs')
     s.import_scene(scene)
     assert s.objects == list(range(2))
 

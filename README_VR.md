@@ -92,5 +92,4 @@ Should end printing 'Successfully installed gibson2'
 
 $ python test_vr_renderer_ohopee.py
 
-
 Have vr fun!
