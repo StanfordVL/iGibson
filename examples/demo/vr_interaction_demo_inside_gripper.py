@@ -11,6 +11,7 @@ import os
 import pybullet_data
 
 # TODO: Need to add a better hand URDF in future!
+# TODO: Still a work in progress!
 configs_folder = '..\\configs\\'
 ohopee_path = '..\\..\\gibson2\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj'
 bullet_obj_folder = assets_path + '\\models\\bullet_models\\data\\'

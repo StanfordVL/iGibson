@@ -11,7 +11,7 @@ import numpy as np
 configs_folder = '..\\configs\\'
 bullet_obj_folder = assets_path + '\\models\\bullet_models\\data\\'
 sample_urdf_folder = assets_path + '\\models\\sample_urdfs\\'
-config = parse_config(configs_folder + 'fetch_interactive_nav.yaml')
+config = parse_config(configs_folder + 'fetch_p2p_nav.yaml')
 
 s = Simulator(mode='vr')
 scene = StadiumScene()
@@ -79,7 +79,7 @@ while True:
         deviceType, eventType = event
 
     # Set should_measure_fps to True to measure the current fps
-    s.step(should_measure_fps=False)
+    s.step()
 
     # Always call after step
     hmdIsValid, hmdTrans, hmdRot, _ = s.getDataForVRDevice('hmd')

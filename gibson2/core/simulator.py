@@ -86,25 +86,13 @@ class Simulator:
         """
         Set up MeshRenderer and physics simulation client. Initialize the list of objects.
         """
-        if self.render_to_tensor:
-            self.renderer = MeshRendererG2G(width=self.image_width,
-                                            height=self.image_height,
-                                            vertical_fov=self.vertical_fov,
-                                            device_idx=self.device_idx,
-                                            use_fisheye=self.use_fisheye)
-        else:
-            self.renderer = MeshRenderer(width=self.image_width,
-                                         height=self.image_height,
-                                         vertical_fov=self.vertical_fov,
-                                         device_idx=self.device_idx,
-                                         use_fisheye=self.use_fisheye)
-        elif self.mode == 'vr':
+        if self.mode == 'vr':
             # TODO: Add options to change the mesh renderer that VR renderer takes in here
             self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight)
         else:
             self.renderer = MeshRenderer(width=self.resolution,
                                      height=self.resolution,
-                                     fov=self.fov,
+                                     vertical_fov=self.fov,
                                      device_idx=self.device_idx,
                                      use_fisheye=self.use_fisheye)
 
@@ -165,7 +153,7 @@ class Simulator:
                         self.renderer.load_object(filename,
                                                   texture_scale=texture_scale,
                                                   load_texture=load_texture)
-                        self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+                        self.visual_objects[filename] = len(self.renderer.get_visual_objects()) - 1
                     visual_object = self.visual_objects[filename]
                 elif type == p.GEOM_PLANE:
                     pass
@@ -179,7 +167,7 @@ class Simulator:
                     #                           transform_pos=rel_pos,
                     #                           input_kd=color[:3],
                     #                           scale=[100, 100, 0.01])
-                    # visual_object = len(self.renderer.visual_objects) - 1
+                    # visual_object = len(self.renderer.get_visual_objects()) - 1
 
                 if visual_object is not None:
                     self.renderer.add_instance(visual_object,
@@ -223,7 +211,7 @@ class Simulator:
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+                    self.visual_objects[filename] = len(self.renderer.get_visual_objects()) - 1
                 visual_object = self.visual_objects[filename]
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
@@ -233,7 +221,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
-                visual_object = len(self.renderer.visual_objects) - 1
+                visual_object = len(self.renderer.get_visual_objects()) - 1
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(
@@ -242,7 +230,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
-                visual_object = len(self.renderer.visual_objects) - 1
+                visual_object = len(self.renderer.get_visual_objects()) - 1
             elif type == p.GEOM_BOX:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(filename,
@@ -250,7 +238,7 @@ class Simulator:
                                           transform_pos=rel_pos,
                                           input_kd=color[:3],
                                           scale=np.array(dimensions))
-                visual_object = len(self.renderer.visual_objects) - 1
+                visual_object = len(self.renderer.get_visual_objects()) - 1
 
             if visual_object is not None:
                 self.renderer.add_instance(visual_object,
@@ -291,7 +279,7 @@ class Simulator:
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+                    self.visual_objects[filename] = len(self.renderer.get_visual_objects()) - 1
                 visual_objects.append(self.visual_objects[filename])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
@@ -321,7 +309,7 @@ class Simulator:
                                           transform_pos=rel_pos,
                                           input_kd=color[:3],
                                           scale=np.array(dimensions))
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
 
             if link_id == -1:
@@ -372,7 +360,7 @@ class Simulator:
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
+                    self.visual_objects[filename] = len(self.renderer.get_visual_objects()) - 1
                 visual_objects.append(self.visual_objects[filename])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
@@ -383,7 +371,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
@@ -402,7 +390,7 @@ class Simulator:
                                           transform_pos=rel_pos,
                                           input_kd=color[:3],
                                           scale=np.array(dimensions))
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
 
             if link_id == -1:
@@ -423,14 +411,10 @@ class Simulator:
 
         return ids
 
-    def step(self, should_measure_fps=False):
+    def step(self):
         """
         Step the simulation and update positions in renderer
         """
-        step_start_time = None
-        step_end_time = None
-        if (should_measure_fps):
-            step_start_time = time.time()
         p.stepSimulation()
         self.sync()
 
@@ -438,15 +422,11 @@ class Simulator:
         """
         Update positions in renderer without stepping the simulation. Usually used in the reset() function
         """
-        for instance in self.renderer.instances:
+        for instance in self.renderer.get_instances():
             if instance.dynamic:
                 self.update_position(instance)
         if (self.mode == 'gui' or self.mode == 'vr') and not self.viewer is None:
             self.viewer.update()
-        if (should_measure_fps):
-            step_end_time = time.time()
-            fps = 1/float(step_end_time - step_start_time)
-            print("Current fps: %f" % fps)
     
     # Call this before step - returns all VR events that have happened since last step call
     # Returns a list of lists. Each sub-list contains deviceType and eventType. List is empty is all events are invalid

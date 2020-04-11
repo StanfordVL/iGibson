@@ -5,20 +5,18 @@ from gibson2.core.physics.scene import StadiumScene, BuildingScene, EmptyScene
 from gibson2.core.physics.interactive_objects import YCBObject, InteractiveObj, BuildingObj
 from gibson2.core.simulator import Simulator
 from gibson2.utils.utils import parse_config
-from gibson2 import assets_path
+from gibson2 import assets_path, dataset_path
 import numpy as np
 import os
 import pybullet_data
 
-# TODO: Need to add a better hand URDF in future!
 configs_folder = '..\\configs\\'
-ohopee_path = '..\\..\\gibson2\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj'
+ohopee_path = dataset_path + '\\Ohoopee\\Ohoopee_mesh_texture.obj'
 bullet_obj_folder = assets_path + '\\models\\bullet_models\\data\\'
-gripper_folder = assets_path + '\\models\\pybullet_gripper\\'
 models_path = assets_path + '\\models\\'
 
 sample_urdf_folder = assets_path + '\\models\\sample_urdfs\\'
-config = parse_config(configs_folder + 'fetch_interactive_nav.yaml')
+config = parse_config(configs_folder + 'fetch_p2p_nav.yaml')
 
 s = Simulator(mode='vr')
 
@@ -76,12 +74,6 @@ basket = InteractiveObj(sample_urdf_folder + 'object_2eZY2JqYPQE.urdf')
 s.import_object(basket)
 basket.set_position([-0.8,0.8,1])
 
-# Rotates poles to correct orientation relative to VR controller
-# TODO: Use this for the gripper?
-#pole_correction_quat = p.getQuaternionFromEuler([0, 1.57, 0])
-
-gripper_max_joint = 0.550569
-
 while True:
     # Always call before step
     eventList = s.pollVREvents()
@@ -90,7 +82,7 @@ while True:
         print("Device " + deviceType + " had event " + eventType)
 
     # Set should_measure_fps to True to measure the current fps
-    s.step(should_measure_fps=True)
+    s.step()
 
     # Always call after step
     hmdIsValid, hmdTrans, hmdRot, _ = s.getDataForVRDevice('hmd')

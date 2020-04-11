@@ -6,20 +6,12 @@ Image.MAX_IMAGE_PIXELS = None
 
 import cv2
 import numpy as np
-#from pyassimp import load, release
 from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-# TODO: Add back in MeshRendererContext and make it platform-dependent
-# TODO: Move all Python extensions to the mesh_renderer folder following build in setup.py
-#from GLUtils import CGLUtils, GLFWRendererContext
-import CGLUtils
-from CGLUtils import GLFWRendererContext
-import tinyobjloader
-#from gibson2.core.render.mesh_renderer import CGLUtils, GLFWRendererContext
-#from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
-from gibson2.core.render.mesh_renderer.glutils.utils import colormap, loadTexture
+from gibson2.core.render.mesh_renderer.Release import MeshRendererContext
+from gibson2.core.render.mesh_renderer.Release import tinyobjloader
 import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
 import gibson2
@@ -328,16 +320,17 @@ class MeshRenderer(object):
         self.instances = []
         self.fisheye = use_fisheye
         self.msaa = msaa
+
         self.shouldHideWindow = shouldHideWindow
 
-        self.r = GLFWRendererContext(width, height)
+        self.r = MeshRendererContext.MeshRendererContext(width, height)
         self.r.init(shouldHideWindow)
-        CGLUtils.glad_init()
+        self.r.glad_init()
 
         if not shouldHideWindow:
             self.r.setupCompanionWindow()
 
-        self.glstring = CGLUtils.getstring_meshrenderer()
+        self.glstring = self.r.getstring_meshrenderer()
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         self.lightcolor = [1, 1, 1]
 
@@ -363,7 +356,7 @@ class MeshRenderer(object):
                                         'shaders/frag.shader')).readlines()))
 
         if not shouldHideWindow:
-            [self.windowShaderProgram, _] = CGLUtils.compile_shader_meshrenderer(
+            [self.windowShaderProgram, _] = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/companion_window_vert.shader')).readlines()),

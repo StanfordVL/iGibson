@@ -1,6 +1,6 @@
-from CGLUtils import VRSystem
+from gibson2.core.render.mesh_renderer.Release import MeshRendererContext
 
-vrsys = VRSystem()
+vrsys = MeshRendererContext.VRSystem()
 recommendedWidth, recommendedHeight = vrsys.initVR()
 
 print("Initialized VR with width: %d and height: %d" % (recommendedWidth, recommendedHeight))
