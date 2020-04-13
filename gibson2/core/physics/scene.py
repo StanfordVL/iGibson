@@ -147,7 +147,10 @@ class BuildingScene(Scene):
             visual_id = p.createVisualShape(p.GEOM_MESH,
                                             fileName=filename)
             texture_filename = get_texture_file(filename)
-            texture_id = p.loadTexture(texture_filename)
+            if texture_filename is not None:
+                texture_id = p.loadTexture(texture_filename)
+            else:
+                texture_id = -1
         else:
             visual_id = -1
             texture_id = -1
@@ -157,7 +160,8 @@ class BuildingScene(Scene):
         p.changeDynamics(self.mesh_body_id, -1, lateralFriction=1)
 
         if self.pybullet_load_texture:
-            p.changeVisualShape(self.mesh_body_id,
+            if texture_id != -1:
+                p.changeVisualShape(self.mesh_body_id,
                                 -1,
                                 textureUniqueId=texture_id)
 
@@ -171,10 +175,14 @@ class BuildingScene(Scene):
                 visual_id = p.createVisualShape(p.GEOM_MESH,
                                                 fileName=plane_name)
                 texture_filename = get_texture_file(plane_name)
-                texture_id = p.loadTexture(texture_filename)
+                if texture_filename is not None:
+                    texture_id = p.loadTexture(texture_filename)
+                else:
+                    texture_id = -1
                 floor_body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
                                                   baseVisualShapeIndex=visual_id)
-                p.changeVisualShape(floor_body_id,
+                if texture_id != -1:
+                    p.changeVisualShape(floor_body_id,
                                     -1,
                                     textureUniqueId=texture_id)
                 floor_height = self.floors[f]
