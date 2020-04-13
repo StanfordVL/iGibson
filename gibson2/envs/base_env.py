@@ -41,7 +41,8 @@ class BaseEnv(gym.Env):
                                    image_width=self.config.get('image_width', 128),
                                    image_height=self.config.get('image_height', 128),
                                    vertical_fov=self.config.get('vertical_fov', 90),
-                                   device_idx=device_idx)
+                                   device_idx=device_idx,
+                                   auto_sync=False)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.load()
 
