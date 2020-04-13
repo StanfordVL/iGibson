@@ -46,6 +46,17 @@ Two images will be downloaded:
 * `igibson/igibson:latest`: smaller image, but does not support GUI. 
 * `igibson/igibson-gui:latest`: supports GUI and remote desktop access via VNC.
 
+We also provide scripts to build the images from scratch:
+```
+# image without GUI:
+cd iGibson/docker/base
+./build.sh
+
+# image with GUI and VNC:
+cd iGibson/docker/headless-gui
+./build.sh
+```
+
 
 ### 3. Compile from source
 
