@@ -40,7 +40,7 @@ goal_format: polar
 # sensor spec
 output: [sensor, rgb, depth]
 # image
-# Intel® RealSense™ Depth Camera D435
+# Intel Realsense Depth Camera D435
 # https://store.intelrealsense.com/buy-intel-realsense-depth-camera-d435.html
 fisheye: false
 image_width: 160
