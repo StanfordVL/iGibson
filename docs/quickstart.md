@@ -18,7 +18,7 @@ If you want to have a virtual tour around the house yourself, you can click on t
 
 That's it!
 
-### Using Docker and remote GUI access via VNC
+## Using Docker and remote GUI access via VNC
 
 If you go the docker route, please first pull our pre-built images (see the installation guide). After downloading, run `docker images`, and you should see `igibson/igibson:latest` and `igibson/igibson-gui:latest`.
 
@@ -53,7 +53,7 @@ Performance is a big designing focus for iGibson. We provide a few scripts to be
 simulation framerate in iGibson.
 
 ```bash
-cd gibson2/demo/examples
+cd examples/demo
 python benchmark.py
 ```
 
