@@ -86,10 +86,8 @@ while True:
             elif eventType == 'trigger_unpress':
                 rightGripperFraction = 0.0
 
-    # Set should_measure_fps to True to measure the current fps
     s.step()
 
-    # Always call after step
     hmdIsValid, hmdTrans, hmdRot, _ = s.getDataForVRDevice('hmd')
     lIsValid, lTrans, lRot, _ = s.getDataForVRDevice('left_controller')
     rIsValid, rTrans, rRot, _ = s.getDataForVRDevice('right_controller')
