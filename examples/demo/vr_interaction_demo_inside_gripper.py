@@ -2,30 +2,30 @@ import pybullet as p
 import yaml
 from gibson2.core.physics.robot_locomotors import Turtlebot, Fetch
 from gibson2.core.physics.scene import StadiumScene, BuildingScene, EmptyScene
-from gibson2.core.physics.interactive_objects import YCBObject, InteractiveObj, BuildingObj
+from gibson2.core.physics.interactive_objects import YCBObject, InteractiveObj, GripperObj
 from gibson2.core.simulator import Simulator
 from gibson2.utils.utils import parse_config
-from gibson2 import assets_path
+from gibson2 import assets_path, dataset_path
 import numpy as np
 import os
 import pybullet_data
 
-# TODO: Need to add a better hand URDF in future!
-# TODO: Still a work in progress!
 configs_folder = '..\\configs\\'
-ohopee_path = '..\\..\\gibson2\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj'
-bullet_obj_folder = assets_path + '\\models\\bullet_models\\data\\'
-gripper_folder = assets_path + '\\models\\pybullet_gripper\\'
-models_path = assets_path + '\\models\\'
-
-sample_urdf_folder = assets_path + '\\models\\sample_urdfs\\'
-config = parse_config(configs_folder + 'fetch_interactive_nav.yaml')
+ohopee_path = dataset_path + '\\Ohoopee\\Ohoopee_mesh_texture.obj'
+model_path = assets_path + '\\models'
+bullet_obj_folder = model_path + '\\models\\bullet_models\\data\\'
+gripper_folder = model_path + '\\gripper\\'
+sample_urdf_folder = model_path + '\\sample_urdfs\\'
+config = parse_config(configs_folder + 'fetch_p2p_nav.yaml')
 
 s = Simulator(mode='vr')
 
+rs = BuildingScene('Rs_interactive', build_graph=False, is_interactive=True)
+s.import_scene(rs)
+
 # Import Ohoopee manually for simple demo
-building = BuildingObj(ohopee_path)
-s.import_object(building)
+#building = BuildingObj(ohopee_path)
+#s.import_object(building)
 
 #gripper = InteractiveObj(assets_path + '\\gripper.urdf')
 #s.import_object(gripper)
@@ -47,11 +47,18 @@ p.setGravity(0,0,0)
 #rpole_cid = p.createConstraint(right_pole_id, -1, -1, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], [0,0,0])
 
 # Load gripper
-gripper = InteractiveObj(gripper_folder + 'gripper.urdf')
+###print("HELLLLO!")
+#gripper = GripperObj(gripper_folder + 'gripper.urdf')
+##s.import_object(gripper)
+#print("imported yo!")
+
+gripper = GripperObj(gripper_folder + 'gripper.urdf')
 s.import_object(gripper)
-gripper.set_position([0,0.5,1.5])
-gripper_id = gripper.body_id
-joint_positions = [0.550569, 0.000000, 0.549657, 0.000000]
+gripper.set_position([0,0,1.5])
+
+#gripper.set_position([0,0.5,1.5])
+#gripper_id = gripper.body_id
+#joint_positions = [0.550569, 0.000000, 0.549657, 0.000000]
 
 #for joint_index in range(p.getNumJoints(gripper_id)):
 #    p.resetJointState(gripper_id, joint_index, joint_positions[joint_index])
@@ -114,7 +121,7 @@ basket.set_position([-0.8,0.8,1])
 # TODO: Use this for the gripper?
 #pole_correction_quat = p.getQuaternionFromEuler([0, 1.57, 0])
 
-gripper_max_joint = 0.550569
+#gripper_max_joint = 0.550569
 
 while True:
     # Always call before step
@@ -124,7 +131,7 @@ while True:
         print("Device " + deviceType + " had event " + eventType)
 
     # Set should_measure_fps to True to measure the current fps
-    s.step(should_measure_fps=False)
+    s.step()
 
     # Always call after step
     hmdIsValid, hmdTrans, hmdRot, _ = s.getDataForVRDevice('hmd')
@@ -139,9 +146,9 @@ while True:
         #p.setJointMotorControl2
 
     # Print out gripper locations
-    shapes = p.getVisualShapeData(gripper_id)
-    print("Shape positions:")
-    for i in range(5):
-        print(shapes[i][5])
+    #shapes = p.getVisualShapeData(gripper_id)
+    #print("Shape positions:")
+    #for i in range(5):
+    #    print(shapes[i][5])
         
 s.disconnect()
