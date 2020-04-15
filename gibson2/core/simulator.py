@@ -90,9 +90,9 @@ class Simulator:
             # TODO: Add options to change the mesh renderer that VR renderer takes in here
             self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight)
         else:
-            self.renderer = MeshRenderer(width=self.resolution,
-                                     height=self.resolution,
-                                     vertical_fov=self.fov,
+            self.renderer = MeshRenderer(width=self.image_width,
+                                     height=self.image_height,
+                                     vertical_fov=self.vertical_fov,
                                      device_idx=self.device_idx,
                                      use_fisheye=self.use_fisheye)
 
@@ -443,6 +443,9 @@ class Simulator:
     # Call this after step - returns all VR device data for a specific device
     # Return isValid (indicating validity of data), translation and rotation in Gibson world space
     def getDataForVRDevice(self, deviceName):
+        if self.mode != 'vr':
+            return [None, None, None, None]
+
         isValid, translation, rotation, hmdActualPos = self.renderer.vrsys.getDataForVRDevice(deviceName)
         return [isValid, translation, rotation, hmdActualPos]
 
