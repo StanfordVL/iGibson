@@ -10,9 +10,9 @@ class MeshRendererVR():
         # Default recommended is 2016 x 2240
         self.width, self.height = self.vrsys.initVR()
         if vrWidth is not None and vrHeight is not None:
-            self.renderer = rendererType(width=vrWidth, height=vrHeight, shouldHideWindow=False)
+            self.renderer = rendererType(width=vrWidth, height=vrHeight, msaa=self.msaa, shouldHideWindow=False)
         else:
-            self.renderer = rendererType(width=self.width, height=self.height, shouldHideWindow=False)
+            self.renderer = rendererType(width=self.width, height=self.height, msaa=self.msaa, shouldHideWindow=False)
 
     # Sets the position of the VR camera to the position argument given
     def set_vr_camera(self, pos):
@@ -80,14 +80,12 @@ class MeshRendererVR():
         
         self.renderer.render(modes=('rgb'), shouldReadBuffer=False)
         self.vrsys.postRenderVRForEye("left", self.renderer.color_tex_rgb)
-
         # Render and submit right eye
         self.renderer.V = rightView
         self.renderer.P = rightProj
         
         self.renderer.render(modes=('rgb'), shouldReadBuffer=False)
         self.vrsys.postRenderVRForEye("right", self.renderer.color_tex_rgb)
-
         # Render companion window
         self.renderer.render_companion_window()
 

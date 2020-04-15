@@ -25,7 +25,8 @@ class Simulator:
                  device_idx=0,
                  render_to_tensor=False,
                  vrWidth=None,
-                 vrHeight=None):
+                 vrHeight=None,
+                 vrMsaa=False):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -48,6 +49,7 @@ class Simulator:
         # renderer
         self.vrWidth = vrWidth
         self.vrHeight = vrHeight
+        self.vrMsaa = vrMsaa
         self.image_width = image_width
         self.image_height = image_height
         self.vertical_fov = vertical_fov
@@ -88,7 +90,7 @@ class Simulator:
         """
         if self.mode == 'vr':
             # TODO: Add options to change the mesh renderer that VR renderer takes in here
-            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight)
+            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.vrMsaa)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                      height=self.image_height,
