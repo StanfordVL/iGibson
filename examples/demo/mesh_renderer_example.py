@@ -19,6 +19,11 @@ def main():
     renderer.load_object(model_path)
     renderer.add_instance(0)
 
+
+    renderer.load_object('/home/fei/Development/gibsonv2/gibson2/assets/models/ycb/003_cracker_box/textured_simple.obj')
+    renderer.add_instance(1)
+    renderer.instances[1].set_position([0,0,0.5])
+
     print(renderer.visual_objects, renderer.instances)
     print(renderer.materials_mapping, renderer.mesh_materials)
     camera_pose = np.array([0, 0, 1.2])

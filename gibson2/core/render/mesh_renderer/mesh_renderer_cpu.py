@@ -96,6 +96,7 @@ class InstanceGroup(object):
 
         self.renderer.r.initvar_instance_group(self.renderer.shaderProgram,
                                                self.renderer.V,
+                                               self.renderer.lightV,
                                                self.renderer.P,
                                                self.renderer.lightpos,
                                                self.renderer.lightcolor)
@@ -107,7 +108,8 @@ class InstanceGroup(object):
                                                            self.poses_rot[i],
                                                            float(self.class_id) / 255.0,
                                                            self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3],
-                                                           float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
+                                                           int(self.renderer.materials_mapping[
+                                                                 self.renderer.mesh_materials[object_idx]].is_texture()))
                 try:
                     texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
                     if texture_id is None:
@@ -120,7 +122,7 @@ class InstanceGroup(object):
 
                     self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                            texture_id,
-                                                           self.renderer.texUnitUniform,
+                                                           self.renderer.depth_tex_shadow,
                                                            self.renderer.VAOs[object_idx],
                                                            self.renderer.faces[object_idx].size,
                                                            self.renderer.faces[object_idx],
@@ -128,6 +130,7 @@ class InstanceGroup(object):
                 finally:
                     self.renderer.r.cglBindVertexArray(0)
         self.renderer.r.cglUseProgram(0)
+
 
     def get_pose_in_camera(self):
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
@@ -218,6 +221,7 @@ class Instance(object):
 
         self.renderer.r.initvar_instance(self.renderer.shaderProgram,
                                          self.renderer.V,
+                                         self.renderer.lightV,
                                          self.renderer.P,
                                          self.pose_trans,
                                          self.pose_rot,
@@ -228,7 +232,8 @@ class Instance(object):
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
                                                    float(self.class_id) / 255.0,
                                                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd,
-                                                   float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
+                                                   int(self.renderer.materials_mapping[self.renderer.mesh_materials[
+                                                       object_idx]].is_texture()))
             try:
                 texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
                 if texture_id is None:
@@ -241,7 +246,7 @@ class Instance(object):
 
                 self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                        texture_id,
-                                                       self.renderer.texUnitUniform,
+                                                       self.renderer.depth_tex_shadow,
                                                        self.renderer.VAOs[object_idx],
                                                        self.renderer.faces[object_idx].size,
                                                        self.renderer.faces[object_idx],
@@ -314,7 +319,6 @@ class MeshRenderer(object):
         self.vertex_data = []
         self.shapes = []
 
-        self.texUnitUniform = None
         self.width = width
         self.height = height
         self.faces = []
@@ -345,7 +349,7 @@ class MeshRenderer(object):
         print("fisheye", self.fisheye)
 
         if self.fisheye:
-            [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
+            [self.shaderProgram] = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/fisheye_vert.shader')).readlines()).replace(
@@ -355,7 +359,7 @@ class MeshRenderer(object):
                                         'shaders/fisheye_frag.shader')).readlines()).replace(
                                             "FISHEYE_SIZE", str(self.width / 2)))
         else:
-            [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
+            [self.shaderProgram] = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/vert.shader')).readlines()),
@@ -363,13 +367,17 @@ class MeshRenderer(object):
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/frag.shader')).readlines()))
 
-        self.lightpos = [0, 0, 0]
+        self.lightpos = [0, 0, 2]
+        self.lightV = lookat(self.lightpos, [0,0.5,0], [0,1,0])
+        # light looking down
+        print(self.lightV)
+
         self.setup_framebuffer()
         self.vertical_fov = vertical_fov
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
-        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.01, 100)
+        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.1, 10)
         V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
@@ -387,6 +395,10 @@ class MeshRenderer(object):
         if self.msaa:
             [self.fbo_ms, self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
              self.depth_tex_ms] = self.r.setup_framebuffer_meshrenderer_ms(self.width, self.height)
+
+        self.depth_tex_shadow = self.r.allocateTexture(self.width,self.height)
+        #print(self.depth_tex_shadow)
+        #exit()
 
     def load_object(self,
                     obj_path,
@@ -597,7 +609,7 @@ class MeshRenderer(object):
 
     def set_fov(self, fov):
         self.vertical_fov = fov
-        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.01, 100)
+        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.1, 10)
         self.P = np.ascontiguousarray(P, np.float32)
 
     def set_light_color(self, color):
@@ -652,6 +664,31 @@ class MeshRenderer(object):
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
+
+        # shadow pass
+
+        V = np.copy(self.V)
+        self.V = np.copy(self.lightV)
+
+        self.r.render_meshrenderer_pre(0, 0, self.fbo)
+
+        for instance in self.instances:
+            if not instance in hidden:
+                instance.render()
+
+        self.r.render_meshrenderer_post()
+
+        data = self.r.readbuffer_meshrenderer_shadow_depth(self.width, self.height, self.fbo, self.depth_tex_shadow)
+        # data = data.reshape(512,512,3)
+        # import matplotlib.pyplot as plt
+        # plt.imshow(data[:,:,2])
+        # plt.show()
+        #print(np.mean(np.mean(data, axis=0), axis=0), np.max(np.max(data, axis=0), axis=0))
+        #exit()
+        #from IPython import embed; embed()
+        #exit()
+        # render pass
+        self.V = np.copy(V)
         if self.msaa:
             self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
         else:
