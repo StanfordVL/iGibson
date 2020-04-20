@@ -1,4 +1,6 @@
-#version 450
+#version 300 es
+precision highp float;
+
 uniform sampler2D texUnit;
 uniform float use_texture;
 in vec2 theCoords;
@@ -24,13 +26,13 @@ void main() {
     float diff = 0.5 + 0.5 * max(dot(Normal, lightDir), 0.0);
     vec3 diffuse = diff * light_color;
 
-    if (use_texture == 1) {
+    if (use_texture == 1.0) {
         outputColour =texture(texUnit, theCoords);// albedo only
     } else {
-        outputColour = vec4(Diffuse_color,1) * diff; //diffuse color
+        outputColour = vec4(Diffuse_color,1.0) * diff; //diffuse color
     }
 
-    NormalColour =  vec4((Normal_cam + 1) / 2,1);
+    NormalColour =  vec4((Normal_cam + 1.0) * 0.5,1);
     InstanceColour = vec4(Instance_color,1);
     PCColour = vec4(Pos_cam,1);
 }

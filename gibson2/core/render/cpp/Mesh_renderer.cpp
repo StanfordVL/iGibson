@@ -11,10 +11,18 @@
   #include  <glad/egl.h>
 #else
   #include <EGL/egl.h>
-  #include <EGL/eglext.h>
 #endif
 
-#include  <glad/gl.h>
+//#include  <glad/gl.h>
+
+
+#include <GL/glcorearb.h>
+#include <GL/glext.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#include <GLES3/gl3.h>
+
+
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
@@ -77,21 +85,6 @@ public:
 
     int init() {
 
-#ifndef USE_GLAD
-    PFNEGLQUERYDEVICESEXTPROC eglQueryDevicesEXT =
-               (PFNEGLQUERYDEVICESEXTPROC) eglGetProcAddress("eglQueryDevicesEXT");
-    if(!eglQueryDevicesEXT) { 
-         printf("ERROR: extension eglQueryDevicesEXT not available"); 
-         return(-1); 
-    } 
-    
-    PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT =
-               (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
-    if(!eglGetPlatformDisplayEXT) { 
-         printf("ERROR: extension eglGetPlatformDisplayEXT not available"); 
-         return(-1);  
-    }
-#endif
 
     m_data = new EGLInternalData2();
 
@@ -106,7 +99,7 @@ public:
         EGL_SURFACE_TYPE,
         EGL_PBUFFER_BIT,
         EGL_RENDERABLE_TYPE,
-        EGL_OPENGL_BIT,
+        EGL_OPENGL_ES2_BIT,
         EGL_NONE};
 
     EGLint egl_pbuffer_attribs[] = {
@@ -114,134 +107,41 @@ public:
         EGL_NONE,
     };
 
-#ifdef USE_CUDA
-    for (int i = 0; i < MAX_NUM_RESOURCES; i++)
-        cuda_res[i] = NULL;
-#endif
+    		m_data->egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+         EGLint major;
+		EGLint minor;
+		EGLBoolean initialized = eglInitialize(m_data->egl_display, &major, &minor);
 
-    // Load EGL functions
-#ifdef USE_GLAD
-    int egl_version = gladLoaderLoadEGL(NULL);
-    if(!egl_version) {
-        fprintf(stderr, "failed to EGL with glad.\n");
-        exit(EXIT_FAILURE);
+        	const char *eglVendor = eglQueryString(m_data->egl_display, EGL_VENDOR);
+			printf(eglVendor);
 
-    };
-#endif
+			const char *eglVersion = eglQueryString(m_data->egl_display, EGL_VERSION);
+			printf(eglVersion);
 
-    // Query EGL Devices
-    const int max_devices = 32;
-    EGLDeviceEXT egl_devices[max_devices];
-    EGLint num_devices = 0;
-    EGLint egl_error = eglGetError();
-    if (!eglQueryDevicesEXT(max_devices, egl_devices, &num_devices) ||
-        egl_error != EGL_SUCCESS) {
-        printf("eglQueryDevicesEXT Failed.\n");
-        m_data->egl_display = EGL_NO_DISPLAY;
-    }
+			eglBindAPI(EGL_OPENGL_ES_API);
+			EGLBoolean success = eglChooseConfig(m_data->egl_display, egl_config_attribs, &m_data->egl_config, 1,
+			&m_data->num_configs);
+			printf("egl success %d\n", success);
 
-    m_data->m_renderDevice = m_renderDevice;
-    // Query EGL Screens
-    if(m_data->m_renderDevice == -1) {
-        // Chose default screen, by trying all
-        for (EGLint i = 0; i < num_devices; ++i) {
-            // Set display
-            EGLDisplay display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT,
-                                                          egl_devices[i], NULL);
-            if (eglGetError() == EGL_SUCCESS && display != EGL_NO_DISPLAY) {
-                int major, minor;
-                EGLBoolean initialized = eglInitialize(display, &major, &minor);
-                if (eglGetError() == EGL_SUCCESS && initialized == EGL_TRUE) {
-                    m_data->egl_display = display;
-                }
-            }
-        }
-    } else {
-        // Chose specific screen, by using m_renderDevice
-        if (m_data->m_renderDevice < 0 || m_data->m_renderDevice >= num_devices) {
-            fprintf(stderr, "Invalid render_device choice: %d < %d.\n", m_data->m_renderDevice, num_devices);
-            exit(EXIT_FAILURE);
-        }
+			m_data->egl_surface = eglCreatePbufferSurface(m_data->egl_display, m_data->egl_config, egl_pbuffer_attribs);
 
-        // Set display
-        EGLDisplay display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT,
-                                                      egl_devices[m_data->m_renderDevice], NULL);
-        if (eglGetError() == EGL_SUCCESS && display != EGL_NO_DISPLAY) {
-            int major, minor;
-            EGLBoolean initialized = eglInitialize(display, &major, &minor);
-            if (eglGetError() == EGL_SUCCESS && initialized == EGL_TRUE) {
-                m_data->egl_display = display;
-            }
-        }
-    }
+            EGLint contextAttributes[] = {
+                EGL_CONTEXT_CLIENT_VERSION, 2,
+                EGL_NONE
+            };
 
-    if (!eglInitialize(m_data->egl_display, NULL, NULL)) {
-        fprintf(stderr, "Unable to initialize EGL\n");
-        exit(EXIT_FAILURE);
-    }
+		m_data->egl_context = eglCreateContext(m_data->egl_display, m_data->egl_config, NULL, contextAttributes);
+		success = eglMakeCurrent(m_data->egl_display, m_data->egl_surface, m_data->egl_surface, m_data->egl_context);
 
-#ifdef USE_GLAD
-    egl_version = gladLoaderLoadEGL(m_data->egl_display);
-    if (!egl_version) {
-        fprintf(stderr, "Unable to reload EGL.\n");
-        exit(EXIT_FAILURE);
-    }
-    //printf("Loaded EGL %d.%d after reload.\n", GLAD_VERSION_MAJOR(egl_version),
-    //       GLAD_VERSION_MINOR(egl_version));
-#else
-    printf("not using glad\n");
-#endif
+        const GLubyte* ven = glGetString(GL_VENDOR);
+	    printf("GL_VENDOR=%s\n", ven);
 
-    m_data->success = eglBindAPI(EGL_OPENGL_API);
-    if (!m_data->success) {
-        // TODO: Properly handle this error (requires change to default window
-        // API to change return on all window types to bool).
-        fprintf(stderr, "Failed to bind OpenGL API.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    m_data->success =
-    eglChooseConfig(m_data->egl_display, egl_config_attribs,
-                    &m_data->egl_config, 1, &m_data->num_configs);
-    if (!m_data->success) {
-        // TODO: Properly handle this error (requires change to default window
-        // API to change return on all window types to bool).
-        fprintf(stderr, "Failed to choose config (eglError: %d)\n", eglGetError());
-        exit(EXIT_FAILURE);
-    }
-    if (m_data->num_configs != 1) {
-        fprintf(stderr, "Didn't get exactly one config, but %d\n", m_data->num_configs);
-        exit(EXIT_FAILURE);
-    }
-
-    m_data->egl_surface = eglCreatePbufferSurface(
-                                                  m_data->egl_display, m_data->egl_config, egl_pbuffer_attribs);
-    if (m_data->egl_surface == EGL_NO_SURFACE) {
-        fprintf(stderr, "Unable to create EGL surface (eglError: %d)\n", eglGetError());
-        exit(EXIT_FAILURE);
-    }
-
-
-    m_data->egl_context = eglCreateContext(
-                                           m_data->egl_display, m_data->egl_config, EGL_NO_CONTEXT, NULL);
-    if (!m_data->egl_context) {
-        fprintf(stderr, "Unable to create EGL context (eglError: %d)\n",eglGetError());
-        exit(EXIT_FAILURE);
-    }
-
-    m_data->success =
-        eglMakeCurrent(m_data->egl_display, m_data->egl_surface, m_data->egl_surface,
-                   m_data->egl_context);
-    if (!m_data->success) {
-        fprintf(stderr, "Failed to make context current (eglError: %d)\n", eglGetError());
-        exit(EXIT_FAILURE);
-    }
-
-    if (!gladLoadGL(eglGetProcAddress)) {
-        fprintf(stderr, "failed to load GL with glad.\n");
-        exit(EXIT_FAILURE);
-    }
-
+	    const GLubyte* ren = glGetString(GL_RENDERER);
+	    printf("GL_RENDERER=%s\n", ren);
+	    const GLubyte* ver = glGetString(GL_VERSION);
+	    printf("GL_VERSION=%s\n", ver);
+	    const GLubyte* sl = glGetString(GL_SHADING_LANGUAGE_VERSION);
+	    printf("GL_SHADING_LANGUAGE_VERSION=%s\n", sl);
 
     return 0;
     };
@@ -264,41 +164,6 @@ public:
 #endif
     }
 
-
-    void draw(py::array_t<float> x) {
-        //printf("draw\n");
-        int size = 3 * m_windowWidth * m_windowHeight;
-        //unsigned char *data2 = new unsigned char[size];
-
-        auto ptr = (float *) x.mutable_data();
-
-        glClear(GL_COLOR_BUFFER_BIT);
-        glBegin(GL_TRIANGLES);
-        glColor3f(1, 0, 0);
-        glVertex2f(0,  1);
-
-        glColor3f(0, 1, 0);
-        glVertex2f(-1, -1);
-
-        glColor3f(0, 0, 1);
-        glVertex2f(1, -1);
-        glEnd();
-
-        eglSwapBuffers( m_data->egl_display, m_data->egl_surface);
-        glReadPixels(0,0,m_windowWidth,m_windowHeight,GL_RGB, GL_FLOAT, ptr);
-        //unsigned error = lodepng::encode("test.png", (unsigned char*)data2, m_windowWidth, m_windowHeight, LCT_RGB, 8);
-        //delete data2;
-    }
-
-    void draw_py(py::array_t<float> x) {
-        /*auto r = x.mutable_unchecked<3>(); // Will throw if ndim != 3 or flags.writeable is false
-            for (ssize_t i = 0; i < r.shape(0); i++)
-                for (ssize_t j = 0; j < r.shape(1); j++)
-                    for (ssize_t k = 0; k < r.shape(2); k++)
-                        r(i, j, k) += 1.0;*/
-
-        std::fill(x.mutable_data(), x.mutable_data() + x.size(), 42);
-    }
 
 #ifdef USE_CUDA
     void map_tensor(GLuint tid, int width, int height, std::size_t data)
@@ -399,27 +264,17 @@ public:
     }
 
     void glad_init() {
-        if (!gladLoadGL(eglGetProcAddress)) {
-            fprintf(stderr, "failed to load GL with glad.\n");
-            exit(EXIT_FAILURE);
-        }
+        //if (!gladLoadGL(eglGetProcAddress)) {
+        //    fprintf(stderr, "failed to load GL with glad.\n");
+        //    exit(EXIT_FAILURE);
+        //}
     }
 
     std::string getstring_meshrenderer() {
         return reinterpret_cast<char const *>(glGetString(GL_VERSION));
     }
 
-    void blit_buffer(int width, int height, GLuint fb1, GLuint fb2) {
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, fb1);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb2);
-        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
-        for (int i = 0; i < 4; i++) {
-            glReadBuffer(GL_COLOR_ATTACHMENT0+i);
-        glDrawBuffer(GL_COLOR_ATTACHMENT0+i);
-            glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-        }
-    }
 
     py::array_t<float> readbuffer_meshrenderer(char* mode, int width, int height, GLuint fb2) {
         glBindFramebuffer(GL_FRAMEBUFFER, fb2);
@@ -499,50 +354,6 @@ public:
         return result;
     }
 
-    py::list setup_framebuffer_meshrenderer_ms(int width, int height) {
-        GLuint *fbo_ptr = (GLuint*)malloc(sizeof(GLuint));
-        GLuint *texture_ptr = (GLuint*)malloc(5 * sizeof(GLuint));
-        glGenFramebuffers(1, fbo_ptr);
-        glGenTextures(5, texture_ptr);
-        int fbo = fbo_ptr[0];
-        int color_tex_rgb = texture_ptr[0];
-        int color_tex_normal = texture_ptr[1];
-        int color_tex_semantics = texture_ptr[2];
-        int color_tex_3d = texture_ptr[3];
-        int depth_tex = texture_ptr[4];
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_rgb);
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA, width, height, GL_TRUE);
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_normal);
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA, width, height, GL_TRUE);
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_semantics);
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA, width, height, GL_TRUE);
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_3d);
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA32F, width, height, GL_TRUE);
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, depth_tex);
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_DEPTH24_STENCIL8, width, height, GL_TRUE);
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, color_tex_rgb, 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, color_tex_normal, 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D_MULTISAMPLE, color_tex_semantics, 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D_MULTISAMPLE, color_tex_3d, 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE, depth_tex, 0);
-        glViewport(0, 0, width, height);
-        GLenum *bufs = (GLenum*)malloc(4 * sizeof(GLenum));
-        bufs[0] = GL_COLOR_ATTACHMENT0;
-        bufs[1] = GL_COLOR_ATTACHMENT1;
-        bufs[2] = GL_COLOR_ATTACHMENT2;
-        bufs[3] = GL_COLOR_ATTACHMENT3;
-        glDrawBuffers(4, bufs);
-        assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-        py::list result;
-        result.append(fbo);
-        result.append(color_tex_rgb);
-        result.append(color_tex_normal);
-        result.append(color_tex_semantics);
-        result.append(color_tex_3d);
-        result.append(depth_tex);
-        return result;
-    }
 
     py::list compile_shader_meshrenderer(char* vertexShaderSource, char* fragmentShaderSource) {
         int vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -649,8 +460,8 @@ public:
         glUniform1i(texUnitUniform, 0);
         glBindVertexArray(vao);
         glBindFramebuffer(GL_FRAMEBUFFER, fb);
-        unsigned int *ptr = (unsigned int *) faces.request().ptr;
-        glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, ptr);
+        //unsigned int *ptr = (unsigned int *) faces.request().ptr;
+        //glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, ptr);
 
     }
 
@@ -771,8 +582,6 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         pymodule.def("glad_init", &MeshRendererContext::glad_init, "init glad");
         pymodule.def("clean_meshrenderer", &MeshRendererContext::clean_meshrenderer, "clean meshrenderer");
         pymodule.def("setup_framebuffer_meshrenderer", &MeshRendererContext::setup_framebuffer_meshrenderer, "setup framebuffer in meshrenderer");
-        pymodule.def("setup_framebuffer_meshrenderer_ms", &MeshRendererContext::setup_framebuffer_meshrenderer_ms, "setup framebuffer in meshrenderer with MSAA");
-        pymodule.def("blit_buffer", &MeshRendererContext::blit_buffer, "blit buffer");
 
         pymodule.def("compile_shader_meshrenderer", &MeshRendererContext::compile_shader_meshrenderer, "compile vertex and fragment shader");
         pymodule.def("load_object_meshrenderer", &MeshRendererContext::load_object_meshrenderer, "load object into VAO and VBO");

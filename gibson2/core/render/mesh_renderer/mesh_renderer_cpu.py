@@ -113,10 +113,7 @@ class InstanceGroup(object):
                     if texture_id is None:
                         texture_id = -1
 
-                    if self.renderer.msaa:
-                        buffer = self.renderer.fbo_ms
-                    else:
-                        buffer = self.renderer.fbo
+                    buffer = self.renderer.fbo
 
                     self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                            texture_id,
@@ -234,10 +231,7 @@ class Instance(object):
                 if texture_id is None:
                     texture_id = -1
 
-                if self.renderer.msaa:
-                    buffer = self.renderer.fbo_ms
-                else:
-                    buffer = self.renderer.fbo
+                buffer = self.renderer.fbo
 
                 self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                        texture_id,
@@ -336,8 +330,6 @@ class MeshRenderer(object):
         self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
-        self.r.glad_init()
-        self.glstring = self.r.getstring_meshrenderer()
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
         self.lightcolor = [1, 1, 1]
@@ -363,6 +355,8 @@ class MeshRenderer(object):
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/frag.shader')).readlines()))
 
+        print('shader', [self.shaderProgram, self.texUnitUniform])
+
         self.lightpos = [0, 0, 0]
         self.setup_framebuffer()
         self.vertical_fov = vertical_fov
@@ -383,10 +377,9 @@ class MeshRenderer(object):
         """
         [self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
          self.depth_tex] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
+        print([self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
+         self.depth_tex])
 
-        if self.msaa:
-            [self.fbo_ms, self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
-             self.depth_tex_ms] = self.r.setup_framebuffer_meshrenderer_ms(self.width, self.height)
 
     def load_object(self,
                     obj_path,
@@ -500,7 +493,7 @@ class MeshRenderer(object):
             vertexData = vertices.astype(np.float32)
 
             [VAO, VBO] = self.r.load_object_meshrenderer(self.shaderProgram, vertexData)
-
+            print([VAO, VBO])
             self.VAOs.append(VAO)
             self.VBOs.append(VBO)
             self.faces.append(faces)
@@ -519,6 +512,7 @@ class MeshRenderer(object):
 
         new_obj = VisualObject(obj_path, VAO_ids, len(self.visual_objects), self)
         self.visual_objects.append(new_obj)
+        print(VAO_ids)
         return VAO_ids
 
     def add_instance(self,
@@ -652,18 +646,13 @@ class MeshRenderer(object):
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-        if self.msaa:
-            self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
-        else:
-            self.r.render_meshrenderer_pre(0, 0, self.fbo)
+        self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
         for instance in self.instances:
             if not instance in hidden:
                 instance.render()
 
         self.r.render_meshrenderer_post()
-        if self.msaa:
-            self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
         return self.readbuffer(modes)
 
@@ -694,12 +683,7 @@ class MeshRenderer(object):
             self.depth_tex
         ]
         fbo_list = [self.fbo]
-        if self.msaa:
-            clean_list += [
-            self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
-            self.depth_tex_ms
-        ]
-            fbo_list += [self.fbo_ms]
+
 
         self.r.clean_meshrenderer(clean_list, self.textures, fbo_list, self.VAOs, self.VBOs)
         self.color_tex_rgb = None

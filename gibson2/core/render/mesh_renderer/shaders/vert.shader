@@ -1,4 +1,4 @@
-#version 450
+#version 300 es
 uniform mat4 V;
 uniform mat4 P;
 uniform mat4 pose_rot;
