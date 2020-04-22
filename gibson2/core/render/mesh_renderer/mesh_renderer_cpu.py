@@ -234,14 +234,20 @@ class Instance(object):
                 if texture_id is None:
                     texture_id = -1
 
+                sem_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].sem_id
+                if sem_id is None:
+                    sem_id = -1
+
                 if self.renderer.msaa:
                     buffer = self.renderer.fbo_ms
                 else:
                     buffer = self.renderer.fbo
 
-                self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[
+                                                         object_idx]].is_texture(),
                                                        texture_id,
-                                                       self.renderer.texUnitUniform,
+                                                       sem_id,
                                                        self.renderer.VAOs[object_idx],
                                                        self.renderer.faces[object_idx].size,
                                                        self.renderer.faces[object_idx],
@@ -273,17 +279,18 @@ class Instance(object):
 
 
 class Material(object):
-    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=None):
+    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=None, sem_id=None):
         self.type = type
         self.kd = kd
         self.texture_id = texture_id
+        self.sem_id = sem_id
 
     def is_texture(self):
         return self.type == 'texture'
 
     def __str__(self):
-        return "Material(type: {}, texture_id: {}, color: {})".format(self.type, self.texture_id,
-                                                                      self.kd)
+        return "Material(type: {}, texture_id: {}, sem_id: {}, color: {})".format(self.type, self.texture_id,
+                                                                                  self.sem_id, self.kd)
 
     def __repr__(self):
         return self.__str__()
@@ -442,10 +449,14 @@ class MeshRenderer(object):
             if item.diffuse_texname != '' and load_texture:
                 materials_fn[i + material_count] = item.diffuse_texname
                 obj_dir = os.path.dirname(obj_path)
-                #texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
                 texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
                 self.textures.append(texture)
-                material = Material('texture', texture_id=texture)
+                sem_id = None
+                if os.path.exists(os.path.join(obj_dir, 'sem_map.png')):
+                    sem_id = self.r.loadTexture(os.path.join(obj_dir, 'sem_map.png'))
+                    self.textures.append(sem_id)
+
+                material = Material('texture', texture_id=texture, sem_id=sem_id)
             else:
                 material = Material('color', kd=item.diffuse)
             self.materials_mapping[i + material_count] = material

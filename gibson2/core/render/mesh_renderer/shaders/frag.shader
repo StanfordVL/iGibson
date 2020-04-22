@@ -1,6 +1,8 @@
 #version 450
 uniform sampler2D texUnit;
+uniform sampler2D semUnit;
 uniform float use_texture;
+uniform float use_sem;
 in vec2 theCoords;
 in vec3 Normal;
 in vec3 Normal_cam;
@@ -25,12 +27,16 @@ void main() {
     vec3 diffuse = diff * light_color;
 
     if (use_texture == 1) {
-        outputColour =texture(texUnit, theCoords);// albedo only
+        outputColour = texture(texUnit, theCoords);// albedo only
     } else {
         outputColour = vec4(Diffuse_color,1) * diff; //diffuse color
     }
 
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
-    InstanceColour = vec4(Instance_color,1);
+    if (use_sem == 1) {
+        InstanceColour = texture(semUnit, theCoords);
+    } else {
+        InstanceColour = vec4(Instance_color,1);
+    }
     PCColour = vec4(Pos_cam,1);
 }

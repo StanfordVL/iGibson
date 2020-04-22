@@ -641,12 +641,26 @@ public:
         glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
         glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
         glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
+
     }
 
-    void draw_elements_instance(bool flag, int texture_id, int texUnitUniform, int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
-        glActiveTexture(GL_TEXTURE0);
-        if (flag) glBindTexture(GL_TEXTURE_2D, texture_id);
+    void draw_elements_instance(int shaderProgram, bool flag, int texture_id, int sem_id, int vao,
+    int face_size,
+    py::array_t<unsigned int> faces, GLuint fb) {
+        int texUnitUniform = glGetUniformLocation(shaderProgram, "texUnit");
+        int semUnitUniform = glGetUniformLocation(shaderProgram, "semUnit");
         glUniform1i(texUnitUniform, 0);
+        glUniform1i(semUnitUniform, 1);
+        glActiveTexture(GL_TEXTURE0);
+        if (flag&&(texture_id != -1)) glBindTexture(GL_TEXTURE_2D, texture_id);
+        glActiveTexture(GL_TEXTURE1);
+        bool use_sem = false;
+        if (flag&&(sem_id != -1)) {
+            glBindTexture(GL_TEXTURE_2D, sem_id);
+            use_sem = true;
+        }
+        glUniform1f(glGetUniformLocation(shaderProgram, "use_sem"), float(use_sem));
+
         glBindVertexArray(vao);
         glBindFramebuffer(GL_FRAMEBUFFER, fb);
         unsigned int *ptr = (unsigned int *) faces.request().ptr;
