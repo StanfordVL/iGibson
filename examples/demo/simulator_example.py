@@ -20,7 +20,7 @@ def main():
 
     for _ in range(10):
         obj = YCBObject('003_cracker_box')
-        obj.load()
+        s.import_object(obj)
         obj.set_position_orientation(np.random.uniform(low=0, high=2, size=3), [0,0,0,1])
 
     for i in range(10000):

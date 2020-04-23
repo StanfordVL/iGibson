@@ -1,10 +1,10 @@
 # Quickstart
 
-### iGibson in Action
+## iGibson in Action
 Let's get our hands dirty and see iGibson in action.
 
 ```bash
-cd gibson2/demo/examples
+cd examples/demo
 python env_example.py
 ```
 You should see something like this:
@@ -18,13 +18,42 @@ If you want to have a virtual tour around the house yourself, you can click on t
 
 That's it!
 
-### Benchmarks
+## Using Docker and remote GUI access via VNC
+
+If you go the docker route, please first pull our pre-built images (see the installation guide). After downloading, run `docker images`, and you should see `igibson/igibson:latest` and `igibson/igibson-gui:latest`.
+
+On a headless server (such as a Google Cloud or AWS instance), run 
+```
+cd iGibson
+./docker/headless-gui/run.sh
+# run a GUI example after the container command line prompt shows:
+python simulator_example.py
+``` 
+
+On your local machine, you can use any VNC client to visit the remote GUI at `<remote-ip>:5900` with the default password `112358`. 
+
+For example, Mac OS X provides a native app called [Screen Sharing](https://support.apple.com/guide/mac-help/share-the-screen-of-another-mac-mh14066/mac) that implements the VNC protocol.
+
+To change the default port and password (must be 6 digits): 
+
+```
+./docker/headless-gui/run.sh --vnc-port 5903 --vnc-password 654321 
+```
+
+If you do not need GUI, 
+```
+./docker/base/run.sh
+# run a script after the container command line prompt shows:
+python benchmark.py
+```
+
+## Benchmarks
 
 Performance is a big designing focus for iGibson. We provide a few scripts to benchmark the rendering and physics
 simulation framerate in iGibson.
 
 ```bash
-cd gibson2/demo/examples
+cd examples/demo
 python benchmark.py
 ```
 

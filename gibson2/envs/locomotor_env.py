@@ -6,9 +6,6 @@ from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
 import argparse
-from gibson2.learn.completion import CompletionNet, identity_init, Perceptual
-import torch.nn as nn
-import torch
 from transforms3d.quaternions import quat2mat, qmult
 import gym
 import numpy as np
@@ -163,8 +160,9 @@ class NavigateEnv(BaseEnv):
                 import torch.nn as nn
                 import torch
                 from torchvision import datasets, transforms
+                from gibson2.learn.completion import CompletionNet
             except:
-                raise Exception('Trying to use rgb_filled ("the goggle"), but torch is not installed. Try "pip install torch torchvision"')
+                raise Exception('Trying to use rgb_filled ("the goggle"), but torch is not installed. Try "pip install torch torchvision".')
 
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
@@ -389,6 +387,8 @@ class NavigateEnv(BaseEnv):
         for _ in range(self.simulator_loop):
             self.simulator_step()
             collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
+        self.simulator.sync()
+
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
