@@ -455,8 +455,17 @@ public:
         glBindVertexArray(vao);
         glBindFramebuffer(GL_FRAMEBUFFER, fb);
         unsigned int *ptr = (unsigned int *) faces.request().ptr;
-        glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, ptr);
-
+        //glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, ptr);
+		
+	            
+	    GLuint elementBuffer;
+	    glGenBuffers(1, &elementBuffer);
+	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
+	    glBufferData(GL_ELEMENT_ARRAY_BUFFER, face_size * sizeof(unsigned int), &ptr[0], GL_STATIC_DRAW);
+	    glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, (void*)0);
+	    glDeleteBuffers(1, &elementBuffer);        
+	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
+		
     }
 
     void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
