@@ -1,5 +1,7 @@
 import pybullet as p
-import os, inspect
+import os
+import inspect
+import collections
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -76,7 +78,6 @@ class StadiumScene(Scene):
         return
 
 
-
 class BuildingScene(Scene):
     """
     Gibson Environment building scenes
@@ -115,8 +116,10 @@ class BuildingScene(Scene):
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
         self.mesh_body_id = None
-        self.floor_body_ids = []
         self.pybullet_load_texture = pybullet_load_texture
+        self.floor_body_ids = []
+        self.scene_objects = []
+        self.scene_objects_pos = []
 
     def load_floor_metadata(self):
         """
@@ -136,9 +139,10 @@ class BuildingScene(Scene):
         if self.is_interactive:
             filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_cleaned.obj")
         else:
-            filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_downsampled.obj")
-            if not os.path.isfile(filename):
-                filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
+            for fname in ["mesh_z_up_combined.obj", "mesh_z_up_downsampled.obj", "mesh_z_up.obj"]:
+                filename = os.path.join(get_model_path(self.model_id), fname)
+                if os.path.isfile(filename):
+                    break
 
         collision_id = p.createCollisionShape(p.GEOM_MESH,
                                               fileName=filename,
@@ -265,8 +269,6 @@ class BuildingScene(Scene):
         if not self.is_interactive:
             return
 
-        self.scene_objects = []
-        self.scene_objects_pos = []
         scene_path = get_model_path(self.model_id)
         urdf_files = [item for item in os.listdir(scene_path) if item[-4:] == 'urdf' and item != 'scene.urdf']
         position_files = [item[:-4].replace('alignment_centered', 'pos') + 'txt' for item in urdf_files]

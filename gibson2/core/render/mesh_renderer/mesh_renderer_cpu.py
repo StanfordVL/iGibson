@@ -77,6 +77,8 @@ class InstanceGroup(object):
         self.id = id
         self.link_ids = link_ids
         self.class_id = class_id
+        if not (1 <= self.class_id <= 4095):
+            raise Exception('currently semantic class only supports id from 1 to 4095 (inclusive), 0 is reserved for background.')
         self.robot = robot
         if len(objects) > 0:
             self.renderer = objects[0].renderer
@@ -105,22 +107,19 @@ class InstanceGroup(object):
                 self.renderer.r.init_material_pos_instance(self.renderer.shaderProgram,
                                                            self.poses_trans[i],
                                                            self.poses_rot[i],
-                                                           float(self.class_id) / 255.0,
+                                                           self.class_id,
                                                            self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3],
                                                            float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
                 try:
-                    texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
-                    if texture_id is None:
-                        texture_id = -1
-
                     if self.renderer.msaa:
                         buffer = self.renderer.fbo_ms
                     else:
                         buffer = self.renderer.fbo
 
-                    self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
-                                                           texture_id,
-                                                           self.renderer.texUnitUniform,
+                    self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id,
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].sem_id,
                                                            self.renderer.VAOs[object_idx],
                                                            self.renderer.faces[object_idx].size,
                                                            self.renderer.faces[object_idx],
@@ -179,6 +178,8 @@ class Instance(object):
         self.pose_rot = pose_rot
         self.id = id
         self.class_id = class_id
+        if not (1 <= self.class_id <= 4095):
+            raise Exception('currently semantic class only supports id from 1 to 4095 (inclusive), 0 is reserved for background.')
         self.renderer = object.renderer
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
@@ -226,28 +227,19 @@ class Instance(object):
 
         for object_idx in self.object.VAO_ids:
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
-                                                   float(self.class_id) / 255.0,
+                                                   self.class_id,
                                                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd,
                                                    float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
             try:
-                texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
-                if texture_id is None:
-                    texture_id = -1
-
-                sem_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].sem_id
-                if sem_id is None:
-                    sem_id = -1
-
                 if self.renderer.msaa:
                     buffer = self.renderer.fbo_ms
                 else:
                     buffer = self.renderer.fbo
 
                 self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
-                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[
-                                                         object_idx]].is_texture(),
-                                                       texture_id,
-                                                       sem_id,
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id,
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].sem_id,
                                                        self.renderer.VAOs[object_idx],
                                                        self.renderer.faces[object_idx].size,
                                                        self.renderer.faces[object_idx],
@@ -279,7 +271,7 @@ class Instance(object):
 
 
 class Material(object):
-    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=None, sem_id=None):
+    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=-1, sem_id=-1):
         self.type = type
         self.kd = kd
         self.texture_id = texture_id
@@ -402,7 +394,9 @@ class MeshRenderer(object):
                     transform_pos=None,
                     input_kd=None,
                     texture_scale=1.0,
-                    load_texture=True):
+                    load_texture=True,
+                    load_sem_map=True,
+                    ):
         """
         Load a wavefront obj file into the renderer and create a VisualObject to manage it.
 
@@ -412,7 +406,8 @@ class MeshRenderer(object):
         :param transform_pos: translation for loading, it is a list of length 3
         :param input_kd: if loading material fails, use this default material. input_kd should be a list of length 3
         :param texture_scale: texture scale for the object, downsample to save memory.
-        :param load_texture: load texture or not
+        :param load_texture: whether to load texture
+        :param load_sem_map: whether to load semantic map
         :return: VAO_ids
         """
         reader = tinyobjloader.ObjReader()
@@ -446,17 +441,17 @@ class MeshRenderer(object):
         materials_fn = {}
 
         for i, item in enumerate(materials):
-            if item.diffuse_texname != '' and load_texture:
+            if load_texture and item.diffuse_texname != '':
                 materials_fn[i + material_count] = item.diffuse_texname
                 obj_dir = os.path.dirname(obj_path)
-                texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
-                self.textures.append(texture)
-                sem_id = None
-                if os.path.exists(os.path.join(obj_dir, 'sem_map.png')):
-                    sem_id = self.r.loadTexture(os.path.join(obj_dir, 'sem_map.png'))
+                texture_id = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
+                self.textures.append(texture_id)
+                sem_id = -1
+                sem_map_file = os.path.join(obj_dir, 'sem_map.png')
+                if load_sem_map and os.path.isfile(sem_map_file):
+                    sem_id = self.r.loadTexture(sem_map_file)
                     self.textures.append(sem_id)
-
-                material = Material('texture', texture_id=texture, sem_id=sem_id)
+                material = Material('texture', texture_id=texture_id, sem_id=sem_id)
             else:
                 material = Material('color', kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
@@ -535,7 +530,7 @@ class MeshRenderer(object):
     def add_instance(self,
                      object_id,
                      pybullet_uuid=None,
-                     class_id=0,
+                     class_id=1,
                      pose_rot=np.eye(4),
                      pose_trans=np.eye(4),
                      dynamic=False,
@@ -558,7 +553,7 @@ class MeshRenderer(object):
                            link_ids,
                            poses_rot,
                            poses_trans,
-                           class_id=0,
+                           class_id=1,
                            pybullet_uuid=None,
                            dynamic=False,
                            robot=None):
