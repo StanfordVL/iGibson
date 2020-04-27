@@ -1,7 +1,7 @@
 from gibson2.core.physics.robot_locomotors \
     import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot
 from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import EmptyScene, StadiumScene, BuildingScene
+from gibson2.core.physics.scene import BuildingScene, StadiumScene
 import gibson2
 from gibson2.utils.utils import parse_config
 import gym
@@ -19,7 +19,6 @@ class BaseEnv(gym.Env):
                  mode='headless',
                  action_timestep=1 / 10.0,
                  physics_timestep=1 / 240.0,
-                 render_to_tensor=False,
                  device_idx=0):
         """
         :param config_file: config_file path
@@ -42,9 +41,7 @@ class BaseEnv(gym.Env):
                                    image_width=self.config.get('image_width', 128),
                                    image_height=self.config.get('image_height', 128),
                                    vertical_fov=self.config.get('vertical_fov', 90),
-                                   device_idx=device_idx,
-                                   render_to_tensor=render_to_tensor,
-                                   auto_sync=False)
+                                   device_idx=device_idx)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.load()
 
@@ -71,9 +68,7 @@ class BaseEnv(gym.Env):
         """
         Load the scene and robot
         """
-        if self.config['scene'] == 'empty':
-            scene = EmptyScene()
-        elif self.config['scene'] == 'stadium':
+        if self.config['scene'] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
             scene = BuildingScene(
@@ -81,13 +76,14 @@ class BaseEnv(gym.Env):
                 waypoint_resolution=self.config.get('waypoint_resolution', 0.2),
                 num_waypoints=self.config.get('num_waypoints', 10),
                 build_graph=self.config.get('build_graph', False),
-                trav_map_resolution=self.config.get('trav_map_resolution', 0.1),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
-                is_interactive=self.config.get('is_interactive', False),
-                pybullet_load_texture=self.config.get('pybullet_load_texture', False),
+                should_load_replaced_objects=self.config.get('should_load_replaced_objects', False)
             )
-        self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))
 
+        # scene: class_id = 0
+        # robot: class_id = 1
+        # objects: class_id > 1
+        self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True), class_id=0)
         if self.config['robot'] == 'Turtlebot':
             robot = Turtlebot(self.config)
         elif self.config['robot'] == 'Husky':
@@ -112,7 +108,7 @@ class BaseEnv(gym.Env):
         self.scene = scene
         self.robots = [robot]
         for robot in self.robots:
-            self.simulator.import_robot(robot)
+            self.simulator.import_robot(robot, class_id=1)
 
     def clean(self):
         """
