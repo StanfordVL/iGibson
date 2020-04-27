@@ -103,7 +103,7 @@ class BuildingScene(Scene):
         :param waypoint_resolution: resolution of adjacent way points
         :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect what the robots see
         """
-        print("building scene: %s" % model_id)
+        print("Building scene: %s" % model_id)
         self.model_id = model_id
         self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
         self.trav_map_resolution = trav_map_resolution
@@ -127,7 +127,7 @@ class BuildingScene(Scene):
             raise Exception('floors.txt cannot be found in model: {}'.format(self.model_id))
         with open(floor_height_path, 'r') as f:
             self.floors = sorted(list(map(float, f.readlines())))
-            print('floors', self.floors)
+            print('Floors', self.floors)
 
     def load_scene_mesh(self):
         """
@@ -231,11 +231,11 @@ class BuildingScene(Scene):
             if self.build_graph:
                 graph_file = os.path.join(get_model_path(self.model_id), 'floor_trav_{}.p'.format(f))
                 if os.path.isfile(graph_file):
-                    print("load traversable graph")
+                    print("Loading traversable graph")
                     with open(graph_file, 'rb') as pfile:
                         g = pickle.load(pfile)
                 else:
-                    print("build traversable graph")
+                    print("Building traversable graph")
                     g = nx.Graph()
                     for i in range(self.trav_map_size):
                         for j in range(self.trav_map_size):

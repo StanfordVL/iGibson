@@ -39,7 +39,7 @@ class BaseRobot:
         self.physics_model_dir = os.path.join(gibson2.assets_path, "models")
         self.scale = scale
         self.eyes = None
-        print('Robot model file:', self.model_file)
+        print('Loading robot model file:', self.model_file)
         if self.model_file[-4:] == 'urdf':
             self.model_type = 'URDF'
         else:
@@ -117,7 +117,7 @@ class BaseRobot:
                                     force=0)
             _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, part_name, _, _, _, _ = \
                 p.getJointInfo(bodies[0], j)
-            print('Robot joint:', p.getJointInfo(bodies[0], j))
+            #print('Robot joint:', p.getJointInfo(bodies[0], j))
             joint_name = joint_name.decode("utf8")
             part_name = part_name.decode("utf8")
 
