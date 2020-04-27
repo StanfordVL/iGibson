@@ -32,6 +32,7 @@ class NavigateEnv(BaseEnv):
             physics_timestep=1 / 240.0,
             automatic_reset=False,
             device_idx=0,
+            render_to_tensor=False
     ):
         """
         :param config_file: config_file path
@@ -47,7 +48,8 @@ class NavigateEnv(BaseEnv):
                                           mode=mode,
                                           action_timestep=action_timestep,
                                           physics_timestep=physics_timestep,
-                                          device_idx=device_idx)
+                                          device_idx=device_idx,
+                                          render_to_tensor=render_to_tensor)
         self.automatic_reset = automatic_reset
 
     def load_task_setup(self):
@@ -720,6 +722,7 @@ class NavigateRandomEnv(NavigateEnv):
             automatic_reset=False,
             random_height=False,
             device_idx=0,
+            render_to_tensor=False
     ):
         """
         :param config_file: config_file path
@@ -737,7 +740,8 @@ class NavigateRandomEnv(NavigateEnv):
                                                 action_timestep=action_timestep,
                                                 physics_timestep=physics_timestep,
                                                 automatic_reset=automatic_reset,
-                                                device_idx=device_idx)
+                                                device_idx=device_idx,
+                                                render_to_tensor=render_to_tensor)
         self.random_height = random_height
 
         self.target_dist_min = self.config.get('target_dist_min', 1.0)
@@ -789,6 +793,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
                  action_timestep=1 / 10.0,
                  physics_timestep=1 / 240.0,
                  device_idx=0,
+                 render_to_tensor=False,
                  automatic_reset=False,
                  collision_reward_weight=0.0,
                  track='static'
@@ -800,7 +805,8 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
                                                         physics_timestep=physics_timestep,
                                                         automatic_reset=automatic_reset,
                                                         random_height=False,
-                                                        device_idx=device_idx)
+                                                        device_idx=device_idx,
+                                                        render_to_tensor=render_to_tensor)
         self.collision_reward_weight = collision_reward_weight
 
         assert track in ['static', 'interactive', 'dynamic'], 'unknown track'
