@@ -108,7 +108,7 @@ int main(int argc, char ** argv){
     EGLint egl_error = eglGetError();
     if (!eglQueryDevicesEXT(max_devices, egl_devices, &num_devices) ||
         egl_error != EGL_SUCCESS) {
-        if (verbosity >= 20) { printf("INFO: eglQueryDevicesEXT failed.\n");}
+        printf("WARN: eglQueryDevicesEXT failed.\n");
         m_data->egl_display = EGL_NO_DISPLAY;
     }   
     m_data->m_renderDevice = atoi(argv[1]);
