@@ -12,6 +12,10 @@ class Viewer:
         self.px = initial_pos[0]
         self.py = initial_pos[1]
         self.pz = initial_pos[2]
+        self.theta = np.arctan2(initial_view_direction[1], initial_view_direction[0])
+        self.phi = np.arctan2(initial_view_direction[2], np.sqrt(initial_view_direction[0] ** 2 +
+                                                                initial_view_direction[1] ** 2))
+
         self._mouse_ix, self._mouse_iy = -1, -1
         self.left_down = False
         self.middle_down = False
@@ -50,11 +54,13 @@ class Viewer:
                 dy = (y - self._mouse_iy) / 100.0
                 self._mouse_ix = x
                 self._mouse_iy = y
-                r1 = np.array([[np.cos(dy), 0, np.sin(dy)], [0, 1, 0], [-np.sin(dy), 0,
-                                                                        np.cos(dy)]])
-                r2 = np.array([[np.cos(-dx), -np.sin(-dx), 0], [np.sin(-dx),
-                                                                np.cos(-dx), 0], [0, 0, 1]])
-                self.view_direction = r1.dot(r2).dot(self.view_direction)
+
+                self.phi += dy
+                self.phi = np.clip(self.phi, -np.pi/2 + 1e-5, np.pi/2 - 1e-5)
+                self.theta += dx
+
+                self.view_direction = np.array([np.cos(self.theta)* np.cos(self.phi), np.sin(self.theta) * np.cos(
+                    self.phi), np.sin(self.phi)])
             elif self.middle_down: #if middle button was pressed we get closer/further away in the viewing direction
                 d_vd = (y - self._mouse_iy) / 100.0
                 self._mouse_iy = y
