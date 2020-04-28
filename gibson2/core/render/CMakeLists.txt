@@ -1,8 +1,16 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(CppMeshRenderer)
+
+
 set (USE_GLAD TRUE)
-set (USE_CUDA FALSE)
-set (USE_GLFW TRUE)
+
+if (MAC_PLATFORM)
+  set (USE_CUDA FALSE)
+  set (USE_GLFW TRUE)
+else()
+  set (USE_CUDA TRUE)
+  set (USE_GLFW FALSE)
+endif()
 
 include_directories(glad)
 
