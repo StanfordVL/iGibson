@@ -13,8 +13,8 @@ import numpy as np
 from PIL import Image
 import cv2
 import networkx as nx
-from IPython import embed
 import pickle
+import logging
 
 class Scene:
     def load(self):
@@ -67,7 +67,7 @@ class StadiumScene(Scene):
         return 0.0
 
     def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
-        print('WARNING: trying to compute the shortest path in StadiumScene (assuming empty space)')
+        logging.warning('WARNING: trying to compute the shortest path in StadiumScene (assuming empty space)')
         shortest_path = np.stack((source_world, target_world))
         geodesic_distance = l2_distance(source_world, target_world)
         return shortest_path, geodesic_distance
@@ -103,7 +103,7 @@ class BuildingScene(Scene):
         :param waypoint_resolution: resolution of adjacent way points
         :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect what the robots see
         """
-        print("Building scene: %s" % model_id)
+        logging.info("Building scene: {}".format(model_id))
         self.model_id = model_id
         self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
         self.trav_map_resolution = trav_map_resolution
@@ -127,7 +127,7 @@ class BuildingScene(Scene):
             raise Exception('floors.txt cannot be found in model: {}'.format(self.model_id))
         with open(floor_height_path, 'r') as f:
             self.floors = sorted(list(map(float, f.readlines())))
-            print('Floors', self.floors)
+            logging.debug('Floors {}'.format(self.floors))
 
     def load_scene_mesh(self):
         """
@@ -231,11 +231,11 @@ class BuildingScene(Scene):
             if self.build_graph:
                 graph_file = os.path.join(get_model_path(self.model_id), 'floor_trav_{}.p'.format(f))
                 if os.path.isfile(graph_file):
-                    print("Loading traversable graph")
+                    logging.info("Loading traversable graph")
                     with open(graph_file, 'rb') as pfile:
                         g = pickle.load(pfile)
                 else:
-                    print("Building traversable graph")
+                    logging.info("Building traversable graph")
                     g = nx.Graph()
                     for i in range(self.trav_map_size):
                         for j in range(self.trav_map_size):
@@ -271,7 +271,7 @@ class BuildingScene(Scene):
         urdf_files = [item for item in os.listdir(scene_path) if item[-4:] == 'urdf' and item != 'scene.urdf']
         position_files = [item[:-4].replace('alignment_centered', 'pos') + 'txt' for item in urdf_files]
         for urdf_file, position_file in zip(urdf_files, position_files):
-            print('loading urdf file {}'.format(urdf_file))
+            logging.info('Loading urdf file {}'.format(urdf_file))
             with open(os.path.join(scene_path, position_file)) as f:
                 pos = np.array([float(item) for item in f.readlines()[0].strip().split()])
                 obj = InteractiveObj(os.path.join(scene_path, urdf_file))

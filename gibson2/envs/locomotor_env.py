@@ -15,6 +15,7 @@ from IPython import embed
 import cv2
 import time
 import collections
+import logging
 
 
 class NavigateEnv(BaseEnv):
@@ -588,7 +589,7 @@ class NavigateEnv(BaseEnv):
                 break
 
         if not reset_success:
-            print("WARNING: Failed to reset robot without collision")
+            logging.warning("WARNING: Failed to reset robot without collision")
 
         self.land('robot', self.robots[0], self.initial_pos, self.initial_orn)
 
@@ -598,7 +599,7 @@ class NavigateEnv(BaseEnv):
         """
         return
 
-    def check_collision(self, body_id, verbose=False):
+    def check_collision(self, body_id):
         """
         :param body_id: pybullet body id
         :return: whether the given body_id has no collision
@@ -606,9 +607,10 @@ class NavigateEnv(BaseEnv):
         for _ in range(self.check_collision_loop):
             self.simulator_step()
             collisions = list(p.getContactPoints(bodyA=body_id))
-            if verbose:
+
+            if logging.root.level <= logging.DEBUG: #Only going into this if it is for logging --> efficiency
                 for item in collisions:
-                    print('bodyA:{}, bodyB:{}, linkA:{}, linkB:{}'.format(item[1], item[2], item[3], item[4]))
+                    logging.debug('bodyA:{}, bodyB:{}, linkA:{}, linkB:{}'.format(item[1], item[2], item[3], item[4]))
 
             if len(collisions) > 0:
                 return False

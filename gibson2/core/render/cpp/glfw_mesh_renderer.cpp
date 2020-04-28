@@ -22,10 +22,14 @@ public:
 	int m_windowWidth;
 	int m_windowHeight;
 
+	int verbosity;
+
 	int init() {
+		verbosity = 20;
+
 		// Initialize GLFW context and window
 		if (!glfwInit()) {
-			fprintf(stderr, "Failed to initialize GLFW.\n");
+			fprintf(stderr, "ERROR: Failed to initialize GLFW.\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -38,7 +42,7 @@ public:
 
 		GLFWwindow* window = glfwCreateWindow(m_windowHeight, m_windowHeight, "Gibson VR Renderer", NULL, NULL);
 		if (window == NULL) {
-			fprintf(stderr, "Failed to create GLFW window.\n");
+			fprintf(stderr, "ERROR: Failed to create GLFW window.\n");
 			exit(EXIT_FAILURE);
 		}
 		glfwMakeContextCurrent(window);
@@ -46,11 +50,11 @@ public:
 		// Load all OpenGL function pointers through GLAD
 		if (!gladLoadGL(glfwGetProcAddress))
 		{
-			fprintf(stderr, "Failed to load OpenGL function pointers through GLAD.\n");
+			fprintf(stderr, "ERROR: Failed to load OpenGL function pointers through GLAD.\n");
 			exit(EXIT_FAILURE);
 		}
 
-		printf("Succesfully initialized GLFW context and window!\n");
+		if(verbosity >= 20) { printf("INFO: Succesfully initialized GLFW context and window!\n");}
 
 		return 0;
 	}
