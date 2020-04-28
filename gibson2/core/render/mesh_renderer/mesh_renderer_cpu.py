@@ -18,6 +18,7 @@ import pybullet as p
 import gibson2
 import os
 from gibson2.core.render.mesh_renderer import tinyobjloader
+import platform
 import logging
 
 class VisualObject(object):
@@ -326,7 +327,7 @@ class MeshRenderer(object):
         available_devices = get_available_devices()
         if device_idx < len(available_devices):
             device = available_devices[device_idx]
-            logging.info("Using device {}".format(device))
+            logging.info("Using device {} for rendering".format(device))
         else:
             logging.info("Device index is larger than number of devices, falling back to use 0")
             device = 0
@@ -334,16 +335,23 @@ class MeshRenderer(object):
         self.device_idx = device_idx
         self.device_minor = device
         self.msaa = msaa
-        self.r = MeshRendererContext.MeshRendererContext(width, height, device)
+        if platform.system() == 'Darwin':
+            from gibson2.core.render.mesh_renderer import GLFWRendererContext
+            self.r = GLFWRendererContext.GLFWRendererContext(width, height)
+        else:
+            self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
-        self.r.glad_init()
         self.glstring = self.r.getstring_meshrenderer()
+
+        logging.debug('Rendering device and GL version')
+        logging.debug(self.glstring)
+
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
         self.lightcolor = [1, 1, 1]
 
-        logging.debug('Using fisheye camera: {}'.format(self.fisheye))
+        logging.debug('Is using fisheye camera: {}'.format(self.fisheye))
 
         if self.fisheye:
             [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(

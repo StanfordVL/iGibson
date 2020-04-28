@@ -267,30 +267,6 @@ public:
     }
 
 
-    void draw(py::array_t<float> x) {
-        int size = 3 * m_windowWidth * m_windowHeight;
-        auto ptr = (float *) x.mutable_data();
-
-        glClear(GL_COLOR_BUFFER_BIT);
-        glBegin(GL_TRIANGLES);
-        glColor3f(1, 0, 0);
-        glVertex2f(0,  1);
-
-        glColor3f(0, 1, 0);
-        glVertex2f(-1, -1);
-
-        glColor3f(0, 0, 1);
-        glVertex2f(1, -1);
-        glEnd();
-
-        eglSwapBuffers( m_data->egl_display, m_data->egl_surface);
-        glReadPixels(0,0,m_windowWidth,m_windowHeight,GL_RGB, GL_FLOAT, ptr);
-    }
-
-    void draw_py(py::array_t<float> x) {
-        std::fill(x.mutable_data(), x.mutable_data() + x.size(), 42);
-    }
-
 #ifdef USE_CUDA
     void map_tensor(GLuint tid, int width, int height, std::size_t data)
     {
@@ -387,13 +363,6 @@ public:
 
     void render_meshrenderer_post() {
         glDisable(GL_DEPTH_TEST);
-    }
-
-    void glad_init() {
-        if (!gladLoadGL(eglGetProcAddress)) {
-            fprintf(stderr, "ERROR: failed to load GL with glad.\n");
-            exit(EXIT_FAILURE);
-        }
     }
 
     std::string getstring_meshrenderer() {
@@ -752,7 +721,6 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         pymodule.def("render_meshrenderer_post", &MeshRendererContext::render_meshrenderer_post, "post-executed functions in MeshRenderer.render");
         pymodule.def("getstring_meshrenderer", &MeshRendererContext::getstring_meshrenderer, "return GL version string");
         pymodule.def("readbuffer_meshrenderer", &MeshRendererContext::readbuffer_meshrenderer, "read pixel buffer");
-        pymodule.def("glad_init", &MeshRendererContext::glad_init, "init glad");
         pymodule.def("clean_meshrenderer", &MeshRendererContext::clean_meshrenderer, "clean meshrenderer");
         pymodule.def("setup_framebuffer_meshrenderer", &MeshRendererContext::setup_framebuffer_meshrenderer, "setup framebuffer in meshrenderer");
         pymodule.def("setup_framebuffer_meshrenderer_ms", &MeshRendererContext::setup_framebuffer_meshrenderer_ms, "setup framebuffer in meshrenderer with MSAA");
