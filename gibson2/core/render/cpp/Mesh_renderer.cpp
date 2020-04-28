@@ -365,13 +365,6 @@ public:
         glDisable(GL_DEPTH_TEST);
     }
 
-    void glad_init() {
-        if (!gladLoadGL(eglGetProcAddress)) {
-            fprintf(stderr, "ERROR: failed to load GL with glad.\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-
     std::string getstring_meshrenderer() {
         return reinterpret_cast<char const *>(glGetString(GL_VERSION));
     }
@@ -728,7 +721,6 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         pymodule.def("render_meshrenderer_post", &MeshRendererContext::render_meshrenderer_post, "post-executed functions in MeshRenderer.render");
         pymodule.def("getstring_meshrenderer", &MeshRendererContext::getstring_meshrenderer, "return GL version string");
         pymodule.def("readbuffer_meshrenderer", &MeshRendererContext::readbuffer_meshrenderer, "read pixel buffer");
-        pymodule.def("glad_init", &MeshRendererContext::glad_init, "init glad");
         pymodule.def("clean_meshrenderer", &MeshRendererContext::clean_meshrenderer, "clean meshrenderer");
         pymodule.def("setup_framebuffer_meshrenderer", &MeshRendererContext::setup_framebuffer_meshrenderer, "setup framebuffer in meshrenderer");
         pymodule.def("setup_framebuffer_meshrenderer_ms", &MeshRendererContext::setup_framebuffer_meshrenderer_ms, "setup framebuffer in meshrenderer with MSAA");

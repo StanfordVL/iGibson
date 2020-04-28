@@ -8,7 +8,8 @@ import pybullet as p
 import gibson2
 import os
 import numpy as np
-import platform 
+import platform
+import logging
         
 
 class Simulator:
@@ -47,7 +48,8 @@ class Simulator:
         plt = platform.system()
         if plt == 'Darwin' and self.mode == 'gui':
             self.mode = 'iggui' # for mac os disable pybullet rendering
-            print('[Warning] Rendering both iggui and pbgui is not supported on mac, choose either pbgui or iggui. Default to iggui.')
+            logging.warn('Rendering both iggui and pbgui is not supported on mac, choose either pbgui or '
+                      'iggui. Default to iggui.')
         
         self.use_pb_renderer = False
         self.use_ig_renderer = False
