@@ -26,33 +26,31 @@ class Viewer:
         cv2.setMouseCallback('ExternalView', self.change_dir)
 
     def change_dir(self, event, x, y, flags, param):
-        if flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_CTRLKEY and not self.right_down: # Only once
+        if flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_CTRLKEY and not self.right_down: # Only once: When pressing right mouse while cntrl key is pressed
             self._mouse_ix, self._mouse_iy = x, y
             self.right_down = True
-        elif event == cv2.EVENT_LBUTTONDOWN:
+        elif event == cv2.EVENT_LBUTTONDOWN: #left mouse button press
             self._mouse_ix, self._mouse_iy = x, y
             self.left_down = True
-        elif event == cv2.EVENT_LBUTTONUP:
+        elif event == cv2.EVENT_LBUTTONUP: #left mouse button released
             self.left_down = False
             self.right_down = False
-        elif event == cv2.EVENT_MBUTTONDOWN:
+        elif event == cv2.EVENT_MBUTTONDOWN: #middle mouse button press
             self._mouse_ix, self._mouse_iy = x, y
             self.middle_down = True
-        elif event == cv2.EVENT_MBUTTONUP:
+        elif event == cv2.EVENT_MBUTTONUP: #middle mouse button released
             self.middle_down = False
 
-        if event == cv2.EVENT_MOUSEMOVE:
-            if self.left_down:
+        if event == cv2.EVENT_MOUSEMOVE: #moving mouse location on the window
+            if self.left_down: #if left button was pressed we change orientation of camera
                 dx = (x - self._mouse_ix) / 100.0
                 dy = (y - self._mouse_iy) / 100.0
                 self._mouse_ix = x
                 self._mouse_iy = y
-                r1 = np.array([[np.cos(dy), 0, np.sin(dy)], [0, 1, 0], [-np.sin(dy), 0,
-                                                                        np.cos(dy)]])
-                r2 = np.array([[np.cos(-dx), -np.sin(-dx), 0], [np.sin(-dx),
-                                                                np.cos(-dx), 0], [0, 0, 1]])
+                r1 = np.array([[np.cos(-dy), 0, np.sin(-dy)], [0, 1, 0], [-np.sin(-dy), 0, np.cos(-dy)]])
+                r2 = np.array([[np.cos(dx), -np.sin(dx), 0], [np.sin(dx), np.cos(dx), 0], [0, 0, 1]])
                 self.view_direction = r1.dot(r2).dot(self.view_direction)
-            elif self.middle_down:
+            elif self.middle_down: #if middle button was pressed we get closer/further away in the viewing direction
                 d_vd = (y - self._mouse_iy) / 100.0
                 self._mouse_iy = y
 
@@ -60,7 +58,7 @@ class Viewer:
                 self.px += motion_along_vd[0]
                 self.py += motion_along_vd[1]
                 self.pz += motion_along_vd[2]
-            elif self.right_down:
+            elif self.right_down: #if right button was pressed we change translation of camera
 
                 zz = self.view_direction/np.linalg.norm(self.view_direction)
                 xx = np.cross(zz, np.array([0,0,1]))
