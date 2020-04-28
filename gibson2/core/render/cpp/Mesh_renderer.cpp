@@ -61,6 +61,8 @@ public:
     int m_windowHeight;
     int m_renderDevice;
 
+    int verbosity;
+
     EGLBoolean success;
     EGLint num_configs;
     EGLConfig egl_config;
@@ -76,6 +78,8 @@ public:
 #endif
 
     int init() {
+
+      verbosity = 20;
 
 #ifndef USE_GLAD
     PFNEGLQUERYDEVICESEXTPROC eglQueryDevicesEXT =
@@ -123,7 +127,7 @@ public:
 #ifdef USE_GLAD
     int egl_version = gladLoaderLoadEGL(NULL);
     if(!egl_version) {
-        fprintf(stderr, "failed to EGL with glad.\n");
+        fprintf(stderr, "ERROR: Failed to EGL with glad.\n");
         exit(EXIT_FAILURE);
 
     };
@@ -136,7 +140,7 @@ public:
     EGLint egl_error = eglGetError();
     if (!eglQueryDevicesEXT(max_devices, egl_devices, &num_devices) ||
         egl_error != EGL_SUCCESS) {
-        printf("eglQueryDevicesEXT Failed.\n");
+        printf("WARN: eglQueryDevicesEXT Failed.\n");
         m_data->egl_display = EGL_NO_DISPLAY;
     }
 
@@ -159,7 +163,7 @@ public:
     } else {
         // Chose specific screen, by using m_renderDevice
         if (m_data->m_renderDevice < 0 || m_data->m_renderDevice >= num_devices) {
-            fprintf(stderr, "Invalid render_device choice: %d < %d.\n", m_data->m_renderDevice, num_devices);
+            fprintf(stderr, "ERROR: Invalid render_device choice: %d < %d.\n", m_data->m_renderDevice, num_devices);
             exit(EXIT_FAILURE);
         }
 
@@ -176,27 +180,25 @@ public:
     }
 
     if (!eglInitialize(m_data->egl_display, NULL, NULL)) {
-        fprintf(stderr, "Unable to initialize EGL\n");
+        fprintf(stderr, "ERROR: Unable to initialize EGL\n");
         exit(EXIT_FAILURE);
     }
 
 #ifdef USE_GLAD
     egl_version = gladLoaderLoadEGL(m_data->egl_display);
     if (!egl_version) {
-        fprintf(stderr, "Unable to reload EGL.\n");
+        fprintf(stderr, "ERROR: Unable to reload EGL.\n");
         exit(EXIT_FAILURE);
     }
-    //printf("Loaded EGL %d.%d after reload.\n", GLAD_VERSION_MAJOR(egl_version),
-    //       GLAD_VERSION_MINOR(egl_version));
 #else
-    printf("not using glad\n");
+    if (verbosity >= 20) { printf("INFO: Not using glad\n");}
 #endif
 
     m_data->success = eglBindAPI(EGL_OPENGL_API);
     if (!m_data->success) {
         // TODO: Properly handle this error (requires change to default window
         // API to change return on all window types to bool).
-        fprintf(stderr, "Failed to bind OpenGL API.\n");
+        fprintf(stderr, "ERROR: Failed to bind OpenGL API.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -206,18 +208,18 @@ public:
     if (!m_data->success) {
         // TODO: Properly handle this error (requires change to default window
         // API to change return on all window types to bool).
-        fprintf(stderr, "Failed to choose config (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "ERROR: Failed to choose config (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
     if (m_data->num_configs != 1) {
-        fprintf(stderr, "Didn't get exactly one config, but %d\n", m_data->num_configs);
+        fprintf(stderr, "ERROR: Didn't get exactly one config, but %d\n", m_data->num_configs);
         exit(EXIT_FAILURE);
     }
 
     m_data->egl_surface = eglCreatePbufferSurface(
                                                   m_data->egl_display, m_data->egl_config, egl_pbuffer_attribs);
     if (m_data->egl_surface == EGL_NO_SURFACE) {
-        fprintf(stderr, "Unable to create EGL surface (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "ERROR: Unable to create EGL surface (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
 
@@ -225,7 +227,7 @@ public:
     m_data->egl_context = eglCreateContext(
                                            m_data->egl_display, m_data->egl_config, EGL_NO_CONTEXT, NULL);
     if (!m_data->egl_context) {
-        fprintf(stderr, "Unable to create EGL context (eglError: %d)\n",eglGetError());
+        fprintf(stderr, "ERROR: Unable to create EGL context (eglError: %d)\n",eglGetError());
         exit(EXIT_FAILURE);
     }
 
@@ -233,12 +235,12 @@ public:
         eglMakeCurrent(m_data->egl_display, m_data->egl_surface, m_data->egl_surface,
                    m_data->egl_context);
     if (!m_data->success) {
-        fprintf(stderr, "Failed to make context current (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "ERROR: Failed to make context current (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
 
     if (!gladLoadGL(eglGetProcAddress)) {
-        fprintf(stderr, "failed to load GL with glad.\n");
+        fprintf(stderr, "ERROR: Failed to load GL with glad.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -255,9 +257,9 @@ public:
             if (cuda_res[i])
             {
               cudaError_t err = cudaGraphicsUnregisterResource(cuda_res[i]);
-              if( err != cudaSuccess )
+              if( err != cudaSuccess)
               {
-                std::cout << "cudaGraphicsUnregisterResource failed: " << err << std::endl;
+                std::cout << "WARN: cudaGraphicsUnregisterResource failed: " << err << std::endl;
               }
             }
           }
@@ -266,10 +268,7 @@ public:
 
 
     void draw(py::array_t<float> x) {
-        //printf("draw\n");
         int size = 3 * m_windowWidth * m_windowHeight;
-        //unsigned char *data2 = new unsigned char[size];
-
         auto ptr = (float *) x.mutable_data();
 
         glClear(GL_COLOR_BUFFER_BIT);
@@ -286,17 +285,9 @@ public:
 
         eglSwapBuffers( m_data->egl_display, m_data->egl_surface);
         glReadPixels(0,0,m_windowWidth,m_windowHeight,GL_RGB, GL_FLOAT, ptr);
-        //unsigned error = lodepng::encode("test.png", (unsigned char*)data2, m_windowWidth, m_windowHeight, LCT_RGB, 8);
-        //delete data2;
     }
 
     void draw_py(py::array_t<float> x) {
-        /*auto r = x.mutable_unchecked<3>(); // Will throw if ndim != 3 or flags.writeable is false
-            for (ssize_t i = 0; i < r.shape(0); i++)
-                for (ssize_t j = 0; j < r.shape(1); j++)
-                    for (ssize_t k = 0; k < r.shape(2); k++)
-                        r(i, j, k) += 1.0;*/
-
         std::fill(x.mutable_data(), x.mutable_data() + x.size(), 42);
     }
 
@@ -307,36 +298,36 @@ public:
        if (cuda_res[tid] == NULL)
        {
          err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
-         if( err != cudaSuccess )
+         if( err != cudaSuccess)
          {
-           std::cout << "cudaGraphicsGLRegisterImage failed: " << err << std::endl;
+           std::cout << "WARN: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
          }
        }
 
        err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsMapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsMapResources failed: " << err << std::endl;
        }
 
        cudaArray* array;
        err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
        }
 
        // copy data
        err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(char), array, 0, 0, width*4*sizeof(char), height, cudaMemcpyDeviceToDevice);
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaMemcpy2DFromArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaMemcpy2DFromArray failed: " << err << std::endl;
        }
 
        err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsUnmapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsUnmapResources failed: " << err << std::endl;
        }
     }
 
@@ -346,36 +337,36 @@ public:
        if (cuda_res[tid] == NULL)
        {
          err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
-         if( err != cudaSuccess )
+         if( err != cudaSuccess)
          {
-           std::cout << "cudaGraphicsGLRegisterImage failed: " << err << std::endl;
+           std::cout << "WARN: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
          }
        }
 
        err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsMapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsMapResources failed: " << err << std::endl;
        }
 
        cudaArray* array;
        err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
        }
 
        // copy data
        err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(float), array, 0, 0, width*4*sizeof(float), height, cudaMemcpyDeviceToDevice);
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaMemcpy2DFromArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaMemcpy2DFromArray failed: " << err << std::endl;
        }
 
        err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsUnmapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsUnmapResources failed: " << err << std::endl;
        }
     }
 #endif
@@ -400,7 +391,7 @@ public:
 
     void glad_init() {
         if (!gladLoadGL(eglGetProcAddress)) {
-            fprintf(stderr, "failed to load GL with glad.\n");
+            fprintf(stderr, "ERROR: failed to load GL with glad.\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -436,7 +427,7 @@ public:
             glReadBuffer(GL_COLOR_ATTACHMENT3);
         }
         else {
-            fprintf(stderr, "unknown buffer mode.\n");
+            fprintf(stderr, "ERROR: Unknown buffer mode.\n");
             exit(EXIT_FAILURE);
         }
         py::array_t<float> data = py::array_t<float>(4 * width * height);
@@ -706,13 +697,6 @@ public:
     }
 
     int loadTexture(std::string filename) {
-    //    img = Image.open(path).transpose(Image.FLIP_TOP_BOTTOM)
-    //    w, h = img.size
-    //
-    //    img = img.resize((int(w * scale), int(h * scale)), Image.BICUBIC)
-
-    //    img_data = np.frombuffer(img.tobytes(), np.uint8)
-    //    #print(img_data.shape)
         //width, height = img.size
         // glTexImage2D expects the first element of the image data to be the
         // bottom-left corner of the image.  Subsequent elements go left to right,
@@ -731,7 +715,7 @@ public:
         unsigned char* image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb);
 
         if(image == nullptr)
-            throw(std::string("Failed to load texture"));
+            throw(std::string("ERROR: Failed to load texture"));
 
 
         GLuint texture;
