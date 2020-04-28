@@ -638,7 +638,7 @@ public:
 
     void init_material_instance(int shaderProgram, int class_id, py::array_t<float> diffuse_color, float use_texture) {
         float *diffuse_ptr = (float *) diffuse_color.request().ptr;
-        glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), (class_id % 16 * 16) / 256.0, (class_id / 16 % 16 * 16) / 256.0, (class_id / 256 % 16 * 16) / 256.0);
+        glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), (class_id % 16 * 16) / 255.0, (class_id / 16 % 16 * 16) / 255.0, (class_id / 256 % 16 * 16) / 255.0);
         glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
         glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     }
