@@ -1,5 +1,6 @@
 import subprocess
 import os
+import logging
 
 def get_available_devices():
     """
@@ -25,10 +26,10 @@ def get_available_devices():
                 ["{}/test_device".format(executable_path),
                  str(i)], stderr=FNULL):
                 available_devices.append(i)
-                print('device {} is available for rendering'.format(i))
+                logging.info('Device {} is available for rendering'.format(i))
         except subprocess.CalledProcessError as e:
-            #print(e)
-            print('device {} is not available for rendering'.format(i))
+            logging.info(e)
+            logging.info('Device {} is not available for rendering'.format(i))
     FNULL.close()
 
     return available_devices
@@ -63,5 +64,5 @@ def get_cuda_device(minor_idx):
 
 if __name__ == '__main__':
     graphics_devices = get_available_devices()
-    print(graphics_devices)
-    print([get_cuda_device(item) for item in graphics_devices])
+    logging.info('Graphics Devices: {}'.format(graphics_devices))
+    logging.info('Graphics Device Ids: {}'.format([get_cuda_device(item) for item in graphics_devices]))

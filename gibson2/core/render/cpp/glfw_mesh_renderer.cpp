@@ -34,10 +34,14 @@ public:
 	int m_windowHeight;
 	GLFWwindow* window = NULL;
 
+	int verbosity;
+
 	int init() {
+		verbosity = 20;
+
 		// Initialize GLFW context and window
 		if (!glfwInit()) {
-			fprintf(stderr, "Failed to initialize GLFW.\n");
+			fprintf(stderr, "ERROR: Failed to initialize GLFW.\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -50,7 +54,8 @@ public:
 
 		this->window = glfwCreateWindow(m_windowHeight, m_windowHeight, "Gibson VR Renderer", NULL, NULL);
 		if (this->window == NULL) {
-			fprintf(stderr, "Failed to create GLFW window.\n");
+			fprintf(stderr, "ERROR: Failed to create GLFW window.\n");
+
 			exit(EXIT_FAILURE);
 		}
 		glfwMakeContextCurrent(this->window);
@@ -58,11 +63,11 @@ public:
 		// Load all OpenGL function pointers through GLAD
 		if (!gladLoadGL(glfwGetProcAddress))
 		{
-			fprintf(stderr, "Failed to load OpenGL function pointers through GLAD.\n");
+			fprintf(stderr, "ERROR: Failed to load OpenGL function pointers through GLAD.\n");
 			exit(EXIT_FAILURE);
 		}
 
-		printf("Succesfully initialized GLFW context and window!\n");
+		if(verbosity >= 20) { printf("INFO: Succesfully initialized GLFW context and window!\n");}
 
 		return 0;
 	}
@@ -70,40 +75,7 @@ public:
 	void release() {
 		glfwTerminate();
 	}
-	
-    void draw(py::array_t<float> x) {
-        //printf("draw\n");
-        int size = 3 * m_windowWidth * m_windowHeight;
-        //unsigned char *data2 = new unsigned char[size];
 
-        auto ptr = (float *) x.mutable_data();
-
-        glClear(GL_COLOR_BUFFER_BIT);
-        glBegin(GL_TRIANGLES);
-        glColor3f(1, 0, 0);
-        glVertex2f(0,  1);
-
-        glColor3f(0, 1, 0);
-        glVertex2f(-1, -1);
-
-        glColor3f(0, 0, 1);
-        glVertex2f(1, -1);
-        glEnd();
-
-        glReadPixels(0,0,m_windowWidth,m_windowHeight,GL_RGB, GL_FLOAT, ptr);
-        //unsigned error = lodepng::encode("test.png", (unsigned char*)data2, m_windowWidth, m_windowHeight, LCT_RGB, 8);
-        //delete data2;
-    }
-
-    void draw_py(py::array_t<float> x) {
-        /*auto r = x.mutable_unchecked<3>(); // Will throw if ndim != 3 or flags.writeable is false
-            for (ssize_t i = 0; i < r.shape(0); i++)
-                for (ssize_t j = 0; j < r.shape(1); j++)
-                    for (ssize_t k = 0; k < r.shape(2); k++)
-                        r(i, j, k) += 1.0;*/
-
-        std::fill(x.mutable_data(), x.mutable_data() + x.size(), 42);
-    }
 
 #ifdef USE_CUDA
     void map_tensor(GLuint tid, int width, int height, std::size_t data)
@@ -114,34 +86,34 @@ public:
          err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
          if( err != cudaSuccess )
          {
-           std::cout << "cudaGraphicsGLRegisterImage failed: " << err << std::endl;
+           std::cout << "WARN: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
          }
        }
 
        err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
        if( err != cudaSuccess )
        {
-         std::cout << "cudaGraphicsMapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsMapResources failed: " << err << std::endl;
        }
 
        cudaArray* array;
        err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
        if( err != cudaSuccess )
        {
-         std::cout << "cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
        }
 
        // copy data
        err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(char), array, 0, 0, width*4*sizeof(char), height, cudaMemcpyDeviceToDevice);
        if( err != cudaSuccess )
        {
-         std::cout << "cudaMemcpy2DFromArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaMemcpy2DFromArray failed: " << err << std::endl;
        }
 
        err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
        if( err != cudaSuccess )
        {
-         std::cout << "cudaGraphicsUnmapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsUnmapResources failed: " << err << std::endl;
        }
     }
 
@@ -153,34 +125,34 @@ public:
          err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
          if( err != cudaSuccess )
          {
-           std::cout << "cudaGraphicsGLRegisterImage failed: " << err << std::endl;
+           std::cout << "WARN: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
          }
        }
 
        err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
        if( err != cudaSuccess )
        {
-         std::cout << "cudaGraphicsMapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsMapResources failed: " << err << std::endl;
        }
 
        cudaArray* array;
        err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
        if( err != cudaSuccess )
        {
-         std::cout << "cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
        }
 
        // copy data
        err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(float), array, 0, 0, width*4*sizeof(float), height, cudaMemcpyDeviceToDevice);
        if( err != cudaSuccess )
        {
-         std::cout << "cudaMemcpy2DFromArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaMemcpy2DFromArray failed: " << err << std::endl;
        }
 
        err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
        if( err != cudaSuccess )
        {
-         std::cout << "cudaGraphicsUnmapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsUnmapResources failed: " << err << std::endl;
        }
     }
 #endif
@@ -241,7 +213,7 @@ public:
             glReadBuffer(GL_COLOR_ATTACHMENT3);
         }
         else {
-            fprintf(stderr, "unknown buffer mode.\n");
+            fprintf(stderr, "ERROR: unknown buffer mode.\n");
             exit(EXIT_FAILURE);
         }
         py::array_t<float> data = py::array_t<float>(4 * width * height);
