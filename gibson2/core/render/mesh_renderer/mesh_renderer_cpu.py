@@ -342,8 +342,11 @@ class MeshRenderer(object):
             self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
-        #self.r.glad_init()
         self.glstring = self.r.getstring_meshrenderer()
+
+        logging.debug('Rendering device and GL version')
+        logging.debug(self.glstring)
+
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
         self.lightcolor = [1, 1, 1]

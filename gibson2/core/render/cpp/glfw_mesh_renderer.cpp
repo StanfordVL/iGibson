@@ -28,53 +28,53 @@ namespace py = pybind11;
 
 class GLFWRendererContext {
 public:
-	GLFWRendererContext(int w, int h) :m_windowHeight(h), m_windowWidth(w) {};
+    GLFWRendererContext(int w, int h) :m_windowHeight(h), m_windowWidth(w) {};
 
-	int m_windowWidth;
-	int m_windowHeight;
-	GLFWwindow* window = NULL;
+    int m_windowWidth;
+    int m_windowHeight;
+    GLFWwindow* window = NULL;
 
-	int verbosity;
+    int verbosity;
 
-	int init() {
-		verbosity = 20;
+    int init() {
+        verbosity = 20;
 
-		// Initialize GLFW context and window
-		if (!glfwInit()) {
-			fprintf(stderr, "ERROR: Failed to initialize GLFW.\n");
-			exit(EXIT_FAILURE);
-		}
+        // Initialize GLFW context and window
+        if (!glfwInit()) {
+            fprintf(stderr, "ERROR: Failed to initialize GLFW.\n");
+            exit(EXIT_FAILURE);
+        }
 
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-		// Hide GLFW window by default
-		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        // Hide GLFW window by default
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-		this->window = glfwCreateWindow(m_windowHeight, m_windowHeight, "Gibson VR Renderer", NULL, NULL);
-		if (this->window == NULL) {
-			fprintf(stderr, "ERROR: Failed to create GLFW window.\n");
+        this->window = glfwCreateWindow(m_windowHeight, m_windowHeight, "Gibson VR Renderer", NULL, NULL);
+        if (this->window == NULL) {
+            fprintf(stderr, "ERROR: Failed to create GLFW window.\n");
 
-			exit(EXIT_FAILURE);
-		}
-		glfwMakeContextCurrent(this->window);
+            exit(EXIT_FAILURE);
+        }
+        glfwMakeContextCurrent(this->window);
 
-		// Load all OpenGL function pointers through GLAD
-		if (!gladLoadGL(glfwGetProcAddress))
-		{
-			fprintf(stderr, "ERROR: Failed to load OpenGL function pointers through GLAD.\n");
-			exit(EXIT_FAILURE);
-		}
+        // Load all OpenGL function pointers through GLAD
+        if (!gladLoadGL(glfwGetProcAddress))
+        {
+            fprintf(stderr, "ERROR: Failed to load OpenGL function pointers through GLAD.\n");
+            exit(EXIT_FAILURE);
+        }
 
-		if(verbosity >= 20) { printf("INFO: Succesfully initialized GLFW context and window!\n");}
+        if(verbosity >= 20) { printf("INFO: Succesfully initialized GLFW context and window!\n");}
 
-		return 0;
-	}
+        return 0;
+    }
 
-	void release() {
-		glfwTerminate();
-	}
+    void release() {
+        glfwTerminate();
+    }
 
 
 #ifdef USE_CUDA
@@ -174,13 +174,6 @@ public:
     void render_meshrenderer_post() {
         glDisable(GL_DEPTH_TEST);
     }
-
-    /*void glad_init() {
-        if (!gladLoadGL(eglGetProcAddress)) {
-            fprintf(stderr, "failed to load GL with glad.\n");
-            exit(EXIT_FAILURE);
-        }
-    }*/
 
     std::string getstring_meshrenderer() {
         return reinterpret_cast<char const *>(glGetString(GL_VERSION));
@@ -427,17 +420,15 @@ public:
         glBindVertexArray(vao);
         glBindFramebuffer(GL_FRAMEBUFFER, fb);
         unsigned int *ptr = (unsigned int *) faces.request().ptr;
-        //glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, ptr);
-		
-	            
-	    GLuint elementBuffer;
-	    glGenBuffers(1, &elementBuffer);
-	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
-	    glBufferData(GL_ELEMENT_ARRAY_BUFFER, face_size * sizeof(unsigned int), &ptr[0], GL_STATIC_DRAW);
-	    glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, (void*)0);
-	    glDeleteBuffers(1, &elementBuffer);        
-	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
-		
+
+        GLuint elementBuffer;
+        glGenBuffers(1, &elementBuffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, face_size * sizeof(unsigned int), &ptr[0], GL_STATIC_DRAW);
+        glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, (void*)0);
+        glDeleteBuffers(1, &elementBuffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
+
     }
 
     void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
@@ -492,23 +483,6 @@ public:
     }
 
     int loadTexture(std::string filename) {
-    //    img = Image.open(path).transpose(Image.FLIP_TOP_BOTTOM)
-    //    w, h = img.size
-    //
-    //    img = img.resize((int(w * scale), int(h * scale)), Image.BICUBIC)
-
-    //    img_data = np.frombuffer(img.tobytes(), np.uint8)
-    //    #print(img_data.shape)
-        //width, height = img.size
-        // glTexImage2D expects the first element of the image data to be the
-        // bottom-left corner of the image.  Subsequent elements go left to right,
-        // with subsequent lines going from bottom to top.
-
-        // However, the image data was created with PIL Image tostring and numpy's
-        // fromstring, which means we have to do a bit of reorganization. The first
-        // element in the data output by tostring() will be the top-left corner of
-        // the image, with following values going left-to-right and lines going
-        // top-to-bottom.  So, we need to flip the vertical coordinate (y).
 
         int w;
         int h;
@@ -537,19 +511,18 @@ public:
 };
 
 PYBIND11_MODULE(GLFWRendererContext, m) {
-	
+
     py::class_<GLFWRendererContext> pymodule = py::class_<GLFWRendererContext>(m, "GLFWRendererContext");
-    
-	pymodule.def(py::init<int, int>());
-	pymodule.def("init", &GLFWRendererContext::init);
-	pymodule.def("release", &GLFWRendererContext::release);
+
+    pymodule.def(py::init<int, int>());
+    pymodule.def("init", &GLFWRendererContext::init);
+    pymodule.def("release", &GLFWRendererContext::release);
 
     // class MeshRenderer
     pymodule.def("render_meshrenderer_pre", &GLFWRendererContext::render_meshrenderer_pre, "pre-executed functions in MeshRenderer.render");
     pymodule.def("render_meshrenderer_post", &GLFWRendererContext::render_meshrenderer_post, "post-executed functions in MeshRenderer.render");
     pymodule.def("getstring_meshrenderer", &GLFWRendererContext::getstring_meshrenderer, "return GL version string");
     pymodule.def("readbuffer_meshrenderer", &GLFWRendererContext::readbuffer_meshrenderer, "read pixel buffer");
-    //pymodule.def("glad_init", &GLFWRendererContext::glad_init, "init glad");
     pymodule.def("clean_meshrenderer", &GLFWRendererContext::clean_meshrenderer, "clean meshrenderer");
     pymodule.def("setup_framebuffer_meshrenderer", &GLFWRendererContext::setup_framebuffer_meshrenderer, "setup framebuffer in meshrenderer");
     pymodule.def("setup_framebuffer_meshrenderer_ms", &GLFWRendererContext::setup_framebuffer_meshrenderer_ms, "setup framebuffer in meshrenderer with MSAA");
@@ -572,12 +545,10 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
     // misc
     pymodule.def("cglBindVertexArray", &GLFWRendererContext::cglBindVertexArray, "binding function");
     pymodule.def("cglUseProgram", &GLFWRendererContext::cglUseProgram, "binding function");
-    
-
 
 #ifdef VERSION_INFO
-	m.attr("__version__") = VERSION_INFO;
+    m.attr("__version__") = VERSION_INFO;
 #else
-	m.attr("__version__") = "dev";
+    m.attr("__version__") = "dev";
 #endif
 }
