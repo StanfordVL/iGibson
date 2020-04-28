@@ -99,7 +99,7 @@ int main(){
 #ifdef USE_GLAD
     int egl_version = gladLoaderLoadEGL(NULL);
     if(!egl_version) {
-        fprintf(stderr, "ERROR: Failed to EGL with glad.\n");
+        fprintf(stderr, "INFO: Probing, EGL cannot run on this device\n");
         exit(EXIT_FAILURE);
     };
 #endif
