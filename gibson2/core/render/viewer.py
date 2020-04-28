@@ -30,6 +30,10 @@ class Viewer:
             # Only once, when pressing left mouse while cntrl key is pressed
             self._mouse_ix, self._mouse_iy = x, y
             self.right_down = True
+        elif (event == cv2.EVENT_MBUTTONDOWN) or (flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down): 
+            #middle mouse button press or only once, when pressing left mouse while shift key is pressed (Mac compatibility)
+            self._mouse_ix, self._mouse_iy = x, y
+            self.middle_down = True
         elif event == cv2.EVENT_LBUTTONDOWN: #left mouse button press
             self._mouse_ix, self._mouse_iy = x, y
             self.left_down = True
@@ -37,10 +41,6 @@ class Viewer:
             self.left_down = False
             self.right_down = False
             self.middle_down = False
-        elif (event == cv2.EVENT_MBUTTONDOWN) or (flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down): 
-            #middle mouse button press or only once, when pressing left mouse while shift key is pressed (Mac compatibility)
-            self._mouse_ix, self._mouse_iy = x, y
-            self.middle_down = True
         elif event == cv2.EVENT_MBUTTONUP: #middle mouse button released
             self.middle_down = False
 
