@@ -140,7 +140,7 @@ public:
     EGLint egl_error = eglGetError();
     if (!eglQueryDevicesEXT(max_devices, egl_devices, &num_devices) ||
         egl_error != EGL_SUCCESS) {
-        if (verbosity >= 20) { printf("INFO: eglQueryDevicesEXT Failed.\n");}
+        printf("WARN: eglQueryDevicesEXT Failed.\n");
         m_data->egl_display = EGL_NO_DISPLAY;
     }
 
@@ -257,9 +257,9 @@ public:
             if (cuda_res[i])
             {
               cudaError_t err = cudaGraphicsUnregisterResource(cuda_res[i]);
-              if( err != cudaSuccess && verbosity >=20)
+              if( err != cudaSuccess)
               {
-                std::cout << "INFO: cudaGraphicsUnregisterResource failed: " << err << std::endl;
+                std::cout << "WARN: cudaGraphicsUnregisterResource failed: " << err << std::endl;
               }
             }
           }
@@ -298,36 +298,36 @@ public:
        if (cuda_res[tid] == NULL)
        {
          err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
-         if( err != cudaSuccess && verbosity >=20)
+         if( err != cudaSuccess)
          {
-           std::cout << "INFO: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
+           std::cout << "WARN: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
          }
        }
 
        err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess && verbosity >=20)
+       if( err != cudaSuccess)
        {
-         std::cout << "INFO: cudaGraphicsMapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsMapResources failed: " << err << std::endl;
        }
 
        cudaArray* array;
        err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
-       if( err != cudaSuccess && verbosity >=20)
+       if( err != cudaSuccess)
        {
-         std::cout << "INFO: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
        }
 
        // copy data
        err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(char), array, 0, 0, width*4*sizeof(char), height, cudaMemcpyDeviceToDevice);
-       if( err != cudaSuccess && verbosity >=20)
+       if( err != cudaSuccess)
        {
-         std::cout << "INFO: cudaMemcpy2DFromArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaMemcpy2DFromArray failed: " << err << std::endl;
        }
 
        err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess && verbosity >=20)
+       if( err != cudaSuccess)
        {
-         std::cout << "INFO: cudaGraphicsUnmapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsUnmapResources failed: " << err << std::endl;
        }
     }
 
@@ -337,36 +337,36 @@ public:
        if (cuda_res[tid] == NULL)
        {
          err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
-         if( err != cudaSuccess && verbosity >=20)
+         if( err != cudaSuccess)
          {
-           std::cout << "INFO: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
+           std::cout << "WARN: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
          }
        }
 
        err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess && verbosity >=20)
+       if( err != cudaSuccess)
        {
-         std::cout << "INFO: cudaGraphicsMapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsMapResources failed: " << err << std::endl;
        }
 
        cudaArray* array;
        err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
-       if( err != cudaSuccess && verbosity >=20)
+       if( err != cudaSuccess)
        {
-         std::cout << "INFO: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
        }
 
        // copy data
        err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(float), array, 0, 0, width*4*sizeof(float), height, cudaMemcpyDeviceToDevice);
-       if( err != cudaSuccess && verbosity >=20)
+       if( err != cudaSuccess)
        {
-         std::cout << "INFO: cudaMemcpy2DFromArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaMemcpy2DFromArray failed: " << err << std::endl;
        }
 
        err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess && verbosity >=20)
+       if( err != cudaSuccess)
        {
-         std::cout << "INFO: cudaGraphicsUnmapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsUnmapResources failed: " << err << std::endl;
        }
     }
 #endif
@@ -542,7 +542,7 @@ public:
         int success;
         char infoLog[512];
         glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-        if (!success && verbosity >=20)
+        if (!success)
         {
             glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
             std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
@@ -551,7 +551,7 @@ public:
         glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
         glCompileShader(fragmentShader);
         glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-        if (!success && verbosity >=20)
+        if (!success)
         {
             glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
             std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
@@ -561,7 +561,7 @@ public:
         glAttachShader(shaderProgram, fragmentShader);
         glLinkProgram(shaderProgram);
         glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-        if (!success && verbosity >=20) {
+        if (!success) {
             glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
             std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
         }
