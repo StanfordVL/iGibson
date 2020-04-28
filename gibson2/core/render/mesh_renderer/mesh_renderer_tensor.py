@@ -23,7 +23,6 @@ try:
                 self.normal_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
                 self.seg_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
                 self.pc_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
-            self.r.glad_init()
 
         def readbuffer_to_tensor(self, modes=('rgb', 'normal', 'seg', '3d')):
             results = []
