@@ -93,6 +93,7 @@ class Simulator:
                                          device_idx=self.device_idx,
                                          use_fisheye=self.use_fisheye)
 
+        print("******************PyBullet Logging Information:")
         if self.mode == 'gui':
             self.cid = p.connect(p.GUI)
         else:
@@ -100,6 +101,7 @@ class Simulator:
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
+        print("PyBullet Logging Information******************")
 
         if self.mode == 'gui' and not self.render_to_tensor:
             self.add_viewer()
@@ -446,7 +448,6 @@ class Simulator:
                     _, _, _, _, pos, orn = p.getLinkState(instance.pybullet_uuid, link_id)
                 poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
                 poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
-                # print(instance.pybullet_uuid, link_id, pos, orn)
 
             instance.poses_rot = poses_rot
             instance.poses_trans = poses_trans
@@ -462,6 +463,8 @@ class Simulator:
         clean up the simulator
         """
         if self.isconnected():
+            print("******************PyBullet Logging Information:")
             p.resetSimulation(physicsClientId=self.cid)
             p.disconnect(self.cid)
+            print("PyBullet Logging Information******************")
         self.renderer.release()
