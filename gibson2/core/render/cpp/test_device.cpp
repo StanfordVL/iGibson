@@ -97,7 +97,7 @@ int main(int argc, char ** argv){
 #ifdef USE_GLAD
     int egl_version = gladLoaderLoadEGL(NULL);
     if(!egl_version) {
-        fprintf(stderr, "ERROR: Failed to EGL with glad.\n");
+        fprintf(stderr, "INFO: Probing, EGL cannot run on this device\n");
         exit(EXIT_FAILURE);
     };
 #endif
@@ -125,14 +125,14 @@ int main(int argc, char ** argv){
     }
 
     if (!eglInitialize(m_data->egl_display, NULL, NULL)) {
-        fprintf(stderr, "ERROR: Unable to initialize EGL\n");
+        fprintf(stderr, "INFO: Unable to initialize EGL\n");
         exit(EXIT_FAILURE);
     }
 
 #ifdef USE_GLAD
     egl_version = gladLoaderLoadEGL(m_data->egl_display);
     if (!egl_version) {
-        fprintf(stderr, "ERROR: Unable to reload EGL.\n");
+        fprintf(stderr, "INFO: Unable to reload EGL.\n");
         exit(EXIT_FAILURE);
     }
     if (verbosity >= 20) { printf("INFO: Loaded EGL %d.%d after reload.\n", GLAD_VERSION_MAJOR(egl_version),
@@ -145,7 +145,7 @@ int main(int argc, char ** argv){
     if (!m_data->success) {
         // TODO: Properly handle this error (requires change to default window
         // API to change return on all window types to bool).
-        fprintf(stderr, "ERROR: Failed to bind OpenGL API.\n");
+        fprintf(stderr, "INFO: Failed to bind OpenGL API.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -155,18 +155,18 @@ int main(int argc, char ** argv){
     if (!m_data->success) {
         // TODO: Properly handle this error (requires change to default window
         // API to change return on all window types to bool).
-        fprintf(stderr, "ERROR: Failed to choose config (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "INFO: Failed to choose config (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
     if (m_data->num_configs != 1) {
-        fprintf(stderr, "ERROR: Didn't get exactly one config, but %d\n", m_data->num_configs);
+        fprintf(stderr, "INFO: Didn't get exactly one config, but %d\n", m_data->num_configs);
         exit(EXIT_FAILURE);
     }
 
     m_data->egl_surface = eglCreatePbufferSurface(
                                                   m_data->egl_display, m_data->egl_config, egl_pbuffer_attribs);
     if (m_data->egl_surface == EGL_NO_SURFACE) {
-        fprintf(stderr, "ERROR: Unable to create EGL surface (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "INFO: Unable to create EGL surface (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
 
@@ -174,7 +174,7 @@ int main(int argc, char ** argv){
     m_data->egl_context = eglCreateContext(
                                            m_data->egl_display, m_data->egl_config, EGL_NO_CONTEXT, NULL);
     if (!m_data->egl_context) {
-        fprintf(stderr, "ERROR: Unable to create EGL context (eglError: %d)\n",eglGetError());
+        fprintf(stderr, "INFO: Unable to create EGL context (eglError: %d)\n",eglGetError());
         exit(EXIT_FAILURE);
     }
 
@@ -182,12 +182,12 @@ int main(int argc, char ** argv){
         eglMakeCurrent(m_data->egl_display, m_data->egl_surface, m_data->egl_surface,
                    m_data->egl_context);
     if (!m_data->success) {
-        fprintf(stderr, "ERROR: Failed to make context current (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "INFO: Failed to make context current (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
 
     if (!gladLoadGL(eglGetProcAddress)) {
-        fprintf(stderr, "ERROR: Failed to load GL with glad.\n");
+        fprintf(stderr, "INFO: Failed to load GL with glad.\n");
         exit(EXIT_FAILURE);
     }
 
