@@ -18,6 +18,7 @@ import pybullet as p
 import gibson2
 import os
 from gibson2.core.render.mesh_renderer import tinyobjloader
+import logging
 
 class VisualObject(object):
     """
@@ -325,9 +326,9 @@ class MeshRenderer(object):
         available_devices = get_available_devices()
         if device_idx < len(available_devices):
             device = available_devices[device_idx]
-            print("Using device {}".format(device))
+            logging.info("Using device {}".format(device))
         else:
-            print("Device index is larger than number of devices, falling back to use 0")
+            logging.info("Device index is larger than number of devices, falling back to use 0")
             device = 0
 
         self.device_idx = device_idx
@@ -342,7 +343,7 @@ class MeshRenderer(object):
 
         self.lightcolor = [1, 1, 1]
 
-        print("Using fisheye camera: ", self.fisheye)
+        logging.debug('Using fisheye camera: {}'.format(self.fisheye))
 
         if self.fisheye:
             [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
@@ -409,35 +410,33 @@ class MeshRenderer(object):
         :return: VAO_ids
         """
         reader = tinyobjloader.ObjReader()
-        print("Loading ", obj_path)
+        logging.info("Loading {}".format(obj_path))
         ret = reader.ParseFromFile(obj_path)
 
         if ret == False:
-            print("Warning: ", reader.Warning())
-            print("Error: ", reader.Error())
-            print("Failed to load: ", obj_path)
+            logging.error("Warning: {}".format(reader.Warning()))
+            logging.error("Error: {}".format(reader.Error()))
+            logging.error("Failed to load: {}".format(obj_path))
             sys.exit(-1)
 
         if reader.Warning():
-            print("Warning: ", reader.Warning())
-
-        verbose = False
+            logging.warning("Warning: {}".format(reader.Warning()))
 
         attrib = reader.GetAttrib()
-        if verbose: print("Num vertices = ", len(attrib.vertices))
-        if verbose: print("Num normals = ", len(attrib.normals))
-        if verbose: print("Num texcoords = ", len(attrib.texcoords))
+        logging.debug("Num vertices = {}".format(len(attrib.vertices)))
+        logging.debug("Num normals = {}".format(len(attrib.normals)))
+        logging.debug("Num texcoords = {}".format(len(attrib.texcoords)))
 
         materials = reader.GetMaterials()
-        if verbose: print("Num materials: ", len(materials))
+        logging.debug("Num materials: {}".format(len(materials)))
 
-        if verbose: 
+        if logging.root.level <= logging.DEBUG: #Only going into this if it is for logging --> efficiency
             for m in materials:
-                print("Material name: ", m.name)
-                print("Material diffuse: ", m.diffuse)
+                logging.debug("Material name: {}".format(m.name))
+                logging.debug("Material diffuse: {}".format(m.diffuse))
 
         shapes = reader.GetShapes()
-        if verbose: print("Num shapes: ", len(shapes))
+        logging.debug("Num shapes: {}".format(len(shapes)))
 
         material_count = len(self.materials_mapping)
         materials_fn = {}
@@ -466,10 +465,10 @@ class MeshRenderer(object):
         vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
 
         for shape in shapes:
-            if verbose: print("Shape name: ", shape.name)
+            logging.debug("Shape name: {}".format(shape.name))
             material_id = shape.mesh.material_ids[0]  # assume one shape only has one material
-            if verbose: print("material_id = {}".format(material_id))
-            if verbose: print("num_indices = {}".format(len(shape.mesh.indices)))
+            logging.debug("material_id = {}".format(material_id))
+            logging.debug("num_indices = {}".format(len(shape.mesh.indices)))
             n_indices = len(shape.mesh.indices)
             np_indices = shape.mesh.numpy_indices().reshape((n_indices,3))
 
@@ -514,7 +513,7 @@ class MeshRenderer(object):
             else:
                 self.mesh_materials.append(material_id + material_count)
 
-            if verbose: print('mesh_materials', self.mesh_materials)
+            logging.debug('mesh_materials: {}'.format(self.mesh_materials))
             VAO_ids.append(self.get_num_objects() - 1)
 
         #release(scene)
@@ -682,7 +681,7 @@ class MeshRenderer(object):
         """
         Clean everything, and release the openGL context.
         """
-        print(self.glstring)
+        logging.debug('Releasing. {}'.format(self.glstring))
         self.clean()
         self.r.release()
 
