@@ -604,7 +604,7 @@ public:
         float* ptr = (float *) buf.ptr;
         glBufferData(GL_ARRAY_BUFFER, vertexData.size()*sizeof(float), ptr, GL_STATIC_DRAW);
         GLuint positionAttrib = glGetAttribLocation(shaderProgram, "position");
-        GLuint normalAttrib = glGetAttribLocation(shaderProgram, "normal");
+        GLuint normalAttrib = glGetAttribLocation(shaderProgram, "input_normal");
         GLuint coordsAttrib = glGetAttribLocation(shaderProgram, "texCoords");
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
@@ -696,13 +696,15 @@ public:
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
     }
 
-    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot, int class_id, py::array_t<float> diffuse_color, float use_texture) {
+    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot, int
+    class_id, int ins_id,  py::array_t<float> diffuse_color, float use_texture) {
         float *transptr = (float *) pose_trans.request().ptr;
         float *rotptr = (float *) pose_rot.request().ptr;
         float *diffuse_ptr = (float *) diffuse_color.request().ptr;
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "class_id"), (class_id % 16 * 16) / 256.0, (class_id / 16 % 16 * 16) / 256.0, (class_id / 256 % 16 * 16) / 256.0);
+        glUniform3f(glGetUniformLocation(shaderProgram, "ins_id"), (ins_id % 16 * 16) / 256.0, (ins_id / 16 % 16 * 16) / 256.0, (ins_id / 256 % 16 * 16) / 256.0);
         glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
         glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     }

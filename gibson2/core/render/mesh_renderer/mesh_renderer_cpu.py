@@ -108,6 +108,7 @@ class InstanceGroup(object):
                                                            self.poses_trans[i],
                                                            self.poses_rot[i],
                                                            self.class_id,
+                                                           self.instance_id,
                                                            self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3],
                                                            float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
                 try:
@@ -178,6 +179,7 @@ class Instance(object):
         self.pose_rot = pose_rot
         self.id = id
         self.class_id = class_id
+        self.instance_id = 0
         if not (1 <= self.class_id <= 4095):
             raise Exception('currently semantic class only supports id from 1 to 4095 (inclusive), 0 is reserved for background.')
         self.renderer = object.renderer
