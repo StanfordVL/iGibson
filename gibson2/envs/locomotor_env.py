@@ -111,12 +111,6 @@ class NavigateEnv(BaseEnv):
                                                shape=(self.sensor_dim,),
                                                dtype=np.float32)
             observation_space['sensor'] = self.sensor_space
-        if 'auxiliary_sensor' in self.output:
-            self.auxiliary_sensor_space = gym.spaces.Box(low=-np.inf,
-                                                         high=np.inf,
-                                                         shape=(self.auxiliary_sensor_dim,),
-                                                         dtype=np.float32)
-            observation_space['auxiliary_sensor'] = self.auxiliary_sensor_space
         if 'rgb' in self.output:
             self.rgb_space = gym.spaces.Box(low=0.0,
                                             high=1.0,
