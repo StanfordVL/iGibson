@@ -1,20 +1,23 @@
 #version 450
 uniform sampler2D texUnit;
 uniform sampler2D semUnit;
+uniform sampler2D insUnit;
+
 uniform float use_texture;
 uniform float use_sem;
 in vec2 theCoords;
 in vec3 Normal;
 in vec3 Normal_cam;
 in vec3 FragPos;
-in vec3 Instance_color;
+in vec3 classId;
 in vec3 Pos_cam;
 in vec3 Diffuse_color;
 
 layout (location = 0) out vec4 outputColour;
 layout (location = 1) out vec4 NormalColour;
-layout (location = 2) out vec4 InstanceColour;
+layout (location = 2) out vec4 SemanticColour;
 layout (location = 3) out vec4 PCColour;
+layout (location = 4) out vec4 InstanceColour;
 
 uniform vec3 light_position;  // in world coordinate
 uniform vec3 light_color; // light color
@@ -34,9 +37,15 @@ void main() {
 
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
     if (use_sem == 1) {
-        InstanceColour = texture(semUnit, theCoords);
+        SemanticColour = texture(semUnit, theCoords);
     } else {
-        InstanceColour = vec4(Instance_color,1);
+        SemanticColour = vec4(classId,1);
+    }
+
+    if (use_sem == 1) {
+        InstanceColour = texture(insUnit, theCoords);
+    } else {
+        InstanceColour = vec4(0,0,0,1);
     }
     PCColour = vec4(Pos_cam,1);
 }

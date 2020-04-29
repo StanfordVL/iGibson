@@ -435,6 +435,9 @@ public:
         else if (!strcmp(mode, "3d")) {
             glReadBuffer(GL_COLOR_ATTACHMENT3);
         }
+        else if (!strcmp(mode, "ins")) {
+            glReadBuffer(GL_COLOR_ATTACHMENT4);
+        }
         else {
             fprintf(stderr, "unknown buffer mode.\n");
             exit(EXIT_FAILURE);
@@ -458,13 +461,14 @@ public:
         GLuint *fbo_ptr = (GLuint*)malloc(sizeof(GLuint));
         GLuint *texture_ptr = (GLuint*)malloc(5 * sizeof(GLuint));
         glGenFramebuffers(1, fbo_ptr);
-        glGenTextures(5, texture_ptr);
+        glGenTextures(6, texture_ptr);
         int fbo = fbo_ptr[0];
         int color_tex_rgb = texture_ptr[0];
         int color_tex_normal = texture_ptr[1];
         int color_tex_semantics = texture_ptr[2];
         int color_tex_3d = texture_ptr[3];
-        int depth_tex = texture_ptr[4];
+        int color_tex_ins = texture_ptr[4];
+        int depth_tex = texture_ptr[5];
         glBindTexture(GL_TEXTURE_2D, color_tex_rgb);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindTexture(GL_TEXTURE_2D, color_tex_normal);
@@ -473,6 +477,8 @@ public:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindTexture(GL_TEXTURE_2D, color_tex_3d);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glBindTexture(GL_TEXTURE_2D, color_tex_ins);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindTexture(GL_TEXTURE_2D, depth_tex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -480,14 +486,17 @@ public:
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, color_tex_normal, 0);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, color_tex_semantics, 0);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, color_tex_3d, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, color_tex_ins, 0);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth_tex, 0);
         glViewport(0, 0, width, height);
-        GLenum *bufs = (GLenum*)malloc(4 * sizeof(GLenum));
+        GLenum *bufs = (GLenum*)malloc(5 * sizeof(GLenum));
         bufs[0] = GL_COLOR_ATTACHMENT0;
         bufs[1] = GL_COLOR_ATTACHMENT1;
         bufs[2] = GL_COLOR_ATTACHMENT2;
         bufs[3] = GL_COLOR_ATTACHMENT3;
-        glDrawBuffers(4, bufs);
+        bufs[4] = GL_COLOR_ATTACHMENT4;
+
+        glDrawBuffers(5, bufs);
         assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
         py::list result;
         result.append(fbo);
@@ -495,6 +504,7 @@ public:
         result.append(color_tex_normal);
         result.append(color_tex_semantics);
         result.append(color_tex_3d);
+        result.append(color_tex_ins);
         result.append(depth_tex);
         return result;
     }
@@ -643,23 +653,30 @@ public:
         glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     }
 
-    void draw_elements_instance(int shaderProgram, bool flag, int texture_id, int sem_id, int vao,
+    void draw_elements_instance(int shaderProgram, bool flag, int texture_id, int sem_id, int ins_id, int vao,
     int face_size,
     py::array_t<unsigned int> faces, GLuint fb) {
         int texUnitUniform = glGetUniformLocation(shaderProgram, "texUnit");
         int semUnitUniform = glGetUniformLocation(shaderProgram, "semUnit");
+        int insUnitUniform = glGetUniformLocation(shaderProgram, "insUnit");
+
         glUniform1i(texUnitUniform, 0);
         glUniform1i(semUnitUniform, 1);
+        glUniform1i(insUnitUniform, 2);
+
         glActiveTexture(GL_TEXTURE0);
         if (flag&&(texture_id != -1)) glBindTexture(GL_TEXTURE_2D, texture_id);
-        glActiveTexture(GL_TEXTURE1);
+
         bool use_sem = false;
         if (flag&&(sem_id != -1)) {
+            glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, sem_id);
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, ins_id);
             use_sem = true;
         }
-        glUniform1f(glGetUniformLocation(shaderProgram, "use_sem"), float(use_sem));
 
+        glUniform1f(glGetUniformLocation(shaderProgram, "use_sem"), float(use_sem));
         glBindVertexArray(vao);
         glBindFramebuffer(GL_FRAMEBUFFER, fb);
         unsigned int *ptr = (unsigned int *) faces.request().ptr;

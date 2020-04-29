@@ -139,7 +139,7 @@ class BuildingScene(Scene):
         if self.is_interactive:
             filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_cleaned.obj")
         else:
-            for fname in ["mesh_z_up_combined.obj", "mesh_z_up_downsampled.obj", "mesh_z_up.obj"]:
+            for fname in ["mesh_z_up_downsampled.obj", "mesh_z_up.obj"]:
                 filename = os.path.join(get_model_path(self.model_id), fname)
                 if os.path.isfile(filename):
                     break

@@ -231,6 +231,7 @@ class Instance(object):
                                                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd,
                                                    float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
             try:
+
                 if self.renderer.msaa:
                     buffer = self.renderer.fbo_ms
                 else:
@@ -240,6 +241,8 @@ class Instance(object):
                                                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id,
                                                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].sem_id,
+                                                       self.renderer.materials_mapping[
+                                                           self.renderer.mesh_materials[object_idx]].ins_id,
                                                        self.renderer.VAOs[object_idx],
                                                        self.renderer.faces[object_idx].size,
                                                        self.renderer.faces[object_idx],
@@ -271,18 +274,22 @@ class Instance(object):
 
 
 class Material(object):
-    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=-1, sem_id=-1):
+    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=-1, sem_id=-1, ins_id=-1):
         self.type = type
         self.kd = kd
         self.texture_id = texture_id
         self.sem_id = sem_id
+        self.ins_id = ins_id
 
     def is_texture(self):
         return self.type == 'texture'
 
     def __str__(self):
-        return "Material(type: {}, texture_id: {}, sem_id: {}, color: {})".format(self.type, self.texture_id,
-                                                                                  self.sem_id, self.kd)
+        return "Material(type: {}, texture_id: {}, sem_id: {}, ins_id: {}, color: {})".format(self.type,
+                                                                                              self.texture_id,
+                                                                                              self.sem_id,
+                                                                                              self.ins_id,
+                                                                                              self.kd)
 
     def __repr__(self):
         return self.__str__()
@@ -304,7 +311,7 @@ class MeshRenderer(object):
         self.shaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
-        self.depth_tex = None
+        self.color_tex_ins, self.depth_tex = None, None
         self.VAOs = []
         self.VBOs = []
         self.textures = []
@@ -381,7 +388,7 @@ class MeshRenderer(object):
         Set up RGB, surface normal, depth and segmentation framebuffers for the renderer
         """
         [self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-         self.depth_tex] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
+         self.color_tex_ins, self.depth_tex] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
 
         if self.msaa:
             [self.fbo_ms, self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
@@ -448,10 +455,15 @@ class MeshRenderer(object):
                 self.textures.append(texture_id)
                 sem_id = -1
                 sem_map_file = os.path.join(obj_dir, 'sem_map.png')
-                if load_sem_map and os.path.isfile(sem_map_file):
+                ins_map_file = os.path.join(obj_dir, 'ins_map.png')
+
+                if load_sem_map and os.path.isfile(sem_map_file) and os.path.isfile(ins_map_file):
                     sem_id = self.r.loadTexture(sem_map_file)
                     self.textures.append(sem_id)
-                material = Material('texture', texture_id=texture_id, sem_id=sem_id)
+                    ins_id = self.r.loadTexture(ins_map_file)
+                    self.textures.append(ins_id)
+
+                material = Material('texture', texture_id=texture_id, sem_id=sem_id, ins_id=ins_id)
             else:
                 material = Material('color', kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
@@ -642,7 +654,7 @@ class MeshRenderer(object):
             modes = [modes]
 
         for mode in modes:
-            if mode not in ['rgb', 'normal', 'seg', '3d']:
+            if mode not in ['rgb', 'normal', 'seg', '3d', 'ins']:
                 raise Exception('unknown rendering mode: {}'.format(mode))
             frame = self.r.readbuffer_meshrenderer(mode, self.width, self.height, self.fbo)
             frame = frame.reshape(self.height, self.width, 4)[::-1, :]
@@ -696,7 +708,7 @@ class MeshRenderer(object):
         Clean all the framebuffers, objects and instances
         """
         clean_list = [
-            self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
+            self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d, self.color_tex_ins,
             self.depth_tex
         ]
         fbo_list = [self.fbo]
@@ -712,6 +724,7 @@ class MeshRenderer(object):
         self.color_tex_normal = None
         self.color_tex_semantics = None
         self.color_tex_3d = None
+        self.color_tex_ins = None
         self.depth_tex = None
         self.fbo = None
         self.VAOs = []
