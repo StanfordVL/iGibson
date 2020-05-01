@@ -53,10 +53,10 @@ Gibson
 * Get codebase and assets:
 
 ```
-$ git clone git@github.com:fxia22/iGibson.git
+$ git clone https://github.com/fxia22/iGibson.git --recursive
 $ cd iGibson
 $ git checkout vr
-$ git submodule update --init --recursive
+$ git submodule update --recursive
 ```
 
 After this you should have content at:
