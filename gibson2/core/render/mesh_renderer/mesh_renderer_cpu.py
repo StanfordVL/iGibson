@@ -456,6 +456,7 @@ class MeshRenderer(object):
                 texture_id = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
                 self.textures.append(texture_id)
                 sem_id = -1
+                ins_id = -1
                 sem_map_file = os.path.join(obj_dir, 'sem_map.png')
                 ins_map_file = os.path.join(obj_dir, 'ins_map.png')
 
