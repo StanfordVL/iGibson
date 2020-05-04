@@ -18,6 +18,7 @@ class Challenge:
         num_eval_episodes = 10
         for i in range(num_eval_episodes):
             print('Episode: {}/{}'.format(i + 1, num_eval_episodes))
+            agent.reset()
             state = self.nav_env.reset()
             while True:
                 action = agent.act(state)
