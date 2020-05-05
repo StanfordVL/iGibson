@@ -52,39 +52,43 @@ class InstanceGroup(object):
     def __init__(self,
                  objects,
                  id,
-                 link_ids,
                  pybullet_uuid,
+                 pybullet_link_ids,
                  class_id,
-                 poses_trans,
+                 instance_id,
                  poses_rot,
+                 poses_trans,
                  dynamic,
                  robot=None):
         """
         :param objects: visual objects
-        :param id: id this instance_group
-        :param link_ids: link_ids in pybullet
+        :param id: id of this instance_group
         :param pybullet_uuid: body id in pybullet
-        :param class_id: class_id to render semantics
-        :param poses_trans: initial translations for each visual object
+        :param pybullet_link_ids: link ids in pybullet
+        :param class_id: class_id to render semantic segmentation
+        :param instance_id: instance_id to render instance segmentation
         :param poses_rot: initial rotation matrix for each visual object
-        :param dynamic: is the instance group dynamic or not
-        :param robot: The robot associated with this InstanceGroup
+        :param poses_trans: initial translation matrix for each visual object
+        :param dynamic: whether the instance group is dynamic
+        :param robot: the robot associated with this InstanceGroup
         """
         # assert(len(objects) > 0) # no empty instance group
         self.objects = objects
         self.poses_trans = poses_trans
         self.poses_rot = poses_rot
         self.id = id
-        self.link_ids = link_ids
+        self.pybullet_link_ids = pybullet_link_ids
         self.class_id = class_id
+        self.instance_id = instance_id
         if not (1 <= self.class_id <= 4095):
-            raise Exception('currently semantic class only supports id from 1 to 4095 (inclusive), 0 is reserved for background.')
+            raise Exception('currently class id can only from 1 to 4095 (inclusive), 0 is reserved for background.')
+        if not (0 <= self.instance_id <= 4095):
+            raise Exception('currently instance id can only range from 0 to 4095 (inclusive).')
         self.robot = robot
         if len(objects) > 0:
             self.renderer = objects[0].renderer
         else:
             self.renderer = None
-
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.tf_tree = None
@@ -120,7 +124,8 @@ class InstanceGroup(object):
                     self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
                                                            self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                            self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id,
-                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].sem_id,
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].class_id,
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].instance_id,
                                                            self.renderer.VAOs[object_idx],
                                                            self.renderer.faces[object_idx].size,
                                                            self.renderer.faces[object_idx],
@@ -173,15 +178,37 @@ class Instance(object):
     """
     Instance is one instance of a visual object. One visual object can have multiple instances to save memory.
     """
-    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic, softbody):
+    def __init__(self,
+                 object,
+                 id,
+                 pybullet_uuid,
+                 class_id,
+                 instance_id,
+                 pose_rot,
+                 pose_trans,
+                 dynamic,
+                 softbody):
+        """
+        :param object: visual object
+        :param id: id of this instance
+        :param pybullet_uuid: body id in pybullet
+        :param class_id: class_id to render semantic segmentation
+        :param instance_id: instance_id to render instance segmentation
+        :param poses_rot: initial rotation matrix for each visual object
+        :param poses_trans: initial translation matrix for each visual object
+        :param dynamic: whether the instance is dynamic
+        :param softbody: whether the instance is a soft body
+        """
         self.object = object
         self.pose_trans = pose_trans
         self.pose_rot = pose_rot
         self.id = id
         self.class_id = class_id
-        self.instance_id = 0
+        self.instance_id = instance_id
         if not (1 <= self.class_id <= 4095):
-            raise Exception('currently semantic class only supports id from 1 to 4095 (inclusive), 0 is reserved for background.')
+            raise Exception('currently class id can only from 1 to 4095 (inclusive), 0 is reserved for background.')
+        if not (0 <= self.instance_id <= 4095):
+            raise Exception('currently instance id can only range from 0 to 4095 (inclusive).')
         self.renderer = object.renderer
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
@@ -230,6 +257,7 @@ class Instance(object):
         for object_idx in self.object.VAO_ids:
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
                                                    self.class_id,
+                                                   self.instance_id,
                                                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd,
                                                    float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
             try:
@@ -242,9 +270,8 @@ class Instance(object):
                 self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
                                                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id,
-                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].sem_id,
-                                                       self.renderer.materials_mapping[
-                                                           self.renderer.mesh_materials[object_idx]].ins_id,
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].class_id,
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].instance_id,
                                                        self.renderer.VAOs[object_idx],
                                                        self.renderer.faces[object_idx].size,
                                                        self.renderer.faces[object_idx],
@@ -276,21 +303,21 @@ class Instance(object):
 
 
 class Material(object):
-    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=-1, sem_id=-1, ins_id=-1):
+    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=-1, class_id=-1, instance_id=-1):
         self.type = type
         self.kd = kd
         self.texture_id = texture_id
-        self.sem_id = sem_id
-        self.ins_id = ins_id
+        self.class_id = class_id
+        self.instance_id = instance_id
 
     def is_texture(self):
         return self.type == 'texture'
 
     def __str__(self):
-        return "Material(type: {}, texture_id: {}, sem_id: {}, ins_id: {}, color: {})".format(self.type,
+        return "Material(type: {}, texture_id: {}, class_id: {}, instance_id: {}, color: {})".format(self.type,
                                                                                               self.texture_id,
-                                                                                              self.sem_id,
-                                                                                              self.ins_id,
+                                                                                              self.class_id,
+                                                                                              self.instance_id,
                                                                                               self.kd)
 
     def __repr__(self):
@@ -455,18 +482,18 @@ class MeshRenderer(object):
                 obj_dir = os.path.dirname(obj_path)
                 texture_id = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
                 self.textures.append(texture_id)
-                sem_id = -1
-                ins_id = -1
+                class_id = -1
+                instance_id = -1
                 sem_map_file = os.path.join(obj_dir, 'sem_map.png')
                 ins_map_file = os.path.join(obj_dir, 'ins_map.png')
 
                 if load_sem_map and os.path.isfile(sem_map_file) and os.path.isfile(ins_map_file):
-                    sem_id = self.r.loadTexture(sem_map_file)
-                    self.textures.append(sem_id)
-                    ins_id = self.r.loadTexture(ins_map_file)
-                    self.textures.append(ins_id)
+                    class_id = self.r.loadTexture(sem_map_file)
+                    self.textures.append(class_id)
+                    instance_id = self.r.loadTexture(ins_map_file)
+                    self.textures.append(instance_id)
 
-                material = Material('texture', texture_id=texture_id, sem_id=sem_id, ins_id=ins_id)
+                material = Material('texture', texture_id=texture_id, class_id=class_id, instance_id=instance_id)
             else:
                 material = Material('color', kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
@@ -546,6 +573,7 @@ class MeshRenderer(object):
                      object_id,
                      pybullet_uuid=None,
                      class_id=1,
+                     instance_id=0,
                      pose_rot=np.eye(4),
                      pose_trans=np.eye(4),
                      dynamic=False,
@@ -557,19 +585,21 @@ class MeshRenderer(object):
                             id=len(self.instances),
                             pybullet_uuid=pybullet_uuid,
                             class_id=class_id,
-                            pose_trans=pose_trans,
+                            instance_id=instance_id,
                             pose_rot=pose_rot,
+                            pose_trans=pose_trans,
                             dynamic=dynamic,
                             softbody=softbody)
         self.instances.append(instance)
 
     def add_instance_group(self,
                            object_ids,
-                           link_ids,
-                           poses_rot,
-                           poses_trans,
-                           class_id=1,
                            pybullet_uuid=None,
+                           pybullet_link_ids=None,
+                           class_id=1,
+                           instance_id=0,
+                           poses_rot=np.eye(4),
+                           poses_trans=np.eye(4),
                            dynamic=False,
                            robot=None):
         """
@@ -577,22 +607,24 @@ class MeshRenderer(object):
         """
         instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids],
                                        id=len(self.instances),
-                                       link_ids=link_ids,
                                        pybullet_uuid=pybullet_uuid,
+                                       pybullet_link_ids=pybullet_link_ids,
                                        class_id=class_id,
-                                       poses_trans=poses_trans,
+                                       instance_id=instance_id,
                                        poses_rot=poses_rot,
+                                       poses_trans=poses_trans,
                                        dynamic=dynamic,
                                        robot=robot)
         self.instances.append(instance_group)
 
     def add_robot(self,
                   object_ids,
-                  link_ids,
-                  class_id,
-                  poses_rot,
-                  poses_trans,
                   pybullet_uuid=None,
+                  pybullet_link_ids=None,
+                  class_id=1,
+                  instance_id=0,
+                  poses_rot=np.eye(4),
+                  poses_trans=np.eye(4),
                   dynamic=False,
                   robot=None):
         """
@@ -600,11 +632,12 @@ class MeshRenderer(object):
         """
         robot = Robot([self.visual_objects[object_id] for object_id in object_ids],
                       id=len(self.instances),
-                      link_ids=link_ids,
                       pybullet_uuid=pybullet_uuid,
+                      pybullet_link_ids=pybullet_link_ids,
                       class_id=class_id,
-                      poses_trans=poses_trans,
+                      instance_id=instance_id,
                       poses_rot=poses_rot,
+                      poses_trans=poses_trans,
                       dynamic=dynamic,
                       robot=robot)
         self.instances.append(robot)
@@ -779,4 +812,3 @@ class MeshRenderer(object):
                 for item in self.render(modes=modes, hidden=[instance]):
                     frames.append(item)
         return frames
-

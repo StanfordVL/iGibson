@@ -11,7 +11,7 @@ import cv2
 
 def main():
     config = parse_config('../configs/turtlebot_demo.yaml')
-    s = Simulator(mode='headless', image_width=512, image_height=512)
+    s = Simulator(mode='gui', image_width=512, image_height=512)
     scene = BuildingScene('17DRP5sb8fy',
                           build_graph=True,
                           pybullet_load_texture=True)
@@ -29,15 +29,15 @@ def main():
     #cv2.namedWindow('SemSeg')
     for i in range(1000000000):
         with Profiler('Simulator step'):
-            turtlebot.apply_action([0.1, 0.1])
+            turtlebot.apply_action([0.3, -0.3])
             s.step()
-            frames = s.renderer.render_robot_cameras(modes=('rgb', 'normal', '3d', 'seg'))
+            frames = s.renderer.render_robot_cameras(modes=('rgb', 'normal', '3d', 'seg', 'ins'))
             # the semantic class of cracker box should appear to be blue
-            #cv2.imshow('SemSeg', cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR))
-            frame = frames[3][:,:,:3]
-            sem_class_map = np.round(frame[:, :, 0] * 255.0 / 16.0 + frame[:, :, 1] * 255.0 / 16.0 * 16.0 + frame[:, :, 2] * 255.0 / 16.0 * 256.0).astype(np.int)
-            print('semantic classes:')
-            print(np.unique(sem_class_map))
+            cv2.imshow('SemSeg', cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR))
+            # frame = frames[3][:,:,:3]
+            # sem_class_map = np.round(frame[:, :, 0] * 255.0 / 16.0 + frame[:, :, 1] * 255.0 / 16.0 * 16.0 + frame[:, :, 2] * 255.0 / 16.0 * 256.0).astype(np.int)
+            # print('semantic classes:')
+            # print(np.unique(sem_class_map))
 
     s.disconnect()
 

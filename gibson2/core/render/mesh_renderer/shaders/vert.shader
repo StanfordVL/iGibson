@@ -4,7 +4,7 @@ uniform mat4 P;
 uniform mat4 pose_rot;
 uniform mat4 pose_trans;
 uniform vec3 class_id;
-uniform vec3 ins_id;
+uniform vec3 instance_id;
 uniform vec3 diffuse_color;
 
 layout (location=0) in vec3 position;
@@ -16,7 +16,7 @@ out vec3 Normal_world;
 out vec3 FragPos;
 out vec3 Normal_cam;
 out vec3 classId;
-out vec3 insId;
+out vec3 instanceId;
 out vec3 Pos_cam;
 out vec3 Diffuse_color;
 void main() {
@@ -29,6 +29,6 @@ void main() {
     Pos_cam = pos_cam4.xyz / pos_cam4.w;
     theCoords = texCoords;
     classId = class_id;
-    insId = ins_id;
+    instanceId = instance_id;
     Diffuse_color = diffuse_color;
 }
