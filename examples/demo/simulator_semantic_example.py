@@ -11,7 +11,7 @@ import cv2
 
 def main():
     config = parse_config('../configs/turtlebot_demo.yaml')
-    s = Simulator(mode='gui', image_width=512, image_height=512)
+    s = Simulator(mode='headless', image_width=512, image_height=512)
     scene = BuildingScene('17DRP5sb8fy',
                           build_graph=True,
                           pybullet_load_texture=True)
@@ -19,7 +19,7 @@ def main():
     turtlebot = Turtlebot(config)
     s.import_robot(turtlebot)
 
-    cracker_box_sem_class = 256 * 15  # (r, g, b) = (0, 0, 16 * 15 = 240)
+    cracker_box_sem_class = 2021
     for _ in range(10):
         obj = YCBObject('003_cracker_box')
         s.import_object(obj, class_id=cracker_box_sem_class)
@@ -32,12 +32,9 @@ def main():
             turtlebot.apply_action([0.3, -0.3])
             s.step()
             frames = s.renderer.render_robot_cameras(modes=('rgb', 'normal', '3d', 'seg', 'ins'))
-            # the semantic class of cracker box should appear to be blue
-            cv2.imshow('SemSeg', cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR))
-            # frame = frames[3][:,:,:3]
-            # sem_class_map = np.round(frame[:, :, 0] * 255.0 / 16.0 + frame[:, :, 1] * 255.0 / 16.0 * 16.0 + frame[:, :, 2] * 255.0 / 16.0 * 256.0).astype(np.int)
-            # print('semantic classes:')
-            # print(np.unique(sem_class_map))
+            sem_class_map = frames[3]
+            print('semantic classes:')
+            print(np.unique(sem_class_map))
 
     s.disconnect()
 

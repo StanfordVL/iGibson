@@ -676,11 +676,11 @@ class MeshRenderer(object):
         v0 = h - top * fv / znear
         return np.array([[fu, 0, u0], [0, fv, v0], [0, 0, 1]])
 
-    def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d')):
+    def readbuffer(self, modes=('rgb', 'normal', '3d', 'seg', 'ins')):
         """
         Read framebuffer of rendering.
 
-        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d').
+        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', '3d', 'seg', 'ins').
         :return: a list of numpy arrays corresponding to `modes`
         """
         results = []
@@ -690,18 +690,23 @@ class MeshRenderer(object):
             modes = [modes]
 
         for mode in modes:
-            if mode not in ['rgb', 'normal', 'seg', '3d', 'ins']:
+            if mode not in ['rgb', 'normal', '3d', 'seg', 'ins']:
                 raise Exception('unknown rendering mode: {}'.format(mode))
             frame = self.r.readbuffer_meshrenderer(mode, self.width, self.height, self.fbo)
             frame = frame.reshape(self.height, self.width, 4)[::-1, :]
+            if mode in ['seg', 'ins']:
+                frame = np.round(frame[:, :, 0] * 255.0 / 16.0) + \
+                          np.round(frame[:, :, 1] * 255.0 / 16.0) * 16.0 + \
+                          np.round(frame[:, :, 2] * 255.0 / 16.0) * 256.0
+                frame = frame.astype(np.int)
             results.append(frame)
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
+    def render(self, modes=('rgb', 'normal', '3d', 'seg', 'ins'), hidden=()):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
-        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d').
+        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', '3d', 'seg', 'ins').
         :param hidden: Hidden instances to skip. When rendering from a robot's perspective, it's own body can be
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
