@@ -696,8 +696,8 @@ class MeshRenderer(object):
             frame = frame.reshape(self.height, self.width, 4)[::-1, :]
             if mode in ['seg', 'ins']:
                 frame = np.round(frame[:, :, 0] * 255.0 / 16.0) + \
-                          np.round(frame[:, :, 1] * 255.0 / 16.0) * 16.0 + \
-                          np.round(frame[:, :, 2] * 255.0 / 16.0) * 256.0
+                        np.round(frame[:, :, 1] * 255.0 / 16.0) * 16.0 + \
+                        np.round(frame[:, :, 2] * 255.0 / 16.0) * 256.0
                 frame = frame.astype(np.int)
             results.append(frame)
         return results
