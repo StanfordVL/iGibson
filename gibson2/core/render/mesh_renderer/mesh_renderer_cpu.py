@@ -88,6 +88,9 @@ class InstanceGroup(object):
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.tf_tree = None
+        self.use_pbr = False
+        self.roughness = 1
+        self.metalness = 0
 
     def render(self):
         """
@@ -99,6 +102,7 @@ class InstanceGroup(object):
         self.renderer.r.initvar_instance_group(self.renderer.shaderProgram,
                                                self.renderer.V,
                                                self.renderer.P,
+                                               self.renderer.camera,
                                                self.renderer.lightpos,
                                                self.renderer.lightcolor)
 
@@ -109,7 +113,10 @@ class InstanceGroup(object):
                                                            self.poses_rot[i],
                                                            float(self.class_id) / 255.0,
                                                            self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3],
-                                                           float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
+                                                           float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()),
+                                                           float(self.use_pbr),
+                                                           float(self.metalness),
+                                                           float(self.roughness))
                 try:
                     texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
                     if texture_id is None:
@@ -122,7 +129,6 @@ class InstanceGroup(object):
 
                     self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                            texture_id,
-                                                           self.renderer.texUnitUniform,
                                                            self.renderer.VAOs[object_idx],
                                                            self.renderer.faces[object_idx].size,
                                                            self.renderer.faces[object_idx],
@@ -185,6 +191,10 @@ class Instance(object):
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.softbody = softbody
+        self.use_pbr = False
+        self.roughness = 1
+        self.metalness = 0
+
 
     def render(self):
         """
@@ -221,6 +231,7 @@ class Instance(object):
         self.renderer.r.initvar_instance(self.renderer.shaderProgram,
                                          self.renderer.V,
                                          self.renderer.P,
+                                         self.renderer.camera,
                                          self.pose_trans,
                                          self.pose_rot,
                                          self.renderer.lightpos,
@@ -230,7 +241,10 @@ class Instance(object):
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
                                                    float(self.class_id) / 255.0,
                                                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd,
-                                                   float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
+                                                   float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()),
+                                                   float(self.use_pbr),
+                                                   float(self.metalness),
+                                                   float(self.roughness))
             try:
                 texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
                 if texture_id is None:
@@ -243,7 +257,6 @@ class Instance(object):
 
                 self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                        texture_id,
-                                                       self.renderer.texUnitUniform,
                                                        self.renderer.VAOs[object_idx],
                                                        self.renderer.faces[object_idx].size,
                                                        self.renderer.faces[object_idx],
@@ -316,7 +329,6 @@ class MeshRenderer(object):
         self.vertex_data = []
         self.shapes = []
 
-        self.texUnitUniform = None
         self.width = width
         self.height = height
         self.faces = []
@@ -335,11 +347,8 @@ class MeshRenderer(object):
         self.device_idx = device_idx
         self.device_minor = device
         self.msaa = msaa
-        if platform.system() == 'Darwin':
-            from gibson2.core.render.mesh_renderer import GLFWRendererContext
-            self.r = GLFWRendererContext.GLFWRendererContext(width, height)
-        else:
-            self.r = MeshRendererContext.MeshRendererContext(width, height, device)
+        from gibson2.core.render.mesh_renderer import GLFWRendererContext
+        self.r = GLFWRendererContext.GLFWRendererContext(width, height)
         self.r.init()
 
         self.glstring = self.r.getstring_meshrenderer()
@@ -354,7 +363,7 @@ class MeshRenderer(object):
         logging.debug('Is using fisheye camera: {}'.format(self.fisheye))
 
         if self.fisheye:
-            [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
+            self.shaderProgram = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/fisheye_vert.shader')).readlines()).replace(
@@ -364,7 +373,7 @@ class MeshRenderer(object):
                                         'shaders/fisheye_frag.shader')).readlines()).replace(
                                             "FISHEYE_SIZE", str(self.width / 2)))
         else:
-            [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
+            self.shaderProgram = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/vert.shader')).readlines()),
@@ -385,6 +394,11 @@ class MeshRenderer(object):
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
         self.mesh_materials = []
+
+        self.test_pbr()
+
+    def test_pbr(self):
+        self.r.setup_pbr()
 
     def setup_framebuffer(self):
         """
@@ -498,6 +512,7 @@ class MeshRenderer(object):
 
             vertices = np.concatenate(
                 [shape_vertex * scale, shape_normal, shape_texcoord], axis=-1)
+
 
             faces = np.array(range(len(vertices))).reshape((len(vertices)//3, 3))
             if not transform_orn is None:
@@ -669,7 +684,7 @@ class MeshRenderer(object):
             if not instance in hidden:
                 instance.render()
 
-        self.r.render_meshrenderer_post()
+        self.r.render_meshrenderer_post(self.width, self.height, self.fbo)
         if self.msaa:
             self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 

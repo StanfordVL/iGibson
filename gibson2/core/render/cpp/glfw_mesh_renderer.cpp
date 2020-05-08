@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <fstream>
+#include <sstream>
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
@@ -23,7 +25,117 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/euler_angles.hpp>
+
 namespace py = pybind11;
+
+struct MeshBuffer
+{
+    MeshBuffer() : vbo(0), ibo(0), vao(0) {}
+    GLuint vbo, ibo, vao;
+    GLuint numElements;
+};
+
+struct FrameBuffer
+{
+    FrameBuffer() : id(0), colorTarget(0), depthStencilTarget(0) {}
+    GLuint id;
+    GLuint colorTarget;
+    GLuint depthStencilTarget;
+    int width, height;
+    int samples;
+};
+
+struct Texture
+{
+    Texture() : id(0) {}
+    GLuint id;
+    int width, height;
+    int levels;
+};
+
+
+struct TransformUB
+{
+    glm::mat4 viewProjectionMatrix;
+    glm::mat4 skyProjectionMatrix;
+    glm::mat4 sceneRotationMatrix;
+};
+
+struct ShadingUB
+{
+    struct {
+        glm::vec4 direction;
+        glm::vec4 radiance;
+    } lights[3];
+    glm::vec4 eyePosition;
+};
+
+class Image
+{
+public:
+    static std::shared_ptr<Image> fromFile(const std::string& filename, int channels)
+    {
+        std::printf("Loading image: %s\n", filename.c_str());
+
+        std::shared_ptr<Image> image{new Image};
+
+        if(stbi_is_hdr(filename.c_str())) {
+            float* pixels = stbi_loadf(filename.c_str(), &image->m_width, &image->m_height, &image->m_channels, channels);
+            if(pixels) {
+                image->m_pixels.reset(reinterpret_cast<unsigned char*>(pixels));
+                image->m_hdr = true;
+            }
+        }
+        else {
+            unsigned char* pixels = stbi_load(filename.c_str(), &image->m_width, &image->m_height, &image->m_channels, channels);
+            if(pixels) {
+                image->m_pixels.reset(pixels);
+                image->m_hdr = false;
+            }
+        }
+        if(channels > 0) {
+            image->m_channels = channels;
+        }
+
+        if(!image->m_pixels) {
+            throw std::runtime_error("Failed to load image file: " + filename);
+        }
+        return image;
+    }
+
+
+    int width() const { return m_width; }
+    int height() const { return m_height; }
+    int channels() const { return m_channels; }
+    int bytesPerPixel() const { return m_channels * (m_hdr ? sizeof(float) : sizeof(unsigned char)); }
+    int pitch() const { return m_width * bytesPerPixel(); }
+
+    bool isHDR() const { return m_hdr; }
+
+    template<typename T>
+    const T* pixels() const
+    {
+        assert(m_channels * sizeof(T) == bytesPerPixel());
+        return reinterpret_cast<const T*>(m_pixels.get());
+    }
+
+private:
+    Image()
+            : m_width(0)
+            , m_height(0)
+            , m_channels(0)
+            , m_hdr(false)
+    {}
+
+    int m_width;
+    int m_height;
+    int m_channels;
+    bool m_hdr;
+    std::unique_ptr<unsigned char> m_pixels;
+};
 
 
 class GLFWRendererContext {
@@ -32,9 +144,38 @@ public:
 
     int m_windowWidth;
     int m_windowHeight;
-    GLFWwindow* window = NULL;
-
     int verbosity;
+    GLFWwindow* window = NULL;
+    const int kEnvMapSize = 256;
+    const int kIrradianceMapSize = 32;
+    const int kBRDF_LUT_Size = 256;
+
+    GLuint m_tonemapProgram;
+    GLuint m_skyboxProgram;
+    GLuint m_pbrProgram;
+
+    Texture m_envTexture;
+    Texture m_irmapTexture;
+    Texture m_spBRDF_LUT;
+
+    Texture m_albedoTexture;
+    Texture m_normalTexture;
+    Texture m_metalnessTexture;
+    Texture m_roughnessTexture;
+    Texture envTextureEquirect;
+    Texture envTextureUnfiltered;
+
+    GLuint m_transformUB;
+    GLuint m_shadingUB;
+    GLuint m_emptyVAO;
+
+    FrameBuffer m_framebuffer;
+    FrameBuffer m_resolveFramebuffer;
+
+    MeshBuffer m_skybox;
+    MeshBuffer m_pbrModel;
+
+
 
     int init() {
         verbosity = 20;
@@ -46,19 +187,26 @@ public:
         }
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
         // Hide GLFW window by default
-        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
 
-        this->window = glfwCreateWindow(m_windowHeight, m_windowHeight, "Gibson VR Renderer", NULL, NULL);
+        this->window = glfwCreateWindow(m_windowHeight, m_windowHeight, "Gibson GLFW Renderer", NULL, NULL);
         if (this->window == NULL) {
             fprintf(stderr, "ERROR: Failed to create GLFW window.\n");
 
             exit(EXIT_FAILURE);
         }
+
+        glfwWindowHint(GLFW_DEPTH_BITS, 0);
+        glfwWindowHint(GLFW_STENCIL_BITS, 0);
+        glfwWindowHint(GLFW_SAMPLES, 0);
+
         glfwMakeContextCurrent(this->window);
+        glfwSwapInterval(0);
+
 
         // Load all OpenGL function pointers through GLAD
         if (!gladLoadGL(glfwGetProcAddress))
@@ -74,6 +222,166 @@ public:
 
     void release() {
         glfwTerminate();
+    }
+
+    GLuint createUniformBuffer(const void* data, size_t size)
+    {
+        GLuint ubo;
+        glCreateBuffers(1, &ubo);
+        glNamedBufferStorage(ubo, size, data, GL_DYNAMIC_STORAGE_BIT);
+        return ubo;
+    }
+
+    template<typename T> GLuint createUniformBuffer(const T* data=nullptr)
+    {
+        return createUniformBuffer(data, sizeof(T));
+    }
+
+    Texture createTexture(GLenum target, int width, int height, GLenum internalformat, int levels) const
+    {
+        Texture texture;
+        texture.width  = width;
+        texture.height = height;
+        texture.levels = (levels > 0) ? levels : 6;
+
+        glCreateTextures(target, 1, &texture.id);
+        glTextureStorage2D(texture.id, texture.levels, internalformat, width, height);
+        glTextureParameteri(texture.id, GL_TEXTURE_MIN_FILTER, texture.levels > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+        glTextureParameteri(texture.id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        //glTextureParameterf(texture.id, GL_TEXTURE_MAX_ANISOTROPY_EXT, m_capabilities.maxAnisotropy);
+        return texture;
+    }
+
+    Texture createTexture(const std::shared_ptr<class Image>& image, GLenum format, GLenum internalformat, int levels) const
+    {
+        Texture texture = createTexture(GL_TEXTURE_2D, image->width(), image->height(), internalformat, levels);
+        if(image->isHDR()) {
+            glTextureSubImage2D(texture.id, 0, 0, 0, texture.width, texture.height, format, GL_FLOAT, image->pixels<float>());
+        }
+        else {
+            glTextureSubImage2D(texture.id, 0, 0, 0, texture.width, texture.height, format, GL_UNSIGNED_BYTE, image->pixels<unsigned char>());
+        }
+
+
+        //std::vector<unsigned char> emptyData(texture.width * texture.height * 3, 0);
+        //glTextureSubImage2D(texture.id, 0, 0, 0, texture.width, texture.height, format, GL_UNSIGNED_BYTE, &emptyData);
+
+
+        if(texture.levels > 1) {
+            glGenerateTextureMipmap(texture.id);
+        }
+        return texture;
+    }
+
+    void setup_pbr() {
+
+        glEnable(GL_CULL_FACE);
+        glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+        glFrontFace(GL_CCW);
+
+        glCreateVertexArrays(1, &m_emptyVAO);
+
+        m_transformUB = createUniformBuffer<TransformUB>();
+        m_shadingUB = createUniformBuffer<ShadingUB>();
+
+        m_tonemapProgram = linkProgram({
+                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/tonemap_vs.glsl", GL_VERTEX_SHADER),
+                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/tonemap_fs.glsl", GL_FRAGMENT_SHADER)
+                   });
+
+        m_skyboxProgram = linkProgram({
+                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/skybox_vs.glsl", GL_VERTEX_SHADER),
+                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/skybox_fs.glsl", GL_FRAGMENT_SHADER)
+                   });
+
+        m_pbrProgram = linkProgram({
+                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/pbr_vs.glsl", GL_VERTEX_SHADER),
+                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/pbr_fs.glsl", GL_FRAGMENT_SHADER)
+                   });
+
+
+        envTextureUnfiltered = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
+
+        // Load & convert equirectangular environment map to a cubemap texture.
+        {
+            GLuint equirectToCubeProgram = linkProgram({
+                               compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/equirect2cube_cs.glsl", GL_COMPUTE_SHADER)
+                       });
+
+            envTextureEquirect = createTexture(Image::fromFile("/home/fei/Downloads/carpentry_shop_02_1k.hdr", 3), GL_RGB, GL_RGB16F, 1);
+
+            glUseProgram(equirectToCubeProgram);
+            glBindTextureUnit(0, envTextureEquirect.id);
+            glBindImageTexture(0, envTextureUnfiltered.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+            glDispatchCompute(envTextureUnfiltered.width/32, envTextureUnfiltered.height/32, 6);
+
+            //glDeleteTextures(1, &envTextureEquirect.id);
+            glDeleteProgram(equirectToCubeProgram);
+        }
+        glGenerateTextureMipmap(envTextureUnfiltered.id);
+
+        {
+            GLuint spmapProgram = linkProgram({
+                                          compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/spmap_cs.glsl", GL_COMPUTE_SHADER)
+                                  });
+
+            m_envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
+
+            // Copy 0th mipmap level into destination environment map.
+            glCopyImageSubData(envTextureUnfiltered.id, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
+                               m_envTexture.id, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
+                               m_envTexture.width, m_envTexture.height, 6);
+
+            glUseProgram(spmapProgram);
+            glBindTextureUnit(0, envTextureUnfiltered.id);
+
+            // Pre-filter rest of the mip chain.
+            const float deltaRoughness = 1.0f / glm::max(float(m_envTexture.levels-1), 1.0f);
+            for(int level=1, size=kEnvMapSize/2; level<=m_envTexture.levels; ++level, size/=2) {
+                const GLuint numGroups = glm::max(1, size/32);
+                glBindImageTexture(0, m_envTexture.id, level, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+                glProgramUniform1f(spmapProgram, 0, level * deltaRoughness);
+                glDispatchCompute(numGroups, numGroups, 6);
+            }
+            glDeleteProgram(spmapProgram);
+        }
+
+        //glDeleteTextures(1, &envTextureUnfiltered.id);
+
+        // Compute diffuse irradiance cubemap.
+        {
+            GLuint irmapProgram = linkProgram({
+                          compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/irmap_cs.glsl", GL_COMPUTE_SHADER)
+                  });
+
+            m_irmapTexture = createTexture(GL_TEXTURE_CUBE_MAP, kIrradianceMapSize, kIrradianceMapSize, GL_RGBA16F, 1);
+
+            glUseProgram(irmapProgram);
+            glBindTextureUnit(0, m_envTexture.id);
+            glBindImageTexture(0, m_irmapTexture.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+            glDispatchCompute(m_irmapTexture.width/32, m_irmapTexture.height/32, 6);
+            glDeleteProgram(irmapProgram);
+        }
+
+        // Compute Cook-Torrance BRDF 2D LUT for split-sum approximation.
+        {
+            GLuint spBRDFProgram = linkProgram({
+                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/spbrdf_cs.glsl", GL_COMPUTE_SHADER)
+                   });
+
+            m_spBRDF_LUT = createTexture(GL_TEXTURE_2D, kBRDF_LUT_Size, kBRDF_LUT_Size, GL_RG16F, 1);
+            glTextureParameteri(m_spBRDF_LUT.id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTextureParameteri(m_spBRDF_LUT.id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+            glUseProgram(spBRDFProgram);
+            glBindImageTexture(0, m_spBRDF_LUT.id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG16F);
+            glDispatchCompute(m_spBRDF_LUT.width/32, m_spBRDF_LUT.height/32, 1);
+            glDeleteProgram(spBRDFProgram);
+        }
+
+        glFinish();
+
+        std::cout << "test pbr functions" << std::endl;
     }
 
 
@@ -171,8 +479,17 @@ public:
         glEnable(GL_DEPTH_TEST);
     }
 
-    void render_meshrenderer_post() {
+    void render_meshrenderer_post(int width, int height, GLuint fb2) {
         glDisable(GL_DEPTH_TEST);
+
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 1);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
     }
 
     std::string getstring_meshrenderer() {
@@ -186,7 +503,7 @@ public:
 
         for (int i = 0; i < 4; i++) {
             glReadBuffer(GL_COLOR_ATTACHMENT0+i);
-        glDrawBuffer(GL_COLOR_ATTACHMENT0+i);
+            glDrawBuffer(GL_COLOR_ATTACHMENT0+i);
             glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         }
     }
@@ -314,7 +631,74 @@ public:
         return result;
     }
 
-    py::list compile_shader_meshrenderer(char* vertexShaderSource, char* fragmentShaderSource) {
+    GLuint linkProgram(std::initializer_list<GLuint> shaders)
+    {
+        GLuint program = glCreateProgram();
+
+        for(GLuint shader : shaders) {
+            glAttachShader(program, shader);
+        }
+        glLinkProgram(program);
+        for(GLuint shader : shaders) {
+            glDetachShader(program, shader);
+            glDeleteShader(shader);
+        }
+
+        GLint status;
+        glGetProgramiv(program, GL_LINK_STATUS, &status);
+        if(status == GL_TRUE) {
+            glValidateProgram(program);
+            glGetProgramiv(program, GL_VALIDATE_STATUS, &status);
+        }
+        if(status != GL_TRUE) {
+            GLsizei infoLogSize;
+            glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogSize);
+            std::unique_ptr<GLchar[]> infoLog(new GLchar[infoLogSize]);
+            glGetProgramInfoLog(program, infoLogSize, nullptr, infoLog.get());
+            throw std::runtime_error(std::string("Program link failed\n") + infoLog.get());
+        }
+        return program;
+    }
+
+    std::string readText(const std::string& filename)
+    {
+        std::ifstream file{filename};
+        if(!file.is_open()) {
+            throw std::runtime_error("Could not open file: " + filename);
+        }
+
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        return buffer.str();
+    }
+
+    GLuint compileShader(const std::string& filename, GLenum type)
+    {
+        const std::string src = readText(filename);
+        if(src.empty()) {
+            throw std::runtime_error("Cannot read shader source file: " + filename);
+        }
+        const GLchar* srcBufferPtr = src.c_str();
+
+        std::printf("Compiling GLSL shader: %s\n", filename.c_str());
+
+        GLuint shader = glCreateShader(type);
+        glShaderSource(shader, 1, &srcBufferPtr, nullptr);
+        glCompileShader(shader);
+
+        GLint status;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+        if(status != GL_TRUE) {
+            GLsizei infoLogSize;
+            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogSize);
+            std::unique_ptr<GLchar[]> infoLog(new GLchar[infoLogSize]);
+            glGetShaderInfoLog(shader, infoLogSize, nullptr, infoLog.get());
+            throw std::runtime_error(std::string("Shader compilation failed: ") + filename + "\n" + infoLog.get());
+        }
+        return shader;
+    }
+
+    int compile_shader_meshrenderer(char* vertexShaderSource, char* fragmentShaderSource) {
         int vertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
         glCompileShader(vertexShader);
@@ -346,11 +730,7 @@ public:
         }
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
-        int texUnitUniform = glGetUniformLocation(shaderProgram, "texUnit");
-        py::list result;
-        result.append(shaderProgram);
-        result.append(texUnitUniform);
-        return result;
+        return shaderProgram;
     }
 
     py::list load_object_meshrenderer(int shaderProgram, py::array_t<float> vertexData) {
@@ -390,7 +770,8 @@ public:
         glBindVertexArray(0);
     }
 
-    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> pose_trans, py::array_t<float> pose_rot, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
+    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos,
+            py::array_t<float> pose_trans, py::array_t<float> pose_rot, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
         glUseProgram(shaderProgram);
         float *Vptr = (float *) V.request().ptr;
         float *Pptr = (float *) P.request().ptr;
@@ -398,25 +779,45 @@ public:
         float *rotptr = (float *) pose_rot.request().ptr;
         float *lightposptr = (float *) lightpos.request().ptr;
         float *lightcolorptr = (float *) lightcolor.request().ptr;
+        float *eye_pos_ptr = (float *) eye_pos.request().ptr;
+
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+        glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
     }
 
-    void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color, float use_texture) {
+    void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color, float use_texture, float use_pbr, float metalness, float roughness) {
         float *diffuse_ptr = (float *) diffuse_color.request().ptr;
         glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
         glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
         glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
+        glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
+        glUniform1f(glGetUniformLocation(shaderProgram, "metalness"), metalness);
+        glUniform1f(glGetUniformLocation(shaderProgram, "roughness"), roughness);
+
+        glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
+        glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 1);
+        glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 2);
+        glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 3);
     }
 
-    void draw_elements_instance(bool flag, int texture_id, int texUnitUniform, int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
+    void draw_elements_instance(bool flag, int texture_id,  int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
         glActiveTexture(GL_TEXTURE0);
         if (flag) glBindTexture(GL_TEXTURE_2D, texture_id);
-        glUniform1i(texUnitUniform, 0);
+
+        glActiveTexture(GL_TEXTURE1);
+        if (flag) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture.id);
+
+        glActiveTexture(GL_TEXTURE2);
+        if (flag) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture.id);
+
+        glActiveTexture(GL_TEXTURE3);
+        if (flag) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT.id);
+
         glBindVertexArray(vao);
         glBindFramebuffer(GL_FRAMEBUFFER, fb);
         unsigned int *ptr = (unsigned int *) faces.request().ptr;
@@ -431,19 +832,23 @@ public:
 
     }
 
-    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
+    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos,
+            py::array_t<float> lightpos, py::array_t<float> lightcolor) {
         glUseProgram(shaderProgram);
         float *Vptr = (float *) V.request().ptr;
         float *Pptr = (float *) P.request().ptr;
         float *lightposptr = (float *) lightpos.request().ptr;
         float *lightcolorptr = (float *) lightcolor.request().ptr;
+        float *eye_pos_ptr = (float *) eye_pos.request().ptr;
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+        glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
     }
 
-    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot, float instance_color, py::array_t<float> diffuse_color, float use_texture) {
+    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
+            float instance_color, py::array_t<float> diffuse_color, float use_texture, float use_pbr, float metalness, float roughness) {
         float *transptr = (float *) pose_trans.request().ptr;
         float *rotptr = (float *) pose_rot.request().ptr;
         float *diffuse_ptr = (float *) diffuse_color.request().ptr;
@@ -452,6 +857,13 @@ public:
         glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
         glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
         glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
+        glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
+        glUniform1f(glGetUniformLocation(shaderProgram, "metalness"), metalness);
+        glUniform1f(glGetUniformLocation(shaderProgram, "roughness"), roughness);
+        glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
+        glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 1);
+        glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 2);
+        glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 3);
     }
 
 
@@ -525,6 +937,8 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
     pymodule.def("readbuffer_meshrenderer", &GLFWRendererContext::readbuffer_meshrenderer, "read pixel buffer");
     pymodule.def("clean_meshrenderer", &GLFWRendererContext::clean_meshrenderer, "clean meshrenderer");
     pymodule.def("setup_framebuffer_meshrenderer", &GLFWRendererContext::setup_framebuffer_meshrenderer, "setup framebuffer in meshrenderer");
+    pymodule.def("setup_pbr", &GLFWRendererContext::setup_pbr, "setup pbr");
+
     pymodule.def("setup_framebuffer_meshrenderer_ms", &GLFWRendererContext::setup_framebuffer_meshrenderer_ms, "setup framebuffer in meshrenderer with MSAA");
     pymodule.def("blit_buffer", &GLFWRendererContext::blit_buffer, "blit buffer");
 
