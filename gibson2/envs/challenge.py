@@ -9,10 +9,10 @@ class Challenge:
         self.config_file = os.environ['CONFIG_FILE']
         self.sim2real_track = os.environ['SIM2REAL_TRACK']
         self.nav_env = NavigateRandomEnvSim2Real(config_file=self.config_file,
-                                            mode='headless',
-                                            action_timestep=1.0 / 10.0,
-                                            physics_timestep=1.0 / 40.0,
-                                            track=self.sim2real_track)
+                                                 mode='headless',
+                                                 action_timestep=1.0 / 10.0,
+                                                 physics_timestep=1.0 / 40.0,
+                                                 track=self.sim2real_track)
 
     def submit(self, agent):
         total_reward = 0.0

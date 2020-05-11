@@ -21,9 +21,9 @@ goal_format: polar
 # reward
 reward_type: geodesic
 success_reward: 10.0
-slack_reward: -0.01
+slack_reward: 0.0
 potential_reward_weight: 1.0
-collision_reward_weight: 0.0
+collision_reward_weight: -0.01
 collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collision with these agent's link ids
 
 # discount factor
@@ -33,7 +33,6 @@ discount_factor: 0.99
 dist_tol: 0.36  # body width
 max_step: 500
 max_collisions_allowed: 0
-stop_threshold: 0.99
 
 # sensor
 output: [sensor, rgb, depth]

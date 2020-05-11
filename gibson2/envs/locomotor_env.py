@@ -817,8 +817,8 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         if self.track == 'interactive':
             self.interactive_objects_num_dups = 2
             self.interactive_objects = self.load_interactive_objects()
-            # interactive objects pybullet id starts from 3
-            self.collision_ignore_body_b_ids |= set(range(3, 3 + len(self.interactive_objects)))
+            self.collision_ignore_body_b_ids |= set([obj.body_id for obj in self.interactive_objects])
+
         elif self.track == 'dynamic':
             self.num_dynamic_objects = 1
             self.dynamic_objects = []
