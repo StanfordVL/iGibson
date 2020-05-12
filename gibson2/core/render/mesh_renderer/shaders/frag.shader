@@ -1,4 +1,4 @@
-#version 450
+#version 410
 uniform sampler2D texUnit;
 uniform sampler2D semUnit;
 uniform sampler2D insUnit;
@@ -12,13 +12,17 @@ in vec3 FragPos;
 in vec3 classId;
 in vec3 insId;
 in vec3 Pos_cam;
+in vec3 Pos_cam_prev;
 in vec3 Diffuse_color;
+in vec2 Optical_flow;
 
 layout (location = 0) out vec4 outputColour;
 layout (location = 1) out vec4 NormalColour;
 layout (location = 2) out vec4 SemanticColour;
 layout (location = 3) out vec4 PCColour;
 layout (location = 4) out vec4 InstanceColour;
+layout (location = 5) out vec4 SceneFlowColour;
+layout (location = 6) out vec4 OpticalFlowColour;
 
 uniform vec3 light_position;  // in world coordinate
 uniform vec3 light_color; // light color
@@ -49,4 +53,6 @@ void main() {
         InstanceColour = vec4(insId,1);
     }
     PCColour = vec4(Pos_cam,1);
+    SceneFlowColour =  vec4(Pos_cam - Pos_cam_prev,1);
+    OpticalFlowColour =  vec4(Optical_flow,0,1);
 }

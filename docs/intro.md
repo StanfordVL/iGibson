@@ -31,7 +31,7 @@ This is the documentation webpage for iGibson. It includes installation guide (i
 If you want to know more about iGibson, you can also check out [our webpage](http://svl.stanford.edu/igibson), [our RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442) and [our (outdated) technical report](http://svl.stanford.edu/igibson/assets/gibsonv2paper.pdf).
 
 ### Dowloading Dataset of 3D Environments
-There are several datasets of 3D reconstructed large real-world environments (homes and offices) that you can download and use with iGibson. All of them will be accessible once you fill in this [form](https://forms.gle/q5Ygkw3ijxD5WC5U8).
+There are several datasets of 3D reconstructed large real-world environments (homes and offices) that you can download and use with iGibson. All of them will be accessible once you fill in this [form](https://forms.gle/36TW9uVpjrE1Mkf9A).
 
 You will have access to ten environments with annotated instances of furniture (chairs, tables, desks, doors, sofas) that can be interacted with, and to the original 572 reconstructed 3D environments without annotated objects from [Gibson v1](http://github.com/StanfordVL/GibsonEnv/).
 

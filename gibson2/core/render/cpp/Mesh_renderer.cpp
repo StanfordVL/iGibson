@@ -61,6 +61,8 @@ public:
     int m_windowHeight;
     int m_renderDevice;
 
+    int verbosity;
+
     EGLBoolean success;
     EGLint num_configs;
     EGLConfig egl_config;
@@ -76,6 +78,8 @@ public:
 #endif
 
     int init() {
+
+      verbosity = 20;
 
 #ifndef USE_GLAD
     PFNEGLQUERYDEVICESEXTPROC eglQueryDevicesEXT =
@@ -123,7 +127,7 @@ public:
 #ifdef USE_GLAD
     int egl_version = gladLoaderLoadEGL(NULL);
     if(!egl_version) {
-        fprintf(stderr, "failed to EGL with glad.\n");
+        fprintf(stderr, "ERROR: Failed to EGL with glad.\n");
         exit(EXIT_FAILURE);
 
     };
@@ -136,7 +140,7 @@ public:
     EGLint egl_error = eglGetError();
     if (!eglQueryDevicesEXT(max_devices, egl_devices, &num_devices) ||
         egl_error != EGL_SUCCESS) {
-        printf("eglQueryDevicesEXT Failed.\n");
+        printf("WARN: eglQueryDevicesEXT Failed.\n");
         m_data->egl_display = EGL_NO_DISPLAY;
     }
 
@@ -159,7 +163,7 @@ public:
     } else {
         // Chose specific screen, by using m_renderDevice
         if (m_data->m_renderDevice < 0 || m_data->m_renderDevice >= num_devices) {
-            fprintf(stderr, "Invalid render_device choice: %d < %d.\n", m_data->m_renderDevice, num_devices);
+            fprintf(stderr, "ERROR: Invalid render_device choice: %d < %d.\n", m_data->m_renderDevice, num_devices);
             exit(EXIT_FAILURE);
         }
 
@@ -176,27 +180,25 @@ public:
     }
 
     if (!eglInitialize(m_data->egl_display, NULL, NULL)) {
-        fprintf(stderr, "Unable to initialize EGL\n");
+        fprintf(stderr, "ERROR: Unable to initialize EGL\n");
         exit(EXIT_FAILURE);
     }
 
 #ifdef USE_GLAD
     egl_version = gladLoaderLoadEGL(m_data->egl_display);
     if (!egl_version) {
-        fprintf(stderr, "Unable to reload EGL.\n");
+        fprintf(stderr, "ERROR: Unable to reload EGL.\n");
         exit(EXIT_FAILURE);
     }
-    //printf("Loaded EGL %d.%d after reload.\n", GLAD_VERSION_MAJOR(egl_version),
-    //       GLAD_VERSION_MINOR(egl_version));
 #else
-    printf("not using glad\n");
+    if (verbosity >= 20) { printf("INFO: Not using glad\n");}
 #endif
 
     m_data->success = eglBindAPI(EGL_OPENGL_API);
     if (!m_data->success) {
         // TODO: Properly handle this error (requires change to default window
         // API to change return on all window types to bool).
-        fprintf(stderr, "Failed to bind OpenGL API.\n");
+        fprintf(stderr, "ERROR: Failed to bind OpenGL API.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -206,18 +208,18 @@ public:
     if (!m_data->success) {
         // TODO: Properly handle this error (requires change to default window
         // API to change return on all window types to bool).
-        fprintf(stderr, "Failed to choose config (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "ERROR: Failed to choose config (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
     if (m_data->num_configs != 1) {
-        fprintf(stderr, "Didn't get exactly one config, but %d\n", m_data->num_configs);
+        fprintf(stderr, "ERROR: Didn't get exactly one config, but %d\n", m_data->num_configs);
         exit(EXIT_FAILURE);
     }
 
     m_data->egl_surface = eglCreatePbufferSurface(
                                                   m_data->egl_display, m_data->egl_config, egl_pbuffer_attribs);
     if (m_data->egl_surface == EGL_NO_SURFACE) {
-        fprintf(stderr, "Unable to create EGL surface (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "ERROR: Unable to create EGL surface (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
 
@@ -225,7 +227,7 @@ public:
     m_data->egl_context = eglCreateContext(
                                            m_data->egl_display, m_data->egl_config, EGL_NO_CONTEXT, NULL);
     if (!m_data->egl_context) {
-        fprintf(stderr, "Unable to create EGL context (eglError: %d)\n",eglGetError());
+        fprintf(stderr, "ERROR: Unable to create EGL context (eglError: %d)\n",eglGetError());
         exit(EXIT_FAILURE);
     }
 
@@ -233,12 +235,12 @@ public:
         eglMakeCurrent(m_data->egl_display, m_data->egl_surface, m_data->egl_surface,
                    m_data->egl_context);
     if (!m_data->success) {
-        fprintf(stderr, "Failed to make context current (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "ERROR: Failed to make context current (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
 
     if (!gladLoadGL(eglGetProcAddress)) {
-        fprintf(stderr, "failed to load GL with glad.\n");
+        fprintf(stderr, "ERROR: Failed to load GL with glad.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -255,50 +257,15 @@ public:
             if (cuda_res[i])
             {
               cudaError_t err = cudaGraphicsUnregisterResource(cuda_res[i]);
-              if( err != cudaSuccess )
+              if( err != cudaSuccess)
               {
-                std::cout << "cudaGraphicsUnregisterResource failed: " << err << std::endl;
+                std::cout << "WARN: cudaGraphicsUnregisterResource failed: " << err << std::endl;
               }
             }
           }
 #endif
     }
 
-
-    void draw(py::array_t<float> x) {
-        //printf("draw\n");
-        int size = 3 * m_windowWidth * m_windowHeight;
-        //unsigned char *data2 = new unsigned char[size];
-
-        auto ptr = (float *) x.mutable_data();
-
-        glClear(GL_COLOR_BUFFER_BIT);
-        glBegin(GL_TRIANGLES);
-        glColor3f(1, 0, 0);
-        glVertex2f(0,  1);
-
-        glColor3f(0, 1, 0);
-        glVertex2f(-1, -1);
-
-        glColor3f(0, 0, 1);
-        glVertex2f(1, -1);
-        glEnd();
-
-        eglSwapBuffers( m_data->egl_display, m_data->egl_surface);
-        glReadPixels(0,0,m_windowWidth,m_windowHeight,GL_RGB, GL_FLOAT, ptr);
-        //unsigned error = lodepng::encode("test.png", (unsigned char*)data2, m_windowWidth, m_windowHeight, LCT_RGB, 8);
-        //delete data2;
-    }
-
-    void draw_py(py::array_t<float> x) {
-        /*auto r = x.mutable_unchecked<3>(); // Will throw if ndim != 3 or flags.writeable is false
-            for (ssize_t i = 0; i < r.shape(0); i++)
-                for (ssize_t j = 0; j < r.shape(1); j++)
-                    for (ssize_t k = 0; k < r.shape(2); k++)
-                        r(i, j, k) += 1.0;*/
-
-        std::fill(x.mutable_data(), x.mutable_data() + x.size(), 42);
-    }
 
 #ifdef USE_CUDA
     void map_tensor(GLuint tid, int width, int height, std::size_t data)
@@ -307,36 +274,36 @@ public:
        if (cuda_res[tid] == NULL)
        {
          err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
-         if( err != cudaSuccess )
+         if( err != cudaSuccess)
          {
-           std::cout << "cudaGraphicsGLRegisterImage failed: " << err << std::endl;
+           std::cout << "WARN: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
          }
        }
 
        err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsMapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsMapResources failed: " << err << std::endl;
        }
 
        cudaArray* array;
        err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
        }
 
        // copy data
        err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(char), array, 0, 0, width*4*sizeof(char), height, cudaMemcpyDeviceToDevice);
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaMemcpy2DFromArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaMemcpy2DFromArray failed: " << err << std::endl;
        }
 
        err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsUnmapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsUnmapResources failed: " << err << std::endl;
        }
     }
 
@@ -346,36 +313,36 @@ public:
        if (cuda_res[tid] == NULL)
        {
          err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
-         if( err != cudaSuccess )
+         if( err != cudaSuccess)
          {
-           std::cout << "cudaGraphicsGLRegisterImage failed: " << err << std::endl;
+           std::cout << "WARN: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
          }
        }
 
        err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsMapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsMapResources failed: " << err << std::endl;
        }
 
        cudaArray* array;
        err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
        }
 
        // copy data
        err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(float), array, 0, 0, width*4*sizeof(float), height, cudaMemcpyDeviceToDevice);
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaMemcpy2DFromArray failed: " << err << std::endl;
+         std::cout << "WARN: cudaMemcpy2DFromArray failed: " << err << std::endl;
        }
 
        err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess )
+       if( err != cudaSuccess)
        {
-         std::cout << "cudaGraphicsUnmapResources failed: " << err << std::endl;
+         std::cout << "WARN: cudaGraphicsUnmapResources failed: " << err << std::endl;
        }
     }
 #endif
@@ -396,13 +363,6 @@ public:
 
     void render_meshrenderer_post() {
         glDisable(GL_DEPTH_TEST);
-    }
-
-    void glad_init() {
-        if (!gladLoadGL(eglGetProcAddress)) {
-            fprintf(stderr, "failed to load GL with glad.\n");
-            exit(EXIT_FAILURE);
-        }
     }
 
     std::string getstring_meshrenderer() {
@@ -438,8 +398,14 @@ public:
         else if (!strcmp(mode, "ins")) {
             glReadBuffer(GL_COLOR_ATTACHMENT4);
         }
+        else if (!strcmp(mode, "scene_flow")) {
+            glReadBuffer(GL_COLOR_ATTACHMENT5);
+        }
+        else if (!strcmp(mode, "optical_flow")) {
+            glReadBuffer(GL_COLOR_ATTACHMENT6);
+        }
         else {
-            fprintf(stderr, "unknown buffer mode.\n");
+            fprintf(stderr, "ERROR: Unknown buffer mode.\n");
             exit(EXIT_FAILURE);
         }
         py::array_t<float> data = py::array_t<float>(4 * width * height);
@@ -461,14 +427,16 @@ public:
         GLuint *fbo_ptr = (GLuint*)malloc(sizeof(GLuint));
         GLuint *texture_ptr = (GLuint*)malloc(5 * sizeof(GLuint));
         glGenFramebuffers(1, fbo_ptr);
-        glGenTextures(6, texture_ptr);
+        glGenTextures(8, texture_ptr);
         int fbo = fbo_ptr[0];
         int color_tex_rgb = texture_ptr[0];
         int color_tex_normal = texture_ptr[1];
         int color_tex_semantics = texture_ptr[2];
         int color_tex_3d = texture_ptr[3];
         int color_tex_ins = texture_ptr[4];
-        int depth_tex = texture_ptr[5];
+        int color_tex_scene_flow = texture_ptr[5];
+        int color_tex_optical_flow = texture_ptr[6];
+        int depth_tex = texture_ptr[7];
         glBindTexture(GL_TEXTURE_2D, color_tex_rgb);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindTexture(GL_TEXTURE_2D, color_tex_normal);
@@ -479,6 +447,10 @@ public:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindTexture(GL_TEXTURE_2D, color_tex_ins);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glBindTexture(GL_TEXTURE_2D, color_tex_scene_flow);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glBindTexture(GL_TEXTURE_2D, color_tex_optical_flow);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindTexture(GL_TEXTURE_2D, depth_tex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -487,16 +459,19 @@ public:
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, color_tex_semantics, 0);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, color_tex_3d, 0);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, color_tex_ins, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, color_tex_scene_flow, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT6, GL_TEXTURE_2D, color_tex_optical_flow, 0);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth_tex, 0);
         glViewport(0, 0, width, height);
-        GLenum *bufs = (GLenum*)malloc(5 * sizeof(GLenum));
+        GLenum *bufs = (GLenum*)malloc(7 * sizeof(GLenum));
         bufs[0] = GL_COLOR_ATTACHMENT0;
         bufs[1] = GL_COLOR_ATTACHMENT1;
         bufs[2] = GL_COLOR_ATTACHMENT2;
         bufs[3] = GL_COLOR_ATTACHMENT3;
         bufs[4] = GL_COLOR_ATTACHMENT4;
-
-        glDrawBuffers(5, bufs);
+        bufs[5] = GL_COLOR_ATTACHMENT5;
+        bufs[6] = GL_COLOR_ATTACHMENT6;
+        glDrawBuffers(7, bufs);
         assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
         py::list result;
         result.append(fbo);
@@ -505,6 +480,8 @@ public:
         result.append(color_tex_semantics);
         result.append(color_tex_3d);
         result.append(color_tex_ins);
+        result.append(color_tex_scene_flow);
+        result.append(color_tex_optical_flow);
         result.append(depth_tex);
         return result;
     }
@@ -630,18 +607,27 @@ public:
         glBindVertexArray(0);
     }
 
-    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> pose_trans, py::array_t<float> pose_rot, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
+    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> last_V, py::array_t<float> P,
+            py::array_t<float> pose_trans, py::array_t<float> pose_rot,
+            py::array_t<float> last_trans, py::array_t<float> last_rot,
+            py::array_t<float> lightpos, py::array_t<float> lightcolor) {
         glUseProgram(shaderProgram);
         float *Vptr = (float *) V.request().ptr;
+        float *last_Vptr = (float *) last_V.request().ptr;
         float *Pptr = (float *) P.request().ptr;
         float *transptr = (float *) pose_trans.request().ptr;
         float *rotptr = (float *) pose_rot.request().ptr;
+        float *lasttransptr = (float *) last_trans.request().ptr;
+        float *lastrotptr = (float *) last_rot.request().ptr;
         float *lightposptr = (float *) lightpos.request().ptr;
         float *lightcolorptr = (float *) lightcolor.request().ptr;
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "last_V"), 1, GL_TRUE, last_Vptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "last_trans"), 1, GL_FALSE, lasttransptr);
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "last_rot"), 1, GL_TRUE, lastrotptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
     }
@@ -654,8 +640,7 @@ public:
     }
 
     void draw_elements_instance(int shaderProgram, bool flag, int texture_id, int sem_id, int ins_id, int vao,
-    int face_size,
-    py::array_t<unsigned int> faces, GLuint fb) {
+    int face_size, py::array_t<unsigned int> faces, GLuint fb) {
         int texUnitUniform = glGetUniformLocation(shaderProgram, "texUnit");
         int semUnitUniform = glGetUniformLocation(shaderProgram, "semUnit");
         int insUnitUniform = glGetUniformLocation(shaderProgram, "insUnit");
@@ -684,27 +669,35 @@ public:
 
     }
 
-    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
+    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> last_V,
+            py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
         glUseProgram(shaderProgram);
         float *Vptr = (float *) V.request().ptr;
+        float *last_Vptr = (float *) last_V.request().ptr;
         float *Pptr = (float *) P.request().ptr;
         float *lightposptr = (float *) lightpos.request().ptr;
         float *lightcolorptr = (float *) lightcolor.request().ptr;
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "last_V"), 1, GL_TRUE, last_Vptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
     }
 
     void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot, int
-    class_id, int ins_id,  py::array_t<float> diffuse_color, float use_texture) {
+    class_id, int ins_id, py::array_t<float> last_trans, py::array_t<float> last_rot,
+    py::array_t<float> diffuse_color, float use_texture) {
         float *transptr = (float *) pose_trans.request().ptr;
         float *rotptr = (float *) pose_rot.request().ptr;
         float *diffuse_ptr = (float *) diffuse_color.request().ptr;
+        float *lasttransptr = (float *) last_trans.request().ptr;
+        float *lastrotptr = (float *) last_rot.request().ptr;
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "class_id"), (class_id % 16 * 16) / 256.0, (class_id / 16 % 16 * 16) / 256.0, (class_id / 256 % 16 * 16) / 256.0);
         glUniform3f(glGetUniformLocation(shaderProgram, "ins_id"), (ins_id % 16 * 16) / 256.0, (ins_id / 16 % 16 * 16) / 256.0, (ins_id / 256 % 16 * 16) / 256.0);
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "last_trans"), 1, GL_FALSE, lasttransptr);
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "last_rot"), 1, GL_TRUE, lastrotptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
         glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     }
@@ -737,13 +730,6 @@ public:
     }
 
     int loadTexture(std::string filename) {
-    //    img = Image.open(path).transpose(Image.FLIP_TOP_BOTTOM)
-    //    w, h = img.size
-    //
-    //    img = img.resize((int(w * scale), int(h * scale)), Image.BICUBIC)
-
-    //    img_data = np.frombuffer(img.tobytes(), np.uint8)
-    //    #print(img_data.shape)
         //width, height = img.size
         // glTexImage2D expects the first element of the image data to be the
         // bottom-left corner of the image.  Subsequent elements go left to right,
@@ -762,7 +748,7 @@ public:
         unsigned char* image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb);
 
         if(image == nullptr)
-            throw(std::string("Failed to load texture"));
+            throw(std::string("ERROR: Failed to load texture"));
 
 
         GLuint texture;
@@ -799,7 +785,6 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         pymodule.def("render_meshrenderer_post", &MeshRendererContext::render_meshrenderer_post, "post-executed functions in MeshRenderer.render");
         pymodule.def("getstring_meshrenderer", &MeshRendererContext::getstring_meshrenderer, "return GL version string");
         pymodule.def("readbuffer_meshrenderer", &MeshRendererContext::readbuffer_meshrenderer, "read pixel buffer");
-        pymodule.def("glad_init", &MeshRendererContext::glad_init, "init glad");
         pymodule.def("clean_meshrenderer", &MeshRendererContext::clean_meshrenderer, "clean meshrenderer");
         pymodule.def("setup_framebuffer_meshrenderer", &MeshRendererContext::setup_framebuffer_meshrenderer, "setup framebuffer in meshrenderer");
         pymodule.def("setup_framebuffer_meshrenderer_ms", &MeshRendererContext::setup_framebuffer_meshrenderer_ms, "setup framebuffer in meshrenderer with MSAA");
