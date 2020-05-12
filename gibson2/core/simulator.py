@@ -466,9 +466,10 @@ class Simulator:
                 poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
                 poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
-            instance.poses_rot = poses_rot
-            instance.poses_trans = poses_trans
-
+            #instance.poses_rot = poses_rot
+            #instance.poses_trans = poses_trans
+            instance.set_rotation(poses_rot)
+            instance.set_position(poses_trans)
     def isconnected(self):
         """
         :return: pybullet is alive

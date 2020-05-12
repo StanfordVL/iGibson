@@ -88,6 +88,8 @@ class InstanceGroup(object):
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.tf_tree = None
+        self.last_trans = [np.copy(item) for item in poses_trans]
+        self.last_rot = [np.copy(item) for item in poses_rot]
 
     def render(self):
         """
@@ -98,6 +100,7 @@ class InstanceGroup(object):
 
         self.renderer.r.initvar_instance_group(self.renderer.shaderProgram,
                                                self.renderer.V,
+                                               self.renderer.last_V,
                                                self.renderer.P,
                                                self.renderer.lightpos,
                                                self.renderer.lightcolor)
@@ -107,6 +110,8 @@ class InstanceGroup(object):
                 self.renderer.r.init_material_pos_instance(self.renderer.shaderProgram,
                                                            self.poses_trans[i],
                                                            self.poses_rot[i],
+                                                           self.last_trans[i],
+                                                           self.last_rot[i],
                                                            float(self.class_id) / 255.0,
                                                            self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3],
                                                            float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
@@ -142,17 +147,17 @@ class InstanceGroup(object):
 
         :param pos: New translations
         """
+        self.last_trans = [np.copy(item) for item in self.poses_trans]
+        self.poses_trans = pos
 
-        self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
-
-    def set_rotation(self, quat):
+    def set_rotation(self, rot):
         """
         Set rotations for each part of this InstanceGroup
 
         :param quat: New quaternion in w,x,y,z
         """
-
-        self.pose_rot = np.ascontiguousarray(quat2rotmat(quat))
+        self.last_rot =  [np.copy(item) for item in self.poses_rot]
+        self.poses_rot = rot
 
     def __str__(self):
         return "InstanceGroup({}) -> Objects({})".format(
@@ -185,6 +190,8 @@ class Instance(object):
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.softbody = softbody
+        self.last_trans = np.copy(pose_trans)
+        self.last_rot = np.copy(pose_rot)
 
     def render(self):
         """
@@ -220,9 +227,12 @@ class Instance(object):
 
         self.renderer.r.initvar_instance(self.renderer.shaderProgram,
                                          self.renderer.V,
+                                         self.renderer.last_V,
                                          self.renderer.P,
                                          self.pose_trans,
                                          self.pose_rot,
+                                         self.last_trans,
+                                         self.last_rot,
                                          self.renderer.lightpos,
                                          self.renderer.lightcolor)
 
@@ -259,13 +269,16 @@ class Instance(object):
         return pose
 
     def set_position(self, pos):
+        self.last_trans = np.copy(self.pose_trans)
         self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
 
     def set_rotation(self, quat):
         """
         :param quat: New quaternion in w,x,y,z
         """
+        self.last_rot = np.copy(self.pose_rot)
         self.pose_rot = np.ascontiguousarray(quat2rotmat(quat))
+
 
     def __str__(self):
         return "Instance({}) -> Object({})".format(self.id, self.object.id)
@@ -307,6 +320,7 @@ class MeshRenderer(object):
         self.shaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
+        self.color_tex_scene_flow, self.color_tex_optical_flow = None, None
         self.depth_tex = None
         self.VAOs = []
         self.VBOs = []
@@ -382,6 +396,9 @@ class MeshRenderer(object):
         V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
+        self.last_V = np.copy(self.V)
+        self.cache = np.copy(self.V)
+
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
         self.mesh_materials = []
@@ -391,7 +408,7 @@ class MeshRenderer(object):
         Set up RGB, surface normal, depth and segmentation framebuffers for the renderer
         """
         [self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-         self.depth_tex] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
+         self.color_tex_scene_flow, self.color_tex_optical_flow, self.depth_tex] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
 
         if self.msaa:
             [self.fbo_ms, self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
@@ -596,12 +613,16 @@ class MeshRenderer(object):
                       robot=robot)
         self.instances.append(robot)
 
-    def set_camera(self, camera, target, up):
+    def set_camera(self, camera, target, up, cache=False):
         self.camera = camera
         self.target = target
         self.up = up
+        if cache:
+            self.last_V = np.copy(self.cache)
         V = lookat(self.camera, self.target, up=self.up)
         self.V = np.ascontiguousarray(V, np.float32)
+        if cache:
+            self.cache = self.V
 
     def set_fov(self, fov):
         self.vertical_fov = fov
@@ -644,7 +665,7 @@ class MeshRenderer(object):
             modes = [modes]
 
         for mode in modes:
-            if mode not in ['rgb', 'normal', 'seg', '3d']:
+            if mode not in ['rgb', 'normal', 'seg', '3d', 'scene_flow', 'optical_flow']:
                 raise Exception('unknown rendering mode: {}'.format(mode))
             frame = self.r.readbuffer_meshrenderer(mode, self.width, self.height, self.fbo)
             frame = frame.reshape(self.height, self.width, 4)[::-1, :]
@@ -682,6 +703,8 @@ class MeshRenderer(object):
         return len(self.objects)
 
     def set_pose(self, pose, idx):
+        self.instances[idx].last_rot = np.copy(self.instances[idx].pose_rot )
+        self.instances[idx].last_trans = np.copy(self.instances[idx].pose_trans)
         self.instances[idx].pose_rot = np.ascontiguousarray(quat2rotmat(pose[3:]))
         self.instances[idx].pose_trans = np.ascontiguousarray(xyz2mat(pose[:3]))
 
@@ -699,7 +722,7 @@ class MeshRenderer(object):
         """
         clean_list = [
             self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-            self.depth_tex
+            self.depth_tex, self.color_tex_scene_flow, self.color_tex_optical_flow
         ]
         fbo_list = [self.fbo]
         if self.msaa:
@@ -714,6 +737,8 @@ class MeshRenderer(object):
         self.color_tex_normal = None
         self.color_tex_semantics = None
         self.color_tex_3d = None
+        self.color_tex_scene_flow = None
+        self.color_tex_optical_flow = None
         self.depth_tex = None
         self.fbo = None
         self.VAOs = []
@@ -761,7 +786,7 @@ class MeshRenderer(object):
                 orn = instance.robot.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
-                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1], cache=True)
                 for item in self.render(modes=modes, hidden=[instance]):
                     frames.append(item)
         return frames

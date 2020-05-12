@@ -116,7 +116,7 @@ class Viewer:
             exit()
 
         if not self.renderer is None:
-            frames = self.renderer.render_robot_cameras(modes=('rgb'))
+            frames = self.renderer.render_robot_cameras(modes=('rgb', 'scene_flow', 'optical_flow'))
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
                 cv2.imshow('RobotView', frame)

@@ -7,12 +7,17 @@ in vec3 Normal_cam;
 in vec3 FragPos;
 in vec3 Instance_color;
 in vec3 Pos_cam;
+in vec3 Pos_cam_prev;
 in vec3 Diffuse_color;
+in vec2 Optical_flow;
 
 layout (location = 0) out vec4 outputColour;
 layout (location = 1) out vec4 NormalColour;
 layout (location = 2) out vec4 InstanceColour;
 layout (location = 3) out vec4 PCColour;
+layout (location = 4) out vec4 SceneFlowColour;
+layout (location = 5) out vec4 OpticalFlowColour;
+
 
 uniform vec3 light_position;  // in world coordinate
 uniform vec3 light_color; // light color
@@ -33,4 +38,6 @@ void main() {
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
     InstanceColour = vec4(Instance_color,1);
     PCColour = vec4(Pos_cam,1);
+    SceneFlowColour =  vec4(Pos_cam - Pos_cam_prev,1);
+    OpticalFlowColour =  vec4(Optical_flow,0,1);
 }
