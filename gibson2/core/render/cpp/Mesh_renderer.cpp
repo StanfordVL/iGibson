@@ -632,15 +632,28 @@ public:
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
     }
 
-    void init_material_instance(int shaderProgram, int class_id, py::array_t<float> diffuse_color, float use_texture) {
+    void init_material_instance(int shaderProgram,
+                                int class_id,
+                                int instance_id,
+                                py::array_t<float> diffuse_color,
+                                float use_texture) {
         float *diffuse_ptr = (float *) diffuse_color.request().ptr;
         glUniform3f(glGetUniformLocation(shaderProgram, "class_id"), (class_id % 16 * 16) / 255.0, (class_id / 16 % 16 * 16) / 255.0, (class_id / 256 % 16 * 16) / 255.0);
+        glUniform3f(glGetUniformLocation(shaderProgram, "instance_id"), (instance_id % 16 * 16) / 256.0, (instance_id / 16 % 16 * 16) / 256.0, (instance_id / 256 % 16 * 16) / 256.0);
         glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
         glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     }
 
-    void draw_elements_instance(int shaderProgram, bool flag, int texture_id, int sem_id, int ins_id, int vao,
-    int face_size, py::array_t<unsigned int> faces, GLuint fb) {
+    void draw_elements_instance(int shaderProgram,
+            bool flag,
+            int texture_id,
+            int class_id,
+            int instance_id,
+            int vao,
+            int face_size,
+            py::array_t<unsigned int> faces,
+            GLuint fb) {
+
         int texUnitUniform = glGetUniformLocation(shaderProgram, "texUnit");
         int semUnitUniform = glGetUniformLocation(shaderProgram, "semUnit");
         int insUnitUniform = glGetUniformLocation(shaderProgram, "insUnit");
@@ -653,11 +666,11 @@ public:
         if (flag&&(texture_id != -1)) glBindTexture(GL_TEXTURE_2D, texture_id);
 
         bool use_sem = false;
-        if (flag&&(sem_id != -1)) {
+        if (flag && (class_id != -1) && (instance_id != -1)) {
             glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, sem_id);
+            glBindTexture(GL_TEXTURE_2D, class_id);
             glActiveTexture(GL_TEXTURE2);
-            glBindTexture(GL_TEXTURE_2D, ins_id);
+            glBindTexture(GL_TEXTURE_2D, instance_id);
             use_sem = true;
         }
 
@@ -684,9 +697,15 @@ public:
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
     }
 
-    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot, int
-    class_id, int ins_id, py::array_t<float> last_trans, py::array_t<float> last_rot,
-    py::array_t<float> diffuse_color, float use_texture) {
+    void init_material_pos_instance(int shaderProgram,
+            py::array_t<float> pose_trans,
+            py::array_t<float> pose_rot,
+            int class_id,
+            int instance_id,
+            py::array_t<float> last_trans,
+            py::array_t<float> last_rot,
+            py::array_t<float> diffuse_color,
+            float use_texture) {
         float *transptr = (float *) pose_trans.request().ptr;
         float *rotptr = (float *) pose_rot.request().ptr;
         float *diffuse_ptr = (float *) diffuse_color.request().ptr;
@@ -695,9 +714,9 @@ public:
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "class_id"), (class_id % 16 * 16) / 256.0, (class_id / 16 % 16 * 16) / 256.0, (class_id / 256 % 16 * 16) / 256.0);
-        glUniform3f(glGetUniformLocation(shaderProgram, "ins_id"), (ins_id % 16 * 16) / 256.0, (ins_id / 16 % 16 * 16) / 256.0, (ins_id / 256 % 16 * 16) / 256.0);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "last_trans"), 1, GL_FALSE, lasttransptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "last_rot"), 1, GL_TRUE, lastrotptr);
+        glUniform3f(glGetUniformLocation(shaderProgram, "instance_id"), (instance_id % 16 * 16) / 256.0, (instance_id / 16 % 16 * 16) / 256.0, (instance_id / 256 % 16 * 16) / 256.0);
         glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
         glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     }
