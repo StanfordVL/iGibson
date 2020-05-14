@@ -54,40 +54,48 @@ class InstanceGroup(object):
     def __init__(self,
                  objects,
                  id,
-                 link_ids,
                  pybullet_uuid,
+                 pybullet_link_ids,
                  class_id,
-                 poses_trans,
+                 instance_id,
                  poses_rot,
+                 poses_trans,
                  dynamic,
                  robot=None):
         """
         :param objects: visual objects
-        :param id: id this instance_group
-        :param link_ids: link_ids in pybullet
+        :param id: id of this instance_group
         :param pybullet_uuid: body id in pybullet
-        :param class_id: class_id to render semantics
-        :param poses_trans: initial translations for each visual object
+        :param pybullet_link_ids: link ids in pybullet
+        :param class_id: class_id to render semantic segmentation
+        :param instance_id: instance_id to render instance segmentation
         :param poses_rot: initial rotation matrix for each visual object
-        :param dynamic: is the instance group dynamic or not
-        :param robot: The robot associated with this InstanceGroup
+        :param poses_trans: initial translation matrix for each visual object
+        :param dynamic: whether the instance group is dynamic
+        :param robot: the robot associated with this InstanceGroup
         """
         # assert(len(objects) > 0) # no empty instance group
         self.objects = objects
         self.poses_trans = poses_trans
         self.poses_rot = poses_rot
         self.id = id
-        self.link_ids = link_ids
+        self.pybullet_link_ids = pybullet_link_ids
         self.class_id = class_id
+        self.instance_id = instance_id
+        if not (1 <= self.class_id <= 4095):
+            raise Exception('currently class id can only from 1 to 4095 (inclusive), 0 is reserved for background.')
+        if not (0 <= self.instance_id <= 4095):
+            raise Exception('currently instance id can only range from 0 to 4095 (inclusive).')
         self.robot = robot
         if len(objects) > 0:
             self.renderer = objects[0].renderer
         else:
             self.renderer = None
-
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.tf_tree = None
+        self.last_trans = [np.copy(item) for item in poses_trans]
+        self.last_rot = [np.copy(item) for item in poses_rot]
 
     def render(self):
         """
@@ -98,6 +106,7 @@ class InstanceGroup(object):
 
         self.renderer.r.initvar_instance_group(self.renderer.shaderProgram,
                                                self.renderer.V,
+                                               self.renderer.last_V,
                                                self.renderer.P,
                                                self.renderer.lightpos,
                                                self.renderer.lightcolor)
@@ -107,22 +116,23 @@ class InstanceGroup(object):
                 self.renderer.r.init_material_pos_instance(self.renderer.shaderProgram,
                                                            self.poses_trans[i],
                                                            self.poses_rot[i],
-                                                           float(self.class_id) / 255.0,
+                                                           self.class_id,
+                                                           self.instance_id,
+                                                           self.last_trans[i],
+                                                           self.last_rot[i],
                                                            self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3],
                                                            float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
                 try:
-                    texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
-                    if texture_id is None:
-                        texture_id = -1
-
                     if self.renderer.msaa:
                         buffer = self.renderer.fbo_ms
                     else:
                         buffer = self.renderer.fbo
 
-                    self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
-                                                           texture_id,
-                                                           self.renderer.texUnitUniform,
+                    self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id,
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].class_id,
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].instance_id,
                                                            self.renderer.VAOs[object_idx],
                                                            self.renderer.faces[object_idx].size,
                                                            self.renderer.faces[object_idx],
@@ -142,17 +152,17 @@ class InstanceGroup(object):
 
         :param pos: New translations
         """
+        self.last_trans = [np.copy(item) for item in self.poses_trans]
+        self.poses_trans = pos
 
-        self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
-
-    def set_rotation(self, quat):
+    def set_rotation(self, rot):
         """
         Set rotations for each part of this InstanceGroup
 
         :param quat: New quaternion in w,x,y,z
         """
-
-        self.pose_rot = np.ascontiguousarray(quat2rotmat(quat))
+        self.last_rot =  [np.copy(item) for item in self.poses_rot]
+        self.poses_rot = rot
 
     def __str__(self):
         return "InstanceGroup({}) -> Objects({})".format(
@@ -175,16 +185,43 @@ class Instance(object):
     """
     Instance is one instance of a visual object. One visual object can have multiple instances to save memory.
     """
-    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic, softbody):
+    def __init__(self,
+                 object,
+                 id,
+                 pybullet_uuid,
+                 class_id,
+                 instance_id,
+                 pose_rot,
+                 pose_trans,
+                 dynamic,
+                 softbody):
+        """
+        :param object: visual object
+        :param id: id of this instance
+        :param pybullet_uuid: body id in pybullet
+        :param class_id: class_id to render semantic segmentation
+        :param instance_id: instance_id to render instance segmentation
+        :param poses_rot: initial rotation matrix for each visual object
+        :param poses_trans: initial translation matrix for each visual object
+        :param dynamic: whether the instance is dynamic
+        :param softbody: whether the instance is a soft body
+        """
         self.object = object
         self.pose_trans = pose_trans
         self.pose_rot = pose_rot
         self.id = id
         self.class_id = class_id
+        self.instance_id = instance_id
+        if not (1 <= self.class_id <= 4095):
+            raise Exception('currently class id can only from 1 to 4095 (inclusive), 0 is reserved for background.')
+        if not (0 <= self.instance_id <= 4095):
+            raise Exception('currently instance id can only range from 0 to 4095 (inclusive).')
         self.renderer = object.renderer
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.softbody = softbody
+        self.last_trans = np.copy(pose_trans)
+        self.last_rot = np.copy(pose_rot)
 
     def render(self):
         """
@@ -220,30 +257,33 @@ class Instance(object):
 
         self.renderer.r.initvar_instance(self.renderer.shaderProgram,
                                          self.renderer.V,
+                                         self.renderer.last_V,
                                          self.renderer.P,
                                          self.pose_trans,
                                          self.pose_rot,
+                                         self.last_trans,
+                                         self.last_rot,
                                          self.renderer.lightpos,
                                          self.renderer.lightcolor)
 
         for object_idx in self.object.VAO_ids:
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
-                                                   float(self.class_id) / 255.0,
+                                                   self.class_id,
+                                                   self.instance_id,
                                                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd,
                                                    float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
             try:
-                texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
-                if texture_id is None:
-                    texture_id = -1
 
                 if self.renderer.msaa:
                     buffer = self.renderer.fbo_ms
                 else:
                     buffer = self.renderer.fbo
 
-                self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
-                                                       texture_id,
-                                                       self.renderer.texUnitUniform,
+                self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id,
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].class_id,
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].instance_id,
                                                        self.renderer.VAOs[object_idx],
                                                        self.renderer.faces[object_idx].size,
                                                        self.renderer.faces[object_idx],
@@ -259,13 +299,16 @@ class Instance(object):
         return pose
 
     def set_position(self, pos):
+        self.last_trans = np.copy(self.pose_trans)
         self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
 
     def set_rotation(self, quat):
         """
         :param quat: New quaternion in w,x,y,z
         """
+        self.last_rot = np.copy(self.pose_rot)
         self.pose_rot = np.ascontiguousarray(quat2rotmat(quat))
+
 
     def __str__(self):
         return "Instance({}) -> Object({})".format(self.id, self.object.id)
@@ -275,20 +318,27 @@ class Instance(object):
 
 
 class Material(object):
-    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=None):
+    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=-1, class_id=-1, instance_id=-1):
         self.type = type
         self.kd = kd
         self.texture_id = texture_id
+        self.class_id = class_id
+        self.instance_id = instance_id
 
     def is_texture(self):
         return self.type == 'texture'
 
     def __str__(self):
-        return "Material(type: {}, texture_id: {}, color: {})".format(self.type, self.texture_id,
-                                                                      self.kd)
+        return "Material(type: {}, texture_id: {}, class_id: {}, instance_id: {}, color: {})".format(self.type,
+                                                                                                     self.texture_id,
+                                                                                                     self.class_id,
+                                                                                                     self.instance_id,
+                                                                                                     self.kd)
+
 
     def __repr__(self):
         return self.__str__()
+
 
 
 class MeshRenderer(object):
@@ -307,7 +357,8 @@ class MeshRenderer(object):
         self.shaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
-        self.depth_tex = None
+        self.color_tex_ins, self.depth_tex = None, None
+        self.color_tex_scene_flow, self.color_tex_optical_flow = None, None
         self.VAOs = []
         self.VBOs = []
         self.textures = []
@@ -382,6 +433,9 @@ class MeshRenderer(object):
         V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
+        self.last_V = np.copy(self.V)
+        self.cache = np.copy(self.V)
+
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
         self.mesh_materials = []
@@ -390,8 +444,8 @@ class MeshRenderer(object):
         """
         Set up RGB, surface normal, depth and segmentation framebuffers for the renderer
         """
-        [self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-         self.depth_tex] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
+        [self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,self.color_tex_ins,
+         self.color_tex_scene_flow, self.color_tex_optical_flow, self.depth_tex] =  self.r.setup_framebuffer_meshrenderer(self.width, self.height)
 
         if self.msaa:
             [self.fbo_ms, self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
@@ -404,7 +458,9 @@ class MeshRenderer(object):
                     transform_pos=None,
                     input_kd=None,
                     texture_scale=1.0,
-                    load_texture=True):
+                    load_texture=True,
+                    load_sem_map=True,
+                    ):
         """
         Load a wavefront obj file into the renderer and create a VisualObject to manage it.
 
@@ -414,7 +470,8 @@ class MeshRenderer(object):
         :param transform_pos: translation for loading, it is a list of length 3
         :param input_kd: if loading material fails, use this default material. input_kd should be a list of length 3
         :param texture_scale: texture scale for the object, downsample to save memory.
-        :param load_texture: load texture or not
+        :param load_texture: whether to load texture
+        :param load_sem_map: whether to load semantic map
         :return: VAO_ids
         """
         reader = tinyobjloader.ObjReader()
@@ -450,13 +507,23 @@ class MeshRenderer(object):
         materials_fn = {}
 
         for i, item in enumerate(materials):
-            if item.diffuse_texname != '' and load_texture:
+            if load_texture and item.diffuse_texname != '':
                 materials_fn[i + material_count] = item.diffuse_texname
                 obj_dir = os.path.dirname(obj_path)
-                #texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
-                texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
-                self.textures.append(texture)
-                material = Material('texture', texture_id=texture)
+                texture_id = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
+                self.textures.append(texture_id)
+                class_id = -1
+                instance_id = -1
+                sem_map_file = os.path.join(obj_dir, 'sem_map.png')
+                ins_map_file = os.path.join(obj_dir, 'ins_map.png')
+
+                if load_sem_map and os.path.isfile(sem_map_file) and os.path.isfile(ins_map_file):
+                    class_id = self.r.loadTexture(sem_map_file)
+                    self.textures.append(class_id)
+                    instance_id = self.r.loadTexture(ins_map_file)
+                    self.textures.append(instance_id)
+
+                material = Material('texture', texture_id=texture_id, class_id=class_id, instance_id=instance_id)
             else:
                 material = Material('color', kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
@@ -532,7 +599,8 @@ class MeshRenderer(object):
     def add_instance(self,
                      object_id,
                      pybullet_uuid=None,
-                     class_id=0,
+                     class_id=1,
+                     instance_id=0,
                      pose_rot=np.eye(4),
                      pose_trans=np.eye(4),
                      dynamic=False,
@@ -544,19 +612,21 @@ class MeshRenderer(object):
                             id=len(self.instances),
                             pybullet_uuid=pybullet_uuid,
                             class_id=class_id,
-                            pose_trans=pose_trans,
+                            instance_id=instance_id,
                             pose_rot=pose_rot,
+                            pose_trans=pose_trans,
                             dynamic=dynamic,
                             softbody=softbody)
         self.instances.append(instance)
 
     def add_instance_group(self,
                            object_ids,
-                           link_ids,
-                           poses_rot,
-                           poses_trans,
-                           class_id=0,
                            pybullet_uuid=None,
+                           pybullet_link_ids=None,
+                           class_id=1,
+                           instance_id=0,
+                           poses_rot=np.eye(4),
+                           poses_trans=np.eye(4),
                            dynamic=False,
                            robot=None):
         """
@@ -564,22 +634,24 @@ class MeshRenderer(object):
         """
         instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids],
                                        id=len(self.instances),
-                                       link_ids=link_ids,
                                        pybullet_uuid=pybullet_uuid,
+                                       pybullet_link_ids=pybullet_link_ids,
                                        class_id=class_id,
-                                       poses_trans=poses_trans,
+                                       instance_id=instance_id,
                                        poses_rot=poses_rot,
+                                       poses_trans=poses_trans,
                                        dynamic=dynamic,
                                        robot=robot)
         self.instances.append(instance_group)
 
     def add_robot(self,
                   object_ids,
-                  link_ids,
-                  class_id,
-                  poses_rot,
-                  poses_trans,
                   pybullet_uuid=None,
+                  pybullet_link_ids=None,
+                  class_id=1,
+                  instance_id=0,
+                  poses_rot=np.eye(4),
+                  poses_trans=np.eye(4),
                   dynamic=False,
                   robot=None):
         """
@@ -587,21 +659,26 @@ class MeshRenderer(object):
         """
         robot = Robot([self.visual_objects[object_id] for object_id in object_ids],
                       id=len(self.instances),
-                      link_ids=link_ids,
                       pybullet_uuid=pybullet_uuid,
+                      pybullet_link_ids=pybullet_link_ids,
                       class_id=class_id,
-                      poses_trans=poses_trans,
+                      instance_id=instance_id,
                       poses_rot=poses_rot,
+                      poses_trans=poses_trans,
                       dynamic=dynamic,
                       robot=robot)
         self.instances.append(robot)
 
-    def set_camera(self, camera, target, up):
+    def set_camera(self, camera, target, up, cache=False):
         self.camera = camera
         self.target = target
         self.up = up
+        if cache:
+            self.last_V = np.copy(self.cache)
         V = lookat(self.camera, self.target, up=self.up)
         self.V = np.ascontiguousarray(V, np.float32)
+        if cache:
+            self.cache = self.V
 
     def set_fov(self, fov):
         self.vertical_fov = fov
@@ -630,11 +707,11 @@ class MeshRenderer(object):
         v0 = h - top * fv / znear
         return np.array([[fu, 0, u0], [0, fv, v0], [0, 0, 1]])
 
-    def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d')):
+    def readbuffer(self, modes=('rgb', 'normal', '3d', 'seg', 'ins')):
         """
         Read framebuffer of rendering.
 
-        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d').
+        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', '3d', 'seg', 'ins').
         :return: a list of numpy arrays corresponding to `modes`
         """
         results = []
@@ -644,18 +721,23 @@ class MeshRenderer(object):
             modes = [modes]
 
         for mode in modes:
-            if mode not in ['rgb', 'normal', 'seg', '3d']:
+            if mode not in ['rgb', 'normal', 'seg', 'ins', '3d', 'scene_flow', 'optical_flow']:
                 raise Exception('unknown rendering mode: {}'.format(mode))
             frame = self.r.readbuffer_meshrenderer(mode, self.width, self.height, self.fbo)
             frame = frame.reshape(self.height, self.width, 4)[::-1, :]
+            if mode in ['seg', 'ins']:
+                frame = np.round(frame[:, :, 0] * 255.0 / 16.0) + \
+                        np.round(frame[:, :, 1] * 255.0 / 16.0) * 16.0 + \
+                        np.round(frame[:, :, 2] * 255.0 / 16.0) * 256.0
+                frame = frame.astype(np.int)
             results.append(frame)
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
+    def render(self, modes=('rgb', 'normal', '3d', 'seg', 'ins'), hidden=()):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
-        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d').
+        :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', '3d', 'seg', 'ins').
         :param hidden: Hidden instances to skip. When rendering from a robot's perspective, it's own body can be
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
@@ -682,6 +764,8 @@ class MeshRenderer(object):
         return len(self.objects)
 
     def set_pose(self, pose, idx):
+        self.instances[idx].last_rot = np.copy(self.instances[idx].pose_rot )
+        self.instances[idx].last_trans = np.copy(self.instances[idx].pose_trans)
         self.instances[idx].pose_rot = np.ascontiguousarray(quat2rotmat(pose[3:]))
         self.instances[idx].pose_trans = np.ascontiguousarray(xyz2mat(pose[:3]))
 
@@ -698,8 +782,8 @@ class MeshRenderer(object):
         Clean all the framebuffers, objects and instances
         """
         clean_list = [
-            self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-            self.depth_tex
+            self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d, self.color_tex_ins,
+            self.depth_tex, self.color_tex_scene_flow, self.color_tex_optical_flow
         ]
         fbo_list = [self.fbo]
         if self.msaa:
@@ -714,6 +798,9 @@ class MeshRenderer(object):
         self.color_tex_normal = None
         self.color_tex_semantics = None
         self.color_tex_3d = None
+        self.color_tex_ins = None
+        self.color_tex_scene_flow = None
+        self.color_tex_optical_flow = None
         self.depth_tex = None
         self.fbo = None
         self.VAOs = []
@@ -761,8 +848,7 @@ class MeshRenderer(object):
                 orn = instance.robot.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
-                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1], cache=True)
                 for item in self.render(modes=modes, hidden=[instance]):
                     frames.append(item)
         return frames
-

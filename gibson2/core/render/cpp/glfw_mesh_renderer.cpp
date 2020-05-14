@@ -390,12 +390,17 @@ public:
         glBindVertexArray(0);
     }
 
-    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> pose_trans, py::array_t<float> pose_rot, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
+    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
+                          py::array_t<float> last_trans, py::array_t<float> last_rot,
+                          py::array_t<float> lightpos, py::array_t<float> lightcolor) {
         glUseProgram(shaderProgram);
         float *Vptr = (float *) V.request().ptr;
         float *Pptr = (float *) P.request().ptr;
         float *transptr = (float *) pose_trans.request().ptr;
         float *rotptr = (float *) pose_rot.request().ptr;
+        float *lasttransptr = (float *) last_trans.request().ptr;
+        float *lastrotptr = (float *) last_rot.request().ptr;
+
         float *lightposptr = (float *) lightpos.request().ptr;
         float *lightcolorptr = (float *) lightcolor.request().ptr;
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
@@ -443,10 +448,14 @@ public:
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
     }
 
-    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot, float instance_color, py::array_t<float> diffuse_color, float use_texture) {
+    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
+                                    py::array_t<float> last_trans, py::array_t<float> last_rot,
+                                    float instance_color, py::array_t<float> diffuse_color, float use_texture) {
         float *transptr = (float *) pose_trans.request().ptr;
         float *rotptr = (float *) pose_rot.request().ptr;
         float *diffuse_ptr = (float *) diffuse_color.request().ptr;
+        float *lasttransptr = (float *) last_trans.request().ptr;
+        float *lastrotptr = (float *) last_rot.request().ptr;
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
