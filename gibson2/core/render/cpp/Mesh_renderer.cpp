@@ -591,7 +591,7 @@ public:
         glBindVertexArray(0);
     }
 
-    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, py::array_t<float> P,
+    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int enable_shadow, py::array_t<float> P,
     py::array_t<float> pose_trans, py::array_t<float> pose_rot, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
         glUseProgram(shaderProgram);
         float *Vptr = (float *) V.request().ptr;
@@ -608,6 +608,7 @@ public:
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
+        glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), enable_shadow);
     }
 
     void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color, int
@@ -632,7 +633,7 @@ public:
         glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, ptr);
     }
 
-    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, py::array_t<float>
+    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int enable_shadow, py::array_t<float>
     P, py::array_t<float>
     lightpos, py::array_t<float> lightcolor) {
         glUseProgram(shaderProgram);
@@ -646,6 +647,7 @@ public:
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
+        glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), enable_shadow);
     }
 
     void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot, float

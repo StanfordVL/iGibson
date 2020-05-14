@@ -2,7 +2,7 @@
 uniform sampler2D texUnit;
 uniform sampler2D depthMap;
 uniform int use_texture;
-//uniform int shadow_pass;
+uniform int shadow_pass;
 in vec2 theCoords;
 in vec3 Normal;
 in vec3 Normal_cam;
@@ -36,6 +36,10 @@ void main() {
     if ((projCoords.z > 1.0) || (projCoords.x > 1.0) || (projCoords.y > 1.0) || (projCoords.x < 0) || (projCoords.y <
      0))
         shadow = 0.0;
+
+    if (shadow_pass == 0) {
+        shadow = 0.0;
+    }
 
     float diff = 0.5 + 0.5 * max(dot(Normal, lightDir), 0.0);
     vec3 diffuse = diff * light_color;

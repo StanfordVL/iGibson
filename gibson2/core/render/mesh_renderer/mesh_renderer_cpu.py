@@ -99,6 +99,7 @@ class InstanceGroup(object):
         self.renderer.r.initvar_instance_group(self.renderer.shaderProgram,
                                                self.renderer.V,
                                                self.renderer.lightV,
+                                               int(self.renderer.enable_shadow),
                                                self.renderer.P,
                                                self.renderer.lightpos,
                                                self.renderer.lightcolor)
@@ -224,6 +225,7 @@ class Instance(object):
         self.renderer.r.initvar_instance(self.renderer.shaderProgram,
                                          self.renderer.V,
                                          self.renderer.lightV,
+                                         int(self.renderer.enable_shadow),
                                          self.renderer.P,
                                          self.pose_trans,
                                          self.pose_rot,
@@ -301,13 +303,15 @@ class MeshRenderer(object):
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False,
+                 enable_shadow=False):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
         :param vertical_fov: vertical field of view for the renderer
         :param device_idx: which GPU to run the renderer on
         :param use_fisheye: use fisheye shader or not
+        :param enable_shadow: enable shadow in the rgb rendering
         """
         self.shaderProgram = None
         self.fbo = None
@@ -320,14 +324,12 @@ class MeshRenderer(object):
         self.visual_objects = []
         self.vertex_data = []
         self.shapes = []
-
         self.width = width
         self.height = height
         self.faces = []
         self.instances = []
         self.fisheye = use_fisheye
-        # self.context = glcontext.Context()
-        # self.context.create_opengl_context((self.width, self.height))
+        self.enable_shadow = enable_shadow
         available_devices = get_available_devices()
         if device_idx < len(available_devices):
             device = available_devices[device_idx]
@@ -352,7 +354,6 @@ class MeshRenderer(object):
         logging.debug(self.glstring)
 
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-
         self.lightcolor = [1, 1, 1]
 
         logging.debug('Is using fisheye camera: {}'.format(self.fisheye))
@@ -376,10 +377,7 @@ class MeshRenderer(object):
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/frag.shader')).readlines()))
 
-        self.lightpos = [0, 0, 2]
-        self.lightV = lookat(self.lightpos, [0,0.5,0], [0,1,0])
-        # light looking down
-        print(self.lightV)
+        self.set_light_position_direction([0,0,2], [0,0.5,0]) #default light looking down and tilted
 
         self.setup_framebuffer()
         self.vertical_fov = vertical_fov
@@ -394,6 +392,10 @@ class MeshRenderer(object):
         self.materials_mapping = {}
         self.mesh_materials = []
 
+    def set_light_position_direction(self, position, target):
+        self.lightpos = position
+        self.lightV = lookat(self.lightpos, target, [0,1,0])
+
     def setup_framebuffer(self):
         """
         Set up RGB, surface normal, depth and segmentation framebuffers for the renderer
@@ -406,8 +408,7 @@ class MeshRenderer(object):
              self.depth_tex_ms] = self.r.setup_framebuffer_meshrenderer_ms(self.width, self.height)
 
         self.depth_tex_shadow = self.r.allocateTexture(self.width,self.height)
-        #print(self.depth_tex_shadow)
-        #exit()
+
 
     def load_object(self,
                     obj_path,
@@ -673,30 +674,24 @@ class MeshRenderer(object):
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
 
-        # shadow pass
+        if self.enable_shadow:
+            # shadow pass
 
-        V = np.copy(self.V)
-        self.V = np.copy(self.lightV)
+            V = np.copy(self.V)
+            self.V = np.copy(self.lightV)
 
-        self.r.render_meshrenderer_pre(0, 0, self.fbo)
+            self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
-        for instance in self.instances:
-            if not instance in hidden:
-                instance.render()
+            for instance in self.instances:
+                if not instance in hidden:
+                    instance.render()
 
-        self.r.render_meshrenderer_post()
+            self.r.render_meshrenderer_post()
+            self.r.readbuffer_meshrenderer_shadow_depth(self.width, self.height, self.fbo, self.depth_tex_shadow)
+            self.V = np.copy(V)
 
-        data = self.r.readbuffer_meshrenderer_shadow_depth(self.width, self.height, self.fbo, self.depth_tex_shadow)
-        # data = data.reshape(512,512,3)
-        # import matplotlib.pyplot as plt
-        # plt.imshow(data[:,:,2])
-        # plt.show()
-        #print(np.mean(np.mean(data, axis=0), axis=0), np.max(np.max(data, axis=0), axis=0))
-        #exit()
-        #from IPython import embed; embed()
-        #exit()
-        # render pass
-        self.V = np.copy(V)
+
+
         if self.msaa:
             self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
         else:
