@@ -219,20 +219,21 @@ class Simulator:
                                                class_id=class_id,
                                                instance_id=0)
 
-        # matterport house metadata file
-        house_metadata_file = os.path.join(get_model_path(scene.model_id), 'house_segmentations', '{}.house'.format(scene.model_id))
-
+        
         # if load_sem_map is True and the house_metadata_file can be found,
         # sem_map.png and ins_map.png will be used for rendering semantic and instance segmentation.
-        if load_sem_map and os.path.isfile(house_metadata_file):
-            self.class_instance_tracker_scene_only = collections.Counter()
-            with open(house_metadata_file) as f:
-                for line in f.readlines():
-                    if line.startswith('O'):
-                        ls = line.strip().split()
-                        # category id is actually 0-indexed, +1 to be consistent with https://github.com/niessner/Matterport/blob/master/metadata/category_mapping.tsv
-                        category_id = int(ls[3]) + 1
-                        self.class_instance_tracker_scene_only[category_id] += 1
+        if load_sem_map:
+            # matterport house metadata file
+            house_metadata_file = os.path.join(get_model_path(scene.model_id), 'house_segmentations', '{}.house'.format(scene.model_id))
+            if os.path.isfile(house_metadata_file):
+                self.class_instance_tracker_scene_only = collections.Counter()
+                with open(house_metadata_file) as f:
+                    for line in f.readlines():
+                        if line.startswith('O'):
+                            ls = line.strip().split()
+                            # category id is actually 0-indexed, +1 to be consistent with https://github.com/niessner/Matterport/blob/master/metadata/category_mapping.tsv
+                            category_id = int(ls[3]) + 1
+                            self.class_instance_tracker_scene_only[category_id] += 1
 
         # otherwise, the provided class_id and instance_id = 0 will be used
         else:
