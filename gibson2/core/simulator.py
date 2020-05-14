@@ -8,7 +8,9 @@ import pybullet as p
 import gibson2
 import os
 import numpy as np
-
+import platform
+import logging
+        
 
 class Simulator:
     def __init__(self,
@@ -29,7 +31,7 @@ class Simulator:
         :param gravity: gravity on z direction.
         :param timestep: timestep of physical simulation
         :param use_fisheye: use fisheye
-        :param mode: choose mode from gui or headless
+        :param mode: choose mode from gui, headless, iggui (only open iGibson UI), or pbgui(only open pybullet UI)
         :param image_width: width of the camera image
         :param image_height: height of the camera image
         :param vertical_fov: vertical field of view of the camera image in degrees
@@ -42,7 +44,22 @@ class Simulator:
         self.gravity = gravity
         self.timestep = timestep
         self.mode = mode
-
+        
+        plt = platform.system()
+        if plt == 'Darwin' and self.mode == 'gui':
+            self.mode = 'iggui' # for mac os disable pybullet rendering
+            logging.warn('Rendering both iggui and pbgui is not supported on mac, choose either pbgui or '
+                      'iggui. Default to iggui.')
+        
+        self.use_pb_renderer = False
+        self.use_ig_renderer = False
+        
+        if self.mode in ['gui', 'iggui']:
+            self.use_ig_renderer = True
+     
+        if self.mode in ['gui', 'pbgui']:
+            self.use_pb_renderer = True
+                   
         # renderer
         self.image_width = image_width
         self.image_height = image_height
@@ -93,15 +110,17 @@ class Simulator:
                                          device_idx=self.device_idx,
                                          use_fisheye=self.use_fisheye)
 
-        if self.mode == 'gui':
+        print("******************PyBullet Logging Information:")
+        if self.use_pb_renderer:
             self.cid = p.connect(p.GUI)
         else:
             self.cid = p.connect(p.DIRECT)
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
+        print("PyBullet Logging Information******************")
 
-        if self.mode == 'gui' and not self.render_to_tensor:
+        if self.use_ig_renderer and not self.render_to_tensor:
             self.add_viewer()
 
         self.visual_objects = {}
@@ -421,7 +440,7 @@ class Simulator:
         for instance in self.renderer.instances:
             if instance.dynamic:
                 self.update_position(instance)
-        if self.mode == 'gui' and self.viewer is not None:
+        if self.use_ig_renderer and self.viewer is not None:
             self.viewer.update()
 
     @staticmethod
@@ -446,7 +465,6 @@ class Simulator:
                     _, _, _, _, pos, orn = p.getLinkState(instance.pybullet_uuid, link_id)
                 poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
                 poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
-                # print(instance.pybullet_uuid, link_id, pos, orn)
 
             instance.poses_rot = poses_rot
             instance.poses_trans = poses_trans
@@ -462,6 +480,8 @@ class Simulator:
         clean up the simulator
         """
         if self.isconnected():
+            print("******************PyBullet Logging Information:")
             p.resetSimulation(physicsClientId=self.cid)
             p.disconnect(self.cid)
+            print("PyBullet Logging Information******************")
         self.renderer.release()

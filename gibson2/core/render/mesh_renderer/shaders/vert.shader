@@ -1,4 +1,4 @@
-#version 450
+#version 410
 uniform mat4 V;
 uniform mat4 lightV;
 uniform mat4 P;

@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from gibson2.core.render.mesh_renderer.get_available_devices import get_cuda_device
+import logging
 
 
 try:
@@ -16,13 +17,12 @@ try:
         def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False):
             super(MeshRendererG2G, self).__init__(width, height, vertical_fov, device_idx, use_fisheye, msaa)
             self.cuda_idx = get_cuda_device(self.device_minor)
-            print("Using cuda device {}".format(self.cuda_idx))
+            logging.info("Using cuda device {} for pytorch".format(self.cuda_idx))
             with torch.cuda.device(self.cuda_idx):
                 self.image_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
                 self.normal_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
                 self.seg_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
                 self.pc_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
-            self.r.glad_init()
 
         def readbuffer_to_tensor(self, modes=('rgb', 'normal', 'seg', '3d')):
             results = []

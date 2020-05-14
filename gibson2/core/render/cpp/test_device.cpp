@@ -70,6 +70,8 @@ int main(int argc, char ** argv){
     m_windowHeight = 256;
     m_renderDevice = -1;
 
+    int verbosity = 20;
+
     EGLint egl_config_attribs[] = {EGL_RED_SIZE,
         8,
         EGL_GREEN_SIZE,
@@ -95,9 +97,8 @@ int main(int argc, char ** argv){
 #ifdef USE_GLAD
     int egl_version = gladLoaderLoadEGL(NULL);
     if(!egl_version) {
-        fprintf(stderr, "failed to EGL with glad.\n");
+        fprintf(stderr, "INFO: Probing, EGL cannot run on this device\n");
         exit(EXIT_FAILURE);
-
     };
 #endif
     // Query EGL Devices
@@ -107,48 +108,44 @@ int main(int argc, char ** argv){
     EGLint egl_error = eglGetError();
     if (!eglQueryDevicesEXT(max_devices, egl_devices, &num_devices) ||
         egl_error != EGL_SUCCESS) {
-        printf("eglQueryDevicesEXT Failed.\n");
+        printf("WARN: eglQueryDevicesEXT failed.\n");
         m_data->egl_display = EGL_NO_DISPLAY;
-    }
-
-    //printf("number of devices found %d\n", num_devices);
-
-    
+    }   
     m_data->m_renderDevice = atoi(argv[1]);
 
-        // Set display
-        EGLDisplay display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT,
-                                                      egl_devices[m_data->m_renderDevice], NULL);
-        if (eglGetError() == EGL_SUCCESS && display != EGL_NO_DISPLAY) {
-            int major, minor;
-            EGLBoolean initialized = eglInitialize(display, &major, &minor);
-            if (eglGetError() == EGL_SUCCESS && initialized == EGL_TRUE) {
-                m_data->egl_display = display;
-            }
+    // Set display
+    EGLDisplay display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT,
+                                                  egl_devices[m_data->m_renderDevice], NULL);
+    if (eglGetError() == EGL_SUCCESS && display != EGL_NO_DISPLAY) {
+        int major, minor;
+        EGLBoolean initialized = eglInitialize(display, &major, &minor);
+        if (eglGetError() == EGL_SUCCESS && initialized == EGL_TRUE) {
+            m_data->egl_display = display;
         }
+    }
 
     if (!eglInitialize(m_data->egl_display, NULL, NULL)) {
-        fprintf(stderr, "Unable to initialize EGL\n");
+        fprintf(stderr, "INFO: Unable to initialize EGL\n");
         exit(EXIT_FAILURE);
     }
 
 #ifdef USE_GLAD
     egl_version = gladLoaderLoadEGL(m_data->egl_display);
     if (!egl_version) {
-        fprintf(stderr, "Unable to reload EGL.\n");
+        fprintf(stderr, "INFO: Unable to reload EGL.\n");
         exit(EXIT_FAILURE);
     }
-    printf("Loaded EGL %d.%d after reload.\n", GLAD_VERSION_MAJOR(egl_version),
-           GLAD_VERSION_MINOR(egl_version));
+    if (verbosity >= 20) { printf("INFO: Loaded EGL %d.%d after reload.\n", GLAD_VERSION_MAJOR(egl_version),
+           GLAD_VERSION_MINOR(egl_version));}
 #else
-    printf("not using glad\n");
+    if (verbosity >= 20) { printf("INFO: Not using glad\n");}
 #endif
 
     m_data->success = eglBindAPI(EGL_OPENGL_API);
     if (!m_data->success) {
         // TODO: Properly handle this error (requires change to default window
         // API to change return on all window types to bool).
-        fprintf(stderr, "Failed to bind OpenGL API.\n");
+        fprintf(stderr, "INFO: Failed to bind OpenGL API.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -158,18 +155,18 @@ int main(int argc, char ** argv){
     if (!m_data->success) {
         // TODO: Properly handle this error (requires change to default window
         // API to change return on all window types to bool).
-        fprintf(stderr, "Failed to choose config (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "INFO: Failed to choose config (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
     if (m_data->num_configs != 1) {
-        fprintf(stderr, "Didn't get exactly one config, but %d\n", m_data->num_configs);
+        fprintf(stderr, "INFO: Didn't get exactly one config, but %d\n", m_data->num_configs);
         exit(EXIT_FAILURE);
     }
 
     m_data->egl_surface = eglCreatePbufferSurface(
                                                   m_data->egl_display, m_data->egl_config, egl_pbuffer_attribs);
     if (m_data->egl_surface == EGL_NO_SURFACE) {
-        fprintf(stderr, "Unable to create EGL surface (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "INFO: Unable to create EGL surface (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
 
@@ -177,7 +174,7 @@ int main(int argc, char ** argv){
     m_data->egl_context = eglCreateContext(
                                            m_data->egl_display, m_data->egl_config, EGL_NO_CONTEXT, NULL);
     if (!m_data->egl_context) {
-        fprintf(stderr, "Unable to create EGL context (eglError: %d)\n",eglGetError());
+        fprintf(stderr, "INFO: Unable to create EGL context (eglError: %d)\n",eglGetError());
         exit(EXIT_FAILURE);
     }
 
@@ -185,24 +182,24 @@ int main(int argc, char ** argv){
         eglMakeCurrent(m_data->egl_display, m_data->egl_surface, m_data->egl_surface,
                    m_data->egl_context);
     if (!m_data->success) {
-        fprintf(stderr, "Failed to make context current (eglError: %d)\n", eglGetError());
+        fprintf(stderr, "INFO: Failed to make context current (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
 
     if (!gladLoadGL(eglGetProcAddress)) {
-        fprintf(stderr, "failed to load GL with glad.\n");
+        fprintf(stderr, "INFO: Failed to load GL with glad.\n");
         exit(EXIT_FAILURE);
     }
 
     const GLubyte* ven = glGetString(GL_VENDOR);
-    printf("GL_VENDOR=%s\n", ven);
+    if (verbosity >= 20) { printf("INFO: GL_VENDOR=%s\n", ven);}
 
     const GLubyte* ren = glGetString(GL_RENDERER);
-    printf("GL_RENDERER=%s\n", ren);
+    if (verbosity >= 20) { printf("INFO: GL_RENDERER=%s\n", ren);}
     const GLubyte* ver = glGetString(GL_VERSION);
-    printf("GL_VERSION=%s\n", ver);
+    if (verbosity >= 20) { printf("INFO: GL_VERSION=%s\n", ver);}
     const GLubyte* sl = glGetString(GL_SHADING_LANGUAGE_VERSION);
-    printf("GL_SHADING_LANGUAGE_VERSION=%s\n", sl);
+    if (verbosity >= 20) { printf("INFO: GL_SHADING_LANGUAGE_VERSION=%s\n", sl);}
 
     return 0;
 }
