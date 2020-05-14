@@ -1,4 +1,4 @@
-#version 450
+#version 410
 uniform sampler2D texUnit;
 uniform sampler2D depthMap;
 uniform int use_texture;
