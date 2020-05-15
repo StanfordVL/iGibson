@@ -425,7 +425,7 @@ public:
 
     py::list setup_framebuffer_meshrenderer(int width, int height) {
         GLuint *fbo_ptr = (GLuint*)malloc(sizeof(GLuint));
-        GLuint *texture_ptr = (GLuint*)malloc(7 * sizeof(GLuint));
+        GLuint *texture_ptr = (GLuint*)malloc(8 * sizeof(GLuint));
         glGenFramebuffers(1, fbo_ptr);
         glGenTextures(8, texture_ptr);
         int fbo = fbo_ptr[0];
