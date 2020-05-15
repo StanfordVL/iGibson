@@ -1,12 +1,14 @@
 from gibson2.core.physics.scene import StadiumScene
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat, xyz2mat
+from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat
 from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject, RBOObject, Pedestrian, ShapeNetObject, BoxShape
 from gibson2.core.render.viewer import Viewer
+from gibson2.utils.utils import quatFromXYZW, quatToXYZW
 import gibson2
 import os
 import numpy as np
 import transforms3d
+from transforms3d import quaternions
 
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
@@ -57,8 +59,8 @@ class iGibsonMujocoBridge:
         """
         self.viewer = Viewer(initial_pos = initial_pos,
             initial_view_direction=initial_view_direction,
-            initial_up=initial_up,
-            render_static_cam = True)
+            initial_up=initial_up
+            )
 
         self.viewer.renderer = self.renderer
 
@@ -141,6 +143,7 @@ class iGibsonMujocoBridge:
         if verbose: print("Textures:")
         if verbose: pp.pprint(textures)
 
+        mujoco_robot = MujocoRobot()
 
         #Iterate over all cameras
         for camm in xml_root.iter('camera'):
@@ -156,11 +159,24 @@ class iGibsonMujocoBridge:
                     properties[prop] = value
 
             camera_quat = properties['quat']
-            camera_quat = [camera_quat[1],camera_quat[2],camera_quat[3],camera_quat[0]]
+            camera_quat = [camera_quat[1],camera_quat[2],camera_quat[3],camera_quat[0]] #xyzw
 
             camera_rot_mat = T.quat2mat(camera_quat)
             view_direction = -np.array(camera_rot_mat[0:3,2])
-            self.renderer.add_static_camera(camm.get("name"), properties['pos'], view_direction, parent_body.get('name'))
+            #self.renderer.add_static_camera(camm.get("name"), properties['pos'], view_direction, parent_body.get('name'))
+
+            parent_body_name = [parent_body.get('name'), 'worldbody'][parent_body.get('name') is None]
+            camera = MujocoCamera(parent_body_name, properties['pos'],camera_quat,True, mujoco_env = self.env, camera_name = camm.get("name"))
+            mujoco_robot.cameras.append(camera)     
+
+        self.renderer.add_robot([],
+                                [],
+                                [],
+                                [],
+                                [],
+                                [],
+                                dynamic=False,
+                                robot=mujoco_robot)     
 
 
         #Iterate over all geometries
@@ -291,7 +307,7 @@ class iGibsonMujocoBridge:
                                    pybullet_uuid=0,
                                    class_id=0,
                                    dynamic=True,
-                                   parent_body='world')
+                                   parent_body='worldbody')
 
     def load_without_pybullet_vis(load_func):
         def wrapped_load_func(*args, **kwargs):
@@ -361,7 +377,7 @@ class iGibsonMujocoBridge:
         if isinstance(instance, Instance):
             #print("Updating geom")
 
-            if instance.parent_body != 'world':
+            if instance.parent_body != 'worldbody':
 
                 pos_body_in_world = env.sim.data.get_body_xpos(instance.parent_body)
                 rot_body_in_world = env.sim.data.get_body_xmat(instance.parent_body).reshape((3, 3))
@@ -396,5 +412,76 @@ class iGibsonMujocoBridge:
     def close(self):
         self.disconnect()
 
-    def set_camera(self, camera_id=0):
-        self.viewer.set_camera(camera_id)
+    # def set_camera(self, camera_id=0):
+    #     self.viewer.set_camera(camera_id)
+
+
+class MujocoRobot(object):
+    def __init__(self):
+        self.cameras = []
+
+class MujocoCamera(object):
+    """
+    Camera class to define camera locations and its activation state (to render from them or not)
+    """
+    def __init__(self, 
+                 camera_link_name, 
+                 offset_pos = np.array([0,0,0]), 
+                 offset_ori = np.array([0,0,0,1]), #xyzw -> Pybullet convention (to be consistent)
+                 active=True, 
+                 modes = None, 
+                 camera_name = None,
+                 mujoco_env = None
+                 ):
+        """
+        :param link_name: string, name of the link the camera is attached to
+        :param offset_pos: vector 3d, position offset to the reference frame of the link
+        :param offset_ori: vector 4d, orientation offset (quaternion: x, y, z, w) to the reference frame of the link
+        :param active: boolean, whether the camera is active and we render virtual images from it
+        :param modes: string, modalities rendered by this camera, a subset of ('rgb', 'normal', 'seg', '3d'). If None, we use the default of the renderer
+        """
+        self.camera_link_name = camera_link_name
+        self.offset_pos = np.array(offset_pos)
+        self.offset_ori = np.array(offset_ori)
+        self.active = active
+        self.modes = modes
+        self.camera_name = [camera_name, camera_link_name + '_cam'][camera_name is None]
+        self.mujoco_env = mujoco_env
+
+    def is_active(self):
+        return self.active
+
+    def activate(self):
+        self.active = True
+
+    def deactivate(self):
+        self.active = False
+
+    def switch(self):
+        self.active = [True, False][self.active]
+
+    def get_pose(self):
+        offset_mat = np.eye(4)
+        q_wxyz = np.concatenate((self.offset_ori[3:], self.offset_ori[:3]))
+        offset_mat[:3, :3] = quaternions.quat2mat(q_wxyz)
+        offset_mat[:3, -1] = self.offset_pos
+
+        if self.camera_link_name != 'worldbody':
+
+            pos_body_in_world = self.mujoco_env.sim.data.get_body_xpos(self.camera_link_name)
+            rot_body_in_world = self.mujoco_env.sim.data.get_body_xmat(self.camera_link_name).reshape((3, 3))
+            pose_body_in_world = T.make_pose(pos_body_in_world, rot_body_in_world) 
+
+            total_pose = np.array(pose_body_in_world).dot(np.array(offset_mat))
+
+            position = total_pose[:3, -1]
+
+            rot = total_pose[:3, :3]
+            wxyz = quaternions.mat2quat(rot)
+            xyzw = np.concatenate((wxyz[1:], wxyz[:1]))
+
+        else:
+            position = np.array(self.offset_pos)
+            xyzw = self.offset_ori
+
+        return np.concatenate((position, xyzw))
