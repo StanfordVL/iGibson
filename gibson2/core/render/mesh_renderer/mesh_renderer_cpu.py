@@ -7,7 +7,7 @@ Image.MAX_IMAGE_PIXELS = None
 import cv2
 import numpy as np
 #from pyassimp import load, release
-from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, safemat2quat
+from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat_opengl, quat2rotmat, mat2xyz_opengl, safemat2quat
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
 from gibson2.core.render.mesh_renderer import MeshRendererContext
@@ -17,6 +17,8 @@ import pybullet as p
 import gibson2
 import os
 from gibson2.core.render.mesh_renderer import tinyobjloader
+import platform
+import logging
 
 class VisualObject(object):
     """
@@ -118,7 +120,7 @@ class InstanceGroup(object):
 
     def get_pose_in_camera(self):
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
-        pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
+        pose = np.concatenate([mat2xyz_opengl(mat), safemat2quat(mat[:3, :3].T)])
         return pose
 
     def set_position(self, pos):
@@ -128,7 +130,7 @@ class InstanceGroup(object):
         :param pos: New translations
         """
 
-        self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
+        self.pose_trans = np.ascontiguousarray(xyz2mat_opengl(pos))
 
     def set_rotation(self, rot):
         """
@@ -158,7 +160,7 @@ class Robot(InstanceGroup):
 
 class Instance(object):
     """
-    InstanceGroup is one instance of a visual object. One visual object can have multiple instances to save memory.
+    Instance is one instance of a visual object. One visual object can have multiple instances to save memory.
     """
     def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic, softbody, parent_body):
         self.object = object
@@ -230,11 +232,11 @@ class Instance(object):
 
     def get_pose_in_camera(self):
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
-        pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
+        pose = np.concatenate([mat2xyz_opengl(mat), safemat2quat(mat[:3, :3].T)])
         return pose
 
     def set_position(self, pos):
-        self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
+        self.pose_trans = np.ascontiguousarray(xyz2mat_opengl(pos))
 
     def set_rotation(self, rot):
         """
@@ -268,25 +270,25 @@ class Material(object):
         return self.__str__()
 
 
-class StaticCamera(object):
-    def __init__(self,cam_name, cam_pos, cam_viewing_dir, parent_body, cam_up = [0,0,1]):
-        self.cam_pos = cam_pos
-        self.cam_viewing_dir = cam_viewing_dir
-        self.cam_up = cam_up
-        self.cam_name = cam_name
-        self.parent_body = parent_body
-        self.dynamic = False
+# class StaticCamera(object):
+#     def __init__(self,cam_name, cam_pos, cam_viewing_dir, parent_body, cam_up = [0,0,1]):
+#         self.cam_pos = cam_pos
+#         self.cam_viewing_dir = cam_viewing_dir
+#         self.cam_up = cam_up
+#         self.cam_name = cam_name
+#         self.parent_body = parent_body
+#         self.dynamic = False
 
 
-    def __str__(self):
-        return "Camera(name: {}, pos: {}, viewing dir: {}, up dir: {})".format(self.cam_name, self.cam_pos,
-            self.cam_viewing_dir, self.cam_up)
+#     def __str__(self):
+#         return "Camera(name: {}, pos: {}, viewing dir: {}, up dir: {})".format(self.cam_name, self.cam_pos,
+#             self.cam_viewing_dir, self.cam_up)
 
-    def __repr__(self):
-        return self.__str__()
+#     def __repr__(self):
+#         return self.__str__()
 
-    def render(self):
-        return
+#     def render(self):
+#         return
 
 
 class MeshRenderer(object):
@@ -325,28 +327,31 @@ class MeshRenderer(object):
         available_devices = get_available_devices()
         if device_idx < len(available_devices):
             device = available_devices[device_idx]
-            print("Using device {}".format(device))
+            logging.info("Using device {} for rendering".format(device))
         else:
-            print("Device index is larger than number of devices, falling back to use 0")
+            logging.info("Device index is larger than number of devices, falling back to use 0")
             device = 0
 
         self.device_idx = device_idx
         self.device_minor = device
         self.msaa = msaa
-        self.r = MeshRendererContext.MeshRendererContext(width, height, device)
+        if platform.system() == 'Darwin':
+            from gibson2.core.render.mesh_renderer import GLFWRendererContext
+            self.r = GLFWRendererContext.GLFWRendererContext(width, height)
+        else:
+            self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
-        self.r.glad_init()
         self.glstring = self.r.getstring_meshrenderer()
+
+        logging.debug('Rendering device and GL version')
+        logging.debug(self.glstring)
+
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
         self.lightcolor = [1, 1, 1]
 
-        print("Using Fisheye camera: ", self.fisheye)
-
-        import time
-
-        start = time.time()
+        logging.debug('Is using fisheye camera: {}'.format(self.fisheye))
 
         if self.fisheye:
             [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
@@ -366,10 +371,6 @@ class MeshRenderer(object):
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/frag.shader')).readlines()))
-
-        end = time.time()
-        print("Time compiling shader meshrenderer")
-        print(end - start)
 
         self.lightpos = [0, 0, 0]
         self.setup_framebuffer()
@@ -417,34 +418,34 @@ class MeshRenderer(object):
         :return: VAO_ids
         """
         reader = tinyobjloader.ObjReader()
-        print("Loading ", obj_path)
+        logging.info("Loading {}".format(obj_path))
         ret = reader.ParseFromFile(obj_path)
         if ret == False:
-            print("Warn:", reader.Warning())
-            print("Err:", reader.Error())
-            print("Failed to load : ", obj_path)
+            logging.error("Warning: {}".format(reader.Warning()))
+            logging.error("Error: {}".format(reader.Error()))
+            logging.error("Failed to load: {}".format(obj_path))
             sys.exit(-1)
 
         if reader.Warning():
-            print("Warn:", reader.Warning())
+            logging.warning("Warning: {}".format(reader.Warning()))
 
         verbose = False
 
         attrib = reader.GetAttrib()
-        if verbose: print("Num vertices = ", len(attrib.vertices))
-        #print("attrib.normals = ", len(attrib.normals))
-        #print("attrib.texcoords = ", len(attrib.texcoords))
+        logging.debug("Num vertices = {}".format(len(attrib.vertices)))
+        logging.debug("Num normals = {}".format(len(attrib.normals)))
+        logging.debug("Num texcoords = {}".format(len(attrib.texcoords)))
 
         materials = reader.GetMaterials()
-        if verbose: print("Num materials: ", len(materials))
-        
-        if verbose: 
+        logging.debug("Num materials: {}".format(len(materials)))
+
+        if logging.root.level <= logging.DEBUG: #Only going into this if it is for logging --> efficiency
             for m in materials:
-                print("Material name: ", m.name)
-                print("Material diffuse: ", m.diffuse)
+                logging.debug("Material name: {}".format(m.name))
+                logging.debug("Material diffuse: {}".format(m.diffuse))
 
         shapes = reader.GetShapes()
-        if verbose: print("Num shapes: ", len(shapes))
+        logging.debug("Num shapes: {}".format(len(shapes)))
 
         material_count = len(self.materials_mapping)
         materials_fn = {}
@@ -475,20 +476,18 @@ class MeshRenderer(object):
         elif len(materials) == 0:  # urdf material not specified, but it is required
             self.materials_mapping[len(materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5])
 
-        #print(self.materials_mapping)
         VAO_ids = []
 
         vertex_position = np.array(attrib.vertices).reshape((len(attrib.vertices)//3, 3))
         vertex_normal = np.array(attrib.normals).reshape((len(attrib.normals)//3, 3))
         vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
-        #print(vertex_position.shape, vertex_normal.shape, vertex_texcoord.shape)
 
 
         for shape in shapes:
-            #print(shape.name)
-            material_id = shape.mesh.material_ids[0] # assume one shape only have one material
-            #print("material_id = {}".format(material_id))
-            #print("num_indices = {}".format(len(shape.mesh.indices)))
+            logging.debug("Shape name: {}".format(shape.name))
+            material_id = shape.mesh.material_ids[0]  # assume one shape only has one material
+            logging.debug("material_id = {}".format(material_id))
+            logging.debug("num_indices = {}".format(len(shape.mesh.indices)))
             n_indices = len(shape.mesh.indices)
             np_indices = shape.mesh.numpy_indices().reshape((n_indices,3))
 
@@ -534,11 +533,10 @@ class MeshRenderer(object):
             else:
                 self.mesh_materials.append(material_id + material_count)
 
-            #print('mesh_materials', self.mesh_materials)
+            logging.debug('mesh_materials: {}'.format(self.mesh_materials))
             VAO_ids.append(self.get_num_objects() - 1)
 
         #release(scene)
-
         new_obj = VisualObject(obj_path, VAO_ids, len(self.visual_objects), self)
         self.visual_objects.append(new_obj)
         return VAO_ids
@@ -612,18 +610,18 @@ class MeshRenderer(object):
                       robot=robot)
         self.instances.append(robot)
 
-    def add_static_camera(self,
-                          cam_name,
-                          cam_pos,
-                          cam_vd,
-                          parent_body,
-                          cam_up = [0,0,1],
-                          ):
-        """
-            Create a static camera and add it
-        """
-        static_cam = StaticCamera(cam_name, cam_pos, cam_vd, parent_body, cam_up)
-        self.instances.append(static_cam)
+    # def add_static_camera(self,
+    #                       cam_name,
+    #                       cam_pos,
+    #                       cam_vd,
+    #                       parent_body,
+    #                       cam_up = [0,0,1],
+    #                       ):
+    #     """
+    #         Create a static camera and add it
+    #     """
+    #     static_cam = StaticCamera(cam_name, cam_pos, cam_vd, parent_body, cam_up)
+    #     self.instances.append(static_cam)
 
     def set_camera(self, camera, target, up):
         self.camera = camera
@@ -721,13 +719,13 @@ class MeshRenderer(object):
 
     def set_pose(self, pose, idx):
         self.instances[idx].pose_rot = np.ascontiguousarray(quat2rotmat(pose[3:]))
-        self.instances[idx].pose_trans = np.ascontiguousarray(xyz2mat(pose[:3]))
+        self.instances[idx].pose_trans = np.ascontiguousarray(xyz2mat_opengl(pose[:3]))
 
     def release(self):
         """
         Clean everything, and release the openGL context.
         """
-        print(self.glstring)
+        logging.debug('Releasing. {}'.format(self.glstring))
         self.clean()
         self.r.release()
 
@@ -787,44 +785,84 @@ class MeshRenderer(object):
 
     def transform_pose(self, pose):
         pose_rot = quat2rotmat(pose[3:])
-        pose_trans = xyz2mat(pose[:3])
+        pose_trans = xyz2mat_opengl(pose[:3])
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
-        return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
+        return np.concatenate([mat2xyz_opengl(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
-    def render_robot_cameras(self, modes=('rgb')):
+    def render_robot_cameras(self, modes=('rgb'), hide_robot = True):
         frames = []
         for instance in self.instances:
             if isinstance(instance, Robot):
-                camera_pos = instance.robot.eyes.get_position()
-                orn = instance.robot.eyes.get_orientation()
-                mat = quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])[:3, :3]
-                view_direction = mat.dot(np.array([1, 0, 0]))
-                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
-                for item in self.render(modes=modes, hidden=[instance]):
-                    frames.append(item)
+                for camera in instance.robot.cameras:
+                    if camera.is_active():
+                        camera_pose = camera.get_pose()
+                        camera_pos = camera_pose[:3]
+                        camera_ori = camera_pose[3:]
+                        camera_ori_mat = quat2rotmat([camera_ori[-1], camera_ori[0], camera_ori[1], camera_ori[2]])[:3, :3]
+                        camera_view_dir = camera_ori_mat.dot(np.array([0, 0, -1])) #Mujoco camera points in -z
+                        self.set_camera(camera_pos, camera_pos + camera_view_dir, [0, 0, 1])
+                        #TODO: use camera.modes to decide what to render instead of the argument. In that way, different cameras could 
+                        #render different modalities
+                        for item in self.render(modes=modes, hidden=[[],[instance]][hide_robot]):
+                            frames.append(item)
+                # camera_pos = instance.robot.eyes.get_position()
+                # orn = instance.robot.eyes.get_orientation()
+                # mat = quat2rotmat([orn[-1], orn[0], orn[1], orn[2]])[:3, :3]
+                # view_direction = mat.dot(np.array([1, 0, 0]))
+                # self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                # for item in self.render(modes=modes, hidden=[instance]):
+                #     frames.append(item)
         return frames
 
-    def render_static_camera(self, cam_name, modes=('rgb')):
-        """
-        Render static cameras
-        """
-        frames = []
-        for instance in self.instances:
-            if isinstance(instance, StaticCamera):
-                if instance.cam_name == cam_name or cam_name == "all":
-                    camera_pos = instance.cam_pos
-                    camera_view_direction = instance.cam_viewing_dir
-                    camera_up_dir = instance.cam_up
-                    self.set_camera(camera_pos, camera_pos + camera_view_direction, camera_up_dir)
-                    for item in self.render(modes=modes):
-                        frames.append(item)
-        return frames
-
-    def get_static_camera_names(self):
+    def get_names_active_cameras(self):
         names = []
         for instance in self.instances:
-            if isinstance(instance, StaticCamera):
-                names.append(instance.cam_name)
+            if isinstance(instance, Robot):
+                for camera in instance.robot.cameras:
+                    if camera.is_active():
+                        names.append(camera.camera_name)
         return names
+
+    def switch_camera(self, idx):
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                instance.robot.cameras[idx].switch()
+
+    def is_camera_active(self, idx):
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                return instance.robot.cameras[idx].is_active()
+
+    def get_camera_name(self, idx):
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                return instance.robot.cameras[idx].camera_name
+
+
+    # def render_static_camera(self, cam_name, modes=('rgb')):
+    #     """
+    #     Render static cameras
+    #     """
+    #     frames = []
+    #     for instance in self.instances:
+    #         if isinstance(instance, StaticCamera):
+    #             if instance.cam_name == cam_name or cam_name == "all":
+    #                 camera_pos = instance.cam_pos
+    #                 camera_view_direction = instance.cam_viewing_dir
+    #                 camera_up_dir = instance.cam_up
+    #                 self.set_camera(camera_pos, camera_pos + camera_view_direction, camera_up_dir)
+    #                 for item in self.render(modes=modes):
+    #                     frames.append(item)
+    #     return frames
+
+    # def get_static_camera_names(self):
+    #     names = []
+    #     for instance in self.instances:
+    #         if isinstance(instance, StaticCamera):
+    #             names.append(instance.cam_name)
+    #     return names
 
 

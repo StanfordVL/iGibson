@@ -45,14 +45,14 @@ int main(){
     PFNEGLQUERYDEVICESEXTPROC eglQueryDevicesEXT =
                (PFNEGLQUERYDEVICESEXTPROC) eglGetProcAddress("eglQueryDevicesEXT");
     if(!eglQueryDevicesEXT) { 
-         printf("ERROR: extension eglQueryDevicesEXT not available"); 
+         printf("ERROR: Extension eglQueryDevicesEXT not available"); 
          return(-1); 
     } 
     
     PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT =
                (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
     if(!eglGetPlatformDisplayEXT) { 
-         printf("ERROR: extension eglGetPlatformDisplayEXT not available"); 
+         printf("ERROR: Extension eglGetPlatformDisplayEXT not available"); 
          return(-1);  
     }
 #endif
@@ -71,6 +71,8 @@ int main(){
     m_windowWidth = 256;
     m_windowHeight = 256;
     m_renderDevice = -1;
+
+    int verbosity = 20;
 
     EGLint egl_config_attribs[] = {EGL_RED_SIZE,
         8,
@@ -97,7 +99,7 @@ int main(){
 #ifdef USE_GLAD
     int egl_version = gladLoaderLoadEGL(NULL);
     if(!egl_version) {
-        fprintf(stderr, "failed to EGL with glad.\n");
+        fprintf(stderr, "INFO: Probing, EGL cannot run on this device\n");
         exit(EXIT_FAILURE);
     };
 #endif
@@ -109,11 +111,11 @@ int main(){
     EGLint egl_error = eglGetError();
     if (!eglQueryDevicesEXT(max_devices, egl_devices, &num_devices) ||
         egl_error != EGL_SUCCESS) {
-        printf("eglQueryDevicesEXT Failed.\n");
+        printf("WARN: eglQueryDevicesEXT failed.\n");
         m_data->egl_display = EGL_NO_DISPLAY;
     }
 
-    printf("%d", num_devices);
+    printf("%d", num_devices);  //This prints to a file that will be read in python to know the index of the device to use
 
     return 0;
 }

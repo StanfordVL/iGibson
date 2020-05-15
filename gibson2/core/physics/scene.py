@@ -12,8 +12,8 @@ import numpy as np
 from PIL import Image
 import cv2
 import networkx as nx
-from IPython import embed
 import pickle
+import logging
 
 class Scene:
     def load(self):
@@ -67,7 +67,7 @@ class StadiumScene(Scene):
         return 0.0
 
     def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
-        print('WARNING: trying to compute the shortest path in StadiumScene (assuming empty space)')
+        logging.warning('WARNING: trying to compute the shortest path in StadiumScene (assuming empty space)')
         shortest_path = np.stack((source_world, target_world))
         geodesic_distance = l2_distance(source_world, target_world)
         return shortest_path, geodesic_distance
@@ -115,7 +115,7 @@ class BuildingScene(Scene):
         :param num_waypoints: number of way points returned
         :param waypoint_resolution: resolution of adjacent way points
         """
-        print("building scene: %s" % model_id)
+        logging.info("Building scene: {}".format(model_id))
         self.model_id = model_id
         self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
         self.trav_map_resolution = trav_map_resolution
@@ -127,7 +127,19 @@ class BuildingScene(Scene):
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
         self.mesh_body_id = None
-        self.pybullet_show_texture = pybullet_show_texture
+        self.floor_body_ids = []
+        self.pybullet_load_texture = pybullet_load_texture
+
+    def load_floor_metadata(self):
+        """
+        Load floor metadata
+        """
+        floor_height_path = os.path.join(get_model_path(self.model_id), 'floors.txt')
+        if not os.path.isfile(floor_height_path):
+            raise Exception('floors.txt cannot be found in model: {}'.format(self.model_id))
+        with open(floor_height_path, 'r') as f:
+            self.floors = sorted(list(map(float, f.readlines())))
+            logging.debug('Floors {}'.format(self.floors))
 
     def load(self):
         """
@@ -166,15 +178,136 @@ class BuildingScene(Scene):
                                 -1,
                                 textureUniqueId=texture_id)
 
-        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-        self.ground_plane_mjcf = p.loadMJCF(planeName)
-        p.resetBasePositionAndOrientation(self.ground_plane_mjcf[0],
-                                          posObj=[0, 0, 0],
-                                          ornObj=[0, 0, 0, 1])
-        p.changeVisualShape(self.ground_plane_mjcf[0],
-                            -1,
-                            rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 0.35],
-                            specularColor=[0.5, 0.5, 0.5])
+    def load_floor_planes(self):
+        if self.is_interactive:
+            for f in range(len(self.floors)):
+                # load the floor plane with the original floor texture for each floor
+                plane_name = os.path.join(get_model_path(self.model_id), "plane_z_up_{}.obj".format(f))
+                collision_id = p.createCollisionShape(p.GEOM_MESH,
+                                                      fileName=plane_name)
+                visual_id = p.createVisualShape(p.GEOM_MESH,
+                                                fileName=plane_name)
+                texture_filename = get_texture_file(plane_name)
+                if texture_filename is not None:
+                    texture_id = p.loadTexture(texture_filename)
+                else:
+                    texture_id = -1
+                floor_body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
+                                                  baseVisualShapeIndex=visual_id)
+                if texture_id != -1:
+                    p.changeVisualShape(floor_body_id,
+                                    -1,
+                                    textureUniqueId=texture_id)
+                floor_height = self.floors[f]
+                p.resetBasePositionAndOrientation(floor_body_id,
+                                                  posObj=[0, 0, floor_height],
+                                                  ornObj=[0, 0, 0, 1])
+
+                # Since both the floor plane and the scene mesh have mass 0 (static),
+                # PyBullet seems to have already disabled collision between them.
+                # Just to be safe, explicit disable collision between them.
+                p.setCollisionFilterPair(self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
+
+                self.floor_body_ids.append(floor_body_id)
+        else:
+            # load the default floor plane (only once) and later reset it to different floor heiights
+            plane_name = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+            floor_body_id = p.loadMJCF(plane_name)[0]
+            p.resetBasePositionAndOrientation(floor_body_id,
+                                              posObj=[0, 0, 0],
+                                              ornObj=[0, 0, 0, 1])
+            p.setCollisionFilterPair(self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
+            self.floor_body_ids.append(floor_body_id)
+
+    def load_trav_map(self):
+        self.floor_map = []
+        self.floor_graph = []
+        for f in range(len(self.floors)):
+            trav_map = np.array(Image.open(
+                os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(f))
+            ))
+            obstacle_map = np.array(Image.open(
+                os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f))
+            ))
+            if self.trav_map_original_size is None:
+                height, width = trav_map.shape
+                assert height == width, 'trav map is not a square'
+                self.trav_map_original_size = height
+                self.trav_map_size = int(self.trav_map_original_size *
+                                         self.trav_map_default_resolution /
+                                         self.trav_map_resolution)
+            trav_map[obstacle_map == 0] = 0
+            trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
+            trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
+            trav_map[trav_map < 255] = 0
+
+            if self.build_graph:
+                graph_file = os.path.join(get_model_path(self.model_id), 'floor_trav_{}.p'.format(f))
+                if os.path.isfile(graph_file):
+                    logging.info("Loading traversable graph")
+                    with open(graph_file, 'rb') as pfile:
+                        g = pickle.load(pfile)
+                else:
+                    logging.info("Building traversable graph")
+                    g = nx.Graph()
+                    for i in range(self.trav_map_size):
+                        for j in range(self.trav_map_size):
+                            if trav_map[i, j] > 0:
+                                g.add_node((i, j))
+                                # 8-connected graph
+                                neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
+                                for n in neighbors:
+                                    if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and trav_map[n[0], n[1]] > 0:
+                                        g.add_edge(n, (i, j), weight=l2_distance(n, (i, j)))
+
+                    # only take the largest connected component
+                    largest_cc = max(nx.connected_components(g), key=len)
+                    g = g.subgraph(largest_cc).copy()
+                    with open(graph_file, 'wb') as pfile:
+                        pickle.dump(g, pfile, protocol=pickle.HIGHEST_PROTOCOL)
+
+                self.floor_graph.append(g)
+                # update trav_map accordingly
+                trav_map[:, :] = 0
+                for node in g.nodes:
+                    trav_map[node[0], node[1]] = 255
+
+            self.floor_map.append(trav_map)
+
+    def load_scene_objects(self):
+        if not self.is_interactive:
+            return
+
+        self.scene_objects = []
+        self.scene_objects_pos = []
+        scene_path = get_model_path(self.model_id)
+        urdf_files = [item for item in os.listdir(scene_path) if item[-4:] == 'urdf' and item != 'scene.urdf']
+        position_files = [item[:-4].replace('alignment_centered', 'pos') + 'txt' for item in urdf_files]
+        for urdf_file, position_file in zip(urdf_files, position_files):
+            logging.info('Loading urdf file {}'.format(urdf_file))
+            with open(os.path.join(scene_path, position_file)) as f:
+                pos = np.array([float(item) for item in f.readlines()[0].strip().split()])
+                obj = InteractiveObj(os.path.join(scene_path, urdf_file))
+                obj.load()
+                self.scene_objects.append(obj)
+                self.scene_objects_pos.append(pos)
+
+    def load_scene_urdf(self):
+        self.mesh_body_id = p.loadURDF(os.path.join(get_model_path(self.model_id), 'scene.urdf'))
+
+    def has_scene_urdf(self):
+        return os.path.exists(os.path.join(get_model_path(self.model_id), 'scene.urdf'))
+
+    def load(self):
+        """
+        Initialize scene
+        """
+        self.load_floor_metadata()
+        if self.has_scene_urdf():
+            self.load_scene_urdf()
+        else:
+            self.load_scene_mesh()
+            self.load_floor_planes()
 
         floor_height_path = os.path.join(get_model_path(self.model_id), 'floors.txt')
 
