@@ -47,7 +47,7 @@ void main() {
     if (use_texture == 1) {
         outputColour = texture(texUnit, theCoords) * (1 - shadow * 0.5);
     } else {
-        outputColour = vec4(Diffuse_color,1) * diff; //diffuse color
+        outputColour = vec4(Diffuse_color,1) * diff * (1 - shadow * 0.5); //diffuse color
     }
 
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
