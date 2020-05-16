@@ -6,7 +6,7 @@ Download iGibson Data
 
 The link will first take you to the license agreement and then to the data.
 
-[[ Get download link for iGibson Data ]](https://goo.gl/forms/OxAQHbl1v97BJ3Sg1)  
+[[ Get download link for iGibson Data ]](https://forms.gle/36TW9uVpjrE1Mkf9A)
 
 License Note: The dataset license is included in the above link. The license in this repository covers only the provided software.
 

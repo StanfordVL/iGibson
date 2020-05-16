@@ -9,6 +9,7 @@ import os
 import numpy as np
 import transforms3d
 from transforms3d import quaternions
+import logging
 
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
@@ -90,7 +91,8 @@ class iGibsonMujocoBridge:
                                          height=self.image_height,
                                          vertical_fov=self.vertical_fov,
                                          device_idx=self.device_idx,
-                                         use_fisheye=False)
+                                         use_fisheye=False,
+                                         enable_shadow=True)
 
         camera_position = self.env.sim.data.get_camera_xpos(self.camera_name)
         camera_rot_mat = self.env.sim.data.get_camera_xmat(self.camera_name)
@@ -101,8 +103,8 @@ class iGibsonMujocoBridge:
         posi = [1,0,2]
         vd = [-0.8,0,-0.6]
         if self.mode == 'gui' and not self.render_to_tensor:
-            print("Adding viewer")
-            print("Camera: " + self.camera_name)
+            logging.info("Adding viewer")
+            logging.info("Initial camera view aligned with {}".format(self.camera_name))
             self.add_viewer(initial_pos=camera_position, 
                 initial_view_direction=view_direction)#camera_position, camera_position - view_direction, [0, 0, 1])     
 
