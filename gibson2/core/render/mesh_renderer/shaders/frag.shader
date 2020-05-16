@@ -21,15 +21,14 @@ uniform vec3 light_position;  // in world coordinate
 uniform vec3 light_color; // light color
 
 void main() {
-    float ambientStrength = 0.2;
-    vec3 ambient = ambientStrength * light_color;
     vec3 lightDir = normalize(light_position - FragPos);
 
     vec3 projCoords = FragPosLightSpace.xyz / FragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
     float closestDepth = texture(depthMap, projCoords.xy).r * 0.5 + 0.5;
     float currentDepth = projCoords.z;
-    float bias = 0.002;
+    
+    float bias = max(0.05 * (1.0 - dot(Normal, lightDir)), 0.005);
 
     float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
 
@@ -41,13 +40,13 @@ void main() {
         shadow = 0.0;
     }
 
-    float diff = 0.5 + 0.5 * max(dot(Normal, lightDir), 0.0);
+    float diff = 0.5 + 0.5 * max(dot(Normal, lightDir), 0.0) * (1-shadow);
     vec3 diffuse = diff * light_color;
 
     if (use_texture == 1) {
         outputColour = texture(texUnit, theCoords) * (1 - shadow * 0.5);
     } else {
-        outputColour = vec4(Diffuse_color,1) * diff * (1 - shadow * 0.5); //diffuse color
+        outputColour = vec4(Diffuse_color,1) * diff; //diffuse color
     }
 
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
