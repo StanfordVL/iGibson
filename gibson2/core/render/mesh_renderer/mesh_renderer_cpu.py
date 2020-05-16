@@ -409,7 +409,7 @@ class MeshRenderer(object):
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/frag.shader')).readlines()))
 
-        self.set_light_position_direction([0,0,5.5], [0,0,-1]) #default light looking down and tilted
+        self.set_light_position_direction([0,0,2], [0,0.5,0]) #default light looking down and tilted
 
         self.setup_framebuffer()
         self.vertical_fov = vertical_fov
