@@ -18,22 +18,17 @@ import time
 import numpy as np
 import gibson2
 import cv2
-
-global _mouse_ix, _mouse_iy, down
-
-_mouse_ix = 0
-_mouse_iy = 0
-down = False
+import pickle
 
 
 config = parse_config('../configs/jr_p2p_nav.yaml')
 print(config)
-s = Simulator(mode='gui', timestep=1 / 240.0, image_width=800, image_height=500)
+s = Simulator(mode='headless', timestep=1 / 240.0, image_width=800, image_height=500)
 scene = EmptyScene()
 s.import_scene(scene, load_sem_map=False)
 fetch = Fetch(config)
 s.import_robot(fetch)
-fetch.robot_body.reset_position([0,1,0.2])
+fetch.robot_body.reset_position([0,1,0])
 fetch.robot_body.reset_orientation([0,0,1,0])
 
 obstacles = []
@@ -83,59 +78,58 @@ p.resetBasePositionAndOrientation(obj.body_id, [-2,2,1.2], [0,0,0,1])
 
 print(interactive_objs)
 
-#from IPython import embed; embed()
-
-cv2.namedWindow('ControlView')
-cv2.moveWindow("ControlView", 0,0)
-
-
-def change_dir(event, x, y, flags, param):
-    global _mouse_ix, _mouse_iy, down
-    if event == cv2.EVENT_LBUTTONDOWN:
-        _mouse_ix, _mouse_iy = x, y
-        down = True
-    elif event == cv2.EVENT_LBUTTONUP:
-        down = False
-
-cv2.setMouseCallback('ControlView', change_dir)
-
-marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
-                        rgba_color=[1, 0, 0, 0.3],
-                        radius=0.025,
-                        length=0.05,
-                        initial_offset=[0, 0, 0])
-marker.load()
-
+interactive_obj_ids = [interactive_obj.body_id for interactive_obj in interactive_objs]
+debug_line_id = None
 i = 0
-while True:
-    if i % 2000 == 0:
+num_data = 0
+data = []
+while num_data < 100:
+    if i % 300 == 0:
         for interactive_obj in interactive_objs:
             body_id = interactive_obj.body_id
             for joint_id in range(p.getNumJoints(body_id)):
                 jointIndex, jointName, jointType, _, _, _, _, _, \
                 jointLowerLimit, jointUpperLimit, _,_,_,_,_,_,_ = p.getJointInfo(body_id, joint_id)
-
                 if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
                     joint_pos = np.random.uniform(jointLowerLimit, jointUpperLimit)
                     p.resetJointState(body_id, jointIndex, targetValue=joint_pos, targetVelocity=0)
-    
-    fetch.apply_action([0,0,0,0,0,0,0,0,0,0])
-    
+        #fetch.robot_body.reset_position([0,1,0])
+        #fetch.robot_body.reset_orientation([0,0,1,0])
 
+    fetch.apply_action([0,0,0,0,0,0,0,0,0,0])
     s.step()
-    frames = s.renderer.render_robot_cameras(modes=('rgb', 'normal','3d'))
-    frame = cv2.cvtColor(np.concatenate(frames[:2], axis=1), cv2.COLOR_RGB2BGR)
-    cv2.imshow('ControlView', frame)
-    q = cv2.waitKey(1)
-    print(_mouse_ix, _mouse_iy, down )
-    position_cam = frames[2][_mouse_iy, _mouse_ix]    
+    frames = s.renderer.render_robot_cameras(modes=('3d'))
+    #frame = cv2.cvtColor(np.concatenate(frames[:2], axis=1), cv2.COLOR_RGB2BGR)
+    #cv2.imshow('ControlView', frame)
+    #q = cv2.waitKey(1)
+    #print(_mouse_ix, _mouse_iy, down )
+    if i % 10 == 0:
+        action = (np.random.random(size=(2,)) * 500).astype(np.int)
+    position_cam = frames[0][action[0], action[1]]    
     position_world = np.linalg.inv(s.renderer.V).dot(position_cam)
     #marker.set_position(position_world[:3])
     position_eye = fetch.eyes.get_position()
     res = p.rayTest(position_eye, position_world[:3])
-    p.addUserDebugLine(position_eye, position_world[:3])
-    object_id, link_id, _, hit_pos, hit_normal = res[0]
-    if down:
-        p.applyExternalForce(object_id, link_id, -np.array(hit_normal)*1000, hit_pos, p.WORLD_FRAME)
+    
+    if i % 10 == 4:
+        frames = s.renderer.render_robot_cameras(modes=('scene_flow'))
 
+    if i % 10 == 5:
+        # sample frame from this frame:
+        frames = s.renderer.render_robot_cameras(modes=('rgb', '3d', 'scene_flow'))
+        data.append((action, [frames[0][:,:,:3], frames[1][:,:,:3], frames[2][:,:,:3]]))
+        num_data += 1
+
+
+
+    if debug_line_id is not None:
+        debug_line_id = p.addUserDebugLine(position_eye, position_world[:3], lineWidth=3, replaceItemUniqueId=debug_line_id)
+    else:
+        debug_line_id = p.addUserDebugLine(position_eye, position_world[:3], lineWidth=3)
+    object_id, link_id, _, hit_pos, hit_normal = res[0]
+    if object_id in interactive_obj_ids:
+        p.applyExternalForce(object_id, link_id, -np.array(hit_normal)*1000, hit_pos, p.WORLD_FRAME)
     i += 1
+
+with open('generated_data/test100.pkl', 'wb') as f:
+    pickle.dump(data, f)
