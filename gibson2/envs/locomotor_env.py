@@ -302,7 +302,7 @@ class NavigateEnv(BaseEnv):
 
     def get_rgb_cube(self):
         """
-        :return: List of RGB sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L] * n_cameras
+        :return: List of RGB sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
         """
         orig_fov = self.simulator.renderer.vertical_fov
         self.simulator.renderer.set_fov(90)
@@ -313,21 +313,33 @@ class NavigateEnv(BaseEnv):
                 orn = instance.robot.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
+                orig_view_direction = view_direction
                 self.simulator.renderer.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
                 r2 = np.array([[np.cos(-np.pi/2), -np.sin(-np.pi/2), 0], [np.sin(-np.pi/2), np.cos(-np.pi/2), 0], [0, 0, 1]])
 
                 for i in range(4):
                     self.simulator.renderer.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
-                    # rgb_cube.append(self.simulator.renderer.render(modes=('rgb'), hidden=[instance]))
                     for item in self.simulator.renderer.render(modes=('rgb'), hidden=[instance]):
                         frames.append(item)
                     view_direction = r2.dot(view_direction)
 
+                # Up
+                view_direction = [0, 0, 1]  # Up
+                self.simulator.renderer.set_camera(camera_pos, camera_pos + view_direction, -orig_view_direction)
+                for item in self.simulator.renderer.render(modes=('rgb'), hidden=[instance]):
+                    frames.append(item)
+
+                # Down
+                view_direction = [0, 0, -1]  # Down
+                self.simulator.renderer.set_camera(camera_pos, camera_pos + view_direction, orig_view_direction)
+                for item in self.simulator.renderer.render(modes=('rgb'), hidden=[instance]):
+                    frames.append(item)
+
         # Reorder frames so adjacent views are consecutively ordered
-        n_cameras = int(len(frames) / 4)
+        n_cameras = int(len(frames) / 6)
         rgb_cube_frames = []
         for i in range(n_cameras):
-            for j in range(4):
+            for j in range(6):
                 rgb_cube_frames.append(frames[i * n_cameras + j])
 
         # Reset fov
