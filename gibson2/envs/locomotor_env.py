@@ -16,6 +16,8 @@ import cv2
 import time
 import collections
 import logging
+from gibson2.core.render.mesh_renderer.glutils.meshutil import quat2rotmat, xyzw2wxyz
+from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import Robot
 
 
 class NavigateEnv(BaseEnv):
@@ -298,6 +300,40 @@ class NavigateEnv(BaseEnv):
         """
         return self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
 
+    def get_rgb_cube(self):
+        """
+        :return: List of RGB sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L] * n_cameras
+        """
+        orig_fov = self.simulator.renderer.vertical_fov
+        self.simulator.renderer.set_fov(90)
+        frames = []
+        for instance in self.simulator.renderer.instances:
+            if isinstance(instance, Robot):
+                camera_pos = instance.robot.eyes.get_position()
+                orn = instance.robot.eyes.get_orientation()
+                mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+                view_direction = mat.dot(np.array([1, 0, 0]))
+                self.simulator.renderer.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                r2 = np.array([[np.cos(-np.pi/2), -np.sin(-np.pi/2), 0], [np.sin(-np.pi/2), np.cos(-np.pi/2), 0], [0, 0, 1]])
+
+                for i in range(4):
+                    self.simulator.renderer.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                    # rgb_cube.append(self.simulator.renderer.render(modes=('rgb'), hidden=[instance]))
+                    for item in self.simulator.renderer.render(modes=('rgb'), hidden=[instance]):
+                        frames.append(item)
+                    view_direction = r2.dot(view_direction)
+
+        # Reorder frames so adjacent views are consecutively ordered
+        n_cameras = int(len(frames) / 4)
+        rgb_cube_frames = []
+        for i in range(n_cameras):
+            for j in range(4):
+                rgb_cube_frames.append(frames[i * n_cameras + j])
+
+        # Reset fov
+        self.simulator.renderer.set_fov(orig_fov)
+        return rgb_cube_frames
+
     def get_pc(self):
         """
         :return: pointcloud sensor reading
@@ -354,6 +390,8 @@ class NavigateEnv(BaseEnv):
             state['sensor'] = self.get_additional_states()
         if 'rgb' in self.output:
             state['rgb'] = self.get_rgb()
+        if 'rgb_cube' in self.output:
+            state['rgb_cube'] = self.get_rgb_cube()
         if 'depth' in self.output:
             state['depth'] = self.get_depth()
         if 'pc' in self.output:
