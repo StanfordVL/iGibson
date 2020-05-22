@@ -13,7 +13,7 @@ import cv2
 
 import platform
 import logging
-        
+
 
 class Simulator:
     def __init__(self,
@@ -47,22 +47,22 @@ class Simulator:
         self.gravity = gravity
         self.timestep = timestep
         self.mode = mode
-        
+
         plt = platform.system()
         if plt == 'Darwin' and self.mode == 'gui':
             self.mode = 'iggui' # for mac os disable pybullet rendering
             logging.warn('Rendering both iggui and pbgui is not supported on mac, choose either pbgui or '
                       'iggui. Default to iggui.')
-        
+
         self.use_pb_renderer = False
         self.use_ig_renderer = False
-        
+
         if self.mode in ['gui', 'iggui']:
             self.use_ig_renderer = True
-     
+
         if self.mode in ['gui', 'pbgui']:
             self.use_pb_renderer = True
-                   
+
         # renderer
         self.image_width = image_width
         self.image_height = image_height
@@ -219,10 +219,10 @@ class Simulator:
                                                class_id=class_id,
                                                instance_id=0)
 
-        
+
         # if load_sem_map is True and the house_metadata_file can be found,
         # sem_map.png and ins_map.png will be used for rendering semantic and instance segmentation.
-        if load_sem_map:
+        if load_sem_map and scene.model_id is not None:
             # matterport house metadata file
             house_metadata_file = os.path.join(get_model_path(scene.model_id), 'house_segmentations', '{}.house'.format(scene.model_id))
             if os.path.isfile(house_metadata_file):

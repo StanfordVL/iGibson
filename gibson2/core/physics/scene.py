@@ -29,6 +29,7 @@ class EmptyScene(Scene):
     def load(self):
         self.build_graph = False
         self.is_interactive = False
+        self.model_id = None
         planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
         self.ground = p.loadMJCF(planeName)[0]
         p.changeDynamics(self.ground, -1, lateralFriction=1)
@@ -41,6 +42,7 @@ class StadiumScene(Scene):
     def load(self):
         self.build_graph = False
         self.is_interactive = False
+        self.model_id = None
         filename = os.path.join(pybullet_data.getDataPath(), "stadium_no_collision.sdf")
         self.stadium = p.loadSDF(filename)
         planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")

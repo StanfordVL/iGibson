@@ -86,7 +86,9 @@ class BaseEnv(gym.Env):
                 is_interactive=self.config.get('is_interactive', False),
                 pybullet_load_texture=self.config.get('pybullet_load_texture', False),
             )
-        self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))
+        self.simulator.import_scene(scene,
+                                    load_texture=self.config.get('load_texture', True),
+                                    load_sem_map=self.config.get('load_sem_map', True))
 
         if self.config['robot'] == 'Turtlebot':
             robot = Turtlebot(self.config)

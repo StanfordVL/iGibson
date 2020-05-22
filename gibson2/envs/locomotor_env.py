@@ -441,7 +441,10 @@ class NavigateEnv(BaseEnv):
         """
         :return: geodesic distance to the target position
         """
-        _, geodesic_dist = self.get_shortest_path()
+        if self.scene.build_graph:
+            _, geodesic_dist = self.get_shortest_path()
+        else:
+            geodesic_dist = self.get_l2_potential()
         return geodesic_dist
 
     def get_l2_potential(self):
