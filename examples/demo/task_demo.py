@@ -23,7 +23,7 @@ import pickle
 
 config = parse_config('../configs/jr_p2p_nav.yaml')
 print(config)
-s = Simulator(mode='headless', timestep=1 / 240.0, image_width=800, image_height=500)
+s = Simulator(mode='headless', timestep=1 / 240.0, image_width=256, image_height=256)
 scene = EmptyScene()
 s.import_scene(scene, load_sem_map=False)
 fetch = Fetch(config)
@@ -83,7 +83,8 @@ debug_line_id = None
 i = 0
 num_data = 0
 data = []
-while num_data < 100:
+while num_data < 3000:
+    print(num_data)
     if i % 300 == 0:
         for interactive_obj in interactive_objs:
             body_id = interactive_obj.body_id
@@ -104,7 +105,7 @@ while num_data < 100:
     #q = cv2.waitKey(1)
     #print(_mouse_ix, _mouse_iy, down )
     if i % 10 == 0:
-        action = (np.random.random(size=(2,)) * 500).astype(np.int)
+        action = (np.random.random(size=(2,)) * 256).astype(np.int)
     position_cam = frames[0][action[0], action[1]]    
     position_world = np.linalg.inv(s.renderer.V).dot(position_cam)
     #marker.set_position(position_world[:3])
@@ -120,8 +121,6 @@ while num_data < 100:
         data.append((action, [frames[0][:,:,:3], frames[1][:,:,:3], frames[2][:,:,:3]]))
         num_data += 1
 
-
-
     if debug_line_id is not None:
         debug_line_id = p.addUserDebugLine(position_eye, position_world[:3], lineWidth=3, replaceItemUniqueId=debug_line_id)
     else:
@@ -131,5 +130,5 @@ while num_data < 100:
         p.applyExternalForce(object_id, link_id, -np.array(hit_normal)*1000, hit_pos, p.WORLD_FRAME)
     i += 1
 
-with open('generated_data/test100.pkl', 'wb') as f:
+with open('generated_data/test3000.pkl', 'wb') as f:
     pickle.dump(data, f)
