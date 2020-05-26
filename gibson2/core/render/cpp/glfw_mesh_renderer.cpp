@@ -24,6 +24,7 @@
 #include "stb_image.h"
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize.h"
+#define BUFFER_OFFSET(offset) (static_cast<char*>(0) + (offset))
 
 
 namespace py = pybind11;
@@ -41,7 +42,7 @@ public:
 
     // Index data
     void* multidrawStartIndices[MAX_ARRAY_SIZE];
-    int* multidrawCounts;
+    int multidrawCounts[MAX_ARRAY_SIZE];
     int multidrawCount;
     //std::vector<void*> startIndices;
 
@@ -768,8 +769,6 @@ public:
         multidrawCount = index_ptr_offsets.size();
         int* indexOffsetPtr = (int*)index_ptr_offsets.request().ptr;
 
-#define BUFFER_OFFSET(offset) (static_cast<char*>(0) + (offset))
-
 
         for (int i = 0; i < multidrawCount; i++) {
           unsigned int offset = (unsigned int)indexOffsetPtr[i];
@@ -779,7 +778,10 @@ public:
 
         // Store for rendering
         //this->multidrawStartIndices = &this->startIndices[0];
-        this->multidrawCounts = (int*)index_counts.request().ptr;
+        int * indices_count_ptr = (int*)index_counts.request().ptr;
+        for (int i = 0; i < multidrawCount; i++) {
+            this->multidrawCounts[i] = indices_count_ptr[i];
+        }
 
         // Set up shaders
         float* fragData = (float*)mergedFragData.request().ptr;

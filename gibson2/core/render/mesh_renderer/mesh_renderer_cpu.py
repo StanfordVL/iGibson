@@ -659,6 +659,9 @@ class MeshRenderer(object):
         print("Merged vertex data shape:")
         print(merged_vertex_data.shape)
 
+        print("index_counts", index_counts)
+        print("index_ptr_offsets", index_ptr_offsets)
+
         buffer = self.fbo
         self.optimized_VAO, self.optimized_VBO, self.optimized_EBO = self.r.renderSetup(self.shaderProgram, self.V, self.P, self.lightpos,
                                                                                         self.lightcolor,merged_vertex_data, index_ptr_offsets, index_counts,
