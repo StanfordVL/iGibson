@@ -1,0 +1,1 @@
+/usr/bin/c++  -g  -rdynamic CMakeFiles/test_device.dir/glad/egl.cpp.o CMakeFiles/test_device.dir/glad/gl.cpp.o CMakeFiles/test_device.dir/cpp/test_device.cpp.o  -o test_device  -ldl -lpthread 
