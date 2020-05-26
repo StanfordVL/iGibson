@@ -1,16 +1,21 @@
 #version 410
-uniform sampler2DArray tex1;
-uniform sampler2DArray tex2;
-uniform int texture_bucket;
-uniform int texture_layer;
-uniform float use_texture;
+
+#define MAX_ARRAY_SIZE 512
+
+uniform sampler2DArray bigTex;
+uniform sampler2DArray smallTex;
+
+uniform TexColorData {
+    vec4 tex_data[MAX_ARRAY_SIZE];
+    vec4 diffuse_colors[MAX_ARRAY_SIZE];
+};
+
 in vec2 theCoords;
 in vec3 Normal;
 in vec3 Normal_cam;
 in vec3 FragPos;
-in vec3 Instance_color;
 in vec3 Pos_cam;
-in vec3 Diffuse_color;
+flat in int Draw_id;
 
 layout (location = 0) out vec4 outputColour;
 layout (location = 1) out vec4 NormalColour;
@@ -26,19 +31,20 @@ void main() {
     vec3 lightDir = normalize(light_position - FragPos);
     float diff = 0.5 + 0.5 * max(dot(Normal, lightDir), 0.0);
     vec3 diffuse = diff * light_color;
+    vec4 curr_tex_data = tex_data[Draw_id];
+    int tex_num = int(curr_tex_data.x);
+    int tex_layer = int(curr_tex_data.y);
+    float instance_color = curr_tex_data.z;
 
-    if (use_texture == 1) {
-        if (texture_bucket == 0) {
-            outputColour = texture(tex1, vec3(theCoords.x, theCoords.y, float(texture_layer)));// albedo only
-        } else if (texture_bucket == 1) {
-            outputColour = texture(tex2, vec3(theCoords.x, theCoords.y, float(texture_layer)));// albedo only
-        }
-
-    } else {
-        outputColour = vec4(Diffuse_color,1) * diff; //diffuse color
+    if (tex_num == -1) {
+	outputColour = diffuse_colors[Draw_id] * diff; //diffuse color
+    } else if (tex_num == 0) {
+        outputColour = texture(bigTex, vec3(theCoords.x, theCoords.y, tex_layer));
+    } else if (tex_num == 1) {
+	outputColour = texture(smallTex, vec3(theCoords.x, theCoords.y, tex_layer));
     }
 
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
-    InstanceColour = vec4(Instance_color,1);
+    InstanceColour = vec4(instance_color, 0, 0, 1);
     PCColour = vec4(Pos_cam,1);
 }
