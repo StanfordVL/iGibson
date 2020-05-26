@@ -27,7 +27,7 @@ flat out int Draw_id;
 
 void main() {
     mat4 pose_trans = pose_trans_array[gl_DrawID];
-    mat4 pose_rot = pose_rot_array[gl_DrawID];
+    mat4 pose_rot = transpose(pose_rot_array[gl_DrawID]);
     gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1);
     vec4 world_position4 = pose_trans * pose_rot * vec4(position, 1);
     FragPos = vec3(world_position4.xyz / world_position4.w); // in world coordinate

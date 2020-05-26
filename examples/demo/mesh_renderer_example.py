@@ -25,8 +25,6 @@ def main():
             renderer.add_instance(1)
             renderer.instances[-1].set_position([i,j,0.5])
 
-
-
     renderer.load_object(os.path.join(gibson2.assets_path, 'models/ycb/003_cracker_box/textured_simple.obj'))
     for i in np.arange(-2,2,0.5):
         for j in np.arange(-2,2,0.5):

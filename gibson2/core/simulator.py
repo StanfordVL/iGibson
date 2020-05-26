@@ -23,7 +23,8 @@ class Simulator:
                  vertical_fov=90,
                  device_idx=0,
                  render_to_tensor=False,
-                 auto_sync=True):
+                 auto_sync=True,
+                 optimize_render=False):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -68,6 +69,7 @@ class Simulator:
         self.use_fisheye = use_fisheye
         self.render_to_tensor = render_to_tensor
         self.auto_sync = auto_sync
+        self.optimize_render = optimize_render
         self.load()
 
     def set_timestep(self, timestep):
@@ -108,7 +110,8 @@ class Simulator:
                                          height=self.image_height,
                                          vertical_fov=self.vertical_fov,
                                          device_idx=self.device_idx,
-                                         use_fisheye=self.use_fisheye)
+                                         use_fisheye=self.use_fisheye,
+                                         optimize=self.optimize_render)
 
         print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:

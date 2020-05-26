@@ -586,10 +586,10 @@ public:
         int h;
         int comp;
         stbi_set_flip_vertically_on_load(true);
-        unsigned char* image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb);
+        unsigned char* image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb); // force to 3 channels
         if(image == nullptr)
             throw(std::string("Failed to load texture"));
-
+        comp = 3;
         image_data.push_back(image);
         texHeights.push_back(h);
         texWidths.push_back(w);
@@ -679,6 +679,7 @@ public:
 
       // Add all textures in texture array i to that array texture
       for (int j = 0; j < layerNum; j++) {
+
         int idx = texIndices[i][j];
 
         int orig_w = texWidths[idx];
@@ -686,7 +687,7 @@ public:
         int n_channels = texChannels[idx];
         unsigned char* input_data = image_data[idx];
         unsigned char* tex_bytes = input_data;
-
+          printf("%d %d %d %d\n", j, orig_w, orig_h, n_channels);
         bool shouldResize = (orig_w != out_w || orig_h != out_h);
         // Resize image to fit biggest texture in texture array
         if (shouldResize) {
