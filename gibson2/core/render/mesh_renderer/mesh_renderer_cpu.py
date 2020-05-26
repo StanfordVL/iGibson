@@ -627,10 +627,12 @@ class MeshRenderer(object):
             # Generate other rendering data, including diffuse color and texture layer
             id_material = self.materials_mapping[self.mesh_materials[id]]
             texture_id = id_material.texture_id
-            if texture_id == -1:
+            if texture_id == -1 or texture_id is None:
                 tex_num_array.append(-1)
                 tex_layer_array.append(-1)
             else:
+                print(texture_id)
+                print(self.tex_id_layer_mapping)
                 tex_num, tex_layer = self.tex_id_layer_mapping[texture_id]
                 tex_num_array.append(tex_num)
                 tex_layer_array.append(tex_layer)
@@ -681,8 +683,8 @@ class MeshRenderer(object):
                 trans_data.append(instance.pose_trans)
                 rot_data.append(instance.pose_rot)
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
-                trans_data.append(instance.poses_trans)
-                rot_data.append(instance.poses_rot)
+                trans_data.extend(instance.poses_trans)
+                rot_data.extend(instance.poses_rot)
 
         self.pose_trans_array = np.ascontiguousarray(np.concatenate(trans_data, axis=0))
         self.pose_rot_array = np.ascontiguousarray(np.concatenate(rot_data, axis=0))

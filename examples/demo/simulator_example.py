@@ -10,7 +10,7 @@ from gibson2.core.render.profiler import Profiler
 
 def main():
     config = parse_config('../configs/turtlebot_demo.yaml')
-    s = Simulator(mode='gui', image_width=512, image_height=512)
+    s = Simulator(mode='gui', image_width=512, image_height=512,optimize_render=True, timestep=1/100.0)
     scene = BuildingScene('Rs',
                           build_graph=True,
                           pybullet_load_texture=True)
@@ -22,6 +22,8 @@ def main():
         obj = YCBObject('003_cracker_box')
         s.import_object(obj)
         obj.set_position_orientation(np.random.uniform(low=0, high=2, size=3), [0,0,0,1])
+
+    s.renderer.optimize_vertex_and_texture()
 
     for i in range(10000):
         with Profiler('Simulator step'):
