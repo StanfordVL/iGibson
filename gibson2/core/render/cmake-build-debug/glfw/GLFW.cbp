@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="GLFW"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\pybind11\;CMake Files\pybind11\tools\;CMake Files\glfw\;CMake Files\glfw\src\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="glfw">
+				<Option output="/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src/libglfw3.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-D_GLFW_USE_CONFIG_H"/>
+					<Add option="-DUSE_GLAD"/>
+					<Add directory="/home/fei/Development/gibsonv2/gibson2/core/render/glad"/>
+					<Add directory="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/include"/>
+					<Add directory="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src"/>
+					<Add directory="/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src"/>
+					<Add directory="/usr/include/c++/7"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/7"/>
+					<Add directory="/usr/include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src/Makefile&quot;  VERBOSE=1 glfw"/>
+					<CompileFile command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="glfw/fast">
+				<Option output="/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src/libglfw3.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-D_GLFW_USE_CONFIG_H"/>
+					<Add option="-DUSE_GLAD"/>
+					<Add directory="/home/fei/Development/gibsonv2/gibson2/core/render/glad"/>
+					<Add directory="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/include"/>
+					<Add directory="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src"/>
+					<Add directory="/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src"/>
+					<Add directory="/usr/include/c++/7"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/7"/>
+					<Add directory="/usr/include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src/Makefile&quot;  VERBOSE=1 glfw/fast"/>
+					<CompileFile command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/glfw/src/glfw_config.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/include/GLFW/glfw3.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/include/GLFW/glfw3native.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/context.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/egl_context.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/egl_context.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/glx_context.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/glx_context.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/init.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/input.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/internal.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/linux_joystick.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/linux_joystick.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/mappings.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/monitor.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/osmesa_context.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/osmesa_context.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/posix_thread.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/posix_thread.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/posix_time.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/posix_time.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/vulkan.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/window.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/x11_init.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/x11_monitor.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/x11_platform.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/x11_window.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/xkb_unicode.c">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/xkb_unicode.h">
+			<Option target="glfw"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/pybind11/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\pybind11\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/pybind11/tools/FindPythonLibsNew.cmake">
+			<Option virtualFolder="CMake Files\pybind11\tools\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/pybind11/tools/pybind11Tools.cmake">
+			<Option virtualFolder="CMake Files\pybind11\tools\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\glfw\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\glfw\src\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/glfw3.pc.in">
+			<Option virtualFolder="CMake Files\glfw\src\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/glfw3Config.cmake.in">
+			<Option virtualFolder="CMake Files\glfw\src\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/glfw_config.h.in">
+			<Option virtualFolder="CMake Files\glfw\src\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

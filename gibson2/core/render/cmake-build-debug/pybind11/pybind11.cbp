@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="pybind11"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\pybind11\;CMake Files\pybind11\tools\;CMake Files\glfw\;CMake Files\glfw\src\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/pybind11"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/pybind11/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/pybind11/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/pybind11/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j12 -f &quot;/home/fei/Development/gibsonv2/gibson2/core/render/cmake-build-debug/pybind11/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/pybind11/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\pybind11\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/pybind11/tools/FindPythonLibsNew.cmake">
+			<Option virtualFolder="CMake Files\pybind11\tools\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/pybind11/tools/pybind11Tools.cmake">
+			<Option virtualFolder="CMake Files\pybind11\tools\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\glfw\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\glfw\src\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/glfw3.pc.in">
+			<Option virtualFolder="CMake Files\glfw\src\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/glfw3Config.cmake.in">
+			<Option virtualFolder="CMake Files\glfw\src\"/>
+		</Unit>
+		<Unit filename="/home/fei/Development/gibsonv2/gibson2/core/render/glfw/src/glfw_config.h.in">
+			<Option virtualFolder="CMake Files\glfw\src\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

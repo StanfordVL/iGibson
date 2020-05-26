@@ -4,13 +4,13 @@ project(CppMeshRenderer)
 
 set (USE_GLAD TRUE)
 
-if (MAC_PLATFORM)
+#if (MAC_PLATFORM)
   set (USE_CUDA FALSE)
   set (USE_GLFW TRUE)
-else()
-  set (USE_CUDA TRUE)
-  set (USE_GLFW FALSE)
-endif()
+#else()
+#  set (USE_CUDA TRUE)
+#  set (USE_GLFW FALSE)
+#endif()
 
 include_directories(glad)
 

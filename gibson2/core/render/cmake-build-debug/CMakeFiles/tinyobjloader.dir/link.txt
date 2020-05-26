@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -g  -shared  -o tinyobjloader.cpython-36m-x86_64-linux-gnu.so CMakeFiles/tinyobjloader.dir/cpp/tinyobjloader/tiny_obj_loader.cc.o CMakeFiles/tinyobjloader.dir/cpp/tinyobjloader/bindings.cc.o 

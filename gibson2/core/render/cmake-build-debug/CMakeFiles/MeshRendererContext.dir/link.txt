@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -g  -shared  -o MeshRendererContext.cpython-36m-x86_64-linux-gnu.so CMakeFiles/MeshRendererContext.dir/glad/egl.cpp.o CMakeFiles/MeshRendererContext.dir/glad/gl.cpp.o CMakeFiles/MeshRendererContext.dir/cpp/Mesh_renderer.cpp.o  -ldl -lpthread 
