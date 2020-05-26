@@ -27,7 +27,7 @@
 
 
 namespace py = pybind11;
-
+#define MAX_ARRAY_SIZE 512
 
 class GLFWRendererContext {
 public:
@@ -38,6 +38,18 @@ public:
     GLFWwindow* window = NULL;
 
     int verbosity;
+
+    // Index data
+    void* multidrawStartIndices[MAX_ARRAY_SIZE];
+    int* multidrawCounts;
+    int multidrawCount;
+    //std::vector<void*> startIndices;
+
+    // UBO data
+    GLuint uboTexColorData;
+    GLuint uboTransformData;
+    int texColorDataSize;
+    int transformDataSize;
 
     int init() {
         verbosity = 20;
@@ -717,129 +729,145 @@ public:
     return texInfo;
   }
 
-  // TODO: Add the correct stuff to the pylist!
-//  py::list renderSetup(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor,
-//    py::array_t<float> mergedVertexData, py::array_t<int> index_ptr_offsets, py::array_t<int> index_counts,
-//    py::array_t<int> indices, py::array_t<float> mergedFragData, py::array_t<float> mergedDiffuseData,
-//    int tex_id_1, int tex_id_2, GLuint fb) {
-//    // First set up VAO and corresponding attributes
-//    GLuint VAO;
-//    glGenVertexArrays(1, &VAO);
-//    cglBindVertexArray(VAO);
+   //TODO: Add the correct stuff to the pylist!
+    py::list renderSetup(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor,
+    py::array_t<float> mergedVertexData, py::array_t<int> index_ptr_offsets, py::array_t<int> index_counts,
+    py::array_t<int> indices, py::array_t<float> mergedFragData, py::array_t<float> mergedDiffuseData,
+    int tex_id_1, int tex_id_2, GLuint fb) {
+        // First set up VAO and corresponding attributes
+        GLuint VAO;
+        glGenVertexArrays(1, &VAO);
+        cglBindVertexArray(VAO);
+
+        GLuint EBO;
+        glGenBuffers(1, &EBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        int* indicesPtr = (int*)indices.request().ptr;
+        std::vector<unsigned int> indexData;
+        for (int i = 0; i < indices.size(); i++) {
+          indexData.push_back((unsigned int)indicesPtr[i]);
+        }
+
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexData.size() * sizeof(unsigned int), &indexData[0], GL_STATIC_DRAW);
+
+        GLuint VBO;
+        glGenBuffers(1, &VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        float* mergedVertexDataPtr = (float*)mergedVertexData.request().ptr;
+        glBufferData(GL_ARRAY_BUFFER, mergedVertexData.size() * sizeof(float), mergedVertexDataPtr, GL_STATIC_DRAW);
+        GLuint positionAttrib = glGetAttribLocation(shaderProgram, "position");
+        GLuint normalAttrib = glGetAttribLocation(shaderProgram, "normal");
+        GLuint texcoordAttrib = glGetAttribLocation(shaderProgram, "texCoords");
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(positionAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);
+        glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)12);
+        glVertexAttribPointer(texcoordAttrib, 2, GL_FLOAT, GL_TRUE, 32, (void*)24);
+
+        multidrawCount = index_ptr_offsets.size();
+        int* indexOffsetPtr = (int*)index_ptr_offsets.request().ptr;
+
+#define BUFFER_OFFSET(offset) (static_cast<char*>(0) + (offset))
+
+
+        for (int i = 0; i < multidrawCount; i++) {
+          unsigned int offset = (unsigned int)indexOffsetPtr[i];
+          this->multidrawStartIndices[i] = BUFFER_OFFSET((offset * sizeof(unsigned int)));
+          printf("multidraw start idx %d\n", offset);
+        }
+
+        // Store for rendering
+        //this->multidrawStartIndices = &this->startIndices[0];
+        this->multidrawCounts = (int*)index_counts.request().ptr;
+
+        // Set up shaders
+        float* fragData = (float*)mergedFragData.request().ptr;
+        float* diffuseData = (float*)mergedDiffuseData.request().ptr;
+
+        glUseProgram(shaderProgram);
+
+        float* Vptr = (float*)V.request().ptr;
+        float* Pptr = (float*)P.request().ptr;
+        float* lightposptr = (float*)lightpos.request().ptr;
+        float* lightcolorptr = (float*)lightcolor.request().ptr;
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+
+        glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
+        glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
+        printf("multidrawcount %d\n", multidrawCount);
+
+
+        glGenBuffers(1, &uboTexColorData);
+        glBindBuffer(GL_UNIFORM_BUFFER, uboTexColorData);
+        texColorDataSize = 2 * 16 * MAX_ARRAY_SIZE;
+        glBufferData(GL_UNIFORM_BUFFER, texColorDataSize, NULL, GL_STATIC_DRAW);
+        GLuint texColorDataIdx = glGetUniformBlockIndex(shaderProgram, "TexColorData");
+        glUniformBlockBinding(shaderProgram, texColorDataIdx, 0);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboTexColorData);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, texColorDataSize / 2, fragData);
+        glBufferSubData(GL_UNIFORM_BUFFER, texColorDataSize / 2, texColorDataSize / 2, diffuseData);
+
+        glGenBuffers(1, &uboTransformData);
+        glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
+        transformDataSize = 2 * 64 * MAX_ARRAY_SIZE;
+        glBufferData(GL_UNIFORM_BUFFER, transformDataSize, NULL, GL_DYNAMIC_DRAW);
+        GLuint transformDataIdx = glGetUniformBlockIndex(shaderProgram, "TransformData");
+        glUniformBlockBinding(shaderProgram, transformDataIdx, 1);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 1, uboTransformData);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+        GLuint bigTexLoc = glGetUniformLocation(shaderProgram, "bigTex");
+        GLuint smallTexLoc = glGetUniformLocation(shaderProgram, "smallTex");
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, tex_id_1);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, tex_id_2);
+
+        glUniform1i(bigTexLoc, 0);
+        glUniform1i(smallTexLoc, 1);
+
+        // Pre-render setup
+        glBindVertexArray(VAO);
+        glBindFramebuffer(GL_FRAMEBUFFER, fb);
+
+        py::list renderData;
+        renderData.append(VAO);
+        renderData.append(VBO);
+        renderData.append(EBO);
+
+        return renderData;
+  }
 //
-//    GLuint EBO;
-//    glGenBuffers(1, &EBO);
-//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-//    int* indicesPtr = (int*)indices.request().ptr;
-//    std::vector<unsigned int> indexData;
-//    for (int i = 0; i < indices.size(); i++) {
-//      indexData.push_back((unsigned int)indicesPtr[i]);
-//    }
-//
-//    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexData.size() * sizeof(unsigned int), &indexData[0], GL_STATIC_DRAW);
-//
-//    GLuint VBO;
-//    glGenBuffers(1, &VBO);
-//    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-//    float* mergedVertexDataPtr = (float*)mergedVertexData.request().ptr;
-//    glBufferData(GL_ARRAY_BUFFER, mergedVertexData.size() * sizeof(float), mergedVertexDataPtr, GL_STATIC_DRAW);
-//    GLuint positionAttrib = glGetAttribLocation(shaderProgram, "position");
-//    GLuint normalAttrib = glGetAttribLocation(shaderProgram, "normal");
-//    GLuint texcoordAttrib = glGetAttribLocation(shaderProgram, "texCoords");
-//    glEnableVertexAttribArray(0);
-//    glEnableVertexAttribArray(1);
-//    glEnableVertexAttribArray(2);
-//    glVertexAttribPointer(positionAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);
-//    glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)12);
-//    glVertexAttribPointer(texcoordAttrib, 2, GL_FLOAT, GL_TRUE, 32, (void*)24);
-//
-//    multidrawCount = index_ptr_offsets.size();
-//    int* indexOffsetPtr = (int*)index_ptr_offsets.request().ptr;
-//    std::vector<void*> startIndices;
-//
-//    for (int i = 0; i < multidrawCount; i++) {
-//      unsigned int offset = (unsigned int)indexOffsetPtr[i];
-//      startIndices.push_back((void*)(offset * sizeof(unsigned int)));
-//    }
-//
-//    // Store for rendering
-//    multidrawStartIndices = &startIndices[0];
-//    multidrawCounts = (int*)index_counts.request().ptr;
-//
-//    // Set up shaders
-//    float* fragData = (float*)mergedFragData.request().ptr;
-//    float* diffuseData = (float*)mergedDiffuseData.request().ptr;
-//
-//    glUseProgram(shaderProgram);
-//
-//    float* Vptr = (float*)V.request().ptr;
-//    float* Pptr = (float*)P.request().ptr;
-//    float* lightposptr = (float*)lightpos.request().ptr;
-//    float* lightcolorptr = (float*)lightcolor.request().ptr;
-//    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
-//    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
-//
-//    glGenBuffers(1, &uboTexColorData);
-//    glBindBuffer(GL_UNIFORM_BUFFER, uboTexColorData);
-//    texColorDataSize = 2 * 16 * MAX_ARRAY_SIZE;
-//    glBufferData(GL_UNIFORM_BUFFER, texColorDataSize, NULL, GL_STATIC_DRAW);
-//    GLuint texColorDataIdx = glGetUniformBlockIndex(shaderProgram, "TexColorData");
-//    glUniformBlockBinding(shaderProgram, texColorDataIdx, 0);
-//    glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboTexColorData);
-//    glBufferSubData(GL_UNIFORM_BUFFER, 0, texColorDataSize / 2, fragData);
-//    glBufferSubData(GL_UNIFORM_BUFFER, texColorDataSize / 2, texColorDataSize / 2, diffuseData);
-//
-//    glGenBuffers(1, &uboTransformData);
-//    glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
-//    transformDataSize = 2 * 64 * MAX_ARRAY_SIZE;
-//    glBufferData(GL_UNIFORM_BUFFER, transformDataSize, NULL, GL_DYNAMIC_DRAW);
-//    GLuint transformDataIdx = glGetUniformBlockIndex(shaderProgram, "TransformData");
-//    glUniformBlockBinding(shaderProgram, transformDataIdx, 1);
-//    glBindBufferBase(GL_UNIFORM_BUFFER, 1, uboTransformData);
-//    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-//
-//    GLuint bigTexLoc = glGetUniformLocation(shaderProgram, "bigTex");
-//    GLuint smallTexLoc = glGetUniformLocation(shaderProgram, "smallTex");
-//
-//    glActiveTexture(GL_TEXTURE0);
-//    glBindTexture(GL_TEXTURE_2D_ARRAY, tex_id_1);
-//    glActiveTexture(GL_TEXTURE1);
-//    glBindTexture(GL_TEXTURE_2D_ARRAY, tex_id_2);
-//
-//    glUniform1i(bigTexLoc, 0);
-//    glUniform1i(smallTexLoc, 1);
-//
-//    // Pre-render setup
-//    glBindVertexArray(VAO);
-//    glBindFramebuffer(GL_FRAMEBUFFER, fb);
-//
-//    py::list renderData;
-//    renderData.append(VAO);
-//    renderData.append(VBO);
-//    renderData.append(EBO);
-//
-//    return renderData;
-//  }
-//
-//  // Updates positions and rotations in vertex shader
-//  void updateDynamicData(py::array_t<float> pose_trans_array, py::array_t<float> pose_rot_array) {
-//    float* transPtr = (float*)pose_trans_array.request().ptr;
-//    float* rotPtr = (float*)pose_rot_array.request().ptr;
-//
-//    glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
-//    glBufferSubData(GL_UNIFORM_BUFFER, 0, transformDataSize / 2, transPtr);
-//    glBufferSubData(GL_UNIFORM_BUFFER, transformDataSize / 2, transformDataSize / 2, rotPtr);
-//    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-//  }
-//
-//  // Optimized rendering function that is called once per frame for all merged data
-//  void renderOptimized() {
-//    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-//    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-//    glEnable(GL_DEPTH_TEST);
-//    glMultiDrawElements(GL_TRIANGLES, multidrawCounts, GL_UNSIGNED_INT, static_cast<const void* const*>(multidrawStartIndices), multidrawCount);
-//    glDisable(GL_DEPTH_TEST);
-//  }
+  // Updates positions and rotations in vertex shader
+  void updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array, py::array_t<float> pose_rot_array, py::array_t<float> V, py::array_t<float> P) {
+    float* transPtr = (float*)pose_trans_array.request().ptr;
+    float* rotPtr = (float*)pose_rot_array.request().ptr;
+
+    glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, transformDataSize / 2, transPtr);
+    glBufferSubData(GL_UNIFORM_BUFFER, transformDataSize / 2, transformDataSize / 2, rotPtr);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    float* Vptr = (float*)V.request().ptr;
+    float* Pptr = (float*)P.request().ptr;
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+
+  }
+
+  // Optimized rendering function that is called once per frame for all merged data
+  void renderOptimized() {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    //printf("multidraw count %d\n", this->multidrawCount);
+    //printf("first count %d\n", *(int *)this->multidrawCounts);
+    glMultiDrawElements(GL_TRIANGLES, this->multidrawCounts, GL_UNSIGNED_INT, this->multidrawStartIndices, this->multidrawCount);
+    glDisable(GL_DEPTH_TEST);
+  }
 
 };
 
@@ -884,10 +912,9 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
 //    pymodule.def("loadTextureOptimized", &GLFWRendererContext::loadTextureOptimized, "optimized load texture function");
     pymodule.def("generateArrayTextures", &GLFWRendererContext::generateArrayTextures, "generate array texture function");
     pymodule.def("draw_elements_instance_optimized", &GLFWRendererContext::draw_elements_instance_optimized, "draw elements in instance.render and instancegroup.render");
-
-//    pymodule.def("renderSetup", &GLFWRendererContext::renderSetup, "loads all merged graphics data");
-//    pymodule.def("updateDynamicData", &GLFWRendererContext::updateDynamicData, "updates dynamic data such as object transforms");
-//    pymodule.def("renderOptimized", &GLFWRendererContext::renderOptimized, "renders merged data in an optimized way");
+    pymodule.def("renderSetup", &GLFWRendererContext::renderSetup, "loads all merged graphics data");
+    pymodule.def("updateDynamicData", &GLFWRendererContext::updateDynamicData, "updates dynamic data such as object transforms");
+    pymodule.def("renderOptimized", &GLFWRendererContext::renderOptimized, "renders merged data in an optimized way");
 
 
 #ifdef VERSION_INFO

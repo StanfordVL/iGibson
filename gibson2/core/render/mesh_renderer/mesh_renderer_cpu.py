@@ -580,6 +580,111 @@ class MeshRenderer(object):
         print(self.tex_id_1, self.tex_id_2)
         print(self.tex_id_layer_mapping)
 
+        offset_faces = []
+
+        curr_index_offset = 0
+        for i in range(len(self.vertex_data)):
+            face_idxs = self.faces[i]
+            offset_face_idxs = face_idxs + curr_index_offset
+            offset_faces.append(offset_face_idxs)
+            curr_index_offset += len(self.vertex_data[i])
+
+        # List of all primitives to render - these are the shapes that each have a vao_id
+        # Some of these may share visual data, but have unique transforms
+        duplicate_vao_ids = []
+        class_id_array = []
+
+        for instance in self.instances:
+            if isinstance(instance, Instance):
+                ids = instance.object.VAO_ids
+                duplicate_vao_ids.extend(ids)
+                class_id_array.extend([float(instance.class_id)/255.0] * len(ids))
+            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
+                id_sum = 0
+                for vo in instance.objects:
+                    ids = vo.VAO_ids
+                    duplicate_vao_ids.extend(ids)
+                    id_sum += len(ids)
+                class_id_array.extend([float(instance.class_id)/255.0] * id_sum)
+
+        # Variables needed for multi draw elements call
+        index_ptr_offsets = []
+        index_counts = []
+        indices = []
+        diffuse_color_array = []
+        tex_num_array = []
+        tex_layer_array = []
+
+        index_offset = 0
+        for id in duplicate_vao_ids:
+            index_ptr_offsets.append(index_offset)
+            id_idxs = list(offset_faces[id].flatten())
+            indices.extend(id_idxs)
+            index_count = len(id_idxs)
+            index_counts.append(index_count)
+            index_offset += index_count
+
+            # Generate other rendering data, including diffuse color and texture layer
+            id_material = self.materials_mapping[self.mesh_materials[id]]
+            texture_id = id_material.texture_id
+            if texture_id == -1:
+                tex_num_array.append(-1)
+                tex_layer_array.append(-1)
+            else:
+                tex_num, tex_layer = self.tex_id_layer_mapping[texture_id]
+                tex_num_array.append(tex_num)
+                tex_layer_array.append(tex_layer)
+
+            kd = np.asarray(id_material.kd, dtype=np.float32)
+            # Add padding so can store diffuse color as vec4
+            # The 4th element is set to 1 as that is what is used by the fragment shader
+            kd_vec_4 = [kd[0], kd[1], kd[2], 1.0]
+            diffuse_color_array.append(np.ascontiguousarray(kd_vec_4, dtype=np.float32))
+
+        # Convert data into numpy arrays for easy use in pybind
+        index_ptr_offsets = np.ascontiguousarray(index_ptr_offsets, dtype=np.int32)
+        index_counts = np.ascontiguousarray(index_counts, dtype=np.int32)
+        indices = np.ascontiguousarray(indices, dtype=np.int32)
+
+        # Convert frag shader data to list of vec4 for use in uniform buffer objects
+        frag_shader_data = []
+        for i in range(len(duplicate_vao_ids)):
+            data_list = [float(tex_num_array[i]), float(tex_layer_array[i]), class_id_array[i], 0.0]
+            frag_shader_data.append(np.ascontiguousarray(data_list, dtype=np.float32))
+
+        merged_frag_shader_data = np.ascontiguousarray(np.concatenate(frag_shader_data, axis=0), np.float32)
+        merged_diffuse_color_array = np.ascontiguousarray(np.concatenate(diffuse_color_array, axis=0), np.float32)
+
+        merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
+        print("Merged vertex data shape:")
+        print(merged_vertex_data.shape)
+
+        buffer = self.fbo
+        self.optimized_VAO, self.optimized_VBO, self.optimized_EBO = self.r.renderSetup(self.shaderProgram, self.V, self.P, self.lightpos,
+                                                                                        self.lightcolor,merged_vertex_data, index_ptr_offsets, index_counts,
+                                                                                        indices, merged_frag_shader_data,
+                                                                                        merged_diffuse_color_array, self.tex_id_1, self.tex_id_2, buffer)
+
+
+    def update_dynamic_positions(self):
+        """
+        A function to update all dynamic positions.
+        """
+        trans_data = []
+        rot_data = []
+
+        for instance in self.instances:
+            if isinstance(instance, Instance):
+                trans_data.append(instance.pose_trans)
+                rot_data.append(instance.pose_rot)
+            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
+                trans_data.append(instance.poses_trans)
+                rot_data.append(instance.poses_rot)
+
+        self.pose_trans_array = np.ascontiguousarray(np.concatenate(trans_data, axis=0))
+        self.pose_rot_array = np.ascontiguousarray(np.concatenate(rot_data, axis=0))
+
+
     def add_instance(self,
                      object_id,
                      pybullet_uuid=None,
@@ -711,18 +816,24 @@ class MeshRenderer(object):
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-        if self.msaa:
-            self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
+
+        if self.optimize:
+            self.update_dynamic_positions()
+            self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P)
+            self.r.renderOptimized()
         else:
-            self.r.render_meshrenderer_pre(0, 0, self.fbo)
+            if self.msaa:
+                self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
+            else:
+                self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
-        for instance in self.instances:
-            if not instance in hidden:
-                instance.render()
+            for instance in self.instances:
+                if not instance in hidden:
+                    instance.render()
 
-        self.r.render_meshrenderer_post()
-        if self.msaa:
-            self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
+            self.r.render_meshrenderer_post()
+            if self.msaa:
+                self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
         return self.readbuffer(modes)
 
