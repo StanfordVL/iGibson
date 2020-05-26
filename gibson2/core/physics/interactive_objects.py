@@ -59,7 +59,8 @@ class YCBObject(Object):
         body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=visual_id,
                                     basePosition=[0.2, 0.2, 1.5],
-                                    baseMass=0.1)
+                                    baseMass=0.1,
+                                    useMaximalCoordinates=True)
         return body_id
 
 
