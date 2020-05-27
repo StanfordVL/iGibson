@@ -71,6 +71,10 @@ class MeshRendererVR():
                   robot=None):
         self.renderer.add_robot(object_ids, link_ids, class_id, poses_rot, poses_trans, pybullet_uuid, dynamic, robot)
 
+    # Optimizes vertex and texture
+    def optimize_vertex_and_texture(self):
+        self.renderer.optimize_vertex_and_texture()
+
     # Renders VR scenes and returns the left eye frame
     def render(self):
         leftProj, leftView, rightProj, rightView = self.vrsys.preRenderVR()

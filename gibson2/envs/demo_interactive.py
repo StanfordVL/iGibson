@@ -18,13 +18,10 @@ class DemoInteractive(object):
         download_demo_data()
 
     def run_demo(self, optimize):
-        config = parse_config(os.path.join(gibson2.assets_path, 'example_configs/turtlebot_demo.yaml'))
         s = Simulator(mode='iggui', image_width=700, image_height=700, optimize_render=optimize, timestep=1/60.0)
         scene = BuildingScene('Rs_interactive', is_interactive=True)
         scene.sleep = optimize
         s.import_scene(scene)
-        #turtlebot = Turtlebot(config)
-        #s.import_robot(turtlebot)
         if optimize:
             s.renderer.optimize_vertex_and_texture()
 

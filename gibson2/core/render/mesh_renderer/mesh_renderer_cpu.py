@@ -862,7 +862,11 @@ class MeshRenderer(object):
         ]
             fbo_list += [self.fbo_ms]
 
-        self.r.clean_meshrenderer(clean_list, self.textures, fbo_list, self.VAOs, self.VBOs)
+        if self.optimize:
+            self.r.clean_meshrenderer_optimized(clean_list, [self.tex_id_1, self.tex_id_2], fbo_list, [self.optimized_VAO], [self.optimized_VBO], [self.optimized_EBO])
+        else:
+            self.r.clean_meshrenderer(clean_list, self.textures, fbo_list, self.VAOs, self.VBOs)
+            
         self.color_tex_rgb = None
         self.color_tex_normal = None
         self.color_tex_semantics = None

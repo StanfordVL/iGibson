@@ -265,6 +265,17 @@ public:
         glDeleteBuffers(vbos.size(), vbos.data());
     }
 
+	void clean_meshrenderer_optimized(std::vector<GLuint> color_attachments, std::vector<GLuint> textures, std::vector<GLuint> fbo, std::vector<GLuint> vaos, std::vector<GLuint> vbos, std::vector<GLuint> ebos) {
+		glDeleteTextures(color_attachments.size(), color_attachments.data());
+		glDeleteTextures(textures.size(), textures.data());
+		glDeleteFramebuffers(fbo.size(), fbo.data());
+		glDeleteBuffers(vaos.size(), vaos.data());
+		glDeleteBuffers(vbos.size(), vbos.data());
+		glDeleteBuffers(ebos.size(), ebos.data());
+		glDeleteBuffers(1, &uboTexColorData);
+		glDeleteBuffers(1, &uboTransformData);
+	}
+
     py::list setup_framebuffer_meshrenderer(int width, int height) {
         GLuint *fbo_ptr = (GLuint*)malloc(sizeof(GLuint));
         GLuint *texture_ptr = (GLuint*)malloc(5 * sizeof(GLuint));
@@ -652,6 +663,21 @@ public:
 			int out_w = texLayerDims[2 * i];
 			int out_h = texLayerDims[2 * i + 1];
 
+			// Deal with empty texture - create placeholder
+			if (out_w == 0 || out_h == 0 || layerNum == 0) {
+				glTexImage3D(GL_TEXTURE_2D_ARRAY,
+					0,
+					GL_RGB,
+					1,
+					1,
+					1,
+					0,
+					GL_RGB,
+					GL_UNSIGNED_BYTE,
+					NULL
+				);
+			}
+ 
 			glTexImage3D(GL_TEXTURE_2D_ARRAY,
 				0,
 				GL_RGB,
@@ -663,7 +689,6 @@ public:
 				GL_UNSIGNED_BYTE,
 				NULL
 			);
-
 
 			// Add all textures in texture array i to that array texture
 			for (int j = 0; j < layerNum; j++) {
