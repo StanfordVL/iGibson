@@ -117,18 +117,8 @@ class InstanceGroup(object):
                         buffer = self.renderer.fbo_ms
                     else:
                         buffer = self.renderer.fbo
-                    if self.renderer.optimize:
-                        self.renderer.r.draw_elements_instance_optimized(self.renderer.shaderProgram,
-                                                                         self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
-                                                                         self.renderer.tex_id_1,
-                                                                         self.renderer.tex_id_2,
-                                                                         self.renderer.texUnitUniform,
-                                                                         self.renderer.VAOs[object_idx],
-                                                                         self.renderer.faces[object_idx].size,
-                                                                         self.renderer.faces[object_idx],
-                                                                         buffer)
-                    else:
-                        self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
+
+                    self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
                                                            self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                            texture_id,
                                                            self.renderer.texUnitUniform,
@@ -250,20 +240,7 @@ class Instance(object):
                 else:
                     buffer = self.renderer.fbo
 
-                if self.renderer.optimize:
-                    self.renderer.r.draw_elements_instance_optimized(self.renderer.shaderProgram,
-                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
-                                                           self.renderer.tex_id_1,
-                                                           self.renderer.tex_id_2,
-                                                           self.renderer.tex_id_layer_mapping[texture_id][0],
-                                                           self.renderer.tex_id_layer_mapping[texture_id][1],
-                                                           self.renderer.texUnitUniform,
-                                                           self.renderer.VAOs[object_idx],
-                                                           self.renderer.faces[object_idx].size,
-                                                           self.renderer.faces[object_idx],
-                                                           buffer)
-                else:
-                    self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
+                self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
                                                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                        texture_id,
                                                        self.renderer.texUnitUniform,
