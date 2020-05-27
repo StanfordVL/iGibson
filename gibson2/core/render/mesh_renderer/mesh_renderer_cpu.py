@@ -6,18 +6,16 @@ Image.MAX_IMAGE_PIXELS = None
 
 import cv2
 import numpy as np
-#from pyassimp import load, release
 from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-from gibson2.core.render.mesh_renderer import MeshRendererContext
-from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
+from gibson2.core.render.mesh_renderer.Release import MeshRendererContext
+from gibson2.core.render.mesh_renderer.Release import tinyobjloader
 import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
 import gibson2
 import os
-from gibson2.core.render.mesh_renderer import tinyobjloader
 import platform
 import logging
 
@@ -321,7 +319,7 @@ class MeshRenderer(object):
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False, optimize=False):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False, shouldHideWindow=True, optimize=False):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -330,6 +328,7 @@ class MeshRenderer(object):
         :param use_fisheye: use fisheye shader or not
         """
         self.shaderProgram = None
+        self.windowShaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
         self.depth_tex = None
@@ -347,26 +346,17 @@ class MeshRenderer(object):
         self.faces = []
         self.instances = []
         self.fisheye = use_fisheye
-        self.optimize = optimize
-        # self.context = glcontext.Context()
-        # self.context.create_opengl_context((self.width, self.height))
-        available_devices = get_available_devices()
-        if device_idx < len(available_devices):
-            device = available_devices[device_idx]
-            logging.info("Using device {} for rendering".format(device))
-        else:
-            logging.info("Device index is larger than number of devices, falling back to use 0")
-            device = 0
-
-        self.device_idx = device_idx
-        self.device_minor = device
         self.msaa = msaa
-        #if platform.system() == 'Darwin':
-        from gibson2.core.render.mesh_renderer import GLFWRendererContext
-        self.r = GLFWRendererContext.GLFWRendererContext(width, height)
-        #else:
-        #    self.r = MeshRendererContext.MeshRendererContext(width, height, device)
-        self.r.init()
+        self.optimize = optimize
+
+        self.shouldHideWindow = shouldHideWindow
+
+        self.r = MeshRendererContext.MeshRendererContext(width, height)
+        self.r.init(shouldHideWindow)
+        self.r.glad_init()
+
+        if not shouldHideWindow:
+            self.r.setupCompanionWindow()
 
         self.glstring = self.r.getstring_meshrenderer()
 
@@ -374,7 +364,6 @@ class MeshRenderer(object):
         logging.debug(self.glstring)
 
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-
         self.lightcolor = [1, 1, 1]
 
         logging.debug('Is using fisheye camera: {}'.format(self.fisheye))
@@ -406,6 +395,15 @@ class MeshRenderer(object):
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/frag.shader')).readlines()))
+
+        if not shouldHideWindow:
+            [self.windowShaderProgram, _] = self.r.compile_shader_meshrenderer(
+                        "".join(open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                        'shaders/companion_window_vert.shader')).readlines()),
+                        "".join(open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                        'shaders/companion_window_frag.shader')).readlines()))
 
         self.lightpos = [0, 0, 0]
         self.setup_framebuffer()
@@ -812,7 +810,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
+    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), shouldReadBuffer=True):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -840,7 +838,18 @@ class MeshRenderer(object):
             if self.msaa:
                 self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
-        return self.readbuffer(modes)
+        if (shouldReadBuffer):
+            return self.readbuffer(modes)
+    
+    def render_companion_window(self):
+        self.r.renderCompanionWindow(self.windowShaderProgram, self.color_tex_rgb)
+        self.r.post_render_glfw()
+    
+    def get_visual_objects(self):
+        return self.visual_objects
+
+    def get_instances(self):
+        return self.instances
 
     def set_light_pos(self, light):
         self.lightpos = light

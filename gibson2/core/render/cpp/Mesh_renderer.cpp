@@ -1,18 +1,15 @@
-//g++  glad/egl.c glad/gl.c egl.cpp -I glad -lpthread -ldl
 #include <stdio.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <unistd.h>
+#include <stdint.h>
+#include <iostream>
 
-#ifdef USE_GLAD
-  #include  <glad/egl.h>
-#else
-  #include <EGL/egl.h>
-  #include <EGL/eglext.h>
-#endif
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
+#include <glad/gl.h>
 
 #include  <glad/gl.h>
 #include <pybind11/pybind11.h>
@@ -20,332 +17,174 @@
 #include <pybind11/stl.h>
 #include <cstdint>
 
-#ifdef USE_CUDA
-  #include <cuda_runtime.h>
-  #include <cuda_gl_interop.h>
-#endif
+#include <openvr.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize.h"
+#define BUFFER_OFFSET(offset) (static_cast<char*>(0) + (offset))
 
 #define MAX_NUM_RESOURCES 10
 
 namespace py = pybind11;
-
-struct EGLInternalData2 {
-    bool m_isInitialized;
-
-    int m_windowWidth;
-    int m_windowHeight;
-    int m_renderDevice;
-
-    EGLBoolean success;
-    EGLint num_configs;
-    EGLConfig egl_config;
-    EGLSurface egl_surface;
-    EGLContext egl_context;
-    EGLDisplay egl_display;
-
-    EGLInternalData2()
-    : m_isInitialized(false),
-    m_windowWidth(0),
-    m_windowHeight(0) {}
-};
-
+#define MAX_ARRAY_SIZE 512
 
 class MeshRendererContext{
 public:
-    MeshRendererContext(int w, int h, int d):m_windowHeight(h),m_windowWidth(w),m_renderDevice(d) {};
+	MeshRendererContext(int w, int h) :renderHeight(h), renderWidth(w) {};
 
-    int m_windowWidth;
-    int m_windowHeight;
-    int m_renderDevice;
+	GLFWwindow* window;
+	int renderWidth;
+	int renderHeight;
+	int windowWidth;
+	int windowHeight;
 
-    int verbosity;
+	// Index data
+	void* multidrawStartIndices[MAX_ARRAY_SIZE];
+	int multidrawCounts[MAX_ARRAY_SIZE];
+	int multidrawCount;
+	//std::vector<void*> startIndices;
 
-    EGLBoolean success;
-    EGLint num_configs;
-    EGLConfig egl_config;
-    EGLSurface egl_surface;
-    EGLContext egl_context;
-    EGLDisplay egl_display;
+	// UBO data
+	GLuint uboTexColorData;
+	GLuint uboTransformData;
+	int texColorDataSize;
+	int transformDataSize;
 
+	struct VertexDataWindow {
+		glm::vec2 position;
+		glm::vec2 texCoord;
 
-    EGLInternalData2* m_data = NULL;
+		//VertexDataWindow(const glm::vec2& pos, const glm::vec2& tex) : position(pos), texCoord(tex) {}
+	};
 
-#ifdef USE_CUDA
-    cudaGraphicsResource* cuda_res[MAX_NUM_RESOURCES];
-#endif
+	GLuint cwVAO, cwVBO, cwIndexBuffer, cwIndexSize;
 
-    int init() {
+	int init(bool shouldHideWindow) {
+		// Initialize GLFW context and window
+		if (!glfwInit()) {
+			fprintf(stderr, "Failed to initialize GLFW.\n");
+			exit(EXIT_FAILURE);
+		}
 
-      verbosity = 20;
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-#ifndef USE_GLAD
-    PFNEGLQUERYDEVICESEXTPROC eglQueryDevicesEXT =
-               (PFNEGLQUERYDEVICESEXTPROC) eglGetProcAddress("eglQueryDevicesEXT");
-    if(!eglQueryDevicesEXT) { 
-         printf("ERROR: extension eglQueryDevicesEXT not available"); 
-         return(-1); 
-    } 
-    
-    PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT =
-               (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
-    if(!eglGetPlatformDisplayEXT) { 
-         printf("ERROR: extension eglGetPlatformDisplayEXT not available"); 
-         return(-1);  
-    }
-#endif
+		// Hide GLFW window if user requests
+		if (shouldHideWindow) {
+			glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+		}
 
-    m_data = new EGLInternalData2();
+		// Decrease size but retain aspect ratio
+		windowWidth = renderWidth / 4;
+		windowHeight = renderHeight / 4;
 
-    EGLint egl_config_attribs[] = {EGL_RED_SIZE,
-        8,
-        EGL_GREEN_SIZE,
-        8,
-        EGL_BLUE_SIZE,
-        8,
-        EGL_DEPTH_SIZE,
-        8,
-        EGL_SURFACE_TYPE,
-        EGL_PBUFFER_BIT,
-        EGL_RENDERABLE_TYPE,
-        EGL_OPENGL_BIT,
-        EGL_NONE};
+		window = glfwCreateWindow(windowWidth, windowHeight, "Gibson VR - Left Eye Output", NULL, NULL);
+		if (window == NULL) {
+			fprintf(stderr, "Failed to create GLFW window.\n");
+			exit(EXIT_FAILURE);
+		}
+		glfwMakeContextCurrent(window);
 
-    EGLint egl_pbuffer_attribs[] = {
-        EGL_WIDTH, m_windowWidth, EGL_HEIGHT, m_windowHeight,
-        EGL_NONE,
-    };
+		// Turns Vsync off (1 to turn it on)
+		glfwSwapInterval(0);
 
-#ifdef USE_CUDA
-    for (int i = 0; i < MAX_NUM_RESOURCES; i++)
-        cuda_res[i] = NULL;
-#endif
+		printf("Succesfully initialized both GLFW context and window!\n");
 
-    // Load EGL functions
-#ifdef USE_GLAD
-    int egl_version = gladLoaderLoadEGL(NULL);
-    if(!egl_version) {
-        fprintf(stderr, "ERROR: Failed to EGL with glad.\n");
-        exit(EXIT_FAILURE);
+		return 0;
+	}
 
-    };
-#endif
+	// Note: companion window only renders left eye so users can easily see what is going on
+	void setupCompanionWindow() {
+		std::vector<VertexDataWindow> windowVerts;
 
-    // Query EGL Devices
-    const int max_devices = 32;
-    EGLDeviceEXT egl_devices[max_devices];
-    EGLint num_devices = 0;
-    EGLint egl_error = eglGetError();
-    if (!eglQueryDevicesEXT(max_devices, egl_devices, &num_devices) ||
-        egl_error != EGL_SUCCESS) {
-        printf("WARN: eglQueryDevicesEXT Failed.\n");
-        m_data->egl_display = EGL_NO_DISPLAY;
-    }
+		VertexDataWindow w1, w2, w3, w4;
+		w1.position = glm::vec2(-1, -1);
+		w1.texCoord = glm::vec2(0, 0);
 
-    m_data->m_renderDevice = m_renderDevice;
-    // Query EGL Screens
-    if(m_data->m_renderDevice == -1) {
-        // Chose default screen, by trying all
-        for (EGLint i = 0; i < num_devices; ++i) {
-            // Set display
-            EGLDisplay display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT,
-                                                          egl_devices[i], NULL);
-            if (eglGetError() == EGL_SUCCESS && display != EGL_NO_DISPLAY) {
-                int major, minor;
-                EGLBoolean initialized = eglInitialize(display, &major, &minor);
-                if (eglGetError() == EGL_SUCCESS && initialized == EGL_TRUE) {
-                    m_data->egl_display = display;
-                }
-            }
-        }
-    } else {
-        // Chose specific screen, by using m_renderDevice
-        if (m_data->m_renderDevice < 0 || m_data->m_renderDevice >= num_devices) {
-            fprintf(stderr, "ERROR: Invalid render_device choice: %d < %d.\n", m_data->m_renderDevice, num_devices);
-            exit(EXIT_FAILURE);
-        }
+		w2.position = glm::vec2(-1, 1);
+		w2.texCoord = glm::vec2(0, 1);
 
-        // Set display
-        EGLDisplay display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT,
-                                                      egl_devices[m_data->m_renderDevice], NULL);
-        if (eglGetError() == EGL_SUCCESS && display != EGL_NO_DISPLAY) {
-            int major, minor;
-            EGLBoolean initialized = eglInitialize(display, &major, &minor);
-            if (eglGetError() == EGL_SUCCESS && initialized == EGL_TRUE) {
-                m_data->egl_display = display;
-            }
-        }
-    }
+		w3.position = glm::vec2(1, 1);
+		w3.texCoord = glm::vec2(1, 1);
 
-    if (!eglInitialize(m_data->egl_display, NULL, NULL)) {
-        fprintf(stderr, "ERROR: Unable to initialize EGL\n");
-        exit(EXIT_FAILURE);
-    }
+		w4.position = glm::vec2(1, -1);
+		w4.texCoord = glm::vec2(1, 0);
 
-#ifdef USE_GLAD
-    egl_version = gladLoaderLoadEGL(m_data->egl_display);
-    if (!egl_version) {
-        fprintf(stderr, "ERROR: Unable to reload EGL.\n");
-        exit(EXIT_FAILURE);
-    }
-#else
-    if (verbosity >= 20) { printf("INFO: Not using glad\n");}
-#endif
+		// Left eye vertices and texture coordinates
+		windowVerts.push_back(w1);
+		windowVerts.push_back(w2);
+		windowVerts.push_back(w3);
+		windowVerts.push_back(w4);
 
-    m_data->success = eglBindAPI(EGL_OPENGL_API);
-    if (!m_data->success) {
-        // TODO: Properly handle this error (requires change to default window
-        // API to change return on all window types to bool).
-        fprintf(stderr, "ERROR: Failed to bind OpenGL API.\n");
-        exit(EXIT_FAILURE);
-    }
+		GLushort windowIndices[] = {
+			0, 1, 2,
+			0, 2, 3
+		};
 
-    m_data->success =
-    eglChooseConfig(m_data->egl_display, egl_config_attribs,
-                    &m_data->egl_config, 1, &m_data->num_configs);
-    if (!m_data->success) {
-        // TODO: Properly handle this error (requires change to default window
-        // API to change return on all window types to bool).
-        fprintf(stderr, "ERROR: Failed to choose config (eglError: %d)\n", eglGetError());
-        exit(EXIT_FAILURE);
-    }
-    if (m_data->num_configs != 1) {
-        fprintf(stderr, "ERROR: Didn't get exactly one config, but %d\n", m_data->num_configs);
-        exit(EXIT_FAILURE);
-    }
+		cwIndexSize = _countof(windowIndices);
 
-    m_data->egl_surface = eglCreatePbufferSurface(
-                                                  m_data->egl_display, m_data->egl_config, egl_pbuffer_attribs);
-    if (m_data->egl_surface == EGL_NO_SURFACE) {
-        fprintf(stderr, "ERROR: Unable to create EGL surface (eglError: %d)\n", eglGetError());
-        exit(EXIT_FAILURE);
-    }
+		glGenVertexArrays(1, &cwVAO);
+		glGenBuffers(1, &cwVBO);
 
+		glBindVertexArray(cwVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, cwVBO);
+		glBufferData(GL_ARRAY_BUFFER, windowVerts.size() * sizeof(VertexDataWindow), &windowVerts[0], GL_STATIC_DRAW);
 
-    m_data->egl_context = eglCreateContext(
-                                           m_data->egl_display, m_data->egl_config, EGL_NO_CONTEXT, NULL);
-    if (!m_data->egl_context) {
-        fprintf(stderr, "ERROR: Unable to create EGL context (eglError: %d)\n",eglGetError());
-        exit(EXIT_FAILURE);
-    }
+		glGenBuffers(1, &cwIndexBuffer);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cwIndexBuffer);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, cwIndexSize * sizeof(GLushort), &windowIndices[0], GL_STATIC_DRAW);
 
-    m_data->success =
-        eglMakeCurrent(m_data->egl_display, m_data->egl_surface, m_data->egl_surface,
-                   m_data->egl_context);
-    if (!m_data->success) {
-        fprintf(stderr, "ERROR: Failed to make context current (eglError: %d)\n", eglGetError());
-        exit(EXIT_FAILURE);
-    }
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(VertexDataWindow), (void*)offsetof(VertexDataWindow, position));
 
-    if (!gladLoadGL(eglGetProcAddress)) {
-        fprintf(stderr, "ERROR: Failed to load GL with glad.\n");
-        exit(EXIT_FAILURE);
-    }
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexDataWindow), (void*)offsetof(VertexDataWindow, texCoord));
 
+		glBindVertexArray(0);
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	}
 
-    return 0;
-    };
+	void renderCompanionWindow(GLuint windowShaderProgram, GLuint leftEyeTexId) {
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glDisable(GL_DEPTH_TEST);
+		glViewport(0, 0, windowWidth, windowHeight);
+		glUseProgram(windowShaderProgram);
+		glBindVertexArray(cwVAO);
 
-    void release(){
-        eglTerminate(m_data->egl_display);
-        delete m_data;
-#ifdef USE_CUDA        
-        for (int i = 0; i < MAX_NUM_RESOURCES; i++)
-          {
-            if (cuda_res[i])
-            {
-              cudaError_t err = cudaGraphicsUnregisterResource(cuda_res[i]);
-              if( err != cudaSuccess)
-              {
-                std::cout << "WARN: cudaGraphicsUnregisterResource failed: " << err << std::endl;
-              }
-            }
-          }
-#endif
-    }
+		glBindTexture(GL_TEXTURE_2D, leftEyeTexId);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glDrawElements(GL_TRIANGLES, cwIndexSize, GL_UNSIGNED_SHORT, 0);
 
+		glBindVertexArray(0);
+		glUseProgram(0);
+		glfwSwapBuffers(window);
+		// Return to render viewport
+		glViewport(0, 0, renderWidth, renderHeight);
+	}
 
-#ifdef USE_CUDA
-    void map_tensor(GLuint tid, int width, int height, std::size_t data)
-    {
-       cudaError_t err;
-       if (cuda_res[tid] == NULL)
-       {
-         err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
-         if( err != cudaSuccess)
-         {
-           std::cout << "WARN: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
-         }
-       }
+	void post_render_glfw() {
+		glFlush();
+		//glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
 
-       err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess)
-       {
-         std::cout << "WARN: cudaGraphicsMapResources failed: " << err << std::endl;
-       }
-
-       cudaArray* array;
-       err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
-       if( err != cudaSuccess)
-       {
-         std::cout << "WARN: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
-       }
-
-       // copy data
-       err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(char), array, 0, 0, width*4*sizeof(char), height, cudaMemcpyDeviceToDevice);
-       if( err != cudaSuccess)
-       {
-         std::cout << "WARN: cudaMemcpy2DFromArray failed: " << err << std::endl;
-       }
-
-       err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess)
-       {
-         std::cout << "WARN: cudaGraphicsUnmapResources failed: " << err << std::endl;
-       }
-    }
-
-    void map_tensor_float(GLuint tid, int width, int height, std::size_t data)
-    {
-       cudaError_t err;
-       if (cuda_res[tid] == NULL)
-       {
-         err = cudaGraphicsGLRegisterImage(&(cuda_res[tid]), tid, GL_TEXTURE_2D, cudaGraphicsMapFlagsNone);
-         if( err != cudaSuccess)
-         {
-           std::cout << "WARN: cudaGraphicsGLRegisterImage failed: " << err << std::endl;
-         }
-       }
-
-       err = cudaGraphicsMapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess)
-       {
-         std::cout << "WARN: cudaGraphicsMapResources failed: " << err << std::endl;
-       }
-
-       cudaArray* array;
-       err = cudaGraphicsSubResourceGetMappedArray(&array, cuda_res[tid], 0, 0);
-       if( err != cudaSuccess)
-       {
-         std::cout << "WARN: cudaGraphicsSubResourceGetMappedArray failed: " << err << std::endl;
-       }
-
-       // copy data
-       err = cudaMemcpy2DFromArray((void*)data, width*4*sizeof(float), array, 0, 0, width*4*sizeof(float), height, cudaMemcpyDeviceToDevice);
-       if( err != cudaSuccess)
-       {
-         std::cout << "WARN: cudaMemcpy2DFromArray failed: " << err << std::endl;
-       }
-
-       err = cudaGraphicsUnmapResources(1, &(cuda_res[tid]));
-       if( err != cudaSuccess)
-       {
-         std::cout << "WARN: cudaGraphicsUnmapResources failed: " << err << std::endl;
-       }
-    }
-#endif
+	void release() {
+		glfwTerminate();
+	}
 
     void render_meshrenderer_pre(bool msaa, GLuint fb1, GLuint fb2) {
 
@@ -363,6 +202,18 @@ public:
 
     void render_meshrenderer_post() {
         glDisable(GL_DEPTH_TEST);
+    }
+
+    void glad_init() {
+		/* if (!gladLoadGL(eglGetProcAddress)) {
+		fprintf(stderr, "failed to load GL with glad.\n");
+		exit(EXIT_FAILURE);
+		} */
+
+		if (!gladLoadGL(glfwGetProcAddress)) {
+			fprintf(stderr, "Failed to load GL with glad.\n");
+			exit(EXIT_FAILURE);
+		}
     }
 
     std::string getstring_meshrenderer() {
@@ -702,20 +553,781 @@ public:
         return texture;
     }
 
+	// Generates large and small array textures and returns handles to the user (cutoff based on user variable), as well as index - tex num/layer mapping
+	py::list generateArrayTextures(std::vector<std::string> filenames, int texCutoff) {
+		int num_textures = filenames.size();
+		std::vector<unsigned char*> image_data;
+		std::vector<int> texHeights;
+		std::vector<int> texWidths;
+		std::vector<int> texChannels;
+
+		printf("number of textures %d\n", num_textures);
+		for (int i = 0; i < num_textures; i++) {
+			std::string filename = filenames[i];
+			int w;
+			int h;
+			int comp;
+			stbi_set_flip_vertically_on_load(true);
+			unsigned char* image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb); // force to 3 channels
+			if (image == nullptr)
+				throw(std::string("Failed to load texture"));
+			comp = 3;
+			image_data.push_back(image);
+			texHeights.push_back(h);
+			texWidths.push_back(w);
+			texChannels.push_back(comp);
+		}
+
+
+		GLuint texId1, texId2;
+		glGenTextures(1, &texId1);
+		glGenTextures(1, &texId2);
+
+		py::list texInfo;
+		py::list texLayerData;
+
+		// Larger textures
+		int firstTexLayerNum = 0;
+		// Smaller textures
+		int secondTexLayerNum = 0;
+
+		std::vector<std::vector<int>> texIndices;
+		std::vector<int> firstTexIndices, secondTexIndices;
+		texIndices.push_back(firstTexIndices);
+		texIndices.push_back(secondTexIndices);
+
+		// w1, h1, w2, h2
+		std::vector<int> texLayerDims;
+		for (int i = 0; i < 4; i++) {
+			texLayerDims.push_back(0);
+		}
+
+		for (int i = 0; i < image_data.size(); i++) {
+			// Figure out if this texture goes in left group or right group based on w * h
+			int w = texWidths[i];
+			int h = texHeights[i];
+			int score = w * h;
+
+			py::list tex_info_i;
+
+			// Texture goes in larger bucket if larger than cutoff
+			if (score >= texCutoff) {
+				texIndices[0].push_back(i);
+				tex_info_i.append(0);
+				tex_info_i.append(firstTexLayerNum);
+				if (w > texLayerDims[0]) texLayerDims[0] = w;
+				if (h > texLayerDims[1]) texLayerDims[1] = h;
+				firstTexLayerNum++;
+			}
+			else {
+				texIndices[1].push_back(i);
+				tex_info_i.append(1);
+				tex_info_i.append(secondTexLayerNum);
+				if (w > texLayerDims[2]) texLayerDims[2] = w;
+				if (h > texLayerDims[3]) texLayerDims[3] = h;
+				secondTexLayerNum++;
+			}
+
+			texLayerData.append(tex_info_i);
+		}
+
+		printf("Texture 1 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[0], texLayerDims[1], firstTexLayerNum, texId1);
+		printf("Texture 2 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[2], texLayerDims[3], secondTexLayerNum, texId2);
+
+		for (int i = 0; i < 2; i++) {
+			GLuint currTexId = texId1;
+			if (i == 1) currTexId = texId2;
+
+			glBindTexture(GL_TEXTURE_2D_ARRAY, currTexId);
+
+			int layerNum = firstTexLayerNum;
+			if (i == 1) layerNum = secondTexLayerNum;
+
+			int out_w = texLayerDims[2 * i];
+			int out_h = texLayerDims[2 * i + 1];
+
+			glTexImage3D(GL_TEXTURE_2D_ARRAY,
+				0,
+				GL_RGB,
+				out_w,
+				out_h,
+				layerNum,
+				0,
+				GL_RGB,
+				GL_UNSIGNED_BYTE,
+				NULL
+			);
+
+
+			// Add all textures in texture array i to that array texture
+			for (int j = 0; j < layerNum; j++) {
+
+				int idx = texIndices[i][j];
+
+				int orig_w = texWidths[idx];
+				int orig_h = texHeights[idx];
+				int n_channels = texChannels[idx];
+				unsigned char* input_data = image_data[idx];
+				unsigned char* tex_bytes = input_data;
+				printf("%d %d %d %d\n", j, orig_w, orig_h, n_channels);
+				bool shouldResize = (orig_w != out_w || orig_h != out_h);
+				// Resize image to fit biggest texture in texture array
+				if (shouldResize) {
+					unsigned char* output_data = (unsigned char*)malloc(out_w * out_h * n_channels);
+					stbir_resize_uint8(input_data, orig_w, orig_h, 0, output_data, out_w, out_h, 0, n_channels);
+					tex_bytes = output_data;
+				}
+
+				glBindTexture(GL_TEXTURE_2D_ARRAY, currTexId);
+				glTexSubImage3D(GL_TEXTURE_2D_ARRAY,
+					0,
+					0,
+					0,
+					j,
+					out_w,
+					out_h,
+					1,
+					GL_RGB,
+					GL_UNSIGNED_BYTE,
+					tex_bytes
+				);
+
+				stbi_image_free(input_data);
+				if (shouldResize) {
+					free(tex_bytes);
+				}
+			}
+
+			glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		}
+
+		texInfo.append(texId1);
+		texInfo.append(texId2);
+		texInfo.append(texLayerData);
+
+		// texid1, texid2, list of idx - texid/layer data
+		return texInfo;
+	}
+
+	// Performs optimized render setup
+	py::list renderSetup(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor,
+		py::array_t<float> mergedVertexData, py::array_t<int> index_ptr_offsets, py::array_t<int> index_counts,
+		py::array_t<int> indices, py::array_t<float> mergedFragData, py::array_t<float> mergedDiffuseData,
+		int tex_id_1, int tex_id_2, GLuint fb) {
+		// First set up VAO and corresponding attributes
+		GLuint VAO;
+		glGenVertexArrays(1, &VAO);
+		cglBindVertexArray(VAO);
+
+		GLuint EBO;
+		glGenBuffers(1, &EBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+		int* indicesPtr = (int*)indices.request().ptr;
+		std::vector<unsigned int> indexData;
+		for (int i = 0; i < indices.size(); i++) {
+			indexData.push_back((unsigned int)indicesPtr[i]);
+		}
+
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexData.size() * sizeof(unsigned int), &indexData[0], GL_STATIC_DRAW);
+
+		GLuint VBO;
+		glGenBuffers(1, &VBO);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		float* mergedVertexDataPtr = (float*)mergedVertexData.request().ptr;
+		glBufferData(GL_ARRAY_BUFFER, mergedVertexData.size() * sizeof(float), mergedVertexDataPtr, GL_STATIC_DRAW);
+		GLuint positionAttrib = glGetAttribLocation(shaderProgram, "position");
+		GLuint normalAttrib = glGetAttribLocation(shaderProgram, "normal");
+		GLuint texcoordAttrib = glGetAttribLocation(shaderProgram, "texCoords");
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(positionAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);
+		glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)12);
+		glVertexAttribPointer(texcoordAttrib, 2, GL_FLOAT, GL_TRUE, 32, (void*)24);
+
+		multidrawCount = index_ptr_offsets.size();
+		int* indexOffsetPtr = (int*)index_ptr_offsets.request().ptr;
+
+
+		for (int i = 0; i < multidrawCount; i++) {
+			unsigned int offset = (unsigned int)indexOffsetPtr[i];
+			this->multidrawStartIndices[i] = BUFFER_OFFSET((offset * sizeof(unsigned int)));
+			printf("multidraw start idx %d\n", offset);
+		}
+
+		// Store for rendering
+		int* indices_count_ptr = (int*)index_counts.request().ptr;
+		for (int i = 0; i < multidrawCount; i++) {
+			this->multidrawCounts[i] = indices_count_ptr[i];
+		}
+
+		// Set up shaders
+		float* fragData = (float*)mergedFragData.request().ptr;
+		float* diffuseData = (float*)mergedDiffuseData.request().ptr;
+
+		glUseProgram(shaderProgram);
+
+		float* Vptr = (float*)V.request().ptr;
+		float* Pptr = (float*)P.request().ptr;
+		float* lightposptr = (float*)lightpos.request().ptr;
+		float* lightcolorptr = (float*)lightcolor.request().ptr;
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+
+		glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
+		glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
+		printf("multidrawcount %d\n", multidrawCount);
+
+
+		glGenBuffers(1, &uboTexColorData);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboTexColorData);
+		texColorDataSize = 2 * 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, texColorDataSize, NULL, GL_STATIC_DRAW);
+		GLuint texColorDataIdx = glGetUniformBlockIndex(shaderProgram, "TexColorData");
+		glUniformBlockBinding(shaderProgram, texColorDataIdx, 0);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboTexColorData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, texColorDataSize / 2, fragData);
+		glBufferSubData(GL_UNIFORM_BUFFER, texColorDataSize / 2, texColorDataSize / 2, diffuseData);
+
+		glGenBuffers(1, &uboTransformData);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
+		transformDataSize = 2 * 64 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, transformDataSize, NULL, GL_DYNAMIC_DRAW);
+		GLuint transformDataIdx = glGetUniformBlockIndex(shaderProgram, "TransformData");
+		glUniformBlockBinding(shaderProgram, transformDataIdx, 1);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 1, uboTransformData);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+		GLuint bigTexLoc = glGetUniformLocation(shaderProgram, "bigTex");
+		GLuint smallTexLoc = glGetUniformLocation(shaderProgram, "smallTex");
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, tex_id_1);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, tex_id_2);
+
+		glUniform1i(bigTexLoc, 0);
+		glUniform1i(smallTexLoc, 1);
+
+		// Pre-render setup
+		glBindVertexArray(VAO);
+		glBindFramebuffer(GL_FRAMEBUFFER, fb);
+
+		py::list renderData;
+		renderData.append(VAO);
+		renderData.append(VBO);
+		renderData.append(EBO);
+
+		return renderData;
+	}
+
+	// Updates positions and rotations in vertex shader
+	void updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array, py::array_t<float> pose_rot_array, py::array_t<float> V, py::array_t<float> P) {
+		float* transPtr = (float*)pose_trans_array.request().ptr;
+		float* rotPtr = (float*)pose_rot_array.request().ptr;
+
+		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, transformDataSize / 2, transPtr);
+		glBufferSubData(GL_UNIFORM_BUFFER, transformDataSize / 2, transformDataSize / 2, rotPtr);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+		float* Vptr = (float*)V.request().ptr;
+		float* Pptr = (float*)P.request().ptr;
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+	}
+
+	// Optimized rendering function that is called once per frame for all merged data
+	void renderOptimized() {
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glEnable(GL_DEPTH_TEST);
+		glMultiDrawElements(GL_TRIANGLES, this->multidrawCounts, GL_UNSIGNED_INT, this->multidrawStartIndices, this->multidrawCount);
+		glDisable(GL_DEPTH_TEST);
+	}
+
 };
 
+// Class containing values and functions needed to run VR around Gibson renderer
+// This class uses the OpenGL coordinate system, and converts to Gibson's ROS coordinate system upon returning matrices
+class VRSystem {
+public:
+	vr::IVRSystem* m_pHMD;
+	uint32_t renderWidth;
+	uint32_t renderHeight;
+	float nearClip;
+	float farClip;
+
+	// Boolean indicating whether the user has request the VR camera to be at a specific location
+	bool hasSetCamera;
+	glm::vec3 currCameraPos;
+
+	// Device data stored in VR coordinates
+	struct DeviceData {
+		// standard 4x4 transform
+		glm::mat4 deviceTransform;
+		// x,y,z
+		glm::vec3 devicePos;
+		// w, x, y, z (quaternion)
+		glm::vec4 deviceRot;
+		// is device valid and being tracked
+		bool isValidData = false;
+		// index of current device in device array
+		int index = -1;
+	};
+
+	DeviceData hmdData;
+	DeviceData leftControllerData;
+	DeviceData rightControllerData;
+
+	// Indicates where the headset actually is in the room, irrespective of whether the VR camera has been set or not
+	glm::vec3 hmdActualPos;
+
+	// View matrices for both left and right eyes (only proj and view are actually returned to the user)
+	glm::mat4 leftEyeProj;
+	glm::mat4 leftEyePos;
+	glm::mat4 leftEyeView;
+	glm::mat4 rightEyeProj;
+	glm::mat4 rightEyePos;
+	glm::mat4 rightEyeView;
+
+	glm::mat4 gibToVR;
+	glm::mat4 vrToGib;
+
+	// Initialize VRSystem class
+	// TIMELINE: Call before any other method in this class
+	VRSystem() :m_pHMD(NULL), renderWidth(0), renderHeight(0), nearClip(0.1f), farClip(30.0f) {};
+
+	// Initialize the VR system and compositor and return recommended dimensions
+	// TIMELINE: Call during init of renderer, before height/width are set
+	py::list initVR() {
+		// Initialize VR systems
+		if (!vr::VR_IsRuntimeInstalled()) {
+			fprintf(stderr, "VR runtime not installed.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		vr::EVRInitError eError = vr::VRInitError_None;
+		m_pHMD = vr::VR_Init(&eError, vr::VRApplication_Scene);
+
+		if (eError != vr::VRInitError_None) {
+			fprintf(stderr, "Unable to initialize VR runtime.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		if (!vr::VRCompositor()) {
+			fprintf(stderr, "Unable to intialize VR compositor.\n");
+		}
+
+		leftEyeProj = getHMDEyeProjection(vr::Eye_Left);
+		leftEyePos = getHMDEyePose(vr::Eye_Left);
+		rightEyeProj = getHMDEyeProjection(vr::Eye_Right);
+		rightEyePos = getHMDEyePose(vr::Eye_Right);
+
+		m_pHMD->GetRecommendedRenderTargetSize(&renderWidth, &renderHeight);
+
+		py::list renderDims;
+		renderDims.append((int)renderWidth);
+		renderDims.append((int)renderHeight);
+
+		hasSetCamera = false;
+		// Set gibToVR and vrToGib matrices
+		setCoordinateTransformMatrices();
+
+		return renderDims;
+	}
+
+	// Sets the position of the VR camera
+	// TIMELINE: Call before preRenderVR - takes one frame to update camera position
+	void setVRCamera(float x, float y, float z) {
+		currCameraPos = glm::vec3(x, y, z);
+		hasSetCamera = true;
+	}
+
+	// Resets the VR camera to use the position of the HMD as its location
+	// TIMELINE: Call before preRenderVR - takes one frame to update camera position
+	void resetVRCamera() {
+		hasSetCamera = false;
+	}
+
+	// Returns the projection and view matrices for the left and right eyes, to be used in rendering
+	// Returns in order Left P, left V, right P, right V
+	// Note: GLM is column-major, whereas numpy is row major, so we need to tranpose view matrices before conversion
+	// Note 2: Projection matrices are passed in to OpenGL assuming they are column-major, so we don't need to transpose them
+	// TIMELINE: Call before rendering so the camera is set properly
+	py::list preRenderVR() {
+		py::array_t<float> leftEyeProjNp = py::array_t<float>({ 4,4 }, glm::value_ptr(leftEyeProj));
+		py::array_t<float> rightEyeProjNp = py::array_t<float>({ 4,4 }, glm::value_ptr(rightEyeProj));
+
+		glm::mat4 worldToHead = glm::inverse(hmdData.deviceTransform);
+
+		leftEyeView = leftEyePos * worldToHead * gibToVR;
+		rightEyeView = rightEyePos * worldToHead * gibToVR;
+
+		py::array_t<float> leftEyeViewNp = py::array_t<float>({ 4,4 }, glm::value_ptr(glm::transpose(leftEyeView)));
+		py::array_t<float> rightEyeViewNp = py::array_t<float>({ 4,4 }, glm::value_ptr(glm::transpose(rightEyeView)));
+
+		py::list eyeMats;
+		eyeMats.append(leftEyeProjNp);
+		eyeMats.append(leftEyeViewNp);
+		eyeMats.append(rightEyeProjNp);
+		eyeMats.append(rightEyeViewNp);
+
+		return eyeMats;
+	}
+
+	// Called after the renderer has finished rendering a single eye
+	// TIMELINE: Call immediately after rendering for current eye is finished
+	void postRenderVRForEye(char* eye, GLuint texID) {
+		if (!strcmp(eye, "left")) {
+			vr::Texture_t leftEyeTexture = { (void*)(uintptr_t)texID, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
+			vr::EVRCompositorError err = vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture);
+			// 0 is no error, 101 is no focus (happens at start of rendering)
+			if (err != 0 && err != 101) {
+				fprintf(stderr, "Compositor error: %d\n", err);
+			}
+		}
+		else if (!strcmp(eye, "right")) {
+			vr::Texture_t rightEyeTexture = { (void*)(uintptr_t)texID, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };;
+			vr::EVRCompositorError err = vr::VRCompositor()->Submit(vr::Eye_Right, &rightEyeTexture);
+			if (err != 0 && err != 101) {
+				fprintf(stderr, "Compositor error: %d\n", err);
+			}
+		}
+	}
+
+	// Called after both eyes have been rendered 
+	// Tell the compositor to begin work immediately instead of waiting for the next WaitGetPoses() call if the user wants
+	// And then update VR data
+	// TIMELINE: Call immediately after calling postRenderVRForEye on both left and right eyes
+	void postRenderVRUpdate(bool shouldHandoff) {
+		if (shouldHandoff) {
+			vr::VRCompositor()->PostPresentHandoff();
+		}
+
+		updateVRData();
+	}
+
+	// Returns device data in order: isValidData, position, rotation, hmdActualPos (valid only if hmd)
+	// Device type can be either hmd, left_controller or right_controller
+	// Coordinates are kept in OpenGL coordinate system to synchronize with PyBullet
+	// TIMELINE: Call at any time after postRenderVR to poll the VR system for device data
+	py::list getDataForVRDevice(char* deviceType) {
+		bool isValid = false;
+
+		py::array_t<float> positionData;
+		py::array_t<float> rotationData;
+		py::array_t<float> hmdActualPosData;
+
+		// TODO: Extend this to work with multiple headsets in future
+		if (!strcmp(deviceType, "hmd")) {
+			glm::vec3 transformedPos(vrToGib * glm::vec4(hmdData.devicePos, 1.0));
+			positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
+			rotationData = py::array_t<float>({ 4, }, glm::value_ptr(vrToGib * hmdData.deviceRot));
+			glm::vec3 transformedHmdPos(vrToGib * glm::vec4(hmdActualPos, 1.0));
+			hmdActualPosData = py::array_t<float>({ 3, }, glm::value_ptr(transformedHmdPos));
+			isValid = hmdData.isValidData;
+		}
+		else if (!strcmp(deviceType, "left_controller")) {
+			glm::vec3 transformedPos(vrToGib * glm::vec4(leftControllerData.devicePos, 1.0));
+			positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
+			rotationData = py::array_t<float>({ 4, }, glm::value_ptr(vrToGib * leftControllerData.deviceRot));
+			isValid = leftControllerData.isValidData;
+		}
+		else if (!strcmp(deviceType, "right_controller")) {
+			glm::vec3 transformedPos(vrToGib * glm::vec4(rightControllerData.devicePos, 1.0));
+			positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
+			rotationData = py::array_t<float>({ 4, }, glm::value_ptr(vrToGib * rightControllerData.deviceRot));
+			isValid = rightControllerData.isValidData;
+		}
+
+		py::list deviceData;
+		deviceData.append(isValid);
+		deviceData.append(positionData);
+		deviceData.append(rotationData);
+		deviceData.append(hmdActualPosData);
+
+		return deviceData;
+	}
+
+	// Polls for VR events, such as button presses
+	// TIMELINE: Ideally call before rendering (eg. before simulator step function)
+	py::list pollVREvents() {
+		vr::VREvent_t vrEvent;
+		py::list eventData;
+
+		while (m_pHMD->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
+			std::string deviceType, eventType;
+			processVREvent(vrEvent, deviceType, eventType);
+
+			if (deviceType == "invalid" || eventType == "invalid") {
+				continue;
+			}
+
+			py::list singleEventData;
+			singleEventData.append(deviceType);
+			singleEventData.append(eventType);
+
+			eventData.append(singleEventData);
+		}
+
+		return eventData;
+	}
+
+	// Releases and cleans up VR system
+	// TIMELINE: Call when the renderer shuts down
+	void releaseVR() {
+		vr::VR_Shutdown();
+		m_pHMD = NULL;
+	}
+
+private:
+	// Calls WaitGetPoses and updates all hmd and controller transformations
+	void updateVRData() {
+		hmdData.isValidData = false;
+		leftControllerData.isValidData = false;
+		rightControllerData.isValidData = false;
+
+		vr::TrackedDevicePose_t trackedDevices[vr::k_unMaxTrackedDeviceCount];
+		vr::VRCompositor()->WaitGetPoses(trackedDevices, vr::k_unMaxTrackedDeviceCount, NULL, 0);
+
+		for (unsigned int idx = 0; idx < vr::k_unMaxTrackedDeviceCount; idx++) {
+			if (!trackedDevices[idx].bPoseIsValid || !m_pHMD->IsTrackedDeviceConnected(idx)) continue;
+
+			vr::HmdMatrix34_t transformMat = trackedDevices[idx].mDeviceToAbsoluteTracking;
+			vr::ETrackedDeviceClass trackedDeviceClass = m_pHMD->GetTrackedDeviceClass(idx);
+
+			if (trackedDeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_HMD) {
+				hmdData.index = idx;
+				hmdData.isValidData = true;
+				hmdActualPos = getPositionFromSteamVRMatrix(transformMat);
+				if (hasSetCamera) {
+					SetSteamVRMatrixPos(currCameraPos, transformMat);
+				}
+				hmdData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
+				hmdData.devicePos = getPositionFromSteamVRMatrix(transformMat);
+				hmdData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+			}
+			else if (trackedDeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
+				vr::ETrackedControllerRole role = m_pHMD->GetControllerRoleForTrackedDeviceIndex(idx);
+				if (role == vr::TrackedControllerRole_Invalid) {
+					continue;
+				}
+				else if (role == vr::TrackedControllerRole_LeftHand) {
+					leftControllerData.index = idx;
+					leftControllerData.isValidData = true;
+					leftControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
+					leftControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
+					leftControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+				}
+				else if (role == vr::TrackedControllerRole_RightHand) {
+					rightControllerData.index = idx;
+					rightControllerData.isValidData = true;
+					rightControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
+					rightControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
+					rightControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+				}
+			}
+		}
+	}
+
+	// Processes a single VR event
+	void processVREvent(vr::VREvent_t& vrEvent, std::string& deviceType, std::string& eventType) {
+		vr::ETrackedDeviceClass trackedDeviceClass = m_pHMD->GetTrackedDeviceClass(vrEvent.trackedDeviceIndex);
+
+		// Exit if we found a non-controller event
+		if (trackedDeviceClass != vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
+			deviceType = "invalid";
+			return;
+		}
+
+		vr::ETrackedControllerRole role = m_pHMD->GetControllerRoleForTrackedDeviceIndex(vrEvent.trackedDeviceIndex);
+		if (role == vr::TrackedControllerRole_Invalid) {
+			deviceType = "invalid";
+		}
+		else if (role == vr::TrackedControllerRole_LeftHand) {
+			deviceType = "left_controller";
+		}
+		else if (role == vr::TrackedControllerRole_RightHand) {
+			deviceType = "right_controller";
+		}
+
+		switch (vrEvent.data.controller.button) {
+		case vr::k_EButton_Grip:
+			switch (vrEvent.eventType) {
+			case vr::VREvent_ButtonPress:
+				eventType = "grip_press";
+				break;
+
+			case vr::VREvent_ButtonUnpress:
+				eventType = "grip_unpress";
+				break;
+			default:
+				eventType = "invalid";
+				break;
+			}
+			break;
+
+		case vr::k_EButton_SteamVR_Trigger:
+			switch (vrEvent.eventType) {
+			case vr::VREvent_ButtonPress:
+				eventType = "trigger_press";
+				break;
+
+			case vr::VREvent_ButtonUnpress:
+				eventType = "trigger_unpress";
+				break;
+			default:
+				eventType = "invalid";
+				break;
+			}
+			break;
+
+		case vr::k_EButton_SteamVR_Touchpad:
+			switch (vrEvent.eventType) {
+			case vr::VREvent_ButtonPress:
+				eventType = "touchpad_press";
+				break;
+
+			case vr::VREvent_ButtonUnpress:
+				eventType = "touchpad_unpress";
+				break;
+
+			case vr::VREvent_ButtonTouch:
+				eventType = "touchpad_touch";
+				break;
+
+			case vr::VREvent_ButtonUntouch:
+				eventType = "touchpad_untouch";
+				break;
+			default:
+				eventType = "invalid";
+				break;
+			}
+			break;
+
+		case vr::k_EButton_ApplicationMenu:
+			switch (vrEvent.eventType) {
+			case vr::VREvent_ButtonPress:
+				eventType = "menu_press";
+				break;
+
+			case vr::VREvent_ButtonUnpress:
+				eventType = "menu_unpress";
+				break;
+			default:
+				eventType = "invalid";
+				break;
+			}
+			break;
+
+		default:
+			eventType = "invalid";
+			break;
+		}
+	}
+
+	// Sets the position in a SteamVR Matrix
+	void SetSteamVRMatrixPos(glm::vec3& pos, vr::HmdMatrix34_t& mat) {
+		mat.m[0][3] = pos[0];
+		mat.m[1][3] = pos[1];
+		mat.m[2][3] = pos[2];
+	}
+
+	// Converts a SteamVR Matrix to a glm mat4
+	glm::mat4 convertSteamVRMatrixToGlmMat4(const vr::HmdMatrix34_t& matPose) {
+		glm::mat4 mat(
+			matPose.m[0][0], matPose.m[1][0], matPose.m[2][0], 0.0,
+			matPose.m[0][1], matPose.m[1][1], matPose.m[2][1], 0.0,
+			matPose.m[0][2], matPose.m[1][2], matPose.m[2][2], 0.0,
+			matPose.m[0][3], matPose.m[1][3], matPose.m[2][3], 1.0f
+		);
+		return mat;
+	}
+
+	// Gets position of HMD
+	glm::vec3 getPositionFromSteamVRMatrix(vr::HmdMatrix34_t& matrix) {
+		return glm::vec3(matrix.m[0][3], matrix.m[1][3], matrix.m[2][3]);
+	}
+
+	// Gets rotation of HMD in vec4 form
+	glm::vec4 getRotationFromSteamVRMatrix(vr::HmdMatrix34_t& matrix) {
+		glm::vec4 q;
+
+		q.w = (float)sqrt(fmax(0, 1 + matrix.m[0][0] + matrix.m[1][1] + matrix.m[2][2])) / 2;
+		q.x = (float)sqrt(fmax(0, 1 + matrix.m[0][0] - matrix.m[1][1] - matrix.m[2][2])) / 2;
+		q.y = (float)sqrt(fmax(0, 1 - matrix.m[0][0] + matrix.m[1][1] - matrix.m[2][2])) / 2;
+		q.z = (float)sqrt(fmax(0, 1 - matrix.m[0][0] - matrix.m[1][1] + matrix.m[2][2])) / 2;
+		q.x = copysign(q.x, matrix.m[2][1] - matrix.m[1][2]);
+		q.y = copysign(q.y, matrix.m[0][2] - matrix.m[2][0]);
+		q.z = copysign(q.z, matrix.m[1][0] - matrix.m[0][1]);
+
+		return q;
+	}
+
+	// Generates a projection matrix for the specified eye (left or right)
+	glm::mat4 getHMDEyeProjection(vr::Hmd_Eye eye) {
+		vr::HmdMatrix44_t mat = m_pHMD->GetProjectionMatrix(eye, nearClip, farClip);
+
+		glm::mat4 eyeProjMat(
+			mat.m[0][0], mat.m[1][0], mat.m[2][0], mat.m[3][0],
+			mat.m[0][1], mat.m[1][1], mat.m[2][1], mat.m[3][1],
+			mat.m[0][2], mat.m[1][2], mat.m[2][2], mat.m[3][2],
+			mat.m[0][3], mat.m[1][3], mat.m[2][3], mat.m[3][3]
+		);
+
+		return eyeProjMat;
+	}
+
+	// Generates a pose matrix for the specified eye (left or right)
+	glm::mat4 getHMDEyePose(vr::Hmd_Eye eye) {
+		vr::HmdMatrix34_t mat = m_pHMD->GetEyeToHeadTransform(eye);
+
+		glm::mat4 eyeToHead(
+			mat.m[0][0], mat.m[1][0], mat.m[2][0], 0.0,
+			mat.m[0][1], mat.m[1][1], mat.m[2][1], 0.0,
+			mat.m[0][2], mat.m[1][2], mat.m[2][2], 0.0,
+			mat.m[0][3], mat.m[1][3], mat.m[2][3], 1.0f
+		);
+
+		// Return the head to eye transform
+		return glm::inverse(eyeToHead);
+	}
+
+	// Print string version of mat4 for debugging purposes
+	void printMat4(glm::mat4& m) {
+		printf(glm::to_string(m).c_str());
+		printf("\n");
+	}
+
+	// Sets coordinate transform matrices
+	void setCoordinateTransformMatrices() {
+		gibToVR[0] = glm::vec4(0.0, 0.0, -1.0, 0.0);
+		gibToVR[1] = glm::vec4(-1.0, 0.0, 0.0, 0.0);
+		gibToVR[2] = glm::vec4(0.0, 1.0, 0.0, 0.0);
+		gibToVR[3] = glm::vec4(0.0, 0.0, 0.0, 1.0);
+
+		vrToGib[0] = glm::vec4(0.0, -1.0, 0.0, 0.0);
+		vrToGib[1] = glm::vec4(0.0, 0.0, 1.0, 0.0);
+		vrToGib[2] = glm::vec4(-1.0, 0.0, 0.0, 0.0);
+		vrToGib[3] = glm::vec4(0.0, 0.0, 0.0, 1.0);
+	}
+};
 
 PYBIND11_MODULE(MeshRendererContext, m) {
         py::class_<MeshRendererContext> pymodule = py::class_<MeshRendererContext>(m, "MeshRendererContext");
         
-        pymodule.def(py::init<int, int, int>());
+        pymodule.def(py::init<int, int>());
         pymodule.def("init", &MeshRendererContext::init);
         pymodule.def("release", &MeshRendererContext::release);
+		pymodule.def("setupCompanionWindow", &MeshRendererContext::setupCompanionWindow);
+		pymodule.def("renderCompanionWindow", &MeshRendererContext::renderCompanionWindow);
+		pymodule.def("post_render_glfw", &MeshRendererContext::post_render_glfw);
 
-#ifdef USE_CUDA
-        pymodule.def("map_tensor", &MeshRendererContext::map_tensor);
-        pymodule.def("map_tensor_float", &MeshRendererContext::map_tensor_float);
-#endif
         // class MeshRenderer
         pymodule.def("render_meshrenderer_pre", &MeshRendererContext::render_meshrenderer_pre, "pre-executed functions in MeshRenderer.render");
         pymodule.def("render_meshrenderer_post", &MeshRendererContext::render_meshrenderer_post, "post-executed functions in MeshRenderer.render");
@@ -747,7 +1359,26 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         // misc
         pymodule.def("cglBindVertexArray", &MeshRendererContext::cglBindVertexArray, "binding function");
         pymodule.def("cglUseProgram", &MeshRendererContext::cglUseProgram, "binding function");
-        
+
+		//renderer optimization
+		pymodule.def("generateArrayTextures", &GLFWRendererContext::generateArrayTextures, "generate array texture function");
+		pymodule.def("renderSetup", &GLFWRendererContext::renderSetup, "loads all merged graphics data");
+		pymodule.def("updateDynamicData", &GLFWRendererContext::updateDynamicData, "updates dynamic data such as object transforms");
+		pymodule.def("renderOptimized", &GLFWRendererContext::renderOptimized, "renders merged data in an optimized way");
+
+		// VR pymodule needs to be part of MeshRendererContext for OpenGL context-sharing reasons
+		py::class_<VRSystem> pymoduleVR = py::class_<VRSystem>(m, "VRSystem");
+
+		pymoduleVR.def(py::init());
+		pymoduleVR.def("initVR", &VRSystem::initVR);
+		pymoduleVR.def("setVRCamera", &VRSystem::setVRCamera);
+		pymoduleVR.def("resetVRCamera", &VRSystem::resetVRCamera);
+		pymoduleVR.def("preRenderVR", &VRSystem::preRenderVR);
+		pymoduleVR.def("postRenderVRForEye", &VRSystem::postRenderVRForEye);
+		pymoduleVR.def("postRenderVRUpdate", &VRSystem::postRenderVRUpdate);
+		pymoduleVR.def("getDataForVRDevice", &VRSystem::getDataForVRDevice);
+		pymoduleVR.def("pollVREvents", &VRSystem::pollVREvents);
+		pymoduleVR.def("releaseVR", &VRSystem::releaseVR);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
