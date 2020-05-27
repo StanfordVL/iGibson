@@ -18,12 +18,13 @@ gripper_folder = model_path + '\\gripper\\'
 sample_urdf_folder = model_path + '\\sample_urdfs\\'
 config = parse_config(configs_folder + 'fetch_p2p_nav.yaml')
 
-s = Simulator(mode='vr', vrMsaa=True, optimize_render=False)
+s = Simulator(mode='vr', vrMsaa=True, optimize_render=True)
 p.setGravity(0,0,-9.81)
 
 # Import Ohoopee manually for simple demo
 building = BuildingObj(ohopee_path)
 s.import_object(building)
+s.sleep = True
 
 # Grippers represent hands
 lGripper = GripperObj(gripper_folder + 'gripper.urdf')
@@ -62,6 +63,8 @@ basket.set_position([-0.8,0.65,1])
 # Controls how closed each gripper is (maximally open to start)
 leftGripperFraction = 0.0
 rightGripperFraction = 0.0
+
+s.renderer.optimize_vertex_and_texture()
 
 # Runs simulation
 while True:
