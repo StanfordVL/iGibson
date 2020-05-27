@@ -116,13 +116,14 @@ class Simulator:
         """
         if self.use_vr_renderer:
             # TODO: Add options to change the mesh renderer that VR renderer takes in here
-            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.vrMsaa)
+            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.vrMsaa, optimize=self.optimize_render)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                      height=self.image_height,
                                      vertical_fov=self.vertical_fov,
                                      device_idx=self.device_idx,
-                                     use_fisheye=self.use_fisheye)
+                                     use_fisheye=self.use_fisheye,
+                                     optimize=self.optimize_render)
 
         # Connect directly to pybullet when using VR
         if self.use_vr_renderer:
@@ -455,7 +456,7 @@ class Simulator:
         for instance in self.renderer.get_instances():
             if instance.dynamic:
                 self.update_position(instance)
-        if (self.use_ig_renderer or self.mode == 'vr') and not self.viewer is None:
+        if (self.use_ig_renderer or self.use_vr_renderer) and not self.viewer is None:
             self.viewer.update()
     
     # Call this before step - returns all VR events that have happened since last step call
@@ -464,7 +465,7 @@ class Simulator:
     # eventType: grip_press, grip_unpress, trigger_press, trigger_unpress, touchpad_press, touchpad_unpress,
     # touchpad_touch, touchpad_untouch, menu_press, menu_unpress (menu is the application button)
     def pollVREvents(self):
-        if self.mode != 'vr':
+        if not self.use_vr_renderer:
             return []
 
         eventData = self.renderer.vrsys.pollVREvents()
@@ -473,7 +474,7 @@ class Simulator:
     # Call this after step - returns all VR device data for a specific device
     # Return isValid (indicating validity of data), translation and rotation in Gibson world space
     def getDataForVRDevice(self, deviceName):
-        if self.mode != 'vr':
+        if not self.use_vr_renderer:
             return [None, None, None, None]
 
         isValid, translation, rotation, hmdActualPos = self.renderer.vrsys.getDataForVRDevice(deviceName)
@@ -481,7 +482,7 @@ class Simulator:
 
     # Sets the VR camera to a specific position, eg. the head of a robot
     def setVRCamera(self, pos=None, shouldReset=False):
-        if self.mode is not 'vr':
+        if not self.use_vr_renderer:
             return
         
         if shouldReset == False and pos is not None:

@@ -4,15 +4,16 @@ from gibson2.core.render.mesh_renderer.Release import MeshRendererContext
 # VR wrapper class on top of Gibson Mesh Renderers
 class MeshRendererVR():
     # Init takes in a renderer type to use for VR (which can be of type MeshRenderer or something else as long as it conforms to the same interface)
-    def __init__(self, rendererType, vrWidth=None, vrHeight=None, msaa=False):
+    def __init__(self, rendererType, vrWidth=None, vrHeight=None, msaa=False, optimize=True):
         self.msaa = msaa
+        self.optimize = optimize
         self.vrsys = MeshRendererContext.VRSystem()
         # Default recommended is 2016 x 2240
         self.width, self.height = self.vrsys.initVR()
         if vrWidth is not None and vrHeight is not None:
-            self.renderer = rendererType(width=vrWidth, height=vrHeight, msaa=self.msaa, shouldHideWindow=False)
+            self.renderer = rendererType(width=vrWidth, height=vrHeight, msaa=self.msaa, shouldHideWindow=False, optimize=self.optimize)
         else:
-            self.renderer = rendererType(width=self.width, height=self.height, msaa=self.msaa, shouldHideWindow=False)
+            self.renderer = rendererType(width=self.width, height=self.height, msaa=self.msaa, shouldHideWindow=False, optimize=self.optimize)
 
     # Sets the position of the VR camera to the position argument given
     def set_vr_camera(self, pos):

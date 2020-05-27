@@ -454,16 +454,22 @@ public:
         glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     }
 
-    void draw_elements_instance(bool flag, int texture_id, int texUnitUniform, int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
-        glActiveTexture(GL_TEXTURE0);
-        if (flag) glBindTexture(GL_TEXTURE_2D, texture_id);
-        glUniform1i(texUnitUniform, 0);
-        glBindVertexArray(vao);
-        glBindFramebuffer(GL_FRAMEBUFFER, fb);
-        unsigned int *ptr = (unsigned int *) faces.request().ptr;
-        glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, ptr);
+	void draw_elements_instance(int shaderProgram, bool flag, int texture_id, int texUnitUniform, int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
+		glActiveTexture(GL_TEXTURE0);
+		if (flag) glBindTexture(GL_TEXTURE_2D, texture_id);
+		glUniform1i(texUnitUniform, 0);
+		glBindVertexArray(vao);
+		glBindFramebuffer(GL_FRAMEBUFFER, fb);
+		unsigned int* ptr = (unsigned int*)faces.request().ptr;
 
-    }
+		GLuint elementBuffer;
+		glGenBuffers(1, &elementBuffer);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, face_size * sizeof(unsigned int), &ptr[0], GL_STATIC_DRAW);
+		glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, (void*)0);
+		glDeleteBuffers(1, &elementBuffer);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	}
 
     void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
         glUseProgram(shaderProgram);
@@ -1333,6 +1339,7 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         pymodule.def("render_meshrenderer_post", &MeshRendererContext::render_meshrenderer_post, "post-executed functions in MeshRenderer.render");
         pymodule.def("getstring_meshrenderer", &MeshRendererContext::getstring_meshrenderer, "return GL version string");
         pymodule.def("readbuffer_meshrenderer", &MeshRendererContext::readbuffer_meshrenderer, "read pixel buffer");
+		pymodule.def("glad_init", &MeshRendererContext::glad_init, "init glad");
         pymodule.def("clean_meshrenderer", &MeshRendererContext::clean_meshrenderer, "clean meshrenderer");
         pymodule.def("setup_framebuffer_meshrenderer", &MeshRendererContext::setup_framebuffer_meshrenderer, "setup framebuffer in meshrenderer");
         pymodule.def("setup_framebuffer_meshrenderer_ms", &MeshRendererContext::setup_framebuffer_meshrenderer_ms, "setup framebuffer in meshrenderer with MSAA");
@@ -1361,10 +1368,10 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         pymodule.def("cglUseProgram", &MeshRendererContext::cglUseProgram, "binding function");
 
 		//renderer optimization
-		pymodule.def("generateArrayTextures", &GLFWRendererContext::generateArrayTextures, "generate array texture function");
-		pymodule.def("renderSetup", &GLFWRendererContext::renderSetup, "loads all merged graphics data");
-		pymodule.def("updateDynamicData", &GLFWRendererContext::updateDynamicData, "updates dynamic data such as object transforms");
-		pymodule.def("renderOptimized", &GLFWRendererContext::renderOptimized, "renders merged data in an optimized way");
+		pymodule.def("generateArrayTextures", &MeshRendererContext::generateArrayTextures, "generate array texture function");
+		pymodule.def("renderSetup", &MeshRendererContext::renderSetup, "loads all merged graphics data");
+		pymodule.def("updateDynamicData", &MeshRendererContext::updateDynamicData, "updates dynamic data such as object transforms");
+		pymodule.def("renderOptimized", &MeshRendererContext::renderOptimized, "renders merged data in an optimized way");
 
 		// VR pymodule needs to be part of MeshRendererContext for OpenGL context-sharing reasons
 		py::class_<VRSystem> pymoduleVR = py::class_<VRSystem>(m, "VRSystem");
