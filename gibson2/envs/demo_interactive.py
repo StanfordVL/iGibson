@@ -17,16 +17,19 @@ class DemoInteractive(object):
         download_assets()
         download_demo_data()
 
-    def run_demo(self, sleep):
+    def run_demo(self, optimize):
         config = parse_config(os.path.join(gibson2.assets_path, 'example_configs/turtlebot_demo.yaml'))
-        s = Simulator(mode='headless', image_width=700, image_height=700)
+        s = Simulator(mode='iggui', image_width=700, image_height=700, optimize_render=optimize, timestep=1/60.0)
         scene = BuildingScene('Rs_interactive', is_interactive=True)
-        scene.sleep = sleep
+        scene.sleep = optimize
         s.import_scene(scene)
         #turtlebot = Turtlebot(config)
         #s.import_robot(turtlebot)
+        if optimize:
+            s.renderer.optimize_vertex_and_texture()
+
         fps = []
-        for i in range(10000):
+        for i in range(5000):
             #turtlebot.apply_action([0.1,0.5])
             start = time.time()
             s.step()
