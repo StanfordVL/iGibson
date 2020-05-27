@@ -12,6 +12,8 @@ from distutils.version import LooseVersion
 import subprocess
 import platform
 import codecs
+import platform
+
 
 use_clang = False
 
@@ -67,6 +69,11 @@ class CMakeBuild(build_ext):
             cmake_args += [
                 '-DCMAKE_C_COMPILER=/usr/bin/clang', '-DCMAKE_CXX_COMPILER=/usr/bin/clang++'
             ]
+
+        if platform.system() == 'Darwin':
+            cmake_args += ['-DMAC_PLATFORM=TRUE']
+        else:
+            cmake_args += ['-DMAC_PLATFORM=FALSE']
 
         cfg = 'Debug' if self.debug else 'Release'
         build_args = ['--config', cfg]

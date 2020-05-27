@@ -5,7 +5,7 @@ import numpy as np
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from gibson2.core.render.profiler import Profiler
 from gibson2.utils.assets_utils import get_model_path
-
+import gibson2
 
 def main():
     global _mouse_ix, _mouse_iy, down, view_direction
@@ -15,9 +15,24 @@ def main():
     else:
         model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
 
-    renderer = MeshRenderer(width=512, height=512)
+    renderer = MeshRenderer(width=512, height=512, optimize=True)
     renderer.load_object(model_path)
     renderer.add_instance(0)
+
+    renderer.load_object(os.path.join(gibson2.assets_path, 'models/ycb/002_master_chef_can/textured_simple.obj'))
+    for i in np.arange(-2,2,0.5):
+        for j in np.arange(-2,2,0.5):
+            renderer.add_instance(1)
+            renderer.instances[-1].set_position([i,j,0.5])
+
+    renderer.load_object(os.path.join(gibson2.assets_path, 'models/ycb/003_cracker_box/textured_simple.obj'))
+    for i in np.arange(-2,2,0.5):
+        for j in np.arange(-2,2,0.5):
+            renderer.add_instance(2)
+            renderer.instances[-1].set_position([i,j,0.8])
+
+    if renderer.optimize:
+        renderer.optimize_vertex_and_texture()
 
     print(renderer.visual_objects, renderer.instances)
     print(renderer.materials_mapping, renderer.mesh_materials)
@@ -69,6 +84,14 @@ def main():
             break
         camera_pose = np.array([px, py, 1.2])
         renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
+
+    # start = time.time()
+
+    # for i in range(100):
+    #     frame = renderer.render(modes=('rgb', 'normal', '3d'))
+
+    # elapsed = time.time() - start
+    # print("num objects {} fps {}".format(len(renderer.instances), 100/elapsed))
 
     renderer.release()
 

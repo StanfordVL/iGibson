@@ -15,6 +15,7 @@ from IPython import embed
 import cv2
 import time
 import collections
+import logging
 
 
 class NavigateEnv(BaseEnv):
@@ -32,6 +33,7 @@ class NavigateEnv(BaseEnv):
             physics_timestep=1 / 240.0,
             automatic_reset=False,
             device_idx=0,
+            render_to_tensor=False
     ):
         """
         :param config_file: config_file path
@@ -47,7 +49,8 @@ class NavigateEnv(BaseEnv):
                                           mode=mode,
                                           action_timestep=action_timestep,
                                           physics_timestep=physics_timestep,
-                                          device_idx=device_idx)
+                                          device_idx=device_idx,
+                                          render_to_tensor=render_to_tensor)
         self.automatic_reset = automatic_reset
 
     def load_task_setup(self):
@@ -108,12 +111,6 @@ class NavigateEnv(BaseEnv):
                                                shape=(self.sensor_dim,),
                                                dtype=np.float32)
             observation_space['sensor'] = self.sensor_space
-        if 'auxiliary_sensor' in self.output:
-            self.auxiliary_sensor_space = gym.spaces.Box(low=-np.inf,
-                                                         high=np.inf,
-                                                         shape=(self.auxiliary_sensor_dim,),
-                                                         dtype=np.float32)
-            observation_space['auxiliary_sensor'] = self.auxiliary_sensor_space
         if 'rgb' in self.output:
             self.rgb_space = gym.spaces.Box(low=0.0,
                                             high=1.0,
@@ -387,6 +384,8 @@ class NavigateEnv(BaseEnv):
         for _ in range(self.simulator_loop):
             self.simulator_step()
             collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
+        self.simulator.sync()
+
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
@@ -584,7 +583,7 @@ class NavigateEnv(BaseEnv):
                 break
 
         if not reset_success:
-            print("WARNING: Failed to reset robot without collision")
+            logging.warning("WARNING: Failed to reset robot without collision")
 
         self.land('robot', self.robots[0], self.initial_pos, self.initial_orn)
 
@@ -594,7 +593,7 @@ class NavigateEnv(BaseEnv):
         """
         return
 
-    def check_collision(self, body_id, verbose=False):
+    def check_collision(self, body_id):
         """
         :param body_id: pybullet body id
         :return: whether the given body_id has no collision
@@ -602,9 +601,10 @@ class NavigateEnv(BaseEnv):
         for _ in range(self.check_collision_loop):
             self.simulator_step()
             collisions = list(p.getContactPoints(bodyA=body_id))
-            if verbose:
+
+            if logging.root.level <= logging.DEBUG: #Only going into this if it is for logging --> efficiency
                 for item in collisions:
-                    print('bodyA:{}, bodyB:{}, linkA:{}, linkB:{}'.format(item[1], item[2], item[3], item[4]))
+                    logging.debug('bodyA:{}, bodyB:{}, linkA:{}, linkB:{}'.format(item[1], item[2], item[3], item[4]))
 
             if len(collisions) > 0:
                 return False
@@ -718,6 +718,7 @@ class NavigateRandomEnv(NavigateEnv):
             automatic_reset=False,
             random_height=False,
             device_idx=0,
+            render_to_tensor=False
     ):
         """
         :param config_file: config_file path
@@ -735,7 +736,8 @@ class NavigateRandomEnv(NavigateEnv):
                                                 action_timestep=action_timestep,
                                                 physics_timestep=physics_timestep,
                                                 automatic_reset=automatic_reset,
-                                                device_idx=device_idx)
+                                                device_idx=device_idx,
+                                                render_to_tensor=render_to_tensor)
         self.random_height = random_height
 
         self.target_dist_min = self.config.get('target_dist_min', 1.0)
@@ -787,6 +789,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
                  action_timestep=1 / 10.0,
                  physics_timestep=1 / 240.0,
                  device_idx=0,
+                 render_to_tensor=False,
                  automatic_reset=False,
                  collision_reward_weight=0.0,
                  track='static'
@@ -798,7 +801,8 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
                                                         physics_timestep=physics_timestep,
                                                         automatic_reset=automatic_reset,
                                                         random_height=False,
-                                                        device_idx=device_idx)
+                                                        device_idx=device_idx,
+                                                        render_to_tensor=render_to_tensor)
         self.collision_reward_weight = collision_reward_weight
 
         assert track in ['static', 'interactive', 'dynamic'], 'unknown track'

@@ -8,6 +8,7 @@ import pybullet as p
 import gibson2
 import os
 import numpy as np
+import platform
 import time
 
 # Note: pass in mode='vr' to use the simulator in VR mode
@@ -24,6 +25,8 @@ class Simulator:
                  vertical_fov=90,
                  device_idx=0,
                  render_to_tensor=False,
+                 auto_sync=True,
+                 optimize_render=False,
                  vrWidth=None,
                  vrHeight=None,
                  vrMsaa=False):
@@ -34,18 +37,39 @@ class Simulator:
         :param gravity: gravity on z direction.
         :param timestep: timestep of physical simulation
         :param use_fisheye: use fisheye
-        :param mode: choose mode from gui or headless
+        :param mode: choose mode from gui, headless, iggui (only open iGibson UI), or pbgui(only open pybullet UI)
         :param image_width: width of the camera image
         :param image_height: height of the camera image
         :param vertical_fov: vertical field of view of the camera image in degrees
         :param device_idx: GPU device index to run rendering on
         :param render_to_tensor: Render to GPU tensors
+        :param auto_sync: automatically sync object poses to gibson renderer, by default true,
+        disable it when you want to run multiple physics step but don't need to visualize each frame
         """
         # physics simulator
         self.gravity = gravity
         self.timestep = timestep
         self.mode = mode
+        
+        plt = platform.system()
+        if plt == 'Darwin' and self.mode == 'gui':
+            self.mode = 'iggui' # for mac os disable pybullet rendering
+            logging.warn('Rendering both iggui and pbgui is not supported on mac, choose either pbgui or '
+                      'iggui. Default to iggui.')
+        
+        self.use_pb_renderer = False
+        self.use_ig_renderer = False
+        self.use_vr_renderer = False
+        
+        if self.mode in ['gui', 'iggui']:
+            self.use_ig_renderer = True
+     
+        if self.mode in ['gui', 'pbgui']:
+            self.use_pb_renderer = True
 
+        if self.mode in ['vr']:
+            self.use_vr_renderer = True
+                   
         # renderer
         self.vrWidth = vrWidth
         self.vrHeight = vrHeight
@@ -56,6 +80,8 @@ class Simulator:
         self.device_idx = device_idx
         self.use_fisheye = use_fisheye
         self.render_to_tensor = render_to_tensor
+        self.auto_sync = auto_sync
+        self.optimize_render = optimize_render
         self.load()
 
     def set_timestep(self, timestep):
@@ -70,7 +96,7 @@ class Simulator:
         Attach a debugging viewer to the renderer. This will make the step much slower so should be avoided when
         training agents
         """
-        if self.mode == 'vr':
+        if self.use_vr_renderer:
             self.viewer = ViewerVR()
         else:
             self.viewer = Viewer()
@@ -88,7 +114,7 @@ class Simulator:
         """
         Set up MeshRenderer and physics simulation client. Initialize the list of objects.
         """
-        if self.mode == 'vr':
+        if self.use_vr_renderer:
             # TODO: Add options to change the mesh renderer that VR renderer takes in here
             self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.vrMsaa)
         else:
@@ -99,17 +125,18 @@ class Simulator:
                                      use_fisheye=self.use_fisheye)
 
         # Connect directly to pybullet when using VR
-        if self.mode == 'vr':
+        if self.use_vr_renderer:
             self.cid = p.connect(p.DIRECT)
-        elif self.mode == 'gui':
+        elif self.use_ig_renderer or self.use_pb_renderer:
             self.cid = p.connect(p.GUI)
         else:
             self.cid = p.connect(p.DIRECT)
         p.setTimeStep(self.timestep)
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
+        print("PyBullet Logging Information******************")
 
-        if (self.mode == 'gui' or self.mode == 'vr') and not self.render_to_tensor:
+        if (self.use_ig_renderer or self.mode == 'vr') and not self.render_to_tensor:
             self.add_viewer()
 
         self.visual_objects = {}
@@ -418,7 +445,8 @@ class Simulator:
         Step the simulation and update positions in renderer
         """
         p.stepSimulation()
-        self.sync()
+        if self.auto_sync:
+            self.sync()
 
     def sync(self):
         """
@@ -427,7 +455,7 @@ class Simulator:
         for instance in self.renderer.get_instances():
             if instance.dynamic:
                 self.update_position(instance)
-        if (self.mode == 'gui' or self.mode == 'vr') and not self.viewer is None:
+        if (self.use_ig_renderer or self.mode == 'vr') and not self.viewer is None:
             self.viewer.update()
     
     # Call this before step - returns all VR events that have happened since last step call
@@ -483,7 +511,6 @@ class Simulator:
                     _, _, _, _, pos, orn = p.getLinkState(instance.pybullet_uuid, link_id)
                 poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
                 poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
-                # print(instance.pybullet_uuid, link_id, pos, orn)
 
             instance.poses_rot = poses_rot
             instance.poses_trans = poses_trans
@@ -499,6 +526,8 @@ class Simulator:
         clean up the simulator
         """
         if self.isconnected():
+            print("******************PyBullet Logging Information:")
             p.resetSimulation(physicsClientId=self.cid)
             p.disconnect(self.cid)
+            print("PyBullet Logging Information******************")
         self.renderer.release()

@@ -16,6 +16,8 @@ import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
 import gibson2
 import os
+import platform
+import logging
 
 class VisualObject(object):
     """
@@ -115,8 +117,19 @@ class InstanceGroup(object):
                         buffer = self.renderer.fbo_ms
                     else:
                         buffer = self.renderer.fbo
-
-                    self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                    if self.renderer.optimize:
+                        self.renderer.r.draw_elements_instance_optimized(self.renderer.shaderProgram,
+                                                                         self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                                                                         self.renderer.tex_id_1,
+                                                                         self.renderer.tex_id_2,
+                                                                         self.renderer.texUnitUniform,
+                                                                         self.renderer.VAOs[object_idx],
+                                                                         self.renderer.faces[object_idx].size,
+                                                                         self.renderer.faces[object_idx],
+                                                                         buffer)
+                    else:
+                        self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                            texture_id,
                                                            self.renderer.texUnitUniform,
                                                            self.renderer.VAOs[object_idx],
@@ -237,7 +250,21 @@ class Instance(object):
                 else:
                     buffer = self.renderer.fbo
 
-                self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                if self.renderer.optimize:
+                    self.renderer.r.draw_elements_instance_optimized(self.renderer.shaderProgram,
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                                                           self.renderer.tex_id_1,
+                                                           self.renderer.tex_id_2,
+                                                           self.renderer.tex_id_layer_mapping[texture_id][0],
+                                                           self.renderer.tex_id_layer_mapping[texture_id][1],
+                                                           self.renderer.texUnitUniform,
+                                                           self.renderer.VAOs[object_idx],
+                                                           self.renderer.faces[object_idx].size,
+                                                           self.renderer.faces[object_idx],
+                                                           buffer)
+                else:
+                    self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                        texture_id,
                                                        self.renderer.texUnitUniform,
                                                        self.renderer.VAOs[object_idx],
@@ -292,7 +319,7 @@ class MeshRenderer(object):
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False, shouldHideWindow=True):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False, shouldHideWindow=True, optimize=False):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -320,6 +347,7 @@ class MeshRenderer(object):
         self.instances = []
         self.fisheye = use_fisheye
         self.msaa = msaa
+        self.optimize = optimize
 
         self.shouldHideWindow = shouldHideWindow
 
@@ -331,10 +359,14 @@ class MeshRenderer(object):
             self.r.setupCompanionWindow()
 
         self.glstring = self.r.getstring_meshrenderer()
+
+        logging.debug('Rendering device and GL version')
+        logging.debug(self.glstring)
+
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         self.lightcolor = [1, 1, 1]
 
-        print("fisheye", self.fisheye)
+        logging.debug('Is using fisheye camera: {}'.format(self.fisheye))
 
         if self.fisheye:
             [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
@@ -347,7 +379,16 @@ class MeshRenderer(object):
                                         'shaders/fisheye_frag.shader')).readlines()).replace(
                                             "FISHEYE_SIZE", str(self.width / 2)))
         else:
-            [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
+            if self.optimize:
+                [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
+                        "".join(open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                        'shaders/optimized_vert.shader')).readlines()),
+                        "".join(open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                        'shaders/optimized_frag.shader')).readlines()))
+            else:
+                [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/vert.shader')).readlines()),
@@ -377,6 +418,8 @@ class MeshRenderer(object):
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
         self.mesh_materials = []
+        self.texture_files = []
+        self.texture_load_counter = 0
 
     def setup_framebuffer(self):
         """
@@ -402,7 +445,7 @@ class MeshRenderer(object):
 
         :param obj_path: path of obj file
         :param scale: scale, default 1
-        :param transform_orn: rotation for loading, 3x3 matrix
+        :param transform_orn: rotation quaternion, convention xyzw
         :param transform_pos: translation for loading, it is a list of length 3
         :param input_kd: if loading material fails, use this default material. input_kd should be a list of length 3
         :param texture_scale: texture scale for the object, downsample to save memory.
@@ -410,31 +453,33 @@ class MeshRenderer(object):
         :return: VAO_ids
         """
         reader = tinyobjloader.ObjReader()
+        logging.info("Loading {}".format(obj_path))
         ret = reader.ParseFromFile(obj_path)
 
         if ret == False:
-            print("Warn:", reader.Warning())
-            print("Err:", reader.Error())
-            print("Failed to load : ", obj_path)
-
+            logging.error("Warning: {}".format(reader.Warning()))
+            logging.error("Error: {}".format(reader.Error()))
+            logging.error("Failed to load: {}".format(obj_path))
             sys.exit(-1)
 
         if reader.Warning():
-            print("Warn:", reader.Warning())
+            logging.warning("Warning: {}".format(reader.Warning()))
 
         attrib = reader.GetAttrib()
-        print("attrib.vertices = ", len(attrib.vertices))
-        #print("attrib.normals = ", len(attrib.normals))
-        #print("attrib.texcoords = ", len(attrib.texcoords))
+        logging.debug("Num vertices = {}".format(len(attrib.vertices)))
+        logging.debug("Num normals = {}".format(len(attrib.normals)))
+        logging.debug("Num texcoords = {}".format(len(attrib.texcoords)))
 
         materials = reader.GetMaterials()
-        print("Num materials: ", len(materials))
-        for m in materials:
-            print(m.name)
-            print(m.diffuse)
+        logging.debug("Num materials: {}".format(len(materials)))
+
+        if logging.root.level <= logging.DEBUG: #Only going into this if it is for logging --> efficiency
+            for m in materials:
+                logging.debug("Material name: {}".format(m.name))
+                logging.debug("Material diffuse: {}".format(m.diffuse))
 
         shapes = reader.GetShapes()
-        print("Num shapes: ", len(shapes))
+        logging.debug("Num shapes: {}".format(len(shapes)))
 
         material_count = len(self.materials_mapping)
         materials_fn = {}
@@ -443,9 +488,14 @@ class MeshRenderer(object):
             if item.diffuse_texname != '' and load_texture:
                 materials_fn[i + material_count] = item.diffuse_texname
                 obj_dir = os.path.dirname(obj_path)
-                #texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
-                texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
-                self.textures.append(texture)
+                if self.optimize:
+                    self.texture_files.append(os.path.join(obj_dir, item.diffuse_texname))
+                    texture = self.texture_load_counter
+                    self.texture_load_counter += 1
+                else:
+                    texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
+                    self.textures.append(texture)
+                
                 material = Material('texture', texture_id=texture)
             else:
                 material = Material('color', kd=item.diffuse)
@@ -456,19 +506,17 @@ class MeshRenderer(object):
         else:
             self.materials_mapping[len(materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5])
 
-        #print(self.materials_mapping)
         VAO_ids = []
 
         vertex_position = np.array(attrib.vertices).reshape((len(attrib.vertices)//3, 3))
         vertex_normal = np.array(attrib.normals).reshape((len(attrib.normals)//3, 3))
         vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
-        #print(vertex_position.shape, vertex_normal.shape, vertex_texcoord.shape)
 
         for shape in shapes:
-            #print(shape.name)
+            logging.debug("Shape name: {}".format(shape.name))
             material_id = shape.mesh.material_ids[0]  # assume one shape only has one material
-            #print("material_id = {}".format(material_id))
-            #print("num_indices = {}".format(len(shape.mesh.indices)))
+            logging.debug("material_id = {}".format(material_id))
+            logging.debug("num_indices = {}".format(len(shape.mesh.indices)))
             n_indices = len(shape.mesh.indices)
             np_indices = shape.mesh.numpy_indices().reshape((n_indices,3))
 
@@ -513,14 +561,132 @@ class MeshRenderer(object):
             else:
                 self.mesh_materials.append(material_id + material_count)
 
-            # print('mesh_materials', self.mesh_materials)
+            logging.debug('mesh_materials: {}'.format(self.mesh_materials))
             VAO_ids.append(self.get_num_objects() - 1)
 
         #release(scene)
-
         new_obj = VisualObject(obj_path, VAO_ids, len(self.visual_objects), self)
         self.visual_objects.append(new_obj)
         return VAO_ids
+
+    def optimize_vertex_and_texture(self):
+        print(self.texture_files)
+        cutoff = 4000 * 4000
+        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(self.texture_files, cutoff)
+        self.textures.append(self.tex_id_1)
+        self.textures.append(self.tex_id_2)
+        print(self.tex_id_1, self.tex_id_2)
+        print(self.tex_id_layer_mapping)
+
+        offset_faces = []
+
+        curr_index_offset = 0
+        for i in range(len(self.vertex_data)):
+            face_idxs = self.faces[i]
+            offset_face_idxs = face_idxs + curr_index_offset
+            offset_faces.append(offset_face_idxs)
+            curr_index_offset += len(self.vertex_data[i])
+
+        # List of all primitives to render - these are the shapes that each have a vao_id
+        # Some of these may share visual data, but have unique transforms
+        duplicate_vao_ids = []
+        class_id_array = []
+
+        for instance in self.instances:
+            if isinstance(instance, Instance):
+                ids = instance.object.VAO_ids
+                duplicate_vao_ids.extend(ids)
+                class_id_array.extend([float(instance.class_id)/255.0] * len(ids))
+            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
+                id_sum = 0
+                for vo in instance.objects:
+                    ids = vo.VAO_ids
+                    duplicate_vao_ids.extend(ids)
+                    id_sum += len(ids)
+                class_id_array.extend([float(instance.class_id)/255.0] * id_sum)
+
+        # Variables needed for multi draw elements call
+        index_ptr_offsets = []
+        index_counts = []
+        indices = []
+        diffuse_color_array = []
+        tex_num_array = []
+        tex_layer_array = []
+
+        index_offset = 0
+        for id in duplicate_vao_ids:
+            index_ptr_offsets.append(index_offset)
+            id_idxs = list(offset_faces[id].flatten())
+            indices.extend(id_idxs)
+            index_count = len(id_idxs)
+            index_counts.append(index_count)
+            index_offset += index_count
+
+            # Generate other rendering data, including diffuse color and texture layer
+            id_material = self.materials_mapping[self.mesh_materials[id]]
+            texture_id = id_material.texture_id
+            if texture_id == -1 or texture_id is None:
+                tex_num_array.append(-1)
+                tex_layer_array.append(-1)
+            else:
+                print(texture_id)
+                print(self.tex_id_layer_mapping)
+                tex_num, tex_layer = self.tex_id_layer_mapping[texture_id]
+                tex_num_array.append(tex_num)
+                tex_layer_array.append(tex_layer)
+
+            kd = np.asarray(id_material.kd, dtype=np.float32)
+            # Add padding so can store diffuse color as vec4
+            # The 4th element is set to 1 as that is what is used by the fragment shader
+            kd_vec_4 = [kd[0], kd[1], kd[2], 1.0]
+            diffuse_color_array.append(np.ascontiguousarray(kd_vec_4, dtype=np.float32))
+
+        # Convert data into numpy arrays for easy use in pybind
+        index_ptr_offsets = np.ascontiguousarray(index_ptr_offsets, dtype=np.int32)
+        index_counts = np.ascontiguousarray(index_counts, dtype=np.int32)
+        indices = np.ascontiguousarray(indices, dtype=np.int32)
+
+        # Convert frag shader data to list of vec4 for use in uniform buffer objects
+        frag_shader_data = []
+        for i in range(len(duplicate_vao_ids)):
+            data_list = [float(tex_num_array[i]), float(tex_layer_array[i]), class_id_array[i], 0.0]
+            frag_shader_data.append(np.ascontiguousarray(data_list, dtype=np.float32))
+
+        merged_frag_shader_data = np.ascontiguousarray(np.concatenate(frag_shader_data, axis=0), np.float32)
+        merged_diffuse_color_array = np.ascontiguousarray(np.concatenate(diffuse_color_array, axis=0), np.float32)
+
+        merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
+        print("Merged vertex data shape:")
+        print(merged_vertex_data.shape)
+
+        print("index_counts", index_counts)
+        print("index_ptr_offsets", index_ptr_offsets)
+
+        buffer = self.fbo
+        self.optimized_VAO, self.optimized_VBO, self.optimized_EBO = self.r.renderSetup(self.shaderProgram, self.V, self.P, self.lightpos,
+                                                                                        self.lightcolor,merged_vertex_data, index_ptr_offsets, index_counts,
+                                                                                        indices, merged_frag_shader_data,
+                                                                                        merged_diffuse_color_array, self.tex_id_1, self.tex_id_2, buffer)
+
+
+    def update_dynamic_positions(self):
+        """
+        A function to update all dynamic positions.
+        """
+        trans_data = []
+        rot_data = []
+
+        for instance in self.instances:
+            if isinstance(instance, Instance):
+                trans_data.append(instance.pose_trans)
+                rot_data.append(instance.pose_rot)
+            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
+                trans_data.extend(instance.poses_trans)
+                rot_data.extend(instance.poses_rot)
+
+        self.pose_trans_array = np.ascontiguousarray(np.concatenate(trans_data, axis=0))
+        self.pose_rot_array = np.ascontiguousarray(np.concatenate(rot_data, axis=0))
+
 
     def add_instance(self,
                      object_id,
@@ -653,18 +819,24 @@ class MeshRenderer(object):
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-        if self.msaa:
-            self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
+
+        if self.optimize:
+            self.update_dynamic_positions()
+            self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P)
+            self.r.renderOptimized()
         else:
-            self.r.render_meshrenderer_pre(0, 0, self.fbo)
+            if self.msaa:
+                self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
+            else:
+                self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
-        for instance in self.instances:
-            if not instance in hidden:
-                instance.render()
+            for instance in self.instances:
+                if not instance in hidden:
+                    instance.render()
 
-        self.r.render_meshrenderer_post()
-        if self.msaa:
-            self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
+            self.r.render_meshrenderer_post()
+            if self.msaa:
+                self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
         if (shouldReadBuffer):
             return self.readbuffer(modes)
@@ -693,7 +865,7 @@ class MeshRenderer(object):
         """
         Clean everything, and release the openGL context.
         """
-        print(self.glstring)
+        logging.debug('Releasing. {}'.format(self.glstring))
         self.clean()
         self.r.release()
 

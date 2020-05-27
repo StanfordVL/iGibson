@@ -1,6 +1,16 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(CppMeshRenderer)
 
+set (USE_GLAD TRUE)
+
+#if (MAC_PLATFORM)
+  set (USE_CUDA FALSE)
+  set (USE_GLFW TRUE)
+#else()
+#  set (USE_CUDA TRUE)
+#  set (USE_GLFW FALSE)
+#endif()
+
 # This CMake file is currently Windows/VR-specific
 
 include_directories(glad)
