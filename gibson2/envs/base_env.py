@@ -19,6 +19,7 @@ class BaseEnv(gym.Env):
                  mode='headless',
                  action_timestep=1 / 10.0,
                  physics_timestep=1 / 240.0,
+                 render_to_tensor=False,
                  device_idx=0):
         """
         :param config_file: config_file path
@@ -41,7 +42,9 @@ class BaseEnv(gym.Env):
                                    image_width=self.config.get('image_width', 128),
                                    image_height=self.config.get('image_height', 128),
                                    vertical_fov=self.config.get('vertical_fov', 90),
-                                   device_idx=device_idx)
+                                   device_idx=device_idx,
+                                   render_to_tensor=render_to_tensor,
+                                   auto_sync=False)
         self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.load()
 
