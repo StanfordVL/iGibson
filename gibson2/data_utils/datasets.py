@@ -1,5 +1,5 @@
 from __future__ import print_function
-import torch.utils.data as data
+#import torch.utils.data as data
 from PIL import Image
 import os, time
 import os.path
@@ -7,7 +7,7 @@ from multiprocessing import Pool
 from functools import partial
 from gibson2.core.render.profiler import Profiler
 import errno
-import torch
+#import torch
 import json
 import codecs
 import cv2
@@ -15,7 +15,7 @@ import numpy as np
 import ctypes as ct
 import sys
 from tqdm import tqdm
-import torchvision.transforms as transforms
+#import torchvision.transforms as transforms
 import argparse
 import json
 from numpy.linalg import inv
@@ -191,8 +191,7 @@ def get_item_fn(inds, select, root, loader, transform, off_3d, target_transform,
                render, target_depth)
     return (out_i, out)
 
-
-class ViewDataSet3D(data.Dataset):
+""" class ViewDataSet3D(data.Dataset):
     def __init__(self,
                  root=None,
                  train=False,
@@ -657,4 +656,4 @@ if __name__ == '__main__':
                                    transforms.ToTensor()]))
         print(len(d))
         sample = d[0]
-        print(sample[0].size(), sample[1].size())
+        print(sample[0].size(), sample[1].size()) """

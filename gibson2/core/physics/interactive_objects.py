@@ -1,5 +1,6 @@
 import pybullet as p
 import os
+import pybullet_data
 import gibson2
 import numpy as np
 
@@ -225,6 +226,114 @@ class InteractiveObj(Object):
 
         return body_id
 
+class GripperObj(InteractiveObj):
+    """
+    Represents the gripper used for VR controllers
+    """
+
+    def __init__(self, filename, scale=1):
+        super().__init__(filename)
+        self.filename = filename
+        self.scale = scale
+        self.max_joint = 0.550569
+    
+    def _load(self):
+        self.body_id = super()._load()
+        jointPositions = [0.550569, 0.000000, 0.549657, 0.000000]
+        for jointIndex in range(p.getNumJoints(self.body_id)):
+            p.resetJointState(self.body_id, jointIndex, jointPositions[jointIndex])
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=0, force=0)
+        
+        self.cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0.2, 0, 0], [0.500000, 0.300006, 0.700000])
+
+        return self.body_id
+    
+    def set_close_fraction(self, close_fraction):
+        if close_fraction < 0.0 or close_fraction > 1.0:
+            print("Can't set a close_fraction outside the range 0.0 to 1.0!")
+            return
+
+        p.setJointMotorControl2(self.body_id,
+                              0,
+                              controlMode=p.POSITION_CONTROL,
+                              targetPosition=self.max_joint * (1 - close_fraction),
+                              force=1.0)
+        p.setJointMotorControl2(self.body_id,
+                              2,
+                              controlMode=p.POSITION_CONTROL,
+                              targetPosition=self.max_joint * (1 - close_fraction),
+                              force=1.1)
+
+    def get_position(self):
+        pos, _ = p.getBasePositionAndOrientation(self.body_id)
+        return pos
+
+    def get_orientation(self):
+        _, orn = p.getBasePositionAndOrientation(self.body_id)
+        return orn
+
+    def set_position(self, pos):
+        org_pos, org_orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
+
+    def set_position_rotation(self, pos, orn):
+        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+
+class BuildingObj(object):
+    """
+    Buildings Objects are a simple physics representation of a Gibson building
+    """
+    def __init__(self, filename, scale=1):
+        self.filename = filename
+        self.scale = scale
+        self.body_id = None
+
+    def load(self):
+        scaling = [self.scale, self.scale, self.scale]
+        collisionId = p.createCollisionShape(p.GEOM_MESH,
+                                        fileName=self.filename,
+                                        meshScale=scaling,
+                                        flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
+        visualId = -1
+        boundaryUid = p.createMultiBody(baseCollisionShapeIndex=collisionId,
+                                baseVisualShapeIndex=visualId)
+        p.changeDynamics(boundaryUid, -1, lateralFriction=1)
+
+        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+
+        ground_plane_mjcf = p.loadMJCF(planeName)
+
+        p.resetBasePositionAndOrientation(ground_plane_mjcf[0],
+                                    posObj=[0, 0, 0],
+                                    ornObj=[0, 0, 0, 1])
+
+        p.changeVisualShape(boundaryUid,
+                    -1,
+                    rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
+                    specularColor=[0.5, 0.5, 0.5])
+
+        p.changeVisualShape(ground_plane_mjcf[0],
+                    -1,
+                    rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
+                    specularColor=[0.5, 0.5, 0.5])
+
+        self.body_id = boundaryUid
+        return self.body_id
+
+    def get_position(self):
+        pos, _ = p.getBasePositionAndOrientation(self.body_id)
+        return pos
+
+    def get_orientation(self):
+        _, orn = p.getBasePositionAndOrientation(self.body_id)
+        return orn
+
+    def set_position(self, pos):
+        org_pos, org_orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
+
+    def set_position_rotation(self, pos, orn):
+        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
 
 class SoftObject(Object):
     def __init__(self, filename, basePosition=[0, 0, 0], baseOrientation=[0, 0, 0, 1], scale=-1, mass=-1,

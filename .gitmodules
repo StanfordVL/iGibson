@@ -4,3 +4,6 @@
 [submodule "gibson2/core/render/glfw"]
 	path = gibson2/core/render/glfw
 	url = https://github.com/glfw/glfw
+[submodule "gibson2/core/render/openvr"]
+	path = gibson2/core/render/openvr
+	url = git@github.com:ValveSoftware/openvr.git
