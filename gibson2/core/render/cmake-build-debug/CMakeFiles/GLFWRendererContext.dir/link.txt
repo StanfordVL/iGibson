@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC -g  -shared  -o GLFWRendererContext.cpython-36m-x86_64-linux-gnu.so CMakeFiles/GLFWRendererContext.dir/glad/gl.cpp.o CMakeFiles/GLFWRendererContext.dir/cpp/glfw_mesh_renderer.cpp.o  -ldl glfw/src/libglfw3.a -lpthread -lrt -lm -ldl -lX11 

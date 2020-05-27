@@ -1,1 +1,0 @@
-/usr/bin/c++  -g  -rdynamic CMakeFiles/query_devices.dir/glad/egl.cpp.o CMakeFiles/query_devices.dir/glad/gl.cpp.o CMakeFiles/query_devices.dir/cpp/query_devices.cpp.o  -o query_devices  -ldl -lpthread 
