@@ -83,8 +83,8 @@ public:
 		}
 
 		// Decrease size but retain aspect ratio
-		windowWidth = renderWidth / 4;
-		windowHeight = renderHeight / 4;
+		windowWidth = renderWidth / 3;
+		windowHeight = renderHeight / 3;
 
 		window = glfwCreateWindow(windowWidth, windowHeight, "Gibson VR - Left Eye Output", NULL, NULL);
 		if (window == NULL) {
@@ -178,7 +178,6 @@ public:
 
 	void post_render_glfw() {
 		glFlush();
-		//glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 
@@ -813,7 +812,6 @@ public:
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
 		printf("multidrawcount %d\n", multidrawCount);
 
-
 		glGenBuffers(1, &uboTexColorData);
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTexColorData);
 		texColorDataSize = 2 * 16 * MAX_ARRAY_SIZE;
@@ -844,9 +842,7 @@ public:
 		glUniform1i(bigTexLoc, 0);
 		glUniform1i(smallTexLoc, 1);
 
-		// Pre-render setup
-		glBindVertexArray(VAO);
-		glBindFramebuffer(GL_FRAMEBUFFER, fb);
+		glUseProgram(0);
 
 		py::list renderData;
 		renderData.append(VAO);
@@ -858,6 +854,8 @@ public:
 
 	// Updates positions and rotations in vertex shader
 	void updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array, py::array_t<float> pose_rot_array, py::array_t<float> V, py::array_t<float> P) {
+		glUseProgram(shaderProgram);
+
 		float* transPtr = (float*)pose_trans_array.request().ptr;
 		float* rotPtr = (float*)pose_rot_array.request().ptr;
 
@@ -873,14 +871,10 @@ public:
 	}
 
 	// Optimized rendering function that is called once per frame for all merged data
-	void renderOptimized() {
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_DEPTH_TEST);
+	void renderOptimized(GLuint VAO) {
+		glBindVertexArray(VAO);
 		glMultiDrawElements(GL_TRIANGLES, this->multidrawCounts, GL_UNSIGNED_INT, this->multidrawStartIndices, this->multidrawCount);
-		glDisable(GL_DEPTH_TEST);
 	}
-
 };
 
 // Class containing values and functions needed to run VR around Gibson renderer
@@ -1397,6 +1391,7 @@ PYBIND11_MODULE(MeshRendererContext, m) {
 		pymodule.def("renderSetup", &MeshRendererContext::renderSetup, "loads all merged graphics data");
 		pymodule.def("updateDynamicData", &MeshRendererContext::updateDynamicData, "updates dynamic data such as object transforms");
 		pymodule.def("renderOptimized", &MeshRendererContext::renderOptimized, "renders merged data in an optimized way");
+		pymodule.def("clean_meshrenderer_optimized", &MeshRendererContext::clean_meshrenderer_optimized, "clean optimized mesh renderer");
 
 		// VR pymodule needs to be part of MeshRendererContext for OpenGL context-sharing reasons
 		py::class_<VRSystem> pymoduleVR = py::class_<VRSystem>(m, "VRSystem");

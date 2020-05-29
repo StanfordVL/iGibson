@@ -27,9 +27,11 @@ class Simulator:
                  render_to_tensor=False,
                  auto_sync=True,
                  optimize_render=False,
+                 msaa=False,
                  vrWidth=None,
                  vrHeight=None,
-                 vrMsaa=False):
+                 vrMsaa=False,
+                 vrMode=True):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -71,9 +73,11 @@ class Simulator:
             self.use_vr_renderer = True
                    
         # renderer
+        self.msaa = msaa
         self.vrWidth = vrWidth
         self.vrHeight = vrHeight
         self.vrMsaa = vrMsaa
+        self.vrMode = vrMode
         self.image_width = image_width
         self.image_height = image_height
         self.vertical_fov = vertical_fov
@@ -115,20 +119,17 @@ class Simulator:
         Set up MeshRenderer and physics simulation client. Initialize the list of objects.
         """
         if self.use_vr_renderer:
-            # TODO: Add options to change the mesh renderer that VR renderer takes in here
-            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.vrMsaa, optimize=self.optimize_render)
+            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.vrMsaa, optimize=self.optimize_render, vrMode=self.vrMode)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                      height=self.image_height,
                                      vertical_fov=self.vertical_fov,
                                      device_idx=self.device_idx,
                                      use_fisheye=self.use_fisheye,
+                                     msaa=self.msaa,
                                      optimize=self.optimize_render)
 
-        # Connect directly to pybullet when using VR
-        if self.use_vr_renderer:
-            self.cid = p.connect(p.DIRECT)
-        elif self.use_ig_renderer or self.use_pb_renderer:
+        if self.use_ig_renderer or self.use_pb_renderer:
             self.cid = p.connect(p.GUI)
         else:
             self.cid = p.connect(p.DIRECT)
@@ -137,7 +138,7 @@ class Simulator:
         p.setPhysicsEngineParameter(enableFileCaching=0)
         print("PyBullet Logging Information******************")
 
-        if (self.use_ig_renderer or self.mode == 'vr') and not self.render_to_tensor:
+        if (self.use_ig_renderer or self.use_vr_renderer) and not self.render_to_tensor:
             self.add_viewer()
 
         self.visual_objects = {}
