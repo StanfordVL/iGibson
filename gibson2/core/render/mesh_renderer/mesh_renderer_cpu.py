@@ -332,7 +332,7 @@ class MeshRenderer(object):
         self.r.init(shouldHideWindow)
         self.r.glad_init()
 
-        if not shouldHideWindow:
+        if not self.shouldHideWindow:
             self.r.setupCompanionWindow()
 
         self.glstring = self.r.getstring_meshrenderer()
@@ -639,12 +639,15 @@ class MeshRenderer(object):
         print("index_counts", index_counts)
         print("index_ptr_offsets", index_ptr_offsets)
 
-        buffer = self.fbo
+        if self.msaa:
+            buffer = self.fbo_ms
+        else:
+            buffer = self.fbo
+
         self.optimized_VAO, self.optimized_VBO, self.optimized_EBO = self.r.renderSetup(self.shaderProgram, self.V, self.P, self.lightpos,
                                                                                         self.lightcolor,merged_vertex_data, index_ptr_offsets, index_counts,
                                                                                         indices, merged_frag_shader_data,
                                                                                         merged_diffuse_color_array, self.tex_id_1, self.tex_id_2, buffer)
-
 
     def update_dynamic_positions(self):
         """
@@ -663,7 +666,6 @@ class MeshRenderer(object):
 
         self.pose_trans_array = np.ascontiguousarray(np.concatenate(trans_data, axis=0))
         self.pose_rot_array = np.ascontiguousarray(np.concatenate(rot_data, axis=0))
-
 
     def add_instance(self,
                      object_id,
@@ -797,23 +799,24 @@ class MeshRenderer(object):
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
 
+        if self.msaa:
+            self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
+        else:
+            self.r.render_meshrenderer_pre(0, 0, self.fbo)
+
         if self.optimize:
             self.update_dynamic_positions()
             self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P)
-            self.r.renderOptimized()
+            self.r.renderOptimized(self.optimized_VAO)
         else:
-            if self.msaa:
-                self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
-            else:
-                self.r.render_meshrenderer_pre(0, 0, self.fbo)
-
             for instance in self.instances:
                 if not instance in hidden:
                     instance.render()
 
-            self.r.render_meshrenderer_post()
-            if self.msaa:
-                self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
+        self.r.render_meshrenderer_post()
+
+        if self.msaa:
+            self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
         if (shouldReadBuffer):
             return self.readbuffer(modes)

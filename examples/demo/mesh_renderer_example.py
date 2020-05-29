@@ -15,7 +15,7 @@ def main():
     else:
         model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
 
-    renderer = MeshRenderer(width=512, height=512, optimize=True)
+    renderer = MeshRenderer(width=512, height=512, optimize=False)
     renderer.load_object(model_path)
     renderer.add_instance(0)
 
