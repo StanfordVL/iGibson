@@ -18,7 +18,7 @@ gripper_folder = model_path + '\\gripper\\'
 sample_urdf_folder = model_path + '\\sample_urdfs\\'
 config = parse_config(configs_folder + 'fetch_p2p_nav.yaml')
 
-s = Simulator(mode='vr', vrMsaa=True, optimize_render=True)
+s = Simulator(mode='vr', msaa=False, optimize_render=True, vrMode=False)
 p.setGravity(0,0,-9.81)
 
 # Import Ohoopee manually for simple demo
@@ -68,32 +68,32 @@ s.renderer.optimize_vertex_and_texture()
 
 # Runs simulation
 while True:
-    eventList = s.pollVREvents()
-    for event in eventList:
-        deviceType, eventType = event
-        if deviceType == 'left_controller':
-            if eventType == 'trigger_press':
-                leftGripperFraction = 0.8
-            elif eventType == 'trigger_unpress':
-                leftGripperFraction = 0.0
-        elif deviceType == 'right_controller':
-            if eventType == 'trigger_press':
-                rightGripperFraction = 0.8
-            elif eventType == 'trigger_unpress':
-                rightGripperFraction = 0.0
+    #eventList = s.pollVREvents()
+    #for event in eventList:
+    #    deviceType, eventType = event
+    #    if deviceType == 'left_controller':
+    #        if eventType == 'trigger_press':
+    #            leftGripperFraction = 0.8
+    #        elif eventType == 'trigger_unpress':
+    #            leftGripperFraction = 0.0
+     #   elif deviceType == 'right_controller':
+     #       if eventType == 'trigger_press':
+     #           rightGripperFraction = 0.8
+     #       elif eventType == 'trigger_unpress':
+     #           rightGripperFraction = 0.0
 
     s.step()
 
-    hmdIsValid, hmdTrans, hmdRot, _ = s.getDataForVRDevice('hmd')
-    lIsValid, lTrans, lRot, _ = s.getDataForVRDevice('left_controller')
-    rIsValid, rTrans, rRot, _ = s.getDataForVRDevice('right_controller')
+    ##hmdIsValid, hmdTrans, hmdRot, _ = s.getDataForVRDevice('hmd')
+    #lIsValid, lTrans, lRot, _ = s.getDataForVRDevice('left_controller')
+    #rIsValid, rTrans, rRot, _ = s.getDataForVRDevice('right_controller')
 
-    if lIsValid:
-        p.changeConstraint(lGripper.cid, lTrans, lRot, maxForce=500)
-        lGripper.set_close_fraction(leftGripperFraction)
+    #if lIsValid:
+    #    p.changeConstraint(lGripper.cid, lTrans, lRot, maxForce=500)
+    #    lGripper.set_close_fraction(leftGripperFraction)
 
-    if rIsValid:
-        p.changeConstraint(rGripper.cid, rTrans, rRot, maxForce=500)
-        rGripper.set_close_fraction(rightGripperFraction)
+    #if rIsValid:
+    #    p.changeConstraint(rGripper.cid, rTrans, rRot, maxForce=500)
+    #    rGripper.set_close_fraction(rightGripperFraction)
         
 s.disconnect()

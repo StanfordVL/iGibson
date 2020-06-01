@@ -14,13 +14,13 @@ class MeshRendererVR():
         # self.width, self.height = self.vrsys.initVR()a
         self.baseWidth = 1080
         self.baseHeight = 1200
-        self.scaleFactor = 1.4
+        self.scaleFactor = 1.2
         self.width = int(self.baseWidth * self.scaleFactor)
         self.height = int(self.baseHeight * self.scaleFactor)
         if vrWidth is not None and vrHeight is not None:
-            self.renderer = rendererType(width=vrWidth, height=vrHeight, msaa=self.msaa, shouldHideWindow=False, optimize=self.optimize)
+            self.renderer = rendererType(width=vrWidth, height=vrHeight, msaa=self.msaa, useGlfwWindow=True, optimize=self.optimize)
         else:
-            self.renderer = rendererType(width=self.width, height=self.height, msaa=self.msaa, shouldHideWindow=False, optimize=self.optimize)
+            self.renderer = rendererType(width=self.width, height=self.height, msaa=self.msaa, useGlfwWindow=True, optimize=self.optimize)
 
         self.fig = plt.figure()
 
@@ -93,23 +93,18 @@ class MeshRendererVR():
             self.renderer.V = leftView
             self.renderer.P = leftProj
             
-            self.renderer.render(modes=('rgb'), shouldReadBuffer=False)
+            self.renderer.render(modes=('rgb'))
             self.vrsys.postRenderVRForEye("left", self.renderer.color_tex_rgb)
             # Render and submit right eye
             self.renderer.V = rightView
             self.renderer.P = rightProj
             
-            self.renderer.render(modes=('rgb'), shouldReadBuffer=False)
+            self.renderer.render(modes=('rgb'))
             self.vrsys.postRenderVRForEye("right", self.renderer.color_tex_rgb)
-        else:
-            frame = self.renderer.render(modes=('rgb'), shouldReadBuffer=True)
-            print(frame)
-        
-        # Render companion window
-        self.renderer.render_companion_window()
 
-        if self.vrMode:
             self.vrsys.postRenderVRUpdate(False)
+        else:
+            self.renderer.render(modes=('rgb'))
 
     # Sets camera position - only to be used in non-vr debugging mode
     def set_camera(self, camera, target, up):

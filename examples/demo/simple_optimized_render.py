@@ -9,7 +9,7 @@ import time
 # Simple rendering test for VR without VR sytem (just rendering with GLFW)
 optimize = True
 
-s = Simulator(mode='iggui', image_width=700, image_height=700, msaa=True, optimize_render=optimize, vrMsaa=True, vrMode=False)
+s = Simulator(mode='vr', msaa=False, optimize_render=optimize, vrMode=False)
 scene = BuildingScene('Bolton', is_interactive=False)
 scene.sleep = optimize
 s.import_scene(scene)
@@ -20,13 +20,16 @@ s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
 if optimize:
     s.renderer.optimize_vertex_and_texture()
 
-for i in range(1000):
+frame_time_sum = 0
+n = 1000
+for i in range(n):
     start = time.time()
     s.step()
     elapsed = time.time() - start
-    if elapsed > 0:
-        print(1/elapsed)
-    else:
-        print("Frame time practically 0")
+    frame_time_sum += elapsed
+
+av_fps = 1/(float(frame_time_sum)/float(n))
+print("Average fps:")
+print(av_fps)
 
 s.disconnect()
