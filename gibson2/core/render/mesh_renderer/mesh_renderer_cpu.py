@@ -805,8 +805,11 @@ class MeshRenderer(object):
             self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
         if self.optimize:
+            print("before update positions!")
             self.update_dynamic_positions()
+            print("About to update dynamic data")
             self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P)
+            print("About to render optimized!")
             self.r.renderOptimized(self.optimized_VAO)
         else:
             for instance in self.instances:
