@@ -30,7 +30,6 @@ class Simulator:
                  msaa=False,
                  vrWidth=None,
                  vrHeight=None,
-                 vrMsaa=False,
                  vrMode=True):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
@@ -76,7 +75,6 @@ class Simulator:
         self.msaa = msaa
         self.vrWidth = vrWidth
         self.vrHeight = vrHeight
-        self.vrMsaa = vrMsaa
         self.vrMode = vrMode
         self.image_width = image_width
         self.image_height = image_height
@@ -119,7 +117,7 @@ class Simulator:
         Set up MeshRenderer and physics simulation client. Initialize the list of objects.
         """
         if self.use_vr_renderer:
-            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.vrMsaa, optimize=self.optimize_render, vrMode=self.vrMode)
+            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.msaa, optimize=self.optimize_render, vrMode=self.vrMode)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                      height=self.image_height,

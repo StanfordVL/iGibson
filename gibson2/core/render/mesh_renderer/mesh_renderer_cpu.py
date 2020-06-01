@@ -296,7 +296,7 @@ class MeshRenderer(object):
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False, shouldHideWindow=True, optimize=False):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False, useGlfwWindow=False, optimize=False):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -324,16 +324,12 @@ class MeshRenderer(object):
         self.instances = []
         self.fisheye = use_fisheye
         self.msaa = msaa
+        self.useGlfwWindow = useGlfwWindow
         self.optimize = optimize
 
-        self.shouldHideWindow = shouldHideWindow
-
         self.r = MeshRendererContext.MeshRendererContext(width, height)
-        self.r.init(shouldHideWindow)
+        self.r.init(self.useGlfwWindow, self.msaa)
         self.r.glad_init()
-
-        if not self.shouldHideWindow:
-            self.r.setupCompanionWindow()
 
         self.glstring = self.r.getstring_meshrenderer()
 
@@ -372,15 +368,6 @@ class MeshRenderer(object):
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/frag.shader')).readlines()))
-
-        if not shouldHideWindow:
-            [self.windowShaderProgram, _] = self.r.compile_shader_meshrenderer(
-                        "".join(open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                        'shaders/companion_window_vert.shader')).readlines()),
-                        "".join(open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                        'shaders/companion_window_frag.shader')).readlines()))
 
         self.lightpos = [0, 0, 0]
         self.setup_framebuffer()
@@ -789,7 +776,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), shouldReadBuffer=True):
+    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -805,11 +792,8 @@ class MeshRenderer(object):
             self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
         if self.optimize:
-            print("before update positions!")
             self.update_dynamic_positions()
-            print("About to update dynamic data")
             self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P)
-            print("About to render optimized!")
             self.r.renderOptimized(self.optimized_VAO)
         else:
             for instance in self.instances:
@@ -821,12 +805,8 @@ class MeshRenderer(object):
         if self.msaa:
             self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
-        if (shouldReadBuffer):
+        if not self.useGlfwWindow:
             return self.readbuffer(modes)
-    
-    def render_companion_window(self):
-        self.r.renderCompanionWindow(self.windowShaderProgram, self.color_tex_rgb)
-        self.r.post_render_glfw()
     
     def get_visual_objects(self):
         return self.visual_objects

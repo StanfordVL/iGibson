@@ -37,13 +37,13 @@ namespace py = pybind11;
 
 class MeshRendererContext{
 public:
-	MeshRendererContext(int w, int h) :renderHeight(h), renderWidth(w) {};
+	MeshRendererContext(int w, int h) : renderHeight(h), renderWidth(w) {};
 
 	GLFWwindow* window;
 	int renderWidth;
 	int renderHeight;
-	int windowWidth;
-	int windowHeight;
+	bool usingCompanionWindow;
+	bool usingMsaa;
 
 	// Index data
 	std::vector<void*> multidrawStartIndices;
@@ -66,7 +66,10 @@ public:
 
 	GLuint cwVAO, cwVBO, cwIndexBuffer, cwIndexSize;
 
-	int init(bool shouldHideWindow) {
+	int init(bool usingCompanionWindow, bool usingMsaa) {
+		this->usingCompanionWindow = usingCompanionWindow;
+		this->usingMsaa = usingMsaa;
+
 		// Initialize GLFW context and window
 		if (!glfwInit()) {
 			fprintf(stderr, "Failed to initialize GLFW.\n");
@@ -78,19 +81,17 @@ public:
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 		// Hide GLFW window if user requests
-		if (shouldHideWindow) {
+		if (!usingCompanionWindow) {
 			glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		}
 
-		// Decrease size but retain aspect ratio
-		windowWidth = renderWidth / 3;
-		windowHeight = renderHeight / 3;
-
-		window = glfwCreateWindow(windowWidth, windowHeight, "Gibson VR - Left Eye Output", NULL, NULL);
+		window = glfwCreateWindow(renderWidth, renderHeight, "Gibson Renderer Output", glfwGetPrimaryMonitor(), NULL);
 		if (window == NULL) {
 			fprintf(stderr, "Failed to create GLFW window.\n");
 			exit(EXIT_FAILURE);
 		}
+		// Move window to top-left corner of the screeen
+		glfwSetWindowPos(window, 0, 0);
 		glfwMakeContextCurrent(window);
 
 		// Turns Vsync off (1 to turn it on)
@@ -99,86 +100,6 @@ public:
 		printf("Succesfully initialized both GLFW context and window!\n");
 
 		return 0;
-	}
-
-	// Note: companion window only renders left eye so users can easily see what is going on
-	void setupCompanionWindow() {
-		std::vector<VertexDataWindow> windowVerts;
-
-		VertexDataWindow w1, w2, w3, w4;
-		w1.position = glm::vec2(-1, -1);
-		w1.texCoord = glm::vec2(0, 0);
-
-		w2.position = glm::vec2(-1, 1);
-		w2.texCoord = glm::vec2(0, 1);
-
-		w3.position = glm::vec2(1, 1);
-		w3.texCoord = glm::vec2(1, 1);
-
-		w4.position = glm::vec2(1, -1);
-		w4.texCoord = glm::vec2(1, 0);
-
-		// Left eye vertices and texture coordinates
-		windowVerts.push_back(w1);
-		windowVerts.push_back(w2);
-		windowVerts.push_back(w3);
-		windowVerts.push_back(w4);
-
-		GLushort windowIndices[] = {
-			0, 1, 2,
-			0, 2, 3
-		};
-
-		cwIndexSize = _countof(windowIndices);
-
-		glGenVertexArrays(1, &cwVAO);
-		glGenBuffers(1, &cwVBO);
-
-		glBindVertexArray(cwVAO);
-		glBindBuffer(GL_ARRAY_BUFFER, cwVBO);
-		glBufferData(GL_ARRAY_BUFFER, windowVerts.size() * sizeof(VertexDataWindow), &windowVerts[0], GL_STATIC_DRAW);
-
-		glGenBuffers(1, &cwIndexBuffer);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cwIndexBuffer);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, cwIndexSize * sizeof(GLushort), &windowIndices[0], GL_STATIC_DRAW);
-
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(VertexDataWindow), (void*)offsetof(VertexDataWindow, position));
-
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexDataWindow), (void*)offsetof(VertexDataWindow, texCoord));
-
-		glBindVertexArray(0);
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	}
-
-	void renderCompanionWindow(GLuint windowShaderProgram, GLuint leftEyeTexId) {
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glDisable(GL_DEPTH_TEST);
-		glViewport(0, 0, windowWidth, windowHeight);
-		glUseProgram(windowShaderProgram);
-		glBindVertexArray(cwVAO);
-
-		glBindTexture(GL_TEXTURE_2D, leftEyeTexId);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glDrawElements(GL_TRIANGLES, cwIndexSize, GL_UNSIGNED_SHORT, 0);
-
-		glBindVertexArray(0);
-		glUseProgram(0);
-		glfwSwapBuffers(window);
-		// Return to render viewport
-		glViewport(0, 0, renderWidth, renderHeight);
-	}
-
-	void post_render_glfw() {
-		glFlush();
-		glfwPollEvents();
 	}
 
 	void release() {
@@ -201,6 +122,17 @@ public:
 
     void render_meshrenderer_post() {
         glDisable(GL_DEPTH_TEST);
+		if (this->usingCompanionWindow) {
+			bool escapeState = glfwGetKey(this->window, GLFW_KEY_ESCAPE);
+			if (escapeState) {
+				// TODO: Make this force-exit more graceful?
+				glfwTerminate();
+			}
+			if (!this->usingMsaa) {
+				glfwSwapBuffers(this->window);
+				glfwPollEvents();
+			}
+		}
     }
 
     void glad_init() {
@@ -226,9 +158,14 @@ public:
 
         for (int i = 0; i < 4; i++) {
             glReadBuffer(GL_COLOR_ATTACHMENT0+i);
-        glDrawBuffer(GL_COLOR_ATTACHMENT0+i);
+			glDrawBuffer(GL_COLOR_ATTACHMENT0+i);
             glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         }
+
+		if (this->usingCompanionWindow) {
+			glfwSwapBuffers(this->window);
+			glfwPollEvents();
+		}
     }
 
     py::array_t<float> readbuffer_meshrenderer(char* mode, int width, int height, GLuint fb2) {
@@ -280,7 +217,13 @@ public:
         GLuint *texture_ptr = (GLuint*)malloc(5 * sizeof(GLuint));
         glGenFramebuffers(1, fbo_ptr);
         glGenTextures(5, texture_ptr);
-        int fbo = fbo_ptr[0];
+		int fbo;
+		if (this->usingCompanionWindow) {
+			fbo = 0;
+		}
+		else {
+			fbo = fbo_ptr[0];
+		}
         int color_tex_rgb = texture_ptr[0];
         int color_tex_normal = texture_ptr[1];
         int color_tex_semantics = texture_ptr[2];
@@ -1354,9 +1297,6 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         pymodule.def(py::init<int, int>());
         pymodule.def("init", &MeshRendererContext::init);
         pymodule.def("release", &MeshRendererContext::release);
-		pymodule.def("setupCompanionWindow", &MeshRendererContext::setupCompanionWindow);
-		pymodule.def("renderCompanionWindow", &MeshRendererContext::renderCompanionWindow);
-		pymodule.def("post_render_glfw", &MeshRendererContext::post_render_glfw);
 
         // class MeshRenderer
         pymodule.def("render_meshrenderer_pre", &MeshRendererContext::render_meshrenderer_pre, "pre-executed functions in MeshRenderer.render");

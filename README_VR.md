@@ -99,3 +99,6 @@ $ python vr_interaction_demo_ohoopee.py
 To use the gripper asset featured in the interaction demos, please download the 'gripper' folder at this link: https://drive.google.com/drive/folders/1-lHTtUuEgs9zzcievvvVdjHP0BdN7Du4?usp=sharing, and put it in assets/models (wherever your assets folder is).
 
 Have fun in VR!
+
+Helpful tips:
+Press ESCAPE to force the rendering window to close during program execution.
