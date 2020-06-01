@@ -1,4 +1,4 @@
-#version 450
+#version 410
 uniform sampler2D texUnit;
 in vec2 TexCoords;
 

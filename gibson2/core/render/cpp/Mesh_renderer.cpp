@@ -73,8 +73,8 @@ public:
 			exit(EXIT_FAILURE);
 		}
 
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 		// Hide GLFW window if user requests
@@ -156,8 +156,6 @@ public:
 	}
 
 	void renderCompanionWindow(GLuint windowShaderProgram, GLuint leftEyeTexId) {
-		printf("Rendering companion window!\n");
-		printf("Window shader program %u and left eye tex id: %u\n", windowShaderProgram, leftEyeTexId);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glDisable(GL_DEPTH_TEST);
 		glViewport(0, 0, windowWidth, windowHeight);
@@ -753,7 +751,7 @@ public:
 		// First set up VAO and corresponding attributes
 		GLuint VAO;
 		glGenVertexArrays(1, &VAO);
-		cglBindVertexArray(VAO);
+		glBindVertexArray(VAO);
 
 		GLuint EBO;
 		glGenBuffers(1, &EBO);
@@ -781,14 +779,14 @@ public:
 		glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)12);
 		glVertexAttribPointer(texcoordAttrib, 2, GL_FLOAT, GL_TRUE, 32, (void*)24);
 
+		glBindVertexArray(0);
+
 		multidrawCount = index_ptr_offsets.size();
 		int* indexOffsetPtr = (int*)index_ptr_offsets.request().ptr;
-
 
 		for (int i = 0; i < multidrawCount; i++) {
 			unsigned int offset = (unsigned int)indexOffsetPtr[i];
 			this->multidrawStartIndices.push_back(BUFFER_OFFSET((offset * sizeof(unsigned int))));
-			//this->multidrawStartIndices[i] = BUFFER_OFFSET((offset * sizeof(unsigned int)));
 			printf("multidraw start idx %d\n", offset);
 		}
 
@@ -801,6 +799,8 @@ public:
 		// Set up shaders
 		float* fragData = (float*)mergedFragData.request().ptr;
 		float* diffuseData = (float*)mergedDiffuseData.request().ptr;
+		int fragDataSize = mergedFragData.size();
+		int diffuseDataSize = mergedDiffuseData.size();
 
 		glUseProgram(shaderProgram);
 
@@ -822,8 +822,8 @@ public:
 		GLuint texColorDataIdx = glGetUniformBlockIndex(shaderProgram, "TexColorData");
 		glUniformBlockBinding(shaderProgram, texColorDataIdx, 0);
 		glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboTexColorData);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, texColorDataSize / 2, fragData);
-		glBufferSubData(GL_UNIFORM_BUFFER, texColorDataSize / 2, texColorDataSize / 2, diffuseData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, fragDataSize * sizeof(float), fragData);
+		glBufferSubData(GL_UNIFORM_BUFFER, texColorDataSize / 2, diffuseDataSize * sizeof(float), diffuseData);
 
 		glGenBuffers(1, &uboTransformData);
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
@@ -861,10 +861,12 @@ public:
 
 		float* transPtr = (float*)pose_trans_array.request().ptr;
 		float* rotPtr = (float*)pose_rot_array.request().ptr;
+		int transDataSize = pose_trans_array.size();
+		int rotDataSize = pose_rot_array.size();
 
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, transformDataSize / 2, transPtr);
-		glBufferSubData(GL_UNIFORM_BUFFER, transformDataSize / 2, transformDataSize / 2, rotPtr);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, transDataSize * sizeof(float), transPtr);
+		glBufferSubData(GL_UNIFORM_BUFFER, transformDataSize / 2, rotDataSize * sizeof(float), rotPtr);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		float* Vptr = (float*)V.request().ptr;

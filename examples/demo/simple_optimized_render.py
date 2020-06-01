@@ -9,7 +9,7 @@ import time
 # Simple rendering test for VR without VR sytem (just rendering with GLFW)
 optimize = True
 
-s = Simulator(mode='vr', image_width=700, image_height=700, msaa=True, optimize_render=optimize, vrMsaa=True, vrMode=False)
+s = Simulator(mode='iggui', image_width=700, image_height=700, msaa=True, optimize_render=optimize, vrMsaa=True, vrMode=False)
 scene = BuildingScene('Bolton', is_interactive=False)
 scene.sleep = optimize
 s.import_scene(scene)

@@ -86,9 +86,7 @@ class MeshRendererVR():
 
     # Renders VR scenes and returns the left eye frame
     def render(self):
-        if not self.vrMode:
-            self.renderer.render(modes=('rgb'), shouldReadBuffer=False)
-        else:
+        if self.vrMode:
             leftProj, leftView, rightProj, rightView = self.vrsys.preRenderVR()
 
             # Render and submit left eye
@@ -103,6 +101,9 @@ class MeshRendererVR():
             
             self.renderer.render(modes=('rgb'), shouldReadBuffer=False)
             self.vrsys.postRenderVRForEye("right", self.renderer.color_tex_rgb)
+        else:
+            frame = self.renderer.render(modes=('rgb'), shouldReadBuffer=True)
+            print(frame)
         
         # Render companion window
         self.renderer.render_companion_window()
