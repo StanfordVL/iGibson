@@ -46,8 +46,8 @@ public:
 	int windowHeight;
 
 	// Index data
-	void* multidrawStartIndices[MAX_ARRAY_SIZE];
-	int multidrawCounts[MAX_ARRAY_SIZE];
+	std::vector<void*> multidrawStartIndices;
+	std::vector<int> multidrawCounts;
 	int multidrawCount;
 	//std::vector<void*> startIndices;
 
@@ -156,6 +156,8 @@ public:
 	}
 
 	void renderCompanionWindow(GLuint windowShaderProgram, GLuint leftEyeTexId) {
+		printf("Rendering companion window!\n");
+		printf("Window shader program %u and left eye tex id: %u\n", windowShaderProgram, leftEyeTexId);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glDisable(GL_DEPTH_TEST);
 		glViewport(0, 0, windowWidth, windowHeight);
@@ -785,14 +787,15 @@ public:
 
 		for (int i = 0; i < multidrawCount; i++) {
 			unsigned int offset = (unsigned int)indexOffsetPtr[i];
-			this->multidrawStartIndices[i] = BUFFER_OFFSET((offset * sizeof(unsigned int)));
+			this->multidrawStartIndices.push_back(BUFFER_OFFSET((offset * sizeof(unsigned int))));
+			//this->multidrawStartIndices[i] = BUFFER_OFFSET((offset * sizeof(unsigned int)));
 			printf("multidraw start idx %d\n", offset);
 		}
 
 		// Store for rendering
 		int* indices_count_ptr = (int*)index_counts.request().ptr;
 		for (int i = 0; i < multidrawCount; i++) {
-			this->multidrawCounts[i] = indices_count_ptr[i];
+			this->multidrawCounts.push_back(indices_count_ptr[i]);
 		}
 
 		// Set up shaders
@@ -873,7 +876,7 @@ public:
 	// Optimized rendering function that is called once per frame for all merged data
 	void renderOptimized(GLuint VAO) {
 		glBindVertexArray(VAO);
-		glMultiDrawElements(GL_TRIANGLES, this->multidrawCounts, GL_UNSIGNED_INT, this->multidrawStartIndices, this->multidrawCount);
+		glMultiDrawElements(GL_TRIANGLES, &this->multidrawCounts[0], GL_UNSIGNED_INT, &this->multidrawStartIndices[0], this->multidrawCount);
 	}
 };
 
