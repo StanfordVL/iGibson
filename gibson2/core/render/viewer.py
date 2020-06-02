@@ -14,6 +14,8 @@ class ViewerVR:
             self.renderer.set_vr_camera(vr_camera_pos)
 
         self.renderer.render()
+        # Viewer is responsible for calling companion window rendering function
+        self.renderer.render_companion_window()
 
 class Viewer:
     def __init__(self,

@@ -296,7 +296,7 @@ class MeshRenderer(object):
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False, useGlfwWindow=False, optimize=False):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False, useGlfwWindow=False, fullscreen=False, optimize=False):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -325,10 +325,11 @@ class MeshRenderer(object):
         self.fisheye = use_fisheye
         self.msaa = msaa
         self.useGlfwWindow = useGlfwWindow
+        self.fullscreen = fullscreen
         self.optimize = optimize
 
         self.r = MeshRendererContext.MeshRendererContext(width, height)
-        self.r.init(self.useGlfwWindow, self.msaa)
+        self.r.init(self.useGlfwWindow, self.fullscreen)
         self.r.glad_init()
 
         self.glstring = self.r.getstring_meshrenderer()
@@ -785,7 +786,6 @@ class MeshRenderer(object):
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-
         if self.msaa:
             self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
         else:
@@ -808,6 +808,10 @@ class MeshRenderer(object):
         if not self.useGlfwWindow:
             return self.readbuffer(modes)
     
+    # The viewer is responsible for calling this function to update the window, if cv2 is not being used for window display
+    def render_companion_window(self):
+        self.r.render_companion_window_from_buffer(self.fbo)
+
     def get_visual_objects(self):
         return self.visual_objects
 

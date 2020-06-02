@@ -18,7 +18,7 @@ gripper_folder = model_path + '\\gripper\\'
 sample_urdf_folder = model_path + '\\sample_urdfs\\'
 config = parse_config(configs_folder + 'fetch_p2p_nav.yaml')
 
-s = Simulator(mode='vr', vrMsaa=True)
+s = Simulator(mode='vr')
 p.setGravity(0,0,-9.81)
 
 # Import Ohoopee manually for simple demo
