@@ -5,22 +5,24 @@ import matplotlib.pyplot as plt
 # VR wrapper class on top of Gibson Mesh Renderers
 class MeshRendererVR():
     # Init takes in a renderer type to use for VR (which can be of type MeshRenderer or something else as long as it conforms to the same interface)
-    def __init__(self, rendererType, vrWidth=None, vrHeight=None, msaa=False, optimize=True, vrMode=True):
+    def __init__(self, rendererType, vrWidth=None, vrHeight=None, msaa=False, fullscreen=True, optimize=True, vrMode=True):
+        # Msaa slows down VR significantly, so only use it if you have to
         self.msaa = msaa
+        self.fullscreen = fullscreen
         self.optimize = optimize
         self.vrMode = vrMode
         self.vrsys = MeshRendererContext.VRSystem()
         # Default recommended is 2016 x 2240
-        # self.width, self.height = self.vrsys.initVR()a
+        self.recWidth, self.recHeight = self.vrsys.initVR()
         self.baseWidth = 1080
         self.baseHeight = 1200
-        self.scaleFactor = 1.2
+        self.scaleFactor = 1.4
         self.width = int(self.baseWidth * self.scaleFactor)
         self.height = int(self.baseHeight * self.scaleFactor)
         if vrWidth is not None and vrHeight is not None:
-            self.renderer = rendererType(width=vrWidth, height=vrHeight, msaa=self.msaa, useGlfwWindow=True, optimize=self.optimize)
+            self.renderer = rendererType(width=vrWidth, height=vrHeight, msaa=self.msaa, useGlfwWindow=True, fullscreen=self.fullscreen, optimize=self.optimize)
         else:
-            self.renderer = rendererType(width=self.width, height=self.height, msaa=self.msaa, useGlfwWindow=True, optimize=self.optimize)
+            self.renderer = rendererType(width=self.width, height=self.height, msaa=self.msaa, useGlfwWindow=True, fullscreen=self.fullscreen, optimize=self.optimize)
 
         self.fig = plt.figure()
 
@@ -102,10 +104,15 @@ class MeshRendererVR():
             self.renderer.render(modes=('rgb'))
             self.vrsys.postRenderVRForEye("right", self.renderer.color_tex_rgb)
 
+            # TODO: Experiment with this boolean for handoff
             self.vrsys.postRenderVRUpdate(False)
         else:
             self.renderer.render(modes=('rgb'))
 
+    # Render companion window - renders right eye in VR
+    def render_companion_window(self):
+        self.renderer.render_companion_window()
+        
     # Sets camera position - only to be used in non-vr debugging mode
     def set_camera(self, camera, target, up):
         self.renderer.set_camera(camera, target, up)

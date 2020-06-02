@@ -43,13 +43,12 @@ public:
 	int renderWidth;
 	int renderHeight;
 	bool usingCompanionWindow;
-	bool usingMsaa;
+	bool fullscreen;
 
 	// Index data
 	std::vector<void*> multidrawStartIndices;
 	std::vector<int> multidrawCounts;
 	int multidrawCount;
-	//std::vector<void*> startIndices;
 
 	// UBO data
 	GLuint uboTexColorData;
@@ -66,9 +65,9 @@ public:
 
 	GLuint cwVAO, cwVBO, cwIndexBuffer, cwIndexSize;
 
-	int init(bool usingCompanionWindow, bool usingMsaa) {
+	int init(bool usingCompanionWindow, bool fullscreen) {
 		this->usingCompanionWindow = usingCompanionWindow;
-		this->usingMsaa = usingMsaa;
+		this->fullscreen = fullscreen;
 
 		// Initialize GLFW context and window
 		if (!glfwInit()) {
@@ -85,7 +84,13 @@ public:
 			glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		}
 
-		window = glfwCreateWindow(renderWidth, renderHeight, "Gibson Renderer Output", glfwGetPrimaryMonitor(), NULL);
+		if (fullscreen) {
+			this->window = glfwCreateWindow(renderWidth, renderHeight, "Gibson Renderer Output", glfwGetPrimaryMonitor(), NULL);
+		}
+		else {
+			this->window = glfwCreateWindow(renderWidth, renderHeight, "Gibson Renderer Output", NULL, NULL);
+		}
+
 		if (window == NULL) {
 			fprintf(stderr, "Failed to create GLFW window.\n");
 			exit(EXIT_FAILURE);
@@ -100,6 +105,26 @@ public:
 		printf("Succesfully initialized both GLFW context and window!\n");
 
 		return 0;
+	}
+
+	void render_companion_window_from_buffer(GLuint readBuffer) {
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, readBuffer);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
+		glDrawBuffer(GL_BACK);
+		// TODO: Are the sizes correct here?
+		glBlitFramebuffer(0, 0, this->renderWidth, this->renderHeight, 0, 0, this->renderWidth, this->renderHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		// TODO: Do I need this?
+		glFlush();
+		glfwSwapBuffers(this->window);
+		glfwPollEvents();
+
+		// TODO: Add a more graceful exit?
+		if (this->usingCompanionWindow) {
+			if (glfwGetKey(this->window, GLFW_KEY_ESCAPE)) {
+				glfwTerminate();
+			}
+		}
 	}
 
 	void release() {
@@ -122,17 +147,6 @@ public:
 
     void render_meshrenderer_post() {
         glDisable(GL_DEPTH_TEST);
-		if (this->usingCompanionWindow) {
-			bool escapeState = glfwGetKey(this->window, GLFW_KEY_ESCAPE);
-			if (escapeState) {
-				// TODO: Make this force-exit more graceful?
-				glfwTerminate();
-			}
-			if (!this->usingMsaa) {
-				glfwSwapBuffers(this->window);
-				glfwPollEvents();
-			}
-		}
     }
 
     void glad_init() {
@@ -161,11 +175,6 @@ public:
 			glDrawBuffer(GL_COLOR_ATTACHMENT0+i);
             glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         }
-
-		if (this->usingCompanionWindow) {
-			glfwSwapBuffers(this->window);
-			glfwPollEvents();
-		}
     }
 
     py::array_t<float> readbuffer_meshrenderer(char* mode, int width, int height, GLuint fb2) {
@@ -217,19 +226,15 @@ public:
         GLuint *texture_ptr = (GLuint*)malloc(5 * sizeof(GLuint));
         glGenFramebuffers(1, fbo_ptr);
         glGenTextures(5, texture_ptr);
-		int fbo;
-		if (this->usingCompanionWindow) {
-			fbo = 0;
-		}
-		else {
-			fbo = fbo_ptr[0];
-		}
+		int fbo = fbo_ptr[0];
         int color_tex_rgb = texture_ptr[0];
         int color_tex_normal = texture_ptr[1];
         int color_tex_semantics = texture_ptr[2];
         int color_tex_3d = texture_ptr[3];
         int depth_tex = texture_ptr[4];
         glBindTexture(GL_TEXTURE_2D, color_tex_rgb);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindTexture(GL_TEXTURE_2D, color_tex_normal);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -1295,8 +1300,9 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         py::class_<MeshRendererContext> pymodule = py::class_<MeshRendererContext>(m, "MeshRendererContext");
         
         pymodule.def(py::init<int, int>());
-        pymodule.def("init", &MeshRendererContext::init);
-        pymodule.def("release", &MeshRendererContext::release);
+        pymodule.def("init", &MeshRendererContext::init, "initialize glfw window and context");
+		pymodule.def("render_companion_window_from_buffer", &MeshRendererContext::render_companion_window_from_buffer, "blit color texture to default framebuffer and show companion window");
+		pymodule.def("release", &MeshRendererContext::release, "release glfw context");
 
         // class MeshRenderer
         pymodule.def("render_meshrenderer_pre", &MeshRendererContext::render_meshrenderer_pre, "pre-executed functions in MeshRenderer.render");

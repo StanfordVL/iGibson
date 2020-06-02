@@ -9,11 +9,11 @@ import time
 # Simple rendering test for VR without VR sytem (just rendering with GLFW)
 optimize = True
 
-s = Simulator(mode='vr', msaa=False, optimize_render=optimize, vrMode=False)
-scene = BuildingScene('Bolton', is_interactive=False)
+s = Simulator(mode='vr', image_width=700, image_height=700, msaa=False, optimize_render=optimize, vrFullscreen=True, vrMode=True)
+scene = BuildingScene('Bolton', is_interactive=True)
 scene.sleep = optimize
 s.import_scene(scene)
-camera_pose = np.array([0, 0, 1.2])
+camera_pose = np.array([0, 0, 0])
 view_direction = np.array([1, 1, 0])
 s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
 
