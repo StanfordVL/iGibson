@@ -19,7 +19,7 @@ gripper_folder = model_path + '\\gripper\\'
 sample_urdf_folder = model_path + '\\sample_urdfs\\'
 config = parse_config(configs_folder + 'fetch_p2p_nav.yaml')
 
-s = Simulator(mode='vr', msaa=False, optimize_render=True, vrFullscreen=True, vrMode=True)
+s = Simulator(mode='vr', msaa=False, optimize_render=True, timestep= 1 / 90.0, vrFullscreen=True, vrMode=True)
 p.setGravity(0,0,-9.81)
 
 # Import Ohoopee manually for simple demo
@@ -69,7 +69,7 @@ s.renderer.optimize_vertex_and_texture()
 
 # Runs simulation
 frame_time_sum = 0
-n = 1000
+n = 10000
 for i in range(n):
     start = time.time()
     eventList = s.pollVREvents()
