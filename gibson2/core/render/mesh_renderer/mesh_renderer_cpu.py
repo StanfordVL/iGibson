@@ -1,3 +1,4 @@
+import os
 import sys
 import ctypes
 
@@ -324,13 +325,18 @@ class MeshRenderer(object):
         self.fisheye = use_fisheye
         # self.context = glcontext.Context()
         # self.context.create_opengl_context((self.width, self.height))
-        available_devices = get_available_devices()
-        if device_idx < len(available_devices):
-            device = available_devices[device_idx]
-            logging.info("Using device {} for rendering".format(device))
+        if 'GIBSON_DEVICE_ID' in os.environ:
+            device = int(os.environ.get('GIBSON_DEVICE_ID'))
+            logging.info(f'GIBSON_DEVICE_ID environment variable has been manually set. '
+                         f'Using device {device} for rendering')
         else:
-            logging.info("Device index is larger than number of devices, falling back to use 0")
-            device = 0
+            available_devices = get_available_devices()
+            if device_idx < len(available_devices):
+                device = available_devices[device_idx]
+                logging.info(f"Using device {device} for rendering")
+            else:
+                logging.info("Device index is larger than number of devices, falling back to use 0")
+                device = 0
 
         self.device_idx = device_idx
         self.device_minor = device
