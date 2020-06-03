@@ -325,7 +325,7 @@ class MeshRenderer(object):
         self.fisheye = use_fisheye
         # self.context = glcontext.Context()
         # self.context.create_opengl_context((self.width, self.height))
-        if 'GIBSON_DEVICE_ID' in os.environ:
+        if os.environ.get('GIBSON_DEVICE_ID', None):
             device = int(os.environ.get('GIBSON_DEVICE_ID'))
             logging.info(f'GIBSON_DEVICE_ID environment variable has been manually set. '
                          f'Using device {device} for rendering')
