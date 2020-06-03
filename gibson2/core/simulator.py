@@ -441,6 +441,9 @@ class Simulator:
                                          robot=None)
 
         return ids
+    
+    def optimize_data(self):
+        self.renderer.optimize_vertex_and_texture()
 
     def step(self):
         """
@@ -476,10 +479,11 @@ class Simulator:
     # Return isValid (indicating validity of data), translation and rotation in Gibson world space
     def getDataForVRDevice(self, deviceName):
         if not self.use_vr_renderer:
-            return [None, None, None, None]
+            return [None, None, None]
 
-        isValid, translation, rotation, hmdActualPos = self.renderer.vrsys.getDataForVRDevice(deviceName)
-        return [isValid, translation, rotation, hmdActualPos]
+        # Use fourth variable in list to get actual hmd position in space
+        isValid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(deviceName)
+        return [isValid, translation, rotation]
 
     # Sets the VR camera to a specific position, eg. the head of a robot
     def setVRCamera(self, pos=None, shouldReset=False):

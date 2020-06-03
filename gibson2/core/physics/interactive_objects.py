@@ -263,62 +263,9 @@ class GripperObj(InteractiveObj):
                               controlMode=p.POSITION_CONTROL,
                               targetPosition=self.max_joint * (1 - close_fraction),
                               force=1.1)
-
-    def get_position(self):
-        pos, _ = p.getBasePositionAndOrientation(self.body_id)
-        return pos
-
-    def get_orientation(self):
-        _, orn = p.getBasePositionAndOrientation(self.body_id)
-        return orn
-
-    def set_position(self, pos):
-        org_pos, org_orn = p.getBasePositionAndOrientation(self.body_id)
-        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
-
-    def set_position_rotation(self, pos, orn):
-        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
-
-class BuildingObj(object):
-    """
-    Buildings Objects are a simple physics representation of a Gibson building
-    """
-    def __init__(self, filename, scale=1):
-        self.filename = filename
-        self.scale = scale
-        self.body_id = None
-
-    def load(self):
-        scaling = [self.scale, self.scale, self.scale]
-        collisionId = p.createCollisionShape(p.GEOM_MESH,
-                                        fileName=self.filename,
-                                        meshScale=scaling,
-                                        flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
-        visualId = -1
-        boundaryUid = p.createMultiBody(baseCollisionShapeIndex=collisionId,
-                                baseVisualShapeIndex=visualId)
-        p.changeDynamics(boundaryUid, -1, lateralFriction=1)
-
-        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-
-        ground_plane_mjcf = p.loadMJCF(planeName)
-
-        p.resetBasePositionAndOrientation(ground_plane_mjcf[0],
-                                    posObj=[0, 0, 0],
-                                    ornObj=[0, 0, 0, 1])
-
-        p.changeVisualShape(boundaryUid,
-                    -1,
-                    rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
-                    specularColor=[0.5, 0.5, 0.5])
-
-        p.changeVisualShape(ground_plane_mjcf[0],
-                    -1,
-                    rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
-                    specularColor=[0.5, 0.5, 0.5])
-
-        self.body_id = boundaryUid
-        return self.body_id
+    
+    def move_gripper(self, trans, rot, maxForce=500):
+        p.changeConstraint(self.cid, trans, rot, maxForce=maxForce)
 
     def get_position(self):
         pos, _ = p.getBasePositionAndOrientation(self.body_id)

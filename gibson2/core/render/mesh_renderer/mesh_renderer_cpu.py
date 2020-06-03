@@ -541,7 +541,6 @@ class MeshRenderer(object):
         self.textures.append(self.tex_id_1)
         self.textures.append(self.tex_id_2)
         print(self.tex_id_1, self.tex_id_2)
-        print(self.tex_id_layer_mapping)
 
         offset_faces = []
 
@@ -594,8 +593,6 @@ class MeshRenderer(object):
                 tex_num_array.append(-1)
                 tex_layer_array.append(-1)
             else:
-                print(texture_id)
-                print(self.tex_id_layer_mapping)
                 tex_num, tex_layer = self.tex_id_layer_mapping[texture_id]
                 tex_num_array.append(tex_num)
                 tex_layer_array.append(tex_layer)

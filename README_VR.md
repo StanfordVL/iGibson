@@ -92,13 +92,19 @@ Should end printing 'Successfully installed gibson2'
 
 You can find VR tests in iGibson/test and VR demos iGibson/examples/demo
 
-* Example: run the stadium interaction demo in the folder iGibson/examples/demo:
+Run:
 
-$ python vr_interaction_demo_ohoopee.py
+$ python vr_demo_basic.py (for a scene with simpler graphics)
+
+or 
+
+$ python vr_demo_rs.py (for the current state-of-the-art Gibson graphics)
+
+To see the features of the VR software.
 
 To use the gripper asset featured in the interaction demos, please download the 'gripper' folder at this link: https://drive.google.com/drive/folders/1-lHTtUuEgs9zzcievvvVdjHP0BdN7Du4?usp=sharing, and put it in assets/models (wherever your assets folder is).
 
 Have fun in VR!
 
 Helpful tips:
-Press ESCAPE to force the rendering window to close during program execution.
+Press ESCAPE to force the fullscreen rendering window to close during program execution.
