@@ -537,7 +537,9 @@ class MeshRenderer(object):
     def optimize_vertex_and_texture(self):
         print(self.texture_files)
         cutoff = 4000 * 4000
-        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(self.texture_files, cutoff)
+        shouldShrinkSmallTextures = True
+        smallTexSize = 512
+        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(self.texture_files, cutoff, shouldShrinkSmallTextures, smallTexSize)
         self.textures.append(self.tex_id_1)
         self.textures.append(self.tex_id_2)
         print(self.tex_id_1, self.tex_id_2)
@@ -620,9 +622,6 @@ class MeshRenderer(object):
         merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
         print("Merged vertex data shape:")
         print(merged_vertex_data.shape)
-
-        print("index_counts", index_counts)
-        print("index_ptr_offsets", index_ptr_offsets)
 
         if self.msaa:
             buffer = self.fbo_ms

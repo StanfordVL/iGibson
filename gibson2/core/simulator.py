@@ -445,13 +445,24 @@ class Simulator:
     def optimize_data(self):
         self.renderer.optimize_vertex_and_texture()
 
-    def step(self):
+    def step(self, shouldTime=False):
         """
         Step the simulation and update positions in renderer
         """
+        if shouldTime:
+            startTime = time.time()
         p.stepSimulation()
+        if shouldTime:
+            physicsTime = time.time() - startTime
+            t = time.time()
         if self.auto_sync:
             self.sync()
+        if shouldTime:
+            renderTime = time.time() - t
+            print("Physics time: %f" % float(physicsTime/0.001))
+            print("Render time: %f" % float(renderTime/0.001))
+            print("Total frame time: %f" % float((physicsTime + renderTime)/0.001))
+            print("___________________________________")
 
     def sync(self):
         """

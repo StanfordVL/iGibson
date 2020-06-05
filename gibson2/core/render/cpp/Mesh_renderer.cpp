@@ -112,7 +112,6 @@ public:
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glReadBuffer(GL_COLOR_ATTACHMENT0);
 		glDrawBuffer(GL_BACK);
-		// TODO: Are the sizes correct here?
 		glBlitFramebuffer(0, 0, this->renderWidth, this->renderHeight, 0, 0, this->renderWidth, this->renderHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		// TODO: Do I need this?
 		glFlush();
@@ -518,7 +517,7 @@ public:
     }
 
 	// Generates large and small array textures and returns handles to the user (cutoff based on user variable), as well as index - tex num/layer mapping
-	py::list generateArrayTextures(std::vector<std::string> filenames, int texCutoff) {
+	py::list generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures, int smallTexBucketSize) {
 		int num_textures = filenames.size();
 		std::vector<unsigned char*> image_data;
 		std::vector<int> texHeights;
@@ -596,7 +595,12 @@ public:
 		}
 
 		printf("Texture 1 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[0], texLayerDims[1], firstTexLayerNum, texId1);
-		printf("Texture 2 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[2], texLayerDims[3], secondTexLayerNum, texId2);
+		if (shouldShrinkSmallTextures) {
+			printf("Texture 2 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", smallTexBucketSize, smallTexBucketSize, secondTexLayerNum, texId2);
+		}
+		else {
+			printf("Texture 2 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[2], texLayerDims[3], secondTexLayerNum, texId2);
+		}
 
 		for (int i = 0; i < 2; i++) {
 			GLuint currTexId = texId1;
@@ -604,11 +608,26 @@ public:
 
 			glBindTexture(GL_TEXTURE_2D_ARRAY, currTexId);
 
+			// Print texture array data
+			if (i == 0) {
+				GLint max_layers, max_size;
+				glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &max_layers);
+				glGetIntegerv(GL_MAX_3D_TEXTURE_SIZE, &max_size);
+				printf("Max layer number: %d\n", max_layers);
+				printf("Max texture size: %d\n", max_size);
+			}
+
 			int layerNum = firstTexLayerNum;
 			if (i == 1) layerNum = secondTexLayerNum;
 
 			int out_w = texLayerDims[2 * i];
 			int out_h = texLayerDims[2 * i + 1];
+
+			// Gibson tends to have many more smaller textures, so we reduce their size to avoid memory overload
+			if (i == 1 && shouldShrinkSmallTextures) {
+				out_w = smallTexBucketSize;
+				out_h = smallTexBucketSize;
+			}
 
 			// Deal with empty texture - create placeholder
 			if (out_w == 0 || out_h == 0 || layerNum == 0) {
@@ -647,7 +666,6 @@ public:
 				int n_channels = texChannels[idx];
 				unsigned char* input_data = image_data[idx];
 				unsigned char* tex_bytes = input_data;
-				printf("%d %d %d %d\n", j, orig_w, orig_h, n_channels);
 				bool shouldResize = (orig_w != out_w || orig_h != out_h);
 				// Resize image to fit biggest texture in texture array
 				if (shouldResize) {

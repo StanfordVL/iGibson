@@ -13,7 +13,8 @@ class MeshRendererVR():
         self.vrMode = vrMode
         self.vrsys = MeshRendererContext.VRSystem()
         # Default recommended is 2016 x 2240
-        self.recWidth, self.recHeight = self.vrsys.initVR()
+        if self.vrMode:
+            self.recWidth, self.recHeight = self.vrsys.initVR()
         self.baseWidth = 1080
         self.baseHeight = 1200
         self.scaleFactor = 1.4
