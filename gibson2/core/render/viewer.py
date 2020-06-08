@@ -41,8 +41,14 @@ class Viewer:
             self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, [0, 0, 1])
 
         if not self.renderer is None:
-            frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=('rgb', 'seg')), axis=1),
-                                 cv2.COLOR_RGB2BGR)
+            #frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=('rgb', 'seg')), axis=1),
+            #                     cv2.COLOR_RGB2BGR)
+
+            frame = (255*self.renderer.render(modes=('seg'))[0]).astype(np.uint8)
+            frame = 255-cv2.Canny(frame[:,:,0], 5, 5)
+            kernel = np.ones((12,12),np.uint8)
+
+            frame = cv2.erode(frame, kernel)
         else:
             frame = np.zeros((300, 300, 3)).astype(np.uint8)
         #cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))

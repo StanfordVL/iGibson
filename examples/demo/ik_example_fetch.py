@@ -19,7 +19,7 @@ import time
 import numpy as np
 
 config = parse_config('../configs/jr_interactive_nav.yaml')
-s = Simulator(mode='gui', timestep=1 / 240.0)
+s = Simulator(mode='gui', timestep=1 / 240.0, resolution=2048)
 scene = EmptyScene()
 s.import_scene(scene)
 fetch = Fetch(config)
@@ -30,11 +30,11 @@ robot_id = fetch.robot_ids[0]
 #arm_joints = joints_from_names(robot_id, ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_flex_joint', 'wrist_flex_joint'])
 arm_joints = joints_from_names(robot_id, ['torso_lift_joint','shoulder_pan_joint', 'shoulder_lift_joint', 'upperarm_roll_joint',
                                           'elbow_flex_joint', 'forearm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint'])
-finger_joints = joints_from_names(robot_id, ['l_gripper_finger_joint', 'r_gripper_finger_joint'])
+#finger_joints = joints_from_names(robot_id, ['l_gripper_finger_joint', 'r_gripper_finger_joint'])
 fetch.robot_body.reset_position([0, 0, 0])
 fetch.robot_body.reset_orientation([0, 0, 1, 0])
 x,y,z = fetch.get_end_effector_position()
-set_joint_positions(robot_id, finger_joints, [0.04,0.04])
+#set_joint_positions(robot_id, finger_joints, [0.04,0.04])
 
 print(x,y,z)
 visual_marker = p.createVisualShape(p.GEOM_SPHERE, radius = 0.02)
@@ -43,6 +43,12 @@ marker = p.createMultiBody(baseVisualShapeIndex = visual_marker)
 max_limits = [0,0] + get_max_limits(robot_id, arm_joints) + [0.05,0.05]
 min_limits = [0,0] + get_min_limits(robot_id, arm_joints) + [0,0]
 rest_position = [0,0] + list(get_joint_positions(robot_id, arm_joints)) + [0.04,0.04]
+
+rest_position = (0,0,0.30322468280792236, -1.414019864768982,
+                         1.5178184935241699, 0.8189625336474915,
+                         2.200358942909668, 2.9631312579803466,
+                         -1.2862852996643066, 0.0008453550418615341)
+
 joint_range = list(np.array(max_limits) - np.array(min_limits))
 joint_range = [item + 1 for item in joint_range]
 jd = [0.1 for item in joint_range]
@@ -58,6 +64,7 @@ def accurateCalculateInverseKinematics(robotid, endEffectorId, targetPos, thresh
   iter = 0
   dist2 = 1e30
   while (not closeEnough and iter < maxIter):
+    #jointPoses = rest_position
     jointPoses = p.calculateInverseKinematics(robotid, endEffectorId, targetPos,
                                                      lowerLimits = min_limits,
                                                      upperLimits = max_limits,
@@ -82,7 +89,7 @@ while True:
         maxIter = 100
         joint_pos = accurateCalculateInverseKinematics(robot_id, fetch.parts['gripper_link'].body_part_index, [x, y, z], threshold, maxIter)[2:10]
 
-        set_joint_positions(robot_id, finger_joints, [0.04, 0.04])
+        #set_joint_positions(robot_id, finger_joints, [0.04, 0.04])
         s.step()
         keys = p.getKeyboardEvents()
         for k, v in keys.items():

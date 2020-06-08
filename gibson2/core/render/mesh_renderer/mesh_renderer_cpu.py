@@ -119,8 +119,8 @@ class InstanceGroup(object):
 
                 GL.glUniform3f(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'instance_color'),
-                    float(self.class_id) / 255.0, 0, 0)
-
+                    float((object_idx+5) * 10) / 255.0, 0, 0)
+                print(object_idx)
                 GL.glUniform3f(
                     GL.glGetUniformLocation(self.renderer.shaderProgram, 'diffuse_color'),
                     *self.renderer.materials_mapping[
