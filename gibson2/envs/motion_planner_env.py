@@ -159,6 +159,8 @@ class MotionPlanningEnv(NavigateRandomEnv):
         if not self.mp_loaded:
             self.prepare_motion_planner()
 
+        
+
         self.planner_step = 0
 
         del state['pc']
@@ -190,6 +192,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.arena = arena
         self.eval = eval
         self.visualize_waypoints = True
+        self.base_pos_hist = None
         if self.visualize_waypoints and self.mode == 'gui':
             cyl_length = 0.2
             self.waypoints_vis = [VisualMarker(visual_shape=p.GEOM_CYLINDER,
@@ -777,6 +780,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 for way_point in path:
                     set_base_values_with_z(self.robot_id, [way_point[0], way_point[1], way_point[2]],
                                            z=self.initial_height)
+                    self.base_pos_hist.append([way_point[0], way_point[1]])
                     time.sleep(0.02)
             else:
                 set_base_values_with_z(self.robot_id, [base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn],
@@ -1262,6 +1266,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def reset(self):
         self.state = super(MotionPlanningBaseArmEnv, self).reset()
+        self.base_pos_hist = []
         # self.state['current_step'] = self.current_step
         return self.state
 
