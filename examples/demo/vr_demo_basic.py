@@ -16,7 +16,7 @@ fetch_config = parse_config(configs_folder + 'fetch_p2p_nav.yaml')
 
 optimize = True
 # Toggle this to only use renderer without VR, for testing purposes
-vrMode = True
+vrMode = False
 
 # Timestep should always be set to 1/90 to match VR system's 90fps
 s = Simulator(mode='vr', timestep = 1/90.0, msaa=True, vrFullscreen=False, optimize_render=optimize, vrMode=vrMode)
