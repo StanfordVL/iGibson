@@ -79,7 +79,7 @@ try:
                 self.V = np.copy(V)
 
             if self.msaa:
-                    self.r.render_tensor_pre(1, self.fbo_ms, self.fbo)
+                self.r.render_tensor_pre(1, self.fbo_ms, self.fbo)
             else:
                 self.r.render_tensor_pre(0, 0, self.fbo)
 
