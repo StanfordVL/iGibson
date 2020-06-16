@@ -139,7 +139,8 @@ class BuildingScene(Scene):
         else:
             filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_downsampled.obj")
             if not os.path.isfile(filename):
-                filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
+                # filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
+                filename = os.path.join(get_model_path(self.model_id), "Placida_mesh_texture.obj")
 
         collision_id = p.createCollisionShape(p.GEOM_MESH,
                                               fileName=filename,
@@ -287,6 +288,7 @@ class BuildingScene(Scene):
                 self.scene_objects_pos.append(pos)
 
     def load_scene_urdf(self):
+        print('PATH:', os.path.join(get_model_path(self.model_id), 'scene.urdf'))
         self.mesh_body_id = p.loadURDF(os.path.join(get_model_path(self.model_id), 'scene.urdf'))
 
     def has_scene_urdf(self):
