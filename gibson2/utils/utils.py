@@ -1,9 +1,18 @@
+import os
 import numpy as np
 import yaml
+import collections.abc
 from scipy.spatial.transform import Rotation as R
 
 # File I/O related
 def parse_config(config):
+    if isinstance(config, collections.abc.Mapping):
+        return config
+    else:
+        assert isinstance(config, str)
+
+    if not os.path.exists(config):
+        raise FileNotFoundError(f'config path {config} does not exist. Please either pass in a dict or a string that represents the file path to the config yaml.')
     with open(config, 'r') as f:
         config_data = yaml.load(f, Loader=yaml.FullLoader)
     return config_data
