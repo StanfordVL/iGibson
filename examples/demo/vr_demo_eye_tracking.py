@@ -19,16 +19,10 @@ optimize = True
 vrMode = True
 
 # Timestep should always be set to 1/90 to match VR system's 90fps
-s = Simulator(mode='vr', timestep = 1/90.0, msaa=True, vrFullscreen=False, vrEyeTracking=False, optimize_render=optimize, vrMode=vrMode)
+s = Simulator(mode='vr', timestep = 1/90.0, msaa=True, vrFullscreen=False, vrEyeTracking=True, optimize_render=optimize, vrMode=vrMode)
 scene = BuildingScene('Placida', is_interactive=False)
 scene.sleep = optimize
 s.import_scene(scene)
-
-# Fetch robot in scene
-#fetch = Fetch(fetch_config)
-#s.import_robot(fetch)
-#fetch.set_position([0,0,0])
-#fetch.robot_specific_reset()
 
 # Grippers represent hands
 lGripper = GripperObj(gripper_folder + 'gripper.urdf')
@@ -74,6 +68,11 @@ while True:
                     rightGripperFraction = 0.0
 
     s.step(shouldTime=True)
+
+    origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter = s.getEyeTrackingData()
+
+    print("Gaze statistics: origin, dir, point, left pupil diameter, right pupil diameter")
+    print(origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter)
 
     if vrMode:
         hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')

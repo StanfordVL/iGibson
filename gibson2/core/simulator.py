@@ -31,6 +31,7 @@ class Simulator:
                  vrWidth=None,
                  vrHeight=None,
                  vrFullscreen=True,
+		         vrEyeTracking=False,
                  vrMode=True):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
@@ -77,6 +78,7 @@ class Simulator:
         self.vrWidth = vrWidth
         self.vrHeight = vrHeight
         self.vrFullscreen = vrFullscreen
+        self.vrEyeTracking = vrEyeTracking
         self.vrMode = vrMode
         self.image_width = image_width
         self.image_height = image_height
@@ -119,7 +121,7 @@ class Simulator:
         Set up MeshRenderer and physics simulation client. Initialize the list of objects.
         """
         if self.use_vr_renderer:
-            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.msaa, fullscreen=self.vrFullscreen, optimize=self.optimize_render, vrMode=self.vrMode)
+            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.msaa, fullscreen=self.vrFullscreen, optimize=self.optimize_render, useEyeTracking=self.vrEyeTracking, vrMode=self.vrMode)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                      height=self.image_height,
@@ -495,6 +497,11 @@ class Simulator:
         # Use fourth variable in list to get actual hmd position in space
         isValid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(deviceName)
         return [isValid, translation, rotation]
+    
+    # Returns eye tracking data as list of lists. Order: gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
+    def getEyeTrackingData(self):
+        origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
+        return [origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter]
 
     # Sets the VR camera to a specific position, eg. the head of a robot
     def setVRCamera(self, pos=None, shouldReset=False):

@@ -48,10 +48,23 @@ find_library(OPENVR_LIBRARIES
 set(OPENVR_INCLUDE_DIR "${OPENVR_DIR}/headers")
 include_directories("${OPENVR_INCLUDE_DIR}")
 
+# Find SRAnipal
+set(SRANI_DIR sranipal)
+find_library(SRANI_LIBRARIES
+	NAMES
+		SRAnipal
+	PATHS
+		"${SRANI_DIR}/lib"
+	NO_DEFAULT_PATH
+	NO_CMAKE_FIND_ROOT_PATH
+)
+
+include_directories("${SRANI_DIR}/include")
+
 add_library(MeshRendererContext MODULE glad/gl.cpp cpp/Mesh_renderer.cpp)
 add_library(tinyobjloader MODULE cpp/tinyobjloader/tiny_obj_loader.cc cpp/tinyobjloader/bindings.cc)
 
-target_link_libraries(MeshRendererContext PRIVATE pybind11::module ${CMAKE_DL_LIBS} glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES} ${OPENVR_LIBRARIES})
+target_link_libraries(MeshRendererContext PRIVATE pybind11::module ${CMAKE_DL_LIBS} glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES} ${OPENVR_LIBRARIES} ${SRANI_LIBRARIES})
 target_link_libraries(tinyobjloader PRIVATE pybind11::module)
 
 set_target_properties(MeshRendererContext PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
