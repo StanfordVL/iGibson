@@ -363,6 +363,7 @@ public:
 
     void render_meshrenderer_post() {
         glDisable(GL_DEPTH_TEST);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     std::string getstring_meshrenderer() {
@@ -403,6 +404,18 @@ public:
         py::buffer_info buf = data.request();
         float* ptr = (float *) buf.ptr;
         glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, ptr);
+        return data;
+    }
+
+    py::array_t<float> readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fb2);
+        glReadBuffer(GL_COLOR_ATTACHMENT3);
+        py::array_t<float> data = py::array_t<float>(3 * width * height);
+        py::buffer_info buf = data.request();
+        float* ptr = (float *) buf.ptr;
+        glReadPixels(0, 0, width, height, GL_RGB, GL_FLOAT, ptr);
+        glBindTexture(GL_TEXTURE_2D, texture_id);
+        glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, ptr);
         return data;
     }
 
@@ -536,10 +549,8 @@ public:
         }
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
-        int texUnitUniform = glGetUniformLocation(shaderProgram, "texUnit");
         py::list result;
         result.append(shaderProgram);
-        result.append(texUnitUniform);
         return result;
     }
 
@@ -580,53 +591,67 @@ public:
         glBindVertexArray(0);
     }
 
-    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> pose_trans, py::array_t<float> pose_rot, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
+    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int enable_shadow, py::array_t<float> P,
+    py::array_t<float> pose_trans, py::array_t<float> pose_rot, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
         glUseProgram(shaderProgram);
         float *Vptr = (float *) V.request().ptr;
+        float *lightVptr = (float *) lightV.request().ptr;
         float *Pptr = (float *) P.request().ptr;
         float *transptr = (float *) pose_trans.request().ptr;
         float *rotptr = (float *) pose_rot.request().ptr;
         float *lightposptr = (float *) lightpos.request().ptr;
         float *lightcolorptr = (float *) lightcolor.request().ptr;
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, lightVptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
+        glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), enable_shadow);
     }
 
-    void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color, float use_texture) {
+    void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color, int
+    use_texture) {
         float *diffuse_ptr = (float *) diffuse_color.request().ptr;
         glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
         glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
-        glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
+        glUniform1i(glGetUniformLocation(shaderProgram, "use_texture"), (GLint)use_texture);
+        glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
+        glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 1);
     }
 
-    void draw_elements_instance(bool flag, int texture_id, int texUnitUniform, int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
+    void draw_elements_instance(bool flag, int texture_id, int depth_texture_id, int vao, int
+    face_size, py::array_t<unsigned int> faces, GLuint fb) {
         glActiveTexture(GL_TEXTURE0);
         if (flag) glBindTexture(GL_TEXTURE_2D, texture_id);
-        glUniform1i(texUnitUniform, 0);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, depth_texture_id);
         glBindVertexArray(vao);
         glBindFramebuffer(GL_FRAMEBUFFER, fb);
         unsigned int *ptr = (unsigned int *) faces.request().ptr;
         glDrawElements(GL_TRIANGLES, face_size, GL_UNSIGNED_INT, ptr);
-
     }
 
-    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
+    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int enable_shadow, py::array_t<float>
+    P, py::array_t<float>
+    lightpos, py::array_t<float> lightcolor) {
         glUseProgram(shaderProgram);
         float *Vptr = (float *) V.request().ptr;
+        float *lightVptr = (float *) lightV.request().ptr;
         float *Pptr = (float *) P.request().ptr;
         float *lightposptr = (float *) lightpos.request().ptr;
         float *lightcolorptr = (float *) lightcolor.request().ptr;
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, lightVptr);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
+        glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), enable_shadow);
     }
 
-    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot, float instance_color, py::array_t<float> diffuse_color, float use_texture) {
+    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot, float
+     instance_color, py::array_t<float> diffuse_color, int use_texture) {
         float *transptr = (float *) pose_trans.request().ptr;
         float *rotptr = (float *) pose_rot.request().ptr;
         float *diffuse_ptr = (float *) diffuse_color.request().ptr;
@@ -634,7 +659,9 @@ public:
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
         glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
-        glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
+        glUniform1i(glGetUniformLocation(shaderProgram, "use_texture"), (GLint)use_texture);
+        glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
+        glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 1);
     }
 
 
@@ -655,6 +682,7 @@ public:
 
     void render_tensor_post() {
         glDisable(GL_DEPTH_TEST);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     void cglBindVertexArray(int vao) {
@@ -702,6 +730,21 @@ public:
         return texture;
     }
 
+    int allocateTexture(int w, int h) {
+        GLuint texture;
+        glGenTextures(1, &texture);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGBA,
+                        GL_FLOAT, NULL);
+        return texture;
+    }
+
+
 };
 
 
@@ -721,14 +764,19 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         pymodule.def("render_meshrenderer_post", &MeshRendererContext::render_meshrenderer_post, "post-executed functions in MeshRenderer.render");
         pymodule.def("getstring_meshrenderer", &MeshRendererContext::getstring_meshrenderer, "return GL version string");
         pymodule.def("readbuffer_meshrenderer", &MeshRendererContext::readbuffer_meshrenderer, "read pixel buffer");
+        pymodule.def("readbuffer_meshrenderer_shadow_depth", &MeshRendererContext::readbuffer_meshrenderer_shadow_depth,
+         "read pixel buffer");
+
         pymodule.def("clean_meshrenderer", &MeshRendererContext::clean_meshrenderer, "clean meshrenderer");
         pymodule.def("setup_framebuffer_meshrenderer", &MeshRendererContext::setup_framebuffer_meshrenderer, "setup framebuffer in meshrenderer");
+
         pymodule.def("setup_framebuffer_meshrenderer_ms", &MeshRendererContext::setup_framebuffer_meshrenderer_ms, "setup framebuffer in meshrenderer with MSAA");
         pymodule.def("blit_buffer", &MeshRendererContext::blit_buffer, "blit buffer");
 
         pymodule.def("compile_shader_meshrenderer", &MeshRendererContext::compile_shader_meshrenderer, "compile vertex and fragment shader");
         pymodule.def("load_object_meshrenderer", &MeshRendererContext::load_object_meshrenderer, "load object into VAO and VBO");
         pymodule.def("loadTexture", &MeshRendererContext::loadTexture, "load texture function");
+        pymodule.def("allocateTexture", &MeshRendererContext::allocateTexture, "load texture function");
 
         // class MeshRendererG2G
         pymodule.def("render_tensor_pre", &MeshRendererContext::render_tensor_pre, "pre-executed functions in MeshRendererG2G.render");
