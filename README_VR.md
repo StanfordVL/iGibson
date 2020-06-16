@@ -46,6 +46,10 @@ This is needed for bullet
 https://cmake.org/download/
 Needed for building MeshRendererContext and Pybind.
 
+* SRAnipal (needed for eye tracking):
+https://hub.vive.com/en-US/download
+
+Download the VIVE_SRanipalInstaller msi file and install SRAnipal.
 
 Gibson
 ======

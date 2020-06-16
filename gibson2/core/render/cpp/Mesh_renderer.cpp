@@ -5,13 +5,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <iostream>
+#include <thread>
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 #include <glad/gl.h>
 
-#include  <glad/gl.h>
+#include <glad/gl.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
@@ -23,6 +24,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
+
+#include "SRanipal.h"
+#include "SRanipal_Eye.h"
+#include "SRanipal_Enums.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -894,13 +899,30 @@ public:
 	glm::mat4 gibToVR;
 	glm::mat4 vrToGib;
 
+	// SRAnipal variables
+	bool useEyeTracking;
+	std::thread* eyeTrackingThread;
+	ViveSR::anipal::Eye::EyeData eyeData;
+	int result;
+	bool shouldShutDownEyeTracking;
+
+	struct EyeTrackingData {
+		glm::vec3 origin;
+		glm::vec3 dir;
+		glm::vec3 gazePoint;
+		float leftPupilDiameter;
+		float rightPupilDiameter;
+	};
+
+	EyeTrackingData eyeTrackingData;
+
 	// Initialize VRSystem class
 	// TIMELINE: Call before any other method in this class
 	VRSystem() :m_pHMD(NULL), renderWidth(0), renderHeight(0), nearClip(0.1f), farClip(30.0f) {};
 
 	// Initialize the VR system and compositor and return recommended dimensions
 	// TIMELINE: Call during init of renderer, before height/width are set
-	py::list initVR() {
+	py::list initVR(bool useEyeTracking) {
 		// Initialize VR systems
 		if (!vr::VR_IsRuntimeInstalled()) {
 			fprintf(stderr, "VR runtime not installed.\n");
@@ -934,7 +956,49 @@ public:
 		// Set gibToVR and vrToGib matrices
 		setCoordinateTransformMatrices();
 
+		// Set eye tracking boolean
+		this->useEyeTracking = useEyeTracking;
+		if (useEyeTracking) {
+			initAnipal();
+			shouldShutDownEyeTracking = false;
+		}
+
 		return renderDims;
+	}
+
+	// Queries eye tracking data and returns to user
+	// Returns in order gaze origin, gaze direction, gaze point, left pupil diameter (in mm), right pupil diameter (in mm)
+	// TIMELINE: Can call any time
+	py::list getEyeTrackingData() {
+		py::list eyeData;
+
+		// Transform data into Gibson coordinate system before returning to user
+		glm::vec3 gibOrigin(vrToGib * glm::vec4(eyeTrackingData.origin, 1.0));
+		glm::vec3 gibDir(vrToGib * glm::vec4(eyeTrackingData.dir, 1.0));
+		glm::vec3 gibGazePoint(vrToGib * glm::vec4(eyeTrackingData.gazePoint, 1.0));
+
+		py::list origin;
+		origin.append(eyeTrackingData.origin.x);
+		origin.append(eyeTrackingData.origin.y);
+		origin.append(eyeTrackingData.origin.z);
+
+		py::list dir;
+		dir.append(gibDir.x);
+		dir.append(gibDir.y);
+		dir.append(gibDir.z);
+
+		py::list gazePoint;
+		gazePoint.append(gibGazePoint.x);
+		gazePoint.append(gibGazePoint.y);
+		gazePoint.append(gibGazePoint.z);
+
+		eyeData.append(origin);
+		eyeData.append(dir);
+		eyeData.append(gazePoint);
+		eyeData.append(eyeTrackingData.leftPupilDiameter);
+		eyeData.append(eyeTrackingData.rightPupilDiameter);
+
+		return eyeData;
 	}
 
 	// Sets the position of the VR camera
@@ -1079,9 +1143,80 @@ public:
 	void releaseVR() {
 		vr::VR_Shutdown();
 		m_pHMD = NULL;
+
+		if (this->useEyeTracking) {
+			this->shouldShutDownEyeTracking = true;
+		}
 	}
 
 private:
+	// Initializes the SRAnipal runtime, if the user selects this option
+	void initAnipal() {
+		if (!ViveSR::anipal::Eye::IsViveProEye()) {
+			fprintf(stderr, "This HMD does not support eye-tracking!\n");
+		}
+
+		int anipalError = ViveSR::anipal::Initial(ViveSR::anipal::Eye::ANIPAL_TYPE_EYE, NULL);
+		switch (anipalError) {
+		case ViveSR::Error::WORK:
+			break;
+		case ViveSR::Error::RUNTIME_NOT_FOUND:
+			fprintf(stderr, "SRAnipal runtime not found!\n");
+		default:
+			fprintf(stderr, "Failed to initialize SRAnipal!\n");
+		}
+
+		// Launch a thread to poll data from the SRAnipal SDK
+		// We poll data asynchronously so as to not slow down the VR rendering loop
+		eyeTrackingThread = new std::thread(&VRSystem::pollAnipal, this);
+	}
+
+	// Polls SRAnipal to get updated eye tracking information
+	void pollAnipal() {
+		while (!this->shouldShutDownEyeTracking) {
+			this->result = ViveSR::anipal::Eye::GetEyeData(&this->eyeData);
+			if (result == ViveSR::Error::WORK) {
+				int isOriginValid = ViveSR::anipal::Eye::DecodeBitMask(this->eyeData.verbose_data.combined.eye_data.eye_data_validata_bit_mask,
+					ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY);
+				int isDirValid = ViveSR::anipal::Eye::DecodeBitMask(this->eyeData.verbose_data.combined.eye_data.eye_data_validata_bit_mask,
+					ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_ORIGIN_VALIDITY);
+				if (!isOriginValid || !isDirValid) continue;
+
+				auto gazeOrigin = this->eyeData.verbose_data.combined.eye_data.gaze_origin_mm;
+				if (gazeOrigin.x != -1.0f || gazeOrigin.y != 1.0f || gazeOrigin.z != 1.0f)
+					eyeTrackingData.origin = glm::vec3(gazeOrigin.x, gazeOrigin.y, gazeOrigin.z);
+				auto gazeDirection = this->eyeData.verbose_data.combined.eye_data.gaze_direction_normalized;
+				if (gazeDirection.x != -1.0f || gazeDirection.y != 1.0f || gazeDirection.z != 1.0f)
+					eyeTrackingData.dir = glm::vec3(gazeDirection.x, gazeDirection.y, gazeDirection.z);
+
+				// Calculate intersection point of two eyes
+				auto leftGazeOrigin = this->eyeData.verbose_data.left.gaze_origin_mm;
+				glm::vec3 lgo = glm::vec3(leftGazeOrigin.x, leftGazeOrigin.y, leftGazeOrigin.z);
+				auto leftGazeDir = this->eyeData.verbose_data.left.gaze_direction_normalized;
+				glm::vec3 lgd = glm::vec3(leftGazeDir.x, leftGazeDir.y, leftGazeDir.z);
+				auto rightGazeOrigin = this->eyeData.verbose_data.right.gaze_origin_mm;
+				glm::vec3 rgo = glm::vec3(rightGazeOrigin.x, rightGazeOrigin.y, rightGazeOrigin.z);
+				auto rightGazeDir = this->eyeData.verbose_data.right.gaze_direction_normalized;
+				glm::vec3 rgd = glm::vec3(rightGazeDir.x, rightGazeDir.y, rightGazeDir.z);
+
+				// Solve for closest point to each of two gaze lines, which is the point the user is looking at
+				// This is the midpoint of the shortest line segment between them
+				float s = (glm::dot(lgd, rgd) * (glm::dot(lgo, rgd) - glm::dot(lgd, rgo)) - glm::dot(lgo, rgd) * glm::dot(rgo, rgd))
+					/ ((glm::dot(lgo, rgd) * glm::dot(lgo, rgd)) - 1);
+				float t = (glm::dot(lgd, rgd) * (glm::dot(rgo, rgd) - glm::dot(lgo, rgd)) - glm::dot(lgd, rgo) * glm::dot(lgo, lgd))
+					/ ((glm::dot(lgo, rgd) * glm::dot(lgo, rgd)) - 1);
+
+				eyeTrackingData.gazePoint = 0.5f * (lgo + rgo + t * lgd + s * rgd);
+				// x coordinates are opposite of OpenGL convention
+				eyeTrackingData.gazePoint.x *= -1;
+				
+				// Record pupil measurements
+				eyeTrackingData.leftPupilDiameter = this->eyeData.verbose_data.left.pupil_diameter_mm;
+				eyeTrackingData.rightPupilDiameter = this->eyeData.verbose_data.right.pupil_diameter_mm;
+			}
+		}
+	}
+
 	// Calls WaitGetPoses and updates all hmd and controller transformations
 	void updateVRData() {
 		hmdData.isValidData = false;
@@ -1367,6 +1502,7 @@ PYBIND11_MODULE(MeshRendererContext, m) {
 
 		pymoduleVR.def(py::init());
 		pymoduleVR.def("initVR", &VRSystem::initVR);
+		pymoduleVR.def("getEyeTrackingData", &VRSystem::getEyeTrackingData);
 		pymoduleVR.def("setVRCamera", &VRSystem::setVRCamera);
 		pymoduleVR.def("resetVRCamera", &VRSystem::resetVRCamera);
 		pymoduleVR.def("preRenderVR", &VRSystem::preRenderVR);

@@ -5,16 +5,17 @@ import matplotlib.pyplot as plt
 # VR wrapper class on top of Gibson Mesh Renderers
 class MeshRendererVR():
     # Init takes in a renderer type to use for VR (which can be of type MeshRenderer or something else as long as it conforms to the same interface)
-    def __init__(self, rendererType, vrWidth=None, vrHeight=None, msaa=False, fullscreen=True, optimize=True, vrMode=True):
+    def __init__(self, rendererType, vrWidth=None, vrHeight=None, msaa=False, fullscreen=True, optimize=True, useEyeTracking=False, vrMode=True):
         # Msaa slows down VR significantly, so only use it if you have to
         self.msaa = msaa
         self.fullscreen = fullscreen
         self.optimize = optimize
+        self.useEyeTracking = useEyeTracking
         self.vrMode = vrMode
         self.vrsys = MeshRendererContext.VRSystem()
         # Default recommended is 2016 x 2240
         if self.vrMode:
-            self.recWidth, self.recHeight = self.vrsys.initVR()
+            self.recWidth, self.recHeight = self.vrsys.initVR(self.useEyeTracking)
         self.baseWidth = 1080
         self.baseHeight = 1200
         self.scaleFactor = 1.4
