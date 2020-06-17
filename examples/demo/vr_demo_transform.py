@@ -54,6 +54,9 @@ rightGripperFraction = 0.0
 if optimize:
     s.optimize_data()
 
+# Set VR system transform
+s.setVRPosition([0,1.0,-1.0])
+
 # Runs simulation
 while True:
     start = time.time()

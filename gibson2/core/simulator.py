@@ -503,15 +503,13 @@ class Simulator:
         origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
         return [origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter]
 
-    # Sets the VR camera to a specific position, eg. the head of a robot
-    def setVRCamera(self, pos=None, shouldReset=False):
+    # Sets the position of the VR system (HMD, left controller, right controller).
+    # Can be used for many things, including adjusting height and teleportation-based movement
+    def setVRPosition(self, pos=None):
         if not self.use_vr_renderer:
             return
-        
-        if shouldReset == False and pos is not None:
-            self.renderer.set_vr_camera(pos)
-        elif shouldReset == True:
-            self.renderer.reset_vr_camera()
+
+        self.renderer.set_vr_position(pos)
 
     @staticmethod
     def update_position(instance):
