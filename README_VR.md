@@ -90,7 +90,7 @@ $ cd iGibson
 $ pip install -e .
 ```
 
-Then copy and past the openvr_api.dll file from the top-level iGibson folder and put it into the iGibson/gibson2/core/render/mesh_renderer/Release folder.
+Then copy and past the openvr_api.dll file from the top-level iGibson folder and put it into the iGibson/gibson2/core/render/mesh_renderer/Release folder. Also put the 5 dll files in the sranipal->bin folder into this Release folder.
 
 Should end printing 'Successfully installed gibson2'
 
