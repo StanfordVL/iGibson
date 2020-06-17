@@ -28,15 +28,12 @@ class MeshRendererVR():
 
         self.fig = plt.figure()
 
-    # Sets the position of the VR camera to the position argument given
-    def set_vr_camera(self, pos):
+    # Sets the position of the VR system (HMD, left controller, right controller).
+    # Can be used for many things, including adjusting height and teleportation-based movement
+    def set_vr_position(self, pos):
         # Gibson coordinate system is rotated from OpenGL
         # So we map (vr from gib) x<-y, y<-z and z<-x
-        self.vrsys.setVRCamera(-pos[1], pos[2], -pos[0])
-
-    # Resets the position of the VR camera
-    def reset_vr_camera(self):
-        self.vrsys.resetVRCamera()
+        self.vrsys.setVRPosition(-pos[1], pos[2], -pos[0])
 
     # Load object through renderer
     def load_object(self,

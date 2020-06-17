@@ -863,9 +863,8 @@ public:
 	float nearClip;
 	float farClip;
 
-	// Boolean indicating whether the user has request the VR camera to be at a specific location
-	bool hasSetCamera;
-	glm::vec3 currCameraPos;
+	// Vector indicating the user-defined offset for the VR system (may be used if implementing a teleportation movement scheme, for example)
+	glm::vec3 vrOffsetVec;
 
 	// Device data stored in VR coordinates
 	struct DeviceData {
@@ -885,7 +884,7 @@ public:
 	DeviceData leftControllerData;
 	DeviceData rightControllerData;
 
-	// Indicates where the headset actually is in the room, irrespective of whether the VR camera has been set or not
+	// Indicates where the headset actually is in the room
 	glm::vec3 hmdActualPos;
 
 	// View matrices for both left and right eyes (only proj and view are actually returned to the user)
@@ -952,9 +951,10 @@ public:
 		renderDims.append((int)renderWidth);
 		renderDims.append((int)renderHeight);
 
-		hasSetCamera = false;
 		// Set gibToVR and vrToGib matrices
 		setCoordinateTransformMatrices();
+		// No VR system offset by default
+		vrOffsetVec = glm::vec3(0, 0, 0);
 
 		// Set eye tracking boolean
 		this->useEyeTracking = useEyeTracking;
@@ -1001,17 +1001,10 @@ public:
 		return eyeData;
 	}
 
-	// Sets the position of the VR camera
-	// TIMELINE: Call before preRenderVR - takes one frame to update camera position
-	void setVRCamera(float x, float y, float z) {
-		currCameraPos = glm::vec3(x, y, z);
-		hasSetCamera = true;
-	}
-
-	// Resets the VR camera to use the position of the HMD as its location
-	// TIMELINE: Call before preRenderVR - takes one frame to update camera position
-	void resetVRCamera() {
-		hasSetCamera = false;
+	// Sets the position of the VR headset
+	// TIMELINE: Can call any time
+	void setVRPosition(float x, float y, float z) {
+		this->vrOffsetVec = glm::vec3(x, y, z);
 	}
 
 	// Returns the projection and view matrices for the left and right eyes, to be used in rendering
@@ -1236,9 +1229,9 @@ private:
 				hmdData.index = idx;
 				hmdData.isValidData = true;
 				hmdActualPos = getPositionFromSteamVRMatrix(transformMat);
-				if (hasSetCamera) {
-					SetSteamVRMatrixPos(currCameraPos, transformMat);
-				}
+
+				setSteamVRMatrixPos(hmdActualPos + vrOffsetVec, transformMat);
+
 				hmdData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 				hmdData.devicePos = getPositionFromSteamVRMatrix(transformMat);
 				hmdData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
@@ -1251,6 +1244,10 @@ private:
 				else if (role == vr::TrackedControllerRole_LeftHand) {
 					leftControllerData.index = idx;
 					leftControllerData.isValidData = true;
+
+					glm::vec3 leftControllerPos = getPositionFromSteamVRMatrix(transformMat);
+					setSteamVRMatrixPos(leftControllerPos + vrOffsetVec, transformMat);
+
 					leftControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 					leftControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
 					leftControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
@@ -1258,6 +1255,10 @@ private:
 				else if (role == vr::TrackedControllerRole_RightHand) {
 					rightControllerData.index = idx;
 					rightControllerData.isValidData = true;
+
+					glm::vec3 rightControllerPos = getPositionFromSteamVRMatrix(transformMat);
+					setSteamVRMatrixPos(rightControllerPos + vrOffsetVec, transformMat);
+
 					rightControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 					rightControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
 					rightControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
@@ -1362,8 +1363,8 @@ private:
 		}
 	}
 
-	// Sets the position in a SteamVR Matrix
-	void SetSteamVRMatrixPos(glm::vec3& pos, vr::HmdMatrix34_t& mat) {
+	// Sets the position component of a SteamVR Matrix
+	void setSteamVRMatrixPos(glm::vec3& pos, vr::HmdMatrix34_t& mat) {
 		mat.m[0][3] = pos[0];
 		mat.m[1][3] = pos[1];
 		mat.m[2][3] = pos[2];
@@ -1503,8 +1504,7 @@ PYBIND11_MODULE(MeshRendererContext, m) {
 		pymoduleVR.def(py::init());
 		pymoduleVR.def("initVR", &VRSystem::initVR);
 		pymoduleVR.def("getEyeTrackingData", &VRSystem::getEyeTrackingData);
-		pymoduleVR.def("setVRCamera", &VRSystem::setVRCamera);
-		pymoduleVR.def("resetVRCamera", &VRSystem::resetVRCamera);
+		pymoduleVR.def("setVRPosition", &VRSystem::setVRPosition);
 		pymoduleVR.def("preRenderVR", &VRSystem::preRenderVR);
 		pymoduleVR.def("postRenderVRForEye", &VRSystem::postRenderVRForEye);
 		pymoduleVR.def("postRenderVRUpdate", &VRSystem::postRenderVRUpdate);
