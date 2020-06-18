@@ -790,22 +790,25 @@ public:
         glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
     }
 
-    void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color, float use_texture, float use_pbr, float metalness, float roughness) {
+    void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color, float use_texture, float use_pbr, float metallic, float roughness) {
         float *diffuse_ptr = (float *) diffuse_color.request().ptr;
         glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
         glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
         glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
         glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
-        glUniform1f(glGetUniformLocation(shaderProgram, "metalness"), metalness);
+        glUniform1f(glGetUniformLocation(shaderProgram, "metallic"), metallic);
         glUniform1f(glGetUniformLocation(shaderProgram, "roughness"), roughness);
 
         glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
         glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 1);
         glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 2);
         glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 3);
+        glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 4);
+        glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 5);
     }
 
-    void draw_elements_instance(bool flag, int texture_id,  int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
+    void draw_elements_instance(bool flag, int texture_id, int metallic_texture_id, int roughness_texture_id,
+            int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
         glActiveTexture(GL_TEXTURE0);
         if (flag) glBindTexture(GL_TEXTURE_2D, texture_id);
 
@@ -817,6 +820,16 @@ public:
 
         glActiveTexture(GL_TEXTURE3);
         if (flag) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT.id);
+
+        if (metallic_texture_id != -1) {
+            glActiveTexture(GL_TEXTURE4);
+            if (flag) glBindTexture(GL_TEXTURE_2D, metallic_texture_id);
+        }
+
+        if (roughness_texture_id != -1) {
+            glActiveTexture(GL_TEXTURE5);
+            if (flag) glBindTexture(GL_TEXTURE_2D, roughness_texture_id);
+        }
 
         glBindVertexArray(vao);
         glBindFramebuffer(GL_FRAMEBUFFER, fb);
@@ -864,6 +877,8 @@ public:
         glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 1);
         glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 2);
         glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 3);
+        glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 4);
+        glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 5);
     }
 
 

@@ -118,9 +118,18 @@ class InstanceGroup(object):
                                                            float(self.metalness),
                                                            float(self.roughness))
                 try:
-                    texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
+                    current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
+                    texture_id = current_material.texture_id
+                    metallic_texture_id = current_material.metallic_texture_id
+                    roughness_texture_id = current_material.roughness_texture_id
+
                     if texture_id is None:
                         texture_id = -1
+                    if metallic_texture_id is None:
+                        metallic_texture_id = -1
+                    if roughness_texture_id is None:
+                        roughness_texture_id = -1
+
 
                     if self.renderer.msaa:
                         buffer = self.renderer.fbo_ms
@@ -129,6 +138,8 @@ class InstanceGroup(object):
 
                     self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                            texture_id,
+                                                           metallic_texture_id,
+                                                           roughness_texture_id,
                                                            self.renderer.VAOs[object_idx],
                                                            self.renderer.faces[object_idx].size,
                                                            self.renderer.faces[object_idx],
@@ -246,9 +257,17 @@ class Instance(object):
                                                    float(self.metalness),
                                                    float(self.roughness))
             try:
-                texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
+                current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
+                texture_id = current_material.texture_id
+                metallic_texture_id = current_material.metallic_texture_id
+                roughness_texture_id = current_material.roughness_texture_id
+
                 if texture_id is None:
                     texture_id = -1
+                if metallic_texture_id is None:
+                    metallic_texture_id = -1
+                if roughness_texture_id is None:
+                    roughness_texture_id = -1
 
                 if self.renderer.msaa:
                     buffer = self.renderer.fbo_ms
@@ -257,6 +276,8 @@ class Instance(object):
 
                 self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                        texture_id,
+                                                       metallic_texture_id,
+                                                       roughness_texture_id,
                                                        self.renderer.VAOs[object_idx],
                                                        self.renderer.faces[object_idx].size,
                                                        self.renderer.faces[object_idx],
@@ -288,10 +309,13 @@ class Instance(object):
 
 
 class Material(object):
-    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=None):
+    def __init__(self, type='color', kd=[0.5, 0.5, 0.5],
+                 texture_id=None, metallic_texture_id=None, roughness_texture_id=None):
         self.type = type
         self.kd = kd
         self.texture_id = texture_id
+        self.metallic_texture_id = metallic_texture_id
+        self.roughness_texture_id = roughness_texture_id
 
     def is_texture(self):
         return self.type == 'texture'
@@ -462,15 +486,26 @@ class MeshRenderer(object):
         logging.debug("Num shapes: {}".format(len(shapes)))
 
         material_count = len(self.materials_mapping)
-        materials_fn = {}
 
         for i, item in enumerate(materials):
             if item.diffuse_texname != '' and load_texture:
-                materials_fn[i + material_count] = item.diffuse_texname
                 obj_dir = os.path.dirname(obj_path)
                 texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
                 self.textures.append(texture)
-                material = Material('texture', texture_id=texture)
+
+                texture_metallic = None
+                texture_roughness = None
+
+                if item.metallic_texname != '' and load_texture: # map_Pm
+                    texture_metallic = self.r.loadTexture(os.path.join(obj_dir, item.metallic_texname))
+                    self.textures.append(texture_metallic)
+
+                if item.roughness_texname != '' and load_texture: # map_Pr
+                    texture_roughness = self.r.loadTexture(os.path.join(obj_dir, item.roughness_texname))
+                    self.textures.append(texture_roughness)
+
+                material = Material('texture', texture_id=texture, metallic_texture_id=texture_metallic,
+                                    roughness_texture_id = texture_roughness)
             else:
                 material = Material('color', kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
