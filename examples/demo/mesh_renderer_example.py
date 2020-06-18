@@ -15,18 +15,10 @@ def main():
     else:
         model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
 
-    renderer = MeshRenderer(width=2000, height=2000, msaa=False)
-    renderer.load_object(model_path, scale=np.array([0.0035,0.0035,0.0035]))
+    renderer = MeshRenderer(width=512, height=512, msaa=False)
+    renderer.load_object(model_path)
     
-    for i in range(5):
-        for j in range(5):
-            renderer.add_instance(0)
-            renderer.set_pose([(j-2)*0.2,(i-2)*0.2,0,1,0,0,0], -1)
-            renderer.instances[-1].use_pbr = True
-            renderer.instances[-1].use_texture = True
-            renderer.instances[-1].roughness = (4-i) * 0.25
-            renderer.instances[-1].metalness = j * 0.25
-
+    renderer.add_instance(0)
     print(renderer.visual_objects, renderer.instances)
     print(renderer.materials_mapping, renderer.mesh_materials)
     
