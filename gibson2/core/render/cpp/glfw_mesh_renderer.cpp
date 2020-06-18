@@ -150,9 +150,9 @@ public:
     const int kIrradianceMapSize = 32;
     const int kBRDF_LUT_Size = 256;
 
-    GLuint m_tonemapProgram;
-    GLuint m_skyboxProgram;
-    GLuint m_pbrProgram;
+//    GLuint m_tonemapProgram;
+//    GLuint m_skyboxProgram;
+//    GLuint m_pbrProgram;
 
     Texture m_envTexture;
     Texture m_irmapTexture;
@@ -273,7 +273,7 @@ public:
         return texture;
     }
 
-    void setup_pbr() {
+    void setup_pbr(std::string shader_path, std::string env_texture_filename) {
 
         glEnable(GL_CULL_FACE);
         glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
@@ -284,20 +284,20 @@ public:
         m_transformUB = createUniformBuffer<TransformUB>();
         m_shadingUB = createUniformBuffer<ShadingUB>();
 
-        m_tonemapProgram = linkProgram({
-                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/tonemap_vs.glsl", GL_VERTEX_SHADER),
-                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/tonemap_fs.glsl", GL_FRAGMENT_SHADER)
-                   });
+//        m_tonemapProgram = linkProgram({
+//                           compileShader(shader_path + "/tonemap_vs.glsl", GL_VERTEX_SHADER),
+//                           compileShader(shader_path + "/tonemap_fs.glsl", GL_FRAGMENT_SHADER)
+//                   });
+//
+//        m_skyboxProgram = linkProgram({
+//                           compileShader(shader_path + "/skybox_vs.glsl", GL_VERTEX_SHADER),
+//                           compileShader(shader_path + "/skybox_fs.glsl", GL_FRAGMENT_SHADER)
+//                   });
 
-        m_skyboxProgram = linkProgram({
-                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/skybox_vs.glsl", GL_VERTEX_SHADER),
-                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/skybox_fs.glsl", GL_FRAGMENT_SHADER)
-                   });
-
-        m_pbrProgram = linkProgram({
-                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/pbr_vs.glsl", GL_VERTEX_SHADER),
-                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/pbr_fs.glsl", GL_FRAGMENT_SHADER)
-                   });
+//        m_pbrProgram = linkProgram({
+//                           compileShader(shader_path + "/pbr_vs.glsl", GL_VERTEX_SHADER),
+//                           compileShader(shader_path + "/pbr_fs.glsl", GL_FRAGMENT_SHADER)
+//                   });
 
 
         envTextureUnfiltered = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
@@ -305,10 +305,10 @@ public:
         // Load & convert equirectangular environment map to a cubemap texture.
         {
             GLuint equirectToCubeProgram = linkProgram({
-                               compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/equirect2cube_cs.glsl", GL_COMPUTE_SHADER)
+                               compileShader(shader_path + "equirect2cube_cs.glsl", GL_COMPUTE_SHADER)
                        });
 
-            envTextureEquirect = createTexture(Image::fromFile("/home/fei/Downloads/carpentry_shop_02_1k.hdr", 3), GL_RGB, GL_RGB16F, 1);
+            envTextureEquirect = createTexture(Image::fromFile(env_texture_filename, 3), GL_RGB, GL_RGB16F, 1);
 
             glUseProgram(equirectToCubeProgram);
             glBindTextureUnit(0, envTextureEquirect.id);
@@ -322,7 +322,7 @@ public:
 
         {
             GLuint spmapProgram = linkProgram({
-                                          compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/spmap_cs.glsl", GL_COMPUTE_SHADER)
+                                          compileShader(shader_path + "/spmap_cs.glsl", GL_COMPUTE_SHADER)
                                   });
 
             m_envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
@@ -351,7 +351,7 @@ public:
         // Compute diffuse irradiance cubemap.
         {
             GLuint irmapProgram = linkProgram({
-                          compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/irmap_cs.glsl", GL_COMPUTE_SHADER)
+                          compileShader(shader_path + "/irmap_cs.glsl", GL_COMPUTE_SHADER)
                   });
 
             m_irmapTexture = createTexture(GL_TEXTURE_CUBE_MAP, kIrradianceMapSize, kIrradianceMapSize, GL_RGBA16F, 1);
@@ -366,7 +366,7 @@ public:
         // Compute Cook-Torrance BRDF 2D LUT for split-sum approximation.
         {
             GLuint spBRDFProgram = linkProgram({
-                           compileShader("/home/fei/Development/gibsonv2/gibson2/core/render/mesh_renderer/shaders/spbrdf_cs.glsl", GL_COMPUTE_SHADER)
+                           compileShader(shader_path + "spbrdf_cs.glsl", GL_COMPUTE_SHADER)
                    });
 
             m_spBRDF_LUT = createTexture(GL_TEXTURE_2D, kBRDF_LUT_Size, kBRDF_LUT_Size, GL_RG16F, 1);
@@ -381,7 +381,7 @@ public:
 
         glFinish();
 
-        std::cout << "test pbr functions" << std::endl;
+        std::cout << "INFO: compiled pbr shaders" << std::endl;
     }
 
 

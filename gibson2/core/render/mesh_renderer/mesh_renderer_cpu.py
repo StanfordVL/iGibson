@@ -395,10 +395,11 @@ class MeshRenderer(object):
         self.materials_mapping = {}
         self.mesh_materials = []
 
-        self.test_pbr()
+        self.env_texture_filename = os.path.join(gibson2.assets_path, 'test', 'carpentry_shop_02_1k.hdr')
+        self.setup_pbr()
 
-    def test_pbr(self):
-        self.r.setup_pbr()
+    def setup_pbr(self):
+        self.r.setup_pbr( os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/'), self.env_texture_filename)
 
     def setup_framebuffer(self):
         """
@@ -467,7 +468,6 @@ class MeshRenderer(object):
             if item.diffuse_texname != '' and load_texture:
                 materials_fn[i + material_count] = item.diffuse_texname
                 obj_dir = os.path.dirname(obj_path)
-                #texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
                 texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
                 self.textures.append(texture)
                 material = Material('texture', texture_id=texture)
