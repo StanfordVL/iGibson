@@ -300,8 +300,9 @@ class NavigateEnv(BaseEnv):
         """
         return self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
 
-    def get_rgb_cube(self):
+    def get_rgb_cube(self, fixed_orientation=False):
         """
+        :param fixed_orientation: Whether to use a fixed orientation when rendering
         :return: List of RGB sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
         """
         orig_fov = self.simulator.renderer.vertical_fov
@@ -310,9 +311,12 @@ class NavigateEnv(BaseEnv):
         for instance in self.simulator.renderer.instances:
             if isinstance(instance, Robot):
                 camera_pos = instance.robot.eyes.get_position()
-                orn = instance.robot.eyes.get_orientation()
-                mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
-                view_direction = mat.dot(np.array([1, 0, 0]))
+                if fixed_orientation:
+                    view_direction = np.array([1, 0, 0])
+                else:
+                    orn = instance.robot.eyes.get_orientation()
+                    mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+                    view_direction = mat.dot(np.array([1, 0, 0]))
                 orig_view_direction = view_direction
                 self.simulator.renderer.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
                 r2 = np.array([[np.cos(-np.pi/2), -np.sin(-np.pi/2), 0], [np.sin(-np.pi/2), np.cos(-np.pi/2), 0], [0, 0, 1]])
@@ -404,6 +408,8 @@ class NavigateEnv(BaseEnv):
             state['rgb'] = self.get_rgb()
         if 'rgb_cube' in self.output:
             state['rgb_cube'] = self.get_rgb_cube()
+        if 'rgb_cube_fixed_orn' in self.output:
+            state['rgb_cube_fixed_orn'] = self.get_rgb_cube(fixed_orientation=True)
         if 'depth' in self.output:
             state['depth'] = self.get_depth()
         if 'pc' in self.output:
