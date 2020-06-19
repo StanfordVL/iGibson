@@ -805,10 +805,11 @@ public:
         glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 3);
         glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 4);
         glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 5);
+        glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 6);
     }
 
     void draw_elements_instance(bool flag, int texture_id, int metallic_texture_id, int roughness_texture_id,
-            int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
+            int normal_texture_id, int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
         glActiveTexture(GL_TEXTURE0);
         if (flag) glBindTexture(GL_TEXTURE_2D, texture_id);
 
@@ -829,6 +830,11 @@ public:
         if (roughness_texture_id != -1) {
             glActiveTexture(GL_TEXTURE5);
             if (flag) glBindTexture(GL_TEXTURE_2D, roughness_texture_id);
+        }
+
+        if (normal_texture_id != -1) {
+            glActiveTexture(GL_TEXTURE6);
+            if (flag) glBindTexture(GL_TEXTURE_2D, normal_texture_id);
         }
 
         glBindVertexArray(vao);
@@ -879,6 +885,8 @@ public:
         glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 3);
         glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 4);
         glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 5);
+        glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 6);
+
     }
 
 

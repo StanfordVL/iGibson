@@ -122,6 +122,7 @@ class InstanceGroup(object):
                     texture_id = current_material.texture_id
                     metallic_texture_id = current_material.metallic_texture_id
                     roughness_texture_id = current_material.roughness_texture_id
+                    normal_texture_id = current_material.normal_texture_id
 
                     if texture_id is None:
                         texture_id = -1
@@ -129,7 +130,8 @@ class InstanceGroup(object):
                         metallic_texture_id = -1
                     if roughness_texture_id is None:
                         roughness_texture_id = -1
-
+                    if normal_texture_id is None:
+                        normal_texture_id = -1
 
                     if self.renderer.msaa:
                         buffer = self.renderer.fbo_ms
@@ -140,6 +142,7 @@ class InstanceGroup(object):
                                                            texture_id,
                                                            metallic_texture_id,
                                                            roughness_texture_id,
+                                                           normal_texture_id,
                                                            self.renderer.VAOs[object_idx],
                                                            self.renderer.faces[object_idx].size,
                                                            self.renderer.faces[object_idx],
@@ -261,6 +264,7 @@ class Instance(object):
                 texture_id = current_material.texture_id
                 metallic_texture_id = current_material.metallic_texture_id
                 roughness_texture_id = current_material.roughness_texture_id
+                normal_texture_id = current_material.normal_texture_id
 
                 if texture_id is None:
                     texture_id = -1
@@ -268,6 +272,8 @@ class Instance(object):
                     metallic_texture_id = -1
                 if roughness_texture_id is None:
                     roughness_texture_id = -1
+                if normal_texture_id is None:
+                    normal_texture_id = -1
 
                 if self.renderer.msaa:
                     buffer = self.renderer.fbo_ms
@@ -278,6 +284,7 @@ class Instance(object):
                                                        texture_id,
                                                        metallic_texture_id,
                                                        roughness_texture_id,
+                                                       normal_texture_id,
                                                        self.renderer.VAOs[object_idx],
                                                        self.renderer.faces[object_idx].size,
                                                        self.renderer.faces[object_idx],
@@ -310,12 +317,14 @@ class Instance(object):
 
 class Material(object):
     def __init__(self, type='color', kd=[0.5, 0.5, 0.5],
-                 texture_id=None, metallic_texture_id=None, roughness_texture_id=None):
+                 texture_id=None, metallic_texture_id=None,
+                 roughness_texture_id=None, normal_texture_id=None):
         self.type = type
         self.kd = kd
         self.texture_id = texture_id
         self.metallic_texture_id = metallic_texture_id
         self.roughness_texture_id = roughness_texture_id
+        self.normal_texture_id = normal_texture_id
 
     def is_texture(self):
         return self.type == 'texture'
@@ -495,6 +504,7 @@ class MeshRenderer(object):
 
                 texture_metallic = None
                 texture_roughness = None
+                texture_normal = None
 
                 if item.metallic_texname != '' and load_texture: # map_Pm
                     texture_metallic = self.r.loadTexture(os.path.join(obj_dir, item.metallic_texname))
@@ -504,8 +514,13 @@ class MeshRenderer(object):
                     texture_roughness = self.r.loadTexture(os.path.join(obj_dir, item.roughness_texname))
                     self.textures.append(texture_roughness)
 
+                if item.bump_texname != '' and load_texture: # map_bump, use bump map for normal
+                    # because for some reason norm. key does not work
+                    texture_normal = self.r.loadTexture(os.path.join(obj_dir, item.bump_texname))
+                    self.textures.append(texture_normal)
+
                 material = Material('texture', texture_id=texture, metallic_texture_id=texture_metallic,
-                                    roughness_texture_id = texture_roughness)
+                                    roughness_texture_id=texture_roughness, normal_texture_id=texture_normal)
             else:
                 material = Material('color', kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
