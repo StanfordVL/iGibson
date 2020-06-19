@@ -814,11 +814,14 @@ class NavigateRandomEnv(NavigateEnv):
             print("WARNING: Failed to sample initial and target positions")
         self.initial_orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
 
-    def reset(self):
+    def reset(self, floor_idx=None):
         """
         Reset episode
         """
-        self.floor_num = self.scene.get_random_floor()
+        if floor_idx is None:
+            self.floor_num = self.scene.get_random_floor()
+        else:
+            self.floor_num = floor_idx
 
         if self.scene.is_interactive:
             # reset scene objects
