@@ -8,6 +8,8 @@ class Viewer:
                  initial_pos = [0,0,1.2], 
                  initial_view_direction = [1,0,0], 
                  initial_up = [0,0,1],
+                 mujoco_env = None,
+                 hide_robot = True,
                  ):
         self.px = initial_pos[0]
         self.py = initial_pos[1]
@@ -23,11 +25,13 @@ class Viewer:
         self.view_direction = np.array(initial_view_direction)
         self.up = initial_up
         self.renderer = None
+        self.hide_robot = hide_robot
 
         cv2.namedWindow('ExternalView')
         cv2.moveWindow("ExternalView", 0,0)
-        cv2.namedWindow('RobotView')
+        #cv2.namedWindow('RobotView')
         cv2.setMouseCallback('ExternalView', self.change_dir)
+        self.mujoco_env = mujoco_env
 
     def change_dir(self, event, x, y, flags, param):
         if flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_CTRLKEY and not self.right_down: 
@@ -114,12 +118,20 @@ class Viewer:
             self.py -= 0.05
         elif q == ord('q'):
             exit()
+        elif q == ord('0') or q == ord('1') or q == ord('2') or q == ord('3') or q == ord('4') or q == ord('5'):
+            idxx = int(chr(q)) 
+            self.renderer.switch_camera(idxx)
+            if not self.renderer.is_camera_active(idxx):
+                cv2.destroyWindow(self.renderer.get_camera_name(idxx))
 
         if not self.renderer is None:
-            frames = self.renderer.render_robot_cameras(modes=('rgb'))
+            frames = self.renderer.render_robot_cameras(modes=('rgb'), hide_robot= self.hide_robot)
+            names = self.renderer.get_names_active_cameras()
+            assert len(frames) == len(names)
             if len(frames) > 0:
-                frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
-                cv2.imshow('RobotView', frame)
+                for (rgb, cam_name) in zip(frames, names):
+                    frame = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+                    cv2.imshow(cam_name, frame)
 
 
 if __name__ == '__main__':

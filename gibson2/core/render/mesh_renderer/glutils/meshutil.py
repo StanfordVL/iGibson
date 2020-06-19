@@ -186,13 +186,19 @@ def quat2rotmat(quat):
     return rot_mat
 
 
-def xyz2mat(xyz):
+def xyz2mat_opengl(xyz):
+    """
+    Function to generate the an homogenous trasnsformation matrix with the given tranlation part in opengl format
+    Opengl format is right handed (transposed of the common left handed format)
+    :param xyz: tranlational part
+    :return: homogeneous transformation matrix 4x4 with the given translational part in the last ROW (instead of column, opengl format)
+    """
     trans_mat = np.eye(4)
     trans_mat[-1, :3] = xyz
     return trans_mat
 
 
-def mat2xyz(mat):
+def mat2xyz_opengl(mat):
     xyz = mat[-1, :3]
     xyz[np.isnan(xyz)] = 0
     return xyz

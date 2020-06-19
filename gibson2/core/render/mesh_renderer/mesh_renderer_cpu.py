@@ -8,7 +8,7 @@ Image.MAX_IMAGE_PIXELS = None
 import cv2
 import numpy as np
 #from pyassimp import load, release
-from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
+from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat_opengl, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
@@ -138,7 +138,7 @@ class InstanceGroup(object):
 
     def get_pose_in_camera(self):
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
-        pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
+        pose = np.concatenate([mat2xyz_opengl(mat), safemat2quat(mat[:3, :3].T)])
         return pose
 
     def set_position(self, pos):
@@ -148,7 +148,7 @@ class InstanceGroup(object):
         :param pos: New translations
         """
 
-        self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
+        self.pose_trans = np.ascontiguousarray(xyz2mat_opengl(pos))
 
     def set_rotation(self, quat):
         """
@@ -180,7 +180,7 @@ class Instance(object):
     """
     Instance is one instance of a visual object. One visual object can have multiple instances to save memory.
     """
-    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic, softbody):
+    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic, softbody, parent_body):
         self.object = object
         self.pose_trans = pose_trans
         self.pose_rot = pose_rot
@@ -190,6 +190,7 @@ class Instance(object):
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.softbody = softbody
+        self.parent_body = parent_body
 
     def render(self):
         """
@@ -263,11 +264,11 @@ class Instance(object):
 
     def get_pose_in_camera(self):
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
-        pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
+        pose = np.concatenate([mat2xyz_opengl(mat), safemat2quat(mat[:3, :3].T)])
         return pose
 
     def set_position(self, pos):
-        self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
+        self.pose_trans = np.ascontiguousarray(xyz2mat_opengl(pos))
 
     def set_rotation(self, quat):
         """
@@ -364,7 +365,8 @@ class MeshRenderer(object):
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         self.lightcolor = [1, 1, 1]
 
-        logging.debug('Is using fisheye camera: {}'.format(self.fisheye))
+        logging.debug('Using fisheye camera: {}'.format(self.fisheye))
+        logging.info('Rendering shadows: {}'.format(self.enable_shadow))
 
         if self.fisheye:
             [self.shaderProgram] = self.r.compile_shader_meshrenderer(
@@ -557,7 +559,8 @@ class MeshRenderer(object):
                      pose_rot=np.eye(4),
                      pose_trans=np.eye(4),
                      dynamic=False,
-                     softbody=False):
+                     softbody=False,
+                     parent_body=None):
         """
         Create instance for a visual object and link it to pybullet
         """
@@ -723,7 +726,7 @@ class MeshRenderer(object):
 
     def set_pose(self, pose, idx):
         self.instances[idx].pose_rot = np.ascontiguousarray(quat2rotmat(pose[3:]))
-        self.instances[idx].pose_trans = np.ascontiguousarray(xyz2mat(pose[:3]))
+        self.instances[idx].pose_trans = np.ascontiguousarray(xyz2mat_opengl(pose[:3]))
 
     def release(self):
         """
@@ -789,20 +792,51 @@ class MeshRenderer(object):
 
     def transform_pose(self, pose):
         pose_rot = quat2rotmat(pose[3:])
-        pose_trans = xyz2mat(pose[:3])
+        pose_trans = xyz2mat_opengl(pose[:3])
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
-        return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
+        return np.concatenate([mat2xyz_opengl(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
     def render_robot_cameras(self, modes=('rgb')):
         frames = []
         for instance in self.instances:
             if isinstance(instance, Robot):
-                camera_pos = instance.robot.eyes.get_position()
-                orn = instance.robot.eyes.get_orientation()
-                mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
-                view_direction = mat.dot(np.array([1, 0, 0]))
-                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
-                for item in self.render(modes=modes, hidden=[instance]):
-                    frames.append(item)
+                for camera in instance.robot.cameras:
+                    if camera.is_active():
+                        camera_pose = camera.get_pose()
+                        camera_pos = camera_pose[:3]
+                        camera_ori = camera_pose[3:]
+                        camera_ori_mat = quat2rotmat([camera_ori[-1], camera_ori[0], camera_ori[1], camera_ori[2]])[:3, :3]
+                        camera_view_dir = camera_ori_mat.dot(np.array([0, 0, -1])) #Mujoco camera points in -z
+                        self.set_camera(camera_pos, camera_pos + camera_view_dir, [0, 0, 1])
+                        #TODO: use camera.modes to decide what to render instead of the argument. In that way, different cameras could 
+                        #render different modalities
+                        for item in self.render(modes=modes, hidden=[[],[instance]][hide_robot]):
+                            frames.append(item)
         return frames
 
+    def get_names_active_cameras(self):
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                for camera in instance.robot.cameras:
+                    if camera.is_active():
+                        names.append(camera.camera_name)
+        return names
+
+    def switch_camera(self, idx):
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                instance.robot.cameras[idx].switch()
+
+    def is_camera_active(self, idx):
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                return instance.robot.cameras[idx].is_active()
+
+    def get_camera_name(self, idx):
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                return instance.robot.cameras[idx].camera_name

@@ -39,7 +39,7 @@ class BaseRobot:
         self.model_file = model_file
         self.physics_model_dir = os.path.join(gibson2.assets_path, "models")
         self.scale = scale
-        self.eyes = None
+        self.cameras = [] #Contains Camera instances
         logging.info('Loading robot model file: {}'.format(self.model_file))
         if self.model_file[-4:] == 'urdf':
             self.model_type = 'URDF'
@@ -65,8 +65,12 @@ class BaseRobot:
 
         self.parts, self.jdict, self.ordered_joints, self.robot_body, self.robot_mass = self.parse_robot(self.robot_ids)
 
-        assert "eyes" in self.parts, 'Please add a link named "eyes" in your robot URDF file with the same pose as the onboard camera. Feel free to check out assets/models/turtlebot/turtlebot.urdf for an example.'
-        self.eyes = self.parts["eyes"]
+         if "eyes" not in self.parts:
+            logging.error('Per default, the camera is attached to a link named "eyes" in your robot URDF file that specifies its pose. \
+                Your URDF does not contain any link "eyes". You will need to specify a camera location manually.\
+                 Check out assets/models/turtlebot/turtlebot.urdf for an example of how to specify a link "eyes".')
+        else:
+            self.cameras = [Camera(camera_link = self.parts["eyes"])]
 
         return self.robot_ids
 
@@ -156,6 +160,9 @@ class BaseRobot:
     def calc_state(self):
         raise NotImplementedError
 
+    def add_camera(self, link_name, offset_pos, offset_ori, active):
+        self.cameras.append(Camera(link_name, offset_pos, offset_ori, active))
+
 
 class BodyPart:
     def __init__(self, body_name, bodies, body_index, body_part_index):
@@ -172,10 +179,10 @@ class BodyPart:
     def _state_fields_of_pose_of(self, body_id, link_id=-1):
         """Get pose of body part"""
         if link_id == -1:
-            (x, y, z), (a, b, c, d) = p.getBasePositionAndOrientation(body_id)
+            (x, y, z), (qx, qy, qz, qw) = p.getBasePositionAndOrientation(body_id)
         else:
-            _, _, _, _, (x, y, z), (a, b, c, d) = p.getLinkState(body_id, link_id)
-        return np.array([x, y, z, a, b, c, d])
+            _, _, _, _, (x, y, z), (qx, qy, qz, qw) = p.getLinkState(body_id, link_id)
+        return np.array([x, y, z, qx, qy, qz, qw])
 
     def _set_fields_of_pose_of(self, pos, orn):
         """Set pose of body part"""
@@ -365,3 +372,57 @@ class Joint:
     def reset_position(self, position, velocity):  # Backward compatibility
         self.reset_state(position, velocity)
 
+
+class Camera(object):
+    """
+    Camera class to define camera locations and its activation state (to render from them or not)
+    """
+    def __init__(self, camera_link, offset_pos = np.array([0,0,0]), offset_ori = np.array([0,0,0,1]), active=True, modes = None, camera_name = None):
+        """
+        :param link_name: string, name of the link the camera is attached to
+        :param offset_pos: vector 3d, position offset to the reference frame of the link
+        :param offset_ori: vector 4d, orientation offset (quaternion: x, y, z, w) to the reference frame of the link
+        :param active: boolean, whether the camera is active and we render virtual images from it
+        :param modes: string, modalities rendered by this camera, a subset of ('rgb', 'normal', 'seg', '3d'). If None, we use the default of the renderer
+        """
+        self.camera_link = camera_link
+        self.offset_pos = offset_pos
+        self.offset_ori = offset_ori
+        self.active = active
+        self.modes = modes
+        self.camera_name = [camera_name, self.camera_link.body_name + '_cam'][camera_name is None]
+
+    def is_active(self):
+        return self.active
+
+    def activate(self):
+        self.active = True
+
+    def deactivate(self):
+        self.active = False
+
+    def switch(self):
+        self.active = [True, False][self.active]
+
+    def get_pose(self):
+        offset_mat = np.eye(4)
+        q_wxyz = quatFromXYZW(self.offset_ori, 'wxyz')
+        offset_mat[:3, :3] = quaternions.quat2mat(q_wxyz)
+        offset_mat[:3, -1] = self.offset_pos
+
+        link_pose = self.camera_link.get_pose()
+        link_mat = np.eye(4)
+        q_wxyz = quatFromXYZW(link_pose[3:7], 'wxyz')
+        link_mat[:3, :3] = quaternions.quat2mat(q_wxyz)
+        link_mat[:3, -1] = link_pose[0:3] 
+
+        total_pose = np.array(link_mat).dot(np.array(offset_mat))
+
+        position = total_pose[:3, -1]
+
+        rot = total_pose[:3, :3]
+        wxyz = quaternions.mat2quat(rot)
+        xyzw = np.concatenate((wxyz[1:], wxyz[:1]))
+
+        return np.concatenate(position, xyzw)
+        

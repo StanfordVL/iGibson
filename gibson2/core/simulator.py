@@ -1,6 +1,6 @@
 from gibson2.core.physics.scene import StadiumScene
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat,\
-    xyz2mat, xyzw2wxyz
+    xyz2mat_opengl, xyzw2wxyz
 from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject, RBOObject, Pedestrian, ShapeNetObject, BoxShape
 from gibson2.core.render.viewer import Viewer
@@ -334,7 +334,7 @@ class Simulator:
             else:
                 _, _, _, _, pos, orn = p.getLinkState(id, link_id)
             poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
-            poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+            poses_trans.append(np.ascontiguousarray(xyz2mat_opengl(pos)))
 
         self.renderer.add_robot(object_ids=visual_objects,
                                 link_ids=link_ids,
@@ -415,7 +415,7 @@ class Simulator:
             else:
                 _, _, _, _, pos, orn = p.getLinkState(id, link_id)
             poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
-            poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+            poses_trans.append(np.ascontiguousarray(xyz2mat_opengl(pos)))
 
         self.renderer.add_instance_group(object_ids=visual_objects,
                                          link_ids=link_ids,
@@ -468,7 +468,7 @@ class Simulator:
                 else:
                     _, _, _, _, pos, orn = p.getLinkState(instance.pybullet_uuid, link_id)
                 poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
-                poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+                poses_trans.append(np.ascontiguousarray(xyz2mat_opengl(pos)))
 
             instance.poses_rot = poses_rot
             instance.poses_trans = poses_trans
