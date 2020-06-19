@@ -1385,6 +1385,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def reset(self):
         self.state = super(MotionPlanningBaseArmEnv, self).reset()
+        self.geodesic_dist = self.scene.get_shortest_path(self.floor_num, self.initial_pos[:2], self.target_pos[:2])[1]
         # self.state['current_step'] = self.current_step
         return self.state
 
@@ -1396,6 +1397,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 done = True
                 info['success'] = True
         return done, info
+
+    def before_simulation(self):
+        robot_position = self.robots[0].get_position()
+        object_positions = [obj.get_position() for obj in self.interactive_objects]
+        return robot_position, object_positions
+
+    def after_simulation(self, cache, collision_links):
+        robot_position, object_positions = cache
+        self.path_length += np.linalg.norm(self.robots[0].get_position() - robot_position)
 
 
 class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
@@ -1441,6 +1451,9 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
             if len(collision_links_flatten_filter) > 0:
                 done = True
                 info['success'] = False
+                info['episode_length'] = self.current_step
+                info['collision_step'] = self.collision_step
+                info['spl'] = float(info['success']) * min(self.geodesic_dist / self.path_length, 1.0)
                 # print('base collision')
                 # episode = Episode(
                 #     success=float(info['success']),
@@ -1451,6 +1464,57 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
     def step(self, action):
         return super(NavigateRandomEnv, self).step(action)
 
+class MotionPlanningBaseArmHRL4INEnv(MotionPlanningBaseArmContinuousEnv):
+    def __init__(self,
+                 config_file,
+                 model_id=None,
+                 collision_reward_weight=0.0,
+                 mode='headless',
+                 action_timestep=1 / 10.0,
+                 physics_timestep=1 / 240.0,
+                 device_idx=0,
+                 random_height=False,
+                 automatic_reset=False,
+                 eval=False,
+                 arena=None,
+                 ):
+        super(MotionPlanningBaseArmHRL4INEnv, self).__init__(config_file,
+                                                             model_id=model_id,
+                                                             mode=mode,
+                                                             action_timestep=action_timestep,
+                                                             physics_timestep=physics_timestep,
+                                                             automatic_reset=automatic_reset,
+                                                             random_height=random_height,
+                                                             device_idx=device_idx,
+                                                             eval=eval,
+                                                             arena=arena,
+                                                             collision_reward_weight=collision_reward_weight,
+                                                            )
+        self.observation_space.spaces['arm_world'] = gym.spaces.Box(low=-np.inf,
+                                                                    high=np.inf,
+                                                                    shape=(3,),
+                                                                    dtype=np.float32)
+        self.observation_space.spaces['yaw'] = gym.spaces.Box(low=-np.pi * 2,
+                                                              high=np.pi * 2,
+                                                              shape=(),
+                                                              dtype=np.float32)
+
+    def get_state(self, collision_links=[]):
+        state = super(MotionPlanningBaseArmHRL4INEnv, self).get_state(collision_links)
+        state['arm_world'] = self.robots[0].get_end_effector_position()
+        state['yaw'] = self.robots[0].get_rpy()[2]
+        return state
+
+    def set_subgoal(self, ideal_next_state):
+        self.arm_marker.set_position(ideal_next_state)
+        self.base_marker.set_position([ideal_next_state[0], ideal_next_state[1], 0])
+
+    def set_subgoal_type(self, only_base=True):
+        if only_base:
+            # Make the marker for the end effector completely transparent
+            self.arm_marker.set_color([0, 0, 0, 0.0])
+        else:
+            self.arm_marker.set_color([0, 0, 0, 0.8])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -1473,7 +1537,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--action_type',
                         '-t',
-                        choices=['high-level', 'low-level'],
+                        choices=['high-level', 'low-level', 'hrl4in'],
                         default='high-level',
                         help='which action type to use (default: high-level)')
 
@@ -1487,7 +1551,7 @@ if __name__ == '__main__':
                                            eval=args.mode == 'gui',
                                            arena=args.arena,
                                            )
-    else:
+    elif args.action_type == 'low-level':
         nav_env = MotionPlanningBaseArmContinuousEnv(config_file=args.config,
                                                      mode=args.mode,
                                                      action_timestep=1 / 10.0,
@@ -1495,6 +1559,14 @@ if __name__ == '__main__':
                                                      eval=args.mode == 'gui',
                                                      arena=args.arena,
                                                      )
+    else:
+        nav_env = MotionPlanningBaseArmHRL4INEnv(config_file=args.config,
+                                                 mode=args.mode,
+                                                 action_timestep=1 / 10.0,
+                                                 physics_timestep=1 / 40.0,
+                                                 eval=args.mode == 'gui',
+                                                 arena=args.arena,
+                                                )
 
     for episode in range(100):
         print('Episode: {}'.format(episode))
@@ -1516,6 +1588,7 @@ if __name__ == '__main__':
             #    # print('reward', reward)
             if done:
                 print('Episode finished after {} timesteps'.format(i + 1))
+                print('Episode length:', info['episode_length'])
                 break
         print(time.time() - start)
 
