@@ -2,6 +2,8 @@
 uniform sampler2D texUnit;
 uniform sampler2D metallicTexture;
 uniform sampler2D roughnessTexture;
+uniform sampler2D normalTexture;
+
 uniform samplerCube specularTexture;
 uniform samplerCube irradianceTexture;
 uniform sampler2D specularBRDF_LUT;
@@ -66,10 +68,7 @@ void main() {
     float diff = 0.5 + 0.5 * max(dot(Normal_world, lightDir), 0.0);
     vec3 diffuse = diff * light_color;
 
-    vec3 N = normalize(Normal_world);
-    vec3 Lo = normalize(eyePosition - FragPos);
-    float cosLo = max(0.0, dot(N, Lo));
-    vec3 Lr = 2.0 * cosLo * N - Lo;
+
 
     //not using pbr
     if (use_pbr == 0) {
@@ -82,6 +81,12 @@ void main() {
 
     //use pbr, not using mapping
     if ((use_pbr == 1) && (use_texture == 0)) {
+
+        vec3 N = normalize(Normal_world);
+        vec3 Lo = normalize(eyePosition - FragPos);
+        float cosLo = max(0.0, dot(N, Lo));
+        vec3 Lr = 2.0 * cosLo * N - Lo;
+
         vec3 albedo = texture(texUnit,theCoords).rgb;
         const vec3 Fdielectric = vec3(0.04);
         vec3 F0 = mix(Fdielectric, albedo, metallic);
@@ -100,10 +105,15 @@ void main() {
 
     // use pbr and mapping
     if ((use_pbr == 1) && (use_texture == 1)) {
-            vec3 albedo = texture(texUnit,theCoords).rgb;
+            vec3 normal_map = 2 * texture(normalTexture, theCoords).rgb - 1;
+            vec3 N = normalize(Normal_world);
+            vec3 Lo = normalize(eyePosition - FragPos);
+            float cosLo = max(0.0, dot(N, Lo));
+            vec3 Lr = 2.0 * cosLo * N - Lo;
+
+            vec3 albedo = texture(texUnit, theCoords).rgb;
             float metallic_sampled = texture(metallicTexture, theCoords).r;
             float roughness_sampled = texture(roughnessTexture, theCoords).r;
-
             const vec3 Fdielectric = vec3(0.04);
             vec3 F0 = mix(Fdielectric, albedo, metallic_sampled);
     		vec3 irradiance = texture(irradianceTexture, N).rgb;
