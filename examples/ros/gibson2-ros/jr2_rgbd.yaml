@@ -1,0 +1,160 @@
+# scene
+
+scene: stadium
+#model_id: area1
+
+# robot
+
+robot: JR2
+
+# task, observation and action
+task: pointgoal # pointgoal|objectgoal|areagoal
+
+initial_orn: [0.0, 0.0, 0.0]
+initial_pos: [0.0, 0.0, 0.0]
+
+target_orn: [0.0, 0.0, 0.0]
+target_pos: [3.0, 5.0, 0.0]
+
+dist_tol: 0.5
+terminal_reward: 5000
+discount_factor: 1.0
+
+additional_states_dim: 3
+
+fisheye: false
+fov: 1.57
+is_discrete: false
+
+debug: true
+# display
+
+use_filler: true
+display_ui: false
+show_diagnostics: false
+ui_num: 2
+ui_components: [RGB_FILLED, DEPTH]
+random:
+  random_initial_pose : false
+  random_target_pose : false
+  random_init_x_range: [-0.1, 0.1]
+  random_init_y_range: [-0.1, 0.1]
+  random_init_z_range: [-0.1, 0.1]
+  random_init_rot_range: [-0.1, 0.1]
+
+output: [nonviz_sensor, rgb, depth, scan]
+resolution: 256
+
+speed:
+  timestep: 0.001
+  frameskip: 10
+
+mode: web_ui #gui|headless
+verbose: false
+fast_lq_render: true
+
+# visual objects
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: true
+
+# ====== from social_nav config ======
+
+sensor_inputs: [sensor, scan]
+n_horizontal_rays: 128
+n_vertical_beams: 1
+
+collision_ignore_body_b_ids: [0, 1, 2]
+collision_ignore_link_a_ids: []
+
+movements:
+  agent:
+    sources: [h1-rob, h2-rob]
+    sources_per_location:
+      crossing: [c1-rob, c2-rob, c3-rob, c4-rob]
+      doorway: [d1-rob, d2-rob, d3-rob, d4-rob, d5-rob, d6-rob]
+      hallway: [h1-rob, h2-rob]
+  pedestrians:
+    crossing:
+      sources: [c1-ped, c2-ped, c3-ped, c4-ped]
+    doorway:
+      sources: [d1-ped, d3-ped, d5-ped, d6-ped]
+    flip_prob: 0.5
+    hallway:
+      sources: [h1-ped, h2-ped]
+      
+pedestrians_dynamics: {chat_distance_max: 0, chat_distance_min: 0, chat_interval_max: 0,
+  chat_interval_min: 0, chat_min_delay: 0, chat_probability: 0, dist_tol: 1.0, kinematics: holonomic,
+  max_angular_velocity: 1.0, max_linear_velocity: 1.0, max_pause_interval: 0, min_pause_interval: 0,
+  min_separation: 0.3, personal_space: 0.2, policy: orca, position_noise: 0.0, radius: 0.3,
+  sensor: coordinates, use_pedestrian_behaviors: false, v_pref: 1.0, velocity_noise: 0.0,
+  visible: true}
+
+connectivity:
+  c-mid: [c1-ped, c2-ped, c3-ped, c4-ped]
+  c1-ped: [c-mid]
+  c1-rob: [c2-rob, c3-rob, c4-rob]
+  c2-ped: [c-mid]
+  c2-rob: [c1-rob, c3-rob, c4-rob]
+  c3-ped: [c-mid]
+  c3-rob: [c1-rob, c2-rob, c4-rob]
+  c4-ped: [c-mid]
+  c4-rob: [c1-rob, c2-rob, c3-rob]
+  d1-ped: [d2-ped]
+  d1-rob: [d2-rob, d4-rob, d5-rob, d6-rob]
+  d2-ped: [d1-ped, d4-ped, d5-ped, d6-ped]
+  d2-rob: [d1-rob, d4-rob, d6-rob, d5-rob]
+  d3-ped: [d4-ped]
+  d3-rob: [d4-rob, d2-rob, d5-rob, d6-rob]
+  d4-ped: [d3-ped, d2-ped, d6-ped, d5-ped]
+  d4-rob: [d3-rob, d2-rob, d5-rob, d6-rob]
+  d5-ped: [d2-ped, d4-ped, d6-ped]
+  d5-rob: [d1-rob, d2-rob, d3-rob, d4-rob, d6-rob]
+  d6-ped: [d2-ped, d4-ped, d5-ped]
+  d6-rob: [d1-rob, d2-rob, d3-rob, d4-rob, d5-rob]
+  h1-ped: [h2-ped]
+  h1-rob: [h2-rob]
+  h2-ped: [h1-ped]
+  h2-rob: [h1-rob]
+  ped-waypoints: [c1-mid, d2-ped, d4-ped]
+  
+walls:
+  walls_dim:
+  - [10.0, 0.5, 1.0]
+  - [10.0, 0.5, 1.0]
+  - [0.5, 21.0, 1.0]
+  - [0.5, 21.0, 1.0]
+  - [4.5, 0.5, 1.0]
+  - [4.5, 0.5, 1.0]
+  - [4.5, 0.5, 1.0]
+  - [4.5, 0.5, 1.0]
+  - [0.5, 4.5, 1.0]
+  - [0.5, 4.5, 1.0]
+  - [0.5, 4.5, 1.0]
+  - [0.5, 4.5, 1.0]
+  - [5.5, 0.5, 1.0]
+  - [5.5, 0.5, 1.0]
+  - [5.5, 0.5, 1.0]
+  - [5.5, 0.5, 1.0]
+  - [17.5, 0.5, 1.0]
+  - [0.5, 5.0, 1.0]
+  - [0.5, 5.0, 1.0]
+  walls_pos:
+  - [0, -11.5, 0.6]
+  - [0, -8.5, 0.6]
+  - [10.5, 0.5, 0.6]
+  - [-10.5, 0.5, 0.6]
+  - [-5.5, 9, 0.6]
+  - [-5.5, 12, 0.6]
+  - [5.5, 9, 0.6]
+  - [5.5, 12, 0.6]
+  - [1.5, 17, 0.6]
+  - [-1.5, 17, 0.6]
+  - [1.5, 4.0, 0.6]
+  - [-1.5, 4.0, 0.6]
+  - [0.0, -1.0, 0.6]
+  - [0.0, 22, 0.6]
+  - [-12.5, 22.0, 0.6]
+  - [12.5, 22.0, 0.6]
+  - [0.0, 25.0, 0.6]
+  - [-18, 20.5, 0.6]
+  - [18, 20.5, 0.6]
