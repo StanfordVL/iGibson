@@ -21,6 +21,7 @@ in vec3 FragPos;
 in vec3 Instance_color;
 in vec3 Pos_cam;
 in vec3 Diffuse_color;
+in mat3 TBN;
 
 const float PI = 3.141592;
 const float Epsilon = 0.00001;
@@ -106,7 +107,7 @@ void main() {
     // use pbr and mapping
     if ((use_pbr == 1) && (use_texture == 1)) {
             vec3 normal_map = 2 * texture(normalTexture, theCoords).rgb - 1;
-            vec3 N = normalize(Normal_world);
+            vec3 N = normalize(TBN * normal_map);
             vec3 Lo = normalize(eyePosition - FragPos);
             float cosLo = max(0.0, dot(N, Lo));
             vec3 Lr = 2.0 * cosLo * N - Lo;

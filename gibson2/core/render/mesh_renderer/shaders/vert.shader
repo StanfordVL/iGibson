@@ -9,6 +9,9 @@ uniform vec3 diffuse_color;
 layout (location=0) in vec3 position;
 layout (location=1) in vec3 normal;
 layout (location=2) in vec2 texCoords;
+layout (location=3) in vec3 tangent;
+layout (location=4) in vec3 bitangent;
+
 out vec2 theCoords;
 out vec3 Normal_world;
 out vec3 FragPos;
@@ -16,6 +19,8 @@ out vec3 Normal_cam;
 out vec3 Instance_color;
 out vec3 Pos_cam;
 out vec3 Diffuse_color;
+out mat3 TBN;
+
 void main() {
     gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1);
     vec4 world_position4 = pose_trans * pose_rot * vec4(position, 1);
@@ -27,4 +32,8 @@ void main() {
     theCoords = texCoords;
     Instance_color = instance_color;
     Diffuse_color = diffuse_color;
+    vec3 T = normalize(vec3(pose_trans * pose_rot * vec4(tangent,   0.0)));
+    vec3 B = normalize(vec3(pose_trans * pose_rot * vec4(bitangent, 0.0)));
+    vec3 N = normalize(vec3(pose_trans * pose_rot * vec4(normal,    0.0)));
+    TBN = mat3(T, B, N);
 }

@@ -536,6 +536,8 @@ class MeshRenderer(object):
         vertex_normal = np.array(attrib.normals).reshape((len(attrib.normals)//3, 3))
         vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
 
+
+
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
             material_id = shape.mesh.material_ids[0]  # assume one shape only has one material
@@ -560,16 +562,37 @@ class MeshRenderer(object):
             else:
                 shape_texcoord = vertex_texcoord[shape_texcoord_index]
 
+
+
+            if not transform_orn is None:
+                orn = quat2rotmat(xyzw2wxyz(transform_orn))
+                shape_vertex = shape_vertex.dot(orn[:3, :3].T)
+            if not transform_pos is None:
+                shape_vertex += np.array(transform_pos)
+
+            v0 = shape_vertex[0::3,:]
+            v1 = shape_vertex[1::3,:]
+            v2 = shape_vertex[2::3,:]
+            uv0 = shape_texcoord[0::3,:]
+            uv1 = shape_texcoord[1::3,:]
+            uv2 = shape_texcoord[2::3,:]
+            delta_pos1 = v1 - v0
+            delta_pos2 = v2 - v0
+            delta_uv1 = uv1 - uv0
+            delta_uv2 = uv2 - uv0
+            r = 1.0 / (delta_uv1[:,0] * delta_uv2[:,1] - delta_uv1[:,1] * delta_uv2[:,0])
+            tangent = (delta_pos1 * delta_uv2[:,1][:,None] - delta_pos2 * delta_uv1[:,1][:,None]) * r[:,None]
+            bitangent = (delta_pos2 * delta_uv1[:,0][:,None] - delta_pos1 * delta_uv2[:,0][:,None]) * r[:,None]
+
+            bitangent = bitangent.repeat(3, axis=0)
+            tangent = tangent.repeat(3, axis=0)
+
             vertices = np.concatenate(
-                [shape_vertex * scale, shape_normal, shape_texcoord], axis=-1)
+                [shape_vertex * scale, shape_normal, shape_texcoord, tangent, bitangent], axis=-1)
 
 
             faces = np.array(range(len(vertices))).reshape((len(vertices)//3, 3))
-            if not transform_orn is None:
-                orn = quat2rotmat(xyzw2wxyz(transform_orn))
-                vertices[:, :3] = vertices[:, :3].dot(orn[:3, :3].T)
-            if not transform_pos is None:
-                vertices[:, :3] += np.array(transform_pos)
+
 
             vertexData = vertices.astype(np.float32)
 
