@@ -144,13 +144,12 @@ class BuildingScene(Scene):
                                              fileName=filename,
                                              meshScale=scaling,
                                              flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
-        visualId = -1
-        #p.createVisualShape(p.GEOM_MESH,
-        #                        fileName=filename,
-        #                        meshScale=scaling)
+        visualId = p.createVisualShape(p.GEOM_MESH,
+                                fileName=filename,
+                                meshScale=scaling)
 
-        # texture_filename = os.path.join(get_model_path(self.model_id), "{}_mesh_texture.small.jpg".format(self.model_id))
-        # texture_id = p.loadTexture(texture_filename)
+        texture_filename = os.path.join(get_model_path(self.model_id), "{}_mesh_texture.small.jpg".format(self.model_id))
+        texture_id = p.loadTexture(texture_filename)
         # print('pybullet texture id:', texture_id, texture_filename)
 
         boundaryUid = p.createMultiBody(baseCollisionShapeIndex=collisionId,

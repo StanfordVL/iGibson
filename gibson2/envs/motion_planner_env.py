@@ -204,8 +204,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.collision_reward_weight = collision_reward_weight
 
         # action[0] = base_or_arm
-        # action[1] = base_subgoal_theta / base_img_v
-        # action[2] = base_subgoal_dist / base_img_u
+        # action[1] = base_subgoal_theta
+        # action[2] = base_subgoal_dist 
         # action[3] = base_orn
         # action[4] = arm_img_v
         # action[5] = arm_img_u
@@ -450,7 +450,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         else:
             # TODO: handcraft environments for more scenes
-            assert False, 'model_id unknown'
+            #assert False, 'model_id unknown'
+            pass
+
 
         if self.arena in ['push_door', 'button_door']:
             self.door_axis_link_id = 1
@@ -504,6 +506,60 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.simulator.import_interactive_object(obstacle, class_id=4)
                 p.changeDynamics(obstacle.body_id, -1, lateralFriction=0.5)
                 self.obstacles.append(obstacle)
+
+
+        elif self.arena == 'push_drawers':
+            self.obstacles = []
+            self.caibnet_drawers = []
+            obj = InteractiveObj(filename=gibson2.assets_path + '/models/cabinet2/cabinet_0007.urdf')
+            ids = self.simulator.import_interactive_object(obj, class_id=30)
+            self.obstacles.append(ids)
+            self.caibnet_drawers.append(obj)
+            obj.set_position_rotation([-4,1.8,0.5], [0,0,-1,1])
+ 
+
+            obj = InteractiveObj(filename=gibson2.assets_path + '/models/cabinet2/cabinet_0007.urdf')
+            ids = self.simulator.import_interactive_object(obj, class_id=60)
+            self.obstacles.append(ids)
+            self.caibnet_drawers.append(obj)  
+            obj.set_position_rotation([-6,1.8,0.5], [0,0,-1,1])
+      
+
+
+            obj = InteractiveObj(filename=gibson2.assets_path + '/models/cabinet/cabinet_0004.urdf')
+            ids = self.simulator.import_interactive_object(obj, class_id=90)
+            self.obstacles.append(ids)
+            self.caibnet_drawers.append(obj)
+            obj.set_position_rotation([-4.2,2,1.8], [0,0,-1,1])
+   
+
+            obj = InteractiveObj(filename=gibson2.assets_path + '/models/cabinet/cabinet_0004.urdf')
+            ids = self.simulator.import_interactive_object(obj, class_id=120)
+            self.obstacles.append(ids)
+            self.caibnet_drawers.append(obj)
+            obj.set_position_rotation([-5.5,2,1.8], [0,0,-1,1])
+            
+            obj = BoxShape([-5,1.8,0.5], [0.55,0.25,0.5], mass=1000, color=[139/255.0,69/255.0,19/255.0, 1])
+            ids = self.simulator.import_interactive_object(obj, class_id=150)
+            p.createConstraint(0,-1,obj.body_id, -1, p.JOINT_FIXED, [0,0,1], [-5,1.8,0.5], [0,0,0])
+            self.obstacles.append(ids)
+
+            #while True:
+                #p.stepSimulation()
+
+            #obj = BoxShape([-2.45,1,1.5], [0.01,2,1.5])
+            #ids = s.import_articulated_object(obj, class_id=180)
+            #self.obstacles.append(ids)
+            #p.createConstraint(0,-1,obj.body_id, -1, p.JOINT_FIXED, [0,0,1], [-2.55,1,1.5], [0,0,0])
+            #obj = YCBObject('003_cracker_box')
+            #s.import_object(obj, class_id=210)
+            #p.resetBasePositionAndOrientation(obj.body_id, [-2,1,1.2], [0,0,0,1])
+            #obj = YCBObject('003_cracker_box')
+            #s.import_object(obj, class_id=240)
+            #p.resetBasePositionAndOrientation(obj.body_id, [-2,2,1.2], [0,0,0,1])
+
+
+
 
     def prepare_motion_planner(self):
         self.robot_id = self.robots[0].robot_ids[0]
@@ -991,6 +1047,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             for obstacle, obstacle_state in zip(self.obstacles, self.obstacle_states):
                 p.resetBasePositionAndOrientation(obstacle.body_id, *obstacle_state)
 
+        elif self.arena == 'push_drawers':
+            pass
+            # need to calculate cabinet_drawers_states
+            # for interactive_obj in self.caibnet_drawers:
+            #     body_id = interactive_obj.body_id
+            #     for joint_id in range(p.getNumJoints(body_id)):
+            #         jointIndex, jointName, jointType, _, _, _, _, _, \
+            #         jointLowerLimit, jointUpperLimit, _,_,_,_,_,_,_ = p.getJointInfo(body_id, joint_id)
+            #         if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
+            #             joint_pos = np.random.uniform(jointLowerLimit, jointUpperLimit)
+            #             p.resetJointState(body_id, jointIndex, targetValue=joint_pos, targetVelocity=0)
+
     def get_ik_parameters(self):
         max_limits = [0., 0.] + get_max_limits(self.robot_id, self.arm_joint_ids)
         min_limits = [0., 0.] + get_min_limits(self.robot_id, self.arm_joint_ids)
@@ -1259,6 +1327,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             for obstacle, obstacle_pose in zip(self.obstacles, obstacle_poses):
                 set_base_values_with_z(obstacle.body_id, [obstacle_pose[0], obstacle_pose[1], 0], obstacle_pose[2])
+        elif self.arena == 'push_drawers':
+            self.cabinet_drawers_states = [None] * len(self.caibnet_drawers)
+            for interactive_obj in self.caibnet_drawers:
+                body_id = interactive_obj.body_id
+                for joint_id in range(p.getNumJoints(body_id)):
+                    jointIndex, jointName, jointType, _, _, _, _, _, \
+                    jointLowerLimit, jointUpperLimit, _,_,_,_,_,_,_ = p.getJointInfo(body_id, joint_id)
+                    if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
+                        joint_pos = np.random.uniform(jointLowerLimit, jointUpperLimit)
+                        p.resetJointState(body_id, jointIndex, targetValue=joint_pos, targetVelocity=0)
 
     def reset(self):
         self.state = super(MotionPlanningBaseArmEnv, self).reset()
@@ -1280,7 +1358,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--arena',
                         '-a',
-                        choices=['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty'],
+                        choices=['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty', 'push_drawers'],
                         default='push_door',
                         help='which arena to train or test (default: push_door)')
 
