@@ -7,6 +7,7 @@
 iGibson, the Interactive Gibson Environment, is a simulation environment providing fast visual rendering and physics simulation (based on Bullet). It is packed with a dataset with hundreds of large 3D environments reconstructed from real homes and offices, and interactive objects that can be pushed and actuated. iGibson allows researchers to train and evaluate robotic agents that use RGB images and/or other visual sensors to solve indoor (interactive) navigation and manipulation tasks such as opening doors, picking and placing objects, or searching in cabinets.
 
 ### Latest Updates
+[05/14/2020] Added dynamic light support :flashlight:
 [04/28/2020] Added support for Mac OSX :computer:
 
 ### Citation
