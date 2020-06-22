@@ -26,8 +26,11 @@ class SimNode:
 		path = rospack.get_path('gibson2-ros')
 		config_filename = os.path.join(path, 'jr2_rgbd.yaml')
 
-		self.cmdx = 0.0
-		self.cmdy = 0.0
+		#self.cmdx = 0.0
+		#self.cmdy = 0.0
+		
+		self.cmd_vel_linear = 0.0
+		self.cmd_vel_angular = 0.0
 
 		self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
 		self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
@@ -47,7 +50,7 @@ class SimNode:
 
 		self.env = NavigatePedestriansEnv(config_file=config_filename,
 							   mode='headless',
-							   action_timestep=1 / 30.0)	# assume a 30Hz simulation
+							   action_timestep=1 / 30.0) 	# assume a 30Hz simulation)
 
 		self.config = parse_config(config_filename)
 								
@@ -74,7 +77,8 @@ class SimNode:
 
 	def run(self):
 		while not rospy.is_shutdown():
-			obs, _, _, _ = self.env.step([self.cmdx, self.cmdy])
+			#obs, _, _, _ = self.env.step([self.cmdx, self.cmdy])
+			obs, _, _, _ = self.env.step([self.cmd_vel_linear, self.cmd_vel_angular])
 			rgb = (obs["rgb"] * 255).astype(np.uint8)
 			depth = obs["depth"].astype(np.float32)
 			image_message = self.bridge.cv2_to_imgmsg(rgb, encoding="rgb8")
@@ -136,8 +140,12 @@ class SimNode:
 			odom_msg.pose.pose.orientation.x, odom_msg.pose.pose.orientation.y, odom_msg.pose.pose.orientation.z, \
 			odom_msg.pose.pose.orientation.w = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1])
 
-			odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
-			odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
+			#odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
+			#odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
+			
+			odom_msg.twist.twist.linear.x = self.cmd_vel_linear
+			odom_msg.twist.twist.angular.z = self.cmd_vel_angular
+			
 			self.odom_pub.publish(odom_msg)
 
 			# Ground truth pose
@@ -158,13 +166,20 @@ class SimNode:
 					rpy[1],
 					rpy[2])
 
-			gt_odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
-			gt_odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
+			#gt_odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
+			#gt_odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
+			
+			gt_odom_msg.twist.twist.linear.x = self.cmd_vel_linear
+			gt_odom_msg.twist.twist.angular.z = self.cmd_vel_angular
+			
 			self.gt_odom_pub.publish(gt_odom_msg)
 
 	def cmd_callback(self, data):
-		self.cmdx = data.linear.x / 10.0 - data.angular.z / (10 * 8.695652173913043)
-		self.cmdy = data.linear.x / 10.0 + data.angular.z / (10 * 8.695652173913043)
+		self.cmd_vel_linear = data.linear.x
+		self.cmd_vel_angular = data.angular.z
+
+		#self.cmdx = data.linear.x / 10.0 - data.angular.z / (10 * 8.695652173913043)
+		#self.cmdy = data.linear.x / 10.0 + data.angular.z / (10 * 8.695652173913043)
 
 	def tp_robot_callback(self, data):
 		rospy.loginfo('Teleporting robot')

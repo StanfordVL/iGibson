@@ -8,16 +8,16 @@ DWAPlannerROS:
   min_vel_y: 0.0  # diff drive robot
 
   max_trans_vel: 0.5 # choose slightly less than the base's capability
-  min_trans_vel: 0.1  # this is the min trans velocity when there is negligible rotational velocity
-  trans_stopped_vel: 0.1
+  min_trans_vel: 0.0  # this is the min trans velocity when there is negligible rotational velocity
+  trans_stopped_vel: 0.0
 
   # Warning!
   #   do not set min_trans_vel to 0.0 otherwise dwa will always think translational velocities
   #   are non-negligible and small in place rotational velocities will be created.
 
   max_rot_vel: 20.0  # choose slightly less than the base's capability
-  min_rot_vel: 0.4  # this is the min angular velocity when there is negligible translational velocity
-  rot_stopped_vel: 0.4
+  min_rot_vel: 0.0  # this is the min angular velocity when there is negligible translational velocity
+  rot_stopped_vel: 0.0
   
   acc_lim_x: 2.0 # maximum is theoretically 2.0, but we
   acc_lim_theta: 10
