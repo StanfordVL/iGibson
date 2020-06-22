@@ -50,10 +50,9 @@ class SimNode:
 							   action_timestep=1 / 30.0)	# assume a 30Hz simulation
 
 		self.config = parse_config(config_filename)
-		
-		print(self.config)
-		
+								
 		obs = self.env.reset()
+		
 		rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
 		rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
 
@@ -65,12 +64,12 @@ class SimNode:
 	def add_objects(env):
 		from gibson2.core.physics.interactive_objects import ShapeNetObject
 		# obj_path = '/cvgl/group/ShapeNetCore.v2/03001627/1b05971a4373c7d2463600025db2266/models/model_normalized.obj'
-		obj_path = '/cvgl/group/ShapeNetCore.v2/03001627/60b3d70238246b3e408442c6701ebe92/models/model_normalized.obj'
-		cur_obj = ShapeNetObject(obj_path,
-								 scale=1.0,
-								 position=[0, -2.0, 0.5],
-								 orientation=[0, 0, np.pi])
-		env.simulator.import_object(cur_obj)
+# 		obj_path = '/cvgl/group/ShapeNetCore.v2/03001627/60b3d70238246b3e408442c6701ebe92/models/model_normalized.obj'
+# 		cur_obj = ShapeNetObject(obj_path,
+# 								 scale=1.0,
+# 								 position=[0, -2.0, 0.5],
+# 								 orientation=[0, 0, np.pi])
+# 		env.simulator.import_object(cur_obj)
 
 
 	def run(self):

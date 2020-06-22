@@ -20,8 +20,6 @@ dist_tol: 0.5
 terminal_reward: 5000
 discount_factor: 1.0
 
-additional_states_dim: 3
-
 fisheye: false
 fov: 1.57
 is_discrete: false
@@ -58,37 +56,54 @@ visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: true
 
 # ====== from social_nav config ======
+additional_states_dim: 2
+electricity_reward_weight: 0.0
+potential_reward_weight: 1.0
+psv_reward_weight: 0.0
+slack_reward: -0.001
+stall_torque_reward_weight: 0.0
+success_reward: 1.0
+collision_reward_weight: -1.0
 
-sensor_inputs: [sensor, scan]
+reward_type: l2
+
+gamma: 0.99
+
+sensor_inputs: [sensor, scan, rgb, depth]
 n_horizontal_rays: 128
 n_vertical_beams: 1
+
 
 collision_ignore_body_b_ids: [0, 1, 2]
 collision_ignore_link_a_ids: []
 
-movements:
-  agent:
-    sources: [h1-rob, h2-rob]
-    sources_per_location:
-      crossing: [c1-rob, c2-rob, c3-rob, c4-rob]
-      doorway: [d1-rob, d2-rob, d3-rob, d4-rob, d5-rob, d6-rob]
-      hallway: [h1-rob, h2-rob]
-  pedestrians:
-    crossing:
-      sources: [c1-ped, c2-ped, c3-ped, c4-ped]
-    doorway:
-      sources: [d1-ped, d3-ped, d5-ped, d6-ped]
-    flip_prob: 0.5
-    hallway:
-      sources: [h1-ped, h2-ped]
-      
-pedestrians_dynamics: {chat_distance_max: 0, chat_distance_min: 0, chat_interval_max: 0,
-  chat_interval_min: 0, chat_min_delay: 0, chat_probability: 0, dist_tol: 1.0, kinematics: holonomic,
-  max_angular_velocity: 1.0, max_linear_velocity: 1.0, max_pause_interval: 0, min_pause_interval: 0,
-  min_separation: 0.3, personal_space: 0.2, policy: orca, position_noise: 0.0, radius: 0.3,
-  sensor: coordinates, use_pedestrian_behaviors: false, v_pref: 1.0, velocity_noise: 0.0,
-  visible: true}
-
+locations:
+  c-mid: {center_x: 0.0, center_y: 10.0, x_range_radius: 0.5, y_range_radius: 0.5}
+  c1-ped: {center_x: -6.5, center_y: 10.5, x_range_radius: 3.0, y_range_radius: 0.5}
+  c1-rob: {center_x: -6.5, center_y: 10.5, x_range_radius: 3.0, y_range_radius: 0.5}
+  c2-ped: {center_x: 0.0, center_y: 4.5, x_range_radius: 0.5, y_range_radius: 3.0}
+  c2-rob: {center_x: 0.0, center_y: 4.5, x_range_radius: 0.5, y_range_radius: 3.0}
+  c3-ped: {center_x: 6.5, center_y: 10.5, x_range_radius: 3.0, y_range_radius: 0.5}
+  c3-rob: {center_x: 6.5, center_y: 10.5, x_range_radius: 3.0, y_range_radius: 0.5}
+  c4-ped: {center_x: 0.0, center_y: 15.5, x_range_radius: 0.5, y_range_radius: 3.0}
+  c4-rob: {center_x: 0.0, center_y: 15.5, x_range_radius: 0.5, y_range_radius: 3.0}
+  d1-ped: {center_x: -6.0, center_y: 16.0, x_range_radius: 1.0, y_range_radius: 1.0}
+  d1-rob: {center_x: -6.0, center_y: 16.0, x_range_radius: 1.0, y_range_radius: 1.0}
+  d2-ped: {center_x: -6.0, center_y: 23.5, x_range_radius: 0.1, y_range_radius: 0.1}
+  d2-rob: {center_x: -6.0, center_y: 23.5, x_range_radius: 3.0, y_range_radius: 0.1}
+  d3-ped: {center_x: 6.0, center_y: 16.0, x_range_radius: 1.0, y_range_radius: 1.0}
+  d3-rob: {center_x: 6.0, center_y: 16.0, x_range_radius: 1.0, y_range_radius: 1.0}
+  d4-ped: {center_x: 6.0, center_y: 23.5, x_range_radius: 0.1, y_range_radius: 0.1}
+  d4-rob: {center_x: 6.0, center_y: 23.5, x_range_radius: 3.0, y_range_radius: 0.1}
+  d5-ped: {center_x: -14.0, center_y: 23.5, x_range_radius: 3.0, y_range_radius: 0.1}
+  d5-rob: {center_x: -14.0, center_y: 23.5, x_range_radius: 3.0, y_range_radius: 0.1}
+  d6-ped: {center_x: 14.0, center_y: 23.5, x_range_radius: 3.0, y_range_radius: 0.1}
+  d6-rob: {center_x: 14.0, center_y: 23.5, x_range_radius: 3.0, y_range_radius: 0.1}
+  h1-ped: {center_x: 6.5, center_y: -10.0, x_range_radius: 3.0, y_range_radius: 0.5}
+  h1-rob: {center_x: 6.5, center_y: -10.0, x_range_radius: 3.0, y_range_radius: 0.1}
+  h2-ped: {center_x: -6.5, center_y: -10.0, x_range_radius: 3.0, y_range_radius: 0.5}
+  h2-rob: {center_x: -6.5, center_y: -10.0, x_range_radius: 3.0, y_range_radius: 0.1}
+  
 connectivity:
   c-mid: [c1-ped, c2-ped, c3-ped, c4-ped]
   c1-ped: [c-mid]
@@ -116,6 +131,29 @@ connectivity:
   h2-ped: [h1-ped]
   h2-rob: [h1-rob]
   ped-waypoints: [c1-mid, d2-ped, d4-ped]
+
+movements:
+  agent:
+    sources: [h1-rob, h2-rob]
+    sources_per_location:
+      crossing: [c1-rob, c2-rob, c3-rob, c4-rob]
+      doorway: [d1-rob, d2-rob, d3-rob, d4-rob, d5-rob, d6-rob]
+      hallway: [h1-rob, h2-rob]
+  pedestrians:
+    crossing:
+      sources: [c1-ped, c2-ped, c3-ped, c4-ped]
+    doorway:
+      sources: [d1-ped, d3-ped, d5-ped, d6-ped]
+    flip_prob: 0.5
+    hallway:
+      sources: [h1-ped, h2-ped]
+      
+pedestrians_dynamics: {chat_distance_max: 0, chat_distance_min: 0, chat_interval_max: 0,
+  chat_interval_min: 0, chat_min_delay: 0, chat_probability: 0, dist_tol: 1.0, kinematics: holonomic,
+  max_angular_velocity: 1.0, max_linear_velocity: 1.0, max_pause_interval: 0, min_pause_interval: 0,
+  min_separation: 0.3, personal_space: 0.2, policy: orca, position_noise: 0.0, radius: 0.3,
+  sensor: coordinates, use_pedestrian_behaviors: false, v_pref: 1.0, velocity_noise: 0.0,
+  visible: true}
   
 walls:
   walls_dim:

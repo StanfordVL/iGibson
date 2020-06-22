@@ -1,11 +1,12 @@
 <launch>
 
   <!-- important generally, but specifically utilised by the current app manager -->
-  <param name="robot/name" value="$(optenv ROBOT jackrabbot)"/>
-  <param name="robot/type" value="jackrabbot"/>
+  <param name="robot/name" value="$(optenv ROBOT jr2)"/>
+  <param name="robot/type" value="jr2"/>
 
 
   <param name="robot_description" command="cat $(find gibson2-ros)/jr2_urdf/jr2.urdf"/>
+  
 
   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
   </node>
@@ -40,7 +41,7 @@
 
   <!-- include file="$(find turtlebot_teleop)/launch/ps3_teleop.launch" /-->
 
-  <arg name="map_file" default="$(find gibson2-ros)/map/graphnav/area_1.yaml"/>
+  <arg name="map_file" default="$(find gibson2-ros)/map/social_nav/trav_map.yaml"/>
   <rosparam param="map_file" subst_value="True">$(arg map_file)</rosparam>
   <node pkg="map_server" type="map_server"  name="map_server" args="$(arg map_file)" />
 
