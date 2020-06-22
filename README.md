@@ -8,6 +8,7 @@ iGibson, the Interactive Gibson Environment, is a simulation environment providi
 
 ### Latest Updates
 [05/14/2020] Added dynamic light support :flashlight:
+
 [04/28/2020] Added support for Mac OSX :computer:
 
 ### Citation
