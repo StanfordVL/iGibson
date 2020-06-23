@@ -110,7 +110,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='gibson2',
-    version='0.0.4',
+    version='0.0.5',
     author='Stanford University',
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -118,7 +118,7 @@ setup(
     zip_safe=False,
     packages=find_packages(),
     install_requires=[
-            'gym==0.12',
+            'gym>=0.12',
             'numpy>=1.16.0',
             'scipy>=1.2.1',
             'pybullet>=2.6.4',
