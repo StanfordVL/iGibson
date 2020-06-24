@@ -19,6 +19,7 @@ class Simulator:
                  use_fisheye=False,
                  mode='gui',
                  enable_shadow=False,
+                 enable_msaa=False,
                  image_width=128,
                  image_height=128,
                  vertical_fov=90,
@@ -70,6 +71,7 @@ class Simulator:
         self.render_to_tensor = render_to_tensor
         self.auto_sync = auto_sync
         self.enable_shadow = enable_shadow
+        self.enable_msaa = enable_msaa
         self.load()
 
     def set_timestep(self, timestep):
@@ -105,14 +107,16 @@ class Simulator:
                                             vertical_fov=self.vertical_fov,
                                             device_idx=self.device_idx,
                                             use_fisheye=self.use_fisheye,
-                                            enable_shadow=self.enable_shadow)
+                                            enable_shadow=self.enable_shadow,
+                                            msaa=self.enable_msaa)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                          height=self.image_height,
                                          vertical_fov=self.vertical_fov,
                                          device_idx=self.device_idx,
                                          use_fisheye=self.use_fisheye,
-                                         enable_shadow=self.enable_shadow)
+                                         enable_shadow=self.enable_shadow,
+                                         msaa=self.enable_msaa)
 
         print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:
