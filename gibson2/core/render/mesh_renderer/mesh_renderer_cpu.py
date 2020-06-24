@@ -687,14 +687,20 @@ class MeshRenderer(object):
 
             V = np.copy(self.V)
             self.V = np.copy(self.lightV)
-
-            self.r.render_meshrenderer_pre(0, 0, self.fbo)
+            if self.msaa:
+                self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
+            else:
+                self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
             for instance in self.instances:
                 if not instance in hidden:
                     instance.render()
 
             self.r.render_meshrenderer_post()
+
+            if self.msaa:
+                self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
+
             self.r.readbuffer_meshrenderer_shadow_depth(self.width, self.height, self.fbo, self.depth_tex_shadow)
             self.V = np.copy(V)
 
