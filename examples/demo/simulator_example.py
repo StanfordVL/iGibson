@@ -10,7 +10,7 @@ from gibson2.core.render.profiler import Profiler
 
 def main():
     config = parse_config('../configs/turtlebot_demo.yaml')
-    s = Simulator(mode='gui', image_width=512, image_height=512,enable_shadow=True)
+    s = Simulator(mode='gui', image_width=256, image_height=256, enable_shadow=True, enable_msaa=False)
 
     scene = BuildingScene('Rs',
                           build_graph=True,
