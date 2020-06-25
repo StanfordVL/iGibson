@@ -9,6 +9,7 @@ in vec3 Normal_cam;
 in vec3 FragPos;
 in vec3 Instance_color;
 in vec3 Pos_cam;
+in vec3 Pos_cam_projected;
 in vec3 Diffuse_color;
 in vec4 FragPosLightSpace;
 
@@ -23,20 +24,21 @@ uniform vec3 light_color; // light color
 void main() {
     vec3 lightDir = normalize(light_position - FragPos);
 
-    vec3 projCoords = FragPosLightSpace.xyz / FragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
-    float closestDepth = texture(depthMap, projCoords.xy).r * 0.5 + 0.5;
-    float currentDepth = projCoords.z;
-    
-    float bias = max(0.05 * (1.0 - dot(Normal, lightDir)), 0.005);
+    float shadow;
 
-    float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+    if (shadow_pass == 2) {
+        vec3 projCoords = FragPosLightSpace.xyz / FragPosLightSpace.w;
+        projCoords = projCoords * 0.5 + 0.5;
+        float closestDepth = texture(depthMap, projCoords.xy).b * 0.5 + 0.5;
+        float currentDepth = projCoords.z;
+        float bias = max(0.02 * (1.0 - dot(Normal, lightDir)), 0.002);
+        shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
 
-    if ((projCoords.z > 1.0) || (projCoords.x > 1.0) || (projCoords.y > 1.0) || (projCoords.x < 0) || (projCoords.y <
-     0))
-        shadow = 0.0;
-
-    if (shadow_pass == 0) {
+        if ((projCoords.z > 1.0) || (projCoords.x > 1.0) || (projCoords.y > 1.0) || (projCoords.x < 0) || (projCoords.y <
+         0))
+            shadow = 0.0;
+    }
+    else {
         shadow = 0.0;
     }
 
@@ -51,5 +53,9 @@ void main() {
 
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
     InstanceColour = vec4(Instance_color,1);
-    PCColour = vec4(Pos_cam.z, Pos_cam.z, Pos_cam.z, 1);
+    if (shadow_pass == 1) {
+        PCColour = vec4(Pos_cam_projected, 1);
+    } else {
+        PCColour = vec4(Pos_cam, 1);
+    }
 }
