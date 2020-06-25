@@ -90,7 +90,7 @@ class InstanceGroup(object):
         self.dynamic = dynamic
         self.tf_tree = None
 
-    def render(self):
+    def render(self, shadow_pass=0):
         """
         Render this instance group
         """
@@ -100,7 +100,7 @@ class InstanceGroup(object):
         self.renderer.r.initvar_instance_group(self.renderer.shaderProgram,
                                                self.renderer.V,
                                                self.renderer.lightV,
-                                               int(self.renderer.enable_shadow),
+                                               shadow_pass,
                                                self.renderer.P,
                                                self.renderer.lightpos,
                                                self.renderer.lightcolor)
@@ -191,9 +191,12 @@ class Instance(object):
         self.dynamic = dynamic
         self.softbody = softbody
 
-    def render(self):
+    def render(self, shadow_pass=0):
         """
         Render this instance
+        shadow_pass = 0: normal rendering mode, disable shadow
+        shadow_pass = 1: enable_shadow, rendering depth map from light space
+        shadow_pass = 2: use rendered depth map to calculate shadow
         """
         if self.renderer is None:
             return
@@ -226,7 +229,7 @@ class Instance(object):
         self.renderer.r.initvar_instance(self.renderer.shaderProgram,
                                          self.renderer.V,
                                          self.renderer.lightV,
-                                         int(self.renderer.enable_shadow),
+                                         shadow_pass,
                                          self.renderer.P,
                                          self.pose_trans,
                                          self.pose_rot,
@@ -392,7 +395,7 @@ class MeshRenderer(object):
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
-        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.1, 10)
+        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.1, 100)
         V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
@@ -626,7 +629,7 @@ class MeshRenderer(object):
 
     def set_fov(self, fov):
         self.vertical_fov = fov
-        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.1, 10)
+        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.1, 100)
         self.P = np.ascontiguousarray(P, np.float32)
 
     def set_light_color(self, color):
@@ -692,13 +695,14 @@ class MeshRenderer(object):
 
             for instance in self.instances:
                 if not instance in hidden:
-                    instance.render()
+                    instance.render(shadow_pass=1)
 
             self.r.render_meshrenderer_post()
             self.r.readbuffer_meshrenderer_shadow_depth(self.width, self.height, self.fbo, self.depth_tex_shadow)
             self.V = np.copy(V)
 
 
+        # main pass
 
         if self.msaa:
             self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
@@ -707,7 +711,10 @@ class MeshRenderer(object):
 
         for instance in self.instances:
             if not instance in hidden:
-                instance.render()
+                if self.enable_shadow:
+                    instance.render(shadow_pass=2)
+                else:
+                    instance.render(shadow_pass=0)
 
         self.r.render_meshrenderer_post()
         if self.msaa:
