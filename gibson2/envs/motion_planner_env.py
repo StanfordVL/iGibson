@@ -151,6 +151,8 @@ class MotionPlanningEnv(NavigateRandomEnv):
         #    done = True
         info['planner_step'] = self.planner_step
         del state['pc']
+        if self.arena in ['push_drawers', 'push_chairs']:
+            del state['sensor']
 
         return state, reward, done, info
 
@@ -162,6 +164,8 @@ class MotionPlanningEnv(NavigateRandomEnv):
         self.planner_step = 0
 
         del state['pc']
+        if self.arena in ['push_drawers', 'push_chairs']:
+            del state['sensor']
 
         return state
 
@@ -242,6 +246,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         else:
             self.use_occupancy_grid = False
 
+        print(self.observation_space.spaces)
+
+        if self.arena in ['push_drawers', 'push_chairs']:
+            del self.observation_space.spaces['sensor']
 
         self.base_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                         rgba_color=[1, 0, 0, 1],
@@ -448,10 +456,13 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             ]
             self.obstacle_dim = 0.35
 
-        else:
-            # TODO: handcraft environments for more scenes
-            #assert False, 'model_id unknown'
-            pass
+        elif self.scene.model_id == 'Samuels':
+            self.initial_pos_range = np.array([
+                [-5, -5], [0, 0]
+            ])
+            self.target_pos_range = np.array([
+                [-5, -5], [0, 0]
+            ])
 
 
         if self.arena in ['push_door', 'button_door']:
@@ -557,8 +568,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             #obj = YCBObject('003_cracker_box')
             #s.import_object(obj, class_id=240)
             #p.resetBasePositionAndOrientation(obj.body_id, [-2,2,1.2], [0,0,0,1])
-
-
 
 
     def prepare_motion_planner(self):
@@ -1028,6 +1037,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         elif self.arena in ['obstacles', 'semantic_obstacles']:
             for i, obstacle in enumerate(self.obstacles):
                 self.obstacle_states[i] = p.getBasePositionAndOrientation(obstacle.body_id)
+        elif self.arena == 'push_drawers':
+            for i, interactive_obj in enumerate(self.caibnet_drawers):
+                body_id = interactive_obj.body_id
+                for joint_id in range(p.getNumJoints(body_id)):
+                    jointIndex, jointName, jointType, _, _, _, _, _, \
+                    jointLowerLimit, jointUpperLimit, _,_,_,_,_,_,_ = p.getJointInfo(body_id, joint_id)
+                    if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
+                        joint_pos = p.getJointState(body_id, joint_id)[0]
+                        self.cabinet_drawers_states[i][joint_id] = joint_pos
 
     def reset_object_states(self):
         """
@@ -1048,16 +1066,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 p.resetBasePositionAndOrientation(obstacle.body_id, *obstacle_state)
 
         elif self.arena == 'push_drawers':
-            pass
-            # need to calculate cabinet_drawers_states
-            # for interactive_obj in self.caibnet_drawers:
-            #     body_id = interactive_obj.body_id
-            #     for joint_id in range(p.getNumJoints(body_id)):
-            #         jointIndex, jointName, jointType, _, _, _, _, _, \
-            #         jointLowerLimit, jointUpperLimit, _,_,_,_,_,_,_ = p.getJointInfo(body_id, joint_id)
-            #         if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
-            #             joint_pos = np.random.uniform(jointLowerLimit, jointUpperLimit)
-            #             p.resetJointState(body_id, jointIndex, targetValue=joint_pos, targetVelocity=0)
+            for i, interactive_obj in enumerate(self.caibnet_drawers):
+                body_id = interactive_obj.body_id
+                for joint_id in range(p.getNumJoints(body_id)):
+                    jointIndex, jointName, jointType, _, _, _, _, _, \
+                    jointLowerLimit, jointUpperLimit, _,_,_,_,_,_,_ = p.getJointInfo(body_id, joint_id)
+                    if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
+                        joint_pos = self.cabinet_drawers_states[i][joint_id]
+                        p.resetJointState(body_id, jointIndex, targetValue=joint_pos, targetVelocity=0)
 
     def get_ik_parameters(self):
         max_limits = [0., 0.] + get_max_limits(self.robot_id, self.arm_joint_ids)
@@ -1203,10 +1219,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         info = {}
         if subgoal_success:
             reward, info = self.get_reward([], action, info)
+
+            if self.arena in ['push_drawers', 'push_chairs']:
+                reward = 0 # zero out reward for push drawers and push chairs task
         else:
             # failed subgoal penalty
             reward = self.failed_subgoal_penalty
+        
         done, info = self.get_termination([], info)
+        if self.arena in ['push_drawers', 'push_chairs']:
+            done = False # push drawers and push chairs task never done
 
         if self.arena == 'button_door':
             button_state = p.getJointState(self.buttons[self.door_idx].body_id, self.button_axis_link_id)[0]
@@ -1240,6 +1262,17 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             reward += (obstacles_moved_dist_diff * 5.0)
             # print('obstacles_moved_dist_diff', obstacles_moved_dist_diff)
             self.obstacles_moved_dist = new_obstacles_moved_dist
+        elif self.arena == 'push_drawers':
+            drawers_diff = 0
+            for i, interactive_obj in enumerate(self.caibnet_drawers):
+                body_id = interactive_obj.body_id
+                for joint_id in range(p.getNumJoints(body_id)):
+                    jointIndex, jointName, jointType, _, _, _, _, _, \
+                    jointLowerLimit, jointUpperLimit, _,_,_,_,_,_,_ = p.getJointInfo(body_id, joint_id)
+                    if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
+                        joint_pos = p.getJointState(body_id, joint_id)[0]
+                        drawers_diff += self.cabinet_drawers_states[i][joint_id] - joint_pos            
+            reward += drawers_diff * 5.0
 
         if not use_base:
             set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
@@ -1259,7 +1292,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def reset_initial_and_target_pos(self):
         self.initial_orn_z = np.random.uniform(-np.pi, np.pi)
-        if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles']:
+        if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles','push_drawers']:
             floor_height = self.scene.get_floor_height(self.floor_num)
 
             self.initial_pos = np.array([
@@ -1328,14 +1361,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             for obstacle, obstacle_pose in zip(self.obstacles, obstacle_poses):
                 set_base_values_with_z(obstacle.body_id, [obstacle_pose[0], obstacle_pose[1], 0], obstacle_pose[2])
         elif self.arena == 'push_drawers':
-            self.cabinet_drawers_states = [None] * len(self.caibnet_drawers)
-            for interactive_obj in self.caibnet_drawers:
+            self.cabinet_drawers_states = [dict() for _ in range(len(self.caibnet_drawers))]
+            for i, interactive_obj in enumerate(self.caibnet_drawers):
                 body_id = interactive_obj.body_id
                 for joint_id in range(p.getNumJoints(body_id)):
                     jointIndex, jointName, jointType, _, _, _, _, _, \
                     jointLowerLimit, jointUpperLimit, _,_,_,_,_,_,_ = p.getJointInfo(body_id, joint_id)
                     if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
                         joint_pos = np.random.uniform(jointLowerLimit, jointUpperLimit)
+                        self.cabinet_drawers_states[i][joint_id] = joint_pos
                         p.resetJointState(body_id, jointIndex, targetValue=joint_pos, targetVelocity=0)
 
     def reset(self):
@@ -1381,7 +1415,7 @@ if __name__ == '__main__':
             action = nav_env.action_space.sample()
             state, reward, done, info = nav_env.step(action)
             # embed()
-            # print('Reward:', reward)
+            print('Reward:', reward)
             # time.sleep(0.05)
             # nav_env.step()
             # for step in range(50):  # 500 steps, 50s world time
