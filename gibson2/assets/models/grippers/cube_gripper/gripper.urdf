@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<robot name="cube_gripper">
+  <link name="world"/>
+  <joint name="txj" type="prismatic">
+    <limit lower="-1.0" upper="1.0"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <parent link="world"/>
+    <child link="ty"/>
+  </joint>
+  <link name="ty"/>
+  <joint name="tyj" type="prismatic">
+    <limit lower="-1.0" upper="1.0"/>
+    <axis xyz="0 1 0"/>
+    <parent link="ty"/>
+    <child link="tz"/>
+  </joint>
+  <link name="tz"/>
+  <joint name="tzj" type="prismatic">
+    <limit lower="0" upper="2.0"/>
+    <axis xyz="0 0 1"/>
+    <parent link="tz"/>
+    <child link="rx"/>
+  </joint>
+  <link name="rx"/>
+    <joint name="rxj" type="continuous">
+    <axis xyz="1 0 0"/>
+    <parent link="rx"/>
+    <child link="ry"/>
+  </joint>
+  <link name="ry"/>
+  <joint name="ryj" type="continuous">
+    <axis xyz="0 1 0"/>
+    <parent link="ry"/>
+    <child link="rz"/>
+  </joint>
+  <link name="rz"/>
+  <joint name="rzj" type="continuous">
+    <axis xyz="0 0 1"/>
+    <parent link="rz"/>
+    <child link="visual_link"/>
+  </joint>
+  <link name="visual_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.03 0.03" />
+      </geometry>
+      <material name="blue">
+        <color rgba="0.1 0.8 0.1 0.0" />
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.25 0.03 0.03" />
+      </geometry>
+    </collision>
+   </link>
+  <joint name="ee" type="fixed">
+    <origin xyz="0.15 0 0" rpy="0 0 0" />
+    <parent link="visual_link"/>
+    <child link="eef_link"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <link name="eef_link">
+    <visual>
+      <geometry>
+        <box size="0.12 0.24 0.03" />
+      </geometry>
+       <material name="brown">
+        <color rgba="0.5 0.4 0.1 0.0" />
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.12 0.24 0.03" />
+      </geometry>
+    </collision>
+
+  </link>
+
+</robot>
