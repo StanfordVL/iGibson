@@ -246,10 +246,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         else:
             self.use_occupancy_grid = False
 
-        print(self.observation_space.spaces)
 
         if self.arena in ['push_drawers', 'push_chairs']:
             del self.observation_space.spaces['sensor']
+        
+        print(self.observation_space.spaces)
 
         self.base_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                         rgba_color=[1, 0, 0, 1],
@@ -1206,6 +1207,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # start = time.time()
         state, reward, done, info = self.compute_next_step(action, use_base, subgoal_success)
         # self.times['compute_next_step'].append(time.time() - start)
+        
+        if self.arena in ['push_drawers', 'push_chairs']:
+            del state['sensor']
 
         return state, reward, done, info
 
@@ -1375,6 +1379,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
     def reset(self):
         self.state = super(MotionPlanningBaseArmEnv, self).reset()
         # self.state['current_step'] = self.current_step
+        if self.arena in ['push_drawers', 'push_chairs']:
+            del self.state['sensor']
         return self.state
 
 
