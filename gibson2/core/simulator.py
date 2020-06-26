@@ -239,6 +239,8 @@ class Simulator:
                     input_kd=color[:3],
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
                 visual_object = len(self.renderer.visual_objects) - 1
+
+            #TODO: fix this to be geometric primitives or at least load scale models of cyl and caps
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(
