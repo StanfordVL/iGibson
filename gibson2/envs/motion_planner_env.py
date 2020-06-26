@@ -556,6 +556,33 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             p.createConstraint(0,-1,obj.body_id, -1, p.JOINT_FIXED, [0,0,1], [-5,1.8,0.5], [0,0,0])
             self.obstacles.append(ids)
 
+        elif self.arena == 'push_chairs':
+
+            self.obstacles = []
+            self.table = None
+            self.chairs = []
+            
+            obj = InteractiveObj(filename=gibson2.assets_path + '/models/scene_components/chair_and_table/free_9_table_table_z_up.urdf', scale=1.2) 
+            ids = self.simulator.import_interactive_object(obj, class_id=30)
+            self.obstacles.append(ids)
+            self.table = obj
+            obj.set_position_rotation([-4,1.5,0.55], [0,0,-1,1])
+            p.createConstraint(0,-1,obj.body_id, -1, p.JOINT_FIXED, [0,0,1], [-4,1.5,0.55], [0,0,0], parentFrameOrientation=[0,0,-1,1])
+            #from IPython import embed; embed()
+
+            obj = InteractiveObj(filename=gibson2.assets_path + '/models/scene_components/chair_and_table/free_10_chair_chair_z_up.urdf')
+            ids = self.simulator.import_interactive_object(obj, class_id=60)
+            self.obstacles.append(ids)
+            self.chairs.append(obj)
+            obj.set_position_rotation([-4.8,1.5,0.63], [0,0,1,1])
+            #from IPython import embed; embed()
+
+            obj = InteractiveObj(filename=gibson2.assets_path + '/models/scene_components/chair_and_table/free_10_chair_chair_z_up.urdf')
+            ids = self.simulator.import_interactive_object(obj, class_id=60)
+            self.obstacles.append(ids)
+            self.chairs.append(obj)
+            obj.set_position_rotation([-3,1.5,0.63], [0,0,-1,1]) 
+
             #while True:
                 #p.stepSimulation()
 
@@ -1047,6 +1074,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
                         joint_pos = p.getJointState(body_id, joint_id)[0]
                         self.cabinet_drawers_states[i][joint_id] = joint_pos
+        elif self.arena == 'push_chairs':
+            self.chair_poses[0] = self.chairs[0].get_position_rotation()
+            self.chair_poses[1] = self.chairs[1].get_position_rotation()
 
     def reset_object_states(self):
         """
@@ -1075,6 +1105,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
                         joint_pos = self.cabinet_drawers_states[i][joint_id]
                         p.resetJointState(body_id, jointIndex, targetValue=joint_pos, targetVelocity=0)
+        elif self.arena == 'push_chairs':
+            self.chairs[0].set_position_rotation(self.chair_poses[0][0], self.chair_poses[0][1])
+            self.chairs[1].set_position_rotation(self.chair_poses[1][0], self.chair_poses[1][1])
 
     def get_ik_parameters(self):
         max_limits = [0., 0.] + get_max_limits(self.robot_id, self.arm_joint_ids)
@@ -1277,7 +1310,20 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         joint_pos = p.getJointState(body_id, joint_id)[0]
                         drawers_diff += self.cabinet_drawers_states[i][joint_id] - joint_pos            
             reward += drawers_diff * 5.0
+        elif self.arena == 'push_chairs':
+            table_pos = np.array(self.table.get_position())[:2]
 
+            table_dist_before = np.linalg.norm(np.array(self.chair_poses[0][0][:2]) - table_pos) + \
+                                np.linalg.norm(np.array(self.chair_poses[1][0][:2]) - table_pos)
+
+            table_dist_after = np.linalg.norm(np.array(self.chairs[0].get_position())[:2] - table_pos) + \
+                               np.linalg.norm(np.array(self.chairs[1].get_position())[:2] - table_pos)
+
+            self.chair_poses[0] = self.chairs[0].get_position_rotation()
+            self.chair_poses[1] = self.chairs[1].get_position_rotation()
+
+            reward += 20 * (table_dist_before - table_dist_after)
+        
         if not use_base:
             set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
             self.state = self.get_state()
@@ -1296,7 +1342,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def reset_initial_and_target_pos(self):
         self.initial_orn_z = np.random.uniform(-np.pi, np.pi)
-        if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles','push_drawers']:
+        if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles','push_drawers', 'push_chairs']:
             floor_height = self.scene.get_floor_height(self.floor_num)
 
             self.initial_pos = np.array([
@@ -1376,6 +1422,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         self.cabinet_drawers_states[i][joint_id] = joint_pos
                         p.resetJointState(body_id, jointIndex, targetValue=joint_pos, targetVelocity=0)
 
+        elif self.arena == 'push_chairs':
+            self.chair_poses = []
+            self.chairs[0].set_position_rotation([-4.8,1.5,0.63], [0,0,1,1])
+            self.chairs[1].set_position_rotation([-3,1.5,0.63], [0,0,-1,1]) 
+            self.chair_poses.append(self.chairs[0].get_position_rotation())
+            self.chair_poses.append(self.chairs[1].get_position_rotation())
+
+
     def reset(self):
         self.state = super(MotionPlanningBaseArmEnv, self).reset()
         # self.state['current_step'] = self.current_step
@@ -1398,7 +1452,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--arena',
                         '-a',
-                        choices=['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty', 'push_drawers'],
+                        choices=['button_door', 'push_door', 'obstacles', 'semantic_obstacles', 'empty', 'push_drawers', 'push_chairs'],
                         default='push_door',
                         help='which arena to train or test (default: push_door)')
 
@@ -1416,7 +1470,7 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         state = nav_env.reset()
-        for i in range(150):
+        for i in range(25):
             # print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
             state, reward, done, info = nav_env.step(action)
