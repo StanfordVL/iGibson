@@ -8,14 +8,13 @@ Image.MAX_IMAGE_PIXELS = None
 import cv2
 import numpy as np
 #from pyassimp import load, release
-from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat_opengl, quat2rotmat, mat2xyz, \
+from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat_opengl, quat2rotmat, mat2xyz_opengl, \
     safemat2quat, xyzw2wxyz
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
 from gibson2.core.render.mesh_renderer import MeshRendererContext
 from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
 import gibson2.core.render.mesh_renderer as mesh_renderer
-import pybullet as p
 import gibson2
 import os
 from gibson2.core.render.mesh_renderer import tinyobjloader
@@ -192,6 +191,9 @@ class Instance(object):
         self.softbody = softbody
         self.parent_body = parent_body
 
+        if self.softbody: #Only import if we handle softbodies
+            import pybullet as p
+
     def render(self):
         """
         Render this instance
@@ -284,7 +286,11 @@ class Instance(object):
 
 
 class Material(object):
-    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=None):
+    def __init__(self, 
+                 type='color', 
+                 kd=[0.5, 0.5, 0.5], 
+                 texture_id=None,
+                 ):
         self.type = type
         self.kd = kd
         self.texture_id = texture_id
@@ -427,23 +433,28 @@ class MeshRenderer(object):
                     transform_pos=None,
                     input_kd=None,
                     texture_scale=1.0,
-                    load_texture=True):
+                    load_texture=True,
+                    input_material=None):
         """
         Load a wavefront obj file into the renderer and create a VisualObject to manage it.
+        Material options: there are several options to specify the material
+        1) Get material properties and texture from obj file (load_texture=True and input_material=None, default)
+        2) Get material properties from file but use a plain color as texture (load_texture=False and input_material=None)
+        3) Get material properties and (possibly) texture from a given Material input (input_material!=None)
 
         :param obj_path: path of obj file
-        :param scale: scale, default 1
+        :param scale: scale in each dimension, default [1, 1, 1]
         :param transform_orn: rotation quaternion, convention xyzw
         :param transform_pos: translation for loading, it is a list of length 3
-        :param input_kd: if loading material fails, use this default material. input_kd should be a list of length 3
+        :param input_kd: if loading material fails or it is indicated to not use texture, use this default material. input_kd should be a list of length 3
         :param texture_scale: texture scale for the object, downsample to save memory.
         :param load_texture: load texture or not
         :return: VAO_ids
         """
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
-        ret = reader.ParseFromFile(obj_path)
 
+        ret = reader.ParseFromFile(obj_path)
         if ret == False:
             logging.error("Warning: {}".format(reader.Warning()))
             logging.error("Error: {}".format(reader.Error()))
@@ -460,7 +471,6 @@ class MeshRenderer(object):
 
         materials = reader.GetMaterials()
         logging.debug("Num materials: {}".format(len(materials)))
-
         if logging.root.level <= logging.DEBUG: #Only going into this if it is for logging --> efficiency
             for m in materials:
                 logging.debug("Material name: {}".format(m.name))
@@ -469,35 +479,50 @@ class MeshRenderer(object):
         shapes = reader.GetShapes()
         logging.debug("Num shapes: {}".format(len(shapes)))
 
-        material_count = len(self.materials_mapping)
-        materials_fn = {}
+        # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a Material element for them
+        # or create plane color Material elements
+        num_existing_mats = len(self.materials_mapping)    # Number of current Material elements 
 
-        for i, item in enumerate(materials):
-            if item.diffuse_texname != '' and load_texture:
-                materials_fn[i + material_count] = item.diffuse_texname
-                obj_dir = os.path.dirname(obj_path)
-                #texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
-                texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
-                self.textures.append(texture)
-                material = Material('texture', texture_id=texture)
-            else:
-                material = Material('color', kd=item.diffuse)
-            self.materials_mapping[i + material_count] = material
+        if input_material is None:
+            for i, material in enumerate(materials): # Go over all materials in the obj file
+                if material.diffuse_texname != '' and load_texture: # If the obj file defines a texture file and the option is to load it
+                    print("loading texture for file")
+                    print(obj_path)
+                    obj_dir = os.path.dirname(obj_path)
+                    texture_id = self.r.loadTexture(os.path.join(obj_dir, material.diffuse_texname))
+                    self.textures.append(texture_id)
+                    material_obj = Material('texture', texture_id=texture_id)
+                else:   # If either the obj does not define a texture file or the option is to not load it
+                    material_obj = Material('color', kd=material.diffuse)
 
-        if input_kd is not None:  # append the default material in the end, in case material loading fails
-            self.materials_mapping[len(materials) + material_count] = Material('color', kd=input_kd)
+                self.materials_mapping[num_existing_mats + i] = material_obj
+
+            num_added_materials = len(materials)
+
+        else:   # If the input_material is not None, load it and use it in the entire model
+            print("Using given material for")
+            print(obj_path)
+            self.materials_mapping[num_existing_mats] = input_material
+            num_added_materials = 1
+
+        # append the default material in the end, in case material loading fails
+        if input_kd is not None:  
+            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=input_kd)
         else:
-            self.materials_mapping[len(materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5])
+            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=[0.5, 0.5, 0.5])
 
         VAO_ids = []
-
         vertex_position = np.array(attrib.vertices).reshape((len(attrib.vertices)//3, 3))
         vertex_normal = np.array(attrib.normals).reshape((len(attrib.normals)//3, 3))
         vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
 
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
-            material_id = shape.mesh.material_ids[0]  # assume one shape only has one material
+
+            if input_material is None: 
+                material_id = shape.mesh.material_ids[0]  # assume one shape only has one material
+            else:
+                material_id = 0 #This will makes us use the input_material at self.materials_mapping[num_existing_mats + material_id=0]
             logging.debug("material_id = {}".format(material_id))
             logging.debug("num_indices = {}".format(len(shape.mesh.indices)))
             n_indices = len(shape.mesh.indices)
@@ -540,9 +565,9 @@ class MeshRenderer(object):
             self.vertex_data.append(vertexData)
             self.shapes.append(shape)
             if material_id == -1:  # if material loading fails, use the default material
-                self.mesh_materials.append(len(materials) + material_count)
+                self.mesh_materials.append(num_existing_mats + num_added_materials)
             else:
-                self.mesh_materials.append(material_id + material_count)
+                self.mesh_materials.append(num_existing_mats + material_id)
 
             logging.debug('mesh_materials: {}'.format(self.mesh_materials))
             VAO_ids.append(self.get_num_objects() - 1)
@@ -571,7 +596,8 @@ class MeshRenderer(object):
                             pose_trans=pose_trans,
                             pose_rot=pose_rot,
                             dynamic=dynamic,
-                            softbody=softbody)
+                            softbody=softbody,
+                            parent_body=parent_body)
         self.instances.append(instance)
 
     def add_instance_group(self,
@@ -796,7 +822,7 @@ class MeshRenderer(object):
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz_opengl(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
-    def render_robot_cameras(self, modes=('rgb')):
+    def render_robot_cameras(self, modes=('rgb'), hide_robot = True):
         frames = []
         for instance in self.instances:
             if isinstance(instance, Robot):
