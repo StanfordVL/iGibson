@@ -8,6 +8,7 @@ import numpy as np
 import gibson2.external.pybullet_tools.transformations as T
 import gibson2.external.pybullet_tools.utils as PBU
 from contextlib import contextmanager
+from copy import deepcopy
 
 
 """
@@ -17,14 +18,159 @@ Skills + parameters -> joint-space motion plan
 Motion plan -> task-space path
 task-space path -> gripper actuation
 """
+GRIPPER_OPEN = 0
+GRIPPER_CLOSE = 1
 
 
-def skill_open_prismatic(
-        robot,
+class Path(object):
+    def __init__(self, arm_path=None, gripper_path=None):
+        self._arm_path = arm_path
+        self._gripper_path = gripper_path
+
+    @property
+    def arm_path(self):
+        return self._arm_path
+
+    @property
+    def gripper_path(self):
+        if self._gripper_path is not None:
+            assert len(self._gripper_path) == len(self._arm_path)
+        return self._gripper_path
+
+    def append(self, arm_state, gripper_state=None):
+        if self._arm_path is None:
+            self._arm_path = []
+        self._arm_path.append(np.array(arm_state))
+        if gripper_state is not None:
+            if self._gripper_path is None:
+                self._gripper_path = []
+            self._gripper_path.append(np.array(gripper_state))
+
+    def append_segment(self, arm_states, gripper_state=None):
+        for state in arm_states:
+            self.append(state, gripper_state)
+
+    def __len__(self):
+        return len(self.arm_path)
+
+    @property
+    def arm_path_arr(self):
+        return np.stack(self._arm_path)
+
+    @property
+    def gripper_path_arr(self):
+        if self._gripper_path is None:
+            return None
+        assert len(self._gripper_path) == len(self._arm_path)
+        return np.stack(self._gripper_path)
+
+    @property
+    def path_arr(self):
+        return np.concatenate((self.arm_path_arr, self.gripper_path_arr), axis=1)
+
+    def __add__(self, other):
+        assert isinstance(other, Path)
+        new_arm_path = deepcopy(self._arm_path) + deepcopy(other.arm_path)
+        new_gripper_path = None
+        if self._gripper_path is not None:
+            assert other.gripper_path is not None
+            new_gripper_path = deepcopy(self._gripper_path) + deepcopy(other.gripper_path)
+
+        return __class__(arm_path=new_arm_path, gripper_path=new_gripper_path)
+
+
+class ConfigurationPath(Path):
+    def interpolate(self, resolutions):
+        pass
+
+
+class CartesianPath(Path):
+    def interpolate(self, pos_resolution=0.01, orn_resolution=np.pi/16):
+        new_path = CartesianPath()
+        for i in range(len(self) - 1):
+            pose1 = self.arm_path[i]
+            pose2 = self.arm_path[i + 1]
+            poses = list(PBU.interpolate_poses(pose1, pose2, pos_resolution, orn_resolution))
+            gri = None if self.gripper_path is None else self.gripper_path[i + 1]
+            new_path.append_segment(poses, gri)
+        return new_path
+
+    @property
+    def arm_path_arr(self):
+        raise NotImplementedError
+
+
+def configuration_path_to_cartesian_path(planner_robot, conf_path):
+    assert isinstance(planner_robot, PlannerRobot)
+    pose_path = CartesianPath()
+    for i in range(len(conf_path)):
+        conf = conf_path.arm_path[i]
+        planner_robot.reset_plannable_joint_positions(conf)
+        pose = planner_robot.get_eef_position_orientation()
+        gripper_state = None if conf_path.gripper_path is None else conf_path.gripper_path[i]
+        pose_path.append(pose, gripper_state=gripper_state)
+    return pose_path
+
+
+def plan_skill_open_prismatic(
+        planner,
         obstacles,
-        eef_link_name,
+        approach_pose,
+        reach_distance,
+        retract_distance,
+        joint_resolutions=None
 ):
-    pass
+    """
+    plan skill for opening articulated object with prismatic joint (e.g., drawers)
+    Args:
+        planner (PlannerRobot): planner
+        obstacles (list, tuple): a list obstacle ids
+        approach_pose (tuple): a tuple for approaching pose
+        reach_distance (float): distance for reach to grasp
+        retract_distance (float): distance for retract to open
+        joint_resolutions (list, tuple): motion planning joint-space resolution
+
+    Returns:
+        path (CartesianPath)
+    """
+    assert isinstance(planner, PlannerRobot)
+
+    approach_confs = planner.plan_joint_path(
+        target_pose=approach_pose, obstacles=obstacles, resolutions=joint_resolutions)
+    path = ConfigurationPath()
+    path.append_segment(approach_confs, gripper_state=GRIPPER_OPEN)
+
+    pose_path = configuration_path_to_cartesian_path(planner, path)
+
+    reach_pose = PBU.multiply(pose_path.arm_path[-1], ([reach_distance, 0, 0], PBU.unit_quat()))
+    retract_pose = PBU.multiply(pose_path.arm_path[-1], ([-retract_distance, 0, 0], PBU.unit_quat()))
+    pose_path.append(reach_pose, gripper_state=GRIPPER_OPEN)
+    pose_path = pose_path.interpolate(pos_resolution=0.05, orn_resolution=np.pi/8)
+
+    retract_path = CartesianPath()
+    retract_path.append_segment([reach_pose]*10, gripper_state=GRIPPER_CLOSE)
+    retract_path.append(retract_pose, gripper_state=GRIPPER_CLOSE)
+    retract_path.append_segment([retract_pose] * 5, gripper_state=GRIPPER_CLOSE)
+    retract_path.append_segment([retract_pose]*2, gripper_state=GRIPPER_OPEN)
+    retract_path = retract_path.interpolate(pos_resolution=0.01, orn_resolution=np.pi/8)
+    return pose_path + retract_path
+
+
+def plan_skill_grasp(
+        planner,
+        obstacles,
+        approach_pose,
+        reach_distance,
+        joint_resolutions=None
+):
+    approach_confs = planner.plan_joint_path(
+        target_pose=approach_pose, obstacles=obstacles, resolutions=joint_resolutions)
+    path = ConfigurationPath()
+    path.append_segment(approach_confs, gripper_state=GRIPPER_OPEN)
+
+    pose_path = configuration_path_to_cartesian_path(planner, path)
+
+    reach_pose = PBU.multiply(pose_path.arm_path[-1], ([reach_distance, 0, 0], PBU.unit_quat()))
 
 
 @contextmanager
@@ -43,7 +189,15 @@ def inverse_kinematics(robot_bid, eef_link, plannable_joints, target_pose):
     return conf
 
 
-def plan_joint_path(robot_bid, eef_link_name, plannable_joint_names, target_pose, obstacles=(), resolutions=None):
+def plan_joint_path(
+        robot_bid,
+        eef_link_name,
+        plannable_joint_names,
+        target_pose,
+        obstacles=(),
+        attachments=(),
+        resolutions=None):
+
     if resolutions is not None:
         assert len(plannable_joint_names) == len(resolutions)
 
@@ -52,7 +206,14 @@ def plan_joint_path(robot_bid, eef_link_name, plannable_joint_names, target_pose
     conf = inverse_kinematics(robot_bid, eef_link, plannable_joints, target_pose)
     # plan collision-free path
     with world_saved():
-        path = PBU.plan_joint_motion(robot_bid, plannable_joints, conf, obstacles=obstacles, resolutions=resolutions)
+        path = PBU.plan_joint_motion(
+            robot_bid,
+            plannable_joints,
+            conf,
+            obstacles=obstacles,
+            resolutions=resolutions,
+            attachments=attachments
+        )
     return path
 
 
@@ -287,6 +448,9 @@ class PlannableRobot(Robot):
             resolutions=resolutions
         )
 
+    def inverse_kinematics(self, target_pose):
+        return inverse_kinematics(self.body_id, self.eef_link_index, self.plannable_joints, target_pose=target_pose)
+
 
 class PlannerRobot(PlannableRobot):
     def __init__(self, eef_link_name, init_base_pose, arm, gripper=None, plannable_joint_names=None):
@@ -335,7 +499,7 @@ class PlannerRobot(PlannableRobot):
 
         # otherwise, synchronize by computing inverse kinematics wrt to eef link
         g_pose = robot.get_eef_position_orientation()
-        conf = inverse_kinematics(self.body_id, self.eef_link_index, self.plannable_joints, target_pose=g_pose)
+        conf = self.inverse_kinematics(g_pose)
         self.reset_plannable_joint_positions(conf)
 
         if len(robot.gripper.joints) == len(self.gripper.joints):
@@ -394,7 +558,7 @@ def main():
     obj1.set_position([0,0,0.5])
 
     for jointIndex in range(p.getNumJoints(obj1.body_id)):
-        friction = 1
+        friction = 0
         p.setJointMotorControl2(obj1.body_id, jointIndex, p.POSITION_CONTROL, force=friction)
 
     for l in range(p.getNumJoints(obj1.body_id)):
@@ -456,34 +620,50 @@ def main():
     )
     planner.setup(robot, obstacles)
 
-    target_pose = ([0.4579213,  0.0072391,  0.71218301], T.quaternion_multiply(T.quaternion_about_axis(np.pi, axis=[0, 0, 1]), T.quaternion_about_axis(np.pi / 2, axis=[1, 0, 0])))
+    target_pose = ([0.4379213,  0.0072391,  0.71218301], T.quaternion_multiply(T.quaternion_about_axis(np.pi, axis=[0, 0, 1]), T.quaternion_about_axis(np.pi / 2, axis=[1, 0, 0])))
     #
-    path = planner.plan_joint_path(target_pose=target_pose, obstacles=obstacles, resolutions=(0.25, 0.25, 0.25, 0.2, 0.2, 0.2))
+    # path = planner.plan_joint_path(target_pose=target_pose, obstacles=obstacles, resolutions=(0.25, 0.25, 0.25, 0.2, 0.2, 0.2))
+    #
+    # for conf in path:
+    #     planner.reset_plannable_joint_positions(conf)
+    #     for i in range(3):
+    #         robot.set_eef_position_orientation(*planner.get_eef_position_orientation())
+    #         p.stepSimulation()
+    #         time.sleep(1./240.)
 
-    for conf in path:
-        planner.reset_plannable_joint_positions(conf)
-        for i in range(3):
-            robot.set_eef_position_orientation(*planner.get_eef_position_orientation())
+    path = plan_skill_open_prismatic(
+        planner,
+        obstacles=obstacles,
+        approach_pose=target_pose,
+        reach_distance=0.05,
+        retract_distance=0.2,
+        joint_resolutions=(0.25, 0.25, 0.25, 0.2, 0.2, 0.2)
+    )
+
+    for i in range(len(path)):
+        pose = path.arm_path[i]
+        grip = path.gripper_path[i]
+
+        for _ in range(2):
+            robot.set_eef_position_orientation(*pose)
+            if grip == GRIPPER_CLOSE:
+                robot.gripper.grasp()
+            else:
+                robot.gripper.ungrasp()
             p.stepSimulation()
-            time.sleep(1./240.)
+            time.sleep(1. / 240.)
 
-    #
-    for i in range(10):
-        robot.set_eef_position([0.3879213,  0.0072391,  0.71218301])
-        p.stepSimulation()
-        time.sleep(1. / 240.)
-    #
-    for i in range(100):
-        robot.gripper.grasp()
-        p.stepSimulation()
-        time.sleep(1. / 240.)
-    #
-    pos = np.array(robot.get_eef_position())
-    for i in range(100):
-        pos[0] += 0.002
-        robot.set_eef_position(pos)
-        p.stepSimulation()
-        time.sleep(1. / 240.)
+    # for i in range(10):
+    #     robot.gripper.grasp()
+    #     p.stepSimulation()
+    #     time.sleep(1. / 240.)
+    # #
+    # pos = np.array(robot.get_eef_position())
+    # for i in range(100):
+    #     pos[0] += 0.002
+    #     robot.set_eef_position(pos)
+    #     p.stepSimulation()
+    #     time.sleep(1. / 240.)
 
     planner.synchronize()
 
