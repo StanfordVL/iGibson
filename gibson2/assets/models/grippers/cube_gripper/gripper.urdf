@@ -2,7 +2,7 @@
 <robot name="cube_gripper">
   <link name="world"/>
   <joint name="txj" type="prismatic">
-    <limit lower="-1.0" upper="1.0"/>
+    <limit lower="-2.0" upper="2.0"/>
     <origin rpy="0 0 0" xyz="0 0 0"/>
     <axis xyz="1 0 0"/>
     <parent link="world"/>
@@ -10,7 +10,7 @@
   </joint>
   <link name="ty"/>
   <joint name="tyj" type="prismatic">
-    <limit lower="-1.0" upper="1.0"/>
+    <limit lower="-2.0" upper="2.0"/>
     <axis xyz="0 1 0"/>
     <parent link="ty"/>
     <child link="tz"/>
@@ -47,7 +47,7 @@
         <box size="0.25 0.03 0.03" />
       </geometry>
       <material name="blue">
-        <color rgba="0.1 0.8 0.1 0.0" />
+        <color rgba="0.1 0.8 0.1 0.3" />
       </material>
     </visual>
     <collision>
@@ -68,7 +68,7 @@
         <box size="0.12 0.24 0.03" />
       </geometry>
        <material name="brown">
-        <color rgba="0.5 0.4 0.1 0.0" />
+        <color rgba="0.5 0.4 0.1 0.3" />
       </material>
     </visual>
     <collision>
