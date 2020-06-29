@@ -213,6 +213,10 @@ GRIPPER_OPEN = -1
 GRIPPER_CLOSE = 1
 
 
+class NoPlanException(Exception):
+    pass
+
+
 class Path(object):
     def __init__(self, arm_path=None, gripper_path=None):
         self._arm_path = arm_path
@@ -397,6 +401,10 @@ def plan_skill_open_prismatic(
     retract_path.append(retract_pose, gripper_state=GRIPPER_CLOSE)
     retract_path.append_pause(num_steps=5)  # pause before release
     retract_path.append_segment([retract_pose] * 2, gripper_state=GRIPPER_OPEN)
+
+    # retract a bit more to make room for the next motion
+    retract_more_pose = PBU.multiply(retract_pose, ([-0.10, 0, 0], PBU.unit_quat()))
+    retract_path.append(retract_more_pose, gripper_state=GRIPPER_OPEN)
     retract_path = retract_path.interpolate(pos_resolution=0.01, orn_resolution=np.pi/8)  # slowly open
     return grasp_path + retract_path
 
@@ -502,6 +510,9 @@ def plan_joint_path(
     eef_link = PBU.link_from_name(robot_bid, eef_link_name)
     plannable_joints = PBU.joints_from_names(robot_bid, plannable_joint_names)
     conf = inverse_kinematics(robot_bid, eef_link, plannable_joints, target_pose)
+    if conf is None:
+        raise NoPlanException("No IK Solution Found")
+
     attachments = []
     for aid in attachment_ids:
         attachments.append(PBU.create_attachment(robot_bid, eef_link, aid))
@@ -515,6 +526,8 @@ def plan_joint_path(
             resolutions=resolutions,
             attachments=attachments
         )
+    if path is None:
+        raise NoPlanException("No Plan Found")
     return path
 
 
@@ -565,17 +578,22 @@ def pose_to_array(pose):
 class BaseKitchenEnv(object):
     MAX_DPOS = 0.1
     MAX_DROT = np.pi / 8
-    def __init__(self, robot_base_pose, use_planner=False, hide_planner=True):
+
+    def __init__(self, robot_base_pose, use_gui=False, use_planner=False, hide_planner=True):
         self._hide_planner = hide_planner
         self._robot_base_pose = robot_base_pose
+        self._use_gui = use_gui
         self.objects = ObjectBank()
         self.planner = None
 
+        self._setup_simulation()
         self._create_robot()
         self._create_env()
         self._create_sensors()
         if use_planner:
             self._create_planner()
+
+        self.initial_world = PBU.WorldSaver()
         assert isinstance(self.robot, Robot)
 
     @property
@@ -587,6 +605,15 @@ class BaseKitchenEnv(object):
     def name(self):
         """Environment name"""
         return "BasicKitchen"
+
+    def _setup_simulation(self):
+        if self._use_gui:
+            p.connect(p.GUI)
+        else:
+            p.connect(p.DIRECT)
+        p.setGravity(0, 0, -9.8)
+        p.setTimeStep(1. / 240.)
+        PBU.set_camera(45, -40, 2, (0, 0, 0))
 
     def _create_robot(self):
         gripper = Gripper(
@@ -648,19 +675,21 @@ class BaseKitchenEnv(object):
         self.camera = Camera(
             height=256, width=256, fov=60, near=0.01, far=100., renderer=p.ER_TINY_RENDERER
         )
-        self.camera.set_pose_ypr((0, 0, 0), distance=2, yaw=45, pitch=-60)
+        self.camera.set_pose_ypr((0, 0, 0.5), distance=1.5, yaw=45, pitch=-45)
 
     def reset(self):
+        self.initial_world.restore()
         self.robot.reset_base_position_orientation(*self._robot_base_pose)
         self.robot.reset()
         z = PBU.stable_z(self.objects["can"].body_id, self.objects["drawer"].body_id)
         self.objects["can"].set_position_orientation([0, 0, z], [0, 0, 0, 1])
+        return self.get_observation()
 
     @property
     def sim_state(self):
         return np.zeros(3)  # TODO: implement this
 
-    def step(self, action):
+    def step(self, action, num_sim_steps=1, sleep_time=0):
         assert len(action) == self.action_dimension
         action = action.copy()
         pos = action[:3]  # delta position
@@ -675,9 +704,14 @@ class BaseKitchenEnv(object):
             self.robot.gripper.grasp()
         else:
             self.robot.gripper.ungrasp()
-        for _ in range(2):
+        for _ in range(num_sim_steps):
             p.stepSimulation()
-            time.sleep(1. / 240.)
+            time.sleep(sleep_time)
+
+        return self.get_observation(), self.get_reward(), self.is_done(), {}
+
+    def get_reward(self):
+        return float(self.is_success())
 
     def render(self, mode):
         """Render"""
@@ -1110,8 +1144,6 @@ def pose_to_action(start_pose, target_pose, max_dpos, max_drot=None):
     action[:3] = np.clip(action[:3] / max_dpos, -1., 1.)
     if max_dpos is not None:
         action[3:] = np.clip(action[3:] / max_drot, -1., 1.)
-    if np.any(action == 1) or np.any(action == -1):
-        print("WARNING: action is getting clipped")
     return action
 
 
@@ -1139,7 +1171,7 @@ def execute_planned_path(env, path):
         states.append(env.sim_state)
         all_obs.append(env.get_observation())
 
-        env.step(action)
+        env.step(action, num_sim_steps=2, sleep_time=0.)
 
     all_obs.append(env.get_observation())
     actions.append(np.zeros(env.action_dimension))
@@ -1181,8 +1213,8 @@ def get_demo(env):
         obstacles=env.objects.body_ids,
         grasp_pose=can_grasp_pose,
         reach_distance=0.05,
-        lift_height=0.05,
-        joint_resolutions=(0.05, 0.05, 0.05, 0.2, 0.2, 0.2)
+        lift_height=0.1,
+        joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2)
     )
     states, actions, rewards, obs = execute_planned_path(env, path)
     all_states.append(states)
@@ -1198,6 +1230,8 @@ def get_demo(env):
         place_pose=can_drop_pose,
         joint_resolutions=(0.05, 0.05, 0.05, 0.05, 0.05, 0.05)
     )
+
+    path.append_pause(30)
     states, actions, rewards, obs = execute_planned_path(env, path)
     all_states.append(states)
     all_actions.append(actions)
@@ -1214,6 +1248,8 @@ def get_demo(env):
 def main():
     import argparse
     import h5py
+    import json
+    import tqdm
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--file",
@@ -1225,29 +1261,52 @@ def main():
         type=int,
         default=10
     )
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        default=False
+    )
     args = parser.parse_args()
 
-    p.connect(p.GUI)
-    p.setGravity(0,0,-9.8)
-    p.setTimeStep(1./240.)
-    PBU.set_camera(45, -40, 2, (0, 0, 0))
-    env = BaseKitchenEnv(robot_base_pose=([0, 0.3, 1.2], [0, 0, 0, 1]), use_planner=True, hide_planner=False)
+    env_kwargs = dict(
+        robot_base_pose=([0, 0.3, 1.2], [0, 0, 1, 0])
+    )
+
+    env = BaseKitchenEnv(**env_kwargs, use_planner=True, hide_planner=False, use_gui=args.gui)
 
     if os.path.exists(args.file):
         os.remove(args.file)
     f = h5py.File(args.file)
     f_sars_grp = f.create_group("data")
 
-    for i in range(args.n):
-        states, actions, rewards, all_obs = get_demo(env)
+    env_args = dict(
+        type=4,
+        env_name=env.name,
+        env_kwargs=env_kwargs,
+    )
+    f_sars_grp.attrs["env_args"] = json.dumps(env_args)
 
-        f_demo_grp = f_sars_grp.create_group("demo_{}".format(i))
+    success_i = 0
+    total_i = 0
+    while success_i < args.n:
+        try:
+            states, actions, rewards, all_obs = get_demo(env)
+        except NoPlanException as e:
+            print(e)
+            continue
+        total_i += 1
+        if not env.is_success():
+            continue
+
+        f_demo_grp = f_sars_grp.create_group("demo_{}".format(success_i))
         f_demo_grp.attrs["num_samples"] = (states.shape[0] - 1)
         f_demo_grp.create_dataset("states", data=states[:-1])
         f_demo_grp.create_dataset("actions", data=actions[:-1])
         for k in all_obs:
             f_demo_grp.create_dataset("obs/{}".format(k), data=all_obs[k][:-1])
             f_demo_grp.create_dataset("next_obs/{}".format(k), data=all_obs[k][1:])
+        success_i += 1
+        print("{}/{}".format(success_i, total_i))
     f.close()
 
     p.disconnect()
