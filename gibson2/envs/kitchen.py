@@ -524,7 +524,10 @@ def plan_joint_path(
             conf,
             obstacles=obstacles,
             resolutions=resolutions,
-            attachments=attachments
+            attachments=attachments,
+            restarts=10,
+            iterations=100,
+            smooth=50
         )
     if path is None:
         raise NoPlanException("No Plan Found")
@@ -579,9 +582,10 @@ class BaseKitchenEnv(object):
     MAX_DPOS = 0.1
     MAX_DROT = np.pi / 8
 
-    def __init__(self, robot_base_pose, use_gui=False, use_planner=False, hide_planner=True):
+    def __init__(self, robot_base_pose, num_sim_per_step, use_gui=False, use_planner=False, hide_planner=True):
         self._hide_planner = hide_planner
         self._robot_base_pose = robot_base_pose
+        self._num_sim_per_step = num_sim_per_step
         self._use_gui = use_gui
         self.objects = ObjectBank()
         self.planner = None
@@ -675,7 +679,7 @@ class BaseKitchenEnv(object):
         self.camera = Camera(
             height=256, width=256, fov=60, near=0.01, far=100., renderer=p.ER_TINY_RENDERER
         )
-        self.camera.set_pose_ypr((0, 0, 0.5), distance=1.5, yaw=45, pitch=-45)
+        self.camera.set_pose_ypr((0, 0, 0.5), distance=2.0, yaw=45, pitch=-45)
 
     def reset(self):
         self.initial_world.restore()
@@ -689,7 +693,7 @@ class BaseKitchenEnv(object):
     def sim_state(self):
         return np.zeros(3)  # TODO: implement this
 
-    def step(self, action, num_sim_steps=1, sleep_time=0):
+    def step(self, action, sleep_per_sim_step=0.0):
         assert len(action) == self.action_dimension
         action = action.copy()
         pos = action[:3]  # delta position
@@ -704,9 +708,9 @@ class BaseKitchenEnv(object):
             self.robot.gripper.grasp()
         else:
             self.robot.gripper.ungrasp()
-        for _ in range(num_sim_steps):
+        for _ in range(self._num_sim_per_step):
             p.stepSimulation()
-            time.sleep(sleep_time)
+            time.sleep(sleep_per_sim_step)
 
         return self.get_observation(), self.get_reward(), self.is_done(), {}
 
@@ -1171,7 +1175,7 @@ def execute_planned_path(env, path):
         states.append(env.sim_state)
         all_obs.append(env.get_observation())
 
-        env.step(action, num_sim_steps=2, sleep_time=0.)
+        env.step(action)
 
     all_obs.append(env.get_observation())
     actions.append(np.zeros(env.action_dimension))
@@ -1245,31 +1249,13 @@ def get_demo(env):
     return all_states, all_actions, all_rewards, all_obs
 
 
-def main():
-    import argparse
+def create_dataset(args):
     import h5py
     import json
-    import tqdm
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--file",
-        type=str,
-        required=True
-    )
-    parser.add_argument(
-        "--n",
-        type=int,
-        default=10
-    )
-    parser.add_argument(
-        "--gui",
-        action="store_true",
-        default=False
-    )
-    args = parser.parse_args()
 
     env_kwargs = dict(
-        robot_base_pose=([0, 0.3, 1.2], [0, 0, 1, 0])
+        robot_base_pose=([0, 0.3, 1.2], [0, 0, 1, 0]),
+        num_sim_per_step=5,
     )
 
     env = BaseKitchenEnv(**env_kwargs, use_planner=True, hide_planner=False, use_gui=args.gui)
@@ -1309,6 +1295,51 @@ def main():
         print("{}/{}".format(success_i, total_i))
     f.close()
 
+
+def playback(args):
+    import h5py
+    import json
+
+    f = h5py.File(args.file, 'r')
+    env_args = json.loads(f["data"].attrs["env_args"])
+
+    env = BaseKitchenEnv(**env_args["env_kwargs"], use_gui=True)
+    demos = list(f["data"].keys())
+    for demo_id in demos:
+        env.reset()
+        actions = f["data/{}/actions".format(demo_id)][:]
+
+        for i in range(400):
+            if i >= len(actions):
+                for _ in range(2):
+                    p.stepSimulation()
+            else:
+                env.step(actions[i])
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--file",
+        type=str,
+        required=True
+    )
+    parser.add_argument(
+        "--n",
+        type=int,
+        default=10
+    )
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        default=False
+    )
+    args = parser.parse_args()
+
+    # playback(args)
+    create_dataset(args)
     p.disconnect()
 
 
