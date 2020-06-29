@@ -371,11 +371,18 @@ class ObjectBank(object):
         self._objects[name] = o
 
     @property
+    def objects(self):
+        return list(self._objects.values())
+
+    @property
     def body_ids(self):
         return tuple([o.body_id for o in list(self._objects.values())])
 
     def __getitem__(self, name):
         return self._objects[name]
+
+    def __len__(self):
+        return len(self._objects)
 
 
 def set_articulated_object_dynamics(obj):
@@ -390,11 +397,19 @@ def set_friction(obj, friction=10.):
         p.changeDynamics(obj.body_id, l, lateralFriction=friction)
 
 
+def pose_to_array(pose):
+    assert len(pose) == 2
+    assert len(pose[0]) == 3
+    assert len(pose[1]) == 4
+    return np.hstack((pose[0], pose[1]))
+
+
 class BaseKitchenEnv(object):
+    MAX_DPOS = 0.1
+    MAX_DROT = np.pi / 8
     def __init__(self, robot_base_pose, use_planner=False, hide_planner=True):
         self._hide_planner = hide_planner
         self._robot_base_pose = robot_base_pose
-        self.robot = None
         self.objects = ObjectBank()
         self.planner = None
 
@@ -407,7 +422,7 @@ class BaseKitchenEnv(object):
     @property
     def action_dimension(self):
         """Action dimension"""
-        return 8  # [x, y, z, x, y, z, w, g]
+        return 7  # [x, y, z, ai, aj, ak, g]
 
     @property
     def name(self):
@@ -420,13 +435,9 @@ class BaseKitchenEnv(object):
             finger_link_names=("left_gripper", "left_tip", "right_gripper", "right_tip")
         )
         gripper.load(os.path.join(gibson2.assets_path, 'models/grippers/basic_gripper/gripper.urdf'))
-        robot = ConstraintTargetActuatedRobot(
+        robot = ConstraintActuatedRobot(
             eef_link_name="eef_link", init_base_pose=self._robot_base_pose, gripper=gripper)
 
-        # arm = Arm(joint_names=("txj", "tyj", "tzj", "rxj", "ryj", "rzj"))
-        # arm.load(body_id=gripper.body_id)
-        # robot = JointActuatedRobot(
-        #         eef_link_name="eef_link", init_base_pose=self._robot_base_pose, gripper=gripper, arm=arm)
         self.robot = robot
 
     def _create_planner(self):
@@ -470,21 +481,30 @@ class BaseKitchenEnv(object):
         can.load()
         z = PBU.stable_z(can.body_id, drawer.body_id)
         can.set_position_orientation([0, 0, z], [0, 0, 0, 1])
+        p.changeDynamics(can.body_id, -1, mass=1.0)
         set_friction(can)
         self.objects.add_object("can", can)
 
     def reset(self):
         self.robot.reset_base_position_orientation(*self._robot_base_pose)
         self.robot.reset()
-        self.objects["can"].set_position_orientation([0, 0, 1.2], [0, 0, 0, 1])
+        z = PBU.stable_z(self.objects["can"].body_id, self.objects["drawer"].body_id)
+        self.objects["can"].set_position_orientation([0, 0, z], [0, 0, 0, 1])
+
+    @property
+    def sim_state(self):
+        return np.zeros(3)  # TODO: implement this
 
     def step(self, action):
         assert len(action) == self.action_dimension
-        pos = action[:3]
-        orn = action[3:7]
-        gri = action[7]
+        action = action.copy()
+        pos = action[:3]  # delta position
+        orn = action[3:6]  # delta rotation in euler angle
+        gri = action[-1]  # grasp or not
+        pos *= self.MAX_DPOS
+        orn *= self.MAX_DROT
 
-        # self.robot.set_relative_eef_position_orientation(pos, orn)
+        orn = T.quaternion_from_euler(*orn)
         self.robot.set_relative_eef_position_orientation(pos, orn)
         if gri > 0:
             self.robot.gripper.grasp()
@@ -494,33 +514,37 @@ class BaseKitchenEnv(object):
             p.stepSimulation()
             time.sleep(1. / 240.)
 
-    # def step(self, action):
-    #     assert len(action) == self.action_dimension
-    #     pos = action[:3]
-    #     orn = action[3:7]
-    #     gri = action[7]
-    #     cpos, corn = self.robot.get_eef_position_orientation()
-    #     new_pos = tuple([cp + dp for cp, dp in zip(cpos, pos)])
-    #     new_orn = T.quaternion_multiply(corn, orn)
-    #
-    #     self.robot.set_eef_position_orientation(new_pos, new_orn)
-    #     if gri > 0:
-    #         self.robot.gripper.grasp()
-    #     else:
-    #         self.robot.gripper.ungrasp()
-    #     for _ in range(2):
-    #         p.stepSimulation()
-    #         time.sleep(1. / 240.)
-    #         # time.sleep(1. / 240.)
-    #     cpos, corn = self.robot.get_eef_position_orientation()
-    #     print(np.linalg.norm(np.array(new_pos) - np.array(cpos)))
-
     def render(self, mode):
         """Render"""
         return
 
     def get_observation(self):
-        pass
+        # get proprio
+        proprio = []
+        gpose = self.robot.get_eef_position_orientation()
+        proprio.append(np.array(self.robot.gripper.get_joint_positions()))
+        proprio.append(pose_to_array(gpose))
+        proprio = np.hstack(proprio).astype(np.float32)
+
+        # get object info
+        object_poses = []
+        object_relative_poses = []
+        for o in self.objects.objects:
+            for l in PBU.get_all_links(o.body_id):
+                lpose = PBU.get_link_pose(o.body_id, l)
+                object_poses.append(pose_to_array(lpose))
+                object_relative_poses.append(pose_to_array(PBU.multiply(lpose, PBU.invert(gpose))))
+
+        object_poses = np.array(object_poses).astype(np.float32)
+        object_relative_poses = np.array(object_relative_poses).astype(np.float32)
+
+        return {
+            "proprio": proprio,
+            "object_poses": object_poses,
+            "object_relative_poses": object_relative_poses,
+            "object_positions": object_poses[:, :3],
+            "object_relative_positions": object_relative_poses[:, :3]
+        }
 
     def set_goal(self, **kwargs):
         """Set env target with external specification"""
@@ -532,7 +556,9 @@ class BaseKitchenEnv(object):
 
     def is_success(self):
         """Check if the task condition is reached."""
-        return False
+        can_position = self.objects["can"].get_position()
+        drawer_aabb = PBU.get_aabb(self.objects["drawer"].body_id, 2)
+        return PBU.aabb_contains_point(can_position, drawer_aabb)
 
 
 class Gripper(object):
@@ -911,7 +937,225 @@ class JointActuatedRobot(Robot):
         return self.arm.set_joint_positions(positions=positions, force=100000)
 
 
+def pose_to_action(start_pose, target_pose, max_dpos, max_drot=None):
+    action = np.zeros(6)
+    action[:3] = target_pose[:3] - start_pose[:3]
+    action[3:6] = T.euler_from_quaternion(T.quaternion_multiply(target_pose[3:], T.quaternion_inverse(start_pose[3:])))
+    action[:3] = np.clip(action[:3] / max_dpos, -1., 1.)
+    if max_dpos is not None:
+        action[3:] = np.clip(action[3:] / max_drot, -1., 1.)
+    if np.any(action == 1) or np.any(action == -1):
+        print("WARNING: action is getting clipped")
+    return action
+
+
+def execute_planned_path(env, path):
+    """Execute a planned path an relabel actions."""
+
+    all_obs = []
+    actions = []
+    rewards = []
+    states = []
+
+    for i in range(len(path)):
+        tpose = path.arm_path[i]
+        grip = path.gripper_path[i]
+
+        cpose = pose_to_array(env.robot.get_eef_position_orientation())
+        tpose = pose_to_array(tpose)
+
+        action = np.zeros(env.action_dimension)
+        action[-1] = grip
+        action[:-1] = pose_to_action(cpose, tpose, max_dpos=env.MAX_DPOS, max_drot=env.MAX_DROT)
+        actions.append(action)
+
+        rewards.append(float(env.is_success()))
+        states.append(env.sim_state)
+        all_obs.append(env.get_observation())
+
+        env.step(action)
+
+    all_obs.append(env.get_observation())
+    actions.append(np.zeros(env.action_dimension))
+    rewards.append(float(env.is_success()))
+    states.append(env.sim_state)
+
+    all_obs = dict((k, np.array([all_obs[i][k] for i in range(len(all_obs))])) for k in all_obs[0])
+    return states, actions, rewards, all_obs
+
+
+def get_demo(env):
+    env.reset()
+    all_states = []
+    all_actions = []
+    all_rewards = []
+    all_obs = []
+
+    drawer_grasp_pose = (
+        [0.3879213,  0.0072391,  0.71218301],
+        T.quaternion_multiply(T.quaternion_about_axis(np.pi, axis=[0, 0, 1]), T.quaternion_about_axis(np.pi / 2, axis=[1, 0, 0]))
+    )
+    path = plan_skill_open_prismatic(
+        env.planner,
+        obstacles=env.objects.body_ids,
+        grasp_pose=drawer_grasp_pose,
+        reach_distance=0.05,
+        retract_distance=0.25,
+        joint_resolutions=(0.25, 0.25, 0.25, 0.2, 0.2, 0.2)
+    )
+    states, actions, rewards, obs = execute_planned_path(env, path)
+    all_states.append(states)
+    all_actions.append(actions)
+    all_rewards.append(rewards)
+    all_obs.append(obs)
+
+    can_grasp_pose = ((0.03, -0.005, 1.06), (0, 0, 1, 0))
+    path = plan_skill_grasp(
+        env.planner,
+        obstacles=env.objects.body_ids,
+        grasp_pose=can_grasp_pose,
+        reach_distance=0.05,
+        lift_height=0.05,
+        joint_resolutions=(0.05, 0.05, 0.05, 0.2, 0.2, 0.2)
+    )
+    states, actions, rewards, obs = execute_planned_path(env, path)
+    all_states.append(states)
+    all_actions.append(actions)
+    all_rewards.append(rewards)
+    all_obs.append(obs)
+
+    can_drop_pose = ((0.469, 0, 0.952), (0, 0, 1, 0))
+    path = plan_skill_place(
+        env.planner,
+        obstacles=env.objects.body_ids,
+        holding=env.objects["can"].body_id,
+        place_pose=can_drop_pose,
+        joint_resolutions=(0.05, 0.05, 0.05, 0.05, 0.05, 0.05)
+    )
+    states, actions, rewards, obs = execute_planned_path(env, path)
+    all_states.append(states)
+    all_actions.append(actions)
+    all_rewards.append(rewards)
+    all_obs.append(obs)
+
+    all_states = np.concatenate(all_states, axis=0)
+    all_actions = np.concatenate(all_actions, axis=0)
+    all_rewards = np.concatenate(all_rewards, axis=0)
+    all_obs = dict((k, np.concatenate([all_obs[i][k] for i in range(len(all_obs))], axis=0)) for k in all_obs[0])
+    return all_states, all_actions, all_rewards, all_obs
+
+
 def main():
+    import argparse
+    import h5py
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--file",
+        type=str,
+        required=True
+    )
+    parser.add_argument(
+        "--n",
+        type=int,
+        default=10
+    )
+    args = parser.parse_args()
+
+    p.connect(p.GUI)
+    p.setGravity(0,0,-9.8)
+    p.setTimeStep(1./240.)
+    PBU.set_camera(45, -40, 2, (0, 0, 0))
+    env = BaseKitchenEnv(robot_base_pose=([0, 0.3, 1.2], [0, 0, 0, 1]), use_planner=True, hide_planner=False)
+
+    if os.path.exists(args.file):
+        os.remove(args.file)
+    f = h5py.File(args.file)
+    f_sars_grp = f.create_group("data")
+
+    for i in range(args.n):
+        states, actions, rewards, all_obs = get_demo(env)
+
+        f_demo_grp = f_sars_grp.create_group("demo_{}".format(i))
+        f_demo_grp.attrs["num_samples"] = (states.shape[0] - 1)
+        f_demo_grp.create_dataset("states", data=states[:-1])
+        f_demo_grp.create_dataset("actions", data=actions[:-1])
+        for k in all_obs:
+            f_demo_grp.create_dataset("obs/{}".format(k), data=all_obs[k][:-1])
+            f_demo_grp.create_dataset("next_obs/{}".format(k), data=all_obs[k][1:])
+    f.close()
+
+    p.disconnect()
+
+
+def interactive_session(env):
+    p.connect(p.GUI)
+    p.setGravity(0,0,-9.8)
+    p.setTimeStep(1./240.)
+    PBU.set_camera(45, -40, 2, (0, 0, 0))
+
+    env.reset()
+    robot = env.robot
+    gripper = env.robot.gripper
+    pos = np.array(robot.get_eef_position())
+    rot = np.array(robot.get_eef_orientation())
+    grasped = False
+
+    rot_yaw_pos = T.quaternion_about_axis(0.01, [0, 0, 1])
+    rot_yaw_neg = T.quaternion_about_axis(-0.01, [0, 0, 1])
+    rot_pitch_pos = T.quaternion_about_axis(0.01, [1, 0, 0])
+    rot_pitch_neg = T.quaternion_about_axis(-0.01, [1, 0, 0])
+
+    prev_key = None
+    for i in range(24000):  # at least 100 seconds
+        print(env.is_success())
+
+        prev_rot = rot.copy()
+        prev_pos = pos.copy()
+        keys = p.getKeyboardEvents()
+
+        p.stepSimulation()
+        if ord('c') in keys and prev_key != keys:
+            if grasped:
+                gripper.ungrasp()
+            else:
+                gripper.grasp()
+            grasped = not grasped
+
+        if p.B3G_ALT in keys and p.B3G_LEFT_ARROW in keys:
+            rot = T.quaternion_multiply(rot_yaw_pos, rot)
+        if p.B3G_ALT in keys and p.B3G_RIGHT_ARROW in keys:
+            rot = T.quaternion_multiply(rot_yaw_neg, rot)
+
+        if p.B3G_ALT in keys and p.B3G_UP_ARROW in keys:
+            rot = T.quaternion_multiply(rot_pitch_pos, rot)
+        if p.B3G_ALT in keys and p.B3G_DOWN_ARROW in keys:
+            rot = T.quaternion_multiply(rot_pitch_neg, rot)
+
+        if p.B3G_ALT not in keys and p.B3G_LEFT_ARROW in keys:
+            pos[1] -= 0.005
+        if p.B3G_ALT not in keys and p.B3G_RIGHT_ARROW in keys:
+            pos[1] += 0.005
+
+        if p.B3G_ALT not in keys and p.B3G_UP_ARROW in keys:
+            pos[0] -= 0.005
+        if p.B3G_ALT not in keys and p.B3G_DOWN_ARROW in keys:
+            pos[0] += 0.005
+
+        if ord(',') in keys:
+            pos[2] += 0.005
+        if ord('.') in keys:
+            pos[2] -= 0.005
+
+        if not np.all(prev_pos == pos) or not np.all(prev_rot == rot):
+            robot.set_eef_position_orientation(pos, rot)
+
+        time.sleep(1./240.)
+        prev_key = keys
+
+    p.disconnect()
+
+
+def test():
     p.connect(p.GUI)
     p.setGravity(0,0,-9.8)
     p.setTimeStep(1./240.)
@@ -1062,13 +1306,27 @@ def main():
         retract_distance=0.25,
         joint_resolutions=(0.25, 0.25, 0.25, 0.2, 0.2, 0.2)
     )
+    execute_planned_path(env, path)
+    can_grasp_pose = ((0.03, -0.005, 1.06), (0, 0, 1, 0))
+    path = plan_skill_grasp(
+        env.planner,
+        obstacles=env.objects.body_ids,
+        grasp_pose=can_grasp_pose,
+        reach_distance=0.05,
+        lift_height=0.05,
+        joint_resolutions=(0.05, 0.05, 0.05, 0.2, 0.2, 0.2)
+    )
+    execute_planned_path(env, path)
 
-    delta_path = path.get_delta_path()
-    for i in range(len(delta_path)):
-        pose = delta_path.arm_path[i]
-        grip = delta_path.gripper_path[i]
-        action = np.hstack([pose[0], pose[1], grip])
-        env.step(action)
+    can_drop_pose = ((0.469, 0, 0.952), (0, 0, 1, 0))
+    path = plan_skill_place(
+        env.planner,
+        obstacles=env.objects.body_ids,
+        holding=env.objects["can"].body_id,
+        place_pose=can_drop_pose,
+        joint_resolutions=(0.05, 0.05, 0.05, 0.05, 0.05, 0.05)
+    )
+    execute_planned_path(env, path)
 
     # for i in range(len(path)):
     #     pose = path.arm_path[i]
@@ -1132,12 +1390,14 @@ def main():
     prev_key = None
     init_t = time.time()
     for i in range(24000):  # at least 100 seconds
+        print(env.is_success())
+
         prev_rot = rot.copy()
         prev_pos = pos.copy()
         keys = p.getKeyboardEvents()
         # print((time.time() - init_t) / float(i + 1))
         # print(pos - np.array(robot.get_eef_position()))
-        print(robot.get_eef_position_orientation())
+        # print(robot.get_eef_position_orientation())
 
         p.stepSimulation()
         if ord('c') in keys and prev_key != keys:
