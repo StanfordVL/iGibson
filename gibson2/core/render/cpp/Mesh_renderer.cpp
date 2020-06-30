@@ -1115,7 +1115,7 @@ public:
 
 	// Get button data for a specific controller - either left_controller or right_controller
 	// Returns in order: trigger fraction, analog touch position x, analog touch position y
-	// TIMELINE: Call directly before/after getDataForVRDevice
+	// TIMELINE: Call directly after getDataForVRDevice (relies on isValid to determine data integrity)
 	py::list getButtonDataForController(char* controllerType) {
 		float trigger_fraction, touch_x, touch_y;
 		bool isValid;
