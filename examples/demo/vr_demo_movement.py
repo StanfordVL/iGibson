@@ -54,6 +54,9 @@ rightGripperFraction = 0.0
 if optimize:
     s.optimize_data()
 
+# Account for Gibson floors not being at z=0 - shift user height down by 0.2m
+s.setVROffset([0, 0, -0.2])
+
 # Runs simulation
 while True:
     start = time.time()
@@ -83,11 +86,12 @@ while True:
         lTrig, lTouchX, lTouchY = s.getButtonDataForController('left_controller')
         rTrig, rTouchX, rTouchY = s.getButtonDataForController('right_controller')
 
-        print("Printing trigger and touch data for left then right:")
-        if lIsValid:
-            print("Left: ", lTrig, lTouchX, lTouchY)
-        if rIsValid:
-            print("Right: ", rTrig, rTouchX, rTouchY)
+        # Uncomment to see/debug analog data
+        #print("Printing trigger and touch data for left then right:")
+        #if lIsValid:
+        #    print("Left: ", lTrig, lTouchX, lTouchY)
+        #if rIsValid:
+        #    print("Right: ", rTrig, rTouchX, rTouchY)
 
         if lIsValid:
             lGripper.move_gripper(lTrans, lRot)
@@ -96,6 +100,18 @@ while True:
         if rIsValid:
             rGripper.move_gripper(rTrans, rRot)
             rGripper.set_close_fraction(rightGripperFraction)
+
+        current_offset = s.getVROffset()
+
+        # Move the VR player in the direction of the analog stick
+        # In this implementation, +ve x and +ve y correspond to the same axes in Gibson
+        # Only uses data from right controller
+        # TODO: Implement a system where movement is relative to direction of HMD?
+        if rIsValid:
+            # Small offsets since this method could be call 100 times a second
+            rTouchXOffset = rTouchX * 0.003
+            rTouchYOffset = rTouchY * 0.003
+            s.setVROffset([current_offset[0] + rTouchXOffset, current_offset[1] + rTouchYOffset, current_offset[2]])
     
     elapsed = time.time() - start
     if (elapsed > 0):
