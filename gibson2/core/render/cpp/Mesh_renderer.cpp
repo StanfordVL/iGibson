@@ -878,6 +878,13 @@ public:
 		bool isValidData = false;
 		// index of current device in device array
 		int index = -1;
+		// trigger pressed fraction (0 min, 1 max) - controllers only!
+		float trig_frac;
+	    // analog touch vector - controllers only!
+		glm::vec2 touchpad_analog_vec;
+		// both indices are used to obtain analog data for trigger and touchpadd - controllers only!
+		int trigger_axis_index;
+		int touchpad_axis_index;
 	};
 
 	DeviceData hmdData;
@@ -1067,7 +1074,6 @@ public:
 
 	// Returns device data in order: isValidData, position, rotation, hmdActualPos (valid only if hmd)
 	// Device type can be either hmd, left_controller or right_controller
-	// Coordinates are kept in OpenGL coordinate system to synchronize with PyBullet
 	// TIMELINE: Call at any time after postRenderVR to poll the VR system for device data
 	py::list getDataForVRDevice(char* deviceType) {
 		bool isValid = false;
@@ -1107,6 +1113,34 @@ public:
 		return deviceData;
 	}
 
+	// Get button data for a specific controller - either left_controller or right_controller
+	// Returns in order: trigger fraction, analog touch position x, analog touch position y
+	// TIMELINE: Call directly before/after getDataForVRDevice
+	py::list getButtonDataForController(char* controllerType) {
+		float trigger_fraction, touch_x, touch_y;
+		bool isValid;
+
+		if (!strcmp(controllerType, "left_controller")) {
+			trigger_fraction = leftControllerData.trig_frac;
+			touch_x = leftControllerData.touchpad_analog_vec.x;
+			touch_y = leftControllerData.touchpad_analog_vec.y;
+			isValid = leftControllerData.isValidData;
+		}
+		else if (!strcmp(controllerType, "right_controller")) {
+			trigger_fraction = rightControllerData.trig_frac;
+			touch_x = rightControllerData.touchpad_analog_vec.x;
+			touch_y = rightControllerData.touchpad_analog_vec.y;
+			isValid = rightControllerData.isValidData;
+		}
+
+		py::list buttonData;
+		buttonData.append(trigger_fraction);
+		buttonData.append(touch_x);
+		buttonData.append(touch_y);
+
+		return buttonData;
+	}
+
 	// Polls for VR events, such as button presses
 	// TIMELINE: Ideally call before rendering (eg. before simulator step function)
 	py::list pollVREvents() {
@@ -1139,6 +1173,7 @@ public:
 
 		if (this->useEyeTracking) {
 			this->shouldShutDownEyeTracking = true;
+			eyeTrackingThread->join();
 		}
 	}
 
@@ -1215,6 +1250,8 @@ private:
 		hmdData.isValidData = false;
 		leftControllerData.isValidData = false;
 		rightControllerData.isValidData = false;
+		// Stores controller information - see github.com/ValveSoftware/openvr/wiki/IVRSystem::GetControllerState for more info
+		vr::VRControllerState_t controllerState;
 
 		vr::TrackedDevicePose_t trackedDevices[vr::k_unMaxTrackedDeviceCount];
 		vr::VRCompositor()->WaitGetPoses(trackedDevices, vr::k_unMaxTrackedDeviceCount, NULL, 0);
@@ -1241,9 +1278,28 @@ private:
 				if (role == vr::TrackedControllerRole_Invalid) {
 					continue;
 				}
-				else if (role == vr::TrackedControllerRole_LeftHand) {
+
+				int trigger_index, touchpad_index;
+
+				// Figures out indices that correspond with trigger and trackpad axes. Index used to read into VRControllerState_t struct array of axes.
+				for (int i = 0; i < vr::k_unControllerStateAxisCount; i++) {
+					int axisType = m_pHMD->GetInt32TrackedDeviceProperty(idx, (vr::ETrackedDeviceProperty)(vr::Prop_Axis0Type_Int32 + i));
+					if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_Trigger) {
+						trigger_index = i;
+					}
+					else if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_TrackPad) {
+						touchpad_index = i;
+					}
+				}
+
+				// If false, sets the controller data validity to false, as data is not valid if we can't read analog touch coordinates and trigger close fraction
+				bool getControllerDataResult = m_pHMD->GetControllerState(idx, &controllerState, sizeof(controllerState));
+
+				if (role == vr::TrackedControllerRole_LeftHand) {
 					leftControllerData.index = idx;
-					leftControllerData.isValidData = true;
+					leftControllerData.trigger_axis_index = trigger_index;
+					leftControllerData.touchpad_axis_index = touchpad_index;
+					leftControllerData.isValidData = getControllerDataResult;
 
 					glm::vec3 leftControllerPos = getPositionFromSteamVRMatrix(transformMat);
 					setSteamVRMatrixPos(leftControllerPos + vrOffsetVec, transformMat);
@@ -1251,10 +1307,15 @@ private:
 					leftControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 					leftControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
 					leftControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+
+					leftControllerData.trig_frac = controllerState.rAxis[leftControllerData.trigger_axis_index].x;
+					leftControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[leftControllerData.touchpad_axis_index].x, controllerState.rAxis[leftControllerData.touchpad_axis_index].y);
 				}
 				else if (role == vr::TrackedControllerRole_RightHand) {
 					rightControllerData.index = idx;
-					rightControllerData.isValidData = true;
+					rightControllerData.trigger_axis_index = trigger_index;
+					rightControllerData.touchpad_axis_index = touchpad_index;
+					rightControllerData.isValidData = getControllerDataResult;
 
 					glm::vec3 rightControllerPos = getPositionFromSteamVRMatrix(transformMat);
 					setSteamVRMatrixPos(rightControllerPos + vrOffsetVec, transformMat);
@@ -1262,6 +1323,9 @@ private:
 					rightControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 					rightControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
 					rightControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+
+					rightControllerData.trig_frac = controllerState.rAxis[rightControllerData.trigger_axis_index].x;
+					rightControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[rightControllerData.touchpad_axis_index].x, controllerState.rAxis[rightControllerData.touchpad_axis_index].y);
 				}
 			}
 		}
@@ -1509,6 +1573,7 @@ PYBIND11_MODULE(MeshRendererContext, m) {
 		pymoduleVR.def("postRenderVRForEye", &VRSystem::postRenderVRForEye);
 		pymoduleVR.def("postRenderVRUpdate", &VRSystem::postRenderVRUpdate);
 		pymoduleVR.def("getDataForVRDevice", &VRSystem::getDataForVRDevice);
+		pymoduleVR.def("getButtonDataForController", &VRSystem::getButtonDataForController);
 		pymoduleVR.def("pollVREvents", &VRSystem::pollVREvents);
 		pymoduleVR.def("releaseVR", &VRSystem::releaseVR);
 
