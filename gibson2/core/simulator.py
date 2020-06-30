@@ -503,6 +503,8 @@ class Simulator:
     # Controller can be left_controller or right_controller
     # Returns trigger_fraction, touchpad finger position x, touchpad finger position y
     # Data is only valid if isValid is true from previous call to getDataForVRDevice
+    # Trigger data: 0 (closed) <------> 1 (open)
+    # Analog data: X: -1 (left) <-----> 1 (right) and Y: -1 (bottom) <------> 1 (top)
     def getButtonDataForController(self, controllerName):
         if not self.use_vr_renderer:
             return [None, None, None]
@@ -515,13 +517,22 @@ class Simulator:
         origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
         return [origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter]
 
-    # Sets the position of the VR system (HMD, left controller, right controller).
+    # Sets the translational offset of the VR system (HMD, left controller, right controller)
     # Can be used for many things, including adjusting height and teleportation-based movement
-    def setVRPosition(self, pos=None):
+    # Input must be a list of three floats, corresponding to x, y, z in Gibson coordinate space
+    def setVROffset(self, pos=None):
         if not self.use_vr_renderer:
             return
 
-        self.renderer.set_vr_position(pos)
+        self.renderer.set_vr_offset(pos)
+
+    # Gets the current VR offset vector in list form: x, y, z (in Gibson coordinates)
+    def getVROffset(self):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+
+        x, y, z = self.renderer.vrsys.getVROffset()
+        return [x, y, z]
 
     @staticmethod
     def update_position(instance):

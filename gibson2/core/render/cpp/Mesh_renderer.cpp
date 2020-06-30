@@ -1008,10 +1008,23 @@ public:
 		return eyeData;
 	}
 
-	// Sets the position of the VR headset
+	// Sets the offset of the VR headset
 	// TIMELINE: Can call any time
-	void setVRPosition(float x, float y, float z) {
+	void setVROffset(float x, float y, float z) {
 		this->vrOffsetVec = glm::vec3(x, y, z);
+	}
+
+	// Gets the VR offset vector in form x, y, z
+	// TIMELINE: Can call any time
+	py::list getVROffset() {
+		glm::vec3 transformedOffsetVec(vrToGib * glm::vec4(this->vrOffsetVec, 1.0));
+
+		py::list offset;
+		offset.append(transformedOffsetVec.x);
+		offset.append(transformedOffsetVec.y);
+		offset.append(transformedOffsetVec.z);
+
+		return offset;
 	}
 
 	// Returns the projection and view matrices for the left and right eyes, to be used in rendering
@@ -1568,7 +1581,8 @@ PYBIND11_MODULE(MeshRendererContext, m) {
 		pymoduleVR.def(py::init());
 		pymoduleVR.def("initVR", &VRSystem::initVR);
 		pymoduleVR.def("getEyeTrackingData", &VRSystem::getEyeTrackingData);
-		pymoduleVR.def("setVRPosition", &VRSystem::setVRPosition);
+		pymoduleVR.def("setVROffset", &VRSystem::setVROffset);
+		pymoduleVR.def("getVROffset", &VRSystem::getVROffset);
 		pymoduleVR.def("preRenderVR", &VRSystem::preRenderVR);
 		pymoduleVR.def("postRenderVRForEye", &VRSystem::postRenderVRForEye);
 		pymoduleVR.def("postRenderVRUpdate", &VRSystem::postRenderVRUpdate);
