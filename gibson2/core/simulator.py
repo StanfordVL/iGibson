@@ -489,6 +489,7 @@ class Simulator:
         return eventData
 
     # Call this after step - returns all VR device data for a specific device
+    # Device can be hmd, left_controller or right_controller
     # Return isValid (indicating validity of data), translation and rotation in Gibson world space
     def getDataForVRDevice(self, deviceName):
         if not self.use_vr_renderer:
@@ -497,6 +498,17 @@ class Simulator:
         # Use fourth variable in list to get actual hmd position in space
         isValid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(deviceName)
         return [isValid, translation, rotation]
+
+    # Call this after getDataForVRDevice - returns analog data for a specific controller
+    # Controller can be left_controller or right_controller
+    # Returns trigger_fraction, touchpad finger position x, touchpad finger position y
+    # Data is only valid if isValid is true from previous call to getDataForVRDevice
+    def getButtonDataForController(self, controllerName):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+        
+        trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(controllerName)
+        return [trigger_fraction, touch_x, touch_y]
     
     # Returns eye tracking data as list of lists. Order: gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
     def getEyeTrackingData(self):

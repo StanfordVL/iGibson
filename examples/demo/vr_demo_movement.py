@@ -80,8 +80,8 @@ while True:
         lIsValid, lTrans, lRot = s.getDataForVRDevice('left_controller')
         rIsValid, rTrans, rRot = s.getDataForVRDevice('right_controller')
         # TODO: Make nice interface functions for this function
-        lTrig, lTouchX, lTouchY = s.renderer.vrsys.getButtonDataForController('left_controller')
-        rTrig, rTouchX, rTouchY = s.renderer.vrsys.getButtonDataForController('right_controller')
+        lTrig, lTouchX, lTouchY = s.getButtonDataForController('left_controller')
+        rTrig, rTouchX, rTouchY = s.getButtonDataForController('right_controller')
 
         print("Printing trigger and touch data for left then right:")
         if lIsValid:
