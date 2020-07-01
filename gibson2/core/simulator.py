@@ -512,10 +512,11 @@ class Simulator:
         trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(controllerName)
         return [trigger_fraction, touch_x, touch_y]
     
-    # Returns eye tracking data as list of lists. Order: gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
+    # Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
+    # Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
     def getEyeTrackingData(self):
-        origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
-        return [origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter]
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
+        return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
 
     # Sets the translational offset of the VR system (HMD, left controller, right controller)
     # Can be used for many things, including adjusting height and teleportation-based movement
