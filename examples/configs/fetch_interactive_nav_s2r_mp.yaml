@@ -45,7 +45,7 @@ max_step: 25
 # sensor
 output: [sensor, rgb, depth, scan]
 resolution: 128
-fov: 57.5
+fov: 90
 n_horizontal_rays: 220
 n_vertical_beams: 1
 scan_noise_rate: 0.02

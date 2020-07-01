@@ -1211,6 +1211,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         if self.arena in ['push_drawers', 'push_chairs']:
             del state['sensor']
 
+        print('reward', reward)
         return state, reward, done, info
 
     def compute_next_step(self, action, use_base, subgoal_success):
@@ -1275,7 +1276,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     jointLowerLimit, jointUpperLimit, _,_,_,_,_,_,_ = p.getJointInfo(body_id, joint_id)
                     if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
                         joint_pos = p.getJointState(body_id, joint_id)[0]
-                        drawers_diff += self.cabinet_drawers_states[i][joint_id] - joint_pos            
+                        drawers_diff += self.cabinet_drawers_states[i][joint_id] - joint_pos        
+                        self.cabinet_drawers_states[i][joint_id] = joint_pos
+
             reward += drawers_diff * 5.0
 
         if not use_base:
@@ -1296,6 +1299,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def reset_initial_and_target_pos(self):
         self.initial_orn_z = np.random.uniform(-np.pi, np.pi)
+        if self.arena in ['push_drawers', 'push_chairs']:
+            self.initial_orn_z = np.pi/2.0
         if self.arena in ['button_door', 'push_door', 'obstacles', 'semantic_obstacles','push_drawers']:
             floor_height = self.scene.get_floor_height(self.floor_num)
 
