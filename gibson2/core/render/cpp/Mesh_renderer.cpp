@@ -912,10 +912,13 @@ public:
 	int result;
 	bool shouldShutDownEyeTracking;
 
+	// Struct storing eye data for SR anipal - we only return origin and direction in world space
+	// As most users will want to use this ray to query intersection or something similar
 	struct EyeTrackingData {
+		bool isValid;
 		glm::vec3 origin;
 		glm::vec3 dir;
-		glm::vec3 gazePoint;
+		// Both in mm
 		float leftPupilDiameter;
 		float rightPupilDiameter;
 	};
@@ -974,34 +977,28 @@ public:
 	}
 
 	// Queries eye tracking data and returns to user
-	// Returns in order gaze origin, gaze direction, gaze point, left pupil diameter (in mm), right pupil diameter (in mm)
-	// TIMELINE: Can call any time
+	// Returns in order is_data_valid, gaze origin, gaze direction, left pupil diameter (in mm), right pupil diameter (in mm)
+	// TIMELINE: Call after getDataForVRDevice, since this relies on knowing latest HMD transform
 	py::list getEyeTrackingData() {
 		py::list eyeData;
 
 		// Transform data into Gibson coordinate system before returning to user
 		glm::vec3 gibOrigin(vrToGib * glm::vec4(eyeTrackingData.origin, 1.0));
 		glm::vec3 gibDir(vrToGib * glm::vec4(eyeTrackingData.dir, 1.0));
-		glm::vec3 gibGazePoint(vrToGib * glm::vec4(eyeTrackingData.gazePoint, 1.0));
 
 		py::list origin;
-		origin.append(eyeTrackingData.origin.x);
-		origin.append(eyeTrackingData.origin.y);
-		origin.append(eyeTrackingData.origin.z);
+		origin.append(gibOrigin.x);
+		origin.append(gibOrigin.y);
+		origin.append(gibOrigin.z);
 
 		py::list dir;
 		dir.append(gibDir.x);
 		dir.append(gibDir.y);
 		dir.append(gibDir.z);
 
-		py::list gazePoint;
-		gazePoint.append(gibGazePoint.x);
-		gazePoint.append(gibGazePoint.y);
-		gazePoint.append(gibGazePoint.z);
-
+		eyeData.append(eyeTrackingData.isValid);
 		eyeData.append(origin);
 		eyeData.append(dir);
-		eyeData.append(gazePoint);
 		eyeData.append(eyeTrackingData.leftPupilDiameter);
 		eyeData.append(eyeTrackingData.rightPupilDiameter);
 
@@ -1213,6 +1210,10 @@ private:
 	}
 
 	// Polls SRAnipal to get updated eye tracking information
+	// See this forum discussion to learn how the coordinate systems of OpenVR and SRAnipal are related: 
+	// https://forum.vive.com/topic/5888-vive-pro-eye-finding-a-single-eye-origin-in-world-space/?ct=1593593815
+	// Uses right-handed coordinate system with +ve x left, +ve z forward and +ve y up
+	// We need to convert that to a +ve x right, +ve z backward and +ve y up system at the end of the function
 	void pollAnipal() {
 		while (!this->shouldShutDownEyeTracking) {
 			this->result = ViveSR::anipal::Eye::GetEyeData(&this->eyeData);
@@ -1221,35 +1222,41 @@ private:
 					ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY);
 				int isDirValid = ViveSR::anipal::Eye::DecodeBitMask(this->eyeData.verbose_data.combined.eye_data.eye_data_validata_bit_mask,
 					ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_ORIGIN_VALIDITY);
-				if (!isOriginValid || !isDirValid) continue;
+				if (!isOriginValid || !isDirValid) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
 
+				eyeTrackingData.isValid = true;
+
+				// Both origin and dir are relative to the HMD coordinate system, so we need to transform them into HMD coordinate system
+				if (!hmdData.isValidData) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
+
+				// Returns value in mm, so need to divide by 1000 to get meters (Gibson uses meters)
 				auto gazeOrigin = this->eyeData.verbose_data.combined.eye_data.gaze_origin_mm;
-				if (gazeOrigin.x != -1.0f || gazeOrigin.y != 1.0f || gazeOrigin.z != 1.0f)
-					eyeTrackingData.origin = glm::vec3(gazeOrigin.x, gazeOrigin.y, gazeOrigin.z);
+				if (gazeOrigin.x == -1.0f && gazeOrigin.y == -1.0f && gazeOrigin.z == -1.0f) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
+				glm::vec3 eyeSpaceOrigin(-1 * gazeOrigin.x / 1000.0f, gazeOrigin.y / 1000.0f, -1 * gazeOrigin.z / 1000.0f);
+				eyeTrackingData.origin = glm::vec3(hmdData.deviceTransform * glm::vec4(eyeSpaceOrigin, 1.0));
+
 				auto gazeDirection = this->eyeData.verbose_data.combined.eye_data.gaze_direction_normalized;
-				if (gazeDirection.x != -1.0f || gazeDirection.y != 1.0f || gazeDirection.z != 1.0f)
-					eyeTrackingData.dir = glm::vec3(gazeDirection.x, gazeDirection.y, gazeDirection.z);
+				if (gazeDirection.x == -1.0f && gazeDirection.y == -1.0f && gazeDirection.z == -1.0f) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
+				
+				// Convert to OpenVR coordinates
+				glm::vec3 eyeSpaceDir(-1 * gazeDirection.x, gazeDirection.y, -1 * gazeDirection.z);
 
-				// Calculate intersection point of two eyes
-				auto leftGazeOrigin = this->eyeData.verbose_data.left.gaze_origin_mm;
-				glm::vec3 lgo = glm::vec3(leftGazeOrigin.x, leftGazeOrigin.y, leftGazeOrigin.z);
-				auto leftGazeDir = this->eyeData.verbose_data.left.gaze_direction_normalized;
-				glm::vec3 lgd = glm::vec3(leftGazeDir.x, leftGazeDir.y, leftGazeDir.z);
-				auto rightGazeOrigin = this->eyeData.verbose_data.right.gaze_origin_mm;
-				glm::vec3 rgo = glm::vec3(rightGazeOrigin.x, rightGazeOrigin.y, rightGazeOrigin.z);
-				auto rightGazeDir = this->eyeData.verbose_data.right.gaze_direction_normalized;
-				glm::vec3 rgd = glm::vec3(rightGazeDir.x, rightGazeDir.y, rightGazeDir.z);
-
-				// Solve for closest point to each of two gaze lines, which is the point the user is looking at
-				// This is the midpoint of the shortest line segment between them
-				float s = (glm::dot(lgd, rgd) * (glm::dot(lgo, rgd) - glm::dot(lgd, rgo)) - glm::dot(lgo, rgd) * glm::dot(rgo, rgd))
-					/ ((glm::dot(lgo, rgd) * glm::dot(lgo, rgd)) - 1);
-				float t = (glm::dot(lgd, rgd) * (glm::dot(rgo, rgd) - glm::dot(lgo, rgd)) - glm::dot(lgd, rgo) * glm::dot(lgo, lgd))
-					/ ((glm::dot(lgo, rgd) * glm::dot(lgo, rgd)) - 1);
-
-				eyeTrackingData.gazePoint = 0.5f * (lgo + rgo + t * lgd + s * rgd);
-				// x coordinates are opposite of OpenGL convention
-				eyeTrackingData.gazePoint.x *= -1;
+				// Only rotate, no translate - remove translation to preserve rotation
+				glm::vec3 hmdSpaceDir(hmdData.deviceTransform * glm::vec4(eyeSpaceDir, 1.0));
+				// Make sure to normalize (and also flip x and z, since anipal coordinate convention is different to OpenGL)
+				eyeTrackingData.dir = glm::normalize(glm::vec3(hmdSpaceDir.x - hmdData.devicePos.x, hmdSpaceDir.y - hmdData.devicePos.y, hmdSpaceDir.z - hmdData.devicePos.z));
 				
 				// Record pupil measurements
 				eyeTrackingData.leftPupilDiameter = this->eyeData.verbose_data.left.pupil_diameter_mm;
@@ -1510,6 +1517,12 @@ private:
 	// Print string version of mat4 for debugging purposes
 	void printMat4(glm::mat4& m) {
 		printf(glm::to_string(m).c_str());
+		printf("\n");
+	}
+
+	// Print string version of vec3 for debugging purposes
+	void printVec3(glm::vec3& v) {
+		printf(glm::to_string(v).c_str());
 		printf("\n");
 	}
 

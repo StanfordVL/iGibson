@@ -112,3 +112,4 @@ Have fun in VR!
 
 Helpful tips:
 Press ESCAPE to force the fullscreen rendering window to close during program execution.
+Before using SRAnipal eye tracking, you may want to re-calibrate the eye tracker. Please go to the Vive system settings to perform this calibration.
