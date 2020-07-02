@@ -130,7 +130,7 @@ class NavigateEnv(BaseEnv):
         # output: sensors
         self.output = self.config['output']
         self.n_horizontal_rays = self.config.get('n_horizontal_rays', 128)
-        self.n_vertical_beams = self.config.get('n_vertical_beams', 9)
+        self.n_vertical_beams = self.config.get('n_vertical_beams', 1)
         self.scan_noise_rate = self.config.get('scan_noise_rate', 0.0)
         self.depth_noise_rate = self.config.get('depth_noise_rate', 0.0)
 
@@ -206,15 +206,16 @@ class NavigateEnv(BaseEnv):
                                                   dtype=np.float32)
             observation_space['depth_seg'] = self.depth_seg_space
         if 'scan' in self.output:
-            # self.scan_space = gym.spaces.Box(low=-np.inf,
-            #                                  high=np.inf,
-            #                                  shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
-            #                                  dtype=np.float32)
-            self.scan_space = gym.spaces.Box(low=0.0,
-                                             high=1.0,
-                                             shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
-                                             dtype=np.float32)
-            observation_space['scan'] = self.scan_space
+			self.scan_space = gym.spaces.Box(low=-np.inf,
+			                                 high=np.inf,
+			                                 shape=(self.n_horizontal_rays * self.n_vertical_beams, 3),
+			                                 dtype=np.float32)
+			observation_space['scan'] = self.scan_space	
+#             self.scan_space = gym.spaces.Box(low=0.0,
+#                                              high=1.0,
+#                                              shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
+#                                              dtype=np.float32)
+
         if 'rgb_filled' in self.output:  # use filler
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
@@ -316,7 +317,7 @@ class NavigateEnv(BaseEnv):
 
     def get_depth(self):
         depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
-        if self.config['robot'] == 'Turtlebot':
+        if self.config['robot'] == 'Turtlebot' or self.config['robot'] == 'JR2':
             # ASUS Xtion PRO LIVE
             low = 0.8
             high = 3.5
@@ -395,72 +396,80 @@ class NavigateEnv(BaseEnv):
             # cv2.imshow('vis', vis)
 
     def get_scan(self):
-        if self.config['robot'] == 'Turtlebot':
-            # Hokuyo URG-04LX-UG01
-            laser_linear_range = 5.6
-            laser_angular_range = 240.0
-            min_laser_dist = 0.05
-            laser_link_name = 'scan_link'
-        elif self.config['robot'] == 'Fetch':
-            # SICK TiM571-2050101 Laser Range Finder
-            laser_linear_range = 25.0
-            laser_angular_range = 220.0
-            min_laser_dist = 0.0
-            laser_link_name = 'laser_link'
-        else:
-            assert False, 'unknown robot for LiDAR observation'
+		if self.config['robot'] == 'Turtlebot':
+			# Hokuyo URG-04LX-UG01
+			laser_linear_range = 5.6
+			laser_angular_range = 360.0
+			min_laser_dist = 0.05
+			laser_link_name = 'scan_link'
+		elif self.config['robot'] in ['JR2', 'JR2DifferentialDrive']:
+			# SICK TiM571-2050101 Laser Range Finder
+			laser_linear_range = 25.0
+			laser_angular_range = 360.0
+			#laser_angular_range = 194.806 # front lidar only
+			min_laser_dist = 0.05
+			laser_link_name = 'front_laser_link'
+		elif self.config['robot'] == 'PatricksTurtlebot':
+			# Hokuyo URG-04LX-UG01
+			laser_linear_range = 5.6
+			laser_angular_range = 195
+			min_laser_dist = 0.02
+			laser_link_name = 'scan_link'
+		else:
+			assert False, 'unknown robot for LiDAR observation'
+			
+		laser_angular_range *= np.pi / 180.0
 
-        assert self.n_vertical_beams == 1, 'scan can only handle one vertical beam for now.'
+		pose_camera = self.robots[0].parts[laser_link_name].get_pose()
+		angle = np.arange(-laser_angular_range/2.0, laser_angular_range/2.0, laser_angular_range / float(self.n_horizontal_rays))
+		camera_orientation = self.robots[0].parts[laser_link_name].get_orientation()
 
-        laser_angular_half_range = laser_angular_range / 2.0
-        laser_pose = self.robots[0].parts[laser_link_name].get_pose()
+		elev_bottom_angle = -15. * np.pi / 180.
+		elev_top_angle = 15. * np.pi / 180
+		if self.n_vertical_beams == 1:
+			elev_angle = [0.0]
+		else:
+			elev_angle = np.linspace(elev_bottom_angle, elev_top_angle, num=self.n_vertical_beams)
+			# I feel the original implementation is still buggy. 
+			# elev_angle = np.arange(elev_bottom_angle, elev_top_angle, \
+				# (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams-1))
+		orig_offset = np.vstack([
+				np.vstack([np.cos(angle),
+				np.sin(angle),
+				np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
+			])
+ 
+		# print('orig_offset: {}'.format(orig_offset.shape))
+		transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
+		# print('shape of transform matrix: {}'.format(transform_matrix))
+		offset = orig_offset.dot(np.linalg.inv(transform_matrix))
+		pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
+		results = p.rayTestBatch(pose_camera, pose_camera + offset * laser_linear_range, 6)
+		# print('results: {}'.format(results[0]))
+		hit = np.array([item[0] for item in results])
+		dist = np.array([item[2] for item in results])
+		valid_pts = (dist < 1. - 1e-5) & (dist > min_laser_dist / laser_linear_range) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
+		
+		self.scan_mode = 'xyz'
+		
+		if self.scan_mode == 'dist':
+			dist[~valid_pts] = 1.0
+			dist *= laser_linear_range 
+			lidar_output = np.hstack([dist, self.lidar_buffer])
+			self.lidar_buffer = dist
+			return lidar_output
 
-        # self.scan_vis.set_position(pos=laser_pose[:3])
+		if self.scan_mode == 'xyz':
+			dist[~valid_pts] = 1.0
+			dist *= laser_linear_range
+			lidar_scan = np.expand_dims(dist, 1) * orig_offset
+			
+# 		if self.visualize_lidar:
+# 			camera_rotation = Rotation.from_quat(camera_orientation)
+# 			self.visualize_lidar_points(camera_rotation.apply(lidar_scan) + pose_camera)
+				  
+			return lidar_scan
 
-        transform_matrix = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
-        angle = np.arange(-laser_angular_half_range / 180 * np.pi,
-                          laser_angular_half_range / 180 * np.pi,
-                          laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
-        unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
-        unit_vector_world = transform_matrix.dot(unit_vector_local.T).T
-        start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
-        start_pose += unit_vector_world * min_laser_dist
-        end_pose = laser_pose[:3] + unit_vector_world * laser_linear_range
-        results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
-        # hit_object_id = np.array([item[0] for item in results])
-        # link_id = np.array([item[1] for item in results])
-        hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of laser_linear_range
-        hit_fraction = self.add_naive_noise_to_sensor(hit_fraction, self.scan_noise_rate)
-
-        scan = np.expand_dims(hit_fraction, 1)
-        return scan
-
-        # assert 'scan_link' in self.robots[0].parts, "Requested scan but no scan_link"
-        # pose_camera = self.robots[0].parts['scan_link'].get_pose()
-        # angle = np.arange(0, 2 * np.pi, 2 * np.pi / float(self.n_horizontal_rays))
-        # elev_bottom_angle = -30. * np.pi / 180.
-        # elev_top_angle = 10. * np.pi / 180.
-        # elev_angle = np.arange(elev_bottom_angle, elev_top_angle,
-        #                        (elev_top_angle - elev_bottom_angle) / float(self.n_vertical_beams))
-        # orig_offset = np.vstack([
-        #     np.vstack([np.cos(angle),
-        #                np.sin(angle),
-        #                np.repeat(np.tan(elev_ang), angle.shape)]).T for elev_ang in elev_angle
-        # ])
-        # transform_matrix = quat2mat([pose_camera[-1], pose_camera[3], pose_camera[4], pose_camera[5]])
-        # offset = orig_offset.dot(np.linalg.inv(transform_matrix))
-        # pose_camera = pose_camera[None, :3].repeat(self.n_horizontal_rays * self.n_vertical_beams, axis=0)
-        #
-        # results = p.rayTestBatch(pose_camera, pose_camera + offset * 30)
-        # hit = np.array([item[0] for item in results])
-        # dist = np.array([item[2] for item in results])
-        #
-        # valid_pts = (dist < 1. - 1e-5) & (dist > 0.1 / 30) & (hit != self.robots[0].robot_ids[0]) & (hit != -1)
-        # dist[~valid_pts] = 0.0  # zero out invalid pts
-        # dist *= 30
-        #
-        # xyz = np.expand_dims(dist, 1) * orig_offset
-        # state['scan'] = xyz
 
     def get_state(self, collision_links=[]):
         # calculate state
