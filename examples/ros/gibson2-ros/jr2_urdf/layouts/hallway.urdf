@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<robot name="multipleshapes">
+  <link name="end_1">
+    <visual>
+      <geometry>
+        <box size="4.5 0.5 1.0"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="wall_1">
+    <visual>
+      <geometry>
+        <box size="20 0.5 1.0"/>
+      </geometry>
+    </visual>
+  </link>
+  
+  <link name="end_2">
+    <visual>
+      <geometry>
+        <box size="4.5 0.5 1.0"/>
+      </geometry>
+    </visual>
+  </link>
+  
+  <link name="wall_2">
+    <visual>
+      <geometry>
+        <box size="20 0.5 1.0"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="end_1_wall_1" type="fixed">
+    <parent link="end_1"/>
+    <child link="wall_1"/>
+    <origin xyz="0.5 4.5 0"/>
+  </joint>
+
+</robot>
