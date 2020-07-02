@@ -147,6 +147,11 @@ class LocomotorRobot(BaseRobot):
 			linear_velocity = 0.5 * ((self.max_linear_velocity - self.max_backward_velocity) * action[0] + self.max_linear_velocity + self.max_backward_velocity) # m/s
 			angular_velocity = action[1] # rad/s
 			
+			if abs(linear_velocity) < 0.05:
+				linear_velocity = 0
+			if abs(angular_velocity) < 0.05:
+				angular_velocity = 0.0
+			
 			#print("AR:", action[0])
 			#print("LR:", linear_velocity)
 			
