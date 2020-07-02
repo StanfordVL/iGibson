@@ -1,0 +1,42 @@
+EBandPlannerROS:
+    # tolerances
+    xy_goal_tolerance: 0.5
+    yaw_goal_tolerance: 6.28
+    rot_stopped_vel: 0.05
+    trans_stopped_vel: 0.05
+
+    # visualization parameters
+    marker_lifetime: 0.5
+
+    # eband local planner parameters
+    eband_min_relative_overlap: 0.7
+    eband_tiny_bubble_distance: 0.01
+    eband_tiny_bubble_expansion: 0.01
+    eband_internal_force_gain: 1.0
+    eband_external_force_gain: 2.0
+    num_iterations_eband_optimization: 3
+    eband_equilibrium_approx_max_recursion_depth: 4
+    eband_equilibrium_relative_overshoot: 0.75
+    eband_significant_force_lower_bound: 0.15
+    costmap_weight: 10.0
+
+    # trajectory controller parameters
+    max_vel_lin: 0.3
+    max_vel_th: 1.0
+    min_vel_lin: 0.0
+    min_vel_th: 0.0
+    min_in_place_vel_th: 0.0
+    in_place_trans_vel: 0.0
+    k_prop: 1.0
+    k_damp: 2.5
+    Ctrl_Rate: 10.0
+    max_acceleration: 2.5
+    virtual_mass: 1.0
+    max_translational_acceleration: 2.5
+    max_rotational_acceleration: 3.0
+    rotation_correction_threshold: 0.8
+    differential_drive: true
+    bubble_velocity_multiplier: 2.0
+    rotation_threshold_multiplier: 2.0
+    disallow_hysteresis: false
+

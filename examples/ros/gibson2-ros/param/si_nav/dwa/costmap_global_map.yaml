@@ -1,0 +1,6 @@
+global_costmap:
+   global_frame: map
+   robot_base_frame: base_link
+   static_map: true
+   footprint_padding: 0.05
+   map_topic: /map

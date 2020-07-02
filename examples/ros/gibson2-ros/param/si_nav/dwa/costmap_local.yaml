@@ -1,0 +1,13 @@
+local_costmap:
+    global_frame:               odom
+    rolling_window:             true
+    track_unknown_space:        false
+    width:                      4.0
+    height:                     4.0
+    origin_x:                   -2.0
+    origin_y:                   -2.0
+
+
+    plugins:
+        - {name: obstacles_costmap2d,       type: "costmap_2d::ObstacleLayer"}
+        - {name: inflation,                 type: "costmap_2d::InflationLayer"}

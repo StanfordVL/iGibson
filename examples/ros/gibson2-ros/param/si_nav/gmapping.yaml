@@ -1,0 +1,100 @@
+#
+# http://www.ros.org/wiki/gmapping
+#
+throttle_scans:            1
+base_frame:                base_link
+map_frame:                 map
+odom_frame:                odom
+
+# How long (in seconds) between updates to the map. 
+# Lowering this number updates the occupancy grid more often, 
+# at the expense of greater computational load
+map_update_interval:       5.0
+
+# Parameters
+
+# The sigma used by the greedy endpoint matching
+sigma:                     0.05    #default 0.05
+
+# The kernel in which to look for a correspondence 
+kernelSize:                1       #default 1
+
+# The optimization step in translation
+lstep:                     0.05    #default 0.05
+
+#The optimization step in rotation
+astep:                     0.05    #default 0.05
+
+#The number of iterations of the scanmatcher
+iterations:                5       #default 5
+
+# The sigma of a beam used for likelihood computation
+lsigma:                    0.075   #default 0.075
+
+# Gain to be used while evaluating the likelihood, for smoothing the resampling effects
+ogain:                     3.0     #default 3.0
+
+# Number of beams to skip in each scan.
+lskip:                     0       #default 0
+
+# Minimum score for considering the outcome of the scan matching good
+minimumScore:              50.0    #default 0.0
+
+# Odometry error in translation as a function of translation (rho/rho)
+srr:                       0.01     #default 0.1
+
+# Odometry error in translation as a function of rotation (rho/theta)
+srt:                       0.02    #default 0.2
+
+# Odometry error in rotation as a function of translation (theta/rho)
+str:                       0.01     #default 0.1
+
+# Odometry error in rotation as a function of rotation (theta/theta)
+stt:                       0.02     #default 0.2
+
+# Process a scan each time the robot translates this far
+linearUpdate:              0.5     #default 1.0
+
+# Process a scan each time the robot rotates this far      
+angularUpdate:             0.436     #default 0.5
+
+# Process a scan if the last scan proccessed is older than the update time in seconds. 
+# A value less than zero will turn time based updates off 
+temporalUpdate:            -1.0     #default -1.0
+
+# The neff based resampling threshold    
+resampleThreshold:         0.5     #default 0.5
+
+# Number of particles in the filter    
+particles:                 100     #default 30
+
+# Translational sampling range for the likelihood
+llsamplerange:             0.01    #default 0.01
+
+# Translational sampling step for the likelihood           
+llsamplestep:              0.01    #default 0.01
+# Angular sampling range for the likelihood 
+lasamplerange:             0.005   #default 0.005
+
+# Angular sampling step for the likelihood   
+lasamplestep:              0.005   #default 0.005
+
+# How long (in seconds) between transform publications
+transform_publish_period:  0.05    #default 0.05
+
+#Threshold on gmapping's occupancy values. Cells with greater occupancy are considered occupied     
+occ_thresh:                0.25    #default 0.25
+
+#Initial map size
+xmin:                     -10.0   #default -100.0
+ymin:                     -10.0   #default -100.0
+xmax:                      10.0   #default 100.0
+ymax:                      10.0   #default 100.0
+
+# Processing parameters (resolution of the map)
+delta:                     0.05    #default 0.05
+
+# Unset maxUrange and maxRange and it will autodetect
+# The maximum usable range of the laser. A beam is cropped to this value
+#maxUrange:               9.0    # Should be just less than sensor range
+#maxRange:                11.0    # Should be just greater than sensor range

@@ -1,0 +1,52 @@
+#
+# http://www.ros.org/wiki/amcl
+# The first commented value is the default per the wiki
+# The second commented value is the default per nav/amcl/examples
+# The third commented value is the defaults in amcl_node.cpp
+#
+# The map file is specified in launch/amcl.launch
+
+odom_frame_id:    odom
+base_frame_id:    base_link
+global_frame_id:  map
+  
+# Overall filter parameters
+min_particles:        100       #default 100
+max_particles:        5000      #default 5000
+kld_err:              0.01      #default 0.01
+kld_z:                0.99      #default 0.99
+update_min_d:         0.2       #default 0.2
+update_min_a:         0.5235    #default pi/6 (0.5235)
+resample_interval:    1         #default 1
+transform_tolerance:  0.1       #default 0.1
+recovery_alpha_slow:  0.0       #default 0.0
+recovery_alpha_fast:  0.0       #default 0.0
+initial_pose_x:       0.0       #default 0.0
+initial_pose_y:       0.0       #default 0.0
+initial_pose_a:       0.0       #default 0.0
+initial_cov_xx:       0.25      #default 0.25
+initial_cov_yy:       0.25      #default 0.25
+initial_cov_aa:       0.07      #default (pi/12)*(pi/12) (0.06853)
+gui_publish_rate:     -1.0      #default -1.0
+save_pose_rate:       0.5       #default 0.5
+use_map_topic:        false     #default false
+first_map_only:       false     #default false
+
+# Laser Model Parameters 
+laser_min_range:            -1.0    #default -1.0
+laser_max_range:            -1.0    #default -1.0
+laser_max_beams:            30      #default 30
+laser_z_hit:                0.95    #default 0.95
+laser_z_rand:               0.05    #default 0.05
+laser_sigma_hit:            0.2     #default 0.2  
+laser_lambda_short:         0.1     #default 0.1
+laser_likelihood_max_dist:  2.0     #default 2.0
+laser_model_type:           likelihood_field #default likelihood_field
+
+# Odometery model parameters
+odom_model_type:  diff-corrected
+odom_alpha1:      0.005   #default 0.2 rotational    drift caused by rotation
+odom_alpha2:      0.005   #default 0.2 rotational    drift caused by translation
+odom_alpha3:      0.010   #default 0.2 translational drift caused by translation
+odom_alpha4:      0.005   #default 0.2 translational drift caused by rotation
+odom_alpha5:      0.2     #default 0.2 Holonomic drive systems only

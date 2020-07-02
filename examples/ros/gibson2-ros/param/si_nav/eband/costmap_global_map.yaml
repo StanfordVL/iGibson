@@ -1,0 +1,29 @@
+global_costmap:
+   global_frame: map
+   robot_base_frame: base_link
+   static_map: true
+   track_unknown_space:  false
+   footprint_padding: 0.1
+   map_topic: map
+   transform_tolerance:  1.0
+   update_frequency:     5.0
+   publish_frequency:    5.0
+
+   inflation_layer:
+     cost_scaling_factor: 0.5   # Old - 2.58 exponential rate at which the obstacle cost drops off (default: 10)
+     inflation_radius:    0.49  # Old - 2.5
+     
+   static_layer:
+      enabled:           true
+
+   social_layer:
+      enabled:           true
+
+   obstacle_layer:
+      enabled:           true
+
+   plugins:
+     - {name: static_layer,            type: "costmap_2d::StaticLayer"}
+     - {name: obstacle_layer,          type: "costmap_2d::ObstacleLayer"}
+     - {name: social_layer,            type: "social_navigation_layers::ProxemicLayer"}
+     - {name: inflation_layer,         type: "costmap_2d::InflationLayer"}

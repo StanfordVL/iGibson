@@ -62,6 +62,8 @@ automatic_reset: false
 max_angular_velocity: 0.7853981633974483
 max_linear_velocity: 1.0
 
+max_step: 3000
+
 additional_states_dim: 2
 electricity_reward_weight: 0.0
 potential_reward_weight: 1.0
@@ -161,7 +163,7 @@ pedestrians_can_see_robot: true
 pedestrians_dynamics: {chat_distance_max: 0, chat_distance_min: 0, chat_interval_max: 0,
   chat_interval_min: 0, chat_min_delay: 0, chat_probability: 0, dist_tol: 1.0, kinematics: holonomic,
   max_angular_velocity: 1.0, max_linear_velocity: 1.0, max_pause_interval: 0, min_pause_interval: 0,
-  min_separation: 0.3, personal_space: 0.2, policy: orca, position_noise: 0.0, radius: 0.3,
+  min_separation: 0.3, personal_space: 0.1, policy: orca, position_noise: 0.0, radius: 0.3,
   sensor: coordinates, use_pedestrian_behaviors: false, v_pref: 1.0, velocity_noise: 0.0,
   visible: true}
   

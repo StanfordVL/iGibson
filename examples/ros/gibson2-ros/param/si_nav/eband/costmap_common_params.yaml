@@ -1,0 +1,78 @@
+# 2D Costmap parameters
+# http://www.ros.org/wiki/costmap_2d
+
+### Coordinate frame and tf parameters ###
+robot_base_frame:           base_link
+transform_tolerance:        1.0
+
+# ---footprint (Meters):---
+footprint: [[0.4559, 0.0], [0.4665, -0.09875], [0.3608, -0.27183], [0.27745, -0.32478], [-0.20633, -0.32478], [-0.28968, -0.27183], [-0.384781, -0.09875], [-0.384781, 0.0], [-0.384781, 0.09875], [-0.28968, 0.27183], [-0.20633, 0.32478], [0.27745, 0.32478], [0.3608, 0.27183], [0.4665, 0.09875], [0.4559, 0.0]]
+footprint_padding: 0.01
+
+#robot_radius:               0.3864
+
+plugins: []
+
+map_type: voxel
+
+### Costmap definitions ###
+update_frequency: 5.0
+publish_frequency: 5.0
+
+static_layer:
+  enabled:                  false
+  unknown_cost_value:        -1
+  lethal_cost_threshold:     100
+  map_topic:                 map
+  subscribe_to_updates:      true
+
+obstacle_layer:
+  enabled: true
+  origin_z: 0.0
+  z_resolution: 0.05
+  z_voxels: 13 # robot is 1.25 meters tall
+  unknown_threshold: 15
+  #mark_threshold: 2
+  publish_voxel_map: true
+  combination_method: 1
+  track_unknown_space: true
+  observation_sources: points
+  points:
+    data_type: PointCloud2
+    topic: /gibson_ros/lidar/points
+    marking: true
+    clearing: true
+    obstacle_range: 20.0
+    raytrace_range: 21.0
+    inf_is_valid:            true
+    min_obstacle_height:     -0.1
+    max_obstacle_height:     1.5
+    mark_threshold: 0
+    observation_persistence: 0.0
+    footprint_clearing_enabled: true
+
+
+# Larger personal space values
+social_layer:
+   enabled:               true
+   do_not_enter:          100
+   cutoff:                150.0    #  double, default: 10.0 - Smallest value to publish on costmap adjustments
+   amplitude:             244.0    #  double, default: 77.0 - Amplitude of adjustments at peak
+   covariance:            0.75     #  double, default: 0.25 - Covariance of adjustments
+   factor:                7.0      #  double, default: 5.0 -  Factor with which to scale the velocity
+   keep_time:             0.75     #  double, default: 0.75
+
+# Original values
+#social_layer:
+#   enabled:               true
+#   do_not_enter:          100
+#   cutoff:                220.0    #  double, default: 10.0 - Smallest value to publish on costmap adjustments
+#   amplitude:             244.0    #  double, default: 77.0 - Amplitude of adjustments at peak
+#   covariance:            1.5      #  double, default: 0.25 - Covariance of adjustments
+#   factor:                5.0      #  double, default: 5.0 -  Factor with which to scale the velocity
+#   keep_time:             0.75     #  double, default: 0.75
+         
+inflation_layer:
+  enabled:              true
+  cost_scaling_factor:  0.5  # Old - 10 exponential rate at which the obstacle cost drops off (default: 10)
+  inflation_radius:     20.0 # Old - 0.55

@@ -1,0 +1,27 @@
+local_costmap:
+   global_frame: odom
+   static_map: false
+   track_unknown_space: true
+   rolling_window: true
+   width: 20.0
+   height: 20.0
+   resolution: 0.05
+   footprint_padding: 0.0
+
+   publish_frequency: 5.0
+   update_frequency: 5.0   
+
+   inflation_layer:
+     cost_scaling_factor: 0.5   # Old - 2.58 exponential rate at which the obstacle cost drops off (default: 10)
+     inflation_radius:    0.49  # Old - 2.5
+     
+   social_layer:
+     enabled:             true
+
+   obstacle_layer:
+     enabled:             true
+   
+   plugins:
+     - {name: obstacle_layer,          type: "costmap_2d::ObstacleLayer"}
+     - {name: inflation_layer,         type: "costmap_2d::InflationLayer"}
+     - {name: social_layer,            type: "social_navigation_layers::ProxemicLayer"}

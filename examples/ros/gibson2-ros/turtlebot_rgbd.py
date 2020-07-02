@@ -43,7 +43,7 @@ class SimNode:
         self.br = tf.TransformBroadcaster()
 
         self.env = NavigateEnv(config_file=config_filename,
-                               mode='headless',
+                               mode='gui',
                                action_timestep=1 / 30.0)    # assume a 30Hz simulation
         print(self.env.config)
 

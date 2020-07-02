@@ -1,0 +1,89 @@
+# 2D Costmap parameters
+# http://www.ros.org/wiki/costmap_2d
+
+### Coordinate frame and tf parameters ###
+robot_base_frame:           base_link
+transform_tolerance:        0.5
+
+# ---footprint (Meters):---
+footprint: [[0.4559, 0.0], [0.4665, -0.09875], [0.3608, -0.27183], [0.27745, -0.32478], [-0.20633, -0.32478], [-0.28968, -0.27183], [-0.384781, -0.09875], [-0.384781, 0.0], [-0.384781, 0.09875], [-0.28968, 0.27183], [-0.20633, 0.32478], [0.27745, 0.32478], [0.3608, 0.27183], [0.4665, 0.09875], [0.4559, 0.0]]
+footprint_padding: 0.005
+
+#robot_radius:               0.3864
+
+### Costmap layer definitions ###
+publish_frequency:           3.0
+plugins:                     []
+
+static:
+  unknown_cost_value:        -1
+  lethal_cost_threshold:     150
+  map_topic:                 map
+  subscribe_to_updates:      true
+  
+obstacles_costmap2d:
+  observation_sources: segway_scan upper_vlp16_marking upper_vlp16_clearing lower_vlp16_marking lower_vlp16_clearing
+  segway_scan: {topic:                   segway/filtered_scan,
+                data_type:               LaserScan,
+                expected_update_rate:    0.2,
+                observation_persistence: 0.0,
+                marking:                 true,
+                clearing:                true,
+                inf_is_valid:            true,
+                min_obstacle_height:     -0.1,
+                max_obstacle_height:     1.5,
+                obstacle_range:          4.75,
+                raytrace_range:          8.0}
+
+  upper_vlp16_marking: {topic:                   upper_velodyne/velodyne_obstacles,
+                        data_type:               PointCloud2,
+                        expected_update_rate:    0.2,
+                        observation_persistence: 0.0,
+                        marking:                 true,
+                        clearing:                false,
+                        inf_is_valid:            true,
+                        min_obstacle_height:     -0.1,
+                        max_obstacle_height:     2.0,
+                        obstacle_range:          4.75,
+                        raytrace_range:          5.0}
+                        
+  upper_vlp16_clearing: {topic:                   upper_velodyne/velodyne_clear,
+                         data_type:               PointCloud2,
+                         expected_update_rate:    0.2,
+                         observation_persistence: 0.0,
+                         marking:                 false,
+                         clearing:                true,
+                         inf_is_valid:            true,
+                         min_obstacle_height:     -0.1,
+                         max_obstacle_height:     1.5,
+                         obstacle_range:          4.75,
+                         raytrace_range:          5.0}
+                         
+  lower_vlp16_marking: {topic:                   lower_velodyne/velodyne_obstacles,
+                        data_type:               PointCloud2,
+                        expected_update_rate:    0.2,
+                        observation_persistence: 0.0,
+                        marking:                 true,
+                        clearing:                false,
+                        inf_is_valid:            true,
+                        min_obstacle_height:     -0.1,
+                        max_obstacle_height:     1.5,
+                        obstacle_range:          4.75,
+                        raytrace_range:          5.0}
+
+  lower_vlp16_clearing: {topic:                   lower_velodyne/velodyne_clear,
+                         data_type:               PointCloud2,
+                         expected_update_rate:    0.2,
+                         observation_persistence: 0.0,
+                         marking:                 false,
+                         clearing:                true,
+                         inf_is_valid:            true,
+                         min_obstacle_height:     -0.1,
+                         max_obstacle_height:     1.5,
+                         obstacle_range:          4.75,
+                         raytrace_range:          5.0}
+                
+inflation:
+  inflation_radius:           0.49  #default 0.5
+  cost_scaling_factor:        10.0 #default 10.0
+
