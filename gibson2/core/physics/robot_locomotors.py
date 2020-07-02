@@ -137,15 +137,19 @@ class LocomotorRobot(BaseRobot):
         elif self.control == 'velocity':
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_velocity(self.power * j.power_coef * float(np.clip(action[n], -1, +1)))
+
         elif self.control == 'position':
             for n, j in enumerate(self.ordered_joints):
                 j.set_motor_position(action[n])
         elif self.control == 'differential':
             assert len(action) == 2, "Differential drive must have only two joints"
-            
-            linear_velocity = (action[0] + self.max_linear_velocity) / 2.0 # m/s
-            angular_velocity = action[1] # rad/s
 
+            linear_velocity = 0.5 * ((self.max_linear_velocity - self.max_backward_velocity) * action[0] + self.max_linear_velocity + self.max_backward_velocity) # m/s
+            angular_velocity = action[1] # rad/s
+            
+            #print("AR:", action[0])
+            #print("LR:", linear_velocity)
+            
             # compute wheel velocities
             left = (linear_velocity - angular_velocity * self.half_track)  / self.wheel_radius
             right = (linear_velocity + angular_velocity * self.half_track)  / self.wheel_radius
@@ -568,6 +572,7 @@ class TurtlebotDifferentialDrive(LocomotorRobot):
         self.config = config
         self.max_linear_velocity = config.get("max_linear_velocity", 1.0)
         self.max_angular_velocity = config.get("max_angular_velocity", 3.0)
+        self.max_backward_velocity = config.get("max_backward_velocity", 0.0)
         self.wheel_track = 0.23
         self.half_track = self.wheel_track / 2.0
         self.wheel_radius = 0.0352
@@ -615,11 +620,12 @@ class JR2DifferentialDrive(LocomotorRobot):
     mjcf_scaling = 1
     model_type = "URDF"
     default_scale = 1
-
+    
     def __init__(self, config):
         self.config = config
         self.max_linear_velocity = config.get("max_linear_velocity", 1.0)
         self.max_angular_velocity = config.get("max_angular_velocity", 3.0)
+        self.max_backward_velocity = config.get("max_backward_velocity", 0.0)
         self.wheel_track = 0.5421
         self.half_track = self.wheel_track / 2.0
         self.wheel_radius = 0.2406
@@ -765,14 +771,12 @@ class Fetch(LocomotorRobot):
         for joint in range(p.getNumJoints(robot_id)):
             info = p.getJointInfo(robot_id, joint)
             parent_id = info[-1]
-            p.setCollisionFilterPair(robot_id, robot_id, joint, parent_id, 0)
 
         # disable collision for torso_lift_joint and shoulder_lift_joint
         p.setCollisionFilterPair(robot_id, robot_id, 3, 13, 0)
 
         return ids
-
-
+       
 class JR2(LocomotorRobot):
     mjcf_scaling = 1
     model_type = "URDF"
@@ -780,42 +784,98 @@ class JR2(LocomotorRobot):
 
     def __init__(self, config):
         self.config = config
-        self.velocity = config.get('velocity', 0.1)
+        self.velocity = config.get("velocity", 1.0)
+        self.action_high = config.get("action_high", None)
+        self.action_low = config.get("action_low", None)
         LocomotorRobot.__init__(self,
                             "jr2_urdf/jr2.urdf",
                             "base_link",
-                                action_dim=4,
-                                sensor_dim=17,
-                                power=2.5,
+                                action_dim=2,
+                                sensor_dim=16,
+                                power=0.15,
                                 scale=config.get("robot_scale", self.default_scale),
                                 resolution=config.get("resolution", 64),
                                 is_discrete=config.get("is_discrete", True),
-                                control='velocity')
+                                control="velocity")
 
     def set_up_continuous_action_space(self):
         self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
-        self.action_high = self.velocity * np.ones([self.action_dim])
-        self.action_low = -self.action_high
+
+        if self.action_high is not None and self.action_low is not None:
+            self.action_high = np.full(shape=self.action_dim, fill_value=self.action_high)
+            self.action_low = np.full(shape=self.action_dim, fill_value=self.action_low)
+        else:
+            self.action_high = np.full(shape=self.action_dim, fill_value=self.velocity)
+            self.action_low = -self.action_high
 
     def set_up_discrete_action_space(self):
-        self.action_list = [[self.velocity, self.velocity, 0, self.velocity],
-                            [-self.velocity, -self.velocity, 0, -self.velocity],
-                            [self.velocity, -self.velocity, -self.velocity, 0],
-                            [-self.velocity, self.velocity, self.velocity, 0], [0, 0, 0, 0]]
+        self.action_list = [[self.velocity, self.velocity], [-self.velocity, -self.velocity],
+                            [self.velocity * 0.5, -self.velocity * 0.5],
+                            [-self.velocity * 0.5, self.velocity * 0.5], [0, 0]]
         self.action_space = gym.spaces.Discrete(len(self.action_list))
         self.setup_keys_to_action()
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'),): 0,  ## forward
-            (ord('s'),): 1,  ## backward
-            (ord('d'),): 2,  ## turn right
-            (ord('a'),): 3,  ## turn left
-            (): 4
+            (ord('w'),): 0,  # forward
+            (ord('s'),): 1,  # backward
+            (ord('d'),): 2,  # turn right
+            (ord('a'),): 3,  # turn left
+            (): 4  # stay still
         }
+
+    def calc_state(self):
+        base_state = LocomotorRobot.calc_state(self)
+        angular_velocity = self.robot_body.angular_velocity()
+        return np.concatenate((base_state, np.array(angular_velocity)))
+
+
+# class JR2(LocomotorRobot):
+#     mjcf_scaling = 1
+#     model_type = "URDF"
+#     default_scale = 1
+# 
+#     def __init__(self, config):
+#         self.config = config
+#         self.velocity = config.get('velocity', 0.1)
+#         LocomotorRobot.__init__(self,
+#                             "jr2_urdf/jr2.urdf",
+#                             "base_link",
+#                                 action_dim=2,
+#                                 sensor_dim=17,
+#                                 power=2.5,
+#                                 scale=config.get("robot_scale", self.default_scale),
+#                                 resolution=config.get("resolution", 64),
+#                                 is_discrete=config.get("is_discrete", True),
+#                                 control='velocity')
+# 
+#     def set_up_continuous_action_space(self):
+#         self.action_space = gym.spaces.Box(shape=(self.action_dim,),
+#                                            low=-1.0,
+#                                            high=1.0,
+#                                            dtype=np.float32)
+#         self.action_high = self.velocity * np.ones([self.action_dim])
+#         self.action_low = -self.action_high
+# 
+#     def set_up_discrete_action_space(self):
+#         self.action_list = [[self.velocity, self.velocity, 0, self.velocity],
+#                             [-self.velocity, -self.velocity, 0, -self.velocity],
+#                             [self.velocity, -self.velocity, -self.velocity, 0],
+#                             [-self.velocity, self.velocity, self.velocity, 0], [0, 0, 0, 0]]
+#         self.action_space = gym.spaces.Discrete(len(self.action_list))
+#         self.setup_keys_to_action()
+# 
+#     def setup_keys_to_action(self):
+#         self.keys_to_action = {
+#             (ord('w'),): 0,  ## forward
+#             (ord('s'),): 1,  ## backward
+#             (ord('d'),): 2,  ## turn right
+#             (ord('a'),): 3,  ## turn left
+#             (): 4
+#         }
 
 
 class JR2_Kinova(LocomotorRobot):
