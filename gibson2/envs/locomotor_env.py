@@ -401,7 +401,7 @@ class NavigateEnv(BaseEnv):
         elif self.config['robot'] == 'Fetch':
             # SICK TiM571-2050101 Laser Range Finder
             laser_linear_range = 25.0
-            laser_angular_range = 220.0
+            laser_angular_range = 360.0
             min_laser_dist = 0.0
             laser_link_name = 'laser_link'
         else:
