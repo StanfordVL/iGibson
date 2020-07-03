@@ -6,6 +6,7 @@ import pybullet as p
 import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.external.pybullet_tools.transformations as T
 import gibson2.envs.kitchen.plan_utils as PU
+from gibson2.envs.kitchen.env_utils import set_collision_between
 
 
 GRIPPER_OPEN = -1
@@ -245,7 +246,7 @@ class PlannableRobot(Robot):
 
 
 class PlannerRobot(PlannableRobot):
-    def __init__(self, eef_link_name, init_base_pose, arm, gripper=None, plannable_joint_names=None):
+    def __init__(self, eef_link_name, init_base_pose, arm, gripper=None, plannable_joint_names=None, plan_objects=None):
         super(PlannerRobot, self).__init__(
             eef_link_name=eef_link_name,
             init_base_pose=init_base_pose,
@@ -254,6 +255,7 @@ class PlannerRobot(PlannableRobot):
             plannable_joint_names=plannable_joint_names
         )
         self.ref_robot = None
+        self.plan_objects = plan_objects
 
     def setup(self, robot, obstacle_ids, hide_planner=True):
         self.ref_robot = robot
@@ -263,23 +265,19 @@ class PlannerRobot(PlannableRobot):
             for l in PBU.get_all_links(self.body_id):
                 p.changeVisualShape(self.body_id, l, rgbaColor=(0, 0, 1, 0))
 
-    def set_collision_with(self, others, collision):
-        for other in others:
-            for gl in PBU.get_all_links(other):
-                for cgl in PBU.get_all_links(self.body_id):
-                    p.setCollisionFilterPair(other, self.body_id, gl, cgl, collision)
-
     def disable_collision_with(self, others):
-        self.set_collision_with(others, 0)
+        for other in others:
+            set_collision_between(self.body_id, other, 0)
 
     def enable_collision_with(self, others):
-        self.set_collision_with(others, 1)
+        for other in others:
+            set_collision_between(self.body_id, other, 1)
 
     @contextmanager
     def collision_enabled_with(self, others):
-        self.set_collision_with(others, 1)
+        self.enable_collision_with(others)
         yield
-        self.set_collision_with(others, 0)
+        self.disable_collision_with(others)
 
     def synchronize(self, robot=None):
         if robot is None:
@@ -296,10 +294,15 @@ class PlannerRobot(PlannableRobot):
 
         if len(robot.gripper.joints) == len(self.gripper.joints):
             self.gripper.reset_joint_positions(robot.gripper.get_joint_positions())
+        if self.plan_objects is not None:
+            self.plan_objects.synchronize()
 
-    def plan_joint_path(self, target_pose, obstacles, resolutions=None, attachments=(), synchronize=True):
+    def plan_joint_path(self, target_pose, obstacles, resolutions=None, attachment_ids=(), synchronize=True):
         if synchronize:
             self.synchronize()  # synchronize planner with the robot
+
+        if self.plan_objects is not None:
+            attachment_ids = tuple([self.plan_objects.get_visual_copy_of(bid).body_id for bid in attachment_ids])
 
         with self.collision_enabled_with(obstacles):
             path = PU.plan_joint_path(
@@ -309,7 +312,7 @@ class PlannerRobot(PlannableRobot):
                 target_pose,
                 obstacles=obstacles,
                 resolutions=resolutions,
-                attachment_ids=attachments
+                attachment_ids=attachment_ids
             )
         return path
 

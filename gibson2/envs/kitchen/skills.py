@@ -114,7 +114,7 @@ def plan_skill_place(
     obstacles = tuple(set(obstacles) - {holding})
 
     confs = planner.plan_joint_path(
-        target_pose=place_pose, obstacles=obstacles, resolutions=joint_resolutions, attachments=(holding,))
+        target_pose=place_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=(holding,))
     conf_path = ConfigurationPath()
     conf_path.append_segment(confs, gripper_state=GRIPPER_CLOSE)
 

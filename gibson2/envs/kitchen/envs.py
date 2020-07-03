@@ -11,7 +11,8 @@ import gibson2.external.pybullet_tools.transformations as T
 
 from gibson2.envs.kitchen.camera import Camera
 from gibson2.envs.kitchen.robots import Arm, ConstraintActuatedRobot, PlannerRobot, Robot, Gripper
-from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articulated_object_dynamics, pose_to_array
+from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articulated_object_dynamics, pose_to_array,\
+    PlannerObjectBank
 import gibson2.external.pybullet_tools.utils as PBU
 
 
@@ -34,12 +35,14 @@ class BaseKitchenEnv(object):
         self._sim_time_step = sim_time_step
         self._use_gui = use_gui
         self.objects = ObjectBank()
+        self.object_visuals = []
         self.planner = None
 
         self._setup_simulation()
         self._create_robot()
         self._create_env()
         self._create_sensors()
+        self._create_env_extras()
         if use_planner:
             self._create_planner()
 
@@ -92,7 +95,9 @@ class BaseKitchenEnv(object):
             init_base_pose=self._robot_base_pose,
             gripper=shadow_gripper,
             arm=arm,
-            plannable_joint_names=arm.joint_names
+            plannable_joint_names=arm.joint_names,
+            # plan_objects=PlannerObjectBank.create_from(
+            #     self.objects, scale=1.2, rgba_alpha=0. if self._hide_planner else 0.7)
         )
         planner.setup(self.robot, self.objects.body_ids, hide_planner=self._hide_planner)
         self.planner = planner
@@ -104,13 +109,13 @@ class BaseKitchenEnv(object):
         drawer = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf'))
         drawer.load()
         drawer.set_position([0, 0, 0.5])
-        set_articulated_object_dynamics(drawer)
+        set_articulated_object_dynamics(drawer.body_id)
         self.objects.add_object("drawer", drawer)
 
         cabinet = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf'))
         cabinet.load()
         cabinet.set_position([0, 0, 2])
-        set_articulated_object_dynamics(cabinet)
+        set_articulated_object_dynamics(cabinet.body_id)
         self.objects.add_object("cabinet", cabinet)
 
         can = YCBObject('005_tomato_soup_can')
@@ -118,8 +123,13 @@ class BaseKitchenEnv(object):
         z = PBU.stable_z(can.body_id, drawer.body_id)
         can.set_position_orientation([0, 0, z], [0, 0, 0, 1])
         p.changeDynamics(can.body_id, -1, mass=1.0)
-        set_friction(can)
+        set_friction(can.body_id)
         self.objects.add_object("can", can)
+
+    def _create_env_extras(self):
+        pass
+        # for _ in range(10):
+        #     self.object_visuals.append(self.objects.create_virtual_copy(scale=1., rgba_alpha=0.3))
 
     def _create_sensors(self):
         self.camera = Camera(
@@ -177,23 +187,17 @@ class BaseKitchenEnv(object):
         proprio = np.hstack(proprio).astype(np.float32)
 
         # get object info
-        object_poses = []
-        object_relative_poses = []
-        for o in self.objects.objects:
-            for l in PBU.get_all_links(o.body_id):
-                lpose = PBU.get_link_pose(o.body_id, l)
-                object_poses.append(pose_to_array(lpose))
-                object_relative_poses.append(pose_to_array(PBU.multiply(lpose, PBU.invert(gpose))))
-
-        object_poses = np.array(object_poses).astype(np.float32)
-        object_relative_poses = np.array(object_relative_poses).astype(np.float32)
+        object_states = self.objects.serialize()
+        rel_link_poses = np.zeros_like(object_states["link_poses"])
+        for i, lpose in enumerate(object_states["link_poses"]):
+            rel_link_poses[i] = pose_to_array(PBU.multiply((lpose[:3], lpose[3:]), PBU.invert(gpose)))
 
         return {
             "proprio": proprio,
-            "object_poses": object_poses,
-            "object_relative_poses": object_relative_poses,
-            "object_positions": object_poses[:, :3],
-            "object_relative_positions": object_relative_poses[:, :3]
+            "link_poses": object_states["link_poses"],
+            "link_relative_poses": rel_link_poses,
+            "link_positions": object_states["link_poses"][:, :3],
+            "link_relative_positions": rel_link_poses[:, :3]
         }
 
     def set_goal(self, **kwargs):
