@@ -23,15 +23,8 @@
 #include <pybind11/stl.h>
 #include <cstdint>
 
-#ifdef USE_CUDA
-  #include <cuda_runtime.h>
-  #include <cuda_gl_interop.h>
-#endif
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-
-#define MAX_NUM_RESOURCES 10
 
 #include "mesh_renderer.h"
 
@@ -105,7 +98,7 @@ private:
 
 
 #ifdef USE_CUDA
-    void map_tensor(GLuint tid, int width, int height, std::size_t data)
+    void MeshRendererContext::map_tensor(GLuint tid, int width, int height, std::size_t data)
     {
        cudaError_t err;
        if (cuda_res[tid] == NULL)
@@ -144,7 +137,7 @@ private:
        }
     }
 
-    void map_tensor_float(GLuint tid, int width, int height, std::size_t data)
+    void MeshRendererContext::map_tensor_float(GLuint tid, int width, int height, std::size_t data)
     {
        cudaError_t err;
        if (cuda_res[tid] == NULL)

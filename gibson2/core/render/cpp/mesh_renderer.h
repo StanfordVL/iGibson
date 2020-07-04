@@ -6,6 +6,14 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
+
+#ifdef USE_CUDA
+#include <cuda_runtime.h>
+  #include <cuda_gl_interop.h>
+#endif
+
+#define MAX_NUM_RESOURCES 10
+
 namespace py = pybind11;
 
 struct Texture
