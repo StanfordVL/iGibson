@@ -42,9 +42,9 @@ endif()
 if (USE_CUDA)
   find_package(CUDA REQUIRED)
   set(CUDA_LIBRARIES PUBLIC ${CUDA_LIBRARIES})
-  cuda_add_library(MeshRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/mesh_renderer.cpp)
+  cuda_add_library(EGLRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/mesh_renderer.cpp cpp/egl_mesh_renderer.cpp)
 else()
-  add_library(MeshRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/mesh_renderer.cpp)
+  add_library(EGLRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/mesh_renderer.cpp cpp/egl_mesh_renderer.cpp)
 endif()
 
 add_library(tinyobjloader MODULE cpp/tinyobjloader/tiny_obj_loader.cc cpp/tinyobjloader/bindings.cc)
@@ -54,12 +54,12 @@ endif()
 
 
 if (USE_GLAD)
-  target_link_libraries(MeshRendererContext PRIVATE pybind11::module dl pthread)
+  target_link_libraries(EGLRendererContext PRIVATE pybind11::module dl pthread)
   if (USE_GLFW)
     target_link_libraries(GLFWRendererContext PRIVATE pybind11::module dl glfw ${GLFW_LIBRARIES})
   endif()
 else ()
-  target_link_libraries(MeshRendererContext PRIVATE pybind11::module dl pthread  EGL ${OPENGL_LIBRARIES})
+  target_link_libraries(EGLRendererContext PRIVATE pybind11::module dl pthread  EGL ${OPENGL_LIBRARIES})
   if (USE_GLFW)
     target_link_libraries(GLFWRendererContext PRIVATE pybind11::module dl glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES})
   endif()
@@ -67,7 +67,7 @@ endif()
 
 target_link_libraries(tinyobjloader PRIVATE pybind11::module)
 
-set_target_properties(MeshRendererContext PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
+set_target_properties(EGLRendererContext PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
                                          SUFFIX "${PYTHON_MODULE_EXTENSION}")
 
 if (USE_GLFW)
