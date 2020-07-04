@@ -380,8 +380,11 @@ class MeshRenderer(object):
         self.device_idx = device_idx
         self.device_minor = device
         self.msaa = msaa
-        from gibson2.core.render.mesh_renderer import GLFWRendererContext
-        self.r = GLFWRendererContext.GLFWRendererContext(width, height)
+        if platform.system() == 'Darwin':
+            from gibson2.core.render.mesh_renderer import GLFWRendererContext
+            self.r = GLFWRendererContext.GLFWRendererContext(width, height)
+        else:
+            self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
         self.glstring = self.r.getstring_meshrenderer()
@@ -432,7 +435,10 @@ class MeshRenderer(object):
         self.setup_pbr()
 
     def setup_pbr(self):
-        self.r.setup_pbr( os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/'), self.env_texture_filename)
+        if os.path.exists(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/')):
+            self.r.setup_pbr(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/'), self.env_texture_filename)
+        else:
+            logging.warning("Environment texture not available, cannot use PBR.")
 
     def setup_framebuffer(self):
         """
@@ -757,7 +763,7 @@ class MeshRenderer(object):
             if not instance in hidden:
                 instance.render()
 
-        self.r.render_meshrenderer_post(self.width, self.height, self.fbo)
+        self.r.render_meshrenderer_post()
         if self.msaa:
             self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 

@@ -42,14 +42,14 @@ endif()
 if (USE_CUDA)
   find_package(CUDA REQUIRED)
   set(CUDA_LIBRARIES PUBLIC ${CUDA_LIBRARIES})
-  cuda_add_library(MeshRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/Mesh_renderer.cpp)
+  cuda_add_library(MeshRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/mesh_renderer.cpp)
 else()
-  add_library(MeshRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/Mesh_renderer.cpp)
+  add_library(MeshRendererContext MODULE glad/egl.cpp glad/gl.cpp cpp/mesh_renderer.cpp)
 endif()
 
 add_library(tinyobjloader MODULE cpp/tinyobjloader/tiny_obj_loader.cc cpp/tinyobjloader/bindings.cc)
 if (USE_GLFW)
-  add_library(GLFWRendererContext MODULE glad/gl.cpp cpp/glfw_mesh_renderer.cpp)
+  add_library(GLFWRendererContext MODULE glad/gl.cpp cpp/glfw_mesh_renderer.cpp cpp/mesh_renderer.cpp)
 endif()
 
 

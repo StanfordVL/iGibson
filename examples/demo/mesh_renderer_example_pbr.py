@@ -15,7 +15,7 @@ def main():
     else:
         model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
 
-    renderer = MeshRenderer(width=2000, height=2000, msaa=False)
+    renderer = MeshRenderer(width=512, height=512, msaa=False)
     renderer.load_object(model_path, scale=np.array([0.0035,0.0035,0.0035]))
     
     for i in range(5):
@@ -65,7 +65,7 @@ def main():
     while True:
         with Profiler('Render'):
             frame = renderer.render(modes=('rgb'))
-        #cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
+        cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
         q = cv2.waitKey(1)
         if q == ord('w'):
             px += 0.01
