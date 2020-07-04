@@ -1,5 +1,6 @@
 #version 450
 uniform mat4 V;
+uniform mat4 lightV;
 uniform mat4 P;
 uniform mat4 pose_rot;
 uniform mat4 pose_trans;
@@ -18,8 +19,10 @@ out vec3 FragPos;
 out vec3 Normal_cam;
 out vec3 Instance_color;
 out vec3 Pos_cam;
+out vec3 Pos_cam_projected;
 out vec3 Diffuse_color;
 out mat3 TBN;
+out vec4 FragPosLightSpace;
 
 void main() {
     gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1);
@@ -27,6 +30,8 @@ void main() {
     FragPos = vec3(world_position4.xyz / world_position4.w); // in world coordinate
     Normal_world = normalize(mat3(pose_rot) * normal); // in world coordinate
     Normal_cam = normalize(mat3(V) * mat3(pose_rot) * normal); // in camera coordinate
+    vec4 pos_cam4_projected = P * V * pose_trans * pose_rot * vec4(position, 1);
+    Pos_cam_projected = pos_cam4_projected.xyz / pos_cam4_projected.w;
     vec4 pos_cam4 = V * pose_trans * pose_rot * vec4(position, 1);
     Pos_cam = pos_cam4.xyz / pos_cam4.w;
     theCoords = texCoords;
@@ -36,4 +41,5 @@ void main() {
     vec3 B = normalize(vec3(pose_trans * pose_rot * vec4(bitangent, 0.0)));
     vec3 N = normalize(vec3(pose_trans * pose_rot * vec4(normal,    0.0)));
     TBN = mat3(T, B, N);
+    FragPosLightSpace = P * lightV * pose_trans * pose_rot * vec4(position, 1);
 }

@@ -245,7 +245,8 @@ PYBIND11_MODULE(EGLRendererContext, m) {
     pymodule.def("load_object_meshrenderer", &EGLRendererContext::load_object_meshrenderer, "load object into VAO and VBO");
     pymodule.def("loadTexture", &EGLRendererContext::loadTexture, "load texture function");
     pymodule.def("setup_pbr", &EGLRendererContext::setup_pbr, "setup pbr");
-
+    pymodule.def("readbuffer_meshrenderer_shadow_depth", &EGLRendererContext::readbuffer_meshrenderer_shadow_depth,"read pixel buffer");
+    pymodule.def("allocateTexture", &EGLRendererContext::allocateTexture, "load texture function");
 
     // class MeshRendererG2G
     pymodule.def("render_tensor_pre", &EGLRendererContext::render_tensor_pre, "pre-executed functions in MeshRendererG2G.render");

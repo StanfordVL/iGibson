@@ -421,11 +421,12 @@ void MeshRendererContext::render_softbody_instance(int vao, int vbo, py::array_t
     glBindVertexArray(0);
 }
 
-void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> P,
-        py::array_t<float> eye_pos, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
-        py::array_t<float> lightpos, py::array_t<float> lightcolor) {
+void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
+        int shadow_pass, py::array_t<float> P, py::array_t<float> eye_pos, py::array_t<float> pose_trans,
+        py::array_t<float> pose_rot, py::array_t<float> lightpos, py::array_t<float> lightcolor) {
     glUseProgram(shaderProgram);
     float *Vptr = (float *) V.request().ptr;
+    float *lightVptr = (float *) lightV.request().ptr;
     float *Pptr = (float *) P.request().ptr;
     float *transptr = (float *) pose_trans.request().ptr;
     float *rotptr = (float *) pose_rot.request().ptr;
@@ -434,12 +435,14 @@ void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float>
     float *eye_pos_ptr = (float *) eye_pos.request().ptr;
 
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, lightVptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
     glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
     glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
     glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
+    glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), shadow_pass);
 }
 
 
@@ -452,7 +455,6 @@ void MeshRendererContext::init_material_instance(int shaderProgram, float instan
     glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
     glUniform1f(glGetUniformLocation(shaderProgram, "metallic"), metallic);
     glUniform1f(glGetUniformLocation(shaderProgram, "roughness"), roughness);
-
     glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
     glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 1);
     glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 2);
@@ -460,10 +462,11 @@ void MeshRendererContext::init_material_instance(int shaderProgram, float instan
     glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 4);
     glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 5);
     glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 6);
+    glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 7);
 }
 
 void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int metallic_texture_id, int roughness_texture_id,
-                            int normal_texture_id, int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
+                            int normal_texture_id, int depth_texture_id, int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb) {
     glActiveTexture(GL_TEXTURE0);
     if (flag) glBindTexture(GL_TEXTURE_2D, texture_id);
 
@@ -491,6 +494,9 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
         if (flag) glBindTexture(GL_TEXTURE_2D, normal_texture_id);
     }
 
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_2D, depth_texture_id);
+
     glBindVertexArray(vao);
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
     unsigned int *ptr = (unsigned int *) faces.request().ptr;
@@ -504,19 +510,23 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
 }
 
-void MeshRendererContext::initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos,
+void MeshRendererContext::initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
+                                                 int shadow_pass, py::array_t<float> P, py::array_t<float> eye_pos,
                             py::array_t<float> lightpos, py::array_t<float> lightcolor) {
     glUseProgram(shaderProgram);
     float *Vptr = (float *) V.request().ptr;
+    float *lightVptr = (float *) lightV.request().ptr;
     float *Pptr = (float *) P.request().ptr;
     float *lightposptr = (float *) lightpos.request().ptr;
     float *lightcolorptr = (float *) lightcolor.request().ptr;
     float *eye_pos_ptr = (float *) eye_pos.request().ptr;
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, lightVptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
     glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
     glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
     glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
+    glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), shadow_pass);
 }
 
 void MeshRendererContext::init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
@@ -539,6 +549,7 @@ void MeshRendererContext::init_material_pos_instance(int shaderProgram, py::arra
     glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 4);
     glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 5);
     glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 6);
+    glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 7);
 
 }
 
@@ -803,3 +814,29 @@ Texture MeshRendererContext::createTexture(const std::shared_ptr<class Image>& i
     return texture;
 }
 
+int MeshRendererContext::allocateTexture(int w, int h) {
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGBA,
+                 GL_FLOAT, NULL);
+    return texture;
+}
+
+
+py::array_t<float> MeshRendererContext::readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id) {
+    glBindFramebuffer(GL_FRAMEBUFFER, fb2);
+    glReadBuffer(GL_COLOR_ATTACHMENT3);
+    py::array_t<float> data = py::array_t<float>(3 * width * height);
+    py::buffer_info buf = data.request();
+    float* ptr = (float *) buf.ptr;
+    glReadPixels(0, 0, width, height, GL_RGB, GL_FLOAT, ptr);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, ptr);
+    return data;
+}
