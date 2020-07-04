@@ -8,6 +8,7 @@
 #include <sstream>
 
 #define GLFW_INCLUDE_NONE
+
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
@@ -16,10 +17,12 @@
 #include <pybind11/stl.h>
 
 #ifdef USE_GLAD
-  #include  <glad/egl.h>
+
+#include  <glad/egl.h>
+
 #else
-  #include <EGL/egl.h>
-  #include <EGL/eglext.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 #endif
 
 #include <glm/glm.hpp>
@@ -80,7 +83,7 @@ int EGLRendererContext::init() {
     // Load EGL functions
 #ifdef USE_GLAD
     int egl_version = gladLoaderLoadEGL(NULL);
-    if(!egl_version) {
+    if (!egl_version) {
         fprintf(stderr, "ERROR: Failed to EGL with glad.\n");
         exit(EXIT_FAILURE);
 
@@ -100,7 +103,7 @@ int EGLRendererContext::init() {
 
     m_data->m_renderDevice = m_renderDevice;
     // Query EGL Screens
-    if(m_data->m_renderDevice == -1) {
+    if (m_data->m_renderDevice == -1) {
         // Chose default screen, by trying all
         for (EGLint i = 0; i < num_devices; ++i) {
             // Set display
@@ -181,7 +184,7 @@ int EGLRendererContext::init() {
     m_data->egl_context = eglCreateContext(
             m_data->egl_display, m_data->egl_config, EGL_NO_CONTEXT, NULL);
     if (!m_data->egl_context) {
-        fprintf(stderr, "ERROR: Unable to create EGL context (eglError: %d)\n",eglGetError());
+        fprintf(stderr, "ERROR: Unable to create EGL context (eglError: %d)\n", eglGetError());
         exit(EXIT_FAILURE);
     }
 
@@ -202,7 +205,7 @@ int EGLRendererContext::init() {
     return 0;
 };
 
-void EGLRendererContext::release(){
+void EGLRendererContext::release() {
     eglTerminate(m_data->egl_display);
     delete m_data;
 #ifdef USE_CUDA
@@ -233,34 +236,48 @@ PYBIND11_MODULE(EGLRendererContext, m) {
         pymodule.def("map_tensor_float", &EGLRendererContext::map_tensor_float);
 #endif
     // class MeshRenderer
-    pymodule.def("render_meshrenderer_pre", &EGLRendererContext::render_meshrenderer_pre, "pre-executed functions in MeshRenderer.render");
-    pymodule.def("render_meshrenderer_post", &EGLRendererContext::render_meshrenderer_post, "post-executed functions in MeshRenderer.render");
+    pymodule.def("render_meshrenderer_pre", &EGLRendererContext::render_meshrenderer_pre,
+                 "pre-executed functions in MeshRenderer.render");
+    pymodule.def("render_meshrenderer_post", &EGLRendererContext::render_meshrenderer_post,
+                 "post-executed functions in MeshRenderer.render");
     pymodule.def("getstring_meshrenderer", &EGLRendererContext::getstring_meshrenderer, "return GL version string");
     pymodule.def("readbuffer_meshrenderer", &EGLRendererContext::readbuffer_meshrenderer, "read pixel buffer");
     pymodule.def("clean_meshrenderer", &EGLRendererContext::clean_meshrenderer, "clean meshrenderer");
-    pymodule.def("setup_framebuffer_meshrenderer", &EGLRendererContext::setup_framebuffer_meshrenderer, "setup framebuffer in meshrenderer");
-    pymodule.def("setup_framebuffer_meshrenderer_ms", &EGLRendererContext::setup_framebuffer_meshrenderer_ms, "setup framebuffer in meshrenderer with MSAA");
+    pymodule.def("setup_framebuffer_meshrenderer", &EGLRendererContext::setup_framebuffer_meshrenderer,
+                 "setup framebuffer in meshrenderer");
+    pymodule.def("setup_framebuffer_meshrenderer_ms", &EGLRendererContext::setup_framebuffer_meshrenderer_ms,
+                 "setup framebuffer in meshrenderer with MSAA");
     pymodule.def("blit_buffer", &EGLRendererContext::blit_buffer, "blit buffer");
-    pymodule.def("compile_shader_meshrenderer", &EGLRendererContext::compile_shader_meshrenderer, "compile vertex and fragment shader");
-    pymodule.def("load_object_meshrenderer", &EGLRendererContext::load_object_meshrenderer, "load object into VAO and VBO");
+    pymodule.def("compile_shader_meshrenderer", &EGLRendererContext::compile_shader_meshrenderer,
+                 "compile vertex and fragment shader");
+    pymodule.def("load_object_meshrenderer", &EGLRendererContext::load_object_meshrenderer,
+                 "load object into VAO and VBO");
     pymodule.def("loadTexture", &EGLRendererContext::loadTexture, "load texture function");
     pymodule.def("setup_pbr", &EGLRendererContext::setup_pbr, "setup pbr");
-    pymodule.def("readbuffer_meshrenderer_shadow_depth", &EGLRendererContext::readbuffer_meshrenderer_shadow_depth,"read pixel buffer");
+    pymodule.def("readbuffer_meshrenderer_shadow_depth", &EGLRendererContext::readbuffer_meshrenderer_shadow_depth,
+                 "read pixel buffer");
     pymodule.def("allocateTexture", &EGLRendererContext::allocateTexture, "load texture function");
 
     // class MeshRendererG2G
-    pymodule.def("render_tensor_pre", &EGLRendererContext::render_tensor_pre, "pre-executed functions in MeshRendererG2G.render");
-    pymodule.def("render_tensor_post", &EGLRendererContext::render_tensor_post, "post-executed functions in MeshRendererG2G.render");
+    pymodule.def("render_tensor_pre", &EGLRendererContext::render_tensor_pre,
+                 "pre-executed functions in MeshRendererG2G.render");
+    pymodule.def("render_tensor_post", &EGLRendererContext::render_tensor_post,
+                 "post-executed functions in MeshRendererG2G.render");
 
     // class Instance
-    pymodule.def("render_softbody_instance", &EGLRendererContext::render_softbody_instance, "render softbody in instance.render");
+    pymodule.def("render_softbody_instance", &EGLRendererContext::render_softbody_instance,
+                 "render softbody in instance.render");
     pymodule.def("initvar_instance", &EGLRendererContext::initvar_instance, "init uniforms in instance.render");
-    pymodule.def("init_material_instance", &EGLRendererContext::init_material_instance, "init materials in instance.render");
-    pymodule.def("draw_elements_instance", &EGLRendererContext::draw_elements_instance, "draw elements in instance.render and instancegroup.render");
+    pymodule.def("init_material_instance", &EGLRendererContext::init_material_instance,
+                 "init materials in instance.render");
+    pymodule.def("draw_elements_instance", &EGLRendererContext::draw_elements_instance,
+                 "draw elements in instance.render and instancegroup.render");
 
     // class InstanceGroup
-    pymodule.def("initvar_instance_group", &EGLRendererContext::initvar_instance_group, "init uniforms in instancegroup.render");
-    pymodule.def("init_material_pos_instance", &EGLRendererContext::init_material_pos_instance, "init materials and position in instancegroup.render");
+    pymodule.def("initvar_instance_group", &EGLRendererContext::initvar_instance_group,
+                 "init uniforms in instancegroup.render");
+    pymodule.def("init_material_pos_instance", &EGLRendererContext::init_material_pos_instance,
+                 "init materials and position in instancegroup.render");
 
     // misc
     pymodule.def("cglBindVertexArray", &EGLRendererContext::cglBindVertexArray, "binding function");
