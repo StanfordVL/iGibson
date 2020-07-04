@@ -91,6 +91,7 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
     pymodule.def("render_meshrenderer_post", &GLFWRendererContext::render_meshrenderer_post, "post-executed functions in MeshRenderer.render");
     pymodule.def("getstring_meshrenderer", &GLFWRendererContext::getstring_meshrenderer, "return GL version string");
     pymodule.def("readbuffer_meshrenderer", &GLFWRendererContext::readbuffer_meshrenderer, "read pixel buffer");
+    pymodule.def("readbuffer_meshrenderer_shadow_depth", &GLFWRendererContext::readbuffer_meshrenderer_shadow_depth,"read pixel buffer");
     pymodule.def("clean_meshrenderer", &GLFWRendererContext::clean_meshrenderer, "clean meshrenderer");
     pymodule.def("setup_framebuffer_meshrenderer", &GLFWRendererContext::setup_framebuffer_meshrenderer, "setup framebuffer in meshrenderer");
     pymodule.def("setup_pbr", &GLFWRendererContext::setup_pbr, "setup pbr");
@@ -101,6 +102,7 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
     pymodule.def("compile_shader_meshrenderer", &GLFWRendererContext::compile_shader_meshrenderer, "compile vertex and fragment shader");
     pymodule.def("load_object_meshrenderer", &GLFWRendererContext::load_object_meshrenderer, "load object into VAO and VBO");
     pymodule.def("loadTexture", &GLFWRendererContext::loadTexture, "load texture function");
+    pymodule.def("allocateTexture", &GLFWRendererContext::allocateTexture, "load texture function");
 
     // class Instance
     pymodule.def("render_softbody_instance", &GLFWRendererContext::render_softbody_instance, "render softbody in instance.render");

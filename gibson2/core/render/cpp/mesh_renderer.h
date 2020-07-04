@@ -72,7 +72,7 @@ public:
 
     void render_softbody_instance(int vao, int vbo, py::array_t<float> vertexData);
 
-    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> P,
+    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int shadow_pass, py::array_t<float> P,
                           py::array_t<float> eye_pos, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
                           py::array_t<float> lightpos, py::array_t<float> lightcolor);
 
@@ -80,10 +80,10 @@ public:
                                 float use_texture, float use_pbr, float metallic, float roughness);
 
     void draw_elements_instance(bool flag, int texture_id, int metallic_texture_id, int roughness_texture_id,
-                                int normal_texture_id, int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb);
+                                int normal_texture_id, int depth_texture_id, int vao, int face_size, py::array_t<unsigned int> faces, GLuint fb);
 
-    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos,
-                           py::array_t<float> lightpos, py::array_t<float> lightcolor);
+    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int shadow_pass,
+            py::array_t<float> P, py::array_t<float> eye_pos, py::array_t<float> lightpos, py::array_t<float> lightcolor);
 
     void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
                                float instance_color, py::array_t<float> diffuse_color, float use_texture,
@@ -103,6 +103,9 @@ public:
 
     Texture createTexture(GLenum target, int width, int height, GLenum internalformat, int levels) const;
     Texture createTexture(const std::shared_ptr<class Image>& image, GLenum format, GLenum internalformat, int levels) const;
+
+    int allocateTexture(int w, int h);
+    py::array_t<float> readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id);
 
 };
 
