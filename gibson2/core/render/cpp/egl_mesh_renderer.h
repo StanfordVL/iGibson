@@ -2,11 +2,14 @@
 #define EGL_MESH_RENDERER_HEADER
 
 #include "mesh_renderer.h"
+
 #ifdef USE_GLAD
+
 #include  <glad/egl.h>
+
 #else
 #include <EGL/egl.h>
-  #include <EGL/eglext.h>
+#include <EGL/eglext.h>
 #endif
 
 struct EGLInternalData2 {
@@ -24,12 +27,12 @@ struct EGLInternalData2 {
     EGLDisplay egl_display;
 
     EGLInternalData2()
-        : m_isInitialized(false),
-          m_windowWidth(0),
-          m_windowHeight(0) {}
+            : m_isInitialized(false),
+              m_windowWidth(0),
+              m_windowHeight(0) {}
 };
 
-class EGLRendererContext: public MeshRendererContext {
+class EGLRendererContext : public MeshRendererContext {
 public:
     int m_renderDevice;
     EGLBoolean success;
@@ -38,10 +41,12 @@ public:
     EGLSurface egl_surface;
     EGLContext egl_context;
     EGLDisplay egl_display;
-    EGLInternalData2* m_data = NULL;
+    EGLInternalData2 *m_data = NULL;
 
-    EGLRendererContext(int w, int h, int d): MeshRendererContext(w, h), m_renderDevice(d)  {};
+    EGLRendererContext(int w, int h, int d) : MeshRendererContext(w, h), m_renderDevice(d) {};
+
     int init();
+
     void release();
 };
 
