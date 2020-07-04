@@ -1,19 +1,12 @@
 #ifndef MESH_RENDERER_HEADER
 #define MESH_RENDERER_HEADER
 
-#ifdef USE_GLAD
-#include  <glad/egl.h>
-#else
-#include <EGL/egl.h>
-  #include <EGL/eglext.h>
-#endif
 
 #include  <glad/gl.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 namespace py = pybind11;
-
 
 struct Texture
 {
@@ -24,42 +17,13 @@ struct Texture
 };
 
 
-struct EGLInternalData2 {
-    bool m_isInitialized;
-
-    int m_windowWidth;
-    int m_windowHeight;
-    int m_renderDevice;
-
-    EGLBoolean success;
-    EGLint num_configs;
-    EGLConfig egl_config;
-    EGLSurface egl_surface;
-    EGLContext egl_context;
-    EGLDisplay egl_display;
-
-    EGLInternalData2()
-            : m_isInitialized(false),
-              m_windowWidth(0),
-              m_windowHeight(0) {}
-};
-
 class MeshRendererContext{
 public:
-    MeshRendererContext(int w, int h, int d):m_windowHeight(h),m_windowWidth(w),m_renderDevice(d) {};
+    MeshRendererContext(int w, int h):m_windowHeight(h),m_windowWidth(w){};
 
     int m_windowWidth;
     int m_windowHeight;
-    int m_renderDevice;
     int verbosity;
-
-    EGLBoolean success;
-    EGLint num_configs;
-    EGLConfig egl_config;
-    EGLSurface egl_surface;
-    EGLContext egl_context;
-    EGLDisplay egl_display;
-    EGLInternalData2* m_data = NULL;
 
     const int kEnvMapSize = 256;
     const int kIrradianceMapSize = 32;
@@ -76,8 +40,8 @@ public:
     cudaGraphicsResource* cuda_res[MAX_NUM_RESOURCES];
 #endif
 
-    int init();
-    void release();
+    int init(){};
+    void release(){};
 
 #ifdef USE_CUDA
     void map_tensor(GLuint tid, int width, int height, std::size_t data);

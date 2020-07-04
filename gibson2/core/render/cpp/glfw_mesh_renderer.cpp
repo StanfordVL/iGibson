@@ -43,8 +43,11 @@ int GLFWRendererContext::init() {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+        glfwWindowHint(GLFW_DEPTH_BITS, 0);
+        glfwWindowHint(GLFW_STENCIL_BITS, 0);
+        glfwWindowHint(GLFW_SAMPLES, 0);
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         // Hide GLFW window by default
-        glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
 
         this->window = glfwCreateWindow(m_windowHeight, m_windowHeight, "Gibson GLFW Renderer", NULL, NULL);
         if (this->window == NULL) {
@@ -53,9 +56,7 @@ int GLFWRendererContext::init() {
             exit(EXIT_FAILURE);
         }
 
-        glfwWindowHint(GLFW_DEPTH_BITS, 0);
-        glfwWindowHint(GLFW_STENCIL_BITS, 0);
-        glfwWindowHint(GLFW_SAMPLES, 0);
+
 
         glfwMakeContextCurrent(this->window);
         glfwSwapInterval(0);

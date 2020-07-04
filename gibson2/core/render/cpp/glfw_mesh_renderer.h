@@ -5,7 +5,7 @@
 
 class GLFWRendererContext: public MeshRendererContext {
 public:
-    GLFWRendererContext(int w, int h): MeshRendererContext(w, h, 0) {};
+    GLFWRendererContext(int w, int h): MeshRendererContext(w, h) {};
     GLFWwindow *window = NULL;
     int init();
     void release();
