@@ -118,6 +118,7 @@ class InstanceGroup(object):
                                                            self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3],
                                                            float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()),
                                                            float(self.use_pbr),
+                                                           float(self.use_pbr_mapping),
                                                            float(self.metalness),
                                                            float(self.roughness))
 
@@ -212,6 +213,7 @@ class Instance(object):
         self.dynamic = dynamic
         self.softbody = softbody
         self.use_pbr = False
+        self.use_pbr_mapping = False
         self.roughness = 1
         self.metalness = 0
 
@@ -268,6 +270,7 @@ class Instance(object):
                                                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd,
                                                    float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()),
                                                    float(self.use_pbr),
+                                                   float(self.use_pbr_mapping),
                                                    float(self.metalness),
                                                    float(self.roughness))
             try:
@@ -450,7 +453,7 @@ class MeshRenderer(object):
         self.materials_mapping = {}
         self.mesh_materials = []
 
-        self.env_texture_filename = os.path.join(gibson2.assets_path, 'test', 'carpentry_shop_02_1k.hdr')
+        self.env_texture_filename = os.path.join(gibson2.assets_path, 'test', 'Rs.hdr')
         self.setup_pbr()
 
     def setup_pbr(self):

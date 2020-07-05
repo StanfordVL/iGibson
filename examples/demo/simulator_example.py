@@ -28,6 +28,7 @@ def main():
 
     for item in s.renderer.instances[1:]:
         item.use_pbr = True
+        item.use_pbr_mapping = False
         item.metalness = np.random.random()
         item.roughness = np.random.random()
 

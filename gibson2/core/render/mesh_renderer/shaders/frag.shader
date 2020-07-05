@@ -11,6 +11,7 @@ uniform vec3 eyePosition;
 
 uniform float use_texture;
 uniform float use_pbr;
+uniform float use_pbr_mapping;
 uniform float metallic;
 uniform float roughness;
 
@@ -99,14 +100,20 @@ void main() {
     }
 
     //use pbr, not using mapping
-    if ((use_pbr == 1) && (use_texture == 0)) {
+    if ((use_pbr == 1) && (use_pbr_mapping == 0)) {
 
         vec3 N = normalize(Normal_world);
         vec3 Lo = normalize(eyePosition - FragPos);
         float cosLo = max(0.0, dot(N, Lo));
         vec3 Lr = 2.0 * cosLo * N - Lo;
 
-        vec3 albedo = texture(texUnit,theCoords).rgb;
+        vec3 albedo;
+        if (use_texture == 1) {
+            albedo = texture(texUnit, theCoords).rgb;// albedo only
+        } else {
+            albedo = Diffuse_color; //diffuse color
+        }
+
         const vec3 Fdielectric = vec3(0.04);
         vec3 F0 = mix(Fdielectric, albedo, metallic);
 		vec3 irradiance = texture(irradianceTexture, N).rgb;
@@ -124,14 +131,20 @@ void main() {
     }
 
     // use pbr and mapping
-    if ((use_pbr == 1) && (use_texture == 1)) {
+    if ((use_pbr == 1) && (use_pbr_mapping == 1)) {
             vec3 normal_map = 2 * texture(normalTexture, theCoords).rgb - 1;
             vec3 N = normalize(TBN * normal_map);
             vec3 Lo = normalize(eyePosition - FragPos);
             float cosLo = max(0.0, dot(N, Lo));
             vec3 Lr = 2.0 * cosLo * N - Lo;
 
-            vec3 albedo = texture(texUnit, theCoords).rgb;
+            vec3 albedo;
+            if (use_texture == 1) {
+                albedo = texture(texUnit, theCoords).rgb;// albedo only
+            } else {
+                albedo = Diffuse_color; //diffuse color
+            }
+
             float metallic_sampled = texture(metallicTexture, theCoords).r;
             float roughness_sampled = texture(roughnessTexture, theCoords).r;
             const vec3 Fdielectric = vec3(0.04);

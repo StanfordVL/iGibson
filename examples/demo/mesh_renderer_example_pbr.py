@@ -23,7 +23,7 @@ def main():
             renderer.add_instance(0)
             renderer.set_pose([(j-2)*0.2,(i-2)*0.2,0,1,0,0,0], -1)
             renderer.instances[-1].use_pbr = True
-            renderer.instances[-1].use_texture = False
+            renderer.instances[-1].use_pbr_mapping = True
             renderer.instances[-1].roughness = (4-i) * 0.25
             renderer.instances[-1].metalness = j * 0.25
 

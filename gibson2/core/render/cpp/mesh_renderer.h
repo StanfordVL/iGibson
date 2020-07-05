@@ -87,7 +87,8 @@ public:
                           py::array_t<float> lightpos, py::array_t<float> lightcolor);
 
     void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color,
-                                float use_texture, float use_pbr, float metallic, float roughness);
+                                float use_texture, float use_pbr, float use_pbr_mapping, float metallic,
+                                float roughness);
 
     void draw_elements_instance(bool flag, int texture_id, int metallic_texture_id, int roughness_texture_id,
                                 int normal_texture_id, int depth_texture_id, int vao, int face_size,
@@ -99,7 +100,7 @@ public:
 
     void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
                                     float instance_color, py::array_t<float> diffuse_color, float use_texture,
-                                    float use_pbr, float metalness, float roughness);
+                                    float use_pbr, float use_pbr_mapping, float metalness, float roughness);
 
     void render_tensor_pre(bool msaa, GLuint fb1, GLuint fb2);
 
