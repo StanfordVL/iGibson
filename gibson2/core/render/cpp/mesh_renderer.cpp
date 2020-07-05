@@ -441,12 +441,14 @@ void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float>
 
 void
 MeshRendererContext::init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color,
-                                            float use_texture, float use_pbr, float metallic, float roughness) {
+                                            float use_texture, float use_pbr, float use_pbr_mapping, float metallic,
+                                            float roughness) {
     float *diffuse_ptr = (float *) diffuse_color.request().ptr;
     glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
     glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
     glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
+    glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr_mapping"), use_pbr_mapping);
     glUniform1f(glGetUniformLocation(shaderProgram, "metallic"), metallic);
     glUniform1f(glGetUniformLocation(shaderProgram, "roughness"), roughness);
     glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
@@ -529,7 +531,8 @@ void MeshRendererContext::initvar_instance_group(int shaderProgram, py::array_t<
 void MeshRendererContext::init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans,
                                                      py::array_t<float> pose_rot,
                                                      float instance_color, py::array_t<float> diffuse_color,
-                                                     float use_texture, float use_pbr, float metalness,
+                                                     float use_texture, float use_pbr, float use_pbr_mapping,
+                                                     float metalness,
                                                      float roughness) {
     float *transptr = (float *) pose_trans.request().ptr;
     float *rotptr = (float *) pose_rot.request().ptr;
@@ -540,6 +543,7 @@ void MeshRendererContext::init_material_pos_instance(int shaderProgram, py::arra
     glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
     glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
+    glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr_mapping"), use_pbr_mapping);
     glUniform1f(glGetUniformLocation(shaderProgram, "metalness"), metalness);
     glUniform1f(glGetUniformLocation(shaderProgram, "roughness"), roughness);
     glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
