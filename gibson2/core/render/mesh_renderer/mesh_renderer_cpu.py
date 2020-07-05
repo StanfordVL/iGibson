@@ -344,6 +344,10 @@ class Material(object):
     def is_texture(self):
         return self.type == 'texture'
 
+    def is_pbr_texture(self):
+        return self.type == 'texture' and self.metallic_texture_id is not None \
+            and self.roughness_texture_id is not None and self.normal_texture_id is not None
+
     def __str__(self):
         return "Material(type: {}, texture_id: {}, color: {})".format(self.type, self.texture_id,
                                                                       self.kd)
