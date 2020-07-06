@@ -1,6 +1,6 @@
 #  iGibson: the Interactive Gibson Environment
 
-<img src="./docs/images/igibsonlogo.png" width="600"> <img src="./docs/images/igibson.gif" width="250"> 
+<img src="./docs/images/igibsonlogo.png" width="500"> <img src="./docs/images/igibson.gif" width="250"> 
 
 ### Large Scale Interactive Simulation Environments for Robot Learning
 
