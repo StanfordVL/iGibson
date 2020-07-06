@@ -1,4 +1,4 @@
-from .smoothing import smooth_path
+from .smoothing import smooth_path, optimize_path
 from .rrt import TreeNode, configs
 from .utils import irange, argmin, RRT_ITERATIONS, RRT_RESTARTS, RRT_SMOOTHING
 
@@ -67,5 +67,5 @@ def birrt(q1, q2, distance, sample, extend, collision,
             #print('{} attempts'.format(attempt))
             if smooth is None:
                 return path
-            return smooth_path(path, extend, collision, iterations=smooth)
+            return optimize_path(path, extend, collision, iterations=smooth)
     return None
