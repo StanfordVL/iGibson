@@ -535,7 +535,7 @@ class NavigateEnv(BaseEnv):
         if self.is_goal_reached():
             done = True
             info['success'] = True
-            print('SUCCESS')
+            # print('SUCCESS')
 
         # max collisions reached
         if self.collision_step > self.max_collisions_allowed:
