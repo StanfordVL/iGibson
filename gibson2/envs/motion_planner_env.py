@@ -1178,6 +1178,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             get_max_limits(self.robot_id, self.arm_joint_ids)
         min_limits = [0., 0.] + \
             get_min_limits(self.robot_id, self.arm_joint_ids)
+        # increase torso_lift_joint lower limit to 0.02 to avoid self-collision
+        min_limits[2] += 0.02
         rest_position = [0., 0.] + \
             list(get_joint_positions(self.robot_id, self.arm_joint_ids))
         joint_range = list(np.array(max_limits) - np.array(min_limits))
