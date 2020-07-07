@@ -572,7 +572,7 @@ public:
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(positionAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);
         glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)12);
-        glVertexAttribPointer(coordsAttrib, 2, GL_FLOAT, GL_TRUE, 32, (void*)24);
+        glVertexAttribPointer(coordsAttrib, 2, GL_FLOAT, GL_FALSE, 32, (void*)24);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
         py::list result;

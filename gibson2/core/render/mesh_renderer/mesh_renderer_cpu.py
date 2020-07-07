@@ -293,17 +293,23 @@ class Material(object):
                  type='color', 
                  kd=[0.5, 0.5, 0.5], 
                  texture_id=None,
+                 repeat_x=1,
+                 repeat_y=1,
+                 texuniform=False,
                  ):
         self.type = type
         self.kd = kd
         self.texture_id = texture_id
+        self.repeat_x = repeat_x
+        self.repeat_y = repeat_y
+        self.texuniform = texuniform
 
     def is_texture(self):
         return self.type == 'texture'
 
     def __str__(self):
-        return "Material(type: {}, texture_id: {}, color: {})".format(self.type, self.texture_id,
-                                                                      self.kd)
+        return "Material(type: {}, texture_id: {}, color: {}, repeat: {}, {}), texuniform: {}".format(self.type, self.texture_id,
+                                                                      self.kd, self.repeat_x, self.repeat_y, self.texuniform)
 
     def __repr__(self):
         return self.__str__()
@@ -437,7 +443,8 @@ class MeshRenderer(object):
                     input_kd=None,
                     texture_scale=1.0,
                     load_texture=True,
-                    input_material=None):
+                    input_material=None,
+                    ):
         """
         Load a wavefront obj file into the renderer and create a VisualObject to manage it.
         Material options: there are several options to specify the material
@@ -486,6 +493,9 @@ class MeshRenderer(object):
         # or create plane color Material elements
         num_existing_mats = len(self.materials_mapping)    # Number of current Material elements 
 
+        repeat_x = 1
+        repeat_y = 1
+
         if input_material is None:
             for i, material in enumerate(materials): # Go over all materials in the obj file
                 if material.diffuse_texname != '' and load_texture: # If the obj file defines a texture file and the option is to load it
@@ -504,6 +514,10 @@ class MeshRenderer(object):
 
         else:   # If the input_material is not None, load it and use it in the entire model
             print("Using input material")
+            repeat_x = input_material.repeat_x
+            repeat_y = input_material.repeat_y
+            print(repeat_x)
+            print(repeat_y)
             self.materials_mapping[num_existing_mats] = input_material
             num_added_materials = 1
 
@@ -516,7 +530,8 @@ class MeshRenderer(object):
         VAO_ids = []
         vertex_position = np.array(attrib.vertices).reshape((len(attrib.vertices)//3, 3))
         vertex_normal = np.array(attrib.normals).reshape((len(attrib.normals)//3, 3))
-        vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
+        #vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
+        vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2)) * np.array([repeat_x, repeat_y])
 
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))

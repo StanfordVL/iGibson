@@ -161,12 +161,23 @@ class iGibsonMujocoBridge:
                 texture_id = texture_ids[texture_name]
 
                 if type(texture_id) == int: 
+                    repeat_str = material.get('texrepeat')
+
+                    if repeat_str is not None:
+                        repeat_str = repeat_str.split()
+                        repeat = [int(pp) for pp in repeat_str]
+                    else:
+                        repeat = [1, 1]
+
+                    texuniform = False
+                    if texuniform_str is not None:
+                        texuniform = (texuniform_str == "true")
                     material_objs[material.get('name')] = Material('texture',
-                                                                   texture_id = texture_ids[texture_name])
-                else:
+                                                                   texture_id = texture_ids[texture_name], 
+                                                                    repeat_x= repeat[0], repeat_y = repeat[1], texuniform=texuniform)
+                else:                    
                     # This texture may have been a gradient. We don't have a way to do that 
-                    material_objs[material.get('name')] = Material('color',
-                                                                   kd= texture_ids[texture_name])
+                    material_objs[material.get('name')] = Material('color', kd= texture_ids[texture_name])
             else:
                 color_str = material.get('rgba').split()
                 color = [float(pp) for pp in color_str]
@@ -289,7 +300,24 @@ class iGibsonMujocoBridge:
                                               transform_orn=geom_orn,
                                               transform_pos=geom_pos,
                                               input_kd=properties['rgba'][0:3],
-                                              scale= [properties['size'][0], properties['size'][0], properties['size'][1]],
+                                              scale= [properties['size'][0], properties['size'][0], properties['size'][1]], #the cylinder.obj has radius 1 and height 2
+                                              )
+                    self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
+                                               pybullet_uuid=0,
+                                               class_id=0,
+                                               dynamic=True,
+                                               parent_body=parent_body_name)
+
+
+                elif geom_type == 'sphere':
+                    filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
+
+                    geom_orn = [geom_orn[1],geom_orn[2],geom_orn[3],geom_orn[0]]
+                    self.renderer.load_object(filename,
+                                              transform_orn=geom_orn,
+                                              transform_pos=geom_pos,
+                                              input_kd=properties['rgba'][0:3],
+                                              scale= [2*properties['size'][0], 2*properties['size'][0], 2*properties['size'][0]], # the sphere8.obj has radius 0.5
                                               )
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                                pybullet_uuid=0,
@@ -367,7 +395,7 @@ class iGibsonMujocoBridge:
                 self.renderer.load_object(filename,
                                           transform_orn=props['quat'][0:4],
                                           transform_pos=props['pos'][0:3],
-                                          input_kd=[0,1,0],
+                                          input_kd=props['rgba'][0:3],
                                           scale=[2*props['size'][0], 2*props['size'][1],0.01],
                                           load_texture = load_texture,
                                           input_material = geom_material
@@ -377,18 +405,6 @@ class iGibsonMujocoBridge:
                                            class_id=0,
                                            dynamic=True,
                                            parent_body="world")
-
-
-        # filename = os.path.join(gibson2.assets_path, 'dataset/Rs/mesh_z_up.obj')
-        # self.renderer.load_object(filename,
-        #                           transform_orn=[0,0,0,1],
-        #                           transform_pos=[0,0,0],
-        #                           scale=[1,1,1]) #Forcing plane to be 1 cm width (this param is the tile size in Mujoco anyway)
-        # self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
-        #                            pybullet_uuid=0,
-        #                            class_id=0,
-        #                            dynamic=True,
-        #                            parent_body='worldbody')
 
     def load_without_pybullet_vis(load_func):
         def wrapped_load_func(*args, **kwargs):
