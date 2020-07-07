@@ -264,8 +264,6 @@ class iGibsonMujocoBridge:
                 #Y forward, and Z up in the properties
                 #With this convention, we do not need to apply any rotation to the meshes
                 if geom_type == 'box':
-                    print(load_texture)
-                    print(geom_material)
                     filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
 
                     geom_orn = [geom_orn[1],geom_orn[2],geom_orn[3],geom_orn[0]]
@@ -284,14 +282,14 @@ class iGibsonMujocoBridge:
                                                parent_body=parent_body_name)
 
                 elif geom_type == 'cylinder':
-                    filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                    filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cylinder.obj')
 
                     geom_orn = [geom_orn[1],geom_orn[2],geom_orn[3],geom_orn[0]]
                     self.renderer.load_object(filename,
                                               transform_orn=geom_orn,
                                               transform_pos=geom_pos,
                                               input_kd=properties['rgba'][0:3],
-                                              scale= [properties['size'][0] / 0.5, properties['size'][0] / 0.5, 2*properties['size'][1]],
+                                              scale= [properties['size'][0], properties['size'][0], properties['size'][1]],
                                               )
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                                pybullet_uuid=0,
@@ -310,12 +308,15 @@ class iGibsonMujocoBridge:
                     # This line is commented out to "reload" the same meshes with different tranformations, for example, robot fingers
                     # We need to find a better way to do it if we are going to load the same object many times (save space)
                     # if not filename in self.visual_objects.keys(): 
-                    print("here")
+                    
+                    print(filename)
+                    print(geom_material)
                     self.renderer.load_object(filename,
                                             transform_orn=geom_orn,
                                             transform_pos=geom_pos,
+                                            input_kd=properties['rgba'][0:3],
                                             load_texture = load_texture,
-                                            input_material = geom_material
+                                            input_material = geom_material,                                            
                                             )
                     self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
@@ -355,12 +356,22 @@ class iGibsonMujocoBridge:
                 self.plane_pos = props['pos']
                 self.plane_ori = props['quat']
 
+                geom_material_name = geom.get('material')
+                load_texture = True
+                geom_material = None
+                if geom_material_name is not None:
+                    load_texture = False
+                    geom_material = material_objs[geom_material_name]
+
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(filename,
                                           transform_orn=props['quat'][0:4],
                                           transform_pos=props['pos'][0:3],
                                           input_kd=[0,1,0],
-                                          scale=[2*props['size'][0], 2*props['size'][1],0.01]) #Forcing plane to be 1 cm width (this param is the tile size in Mujoco anyway)
+                                          scale=[2*props['size'][0], 2*props['size'][1],0.01],
+                                          load_texture = load_texture,
+                                          input_material = geom_material
+                                            ) #Forcing plane to be 1 cm width (this param is the tile size in Mujoco anyway)
                 self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                            pybullet_uuid=0,
                                            class_id=0,

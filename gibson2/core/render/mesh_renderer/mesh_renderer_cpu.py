@@ -449,7 +449,7 @@ class MeshRenderer(object):
         :param scale: scale in each dimension, default [1, 1, 1]
         :param transform_orn: rotation quaternion, convention xyzw
         :param transform_pos: translation for loading, it is a list of length 3
-        :param input_kd: if loading material fails or it is indicated to not use texture, use this default material. input_kd should be a list of length 3
+        :param input_kd: if loading material fails use this default material. input_kd should be a list of length 3
         :param texture_scale: texture scale for the object, downsample to save memory.
         :param load_texture: load texture or not
         :return: VAO_ids
@@ -489,13 +489,13 @@ class MeshRenderer(object):
         if input_material is None:
             for i, material in enumerate(materials): # Go over all materials in the obj file
                 if material.diffuse_texname != '' and load_texture: # If the obj file defines a texture file and the option is to load it
-                    print("loading texture for file")
-                    print(obj_path)
+                    print("use texture in obj")
                     obj_dir = os.path.dirname(obj_path)
                     texture_id = self.r.loadTexture(os.path.join(obj_dir, material.diffuse_texname))
                     self.textures.append(texture_id)
                     material_obj = Material('texture', texture_id=texture_id)
                 else:   # If either the obj does not define a texture file or the option is to not load it
+                    print("use kd color in obj")
                     material_obj = Material('color', kd=material.diffuse)
 
                 self.materials_mapping[num_existing_mats + i] = material_obj
@@ -503,8 +503,7 @@ class MeshRenderer(object):
             num_added_materials = len(materials)
 
         else:   # If the input_material is not None, load it and use it in the entire model
-            print("Using given material for")
-            print(obj_path)
+            print("Using input material")
             self.materials_mapping[num_existing_mats] = input_material
             num_added_materials = 1
 
