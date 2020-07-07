@@ -1,15 +1,17 @@
 # scene
 scene: building
 model_id: candcenter
+# model_id: Samuels
 is_interactive: false
 build_graph: true
 load_texture: true
 trav_map_resolution: 0.1
 trav_map_erosion: 3
+initial_pos_z_offset: 0.0
 
 # robot
 robot: Fetch
-fine_motion_plan: true
+fine_motion_plan: false
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -32,7 +34,7 @@ dist_tol: 0.5  # body width
 max_step: 25
 
 # sensor spec
-output: [sensor, scan, occupancy_grid]
+output: [sensor, rgbd, scan, occupancy_grid]
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
