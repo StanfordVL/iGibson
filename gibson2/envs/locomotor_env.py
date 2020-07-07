@@ -371,7 +371,8 @@ class NavigateEnv(BaseEnv):
         start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
         start_pose += unit_vector_world * self.min_laser_dist
         end_pose = laser_pose[:3] + unit_vector_world * self.laser_linear_range
-        results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
+        # 0 = use all threads available
+        results = p.rayTestBatch(start_pose, end_pose, 0)
 
         # hit fraction = [0.0, 1.0] of self.laser_linear_range
         hit_fraction = np.array([item[2] for item in results])
@@ -526,6 +527,9 @@ class NavigateEnv(BaseEnv):
         :return: done, info
         """
         done = False
+        info['success'] = False
+        info['episode_length'] = self.current_step
+        info['collision_step'] = self.collision_step
 
         # goal reached
         if self.is_goal_reached():
@@ -536,19 +540,16 @@ class NavigateEnv(BaseEnv):
         # max collisions reached
         if self.collision_step > self.max_collisions_allowed:
             done = True
-            info['success'] = False
 
         # time out
         elif self.current_step >= self.max_step:
             done = True
-            info['success'] = False
 
-        if done:
-            info['episode_length'] = self.current_step
-            info['collision_step'] = self.collision_step
-            # info['path_length'] = self.path_length
-            # info['spl'] = float(info['success']) * \
-            #     min(1.0, self.geodesic_dist / self.path_length)
+        info['episode_length'] = self.current_step
+        info['collision_step'] = self.collision_step
+        # info['path_length'] = self.path_length
+        # info['spl'] = float(info['success']) * \
+        #     min(1.0, self.geodesic_dist / self.path_length)
 
         return done, info
 
