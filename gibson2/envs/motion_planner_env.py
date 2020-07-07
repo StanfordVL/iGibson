@@ -1742,9 +1742,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 info['success'] = True
         elif self.arena in ['push_drawers', 'push_chairs']:
             # ignore navigation success
-            if done and info['success']:
-                done = False
-                info['success'] = False
+            done = False
+            info['success'] = False
+            if self.current_step >= self.max_step:
+                done = True
 
         return done, info
 
