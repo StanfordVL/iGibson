@@ -1548,7 +1548,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def get_reward(self, use_base, collision_links=[], action=None, info={}):
         reward, info = super(NavigateRandomEnv, self).get_reward(
-            collision_links, action, info)
+            collision_links=collision_links, action=action, info=info)
 
         # ignore navigation reward (assuming no slack reward)
         if self.arena in ['push_drawers', 'push_chairs']:
@@ -1667,11 +1667,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         info = {}
         if subgoal_success:
-            reward, info = self.get_reward(use_base, [], action, info)
+            reward, info = self.get_reward(use_base=use_base, collision_links=[], action=action, info=info)
         else:
             # failed subgoal penalty
             reward = self.failed_subgoal_penalty
-        done, info = self.get_termination([], info)
+        done, info = self.get_termination([], action, info)
 
         if done and self.automatic_reset:
             state = self.reset()
@@ -1842,9 +1842,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
     #     self.state['current_step'] = self.current_step
     #     return self.state
 
-    def get_termination(self, collision_links=[], info={}):
+    def get_termination(self, collision_links=[], action=None, info={}):
         done, info = super(MotionPlanningBaseArmEnv,
-                           self).get_termination(collision_links, info)
+                           self).get_termination(collision_links, action, info)
         if self.arena in ['random_manip', 'random_manip_atomic']:
             new_door_state = p.getJointState(
                 self.doors[self.door_idx].body_id, self.door_axis_link_id)[0]
@@ -1862,12 +1862,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def before_simulation(self):
         robot_position = self.robots[0].get_position()
-        object_positions = [obj.get_position()
-                            for obj in self.interactive_objects]
-        return robot_position, object_positions
+        #object_positions = [obj.get_position()
+        #                    for obj in self.interactive_objects]
+        return robot_position#, object_positions
 
     def after_simulation(self, cache, collision_links):
-        robot_position, object_positions = cache
+        robot_position = cache
         self.path_length += np.linalg.norm(
             self.robots[0].get_position() - robot_position)
 
@@ -1897,14 +1897,12 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
             arena=arena,
             collision_reward_weight=collision_reward_weight,
         )
-        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
-                                           low=-1.0,
-                                           high=1.0,
-                                           dtype=np.float32)
+        # revert back to raw action space
+        self.action_space = self.robots[0].action_space
 
-    def get_termination(self, collision_links=[], info={}):
+    def get_termination(self, collision_links=[], action=None, info={}):
         done, info = super(MotionPlanningBaseArmEnv,
-                           self).get_termination(collision_links, info)
+                           self).get_termination(collision_links, action, info)
         if done:
             return done, info
         else:
@@ -1925,6 +1923,9 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
 
     def step(self, action):
         return super(NavigateRandomEnv, self).step(action)
+    
+    def get_reward(self, collision_links=[], action=None, info={}):
+        return super(NavigateRandomEnv, self).get_reward(collision_links, action, info)
 
 
 class MotionPlanningBaseArmHRL4INEnv(MotionPlanningBaseArmContinuousEnv):
