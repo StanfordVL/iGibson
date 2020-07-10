@@ -56,6 +56,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                  action_map=False,
                  channel_first=False,
                  draw_path_on_map=False,
+                 draw_objs_on_map=False,
                  base_only=False,
                  rotate_occ_grid=False,
                  ):
@@ -76,6 +77,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.action_map = action_map
         self.channel_first = channel_first
         self.draw_path_on_map = draw_path_on_map
+        if self.draw_path_on_map:
+            assert self.arena not in ['push_chairs', 'push_drawers']
+        self.draw_objs_on_map = draw_objs_on_map
+        if self.draw_objs_on_map:
+            assert self.arena in ['push_chairs', 'push_drawers']
         self.base_only = base_only
         self.rotate_occ_grid = rotate_occ_grid
         self.fine_motion_plan = self.config.get('fine_motion_plan', True)
@@ -496,7 +502,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.map_size = self.scene.trav_map_original_size * \
             self.scene.trav_map_default_resolution
 
-        self.grid_resolution = 256
+        self.grid_resolution = 128
         self.occupancy_range = 5.0  # m
         robot_footprint_radius = 0.279
         self.robot_footprint_radius_in_map = int(
@@ -573,7 +579,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if self.action_map:
                 self.base_orn_num_bins = 12  # 12
                 self.push_vec_num_bins = 12
-                self.downsample_ratio = 8
+                self.downsample_ratio = 4
                 self.q_value_size = self.image_height // self.downsample_ratio
                 # TODO: assume base and arm Q-value map has the same resolution
                 assert self.image_height == self.image_width
@@ -598,6 +604,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             del self.observation_space.spaces['scan']
 
             if self.draw_path_on_map:
+                occ_grid_dim += 1
+            if self.draw_objs_on_map:
                 occ_grid_dim += 1
 
             self.observation_space.spaces['occupancy_grid'] = gym.spaces.Box(
@@ -832,13 +840,43 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 path_map = np.zeros_like(state['occupancy_grid'])
                 for i in range(self.scene.num_waypoints):
                     cv2.circle(img=path_map,
-                               center=(waypoints_img_uv[2 * i],
-                                       waypoints_img_uv[2 * i + 1]),
+                               center=(int(waypoints_img_uv[2 * i]),
+                                       int(waypoints_img_uv[2 * i + 1])),
                                radius=int(self.robot_footprint_radius_in_map),
                                color=1,
                                thickness=-1)
                 state['occupancy_grid'] = np.concatenate(
                     (state['occupancy_grid'], path_map), axis=2)
+
+            if self.draw_objs_on_map:
+                if self.arena == 'push_chairs':
+                    objs = self.obstacles
+                elif self.arena == 'push_drawers':
+                    objs = self.cabinet_drawers
+
+                objs_local_xy = [
+                    self.global_to_local(obj.get_position())[:2]
+                    for obj in objs]
+
+                objs_img_uv = np.zeros_like(objs_local_xy)
+                for i in range(objs_img_uv.shape[0]):
+                    objs_img_uv[i][0] = objs_local_xy[i][0] \
+                        / self.occupancy_range * self.grid_resolution \
+                        + (self.grid_resolution / 2)
+                    objs_img_uv[i][1] = \
+                        -objs_local_xy[i][1] \
+                        / self.occupancy_range * self.grid_resolution \
+                        + (self.grid_resolution / 2)
+                obj_map = np.zeros_like(state['occupancy_grid'])
+                for i in range(objs_img_uv.shape[0]):
+                    cv2.circle(img=obj_map,
+                               center=(int(objs_img_uv[i][0]),
+                                       int(objs_img_uv[i][1])),
+                               radius=int(self.robot_footprint_radius_in_map),
+                               color=1,
+                               thickness=-1)
+                state['occupancy_grid'] = np.concatenate(
+                    (state['occupancy_grid'], obj_map), axis=2)
 
             if self.rotate_occ_grid:
                 occ_grid_stacked = []
@@ -1983,7 +2021,8 @@ if __name__ == '__main__':
                                            arena=args.arena,
                                            action_map=True,
                                            channel_first=True,
-                                           draw_path_on_map=True,
+                                           draw_path_on_map=False,
+                                           draw_objs_on_map=True,
                                            base_only=False,
                                            rotate_occ_grid=False,
                                            )
