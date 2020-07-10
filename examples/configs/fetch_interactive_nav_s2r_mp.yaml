@@ -1,7 +1,6 @@
 # scene
 scene: building
-model_id: candcenter
-# model_id: Samuels
+model_id: Samuels
 is_interactive: false
 build_graph: true
 load_texture: true
@@ -34,13 +33,13 @@ dist_tol: 0.5  # body width
 max_step: 25
 
 # sensor spec
-output: [sensor, rgbd, scan, occupancy_grid]
+output: [sensor, rgb, depth, scan]
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
 fisheye: false
-image_width: 256
-image_height: 256
+image_width: 128
+image_height: 128
 vertical_fov: 90
 # depth
 depth_low: 0.35
