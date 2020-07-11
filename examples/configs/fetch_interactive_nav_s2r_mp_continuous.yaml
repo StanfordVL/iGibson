@@ -1,18 +1,19 @@
 # scene
 scene: building
 model_id: candcenter
+# model_id: Samuels
 is_interactive: false
 build_graph: true
 load_texture: true
 trav_map_resolution: 0.1
 trav_map_erosion: 3
-initial_pos_z_offset: 0.0
+initial_pos_z_offset: 0.1
 
 # robot
 robot: Fetch
-wheel_velocity: 0.05
-torso_lift_velocity: 0.0001
-arm_velocity: 0.01
+wheel_velocity: 0.8
+torso_lift_velocity: 0.8
+arm_velocity: 0.8
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
@@ -24,7 +25,9 @@ success_reward: 10.0
 slack_reward: 0.0
 potential_reward_weight: 1.0
 collision_reward_weight: -0.0
-collision_ignore_link_a_ids: [0, 1, 2, 3, 14, 20, 21, 22]  # ignore collision with these agent's link ids
+collision_ignore_link_a_ids: [0, 1, 2, 3, 12, 13, 14, 15, 16, 17, 18, 19]  # ignore collision with these agent's link ids
+collision_ignore_link_b_ids: [2]  # ignore self-collision
+max_collisions_allowed: 0
 
 # discount factor
 discount_factor: 0.99

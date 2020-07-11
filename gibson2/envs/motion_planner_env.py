@@ -76,12 +76,21 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.collision_reward_weight = collision_reward_weight
         self.action_map = action_map
         self.channel_first = channel_first
+
+        # draw the shortest path on the occupancy map
         self.draw_path_on_map = draw_path_on_map
         if self.draw_path_on_map:
             assert self.arena not in ['push_chairs', 'push_drawers']
+
+        # draw objects of interest (chairs, drawers, etc) on the occupancy map
         self.draw_objs_on_map = draw_objs_on_map
         if self.draw_objs_on_map:
             assert self.arena in ['push_chairs', 'push_drawers']
+
+        # disable navigation success
+        if self.arena in ['push_chairs', 'push_drawers']:
+            self.dist_tol = -1.0
+
         self.base_only = base_only
         self.rotate_occ_grid = rotate_occ_grid
         self.fine_motion_plan = self.config.get('fine_motion_plan', True)
@@ -143,8 +152,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             # semantic_obstacles
             self.semantic_obstacle_poses = [
-                [[-3.5, 0.15, 0.7], [0.0, 0.0, 0.0, 1.0]],
-                [[-3.5, -0.95, 0.7], [0.0, 0.0, 0.0, 1.0]],
+                [[-3.5, 0.15, 0.63], [0.0, 0.0, 0.0, 1.0]],
+                [[-3.5, -0.95, 0.63], [0.0, 0.0, 0.0, 1.0]],
             ]
             self.semantic_obstacle_masses = [
                 1.0,
@@ -169,8 +178,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 [-36, 0.7, 0.05],
             ]
             self.door_rotations = [np.pi, np.pi]
-            wall_poses = [
-            ]
+            wall_poses = []
             self.door_target_pos = [
                 [[-30.5, -30], [-3, -1]],
                 [[-36.75, -36.25], [-3, -1]],
@@ -194,7 +202,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             # semantic_obstacles
             self.semantic_obstacle_poses = [
-                [[-28.1, 1.45, 0.7], [0.0, 0.0, 0.0, 1.0]],
+                [[-28.1, 1.45, 0.62], [0.0, 0.0, 0.0, 1.0]],
             ]
             self.semantic_obstacle_masses = [
                 1.0,
@@ -1235,8 +1243,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         button.body_id, self.button_axis_link_id)[0]
         elif self.arena in ['obstacles', 'semantic_obstacles', 'push_chairs']:
             for i, obstacle in enumerate(self.obstacles):
-                self.obstacle_states[i] = p.getBasePositionAndOrientation(
-                    obstacle.body_id)
+                self.obstacle_states[i] = obstacle.get_position_orientation()
         elif self.arena == 'push_drawers':
             for i, obj in enumerate(self.cabinet_drawers):
                 body_id = obj.body_id
@@ -1266,8 +1273,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         elif self.arena in ['obstacles', 'semantic_obstacles', 'push_chairs']:
             for obstacle, obstacle_state in \
                     zip(self.obstacles, self.obstacle_states):
-                p.resetBasePositionAndOrientation(
-                    obstacle.body_id, *obstacle_state)
+                obstacle.set_position_orientation(*obstacle_state)
         elif self.arena == 'push_drawers':
             for i, obj in enumerate(self.cabinet_drawers):
                 body_id = obj.body_id
@@ -1546,114 +1552,131 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # print('step time:', time.time() - start)
         return state, reward, done, info
 
-    def get_reward(self, use_base, collision_links=[], action=None, info={}):
-        reward, info = super(NavigateRandomEnv, self).get_reward(
-            collision_links=collision_links, action=action, info=info)
+    def get_reward(self, collision_links=[], action=None, info={},
+                   base_or_arm='both'):
 
-        # ignore navigation reward (assuming no slack reward)
-        if self.arena in ['push_drawers', 'push_chairs']:
-            reward = 0.0
+        reward = 0.0
+        if base_or_arm in ['base', 'both']:
+            base_reward, info = super(NavigateRandomEnv, self).get_reward(
+                collision_links=collision_links, action=action, info=info)
 
-        # NavigateRandomEnv.get_reward() captures all the reward for navigation
-        if use_base:
-            return reward, info
+            # ignore navigation reward (assuming no slack reward)
+            if self.arena in ['push_drawers', 'push_chairs']:
+                base_reward = 0.0
 
-        # The reward for manipulation relies on the results cached from
-        # self.stash_object_states(). Specifically, it reads from
-        # self.[door|obstacle|cabinet_drawers]_states
-        if self.arena == 'button_door':
-            button_state = p.getJointState(self.buttons[self.door_idx].body_id,
-                                           self.button_axis_link_id)[0]
-            if not self.button_pressed and \
-                    button_state < self.button_threshold:
-                print("OPEN DOOR")
-                self.button_pressed = True
-                self.doors[self.door_idx].set_position([100.0, 100.0, 0.0])
+            reward += base_reward
 
-                # encourage buttons to be pressed
-                reward += self.button_reward
+        if base_or_arm in ['arm', 'both']:
+            if self.arena == 'button_door':
+                button_state = p.getJointState(
+                    self.buttons[self.door_idx].body_id,
+                    self.button_axis_link_id)[0]
+                if not self.button_pressed and \
+                        button_state < self.button_threshold:
+                    print("OPEN DOOR")
+                    self.button_pressed = True
+                    self.doors[self.door_idx].set_position([100.0, 100.0, 0.0])
 
-        elif self.arena in ['push_door',
-                            'random_manip', 'random_manip_atomic']:
-            new_door_state = p.getJointState(self.doors[self.door_idx].body_id,
-                                             self.door_axis_link_id)[0]
-            door_state_diff = new_door_state - self.door_states[self.door_idx]
+                    # encourage buttons to be pressed
+                    arm_reward = self.button_reward
 
-            # encourage door states to become larger (opening up)
-            # TODO: increase push door reward
-            reward += door_state_diff
+            elif self.arena in ['push_door',
+                                'random_manip', 'random_manip_atomic']:
+                new_door_state = p.getJointState(
+                    self.doors[self.door_idx].body_id,
+                    self.door_axis_link_id)[0]
 
-            # self.door_states[self.door_idx] = new_door_state
-            if new_door_state > (60.0 / 180.0 * np.pi):
-                print("PUSH OPEN DOOR")
-                if self.arena in ['random_manip', 'random_manip_atomic']:
-                    reward += self.success_reward
+                # encourage door states to become larger (opening up)
+                # TODO: increase push door reward
+                door_state_diff = new_door_state - \
+                    self.door_states[self.door_idx]
+                arm_reward = door_state_diff
+                self.door_states[self.door_idx] = new_door_state
 
-        elif self.arena in ['obstacles', 'semantic_obstacles']:
-            if self.arena == 'semantic_obstacles':
-                obstacle_poses = self.semantic_obstacle_poses
-            else:
-                obstacle_poses = self.obstacle_poses
+                if new_door_state > (60.0 / 180.0 * np.pi):
+                    print("PUSH OPEN DOOR")
+                    if self.arena in ['random_manip', 'random_manip_atomic']:
+                        arm_reward += self.success_reward
 
-            old_obstacles_moved_dist = 0.0
-            new_obstacles_moved_dist = 0.0
-            for obstacle, obstacle_state, original_obstacle_pose in \
-                    zip(self.obstacles, self.obstacle_states, obstacle_poses):
-                old_obstacle_pos = np.array(obstacle_state[0][:2])
-                new_obstacle_pos = np.array(
-                    get_base_values(obstacle.body_id)[:2])
-                original_obstacle_pos = np.array(original_obstacle_pose[0][:2])
-                old_obstacles_moved_dist += l2_distance(
-                    old_obstacle_pos,
-                    original_obstacle_pos)
-                new_obstacles_moved_dist += l2_distance(
-                    new_obstacle_pos,
-                    original_obstacle_pos)
+            elif self.arena in ['obstacles', 'semantic_obstacles']:
+                if self.arena == 'semantic_obstacles':
+                    obstacle_poses = self.semantic_obstacle_poses
+                else:
+                    obstacle_poses = self.obstacle_poses
 
-            # encourage obstacles to move away from their original positions
-            obstacles_moved_dist_diff = (new_obstacles_moved_dist -
-                                         old_obstacles_moved_dist)
-            reward += (obstacles_moved_dist_diff * 5.0)
-            # print('obstacles_moved_dist_diff', obstacles_moved_dist_diff)
+                old_obstacles_moved_dist = 0.0
+                new_obstacles_moved_dist = 0.0
+                new_obstacle_states = []
+                for obstacle, obstacle_state, original_obstacle_pose in \
+                        zip(self.obstacles,
+                            self.obstacle_states,
+                            obstacle_poses):
+                    new_obstacle_state = obstacle.get_position_orientation()
+                    old_obstacle_pos = np.array(obstacle_state[0][:2])
+                    new_obstacle_pos = np.array(new_obstacle_state[0][:2])
+                    original_obstacle_pos = np.array(
+                        original_obstacle_pose[0][:2])
+                    old_obstacles_moved_dist += l2_distance(
+                        old_obstacle_pos,
+                        original_obstacle_pos)
+                    new_obstacles_moved_dist += l2_distance(
+                        new_obstacle_pos,
+                        original_obstacle_pos)
+                    new_obstacle_states.append(new_obstacle_state)
 
-        elif self.arena == 'push_drawers':
-            old_drawers_state = 0.0
-            new_drawers_state = 0.0
-            for i, obj in enumerate(self.cabinet_drawers):
-                body_id = obj.body_id
-                for joint_id in range(p.getNumJoints(body_id)):
-                    joint_type = p.getJointInfo(body_id, joint_id)[2]
-                    if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                        old_joint_pos = \
-                            self.cabinet_drawers_states[i][joint_id]
-                        new_joint_pos = p.getJointState(body_id, joint_id)[0]
-                        old_drawers_state += old_joint_pos
-                        new_drawers_state += new_joint_pos
-                        # self.cabinet_drawers_states[i][joint_id] = joint_pos
+                # encourage obstacles to move away from their original position
+                obstacles_moved_dist_diff = (new_obstacles_moved_dist -
+                                             old_obstacles_moved_dist)
+                arm_reward = (obstacles_moved_dist_diff * 5.0)
+                # print('obstacles_moved_dist_diff', obstacles_moved_dist_diff)
+                self.obstacle_states = new_obstacle_states
 
-            # encourage drawers to have smaller joint positions (closing off)
-            drawers_diff = old_drawers_state - new_drawers_state
-            reward += drawers_diff * 10.0
-            if reward > 0.1:
-                print('push drawers reward', reward)
+            elif self.arena == 'push_drawers':
+                old_drawers_state = 0.0
+                new_drawers_state = 0.0
+                for i, obj in enumerate(self.cabinet_drawers):
+                    body_id = obj.body_id
+                    for joint_id in range(p.getNumJoints(body_id)):
+                        joint_type = p.getJointInfo(body_id, joint_id)[2]
+                        if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                            old_joint_pos = \
+                                self.cabinet_drawers_states[i][joint_id]
+                            new_joint_pos = p.getJointState(
+                                body_id, joint_id)[0]
+                            old_drawers_state += old_joint_pos
+                            new_drawers_state += new_joint_pos
+                            self.cabinet_drawers_states[i][joint_id] = \
+                                new_joint_pos
 
-        elif self.arena == 'push_chairs':
-            table_pos = np.array(self.table_pose[0][:2])
-            old_table_dist = 0.0
-            new_table_dist = 0.0
-            for obstacle, obstacle_state in \
-                    zip(self.obstacles, self.obstacle_states):
-                old_obstacle_pos = np.array(obstacle_state[0][:2])
-                new_obstacle_pos = np.array(
-                    get_base_values(obstacle.body_id)[:2])
-                old_table_dist += l2_distance(old_obstacle_pos, table_pos)
-                new_table_dist += l2_distance(new_obstacle_pos, table_pos)
+                # encourage drawers to have smaller joint positions
+                # (closing off)
+                drawers_diff = old_drawers_state - new_drawers_state
+                arm_reward = drawers_diff * 10.0
+                if arm_reward > 0.1:
+                    print('push drawers reward', reward)
 
-            # encourage chairs to come closer to the table
-            table_dist_diff = old_table_dist - new_table_dist
-            reward += table_dist_diff * 40.0
-            if reward > 0.1:
-                print('push chairs reward', reward)
+            elif self.arena == 'push_chairs':
+                table_pos = np.array(self.table_pose[0][:2])
+                old_table_dist = 0.0
+                new_table_dist = 0.0
+                new_obstacle_states = []
+                for obstacle, obstacle_state in \
+                        zip(self.obstacles, self.obstacle_states):
+                    new_obstacle_state = obstacle.get_position_orientation()
+                    old_obstacle_pos = np.array(obstacle_state[0][:2])
+                    new_obstacle_pos = np.array(new_obstacle_state[0][:2])
+                    old_table_dist += l2_distance(old_obstacle_pos, table_pos)
+                    new_table_dist += l2_distance(new_obstacle_pos, table_pos)
+                    new_obstacle_states.append(new_obstacle_state)
+                self.obstacle_states = new_obstacle_states
+
+                # encourage chairs to come closer to the table
+                table_dist_diff = old_table_dist - new_table_dist
+                arm_reward = table_dist_diff * 40.0
+                if arm_reward > 0.1:
+                    print('push chairs reward', reward)
+
+            reward += arm_reward
 
         return reward, info
 
@@ -1667,7 +1690,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         info = {}
         if subgoal_success:
-            reward, info = self.get_reward(use_base=use_base, collision_links=[], action=action, info=info)
+            reward, info = self.get_reward(
+                collision_links=[], action=action, info=info,
+                base_or_arm='base' if use_base else 'arm')
         else:
             # failed subgoal penalty
             reward = self.failed_subgoal_penalty
@@ -1794,8 +1819,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                       targetValue=button_state,
                                       targetVelocity=0.0)
         elif self.arena in ['obstacles', 'semantic_obstacles', 'push_chairs']:
-            self.obstacle_states = [None] * len(self.obstacles)
-
+            self.obstacle_states = []
             if self.arena == 'obstacles':
                 obstacle_poses = self.obstacle_poses
             elif self.arena == 'semantic_obstacles':
@@ -1805,6 +1829,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 obstacle_poses = self.chair_poses
             for obstacle, obstacle_pose in zip(self.obstacles, obstacle_poses):
                 obstacle.set_position_orientation(*obstacle_pose)
+                self.obstacle_states.append(obstacle_pose)
 
         elif self.arena == 'push_drawers':
             self.cabinet_drawers_states = [
@@ -1820,6 +1845,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         p.resetJointState(body_id, joint_id,
                                           targetValue=joint_pos,
                                           targetVelocity=0)
+                        self.cabinet_drawers_states[i][joint_id] = joint_pos
 
     def after_reset_agent(self):
         if self.arena in ['obstacles', 'semantic_obstacles', 'push_chairs']:
@@ -1851,20 +1877,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if new_door_state > (60.0 / 180.0 * np.pi):
                 done = True
                 info['success'] = True
-        elif self.arena in ['push_drawers', 'push_chairs']:
-            # ignore navigation success
-            done = False
-            info['success'] = False
-            if self.current_step >= self.max_step:
-                done = True
 
         return done, info
 
     def before_simulation(self):
         robot_position = self.robots[0].get_position()
-        #object_positions = [obj.get_position()
-        #                    for obj in self.interactive_objects]
-        return robot_position#, object_positions
+        return robot_position
 
     def after_simulation(self, cache, collision_links):
         robot_position = cache
@@ -1900,32 +1918,22 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
         # revert back to raw action space
         self.action_space = self.robots[0].action_space
 
-    def get_termination(self, collision_links=[], action=None, info={}):
-        done, info = super(MotionPlanningBaseArmEnv,
-                           self).get_termination(collision_links, action, info)
-        if done:
-            return done, info
-        else:
-            collision_links_flatten = [
-                item for sublist in collision_links for item in sublist]
-            collision_links_flatten_filter = [
-                item for item in collision_links_flatten
-                if item[2] != self.robots[0].robot_ids[0] and item[3] == -1]
-            # base collision with external objects
-            if len(collision_links_flatten_filter) > 0:
-                done = True
-                info['success'] = False
-                info['episode_length'] = self.current_step
-                info['collision_step'] = self.collision_step
-                info['spl'] = float(info['success']) * \
-                    min(self.geodesic_dist / self.path_length, 1.0)
-            return done, info
-
     def step(self, action):
         return super(NavigateRandomEnv, self).step(action)
-    
+
     def get_reward(self, collision_links=[], action=None, info={}):
-        return super(NavigateRandomEnv, self).get_reward(collision_links, action, info)
+        reward, info = super(
+            MotionPlanningBaseArmContinuousEnv, self).get_reward(
+            collision_links=collision_links, action=action, info=info,
+            base_or_arm='both')
+
+        # zero out reward if last step has collision
+        collision_links_flatten = [
+            item for sublist in collision_links for item in sublist]
+        if len(collision_links_flatten) > 0:
+            reward = 0.0
+
+        return reward, info
 
 
 class MotionPlanningBaseArmHRL4INEnv(MotionPlanningBaseArmContinuousEnv):
@@ -2023,7 +2031,7 @@ if __name__ == '__main__':
                                            action_map=True,
                                            channel_first=True,
                                            draw_path_on_map=False,
-                                           draw_objs_on_map=True,
+                                           draw_objs_on_map=False,
                                            base_only=False,
                                            rotate_occ_grid=False,
                                            )
@@ -2048,13 +2056,10 @@ if __name__ == '__main__':
         start = time.time()
         state = nav_env.reset()
         embed()
-        for i in range(100):
+        for i in range(10000000):
             print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
             embed()
-            # action[:] = 0.0
-            # action[:3] = 1.0
-            # embed()
             state, reward, done, info = nav_env.step(action)
             episode_return += reward
             # embed()

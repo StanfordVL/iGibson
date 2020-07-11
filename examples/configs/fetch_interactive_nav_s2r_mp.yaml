@@ -1,6 +1,7 @@
 # scene
 scene: building
-model_id: Samuels
+model_id: candcenter
+# model_id: Samuels
 is_interactive: false
 build_graph: true
 load_texture: true
@@ -22,7 +23,9 @@ success_reward: 10.0
 slack_reward: 0.0
 potential_reward_weight: 1.0
 collision_reward_weight: -0.0
-collision_ignore_link_a_ids: [0, 1, 2, 3, 14, 20, 21, 22]  # ignore collision with these agent's link ids
+collision_ignore_link_a_ids: [0, 1, 2, 3, 12, 13, 14, 15, 16, 17, 18, 19]  # ignore collision with these agent's link ids
+collision_ignore_link_b_ids: [2]  # ignore self-collision
+max_collisions_allowed: 10000
 
 # discount factor
 discount_factor: 0.99
