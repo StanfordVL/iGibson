@@ -1568,6 +1568,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         if base_or_arm in ['arm', 'both']:
             if self.arena == 'button_door':
+                arm_reward = 0.0
                 button_state = p.getJointState(
                     self.buttons[self.door_idx].body_id,
                     self.button_axis_link_id)[0]
