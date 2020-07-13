@@ -1763,8 +1763,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             elif self.arena in ['push_drawers', 'push_chairs']:
                 self.initial_orn_z = np.pi / 2.0
             else:
-                # self.initial_orn_z = np.random.uniform(-np.pi, np.pi)
-                self.initial_orn_z = np.pi
+                self.initial_orn_z = np.random.uniform(-np.pi, np.pi)
+                # self.initial_orn_z = np.pi
 
             self.initial_orn = [0, 0, self.initial_orn_z]
 
