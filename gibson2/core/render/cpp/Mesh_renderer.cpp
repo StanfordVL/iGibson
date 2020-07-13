@@ -863,9 +863,8 @@ public:
 	float nearClip;
 	float farClip;
 
-	// Boolean indicating whether the user has request the VR camera to be at a specific location
-	bool hasSetCamera;
-	glm::vec3 currCameraPos;
+	// Vector indicating the user-defined offset for the VR system (may be used if implementing a teleportation movement scheme, for example)
+	glm::vec3 vrOffsetVec;
 
 	// Device data stored in VR coordinates
 	struct DeviceData {
@@ -879,13 +878,20 @@ public:
 		bool isValidData = false;
 		// index of current device in device array
 		int index = -1;
+		// trigger pressed fraction (0 min, 1 max) - controllers only!
+		float trig_frac;
+	    // analog touch vector - controllers only!
+		glm::vec2 touchpad_analog_vec;
+		// both indices are used to obtain analog data for trigger and touchpadd - controllers only!
+		int trigger_axis_index;
+		int touchpad_axis_index;
 	};
 
 	DeviceData hmdData;
 	DeviceData leftControllerData;
 	DeviceData rightControllerData;
 
-	// Indicates where the headset actually is in the room, irrespective of whether the VR camera has been set or not
+	// Indicates where the headset actually is in the room
 	glm::vec3 hmdActualPos;
 
 	// View matrices for both left and right eyes (only proj and view are actually returned to the user)
@@ -906,10 +912,13 @@ public:
 	int result;
 	bool shouldShutDownEyeTracking;
 
+	// Struct storing eye data for SR anipal - we only return origin and direction in world space
+	// As most users will want to use this ray to query intersection or something similar
 	struct EyeTrackingData {
+		bool isValid;
 		glm::vec3 origin;
 		glm::vec3 dir;
-		glm::vec3 gazePoint;
+		// Both in mm
 		float leftPupilDiameter;
 		float rightPupilDiameter;
 	};
@@ -952,9 +961,10 @@ public:
 		renderDims.append((int)renderWidth);
 		renderDims.append((int)renderHeight);
 
-		hasSetCamera = false;
 		// Set gibToVR and vrToGib matrices
 		setCoordinateTransformMatrices();
+		// No VR system offset by default
+		vrOffsetVec = glm::vec3(0, 0, 0);
 
 		// Set eye tracking boolean
 		this->useEyeTracking = useEyeTracking;
@@ -967,51 +977,51 @@ public:
 	}
 
 	// Queries eye tracking data and returns to user
-	// Returns in order gaze origin, gaze direction, gaze point, left pupil diameter (in mm), right pupil diameter (in mm)
-	// TIMELINE: Can call any time
+	// Returns in order is_data_valid, gaze origin, gaze direction, left pupil diameter (in mm), right pupil diameter (in mm)
+	// TIMELINE: Call after getDataForVRDevice, since this relies on knowing latest HMD transform
 	py::list getEyeTrackingData() {
 		py::list eyeData;
 
 		// Transform data into Gibson coordinate system before returning to user
 		glm::vec3 gibOrigin(vrToGib * glm::vec4(eyeTrackingData.origin, 1.0));
 		glm::vec3 gibDir(vrToGib * glm::vec4(eyeTrackingData.dir, 1.0));
-		glm::vec3 gibGazePoint(vrToGib * glm::vec4(eyeTrackingData.gazePoint, 1.0));
 
 		py::list origin;
-		origin.append(eyeTrackingData.origin.x);
-		origin.append(eyeTrackingData.origin.y);
-		origin.append(eyeTrackingData.origin.z);
+		origin.append(gibOrigin.x);
+		origin.append(gibOrigin.y);
+		origin.append(gibOrigin.z);
 
 		py::list dir;
 		dir.append(gibDir.x);
 		dir.append(gibDir.y);
 		dir.append(gibDir.z);
 
-		py::list gazePoint;
-		gazePoint.append(gibGazePoint.x);
-		gazePoint.append(gibGazePoint.y);
-		gazePoint.append(gibGazePoint.z);
-
+		eyeData.append(eyeTrackingData.isValid);
 		eyeData.append(origin);
 		eyeData.append(dir);
-		eyeData.append(gazePoint);
 		eyeData.append(eyeTrackingData.leftPupilDiameter);
 		eyeData.append(eyeTrackingData.rightPupilDiameter);
 
 		return eyeData;
 	}
 
-	// Sets the position of the VR camera
-	// TIMELINE: Call before preRenderVR - takes one frame to update camera position
-	void setVRCamera(float x, float y, float z) {
-		currCameraPos = glm::vec3(x, y, z);
-		hasSetCamera = true;
+	// Sets the offset of the VR headset
+	// TIMELINE: Can call any time
+	void setVROffset(float x, float y, float z) {
+		this->vrOffsetVec = glm::vec3(x, y, z);
 	}
 
-	// Resets the VR camera to use the position of the HMD as its location
-	// TIMELINE: Call before preRenderVR - takes one frame to update camera position
-	void resetVRCamera() {
-		hasSetCamera = false;
+	// Gets the VR offset vector in form x, y, z
+	// TIMELINE: Can call any time
+	py::list getVROffset() {
+		glm::vec3 transformedOffsetVec(vrToGib * glm::vec4(this->vrOffsetVec, 1.0));
+
+		py::list offset;
+		offset.append(transformedOffsetVec.x);
+		offset.append(transformedOffsetVec.y);
+		offset.append(transformedOffsetVec.z);
+
+		return offset;
 	}
 
 	// Returns the projection and view matrices for the left and right eyes, to be used in rendering
@@ -1074,7 +1084,6 @@ public:
 
 	// Returns device data in order: isValidData, position, rotation, hmdActualPos (valid only if hmd)
 	// Device type can be either hmd, left_controller or right_controller
-	// Coordinates are kept in OpenGL coordinate system to synchronize with PyBullet
 	// TIMELINE: Call at any time after postRenderVR to poll the VR system for device data
 	py::list getDataForVRDevice(char* deviceType) {
 		bool isValid = false;
@@ -1114,6 +1123,34 @@ public:
 		return deviceData;
 	}
 
+	// Get button data for a specific controller - either left_controller or right_controller
+	// Returns in order: trigger fraction, analog touch position x, analog touch position y
+	// TIMELINE: Call directly after getDataForVRDevice (relies on isValid to determine data integrity)
+	py::list getButtonDataForController(char* controllerType) {
+		float trigger_fraction, touch_x, touch_y;
+		bool isValid;
+
+		if (!strcmp(controllerType, "left_controller")) {
+			trigger_fraction = leftControllerData.trig_frac;
+			touch_x = leftControllerData.touchpad_analog_vec.x;
+			touch_y = leftControllerData.touchpad_analog_vec.y;
+			isValid = leftControllerData.isValidData;
+		}
+		else if (!strcmp(controllerType, "right_controller")) {
+			trigger_fraction = rightControllerData.trig_frac;
+			touch_x = rightControllerData.touchpad_analog_vec.x;
+			touch_y = rightControllerData.touchpad_analog_vec.y;
+			isValid = rightControllerData.isValidData;
+		}
+
+		py::list buttonData;
+		buttonData.append(trigger_fraction);
+		buttonData.append(touch_x);
+		buttonData.append(touch_y);
+
+		return buttonData;
+	}
+
 	// Polls for VR events, such as button presses
 	// TIMELINE: Ideally call before rendering (eg. before simulator step function)
 	py::list pollVREvents() {
@@ -1146,6 +1183,7 @@ public:
 
 		if (this->useEyeTracking) {
 			this->shouldShutDownEyeTracking = true;
+			eyeTrackingThread->join();
 		}
 	}
 
@@ -1172,6 +1210,10 @@ private:
 	}
 
 	// Polls SRAnipal to get updated eye tracking information
+	// See this forum discussion to learn how the coordinate systems of OpenVR and SRAnipal are related: 
+	// https://forum.vive.com/topic/5888-vive-pro-eye-finding-a-single-eye-origin-in-world-space/?ct=1593593815
+	// Uses right-handed coordinate system with +ve x left, +ve z forward and +ve y up
+	// We need to convert that to a +ve x right, +ve z backward and +ve y up system at the end of the function
 	void pollAnipal() {
 		while (!this->shouldShutDownEyeTracking) {
 			this->result = ViveSR::anipal::Eye::GetEyeData(&this->eyeData);
@@ -1180,35 +1222,41 @@ private:
 					ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY);
 				int isDirValid = ViveSR::anipal::Eye::DecodeBitMask(this->eyeData.verbose_data.combined.eye_data.eye_data_validata_bit_mask,
 					ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_ORIGIN_VALIDITY);
-				if (!isOriginValid || !isDirValid) continue;
+				if (!isOriginValid || !isDirValid) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
 
+				eyeTrackingData.isValid = true;
+
+				// Both origin and dir are relative to the HMD coordinate system, so we need to transform them into HMD coordinate system
+				if (!hmdData.isValidData) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
+
+				// Returns value in mm, so need to divide by 1000 to get meters (Gibson uses meters)
 				auto gazeOrigin = this->eyeData.verbose_data.combined.eye_data.gaze_origin_mm;
-				if (gazeOrigin.x != -1.0f || gazeOrigin.y != 1.0f || gazeOrigin.z != 1.0f)
-					eyeTrackingData.origin = glm::vec3(gazeOrigin.x, gazeOrigin.y, gazeOrigin.z);
+				if (gazeOrigin.x == -1.0f && gazeOrigin.y == -1.0f && gazeOrigin.z == -1.0f) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
+				glm::vec3 eyeSpaceOrigin(-1 * gazeOrigin.x / 1000.0f, gazeOrigin.y / 1000.0f, -1 * gazeOrigin.z / 1000.0f);
+				eyeTrackingData.origin = glm::vec3(hmdData.deviceTransform * glm::vec4(eyeSpaceOrigin, 1.0));
+
 				auto gazeDirection = this->eyeData.verbose_data.combined.eye_data.gaze_direction_normalized;
-				if (gazeDirection.x != -1.0f || gazeDirection.y != 1.0f || gazeDirection.z != 1.0f)
-					eyeTrackingData.dir = glm::vec3(gazeDirection.x, gazeDirection.y, gazeDirection.z);
+				if (gazeDirection.x == -1.0f && gazeDirection.y == -1.0f && gazeDirection.z == -1.0f) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
+				
+				// Convert to OpenVR coordinates
+				glm::vec3 eyeSpaceDir(-1 * gazeDirection.x, gazeDirection.y, -1 * gazeDirection.z);
 
-				// Calculate intersection point of two eyes
-				auto leftGazeOrigin = this->eyeData.verbose_data.left.gaze_origin_mm;
-				glm::vec3 lgo = glm::vec3(leftGazeOrigin.x, leftGazeOrigin.y, leftGazeOrigin.z);
-				auto leftGazeDir = this->eyeData.verbose_data.left.gaze_direction_normalized;
-				glm::vec3 lgd = glm::vec3(leftGazeDir.x, leftGazeDir.y, leftGazeDir.z);
-				auto rightGazeOrigin = this->eyeData.verbose_data.right.gaze_origin_mm;
-				glm::vec3 rgo = glm::vec3(rightGazeOrigin.x, rightGazeOrigin.y, rightGazeOrigin.z);
-				auto rightGazeDir = this->eyeData.verbose_data.right.gaze_direction_normalized;
-				glm::vec3 rgd = glm::vec3(rightGazeDir.x, rightGazeDir.y, rightGazeDir.z);
-
-				// Solve for closest point to each of two gaze lines, which is the point the user is looking at
-				// This is the midpoint of the shortest line segment between them
-				float s = (glm::dot(lgd, rgd) * (glm::dot(lgo, rgd) - glm::dot(lgd, rgo)) - glm::dot(lgo, rgd) * glm::dot(rgo, rgd))
-					/ ((glm::dot(lgo, rgd) * glm::dot(lgo, rgd)) - 1);
-				float t = (glm::dot(lgd, rgd) * (glm::dot(rgo, rgd) - glm::dot(lgo, rgd)) - glm::dot(lgd, rgo) * glm::dot(lgo, lgd))
-					/ ((glm::dot(lgo, rgd) * glm::dot(lgo, rgd)) - 1);
-
-				eyeTrackingData.gazePoint = 0.5f * (lgo + rgo + t * lgd + s * rgd);
-				// x coordinates are opposite of OpenGL convention
-				eyeTrackingData.gazePoint.x *= -1;
+				// Only rotate, no translate - remove translation to preserve rotation
+				glm::vec3 hmdSpaceDir(hmdData.deviceTransform * glm::vec4(eyeSpaceDir, 1.0));
+				// Make sure to normalize (and also flip x and z, since anipal coordinate convention is different to OpenGL)
+				eyeTrackingData.dir = glm::normalize(glm::vec3(hmdSpaceDir.x - hmdData.devicePos.x, hmdSpaceDir.y - hmdData.devicePos.y, hmdSpaceDir.z - hmdData.devicePos.z));
 				
 				// Record pupil measurements
 				eyeTrackingData.leftPupilDiameter = this->eyeData.verbose_data.left.pupil_diameter_mm;
@@ -1222,6 +1270,8 @@ private:
 		hmdData.isValidData = false;
 		leftControllerData.isValidData = false;
 		rightControllerData.isValidData = false;
+		// Stores controller information - see github.com/ValveSoftware/openvr/wiki/IVRSystem::GetControllerState for more info
+		vr::VRControllerState_t controllerState;
 
 		vr::TrackedDevicePose_t trackedDevices[vr::k_unMaxTrackedDeviceCount];
 		vr::VRCompositor()->WaitGetPoses(trackedDevices, vr::k_unMaxTrackedDeviceCount, NULL, 0);
@@ -1236,9 +1286,9 @@ private:
 				hmdData.index = idx;
 				hmdData.isValidData = true;
 				hmdActualPos = getPositionFromSteamVRMatrix(transformMat);
-				if (hasSetCamera) {
-					SetSteamVRMatrixPos(currCameraPos, transformMat);
-				}
+
+				setSteamVRMatrixPos(hmdActualPos + vrOffsetVec, transformMat);
+
 				hmdData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 				hmdData.devicePos = getPositionFromSteamVRMatrix(transformMat);
 				hmdData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
@@ -1248,19 +1298,54 @@ private:
 				if (role == vr::TrackedControllerRole_Invalid) {
 					continue;
 				}
-				else if (role == vr::TrackedControllerRole_LeftHand) {
+
+				int trigger_index, touchpad_index;
+
+				// Figures out indices that correspond with trigger and trackpad axes. Index used to read into VRControllerState_t struct array of axes.
+				for (int i = 0; i < vr::k_unControllerStateAxisCount; i++) {
+					int axisType = m_pHMD->GetInt32TrackedDeviceProperty(idx, (vr::ETrackedDeviceProperty)(vr::Prop_Axis0Type_Int32 + i));
+					if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_Trigger) {
+						trigger_index = i;
+					}
+					else if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_TrackPad) {
+						touchpad_index = i;
+					}
+				}
+
+				// If false, sets the controller data validity to false, as data is not valid if we can't read analog touch coordinates and trigger close fraction
+				bool getControllerDataResult = m_pHMD->GetControllerState(idx, &controllerState, sizeof(controllerState));
+
+				if (role == vr::TrackedControllerRole_LeftHand) {
 					leftControllerData.index = idx;
-					leftControllerData.isValidData = true;
+					leftControllerData.trigger_axis_index = trigger_index;
+					leftControllerData.touchpad_axis_index = touchpad_index;
+					leftControllerData.isValidData = getControllerDataResult;
+
+					glm::vec3 leftControllerPos = getPositionFromSteamVRMatrix(transformMat);
+					setSteamVRMatrixPos(leftControllerPos + vrOffsetVec, transformMat);
+
 					leftControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 					leftControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
 					leftControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+
+					leftControllerData.trig_frac = controllerState.rAxis[leftControllerData.trigger_axis_index].x;
+					leftControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[leftControllerData.touchpad_axis_index].x, controllerState.rAxis[leftControllerData.touchpad_axis_index].y);
 				}
 				else if (role == vr::TrackedControllerRole_RightHand) {
 					rightControllerData.index = idx;
-					rightControllerData.isValidData = true;
+					rightControllerData.trigger_axis_index = trigger_index;
+					rightControllerData.touchpad_axis_index = touchpad_index;
+					rightControllerData.isValidData = getControllerDataResult;
+
+					glm::vec3 rightControllerPos = getPositionFromSteamVRMatrix(transformMat);
+					setSteamVRMatrixPos(rightControllerPos + vrOffsetVec, transformMat);
+
 					rightControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 					rightControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
 					rightControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+
+					rightControllerData.trig_frac = controllerState.rAxis[rightControllerData.trigger_axis_index].x;
+					rightControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[rightControllerData.touchpad_axis_index].x, controllerState.rAxis[rightControllerData.touchpad_axis_index].y);
 				}
 			}
 		}
@@ -1362,8 +1447,8 @@ private:
 		}
 	}
 
-	// Sets the position in a SteamVR Matrix
-	void SetSteamVRMatrixPos(glm::vec3& pos, vr::HmdMatrix34_t& mat) {
+	// Sets the position component of a SteamVR Matrix
+	void setSteamVRMatrixPos(glm::vec3& pos, vr::HmdMatrix34_t& mat) {
 		mat.m[0][3] = pos[0];
 		mat.m[1][3] = pos[1];
 		mat.m[2][3] = pos[2];
@@ -1435,6 +1520,12 @@ private:
 		printf("\n");
 	}
 
+	// Print string version of vec3 for debugging purposes
+	void printVec3(glm::vec3& v) {
+		printf(glm::to_string(v).c_str());
+		printf("\n");
+	}
+
 	// Sets coordinate transform matrices
 	void setCoordinateTransformMatrices() {
 		gibToVR[0] = glm::vec4(0.0, 0.0, -1.0, 0.0);
@@ -1503,12 +1594,13 @@ PYBIND11_MODULE(MeshRendererContext, m) {
 		pymoduleVR.def(py::init());
 		pymoduleVR.def("initVR", &VRSystem::initVR);
 		pymoduleVR.def("getEyeTrackingData", &VRSystem::getEyeTrackingData);
-		pymoduleVR.def("setVRCamera", &VRSystem::setVRCamera);
-		pymoduleVR.def("resetVRCamera", &VRSystem::resetVRCamera);
+		pymoduleVR.def("setVROffset", &VRSystem::setVROffset);
+		pymoduleVR.def("getVROffset", &VRSystem::getVROffset);
 		pymoduleVR.def("preRenderVR", &VRSystem::preRenderVR);
 		pymoduleVR.def("postRenderVRForEye", &VRSystem::postRenderVRForEye);
 		pymoduleVR.def("postRenderVRUpdate", &VRSystem::postRenderVRUpdate);
 		pymoduleVR.def("getDataForVRDevice", &VRSystem::getDataForVRDevice);
+		pymoduleVR.def("getButtonDataForController", &VRSystem::getButtonDataForController);
 		pymoduleVR.def("pollVREvents", &VRSystem::pollVREvents);
 		pymoduleVR.def("releaseVR", &VRSystem::releaseVR);
 

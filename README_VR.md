@@ -90,7 +90,7 @@ $ cd iGibson
 $ pip install -e .
 ```
 
-Then copy and past the openvr_api.dll file from the top-level iGibson folder and put it into the iGibson/gibson2/core/render/mesh_renderer/Release folder.
+Then copy and past the openvr_api.dll file from the top-level iGibson folder and put it into the iGibson/gibson2/core/render/mesh_renderer/Release folder. Also put the 5 dll files in the sranipal->bin folder into this Release folder.
 
 Should end printing 'Successfully installed gibson2'
 
@@ -112,3 +112,4 @@ Have fun in VR!
 
 Helpful tips:
 Press ESCAPE to force the fullscreen rendering window to close during program execution.
+Before using SRAnipal eye tracking, you may want to re-calibrate the eye tracker. Please go to the Vive system settings to perform this calibration.

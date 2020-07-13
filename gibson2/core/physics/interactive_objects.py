@@ -182,6 +182,10 @@ class VisualMarker(Object):
     def set_color(self, color):
         p.changeVisualShape(self.body_id, -1, rgbaColor=color)
 
+    def set_marker_pos(self, pos):
+        _, original_orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, original_orn)
+
 
 class BoxShape(Object):
     def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], visual_only=False, mass=1000, color=[1, 1, 1, 1]):

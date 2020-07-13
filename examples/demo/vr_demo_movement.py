@@ -4,7 +4,7 @@ import time
 
 from gibson2.core.physics.robot_locomotors import Fetch
 from gibson2.core.physics.scene import BuildingScene
-from gibson2.core.physics.interactive_objects import YCBObject, InteractiveObj, GripperObj, VisualMarker
+from gibson2.core.physics.interactive_objects import YCBObject, InteractiveObj, GripperObj
 from gibson2.core.simulator import Simulator
 from gibson2 import assets_path, dataset_path
 from gibson2.utils.utils import parse_config
@@ -19,10 +19,16 @@ optimize = True
 vrMode = True
 
 # Timestep should always be set to 1/90 to match VR system's 90fps
-s = Simulator(mode='vr', timestep = 1/90.0, msaa=True, vrFullscreen=False, vrEyeTracking=True, optimize_render=optimize, vrMode=vrMode)
+s = Simulator(mode='vr', timestep = 1/90.0, msaa=True, vrFullscreen=False, vrEyeTracking=False, optimize_render=optimize, vrMode=vrMode)
 scene = BuildingScene('Placida', is_interactive=False)
 scene.sleep = optimize
 s.import_scene(scene)
+
+# Fetch robot in scene
+#fetch = Fetch(fetch_config)
+#s.import_robot(fetch)
+#fetch.set_position([0,0,0])
+#fetch.robot_specific_reset()
 
 # Grippers represent hands
 lGripper = GripperObj(gripper_folder + 'gripper.urdf')
@@ -41,13 +47,6 @@ for i in range(5):
     bottle_pos = [1 ,0 - 0.2 * i, 1]
     p.resetBasePositionAndOrientation(bottle.body_id, bottle_pos, org_orn)
 
-# Load eye gaze marker
-gaze_marker = VisualMarker(radius=0.03)
-s.import_object(gaze_marker)
-gaze_marker.set_marker_pos([0,0,1.5])
-marker_pos, _ = p.getBasePositionAndOrientation(gaze_marker.body_id)
-print("Marker starting pos: ", marker_pos)
-
 # Controls how closed each gripper is (maximally open to start)
 leftGripperFraction = 0.0
 rightGripperFraction = 0.0
@@ -55,10 +54,8 @@ rightGripperFraction = 0.0
 if optimize:
     s.optimize_data()
 
-# Control printing of fps data for rendering and physics
-shouldTime = False
-# Control printing of Anipal data with right trigger
-shouldMoveMarker = False
+# Account for Gibson floors not being at z=0 - shift user height down by 0.2m
+s.setVROffset([0, 0, -0.2])
 
 # Runs simulation
 while True:
@@ -76,28 +73,25 @@ while True:
             elif deviceType == 'right_controller':
                 if eventType == 'trigger_press':
                     rightGripperFraction = 0.8
-                    shouldMoveMarker = True
                 elif eventType == 'trigger_unpress':
                     rightGripperFraction = 0.0
-                    shouldMoveMarker = False
 
-    s.step(shouldTime=shouldTime)
+    s.step(shouldTime=True)
 
     if vrMode:
         hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')
         lIsValid, lTrans, lRot = s.getDataForVRDevice('left_controller')
         rIsValid, rTrans, rRot = s.getDataForVRDevice('right_controller')
+        # TODO: Make nice interface functions for this function
+        lTrig, lTouchX, lTouchY = s.getButtonDataForController('left_controller')
+        rTrig, rTouchX, rTouchY = s.getButtonDataForController('right_controller')
 
-        is_eye_data_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = s.getEyeTrackingData()
-
-        if is_eye_data_valid and shouldMoveMarker:
-            updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
-            gaze_marker.set_marker_pos(updated_marker_pos)
-            #print("Current hmd pos: ", hmdTrans)
-            #print("Gaze origin in world space", origin)
-            #print("Gaze dir", dir)
-            #print("Updated marker pos: ", updated_marker_pos)
-            #print("------------------")
+        # Uncomment to see/debug analog data
+        #print("Printing trigger and touch data for left then right:")
+        #if lIsValid:
+        #    print("Left: ", lTrig, lTouchX, lTouchY)
+        #if rIsValid:
+        #    print("Right: ", rTrig, rTouchX, rTouchY)
 
         if lIsValid:
             lGripper.move_gripper(lTrans, lRot)
@@ -106,7 +100,18 @@ while True:
         if rIsValid:
             rGripper.move_gripper(rTrans, rRot)
             rGripper.set_close_fraction(rightGripperFraction)
-            #print("Right controller x and y: ", rTrans[0], rTrans[1])
+
+        current_offset = s.getVROffset()
+
+        # Move the VR player in the direction of the analog stick
+        # In this implementation, +ve x and +ve y correspond to the same axes in Gibson
+        # Only uses data from right controller
+        # TODO: Implement a system where movement is relative to direction of HMD?
+        if rIsValid:
+            # Small offsets since this method could be call 100 times a second
+            rTouchXOffset = rTouchX * 0.003
+            rTouchYOffset = rTouchY * 0.003
+            s.setVROffset([current_offset[0] + rTouchXOffset, current_offset[1] + rTouchYOffset, current_offset[2]])
     
     elapsed = time.time() - start
     if (elapsed > 0):
@@ -114,7 +119,6 @@ while True:
     else:
         curr_fps = 2000
 
-    if shouldTime:
-        print("Current fps: %f" % curr_fps)
+    print("Current fps: %f" % curr_fps)
 
 s.disconnect()

@@ -489,6 +489,7 @@ class Simulator:
         return eventData
 
     # Call this after step - returns all VR device data for a specific device
+    # Device can be hmd, left_controller or right_controller
     # Return isValid (indicating validity of data), translation and rotation in Gibson world space
     def getDataForVRDevice(self, deviceName):
         if not self.use_vr_renderer:
@@ -497,21 +498,42 @@ class Simulator:
         # Use fourth variable in list to get actual hmd position in space
         isValid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(deviceName)
         return [isValid, translation, rotation]
-    
-    # Returns eye tracking data as list of lists. Order: gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
-    def getEyeTrackingData(self):
-        origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
-        return [origin, dir, gaze_point, left_pupil_diameter, right_pupil_diameter]
 
-    # Sets the VR camera to a specific position, eg. the head of a robot
-    def setVRCamera(self, pos=None, shouldReset=False):
+    # Call this after getDataForVRDevice - returns analog data for a specific controller
+    # Controller can be left_controller or right_controller
+    # Returns trigger_fraction, touchpad finger position x, touchpad finger position y
+    # Data is only valid if isValid is true from previous call to getDataForVRDevice
+    # Trigger data: 0 (closed) <------> 1 (open)
+    # Analog data: X: -1 (left) <-----> 1 (right) and Y: -1 (bottom) <------> 1 (top)
+    def getButtonDataForController(self, controllerName):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+        
+        trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(controllerName)
+        return [trigger_fraction, touch_x, touch_y]
+    
+    # Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
+    # Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
+    def getEyeTrackingData(self):
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
+        return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
+
+    # Sets the translational offset of the VR system (HMD, left controller, right controller)
+    # Can be used for many things, including adjusting height and teleportation-based movement
+    # Input must be a list of three floats, corresponding to x, y, z in Gibson coordinate space
+    def setVROffset(self, pos=None):
         if not self.use_vr_renderer:
             return
-        
-        if shouldReset == False and pos is not None:
-            self.renderer.set_vr_camera(pos)
-        elif shouldReset == True:
-            self.renderer.reset_vr_camera()
+
+        self.renderer.set_vr_offset(pos)
+
+    # Gets the current VR offset vector in list form: x, y, z (in Gibson coordinates)
+    def getVROffset(self):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+
+        x, y, z = self.renderer.vrsys.getVROffset()
+        return [x, y, z]
 
     @staticmethod
     def update_position(instance):
