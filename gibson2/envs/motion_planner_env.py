@@ -24,7 +24,7 @@ from gibson2.envs.locomotor_env import NavigateRandomEnv
 from gibson2.core.physics.interactive_objects import VisualMarker
 from gibson2.core.physics.interactive_objects import InteractiveObj
 from gibson2.core.physics.interactive_objects import BoxShape
-from gibson2.utils.utils import rotate_vector_2d
+from gibson2.utils.utils import rotate_vector_2d, rotate_vector_3d
 from gibson2.utils.utils import l2_distance, quatToXYZW
 from gibson2.external.pybullet_tools.utils import joints_from_names
 from gibson2.external.pybullet_tools.utils import plan_base_motion_2d
@@ -59,6 +59,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                  draw_objs_on_map=False,
                  base_only=False,
                  rotate_occ_grid=False,
+                 randomize_object_pose=False
                  ):
         super(MotionPlanningBaseArmEnv, self).__init__(
             config_file,
@@ -76,6 +77,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.collision_reward_weight = collision_reward_weight
         self.action_map = action_map
         self.channel_first = channel_first
+        self.randomize_object_pose = randomize_object_pose
 
         # draw the shortest path on the occupancy map
         self.draw_path_on_map = draw_path_on_map
@@ -118,7 +120,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 [-1.2, -2.47, 0.02],
             ]
             self.door_rotations = [np.pi / 2.0, -np.pi / 2.0]
-            wall_poses = [
+            self.wall_poses = [
                 [[-3.5, 0.47, 0.45],
                     quatToXYZW(euler2quat(0, 0, np.pi / 2.0), 'wxyz')],
                 [[-3.5, -0.45, 0.45],
@@ -178,7 +180,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 [-36, 0.7, 0.05],
             ]
             self.door_rotations = [np.pi, np.pi]
-            wall_poses = []
+            self.wall_poses = []
             self.door_target_pos = [
                 [[-30.5, -30], [-3, -1]],
                 [[-36.75, -36.25], [-3, -1]],
@@ -221,7 +223,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 [1.2, -2.15, 0],
             ]
             self.door_rotations = [np.pi]
-            wall_poses = [
+            self.wall_poses = [
                 [[1.5, -2.2, 0.25], quatToXYZW(euler2quat(0, 0, 0), 'wxyz')]
             ]
             self.door_target_pos = np.array([
@@ -279,20 +281,21 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             #     [[-3.4, 0.5, 0.63], [0, 0, -1, 1]],
             # ]
             self.chair_poses = [
-                [
-                    [-5.2, 0.5, 0.462],
-                    quatToXYZW(euler2quat(0, 0, np.pi * -0.71), 'wxyz')
-                ],
-                [
-                    [-3.4, 0.5, 0.462],
-                    quatToXYZW(euler2quat(0, 0, np.pi * 0.29), 'wxyz')
-                ],
+                [[-5.2, 0.5, 0.462], np.pi * -0.71],
+                [[-3.4, 0.5, 0.462], np.pi * 0.29],
             ]
-            self.table_pose = [[-4.3, 0.5, 0.55], [0, 0, -1, 1]]
+            self.table_pose = [[-4.3, 0.5, 0.55], -np.pi / 2.0]
             door_scales = [
                 1.0,
                 1.0,
                 1.0
+            ]
+            self.chair_pose_transform = [
+                [
+                    0.0,
+                    np.array([-0.1, 0.0, 0]),
+                    np.array([0.1, 0.8, 0]),
+                ],
             ]
             self.door_positions = [
                 [-2.65, 2.3, 0],
@@ -304,15 +307,32 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 0.0,
                 np.pi / 2.0,
             ]
-            wall_poses = [
-                [[-3.18, 0.1, 0.42],
-                    quatToXYZW(euler2quat(0, 0, 0), 'wxyz')],
-                [[-3.18, 0.9, 0.42],
-                    quatToXYZW(euler2quat(0, 0, 0), 'wxyz')],
+            self.table_wall_poses = [
+                [[-3.18, 0.1, 0.42], 0.0],
+                [[-3.18, 0.9, 0.42], 0.0],
             ]
             wall_scales = [
                 0.22,
                 0.22,
+            ]
+            self.cabinet_drawer_poses = [
+                [[-4, 1.8, 0.5], -np.pi / 2.0],
+                [[-6, 1.8, 0.5], -np.pi / 2.0],
+                [[-4.2, 2, 1.8], -np.pi / 2.0],
+                [[-5.5, 2, 1.8], -np.pi / 2.0],
+            ]
+            self.box_pose = [[-5, 1.8, 0.5], 0.0]
+            self.cabinet_drawer_pose_transform = [
+                [
+                    0.0,
+                    np.array([0, 0, 0]),
+                    np.array([0.3, 0, 0]),
+                ],
+                [
+                    np.pi / 2.0,
+                    np.array([-4.2, -5.2, 0]),
+                    np.array([-4.2, -4.5, 0]),
+                ]
             ]
 
         else:
@@ -343,7 +363,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         self.mesh_id, door.body_id, -1, i, 0)
 
             self.walls = []
-            for wall_pose in wall_poses:
+            for wall_pose in self.wall_poses:
                 wall = InteractiveObj(
                     os.path.join(gibson2.assets_path,
                                  'models',
@@ -418,48 +438,47 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             if self.arena == 'push_drawers':
                 self.cabinet_drawers = []
-                obj = InteractiveObj(
-                    filename=os.path.join(gibson2.assets_path,
-                                          'models/cabinet2/cabinet_0007.urdf'))
-                self.simulator.import_articulated_object(obj, class_id=30)
-                self.cabinet_drawers.append(obj)
-                # TODO: randomize cabinet pose
-                # cabinet pose is fixed
-                obj.set_position_orientation([-4, 1.8, 0.5], [0, 0, -1, 1])
+                cabinet_models = ['cabinet2/cabinet_0007.urdf'] * 2 + \
+                    ['cabinet/cabinet_0004.urdf'] * 2
+                for drawer_pose, cabinet_model in \
+                        zip(self.cabinet_drawer_poses, cabinet_models):
+                    obj = InteractiveObj(filename=os.path.join(
+                        gibson2.assets_path, 'models', cabinet_model))
+                    self.simulator.import_articulated_object(obj, class_id=30)
+                    self.cabinet_drawers.append(obj)
+                    obj.set_position_orientation(
+                        drawer_pose[0],
+                        quatToXYZW(euler2quat(0, 0, drawer_pose[1]), 'wxyz'))
 
-                obj = InteractiveObj(
-                    filename=os.path.join(gibson2.assets_path,
-                                          'models/cabinet2/cabinet_0007.urdf'))
-                self.simulator.import_articulated_object(obj, class_id=60)
-                self.cabinet_drawers.append(obj)
-                obj.set_position_orientation([-6, 1.8, 0.5], [0, 0, -1, 1])
-
-                obj = InteractiveObj(
-                    filename=os.path.join(gibson2.assets_path,
-                                          'models/cabinet/cabinet_0004.urdf'))
-                self.simulator.import_articulated_object(obj, class_id=90)
-                self.cabinet_drawers.append(obj)
-                obj.set_position_orientation([-4.2, 2, 1.8], [0, 0, -1, 1])
-
-                obj = InteractiveObj(
-                    filename=os.path.join(gibson2.assets_path,
-                                          'models/cabinet/cabinet_0004.urdf'))
-                self.simulator.import_articulated_object(obj, class_id=120)
-                self.cabinet_drawers.append(obj)
-                obj.set_position_orientation([-5.5, 2, 1.8], [0, 0, -1, 1])
-
-                obj = BoxShape([-5, 1.8, 0.5], [0.55, 0.25, 0.5],
+                obj = BoxShape(pos=self.box_pose[0],
+                               dim=[0.55, 0.25, 0.5],
                                mass=1000,
                                color=[139 / 255.0, 69 / 255.0, 19 / 255.0, 1])
                 self.simulator.import_articulated_object(obj, class_id=150)
-                # TODO: randomize box shape pose
-                # box shape pose is fixed
-                p.createConstraint(0, -1, obj.body_id, -1, p.JOINT_FIXED,
-                                   [0, 0, 1], [-5, 1.8, 0.5], [0, 0, 0])
+                obj.set_position_orientation(
+                    self.box_pose[0],
+                    quatToXYZW(euler2quat(0, 0, self.box_pose[1]), 'wxyz'))
+                self.box = obj
+                self.constraint = \
+                    p.createConstraint(0, -1, obj.body_id, -1, p.JOINT_FIXED,
+                                       [0, 0, 1],
+                                       self.box.get_position(),
+                                       [0, 0, 0],
+                                       self.box.get_orientation())
 
             elif self.arena == 'push_chairs':
                 self.obstacles = []
-                self.table = None
+                for chair_pose in self.chair_poses:
+                    obj = InteractiveObj(filename=os.path.join(
+                        gibson2.assets_path,
+                        'models/scene_components/chair_and_table/'
+                        'alignment_centered_Placida_chair_4_21_03001627.urdf'))
+                    # 'free_10_chair_chair_z_up.urdf'))
+                    self.simulator.import_articulated_object(obj, class_id=60)
+                    self.obstacles.append(obj)
+                    obj.set_position_orientation(
+                        chair_pose[0],
+                        quatToXYZW(euler2quat(0, 0, chair_pose[1]), 'wxyz'))
 
                 obj = InteractiveObj(filename=os.path.join(
                     gibson2.assets_path,
@@ -467,32 +486,24 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     'free_9_table_table_z_up.urdf',
                 ), scale=1.2)
                 self.simulator.import_articulated_object(obj, class_id=30)
-                # self.obstacles.append(ids)
+                obj.set_position_orientation(
+                    self.table_pose[0],
+                    quatToXYZW(euler2quat(
+                        0, 0, self.table_pose[1]), 'wxyz'))
                 self.table = obj
-                # TODO: randomize table pose
-                # table pose is fixed
-                obj.set_position_orientation(*self.table_pose)
-                p.createConstraint(0, -1, obj.body_id, -1, p.JOINT_FIXED,
-                                   [0, 0, 1], self.table_pose[0], [0, 0, 0],
-                                   parentFrameOrientation=self.table_pose[1])
-
-                for chair_pose in self.chair_poses:
-                    obj = InteractiveObj(filename=os.path.join(
-                        gibson2.assets_path,
-                        'models/scene_components/chair_and_table/'
-                        'alignment_centered_Placida_chair_4_21_03001627.urdf'))
-                    # 'free_10_chair_chair_z_up.urdf'))
-                    self.simulator.import_articulated_object(
-                        obj, class_id=60)
-                    self.obstacles.append(obj)
-                    # TODO: randomize chair pose
-                    # chair pose is fixed
-                    obj.set_position_orientation(chair_pose[0], chair_pose[1])
+                self.constraint = \
+                    p.createConstraint(
+                        0, -1, obj.body_id, -1, p.JOINT_FIXED,
+                        [0, 0, 1],
+                        self.table.get_position(),
+                        [0, 0, 0],
+                        self.table.get_orientation())
 
                 # Add extra walls to let the LiDAR sense the table
                 # TODO: use a different table model
                 self.walls = []
-                for wall_pose, wall_scale in zip(wall_poses, wall_scales):
+                for wall_pose, wall_scale in \
+                        zip(self.table_wall_poses, wall_scales):
                     wall = InteractiveObj(
                         os.path.join(gibson2.assets_path,
                                      'models',
@@ -501,7 +512,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         scale=wall_scale)
                     self.simulator.import_object(wall, class_id=3)
                     # wall pose is fixed
-                    wall.set_position_orientation(wall_pose[0], wall_pose[1])
+                    wall.set_position_orientation(
+                        wall_pose[0],
+                        quatToXYZW(euler2quat(0, 0, wall_pose[1]), 'wxyz'))
                     self.walls.append(wall)
 
     def prepare_motion_planner(self):
@@ -1568,6 +1581,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         if base_or_arm in ['arm', 'both']:
             if self.arena == 'button_door':
+                arm_reward = 0.0
                 button_state = p.getJointState(
                     self.buttons[self.door_idx].body_id,
                     self.button_axis_link_id)[0]
@@ -1753,8 +1767,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.initial_orn_z = np.pi
 
             self.initial_orn = [0, 0, self.initial_orn_z]
-            # self.robots[0].set_orientation(orn=quatToXYZW(
-            #     euler2quat(0, 0, self.initial_orn_z), 'wxyz'))
 
             if self.arena in ['button_door', 'push_door',
                               'random_manip', 'random_manip_atomic']:
@@ -1818,44 +1830,96 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     p.resetJointState(button.body_id, self.button_axis_link_id,
                                       targetValue=button_state,
                                       targetVelocity=0.0)
-        elif self.arena in ['obstacles', 'semantic_obstacles', 'push_chairs']:
+
+        elif self.arena in ['obstacles', 'semantic_obstacles']:
             self.obstacle_states = []
             if self.arena == 'obstacles':
                 obstacle_poses = self.obstacle_poses
             elif self.arena == 'semantic_obstacles':
                 np.random.shuffle(self.semantic_obstacle_poses)
                 obstacle_poses = self.semantic_obstacle_poses
-            elif self.arena == 'push_chairs':
-                obstacle_poses = self.chair_poses
             for obstacle, obstacle_pose in zip(self.obstacles, obstacle_poses):
                 obstacle.set_position_orientation(*obstacle_pose)
                 self.obstacle_states.append(obstacle_pose)
 
-        elif self.arena == 'push_drawers':
-            self.cabinet_drawers_states = [
-                dict() for _ in range(len(self.cabinet_drawers))]
-            for i, obj in enumerate(self.cabinet_drawers):
-                body_id = obj.body_id
-                for joint_id in range(p.getNumJoints(body_id)):
-                    _, _, joint_type, _, _, _, _, _, \
-                        lower, upper, _, _, _, _, _, _, _ = p.getJointInfo(
-                            body_id, joint_id)
-                    if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                        joint_pos = np.random.uniform(lower, upper)
-                        p.resetJointState(body_id, joint_id,
-                                          targetValue=joint_pos,
-                                          targetVelocity=0)
-                        self.cabinet_drawers_states[i][joint_id] = joint_pos
+        elif self.arena in ['push_chairs', 'push_drawers']:
+            if self.arena == 'push_chairs':
+                transform = self.chair_pose_transform
+                objs = self.obstacles
+                obj_poses = self.chair_poses
+                unique_obj = self.table
+                unique_obj_pose = self.table_pose
+            else:
+                transform = self.cabinet_drawer_pose_transform
+                objs = self.cabinet_drawers
+                obj_poses = self.cabinet_drawer_poses
+                unique_obj = self.box
+                unique_obj_pose = self.box_pose
+
+            self.obstacle_states = []
+            rot, trans_low, trans_high = \
+                transform[np.random.randint(len(transform))]
+            trans = np.random.uniform(trans_low, trans_high)
+            for obstacle, obstacle_pose in zip(objs, obj_poses):
+                if self.randomize_object_pose:
+                    pos = rotate_vector_3d(obstacle_pose[0], 0, 0, rot) + trans
+                    orn = quatToXYZW(euler2quat(
+                        0, 0, obstacle_pose[1] - rot), 'wxyz')
+                else:
+                    pos = obstacle_pose[0]
+                    orn = quatToXYZW(euler2quat(
+                        0, 0, obstacle_pose[1]), 'wxyz')
+                obstacle.set_position_orientation(pos, orn)
+                self.obstacle_states.append((pos, orn))
+
+            pos = unique_obj_pose[0]
+            pos = rotate_vector_3d(pos, 0, 0, rot) + trans
+            orn = quatToXYZW(euler2quat(
+                0, 0, unique_obj_pose[1] - rot), 'wxyz')
+            unique_obj.set_position_orientation(pos, orn)
+
+            p.removeConstraint(self.constraint)
+            self.constraint = \
+                p.createConstraint(0, -1, unique_obj.body_id,
+                                   -1, p.JOINT_FIXED,
+                                   [0, 0, 1],
+                                   unique_obj.get_position(),
+                                   [0, 0, 0],
+                                   unique_obj.get_orientation())
+
+            if self.arena == 'push_drawers':
+                self.cabinet_drawers_states = [
+                    dict() for _ in range(len(self.cabinet_drawers))]
+                for i, obj in enumerate(self.cabinet_drawers):
+                    body_id = obj.body_id
+                    for joint_id in range(p.getNumJoints(body_id)):
+                        _, _, joint_type, _, _, _, _, _, \
+                            lower, upper, _, _, _, _, _, _, _ = p.getJointInfo(
+                                body_id, joint_id)
+                        if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                            j_pos = np.random.uniform(lower, upper)
+                            p.resetJointState(body_id, joint_id,
+                                              targetValue=j_pos,
+                                              targetVelocity=0)
+                            self.cabinet_drawers_states[i][joint_id] = j_pos
+            else:
+                for obstacle, obstacle_pose in \
+                        zip(self.walls, self.table_wall_poses):
+                    if self.randomize_object_pose:
+                        pos = rotate_vector_3d(
+                            obstacle_pose[0], 0, 0, rot) + trans
+                        orn = quatToXYZW(euler2quat(
+                            0, 0, obstacle_pose[1] - rot), 'wxyz')
+                    else:
+                        pos = obstacle_pose[0]
+                        orn = quatToXYZW(euler2quat(
+                            0, 0, obstacle_pose[1]), 'wxyz')
+                    obstacle.set_position_orientation(pos, orn)
 
     def after_reset_agent(self):
         if self.arena in ['obstacles', 'semantic_obstacles', 'push_chairs']:
-            if self.arena == 'obstacles':
-                obstacle_poses = self.obstacle_poses
-            elif self.arena == 'semantic_obstacles':
-                obstacle_poses = self.semantic_obstacle_poses
-            elif self.arena == 'push_chairs':
-                obstacle_poses = self.chair_poses
-            for obstacle, obstacle_pose in zip(self.obstacles, obstacle_poses):
+            for obstacle, obstacle_pose in \
+                    zip(self.obstacles, self.obstacle_states):
                 current_pos = obstacle.get_position()
                 original_pos = obstacle_pose[0]
                 dist = l2_distance(np.array(current_pos),
@@ -2034,6 +2098,7 @@ if __name__ == '__main__':
                                            draw_objs_on_map=False,
                                            base_only=False,
                                            rotate_occ_grid=False,
+                                           randomize_object_pose=True,
                                            )
     elif args.action_type == 'low-level':
         nav_env = MotionPlanningBaseArmContinuousEnv(config_file=args.config,
