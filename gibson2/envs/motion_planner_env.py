@@ -1580,8 +1580,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             reward += base_reward
 
         if base_or_arm in ['arm', 'both']:
+            arm_reward = 0.0
             if self.arena == 'button_door':
-                arm_reward = 0.0
                 button_state = p.getJointState(
                     self.buttons[self.door_idx].body_id,
                     self.button_axis_link_id)[0]
@@ -1980,9 +1980,21 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
             collision_reward_weight=collision_reward_weight,
         )
         # revert back to raw action space
-        self.action_space = self.robots[0].action_space
+        if self.arena == 'random_nav':
+            self.action_space = gym.spaces.Box(
+                shape=(self.robots[0].wheel_dim,),
+                low=-1.0,
+                high=1.0,
+                dtype=np.float32)
+        else:
+            self.action_space = self.robots[0].action_space
 
     def step(self, action):
+        if self.arena == 'random_nav':
+            new_action = np.zeros(10)
+            new_action[:2] = action
+            action = new_action
+
         return super(NavigateRandomEnv, self).step(action)
 
     def get_reward(self, collision_links=[], action=None, info={}):

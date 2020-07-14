@@ -30,12 +30,14 @@ collision_ignore_link_b_ids: [2]  # ignore self-collision
 max_collisions_allowed: 0
 
 # discount factor
-discount_factor: 0.99
+discount_factor: 0.9995
 
 # termination condition
 death_z_thresh: 0.2
 dist_tol: 0.5  # body width
 max_step: 750
+target_dist_min: 1.0
+target_dist_max: 10.0
 
 # sensor spec
 output: [sensor, rgb, depth, scan]
