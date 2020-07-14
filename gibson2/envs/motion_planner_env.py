@@ -73,6 +73,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             render_to_tensor=render_to_tensor)
 
         self.arena = arena
+        print('arena:', self.arena)
         self.new_potential = None
         self.collision_reward_weight = collision_reward_weight
         self.action_map = action_map
