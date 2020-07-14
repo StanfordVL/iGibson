@@ -1668,7 +1668,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 drawers_diff = old_drawers_state - new_drawers_state
                 arm_reward = drawers_diff * 10.0
                 if arm_reward > 0.1:
-                    print('push drawers reward', reward)
+                    print('push drawers reward', arm_reward)
 
             elif self.arena == 'push_chairs':
                 table_pos = np.array(self.table_pose[0][:2])
@@ -1689,7 +1689,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 table_dist_diff = old_table_dist - new_table_dist
                 arm_reward = table_dist_diff * 40.0
                 if arm_reward > 0.1:
-                    print('push chairs reward', reward)
+                    print('push chairs reward', arm_reward)
 
             reward += arm_reward
 
