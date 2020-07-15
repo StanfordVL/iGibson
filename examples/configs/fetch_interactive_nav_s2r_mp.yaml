@@ -11,7 +11,7 @@ initial_pos_z_offset: 0.0
 
 # robot
 robot: Fetch
-fine_motion_plan: false
+fine_motion_plan: true
 
 # task, observation and action
 task: pointgoal # pointgoal|objectgoal|areagoal|reaching
