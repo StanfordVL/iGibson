@@ -1873,10 +1873,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 obstacle.set_position_orientation(pos, orn)
                 self.obstacle_states.append((pos, orn))
 
-            pos = unique_obj_pose[0]
-            pos = rotate_vector_3d(pos, 0, 0, rot) + trans
-            orn = quatToXYZW(euler2quat(
-                0, 0, unique_obj_pose[1] - rot), 'wxyz')
+            if self.randomize_object_pose:
+                pos = rotate_vector_3d(unique_obj_pose[0], 0, 0, rot) + trans
+                orn = quatToXYZW(euler2quat(
+                    0, 0, unique_obj_pose[1] - rot), 'wxyz')
+            else:
+                pos = unique_obj_pose[0]
+                orn = quatToXYZW(euler2quat(
+                    0, 0, unique_obj_pose[1]), 'wxyz')
             unique_obj.set_position_orientation(pos, orn)
 
             p.removeConstraint(self.constraint)
@@ -2108,10 +2112,10 @@ if __name__ == '__main__':
                                            action_map=True,
                                            channel_first=True,
                                            draw_path_on_map=False,
-                                           draw_objs_on_map=False,
+                                           draw_objs_on_map=True,
                                            base_only=False,
                                            rotate_occ_grid=False,
-                                           randomize_object_pose=True,
+                                           randomize_object_pose=False,
                                            )
     elif args.action_type == 'low-level':
         nav_env = MotionPlanningBaseArmContinuousEnv(config_file=args.config,
