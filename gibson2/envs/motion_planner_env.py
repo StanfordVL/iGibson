@@ -59,7 +59,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                  draw_objs_on_map=False,
                  base_only=False,
                  rotate_occ_grid=False,
-                 randomize_object_pose=False
+                 randomize_object_pose=True
                  ):
         super(MotionPlanningBaseArmEnv, self).__init__(
             config_file,
