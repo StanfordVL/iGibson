@@ -92,7 +92,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             assert self.arena in ['push_chairs', 'push_drawers']
 
         # disable navigation success
-        if self.arena in ['push_chairs', 'push_drawers']:
+        if self.arena in ['push_chairs', 'push_drawers', 'tabletop_manip']:
             self.dist_tol = -1.0
 
         self.base_only = base_only
