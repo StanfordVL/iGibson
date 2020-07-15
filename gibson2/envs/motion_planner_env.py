@@ -356,8 +356,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 [-4.8, -3.8], [-0.1, 0.3]
                 ])
 
-                self.tabletop_object_initial_pos = [0,0,0] # place holder
-                self.tabletop_object_target_pos = [0,0,0] # place holder
+                self.tabletop_object_initial_pos = [-4.3,0.2,1.0454690657956134] # place holder
+                self.tabletop_object_target_pos = [-4,0,1.0454690657956134] # place holder
 
 
         else:
@@ -1760,7 +1760,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 old_dist = np.linalg.norm(self.tabletop_object_state[0] - self.tabletop_object_target_pos)
                 self.tabletop_object_state = self.tabletop_object.get_position_orientation()
                 new_dist = np.linalg.norm(self.tabletop_object_state[0] - self.tabletop_object_target_pos)
-                reward += 10 * (old_dist - new_dist)
+                arm_reward += 10 * (old_dist - new_dist)
 
             reward += arm_reward
 
@@ -1863,29 +1863,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 ])
 
             if self.arena == 'tabletop_manip':
-                # reset object and target
-                self.tabletop_object_initial_pos = np.array([
-                    np.random.uniform(
-                        self.tabletop_object_pos_range[0][0],
-                        self.tabletop_object_pos_range[0][1]),
-                    np.random.uniform(
-                        self.tabletop_object_pos_range[1][0],
-                        self.tabletop_object_pos_range[1][1]),
-                    self.tabletop_object_height
-                    ])
+                # object start and target position should not be set here
+                # because this is called after `before_reset_agent` is called
+                pass
 
-                dist = 0
-                while dist < 0.2:
-                    self.tabletop_object_target_pos = np.array([
-                    np.random.uniform(
-                        self.tabletop_object_pos_range[0][0],
-                        self.tabletop_object_pos_range[0][1]),
-                    np.random.uniform(
-                        self.tabletop_object_pos_range[1][0],
-                        self.tabletop_object_pos_range[1][1]),
-                    self.tabletop_object_height
-                    ])
-                    dist = np.linalg.norm(self.tabletop_object_target_pos - self.tabletop_object_initial_pos)
 
         elif self.arena == 'random_nav':
             floor_height = self.scene.get_floor_height(self.floor_num)
@@ -2018,6 +1999,30 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                             0, 0, obstacle_pose[1]), 'wxyz')
                     obstacle.set_position_orientation(pos, orn)
         elif self.arena == 'tabletop_manip':
+
+            self.tabletop_object_initial_pos = np.array([
+                    np.random.uniform(
+                        self.tabletop_object_pos_range[0][0],
+                        self.tabletop_object_pos_range[0][1]),
+                    np.random.uniform(
+                        self.tabletop_object_pos_range[1][0],
+                        self.tabletop_object_pos_range[1][1]),
+                    self.tabletop_object_height
+                    ])
+
+            dist = 0
+            while dist < 0.2:
+                self.tabletop_object_target_pos = np.array([
+                np.random.uniform(
+                    self.tabletop_object_pos_range[0][0],
+                    self.tabletop_object_pos_range[0][1]),
+                np.random.uniform(
+                    self.tabletop_object_pos_range[1][0],
+                    self.tabletop_object_pos_range[1][1]),
+                self.tabletop_object_height
+                ])
+                dist = np.linalg.norm(self.tabletop_object_target_pos - self.tabletop_object_initial_pos)
+
             self.tabletop_object.set_position_orientation(self.tabletop_object_initial_pos, self.tabletop_object_orn)
             self.tabletop_target_marker.set_position(self.tabletop_object_target_pos)
 
