@@ -606,6 +606,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.simulator.import_object(obj, class_id=90)
                 self.tabletop_target_marker = obj
 
+                self.robot_constraint = None
+
     def prepare_motion_planner(self):
         self.robot_id = self.robots[0].robot_ids[0]
         self.mesh_id = self.scene.mesh_body_id
@@ -741,7 +743,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
     def update_visualization(self):
         self.base_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                         rgba_color=[1, 0, 0, 1],
-                                        radius=0.1,
+                                        radius=0.05,
                                         length=2.0,
                                         initial_offset=[0, 0, 2.0 / 2])
         self.base_marker.load()
@@ -2072,6 +2074,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 dist = l2_distance(np.array(current_pos),
                                    np.array(original_pos))
                 assert dist < 0.05, 'obstacle pose is >0.05m above the ground'
+        elif self.arena == 'tabletop_manip':
+            if self.robot_constraint is not None:
+                p.removeConstraint(self.robot_constraint)
+            self.robot_constraint = \
+                p.createConstraint(0, -1, self.robots[0].robot_ids[0],
+                                   -1, p.JOINT_FIXED,
+                                   [0, 0, 1],
+                                   self.robots[0].get_position(),
+                                   [0, 0, 0],
+                                   self.robots[0].get_orientation())
 
     # def reset(self):
     #     self.state = super(MotionPlanningBaseArmEnv, self).reset()
