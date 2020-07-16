@@ -798,7 +798,8 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
                  physics_timestep=1 / 240.0,
                  device_idx=0,
                  automatic_reset=False,
-                 collision_reward_weight=0.0,
+                 collision_reward_weight=None,
+                 max_collisions_allowed=None,
                  track='static'
                  ):
         super(NavigateRandomEnvSim2Real, self).__init__(config_file,
@@ -809,7 +810,12 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
                                                         automatic_reset=automatic_reset,
                                                         random_height=False,
                                                         device_idx=device_idx)
-        self.collision_reward_weight = collision_reward_weight
+        if collision_reward_weight is not None:
+            self.collision_reward_weight = collision_reward_weight
+        if max_collisions_allowed is not None:
+            self.max_collisions_allowed = max_collisions_allowed
+        print('collision_reward_weight', self.collision_reward_weight)
+        print('max_collisions_allowed', self.max_collisions_allowed)
 
         assert track in ['static', 'interactive', 'dynamic'], 'unknown track'
         self.track = track

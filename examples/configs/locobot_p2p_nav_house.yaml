@@ -1,6 +1,6 @@
 # scene
 scene: building
-model_id: Woonsocket
+model_id: Moffet
 build_graph: true
 load_texture: true
 trav_map_erosion: 2
