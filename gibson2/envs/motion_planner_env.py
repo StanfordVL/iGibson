@@ -110,13 +110,30 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.prepare_mp_obstacles()
 
     def prepare_mp_obstacles(self):
-        mp_obstacles = self.doors + self.walls + self.obstacles + \
-            self.buttons + self.cabinet_drawers
-        for obj in [self.box, self.table, self.tabletop_object]:
-            if obj is not None:
-                mp_obstacles.append(obj)
-        self.mp_obstacles_id = [obj.body_id for obj in mp_obstacles]
-        self.mp_obstacles_id.append(self.mesh_id)
+        self.mp_obstacles_id = [self.mesh_id]
+        if self.arena in ['push_door', 'button_door',
+                          'random_manip', 'random_manip_atomic']:
+            for obj in self.doors:
+                self.mp_obstacles_id.append(obj.body_id)
+
+        if self.arena == 'button_door':
+            for obj in self.buttons:
+                self.mp_obstacles_id.append(obj.body_id)
+
+        if self.arena in ['obstacles', 'semantic_obstacles', 'push_chairs']:
+            for obj in self.obstacles:
+                self.mp_obstacles_id.append(obj.body_id)
+
+        if self.arena == 'push_drawers':
+            for obj in self.cabinet_drawers:
+                self.mp_obstacles_id.append(obj.body_id)
+            self.mp_obstacles_id.append(self.box.body_id)
+
+        if self.arena in ['push_chairs', 'tabletop_manip']:
+            self.mp_obstacles_id.append(self.table.body_id)
+
+        if self.arena == 'tabletop_manip':
+            self.mp_obstacles_id.append(self.tabletop_object.body_id)
 
     def prepare_scene(self):
         self.doors = []
@@ -2283,11 +2300,11 @@ if __name__ == '__main__':
         episode_return = 0.0
         start = time.time()
         state = nav_env.reset()
-        embed()
+        # embed()
         for i in range(10000000):
             print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
-            embed()
+            # embed()
             state, reward, done, info = nav_env.step(action)
             episode_return += reward
             # embed()
