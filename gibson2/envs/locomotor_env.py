@@ -518,6 +518,7 @@ class NavigateEnv(BaseEnv):
 
         if self.is_goal_reached():
             reward += self.success_reward  # |success_reward| = 10.0 per step
+
         return reward, info
 
     def get_termination(self, collision_links=[], action=None, info={}):
@@ -545,11 +546,13 @@ class NavigateEnv(BaseEnv):
         elif self.current_step >= self.max_step:
             done = True
 
+        info['episode_return'] = self.episode_return
         info['episode_length'] = self.current_step
         info['collision_step'] = self.collision_step
-        # info['path_length'] = self.path_length
-        # info['spl'] = float(info['success']) * \
-        #     min(1.0, self.geodesic_dist / self.path_length)
+        info['path_length'] = self.path_length
+        info['geodesic_dist'] = self.geodesic_dist
+        info['spl'] = float(info['success']) * \
+            min(1.0, self.geodesic_dist / (self.path_length + 1e-6))
 
         return done, info
 
@@ -606,6 +609,8 @@ class NavigateEnv(BaseEnv):
         state = self.get_state(collision_links)
         info = {}
         reward, info = self.get_reward(collision_links, action, info)
+        self.episode_return += reward
+
         done, info = self.get_termination(collision_links, action, info)
         self.step_visualization()
 
@@ -735,6 +740,7 @@ class NavigateEnv(BaseEnv):
         self.collision_step = 0
         self.path_length = 0.0
         self.geodesic_dist = self.get_geodesic_potential()
+        self.episode_return = 0.0
 
     def before_reset_agent(self):
         return

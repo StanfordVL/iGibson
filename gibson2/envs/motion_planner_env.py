@@ -5,6 +5,26 @@
 #     set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_base_values, \
 #     plan_base_motion_2d, get_sample_fn, add_p2p_constraint, remove_constraint, set_base_values_with_z
 
+from gibson2.external.pybullet_tools.utils import control_joints
+from gibson2.external.pybullet_tools.utils import get_joint_positions
+from gibson2.external.pybullet_tools.utils import get_max_limits
+from gibson2.external.pybullet_tools.utils import get_min_limits
+from gibson2.external.pybullet_tools.utils import plan_joint_motion
+from gibson2.external.pybullet_tools.utils import link_from_name
+from gibson2.external.pybullet_tools.utils import set_joint_positions
+from gibson2.external.pybullet_tools.utils import get_sample_fn
+from gibson2.external.pybullet_tools.utils import set_base_values_with_z
+from gibson2.external.pybullet_tools.utils import get_base_values
+from gibson2.external.pybullet_tools.utils import plan_base_motion_2d
+from gibson2.external.pybullet_tools.utils import joints_from_names
+from gibson2.utils.utils import l2_distance, quatToXYZW
+from gibson2.utils.utils import rotate_vector_2d, rotate_vector_3d
+from gibson2.core.physics.interactive_objects import BoxShape
+from gibson2.core.physics.interactive_objects import YCBObject
+from gibson2.core.physics.interactive_objects import InteractiveObj
+from gibson2.core.physics.interactive_objects import VisualMarker
+from gibson2.envs.locomotor_env import NavigateRandomEnv
+from gibson2.core.render.utils import quat_pos_to_mat
 from transforms3d.euler import euler2quat
 from transforms3d.quaternions import quat2mat
 from IPython import embed
@@ -18,27 +38,10 @@ from PIL import Image
 import time
 import argparse
 import gibson2
-
-from gibson2.core.render.utils import quat_pos_to_mat
-from gibson2.envs.locomotor_env import NavigateRandomEnv
-from gibson2.core.physics.interactive_objects import VisualMarker
-from gibson2.core.physics.interactive_objects import InteractiveObj
-from gibson2.core.physics.interactive_objects import YCBObject
-from gibson2.core.physics.interactive_objects import BoxShape
-from gibson2.utils.utils import rotate_vector_2d, rotate_vector_3d
-from gibson2.utils.utils import l2_distance, quatToXYZW
-from gibson2.external.pybullet_tools.utils import joints_from_names
-from gibson2.external.pybullet_tools.utils import plan_base_motion_2d
-from gibson2.external.pybullet_tools.utils import get_base_values
-from gibson2.external.pybullet_tools.utils import set_base_values_with_z
-from gibson2.external.pybullet_tools.utils import get_sample_fn
-from gibson2.external.pybullet_tools.utils import set_joint_positions
-from gibson2.external.pybullet_tools.utils import link_from_name
-from gibson2.external.pybullet_tools.utils import plan_joint_motion
-from gibson2.external.pybullet_tools.utils import get_min_limits
-from gibson2.external.pybullet_tools.utils import get_max_limits
-from gibson2.external.pybullet_tools.utils import get_joint_positions
-from gibson2.external.pybullet_tools.utils import control_joints
+import logging
+import string
+import random
+import collections
 
 
 class MotionPlanningBaseArmEnv(NavigateRandomEnv):
@@ -59,7 +62,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                  draw_path_on_map=False,
                  draw_objs_on_map=False,
                  rotate_occ_grid=False,
-                 randomize_object_pose=True
+                 randomize_object_pose=True,
+                 log_dir=None,
                  ):
         super(MotionPlanningBaseArmEnv, self).__init__(
             config_file,
@@ -79,6 +83,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.action_map = action_map
         self.channel_first = channel_first
         self.randomize_object_pose = randomize_object_pose
+        self.log_dir = log_dir
 
         # draw the shortest path on the occupancy map
         self.draw_path_on_map = draw_path_on_map
@@ -108,6 +113,58 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.update_visualization()
         self.prepare_scene()
         self.prepare_mp_obstacles()
+        self.prepare_logging()
+
+    def prepare_logging(self):
+        if self.log_dir is not None:
+            logger = logging.getLogger('log')
+            logger.setLevel(logging.INFO)
+
+            filename = ''.join(random.choices(
+                string.ascii_uppercase + string.digits, k=8))
+            logpath = os.path.join(self.log_dir, filename + '.log')
+
+            ch = logging.FileHandler(logpath)
+            ch.setFormatter(logging.Formatter('%(message)s'))
+            logger.addHandler(ch)
+
+            self.logger = logger
+            self.logger.info('model_id: ' + self.scene.model_id)
+            self.logger.info('arena: ' + self.arena)
+
+        self.metric_keys = [
+            'episode_return',
+            'episode_length',
+            'collision_step',
+            'path_length',
+            'geodesic_dist',
+            'success',
+            'spl',
+            'dist_to_goal',
+            'doors_opened',
+            'drawers_closed_5',
+            'drawers_closed_10',
+            'chairs_pushed_5',
+            'chairs_pushed_10',
+            'base_mp_time',
+            'base_mp_success',
+            'base_mp_failure',
+            'base_mp_num_waypoints',
+            'base_mp_path_length',
+            'arm_ik_time',
+            'arm_ik_failure',
+            'arm_mp_time',
+            'arm_mp_success',
+            'arm_mp_failure',
+            'arm_mp_num_waypoints',
+            'arm_mp_path_length',
+        ]
+        self.metrics = {
+            key: collections.deque(maxlen=100) for key in self.metric_keys
+        }
+        self.episode_metrics = {
+            key: 0.0 for key in self.metric_keys
+        }
 
     def prepare_mp_obstacles(self):
         self.mp_obstacles_id = [self.mesh_id]
@@ -1069,8 +1126,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :return: whether base_subgoal is achieved
         """
         original_pos = get_base_values(self.robot_id)
+        plan_base_start = time.time()
         path = self.plan_base_motion_2d(
             base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn)
+        self.episode_metrics['base_mp_time'] += time.time() - plan_base_start
         if path is not None:
             # print('base mp succeeds')
             if self.mode == 'gui':
@@ -1089,11 +1148,23 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                      base_subgoal_pos[1],
                      base_subgoal_orn],
                     z=self.initial_height)
+
+            # accumupate path length
+            self.path_length += \
+                np.sum([l2_distance(np.array(path[i][:2]),
+                                    np.array(path[i + 1][:2]))
+                        for i in range(len(path) - 1)])
+            self.episode_metrics['base_mp_success'] += 1
+            self.episode_metrics['base_mp_num_waypoints'] += len(path)
+            self.episode_metrics['base_mp_path_length'] += \
+                np.sum([l2_distance(np.array(path[i]), np.array(path[i + 1]))
+                        for i in range(len(path) - 1)])
             return True
         else:
             # print('base mp fails')
             set_base_values_with_z(
                 self.robot_id, original_pos, z=self.initial_height)
+            self.episode_metrics['base_mp_failure'] += 1
             return False
 
     def move_base(self, action):
@@ -1187,6 +1258,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :param arm_subgoal: [x, y, z] in the world frame
         :return: arm joint positions
         """
+        ik_start = time.time()
+
         max_limits, min_limits, rest_position, joint_range, joint_damping = \
             self.get_ik_parameters()
 
@@ -1245,9 +1318,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 n_attempt += 1
                 continue
 
+            self.episode_metrics['arm_ik_time'] += time.time() - ik_start
             return arm_joint_positions
 
-        return
+        self.episode_metrics['arm_ik_time'] += time.time() - ik_start
+        return None
 
     def reset_obstacles_z(self):
         """
@@ -1279,6 +1354,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                             self.arm_default_joint_positions)
 
         if arm_joint_positions is None:
+            self.episode_metrics['arm_ik_failure'] += 1
             return False
 
         disabled_collisions = {
@@ -1300,6 +1376,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self_collisions = False
             mp_obstacles = []
 
+        plan_arm_start = time.time()
         arm_path = plan_joint_motion(
             self.robot_id,
             self.arm_joint_ids,
@@ -1307,6 +1384,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             disabled_collisions=disabled_collisions,
             self_collisions=self_collisions,
             obstacles=mp_obstacles)
+        self.episode_metrics['arm_mp_time'] += time.time() - plan_arm_start
 
         if arm_path is not None:
             # print('arm mp succeeds')
@@ -1318,11 +1396,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             else:
                 set_joint_positions(
                     self.robot_id, self.arm_joint_ids, arm_joint_positions)
+            self.episode_metrics['arm_mp_success'] += 1
+            self.episode_metrics['arm_mp_num_waypoints'] += len(arm_path)
+            self.episode_metrics['arm_mp_path_length'] += \
+                np.sum([l2_distance(np.array(arm_path[i]),
+                                    np.array(arm_path[i + 1]))
+                        for i in range(len(arm_path) - 1)])
+
             return True
         else:
             # print('arm mp fails')
             set_joint_positions(self.robot_id, self.arm_joint_ids,
                                 self.arm_default_joint_positions)
+            self.episode_metrics['arm_mp_failure'] += 1
             return False
 
     def stash_object_states(self):
@@ -1339,13 +1425,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             for i, obstacle in enumerate(self.obstacles):
                 self.obstacle_states[i] = obstacle.get_position_orientation()
         elif self.arena == 'push_drawers':
-            for i, obj in enumerate(self.cabinet_drawers):
-                body_id = obj.body_id
-                for joint_id in range(p.getNumJoints(body_id)):
-                    joint_type = p.getJointInfo(body_id, joint_id)[2]
-                    if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                        joint_pos = p.getJointState(body_id, joint_id)[0]
-                        self.cabinet_drawers_states[i][joint_id] = joint_pos
+            for body_id in self.cabinet_drawers_states:
+                for joint_id in self.cabinet_drawers_states[body_id]:
+                    joint_pos = p.getJointState(body_id, joint_id)[0]
+                    self.cabinet_drawers_states[body_id][joint_id] = joint_pos
         elif self.arena == 'tabletop_manip':
             self.tabletop_object_state = \
                 self.tabletop_object.get_position_orientation()
@@ -1372,15 +1455,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     zip(self.obstacles, self.obstacle_states):
                 obstacle.set_position_orientation(*obstacle_state)
         elif self.arena == 'push_drawers':
-            for i, obj in enumerate(self.cabinet_drawers):
-                body_id = obj.body_id
-                for joint_id in range(p.getNumJoints(body_id)):
-                    joint_type = p.getJointInfo(body_id, joint_id)[2]
-                    if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                        joint_pos = self.cabinet_drawers_states[i][joint_id]
-                        p.resetJointState(body_id, joint_id,
-                                          targetValue=joint_pos,
-                                          targetVelocity=0.0)
+            for body_id in self.cabinet_drawers_states:
+                for joint_id in self.cabinet_drawers_states[body_id]:
+                    joint_pos = self.cabinet_drawers_states[body_id][joint_id]
+                    p.resetJointState(body_id, joint_id,
+                                      targetValue=joint_pos,
+                                      targetVelocity=0.0)
         elif self.arena == 'tabletop_manip':
             self.tabletop_object.set_position_orientation(
                 *self.tabletop_object_state)
@@ -1640,7 +1720,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         np.array([1.0, 0.0]), -push_angle)
                     new_action[6:8] = push_vector
 
-            action = np.copy(new_action)
+                action = new_action
 
         use_base = action[0] > 0.0
         # add action noise before execution
@@ -1683,12 +1763,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 button_state = p.getJointState(
                     self.buttons[self.door_idx].body_id,
                     self.button_axis_link_id)[0]
-                if not self.button_pressed and \
+                if not self.door_opened and \
                         button_state < self.button_threshold:
                     print("OPEN DOOR")
-                    self.button_pressed = True
+                    self.door_opened = True
                     self.doors[self.door_idx].set_position([100.0, 100.0, 0.0])
-
                     # encourage buttons to be pressed
                     arm_reward = self.button_reward
 
@@ -1705,8 +1784,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 arm_reward = door_state_diff
                 self.door_states[self.door_idx] = new_door_state
 
-                if new_door_state > (60.0 / 180.0 * np.pi):
+                if not self.door_opened and \
+                        new_door_state > (60.0 / 180.0 * np.pi):
                     print("PUSH OPEN DOOR")
+                    self.door_opened = True
                     if self.arena in ['random_manip', 'random_manip_atomic']:
                         arm_reward += self.success_reward
 
@@ -1746,19 +1827,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             elif self.arena == 'push_drawers':
                 old_drawers_state = 0.0
                 new_drawers_state = 0.0
-                for i, obj in enumerate(self.cabinet_drawers):
-                    body_id = obj.body_id
-                    for joint_id in range(p.getNumJoints(body_id)):
-                        joint_type = p.getJointInfo(body_id, joint_id)[2]
-                        if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                            old_joint_pos = \
-                                self.cabinet_drawers_states[i][joint_id]
-                            new_joint_pos = p.getJointState(
-                                body_id, joint_id)[0]
-                            old_drawers_state += old_joint_pos
-                            new_drawers_state += new_joint_pos
-                            self.cabinet_drawers_states[i][joint_id] = \
-                                new_joint_pos
+                for body_id in self.cabinet_drawers_states:
+                    for joint_id in self.cabinet_drawers_states[body_id]:
+                        old_joint_pos = \
+                            self.cabinet_drawers_states[body_id][joint_id]
+                        new_joint_pos = p.getJointState(body_id, joint_id)[0]
+                        old_drawers_state += old_joint_pos
+                        new_drawers_state += new_joint_pos
+                        self.cabinet_drawers_states[body_id][joint_id] = \
+                            new_joint_pos
 
                 # encourage drawers to have smaller joint positions
                 # (closing off)
@@ -1822,6 +1899,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         else:
             # failed subgoal penalty
             reward = self.failed_subgoal_penalty
+
+        self.episode_return += reward
+
         done, info = self.get_termination([], action, info)
 
         if done and self.automatic_reset:
@@ -1912,6 +1992,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
     def before_reset_agent(self):
         if self.arena in ['push_door', 'button_door',
                           'random_manip', 'random_manip_atomic']:
+            self.door_opened = False
             self.door_states = np.zeros(len(self.doors))
             for door, angle, pos, orn in \
                     zip(self.doors,
@@ -1923,7 +2004,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 door.set_position_orientation(
                     pos, quatToXYZW(euler2quat(0, 0, orn), 'wxyz'))
             if self.arena == 'button_door':
-                self.button_pressed = False
                 self.button_states = np.zeros(len(self.buttons))
                 for button, button_pos_range, button_rot, button_state in \
                         zip(self.buttons,
@@ -2005,20 +2085,20 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                    unique_obj.get_orientation())
 
             if self.arena == 'push_drawers':
-                self.cabinet_drawers_states = [
-                    dict() for _ in range(len(self.cabinet_drawers))]
-                for i, obj in enumerate(self.cabinet_drawers):
+                self.cabinet_drawers_states = dict()
+                for obj in self.cabinet_drawers:
                     body_id = obj.body_id
+                    self.cabinet_drawers_states[body_id] = dict()
                     for joint_id in range(p.getNumJoints(body_id)):
                         _, _, joint_type, _, _, _, _, _, \
                             lower, upper, _, _, _, _, _, _, _ = p.getJointInfo(
                                 body_id, joint_id)
                         if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                            j_pos = np.random.uniform(lower, upper)
+                            jp = np.random.uniform(lower, upper)
                             p.resetJointState(body_id, joint_id,
-                                              targetValue=j_pos,
+                                              targetValue=jp,
                                               targetVelocity=0)
-                            self.cabinet_drawers_states[i][joint_id] = j_pos
+                            self.cabinet_drawers_states[body_id][joint_id] = jp
             else:
                 for obstacle, obstacle_pose in \
                         zip(self.walls, self.table_wall_poses):
@@ -2110,16 +2190,66 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 done = True
                 info['success'] = True
 
+        if done:
+            self.compute_metrics(info)
+
         return done, info
 
-    def before_simulation(self):
-        robot_position = self.robots[0].get_position()
-        return robot_position
+    def compute_metrics(self, info):
+        if self.arena == 'tabletop_manip':
+            dist_to_goal = l2_distance(self.tabletop_object.get_position(),
+                                       self.tabletop_object_target_pos)
+        else:
+            dist_to_goal = self.get_geodesic_potential()
+        self.episode_metrics['dist_to_goal'] = dist_to_goal
 
-    def after_simulation(self, cache, collision_links):
-        robot_position = cache
-        self.path_length += l2_distance(self.robots[0].get_position(),
-                                        robot_position)
+        if self.arena in ['button_door', 'push_door']:
+            self.episode_metrics['doors_opened'] = self.door_opened
+        elif self.arena == 'push_drawers':
+            drawers_closed_5 = 0
+            drawers_closed_10 = 0
+            for body_id in self.cabinet_drawers_states:
+                for joint_id in self.cabinet_drawers_states[body_id]:
+                    joint_pos = self.cabinet_drawers_states[body_id][joint_id]
+                    joint_type = p.getJointInfo(body_id, joint_id)[2]
+                    if joint_type == p.JOINT_REVOLUTE:
+                        drawers_closed_5 += int(joint_pos < np.deg2rad(5.0))
+                        drawers_closed_10 += int(joint_pos < np.deg2rad(10.0))
+                    else:
+                        drawers_closed_5 += int(joint_pos < 0.05)
+                        drawers_closed_10 += int(joint_pos < 0.10)
+            self.episode_metrics['drawers_closed_5'] = drawers_closed_5
+            self.episode_metrics['drawers_closed_10'] = drawers_closed_10
+        elif self.arena == 'push_chairs':
+            chairs_pushed_5 = 0
+            chairs_pushed_10 = 0
+            # minimum distance is 0.4 because table has width
+            min_dist = 0.4
+            table_pos = np.array(self.table_pose[0][:2])
+            for obstacle_state in self.obstacle_states:
+                obstacle_pos = np.array(obstacle_state[0][:2])
+                chairs_pushed_5 += \
+                    int(l2_distance(obstacle_pos, table_pos) < 0.05 + min_dist)
+                chairs_pushed_10 += \
+                    int(l2_distance(obstacle_pos, table_pos) < 0.1 + min_dist)
+            self.episode_metrics['chairs_pushed_5'] = chairs_pushed_5
+            self.episode_metrics['chairs_pushed_10'] = chairs_pushed_10
+
+        for key in self.metric_keys:
+            if key in ['episode_return', 'episode_length', 'collision_step',
+                       'path_length', 'geodesic_dist', 'success', 'spl']:
+                self.metrics[key].append(info[key])
+            else:
+                self.metrics[key].append(self.episode_metrics[key])
+
+        self.episode_metrics = {
+            key: 0.0 for key in self.metric_keys
+        }
+
+        if self.log_dir is not None:
+            self.logger.info('current_episode: ' + str(self.current_episode))
+            for key in self.metrics:
+                self.logger.info(key + ': ' + str(np.mean(self.metrics[key])))
 
 
 class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
@@ -2134,6 +2264,7 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
                  random_height=False,
                  automatic_reset=False,
                  arena=None,
+                 log_dir=None,
                  ):
         super(MotionPlanningBaseArmContinuousEnv, self).__init__(
             config_file,
@@ -2146,6 +2277,7 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
             device_idx=device_idx,
             arena=arena,
             collision_reward_weight=collision_reward_weight,
+            log_dir=log_dir,
         )
         # revert back to raw action space
         if self.arena == 'random_nav':
@@ -2204,6 +2336,7 @@ class MotionPlanningBaseArmHRL4INEnv(MotionPlanningBaseArmContinuousEnv):
                  random_height=False,
                  automatic_reset=False,
                  arena=None,
+                 log_dir=None,
                  ):
         super(MotionPlanningBaseArmHRL4INEnv, self).__init__(
             config_file,
@@ -2216,6 +2349,7 @@ class MotionPlanningBaseArmHRL4INEnv(MotionPlanningBaseArmContinuousEnv):
             device_idx=device_idx,
             arena=arena,
             collision_reward_weight=collision_reward_weight,
+            log_dir=log_dir,
         )
         self.observation_space.spaces['arm_world'] = gym.spaces.Box(
             low=-np.inf,
@@ -2285,7 +2419,7 @@ if __name__ == '__main__':
                                            action_timestep=1 / 500.0,
                                            physics_timestep=1 / 500.0,
                                            arena=args.arena,
-                                           action_map=False,
+                                           action_map=True,
                                            channel_first=True,
                                            draw_path_on_map=False,
                                            draw_objs_on_map=False,
@@ -2316,7 +2450,6 @@ if __name__ == '__main__':
         for i in range(10000000):
             print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
-            # embed()
             state, reward, done, info = nav_env.step(action)
             episode_return += reward
             # embed()
