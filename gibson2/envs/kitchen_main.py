@@ -7,7 +7,7 @@ import gibson2.external.pybullet_tools.utils as PBU
 
 import gibson2.envs.kitchen.plan_utils as PU
 import gibson2.envs.kitchen.skills as skills
-from gibson2.envs.kitchen.envs import BaseKitchenEnv
+from gibson2.envs.kitchen.envs import env_factory
 from gibson2.envs.kitchen.env_utils import pose_to_array, pose_to_action
 
 
@@ -55,7 +55,7 @@ def execute_planned_path(env, path):
     return states, actions, rewards, all_obs
 
 
-def get_demo(env):
+def get_demo_can_to_drawer(env):
     env.reset()
     all_states = []
     all_actions = []
@@ -100,11 +100,91 @@ def get_demo(env):
         env.planner,
         obstacles=env.objects.body_ids,
         holding=env.objects["can"].body_id,
-        place_pose=can_drop_pose,
+        object_target_pose=can_drop_pose,
         joint_resolutions=(0.05, 0.05, 0.05, 0.05, 0.05, 0.05)
     )
 
     path.append_pause(30)
+    states, actions, rewards, obs = execute_planned_path(env, path)
+    all_states.append(states)
+    all_actions.append(actions)
+    all_rewards.append(rewards)
+    all_obs.append(obs)
+
+    all_states = np.concatenate(all_states, axis=0)
+    all_actions = np.concatenate(all_actions, axis=0)
+    all_rewards = np.concatenate(all_rewards, axis=0)
+    all_obs = dict((k, np.concatenate([all_obs[i][k] for i in range(len(all_obs))], axis=0)) for k in all_obs[0])
+    return all_states, all_actions, all_rewards, all_obs
+
+
+def get_demo_lift_can(env):
+    env.reset()
+    all_states = []
+    all_actions = []
+    all_rewards = []
+    all_obs = []
+
+    can_pos = np.array(env.objects["can"].get_position())
+    can_pos[0] += 0.02
+    can_grasp_pose = (tuple(can_pos.tolist()), (0, 0, 1, 0))
+    path = skills.plan_skill_grasp(
+        env.planner,
+        obstacles=env.objects.body_ids,
+        grasp_pose=can_grasp_pose,
+        reach_distance=0.05,
+        lift_height=0.2,
+        joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2)
+    )
+    states, actions, rewards, obs = execute_planned_path(env, path)
+    all_states.append(states)
+    all_actions.append(actions)
+    all_rewards.append(rewards)
+    all_obs.append(obs)
+
+    all_states = np.concatenate(all_states, axis=0)
+    all_actions = np.concatenate(all_actions, axis=0)
+    all_rewards = np.concatenate(all_rewards, axis=0)
+    all_obs = dict((k, np.concatenate([all_obs[i][k] for i in range(len(all_obs))], axis=0)) for k in all_obs[0])
+    return all_states, all_actions, all_rewards, all_obs
+
+
+def get_demo_pour(env):
+    env.reset()
+    all_states = []
+    all_actions = []
+    all_rewards = []
+    all_obs = []
+
+    mug_pos = np.array(env.objects["mug"].get_position())
+    mug_pos[0] += 0.02
+    mug_grasp_pose = (tuple(mug_pos.tolist()), (0, 0, 1, 0))
+    path = skills.plan_skill_grasp(
+        env.planner,
+        obstacles=env.objects.body_ids,
+        grasp_pose=mug_grasp_pose,
+        reach_distance=0.05,
+        lift_height=0.1,
+        joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2),
+        lift_speed=0.015
+    )
+    states, actions, rewards, obs = execute_planned_path(env, path)
+    all_states.append(states)
+    all_actions.append(actions)
+    all_rewards.append(rewards)
+    all_obs.append(obs)
+
+    bowl_pos = np.array(env.objects["bowl"].get_position())
+    pour_pos = bowl_pos + np.array([-0.05, 0.0, 0.3])
+    pour_pose = (tuple(pour_pos.tolist()), PBU.multiply_quats(T.quaternion_about_axis(np.pi * 2 / 3, (1, 0, 0)), env.objects["mug"].get_orientation()))
+    path = skills.plan_skill_pour(
+        env.planner,
+        obstacles=env.objects.body_ids,
+        object_target_pose=pour_pose,
+        pour_angle=np.pi / 4,
+        holding=env.objects["mug"].body_id,
+        joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2),
+    )
     states, actions, rewards, obs = execute_planned_path(env, path)
     all_states.append(states)
     all_actions.append(actions)
@@ -123,11 +203,10 @@ def create_dataset(args):
     import json
 
     env_kwargs = dict(
-        robot_base_pose=([0, 0.3, 1.2], [0, 0, 1, 0]),
         num_sim_per_step=5,
         sim_time_step=1./240.
     )
-    env = BaseKitchenEnv(**env_kwargs, use_planner=True, hide_planner=False, use_gui=args.gui)
+    env = env_factory("TableTopPour", **env_kwargs, use_planner=True, hide_planner=True, use_gui=args.gui)
 
     if os.path.exists(args.file):
         os.remove(args.file)
@@ -145,12 +224,14 @@ def create_dataset(args):
     total_i = 0
     while success_i < args.n:
         try:
-            states, actions, rewards, all_obs = get_demo(env)
+            states, actions, rewards, all_obs = get_demo_pour(env)
         except PU.NoPlanException as e:
             print(e)
             continue
         total_i += 1
+
         if not env.is_success():
+            print("{}/{}".format(success_i, total_i))
             continue
 
         f_demo_grp = f_sars_grp.create_group("demo_{}".format(success_i))
@@ -172,7 +253,7 @@ def playback(args):
     f = h5py.File(args.file, 'r')
     env_args = json.loads(f["data"].attrs["env_args"])
 
-    env = BaseKitchenEnv(**env_args["env_kwargs"], use_gui=True)
+    env = env_factory("BasicKitchenLiftCan", **env_args["env_kwargs"], use_gui=args.gui)
     demos = list(f["data"].keys())
     for demo_id in demos:
         env.reset()
@@ -184,6 +265,7 @@ def playback(args):
                     p.stepSimulation()
             else:
                 env.step(actions[i])
+        print(env.is_success())
 
 
 def main():
@@ -207,6 +289,7 @@ def main():
     )
     args = parser.parse_args()
 
+    np.random.seed(0)
     # playback(args)
     create_dataset(args)
     p.disconnect()

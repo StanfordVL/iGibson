@@ -152,8 +152,6 @@ def configuration_path_to_cartesian_path(planner_robot, conf_path):
     return pose_path
 
 
-
-
 @contextmanager
 def world_saved():
     saved_world = PBU.WorldSaver()
@@ -170,6 +168,17 @@ def inverse_kinematics(robot_bid, eef_link, plannable_joints, target_pose):
     return conf
 
 
+def sample_positions_in_box(x_range, y_range, z_range):
+    x_range = np.array(x_range)
+    y_range = np.array(y_range)
+    z_range = np.array(z_range)
+    rand_pos = np.random.rand(3)
+    rand_pos[0] = rand_pos[0] * (x_range[1] - x_range[0]) + x_range[0]
+    rand_pos[1] = rand_pos[1] * (y_range[1] - y_range[0]) + y_range[0]
+    rand_pos[2] = rand_pos[2] * (z_range[1] - z_range[0]) + z_range[0]
+    return rand_pos
+
+
 def plan_joint_path(
         robot_bid,
         eef_link_name,
@@ -177,7 +186,8 @@ def plan_joint_path(
         target_pose,
         obstacles=(),
         attachment_ids=(),
-        resolutions=None):
+        resolutions=None
+):
 
     if resolutions is not None:
         assert len(plannable_joint_names) == len(resolutions)

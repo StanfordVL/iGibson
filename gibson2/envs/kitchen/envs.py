@@ -11,12 +11,15 @@ import gibson2.external.pybullet_tools.transformations as T
 
 from gibson2.envs.kitchen.camera import Camera
 from gibson2.envs.kitchen.robots import Arm, ConstraintActuatedRobot, PlannerRobot, Robot, Gripper
-from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articulated_object_dynamics, pose_to_array,\
-    PlannerObjectBank
+from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articulated_object_dynamics, pose_to_array
 import gibson2.external.pybullet_tools.utils as PBU
+import gibson2.envs.kitchen.plan_utils as PU
+
+def env_factory(name, **kwargs):
+    return eval(name)(**kwargs)
 
 
-class BaseKitchenEnv(object):
+class BaseEnv(object):
     MAX_DPOS = 0.1
     MAX_DROT = np.pi / 8
 
@@ -28,12 +31,16 @@ class BaseKitchenEnv(object):
             use_planner=False,
             hide_planner=True,
             sim_time_step=1./240.,
+            camera_width=256,
+            camera_height=256,
     ):
         self._hide_planner = hide_planner
         self._robot_base_pose = robot_base_pose
         self._num_sim_per_step = num_sim_per_step
         self._sim_time_step = sim_time_step
         self._use_gui = use_gui
+        self._camera_width = camera_width
+        self._camera_height = camera_height
         self.objects = ObjectBank()
         self.object_visuals = []
         self.planner = None
@@ -54,11 +61,6 @@ class BaseKitchenEnv(object):
         """Action dimension"""
         return 7  # [x, y, z, ai, aj, ak, g]
 
-    @property
-    def name(self):
-        """Environment name"""
-        return "BasicKitchen"
-
     def _setup_simulation(self):
         if self._use_gui:
             p.connect(p.GUI)
@@ -66,7 +68,6 @@ class BaseKitchenEnv(object):
             p.connect(p.DIRECT)
         p.setGravity(0, 0, -9.8)
         p.setTimeStep(self._sim_time_step)
-        PBU.set_camera(45, -40, 2, (0, 0, 0))
 
     def _create_robot(self):
         gripper = Gripper(
@@ -99,32 +100,21 @@ class BaseKitchenEnv(object):
             # plan_objects=PlannerObjectBank.create_from(
             #     self.objects, scale=1.2, rgba_alpha=0. if self._hide_planner else 0.7)
         )
-        planner.setup(self.robot, self.objects.body_ids, hide_planner=self._hide_planner)
+        planner.setup(self.robot, hide_planner=self._hide_planner)
         self.planner = planner
 
     def _create_env(self):
-        floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-        p.loadMJCF(floor)
+        self._create_fixtures()
+        self._create_objects()
 
-        drawer = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf'))
-        drawer.load()
-        drawer.set_position([0, 0, 0.5])
-        set_articulated_object_dynamics(drawer.body_id)
-        self.objects.add_object("drawer", drawer)
+    def _create_fixtures(self):
+        raise NotImplementedError
 
-        cabinet = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf'))
-        cabinet.load()
-        cabinet.set_position([0, 0, 2])
-        set_articulated_object_dynamics(cabinet.body_id)
-        self.objects.add_object("cabinet", cabinet)
+    def _create_objects(self):
+        raise NotImplementedError
 
-        can = YCBObject('005_tomato_soup_can')
-        can.load()
-        z = PBU.stable_z(can.body_id, drawer.body_id)
-        can.set_position_orientation([0, 0, z], [0, 0, 0, 1])
-        p.changeDynamics(can.body_id, -1, mass=1.0)
-        set_friction(can.body_id)
-        self.objects.add_object("can", can)
+    def _reset_objects(self):
+        raise NotImplementedError
 
     def _create_env_extras(self):
         pass
@@ -132,8 +122,14 @@ class BaseKitchenEnv(object):
         #     self.object_visuals.append(self.objects.create_virtual_copy(scale=1., rgba_alpha=0.3))
 
     def _create_sensors(self):
+        PBU.set_camera(45, -40, 2, (0, 0, 0))
         self.camera = Camera(
-            height=256, width=256, fov=60, near=0.01, far=100., renderer=p.ER_TINY_RENDERER
+            height=self._camera_width,
+            width=self._camera_height,
+            fov=60,
+            near=0.01,
+            far=10.,
+            renderer=p.ER_TINY_RENDERER
         )
         self.camera.set_pose_ypr((0, 0, 0.5), distance=2.0, yaw=45, pitch=-45)
 
@@ -141,8 +137,7 @@ class BaseKitchenEnv(object):
         self.initial_world.restore()
         self.robot.reset_base_position_orientation(*self._robot_base_pose)
         self.robot.reset()
-        z = PBU.stable_z(self.objects["can"].body_id, self.objects["drawer"].body_id)
-        self.objects["can"].set_position_orientation([0, 0, z], [0, 0, 0, 1])
+        self._reset_objects()
         return self.get_observation()
 
     @property
@@ -209,7 +204,132 @@ class BaseKitchenEnv(object):
         return False
 
     def is_success(self):
+        return False
+
+    @property
+    def name(self):
+        """Environment name"""
+        return self.__class__.__name__
+
+
+class BasicKitchenEnv(BaseEnv):
+    def __init__(self, **kwargs):
+        kwargs["robot_base_pose"] = ([0.5, 0.3, 1.2], [0, 0, 1, 0])
+        super(BasicKitchenEnv, self).__init__(**kwargs)
+
+    def _create_fixtures(self):
+        floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+        p.loadMJCF(floor)
+
+        drawer = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf'))
+        drawer.load()
+        drawer.set_position([0, 0, 0.5])
+        set_articulated_object_dynamics(drawer.body_id)
+        self.objects.add_object("drawer", drawer)
+
+        # cabinet = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf'))
+        # cabinet.load()
+        # cabinet.set_position([0, 0, 2])
+        # set_articulated_object_dynamics(cabinet.body_id)
+        # self.objects.add_object("cabinet", cabinet)
+
+    def _create_objects(self):
+        can = YCBObject('005_tomato_soup_can')
+        can.load()
+        p.changeDynamics(can.body_id, -1, mass=1.0)
+        set_friction(can.body_id)
+
+        z = PBU.stable_z(can.body_id, self.objects["drawer"].body_id)
+        can.set_position_orientation([0, 0, z], [0, 0, 0, 1])
+
+        self.objects.add_object("can", can)
+
+
+class BasicKitchenCanInDrawer(BasicKitchenEnv):
+    def is_success(self):
         """Check if the task condition is reached."""
         can_position = self.objects["can"].get_position()
         drawer_aabb = PBU.get_aabb(self.objects["drawer"].body_id, 2)
         return PBU.aabb_contains_point(can_position, drawer_aabb)
+
+    def _reset_objects(self):
+        z = PBU.stable_z(self.objects["can"].body_id, self.objects["drawer"].body_id)
+        self.objects["can"].set_position_orientation([0, 0, z], [0, 0, 0, 1])
+
+
+class BasicKitchenLiftCan(BasicKitchenEnv):
+    def is_success(self):
+        """Check if the task condition is reached."""
+        can_position = self.objects["can"].get_position()
+        surface_z = PBU.stable_z(self.objects["can"].body_id, self.objects["drawer"].body_id)
+        return can_position[2] - surface_z > 0.1
+
+    def _reset_objects(self):
+        z = PBU.stable_z(self.objects["can"].body_id, self.objects["drawer"].body_id)
+        rand_pos = PU.sample_positions_in_box([-0.1, 0.1], [-0.1, 0.1], [z, z])
+        self.objects["can"].set_position_orientation([rand_pos[0], rand_pos[1], z], [0, 0, 0, 1])
+
+
+class TableTop(BaseEnv):
+    def __init__(self, **kwargs):
+        kwargs["robot_base_pose"] = ([0.5, 0.3, 1.2], [0, 0, 1, 0])
+        self.table_id = None
+        super(TableTop, self).__init__(**kwargs)
+
+    def _create_sensors(self):
+        PBU.set_camera(45, -45, 0.5, (0, 0, 0.7))
+        self.camera = Camera(
+            height=self._camera_width,
+            width=self._camera_height,
+            fov=60,
+            near=0.01,
+            far=10.,
+            renderer=p.ER_TINY_RENDERER
+        )
+        self.camera.set_pose_ypr((0, 0, 0.7), distance=0.5, yaw=45, pitch=-45)
+
+    def _create_fixtures(self):
+        p.loadMJCF(os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml"))
+        self.table_id = p.loadURDF(
+            os.path.join(pybullet_data.getDataPath(), "table/table.urdf"),
+            useFixedBase=True,
+            basePosition=(0, 0, 0.0)
+        )
+
+
+class TableTopPour(TableTop):
+    def _create_objects(self):
+        bowl = YCBObject('024_bowl')
+        bowl.load()
+        p.changeDynamics(bowl.body_id, -1, mass=1.0)
+        set_friction(bowl.body_id)
+        self.objects.add_object("bowl", bowl)
+
+        mug = YCBObject('025_mug')
+        mug.load()
+        p.changeDynamics(mug.body_id, -1, mass=1.0)
+        set_friction(mug.body_id)
+        self.objects.add_object("mug", mug)
+
+        self.beads_ids = [PBU.create_sphere(0.01, mass=0.5, color=(0, 0, 1, 0.5)) for _ in range(25)]
+
+    def _reset_objects(self):
+        z = PBU.stable_z(self.objects["bowl"].body_id, self.table_id)
+        rand_pos = PU.sample_positions_in_box([-0.05, 0.05], [-0.05, 0.05], [z, z])
+        self.objects["bowl"].set_position_orientation(rand_pos, PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["mug"].body_id, self.table_id)
+        rand_pos = PU.sample_positions_in_box([-0.05, 0.05], [0.25, 0.35], [z, z])
+        self.objects["mug"].set_position_orientation(rand_pos, PBU.unit_quat())
+
+        beads_pos = self.objects["mug"].get_position()
+        for i, bid in enumerate(self.beads_ids):
+            p.resetBasePositionAndOrientation(bid, beads_pos + np.array([0, 0, z + 0.2 + i * 0.025]), PBU.unit_quat())
+
+    def is_success(self):
+        num_contained = 0
+        bowl_aabb = PBU.get_aabb(self.objects["bowl"].body_id, -1)
+        for bid in self.beads_ids:
+            if PBU.aabb_contains_point(p.getBasePositionAndOrientation(bid)[0], bowl_aabb):
+                num_contained += 1
+        return float(num_contained) / len(self.beads_ids) > 0.5

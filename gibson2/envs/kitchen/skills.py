@@ -5,6 +5,7 @@ from gibson2.envs.kitchen.robots import GRIPPER_CLOSE, GRIPPER_OPEN
 import gibson2.external.pybullet_tools.utils as PBU
 
 
+
 def plan_skill_open_prismatic(
         planner,
         obstacles,
@@ -60,7 +61,9 @@ def plan_skill_grasp(
         grasp_pose,
         reach_distance=0.,
         lift_height=0.,
-        joint_resolutions=None
+        joint_resolutions=None,
+        grasp_speed=0.05,
+        lift_speed=0.05,
 ):
     """
     plan skill for opening articulated object with prismatic joint (e.g., drawers)
@@ -86,39 +89,63 @@ def plan_skill_grasp(
     grasp_path = configuration_path_to_cartesian_path(planner, conf_path)
     grasp_path.append(grasp_pose, gripper_state=GRIPPER_OPEN)
     grasp_path.append_segment([grasp_pose] * 5, gripper_state=GRIPPER_CLOSE)
+    grasp_path = grasp_path.interpolate(pos_resolution=grasp_speed, orn_resolution=np.pi / 8)
 
+    lift_path = CartesianPath()
+    lift_path.append(grasp_pose, gripper_state=GRIPPER_CLOSE)
     lift_pose = (grasp_pose[0][:2] + (grasp_pose[0][2] + lift_height,), grasp_pose[1])
-    grasp_path.append(lift_pose, gripper_state=GRIPPER_CLOSE)
+    lift_path.append(lift_pose, gripper_state=GRIPPER_CLOSE)
+    lift_path = lift_path.interpolate(pos_resolution=lift_speed, orn_resolution=np.pi / 8)
 
-    return grasp_path.interpolate(pos_resolution=0.05, orn_resolution=np.pi / 8)
+    return grasp_path + lift_path
 
 
 def plan_skill_place(
         planner,
         obstacles,
-        place_pose,
+        object_target_pose,
         holding,
         joint_resolutions=None
 ):
     """
-    plan skill for opening articulated object with prismatic joint (e.g., drawers)
+    plan skill for placing an object at a target pose
     Args:
         planner (PlannerRobot): planner
         obstacles (list, tuple): a list obstacle ids
-        place_pose (tuple): pose for grasping the object
+        object_target_pose (tuple): target pose for placing the object
+        holding (int): object id of the object in hand
         joint_resolutions (list, tuple): motion planning joint-space resolution
 
     Returns:
         path (CartesianPath)
     """
-    obstacles = tuple(set(obstacles) - {holding})
-
     confs = planner.plan_joint_path(
-        target_pose=place_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=(holding,))
+        target_pose=object_target_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=(holding,))
     conf_path = ConfigurationPath()
     conf_path.append_segment(confs, gripper_state=GRIPPER_CLOSE)
 
     place_path = configuration_path_to_cartesian_path(planner, conf_path)
-    place_path.append_segment([place_pose] * 5, gripper_state=GRIPPER_OPEN)
+    place_path.append_segment([object_target_pose] * 5, gripper_state=GRIPPER_OPEN)
 
     return place_path.interpolate(pos_resolution=0.05, orn_resolution=np.pi / 8)
+
+
+def plan_skill_pour(
+        planner,
+        obstacles,
+        object_target_pose,
+        pour_angle,
+        holding,
+        joint_resolutions=None
+):
+    grasp_pose = PBU.multiply(PBU.invert(planner.get_eef_position_orientation()), PBU.get_pose(holding))
+    target_pour_pose = PBU.end_effector_from_body(object_target_pose, grasp_pose)
+
+    confs = planner.plan_joint_path(
+        target_pose=target_pour_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=(holding,))
+    conf_path = ConfigurationPath()
+    conf_path.append_segment(confs, gripper_state=GRIPPER_CLOSE)
+
+    pour_path = configuration_path_to_cartesian_path(planner, conf_path)
+    pour_path.append_pause(30)
+    return pour_path.interpolate(pos_resolution=0.025, orn_resolution=np.pi / 8)

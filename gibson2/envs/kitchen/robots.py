@@ -257,9 +257,9 @@ class PlannerRobot(PlannableRobot):
         self.ref_robot = None
         self.plan_objects = plan_objects
 
-    def setup(self, robot, obstacle_ids, hide_planner=True):
+    def setup(self, robot, hide_planner=True):
         self.ref_robot = robot
-        self.disable_collision_with((robot.body_id,) + obstacle_ids)
+        self.disable_collision_with(PBU.get_bodies())
         self.synchronize(robot)
         if hide_planner:
             for l in PBU.get_all_links(self.body_id):
@@ -304,6 +304,9 @@ class PlannerRobot(PlannableRobot):
         if self.plan_objects is not None:
             attachment_ids = tuple([self.plan_objects.get_visual_copy_of(bid).body_id for bid in attachment_ids])
 
+        # don't count attached objects as obstacles when doing motion planning
+        obstacles = tuple([o for o in obstacles if o not in attachment_ids])
+
         with self.collision_enabled_with(obstacles):
             path = PU.plan_joint_path(
                 self.body_id,
@@ -338,7 +341,7 @@ class ConstraintActuatedRobot(Robot):
             parentFramePosition=(0, 0, 0),
             childFramePosition=gripper_base_pose[0],  # gripper base position
         )
-        p.changeConstraint(self.cid, maxForce=50000)
+        p.changeConstraint(self.cid, maxForce=np.inf)
         self.set_eef_position_orientation(*self.get_eef_position_orientation())
 
     def reset_base_position_orientation(self, pos, orn):
