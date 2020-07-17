@@ -141,13 +141,16 @@ class iGibsonMujocoBridge:
         textures = {}
         texture_ids = {}
         for texture in xml_root.iter('texture'):
+            texture_type = texture.get('type')
+
             if texture.get('file') is not None:
                 textures[texture.get('name')] = texture.attrib
-                texture_ids[texture.get('name')] = self.renderer.r.loadTexture(texture.get('file'))
+                texture_ids[texture.get('name')] = (self.renderer.r.loadTexture(texture.get('file')), texture_type)
             else:
                 value_str = texture.get('rgb1').split()
                 value = [float(pp) for pp in value_str]
-                texture_ids[texture.get('name')] = np.array(value)
+                texture_ids[texture.get('name')] = (np.array(value), texture_type)            
+
         if verbose: print("Textures:")
         if verbose: pp.pprint(textures)
 
@@ -158,7 +161,7 @@ class iGibsonMujocoBridge:
             materials[material.get('name')] = material.attrib
             texture_name = material.get('texture')
             if texture_name is not None:
-                texture_id = texture_ids[texture_name]
+                (texture_id, texture_type) = texture_ids[texture_name]
 
                 if type(texture_id) == int: 
                     repeat_str = material.get('texrepeat')
@@ -173,12 +176,13 @@ class iGibsonMujocoBridge:
                     texuniform_str = material.get('texuniform')
                     if texuniform_str is not None:
                         texuniform = (texuniform_str == "true")
+
                     material_objs[material.get('name')] = Material('texture',
-                                                                   texture_id = texture_ids[texture_name], 
-                                                                    repeat_x= repeat[0], repeat_y = repeat[1], texuniform=texuniform)
+                                                                   texture_id = texture_id, 
+                                                                    repeat_x= repeat[0], repeat_y = repeat[1], texuniform=texuniform, texture_type = texture_type)
                 else:                    
                     # This texture may have been a gradient. We don't have a way to do that 
-                    material_objs[material.get('name')] = Material('color', kd= texture_ids[texture_name])
+                    material_objs[material.get('name')] = Material('color', kd= texture_id)
             else:
                 color_str = material.get('rgba').split()
                 color = [float(pp) for pp in color_str]
