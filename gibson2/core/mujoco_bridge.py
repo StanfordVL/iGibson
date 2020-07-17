@@ -170,6 +170,7 @@ class iGibsonMujocoBridge:
                         repeat = [1, 1]
 
                     texuniform = False
+                    texuniform_str = material.get('texuniform')
                     if texuniform_str is not None:
                         texuniform = (texuniform_str == "true")
                     material_objs[material.get('name')] = Material('texture',
