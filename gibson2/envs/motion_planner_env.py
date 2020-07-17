@@ -7,6 +7,7 @@
 
 from gibson2.external.pybullet_tools.utils import control_joints
 from gibson2.external.pybullet_tools.utils import get_joint_positions
+from gibson2.external.pybullet_tools.utils import get_joint_velocities
 from gibson2.external.pybullet_tools.utils import get_max_limits
 from gibson2.external.pybullet_tools.utils import get_min_limits
 from gibson2.external.pybullet_tools.utils import plan_joint_motion
@@ -380,7 +381,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if self.arena == 'push_chairs':
                 self.table_pose = [[-4.3, 0.5, 0.55], -np.pi / 2.0]
             elif self.arena == 'tabletop_manip':
-                self.table_pose = [[-4.25, 0.15, 0.55], -np.pi / 2.0]
+                self.table_pose = [[-4.25, 0.15, 0.4], -np.pi / 2.0]
 
             door_scales = [
                 1.0,
@@ -433,7 +434,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             ]
             self.tabletop_object_name = '036_wood_block'
             self.tabletop_object_scale = 1
-            self.tabletop_object_height = 1.0454690657956134
+            self.tabletop_object_height = 0.91
             self.tabletop_object_dist_tol = 0.05
 
             self.tabletop_object_orn = [
@@ -640,6 +641,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         0, 0, self.table_pose[1]), 'wxyz'))
 
                 self.table = obj
+                # disable collision between table and mesh / floor plane
+                p.setCollisionFilterPair(
+                    self.mesh_id, self.table.body_id, -1, -1, 0)
+                p.setCollisionFilterPair(
+                    1, self.table.body_id, -1, -1, 0)
+
                 self.constraint = \
                     p.createConstraint(
                         0, -1, obj.body_id, -1, p.JOINT_FIXED,
@@ -657,9 +664,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     visual_shape=p.GEOM_CYLINDER,
                     rgba_color=[
                         1, 0, 0, 1],
-                    radius=0.05,
-                    length=0.2,
-                    initial_offset=[0, 0, 0.2 / 2.0])
+                    radius=0.1,
+                    length=0.05,
+                    initial_offset=[0, 0, 0.05 / 2.0])
                 self.simulator.import_object(obj, class_id=90)
                 self.tabletop_target_marker = obj
 
@@ -964,9 +971,21 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         #     waypoints_local_xy = waypoints_img_vu
         #     target_pos_local_xy = target_pos_img_vu
+        ee_pos_local = self.global_to_local(
+            self.robots[0].get_end_effector_position())
+        joint_pos = get_joint_positions(self.robot_id, self.arm_joint_ids)
+        joint_pos_sin = [np.sin(jp) for jp in joint_pos[1:]]
+        joint_pos_cos = [np.cos(jp) for jp in joint_pos[1:]]
+        joint_vel = get_joint_velocities(self.robot_id, self.arm_joint_ids)
 
         additional_states = np.concatenate((waypoints_local_xy,
-                                            target_pos_local_xy))
+                                            target_pos_local_xy,
+                                            ee_pos_local,
+                                            joint_pos,
+                                            joint_pos_sin,
+                                            joint_pos_cos,
+                                            joint_vel,
+                                            ))
         additional_states = additional_states.astype(np.float32)
         # linear_velocity_local,
         # angular_velocity_local))
@@ -1867,10 +1886,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             elif self.arena == 'tabletop_manip':
                 old_state = self.tabletop_object_state
                 new_state = self.tabletop_object.get_position_orientation()
-                old_dist = l2_distance(old_state[0],
-                                       self.tabletop_object_target_pos)
-                new_dist = l2_distance(new_state[0],
-                                       self.tabletop_object_target_pos)
+                old_dist = l2_distance(old_state[0][:2],
+                                       self.tabletop_object_target_pos[:2])
+                new_dist = l2_distance(new_state[0][:2],
+                                       self.tabletop_object_target_pos[:2])
                 self.tabletop_object_state = new_state
 
                 # encourage the tabletop object to approach the target pos
@@ -2141,7 +2160,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.tabletop_object.set_position_orientation(
                 self.tabletop_object_initial_pos, self.tabletop_object_orn)
             self.tabletop_target_marker.set_position(
-                self.tabletop_object_target_pos)
+                [self.tabletop_object_target_pos[0],
+                 self.tabletop_object_target_pos[1],
+                 self.tabletop_object_height - 0.1]
+            )
             self.tabletop_object_state = (self.tabletop_object_initial_pos,
                                           self.tabletop_object_orn)
 
@@ -2184,8 +2206,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         elif self.arena == 'tabletop_manip':
             dist = l2_distance(
-                self.tabletop_object.get_position_orientation()[0],
-                self.tabletop_object_target_pos)
+                self.tabletop_object.get_position_orientation()[0][:2],
+                self.tabletop_object_target_pos[:2])
             if dist < self.tabletop_object_dist_tol:
                 done = True
                 info['success'] = True
@@ -2197,8 +2219,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def compute_metrics(self, info):
         if self.arena == 'tabletop_manip':
-            dist_to_goal = l2_distance(self.tabletop_object.get_position(),
-                                       self.tabletop_object_target_pos)
+            dist_to_goal = l2_distance(self.tabletop_object.get_position()[:2],
+                                       self.tabletop_object_target_pos[:2])
         else:
             dist_to_goal = self.get_geodesic_potential()
         self.episode_metrics['dist_to_goal'] = dist_to_goal
@@ -2266,6 +2288,10 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
                  arena=None,
                  log_dir=None,
                  ):
+        if arena == 'tabletop_manip':
+            # needs more accurate physics simulation
+            physics_timestep = min(physics_timestep, 1 / 60.0)
+
         super(MotionPlanningBaseArmContinuousEnv, self).__init__(
             config_file,
             model_id=model_id,
@@ -2295,6 +2321,10 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
                 dtype=np.float32)
         else:
             self.action_space = self.robots[0].action_space
+
+        if self.arena == 'tabletop_manip':
+            self.robots[0].arm_default_joint_positions = (
+                0.30322468280792236, 0, 0, 0, 0.25, 0, 0, 0)
 
     def step(self, action):
         if self.arena == 'random_nav':
@@ -2419,12 +2449,12 @@ if __name__ == '__main__':
                                            action_timestep=1 / 500.0,
                                            physics_timestep=1 / 500.0,
                                            arena=args.arena,
-                                           action_map=True,
+                                           action_map=False,
                                            channel_first=True,
                                            draw_path_on_map=False,
                                            draw_objs_on_map=False,
                                            rotate_occ_grid=False,
-                                           randomize_object_pose=False,
+                                           randomize_object_pose=True,
                                            )
     elif args.action_type == 'low-level':
         nav_env = MotionPlanningBaseArmContinuousEnv(config_file=args.config,
@@ -2446,13 +2476,13 @@ if __name__ == '__main__':
         episode_return = 0.0
         start = time.time()
         state = nav_env.reset()
-        # embed()
+        embed()
         for i in range(10000000):
             print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
+            # embed()
             state, reward, done, info = nav_env.step(action)
             episode_return += reward
-            # embed()
             print('Reward:', reward)
             # embed()
             # time.sleep(0.05)

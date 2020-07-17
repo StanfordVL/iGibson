@@ -544,37 +544,8 @@ class Fetch(LocomotorRobot):
 
     def robot_specific_reset(self):
         super(Fetch, self).robot_specific_reset()
-
-        # roll the arm to its body
-        robot_id = self.robot_ids[0]
-        arm_joints = joints_from_names(robot_id,
-                                       [
-                                           'torso_lift_joint',
-                                           'shoulder_pan_joint',
-                                           'shoulder_lift_joint',
-                                           'upperarm_roll_joint',
-                                           'elbow_flex_joint',
-                                           'forearm_roll_joint',
-                                           'wrist_flex_joint',
-                                           'wrist_roll_joint'
-                                       ])
-
-        # default position
-        # rest_position = (0.02,
-        #                  np.pi / 2.0 - 0.4,
-        #                  np.pi / 2.0 - 0.1,
-        #                  -0.4,
-        #                  np.pi / 2.0 + 0.1,
-        #                  0.0, np.pi / 2.0,
-        #                  0.0)
-
-        # a better pose to initiate manipulation
-        rest_position = (0.30322468280792236, -1.414019864768982,
-                         1.5178184935241699, 0.8189625336474915,
-                         2.200358942909668, 2.9631312579803466,
-                         -1.2862852996643066, 0.0008453550418615341)
-
-        set_joint_positions(robot_id, arm_joints, rest_position)
+        set_joint_positions(self.robot_ids[0], self.arm_joints,
+                            self.arm_default_joint_positions)
 
     def get_end_effector_position(self):
         return self.parts['gripper_link'].get_position()
@@ -599,6 +570,32 @@ class Fetch(LocomotorRobot):
         p.setCollisionFilterPair(robot_id, robot_id, 0, 22, 0)
         p.setCollisionFilterPair(robot_id, robot_id, 0, 1, 0)
         p.setCollisionFilterPair(robot_id, robot_id, 0, 2, 0)
+
+        # self.arm_default_joint_positions = (0.02,
+        #                                     np.pi / 2.0 - 0.4,
+        #                                     np.pi / 2.0 - 0.1,
+        #                                     -0.4,
+        #                                     np.pi / 2.0 + 0.1,
+        #                                     0.0, np.pi / 2.0,
+        #                                     0.0)
+
+        # a better pose to initiate manipulation
+        self.arm_default_joint_positions = (
+            0.30322468280792236, -1.414019864768982,
+            1.5178184935241699, 0.8189625336474915,
+            2.200358942909668, 2.9631312579803466,
+            -1.2862852996643066, 0.0008453550418615341)
+
+        self.arm_joints = joints_from_names(robot_id,
+                                            ['torso_lift_joint',
+                                             'shoulder_pan_joint',
+                                             'shoulder_lift_joint',
+                                             'upperarm_roll_joint',
+                                             'elbow_flex_joint',
+                                             'forearm_roll_joint',
+                                             'wrist_flex_joint',
+                                             'wrist_roll_joint'
+                                             ])
 
         return ids
 
