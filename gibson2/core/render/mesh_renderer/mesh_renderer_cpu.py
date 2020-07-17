@@ -296,6 +296,7 @@ class Material(object):
                  repeat_x=1,
                  repeat_y=1,
                  texuniform=False,
+                 texture_type="2d"
                  ):
         self.type = type
         self.kd = kd
@@ -303,13 +304,14 @@ class Material(object):
         self.repeat_x = repeat_x
         self.repeat_y = repeat_y
         self.texuniform = texuniform
+        self.texture_type = texture_type
 
     def is_texture(self):
         return self.type == 'texture'
 
     def __str__(self):
-        return "Material(type: {}, texture_id: {}, color: {}, repeat: {}, {}), texuniform: {}".format(self.type, self.texture_id,
-                                                                      self.kd, self.repeat_x, self.repeat_y, self.texuniform)
+        return "Material(type: {}, texture_id: {}, color: {}, repeat: {}, {}), texuniform: {}, type: {}".format(self.type, self.texture_id,
+                                                                      self.kd, self.repeat_x, self.repeat_y, self.texuniform, self.texture_type)
 
     def __repr__(self):
         return self.__str__()
@@ -495,6 +497,7 @@ class MeshRenderer(object):
 
         repeat_x = 1
         repeat_y = 1
+        texuniform = False
 
         if input_material is None:
             for i, material in enumerate(materials): # Go over all materials in the obj file
@@ -516,8 +519,7 @@ class MeshRenderer(object):
             print("Using input material")
             repeat_x = input_material.repeat_x
             repeat_y = input_material.repeat_y
-            print(repeat_x)
-            print(repeat_y)
+            texuniform = input_material.texuniform
             self.materials_mapping[num_existing_mats] = input_material
             num_added_materials = 1
 
@@ -530,8 +532,13 @@ class MeshRenderer(object):
         VAO_ids = []
         vertex_position = np.array(attrib.vertices).reshape((len(attrib.vertices)//3, 3))
         vertex_normal = np.array(attrib.normals).reshape((len(attrib.normals)//3, 3))
-        #vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
-        vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2)) * np.array([repeat_x, repeat_y])
+        vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
+
+        if texuniform and input_material.texture_type == "2d":
+            repeat_x = repeat_x * (np.max(vertex_texcoord[:,0]) - np.min(vertex_texcoord[:,0])) * scale[0]
+            repeat_y = repeat_y * (np.max(vertex_texcoord[:,1]) - np.min(vertex_texcoord[:,1])) * scale[1]
+
+        vertex_texcoord = vertex_texcoord * np.array([repeat_x, repeat_y])
 
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
