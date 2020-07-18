@@ -122,7 +122,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             logger = logging.getLogger('log')
             logger.setLevel(logging.INFO)
 
-            filename = ''.join(random.choices(
+            filename = 'envlog-'+''.join(random.choices(
                 string.ascii_uppercase + string.digits, k=8))
             logpath = os.path.join(self.log_dir, filename + '.log')
 
