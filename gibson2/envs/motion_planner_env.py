@@ -43,6 +43,7 @@ import logging
 import string
 import random
 import collections
+import copy
 
 
 class MotionPlanningBaseArmEnv(NavigateRandomEnv):
@@ -382,7 +383,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.table_pose = [[-4.25, 0.15, 0.4], -np.pi / 2.0]
 
             door_scales = [
-                1.0,
+                1.3,
                 1.0,
                 1.0
             ]
@@ -422,13 +423,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.cabinet_drawer_pose_transform = [
                 [
                     0.0,
-                    np.array([0, 0, 0]),
-                    np.array([0, 0, 0]),
+                    np.array([-0.5, 0, 0]),
+                    np.array([-0.5, 0, 0]),
                 ],
                 [
                     np.pi / 2.0,
                     np.array([-4.2, -4.5, 0]),
                     np.array([-4.2, -4.5, 0]),
+                ],
+                [
+                    -np.pi / 2.0,
+                    np.array([-4.3, 5.5, 0]),
+                    np.array([-4.3, 5.5, 0]),
                 ]
             ]
             self.tabletop_object_name = '036_wood_block'
@@ -2042,17 +2048,20 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             objs = self.cabinet_drawers
             obj_poses = self.cabinet_drawer_poses
             num_obj_poses = len(obj_poses)
-            num_transform = len(transform)
-            slots = list(range(num_obj_poses * num_transform))
-            bottom_slots = []
-            for i in range(num_transform):
-                for j in range(num_obj_poses):
-                    # half of the object poses are in the bottom row
-                    if j < (num_obj_poses // 2):
-                        bottom_slots.append(i * num_obj_poses + j)
+            slots = [
+                1, 2, 4, 5,
+                6, 7, 8, 9, 10, 11,
+                12, 15,
+            ]
+            bottom_slots = [
+                1, 2,
+                6, 7, 8,
+                12
+            ]
             pre_selected = [1, 2, 4, 5]
             for i, obj in enumerate(self.cabinet_drawers):
                 if self.randomize_object_pose:
+                    # the first and second drawer cabinets stay at the bottom
                     if i < 2:
                         selected_slot = np.random.choice(bottom_slots)
                     else:
@@ -2062,7 +2071,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 selected_pose = selected_slot % num_obj_poses
                 selected_transform = selected_slot // num_obj_poses
 
-                obj_pose = obj_poses[selected_pose]
+                obj_pose = copy.deepcopy(obj_poses[selected_pose])
+                # dirty hack to make drawer cabinets attached to the wall
+                if i < 2:
+                    obj_pose[0][1] -= 0.2
                 rot, trans_low, trans_high = transform[selected_transform]
                 trans = np.random.uniform(trans_low, trans_high)
 
