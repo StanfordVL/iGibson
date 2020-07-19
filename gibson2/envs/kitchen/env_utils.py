@@ -140,9 +140,9 @@ def set_collision_between(obj1_id, obj2_id, collision):
     """
     Set collision behavior between two objects
     Args:
-        obj1_id: body id
-        obj2_id: body id
-        collision: 0 for no collision, 1 for collision
+        obj1_id (int): body id
+        obj2_id (int): body id
+        collision (int): 0 for no collision, 1 for collision
     """
     for l1 in PBU.get_all_links(obj1_id):
         for l2 in PBU.get_all_links(obj2_id):
@@ -153,7 +153,7 @@ def change_object_rgba(obj_id, rgba, links=None):
     """
     Change rgba color of an object
     Args:
-        obj_id: (int) body id
+        obj_id (int): body id
         rgba (tuple): (r, g, b, a) each in range [0, 1]
         links (tuple, list): links for which color should be changed. Set to None to change for all links
     """

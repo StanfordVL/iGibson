@@ -68,7 +68,7 @@ def get_demo_can_to_drawer(env):
     )
     path = skills.plan_skill_open_prismatic(
         env.planner,
-        obstacles=env.objects.body_ids,
+        obstacles=env.obstacles,
         grasp_pose=drawer_grasp_pose,
         reach_distance=0.05,
         retract_distance=0.25,
@@ -83,7 +83,7 @@ def get_demo_can_to_drawer(env):
     can_grasp_pose = ((0.03, -0.005, 1.06), (0, 0, 1, 0))
     path = skills.plan_skill_grasp(
         env.planner,
-        obstacles=env.objects.body_ids,
+        obstacles=env.obstacles,
         grasp_pose=can_grasp_pose,
         reach_distance=0.05,
         lift_height=0.1,
@@ -98,7 +98,7 @@ def get_demo_can_to_drawer(env):
     can_drop_pose = ((0.469, 0, 0.952), (0, 0, 1, 0))
     path = skills.plan_skill_place(
         env.planner,
-        obstacles=env.objects.body_ids,
+        obstacles=env.obstacles,
         holding=env.objects["can"].body_id,
         object_target_pose=can_drop_pose,
         joint_resolutions=(0.05, 0.05, 0.05, 0.05, 0.05, 0.05)
@@ -130,7 +130,7 @@ def get_demo_lift_can(env):
     can_grasp_pose = (tuple(can_pos.tolist()), (0, 0, 1, 0))
     path = skills.plan_skill_grasp(
         env.planner,
-        obstacles=env.objects.body_ids,
+        obstacles=env.obstacles,
         grasp_pose=can_grasp_pose,
         reach_distance=0.05,
         lift_height=0.2,
@@ -156,12 +156,12 @@ def get_demo_pour(env):
     all_rewards = []
     all_obs = []
 
-    mug_pos = np.array(env.objects["mug"].get_position())
+    mug_pos = np.array(env.objects["mug_red"].get_position())
     mug_pos[0] += 0.02
     mug_grasp_pose = (tuple(mug_pos.tolist()), (0, 0, 1, 0))
     path = skills.plan_skill_grasp(
         env.planner,
-        obstacles=env.objects.body_ids,
+        obstacles=env.obstacles,
         grasp_pose=mug_grasp_pose,
         reach_distance=0.05,
         lift_height=0.1,
@@ -174,18 +174,68 @@ def get_demo_pour(env):
     all_rewards.append(rewards)
     all_obs.append(obs)
 
-    bowl_pos = np.array(env.objects["bowl"].get_position())
-    pour_pos = bowl_pos + np.array([-0.05, 0.0, 0.3])
-    pour_pose = (tuple(pour_pos.tolist()), PBU.multiply_quats(T.quaternion_about_axis(np.pi * 2 / 3, (1, 0, 0)), env.objects["mug"].get_orientation()))
+    bowl_pos = np.array(env.objects["bowl_red"].get_position())
+    pour_pos = bowl_pos + np.array([-0.05, 0.0, 0.2])
+    pour_pose = (tuple(pour_pos.tolist()), PBU.multiply_quats(T.quaternion_about_axis(np.pi * 2 / 3, (1, 0, 0)), env.objects["mug_red"].get_orientation()))
     path = skills.plan_skill_pour(
         env.planner,
-        obstacles=env.objects.body_ids,
+        obstacles=env.obstacles,
         object_target_pose=pour_pose,
         pour_angle=np.pi / 4,
-        holding=env.objects["mug"].body_id,
+        holding=env.objects["mug_red"].body_id,
         joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2),
     )
     states, actions, rewards, obs = execute_planned_path(env, path)
+    all_states.append(states)
+    all_actions.append(actions)
+    all_rewards.append(rewards)
+    all_obs.append(obs)
+
+    all_states = np.concatenate(all_states, axis=0)
+    all_actions = np.concatenate(all_actions, axis=0)
+    all_rewards = np.concatenate(all_rewards, axis=0)
+    all_obs = dict((k, np.concatenate([all_obs[i][k] for i in range(len(all_obs))], axis=0)) for k in all_obs[0])
+    return all_states, all_actions, all_rewards, all_obs
+
+
+def get_demo_arrange(env):
+    env.reset()
+    all_states = []
+    all_actions = []
+    all_rewards = []
+    all_obs = []
+
+    can_pos = np.array(env.objects["can"].get_position())
+    can_pos[0] += 0.02
+    can_grasp_pose = (tuple(can_pos.tolist()), (0, 0, 1, 0))
+    path = skills.plan_skill_grasp(
+        env.planner,
+        obstacles=env.obstacles,
+        grasp_pose=can_grasp_pose,
+        reach_distance=0.05,
+        lift_height=0.4,
+        joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2)
+    )
+    states, actions, rewards, obs = execute_planned_path(env, path)
+    all_states.append(states)
+    all_actions.append(actions)
+    all_rewards.append(rewards)
+    all_obs.append(obs)
+
+    target_pos = np.array(env.objects["target"].get_position())
+    target_pos[2] = PBU.stable_z(env.objects["can"].body_id, env.objects["target"].body_id)
+    can_place_pose = (target_pos, env.objects["target"].get_orientation())
+
+    path = skills.plan_skill_place(
+        env.planner,
+        obstacles=env.obstacles,
+        object_target_pose=can_place_pose,
+        holding=env.objects["can"].body_id,
+        joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2)
+    )
+
+    states, actions, rewards, obs = execute_planned_path(env, path)
+
     all_states.append(states)
     all_actions.append(actions)
     all_rewards.append(rewards)
@@ -206,7 +256,7 @@ def create_dataset(args):
         num_sim_per_step=5,
         sim_time_step=1./240.
     )
-    env = env_factory("TableTopPour", **env_kwargs, use_planner=True, hide_planner=True, use_gui=args.gui)
+    env = env_factory("TableTopArrange", **env_kwargs, use_planner=True, hide_planner=True, use_gui=args.gui)
 
     if os.path.exists(args.file):
         os.remove(args.file)
@@ -224,7 +274,7 @@ def create_dataset(args):
     total_i = 0
     while success_i < args.n:
         try:
-            states, actions, rewards, all_obs = get_demo_pour(env)
+            states, actions, rewards, all_obs = get_demo_arrange(env)
         except PU.NoPlanException as e:
             print(e)
             continue

@@ -119,13 +119,15 @@ def plan_skill_place(
     Returns:
         path (CartesianPath)
     """
+    grasp_pose = PBU.multiply(PBU.invert(planner.ref_robot.get_eef_position_orientation()), PBU.get_pose(holding))
+    target_place_pose = PBU.end_effector_from_body(object_target_pose, grasp_pose)
+
     confs = planner.plan_joint_path(
-        target_pose=object_target_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=(holding,))
+        target_pose=target_place_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=(holding,))
     conf_path = ConfigurationPath()
     conf_path.append_segment(confs, gripper_state=GRIPPER_CLOSE)
 
     place_path = configuration_path_to_cartesian_path(planner, conf_path)
-    place_path.append_segment([object_target_pose] * 5, gripper_state=GRIPPER_OPEN)
 
     return place_path.interpolate(pos_resolution=0.05, orn_resolution=np.pi / 8)
 
@@ -138,14 +140,16 @@ def plan_skill_pour(
         holding,
         joint_resolutions=None
 ):
-    grasp_pose = PBU.multiply(PBU.invert(planner.get_eef_position_orientation()), PBU.get_pose(holding))
+    grasp_pose = PBU.multiply(PBU.invert(planner.ref_robot.get_eef_position_orientation()), PBU.get_pose(holding))
     target_pour_pose = PBU.end_effector_from_body(object_target_pose, grasp_pose)
 
     confs = planner.plan_joint_path(
         target_pose=target_pour_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=(holding,))
+
     conf_path = ConfigurationPath()
     conf_path.append_segment(confs, gripper_state=GRIPPER_CLOSE)
 
     pour_path = configuration_path_to_cartesian_path(planner, conf_path)
+    pour_path = pour_path.interpolate(pos_resolution=0.025, orn_resolution=np.pi / 4)
     pour_path.append_pause(30)
-    return pour_path.interpolate(pos_resolution=0.025, orn_resolution=np.pi / 8)
+    return pour_path

@@ -341,7 +341,7 @@ class ConstraintActuatedRobot(Robot):
             parentFramePosition=(0, 0, 0),
             childFramePosition=gripper_base_pose[0],  # gripper base position
         )
-        p.changeConstraint(self.cid, maxForce=np.inf)
+        p.changeConstraint(self.cid, maxForce=500)
         self.set_eef_position_orientation(*self.get_eef_position_orientation())
 
     def reset_base_position_orientation(self, pos, orn):

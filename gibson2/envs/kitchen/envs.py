@@ -6,12 +6,13 @@ import pybullet as p
 import pybullet_data
 import gibson2
 
-from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject
+from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject, Object
 import gibson2.external.pybullet_tools.transformations as T
 
 from gibson2.envs.kitchen.camera import Camera
 from gibson2.envs.kitchen.robots import Arm, ConstraintActuatedRobot, PlannerRobot, Robot, Gripper
-from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articulated_object_dynamics, pose_to_array
+from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articulated_object_dynamics, pose_to_array, \
+    change_object_rgba
 import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.envs.kitchen.plan_utils as PU
 
@@ -42,6 +43,7 @@ class BaseEnv(object):
         self._camera_width = camera_width
         self._camera_height = camera_height
         self.objects = ObjectBank()
+        self.fixtures = ObjectBank()
         self.object_visuals = []
         self.planner = None
 
@@ -195,6 +197,10 @@ class BaseEnv(object):
             "link_relative_positions": rel_link_poses[:, :3]
         }
 
+    @property
+    def obstacles(self):
+        return self.objects.body_ids + self.fixtures.body_ids
+
     def set_goal(self, **kwargs):
         """Set env target with external specification"""
         pass
@@ -221,6 +227,7 @@ class BasicKitchenEnv(BaseEnv):
         floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
         p.loadMJCF(floor)
 
+    def _create_objects(self):
         drawer = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf'))
         drawer.load()
         drawer.set_position([0, 0, 0.5])
@@ -233,7 +240,6 @@ class BasicKitchenEnv(BaseEnv):
         # set_articulated_object_dynamics(cabinet.body_id)
         # self.objects.add_object("cabinet", cabinet)
 
-    def _create_objects(self):
         can = YCBObject('005_tomato_soup_can')
         can.load()
         p.changeDynamics(can.body_id, -1, mass=1.0)
@@ -273,11 +279,10 @@ class BasicKitchenLiftCan(BasicKitchenEnv):
 class TableTop(BaseEnv):
     def __init__(self, **kwargs):
         kwargs["robot_base_pose"] = ([0.5, 0.3, 1.2], [0, 0, 1, 0])
-        self.table_id = None
         super(TableTop, self).__init__(**kwargs)
 
     def _create_sensors(self):
-        PBU.set_camera(45, -45, 0.5, (0, 0, 0.7))
+        PBU.set_camera(45, -45, 0.8, (0, 0, 0.7))
         self.camera = Camera(
             height=self._camera_width,
             width=self._camera_height,
@@ -286,50 +291,114 @@ class TableTop(BaseEnv):
             far=10.,
             renderer=p.ER_TINY_RENDERER
         )
-        self.camera.set_pose_ypr((0, 0, 0.7), distance=0.5, yaw=45, pitch=-45)
+        self.camera.set_pose_ypr((0, 0, 0.7), distance=0.8, yaw=45, pitch=-45)
 
     def _create_fixtures(self):
         p.loadMJCF(os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml"))
-        self.table_id = p.loadURDF(
+        table_id = p.loadURDF(
             os.path.join(pybullet_data.getDataPath(), "table/table.urdf"),
             useFixedBase=True,
             basePosition=(0, 0, 0.0)
         )
+        table = Object()
+        table.loaded = True
+        table.body_id = table_id
+        self.fixtures.add_object("table", table)
 
 
 class TableTopPour(TableTop):
     def _create_objects(self):
         bowl = YCBObject('024_bowl')
         bowl.load()
-        p.changeDynamics(bowl.body_id, -1, mass=1.0)
+        p.changeDynamics(bowl.body_id, -1, mass=10.0)
         set_friction(bowl.body_id)
-        self.objects.add_object("bowl", bowl)
+        self.objects.add_object("bowl_red", bowl)
+
+        bowl = YCBObject('024_bowl')
+        bowl.load()
+        p.changeDynamics(bowl.body_id, -1, mass=1.0)
+        change_object_rgba(bowl.body_id, (0, 0, 1, 1))
+        set_friction(bowl.body_id)
+        self.objects.add_object("bowl_blue", bowl)
 
         mug = YCBObject('025_mug')
         mug.load()
         p.changeDynamics(mug.body_id, -1, mass=1.0)
         set_friction(mug.body_id)
-        self.objects.add_object("mug", mug)
+        self.objects.add_object("mug_red", mug)
 
-        self.beads_ids = [PBU.create_sphere(0.01, mass=0.5, color=(0, 0, 1, 0.5)) for _ in range(25)]
+        mug = YCBObject('025_mug')
+        mug.load()
+        p.changeDynamics(mug.body_id, -1, mass=1.0)
+        change_object_rgba(mug.body_id, (0, 0, 1, 1))
+        set_friction(mug.body_id)
+        self.objects.add_object("mug_blue", mug)
+
+        self.blue_beads_ids = [PBU.create_sphere(0.01, mass=0.5, color=(0, 0, 1, 0.8)) for _ in range(10)]
+        self.red_beads_ids = [PBU.create_sphere(0.01, mass=0.5, color=(1, 0, 0, 0.8)) for _ in range(10)]
 
     def _reset_objects(self):
-        z = PBU.stable_z(self.objects["bowl"].body_id, self.table_id)
-        rand_pos = PU.sample_positions_in_box([-0.05, 0.05], [-0.05, 0.05], [z, z])
-        self.objects["bowl"].set_position_orientation(rand_pos, PBU.unit_quat())
+        z = PBU.stable_z(self.objects["bowl_red"].body_id, self.fixtures["table"].body_id)
+        self.objects["bowl_red"].set_position_orientation(
+            PU.sample_positions_in_box([-0.25, -0.15], [-0.05, 0.05], [z, z]), PBU.unit_quat())
+        self.objects["bowl_blue"].set_position_orientation(
+            PU.sample_positions_in_box([-0.25, -0.15], [0.25, 0.35], [z, z]), PBU.unit_quat())
+        # [0.15, 0.25], [-0.05, 0.05]
+        z = PBU.stable_z(self.objects["mug_red"].body_id, self.fixtures["table"].body_id)
+        self.objects["mug_red"].set_position_orientation(
+            PU.sample_positions_in_box([0.15, 0.25], [-0.05, 0.05], [z, z]), PBU.unit_quat())
+        self.objects["mug_blue"].set_position_orientation(
+            PU.sample_positions_in_box([0.15, 0.25], [0.25, 0.35], [z, z]), PBU.unit_quat())
 
-        z = PBU.stable_z(self.objects["mug"].body_id, self.table_id)
-        rand_pos = PU.sample_positions_in_box([-0.05, 0.05], [0.25, 0.35], [z, z])
-        self.objects["mug"].set_position_orientation(rand_pos, PBU.unit_quat())
-
-        beads_pos = self.objects["mug"].get_position()
-        for i, bid in enumerate(self.beads_ids):
+        beads_pos = self.objects["mug_red"].get_position()
+        for i, bid in enumerate(self.red_beads_ids):
+            p.resetBasePositionAndOrientation(bid, beads_pos + np.array([0, 0, z + 0.2 + i * 0.025]), PBU.unit_quat())
+        beads_pos = self.objects["mug_blue"].get_position()
+        for i, bid in enumerate(self.blue_beads_ids):
             p.resetBasePositionAndOrientation(bid, beads_pos + np.array([0, 0, z + 0.2 + i * 0.025]), PBU.unit_quat())
 
     def is_success(self):
         num_contained = 0
-        bowl_aabb = PBU.get_aabb(self.objects["bowl"].body_id, -1)
-        for bid in self.beads_ids:
+        bowl_aabb = PBU.get_aabb(self.objects["bowl_red"].body_id, -1)
+        for bid in self.red_beads_ids:
             if PBU.aabb_contains_point(p.getBasePositionAndOrientation(bid)[0], bowl_aabb):
                 num_contained += 1
-        return float(num_contained) / len(self.beads_ids) > 0.5
+        return float(num_contained) / len(self.red_beads_ids) > 0.5
+
+
+class TableTopArrange(TableTop):
+    def _create_objects(self):
+        can = YCBObject('005_tomato_soup_can')
+        can.load()
+        p.changeDynamics(can.body_id, -1, mass=1.0)
+        set_friction(can.body_id)
+        self.objects.add_object("can", can)
+
+        target_id = PBU.create_box(0.15, 0.15, 0.01, mass=100, color=(0, 1, 0, 1))
+        target = Object()
+        target.body_id = target_id
+        target.loaded = True
+        self.objects.add_object("target", target)
+
+        station_id = PBU.create_box(0.15, 0.15, 0.01, mass=100, color=(0, 0, 1, 1))
+        station = Object()
+        station.body_id = station_id
+        station.loaded = True
+        self.objects.add_object("station", station)
+
+    def _reset_objects(self):
+        z = PBU.stable_z(self.objects["can"].body_id, self.fixtures["table"].body_id)
+        self.objects["can"].set_position_orientation(
+            PU.sample_positions_in_box([-0.1, 0.1], [-0.3, -0.1], [z, z]), PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["target"].body_id, self.fixtures["table"].body_id)
+        self.objects["target"].set_position_orientation(
+            PU.sample_positions_in_box([-0.05, 0.05], [0.3, 0.2], [z, z]), PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["station"].body_id, self.fixtures["table"].body_id)
+        self.objects["station"].set_position_orientation(
+            PU.sample_positions_in_box([-0.3, -0.2], [0.05, 0.15], [z, z]), PBU.unit_quat())
+
+    def is_success(self):
+        on_top = PBU.is_center_on_aabb(self.objects["can"].body_id, PBU.get_aabb(self.objects["target"].body_id))
+        return on_top
