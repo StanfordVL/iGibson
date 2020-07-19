@@ -832,7 +832,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             occupancy_range=self.occupancy_range,
             grid_resolution=self.grid_resolution,
             robot_footprint_radius_in_map=self.robot_footprint_radius_in_map,
-            obstacles=[])
+            obstacles=[],
+            algorithm='birrt')
 
         return path
 
@@ -1391,9 +1392,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             arm_joint_positions,
             disabled_collisions=disabled_collisions,
             self_collisions=self_collisions,
-            obstacles=mp_obstacles)
+            obstacles=mp_obstacles,
+            algorithm='birrt')
         self.episode_metrics['arm_mp_time'] += time.time() - plan_arm_start
-
         if arm_path is not None:
             # print('arm mp succeeds')
             if self.mode == 'gui':

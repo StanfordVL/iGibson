@@ -17,9 +17,11 @@ from itertools import product, combinations, count
 
 from .transformations import quaternion_from_matrix, unit_vector
 
-directory = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(directory, '../motion'))
-from motion_planners.rrt_connect import birrt, direct_path
+from gibson2.external.motion.motion_planners.rrt_connect import birrt, direct_path
+from gibson2.external.motion.motion_planners.rrt_star import rrt_star
+from gibson2.external.motion.motion_planners.lazy_prm import lazy_prm_replan_loop
+from gibson2.external.motion.motion_planners.rrt import rrt
+
 #from ..motion.motion_planners.rrt_connect import birrt, direct_path
 import cv2
 
@@ -2526,7 +2528,7 @@ def check_initial_end(start_conf, end_conf, collision_fn):
 
 def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
                       self_collisions=True, disabled_collisions=set(),
-                      weights=None, resolutions=None, max_distance=MAX_DISTANCE, custom_limits={}, **kwargs):
+                      weights=None, resolutions=None, max_distance=MAX_DISTANCE, custom_limits={}, algorithm='birrt', **kwargs):
 
     assert len(joints) == len(end_conf)
     sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
@@ -2539,8 +2541,19 @@ def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
 
     if not check_initial_end(start_conf, end_conf, collision_fn):
         return None
-    return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
-    #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
+    if algorithm == 'direct':
+        return direct_path(start_conf, end_conf, extend_fn, collision_fn)
+    elif algorithm == 'birrt':
+        return birrt(start_conf, end_conf, distance_fn,
+                 sample_fn, extend_fn, collision_fn, **kwargs)
+    elif algorithm == 'rrt_star':
+        return rrt_star(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, max_iterations=5000, **kwargs)
+    elif algorithm == 'rrt':
+        return rrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, iterations=500, **kwargs)
+    elif algorithm == 'lazy_prm':
+        return lazy_prm_replan_loop(start_conf, end_conf, sample_fn, extend_fn, collision_fn, [500,2000,5000],**kwargs)
+    else:
+        return None
 
 def plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn, **kwargs):
     # TODO: cost metric based on total robot movement (encouraging greater distances possibly)
@@ -2703,8 +2716,8 @@ def plan_base_motion(body, end_conf, base_limits, obstacles=[], direct=False,
 
 
 def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, grid_resolution, robot_footprint_radius_in_map,
-                        obstacles=[], direct=False, weights=1 * np.ones(3), resolutions=0.05 * np.ones(3),
-                        max_distance=MAX_DISTANCE, min_goal_dist = 0.02, **kwargs):
+                        obstacles=[], weights=1 * np.ones(3), resolutions=0.05 * np.ones(3),
+                        max_distance=MAX_DISTANCE, min_goal_dist = 0.02, algorithm='birrt', **kwargs):
     def sample_fn():
         x, y = np.random.uniform(*base_limits)
         theta = np.random.uniform(*CIRCULAR_LIMITS)
@@ -2779,12 +2792,19 @@ def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, gr
     if collision_fn(end_conf):
         # print("Warning: end configuration is in collision")
         return None
-    if direct:
+    if algorithm == 'direct':
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
-    return birrt(start_conf, end_conf, distance_fn,
+    elif algorithm == 'birrt':
+        return birrt(start_conf, end_conf, distance_fn,
                  sample_fn, extend_fn, collision_fn, **kwargs)
-
-
+    elif algorithm == 'rrt_star':
+        return rrt_star(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, max_iterations=5000, **kwargs)
+    elif algorithm == 'rrt':
+        return rrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, iterations=5000, **kwargs)
+    elif algorithm == 'lazy_prm':
+        return lazy_prm_replan_loop(start_conf, end_conf, sample_fn, extend_fn, collision_fn, [500,2000,5000],**kwargs)
+    else:
+        return None
 
 #####################################
 
