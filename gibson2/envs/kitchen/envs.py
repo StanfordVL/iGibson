@@ -380,12 +380,6 @@ class TableTopArrange(TableTop):
         target.loaded = True
         self.objects.add_object("target", target)
 
-        station_id = PBU.create_box(0.15, 0.15, 0.01, mass=100, color=(0, 0, 1, 1))
-        station = Object()
-        station.body_id = station_id
-        station.loaded = True
-        self.objects.add_object("station", station)
-
     def _reset_objects(self):
         z = PBU.stable_z(self.objects["can"].body_id, self.fixtures["table"].body_id)
         self.objects["can"].set_position_orientation(
@@ -395,10 +389,6 @@ class TableTopArrange(TableTop):
         self.objects["target"].set_position_orientation(
             PU.sample_positions_in_box([-0.05, 0.05], [0.3, 0.2], [z, z]), PBU.unit_quat())
 
-        z = PBU.stable_z(self.objects["station"].body_id, self.fixtures["table"].body_id)
-        self.objects["station"].set_position_orientation(
-            PU.sample_positions_in_box([-0.3, -0.2], [0.05, 0.15], [z, z]), PBU.unit_quat())
-
     def is_success(self):
-        on_top = PBU.is_center_on_aabb(self.objects["can"].body_id, PBU.get_aabb(self.objects["target"].body_id))
+        on_top = PBU.is_placement(self.objects["can"].body_id, self.objects["target"].body_id, below_epsilon=1e-2)
         return on_top

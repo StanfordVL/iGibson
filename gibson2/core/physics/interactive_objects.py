@@ -16,6 +16,9 @@ class Object(object):
         self.loaded = True
         return self.body_id
 
+    def get_position_orientation(self):
+        return p.getBasePositionAndOrientation(self.body_id)
+
     def get_position(self):
         pos, _ = p.getBasePositionAndOrientation(self.body_id)
         return pos

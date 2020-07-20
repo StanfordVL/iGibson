@@ -7,8 +7,18 @@ import gibson2.external.pybullet_tools.transformations as T
 import gibson2.external.pybullet_tools.utils as PBU
 
 
+EEF_GRASP_FRAME = ((1, 0, 0), PBU.unit_quat())
+
+
 class NoPlanException(Exception):
     pass
+
+
+@contextmanager
+def world_saved():
+    saved_world = PBU.WorldSaver()
+    yield
+    saved_world.restore()
 
 
 class Path(object):
@@ -142,6 +152,13 @@ class CartesianPath(Path):
 
 
 def configuration_path_to_cartesian_path(planner_robot, conf_path):
+    """
+    Convert a joint-space path to cartesian space path by computing forward dynamics with a planner robot
+    Args:
+        planner_robot: planner robot that we use to compute joint positions
+        conf_path: configuration paths
+    Returns: cartesian-space path
+    """
     pose_path = CartesianPath()
     for i in range(len(conf_path)):
         conf = conf_path.arm_path[i]
@@ -152,31 +169,23 @@ def configuration_path_to_cartesian_path(planner_robot, conf_path):
     return pose_path
 
 
-@contextmanager
-def world_saved():
-    saved_world = PBU.WorldSaver()
-    yield
-    saved_world.restore()
-
-
 def inverse_kinematics(robot_bid, eef_link, plannable_joints, target_pose):
+    """
+    Compute inverse kinematics for an end effector pose wrt to a list of plannable joints
+    Args:
+        robot_bid (int): body id of the robot
+        eef_link (int): link index of the end effector
+        plannable_joints (tuple, list): a list of plannable joint index
+        target_pose (tuple): (pos, orn) of the target eef pose
+
+    Returns: a list of joint configurations
+    """
     movable_joints = PBU.get_movable_joints(robot_bid)  # all joints that will be calculated by inv kinematics
-    plannable_joints_rel_index = [movable_joints.index(j) for j in plannable_joints]  # relative index we need to plan for
+    plannable_joints_rel_index = [movable_joints.index(j) for j in plannable_joints]
 
     conf = p.calculateInverseKinematics(robot_bid, eef_link, target_pose[0], target_pose[1])
     conf = [conf[i] for i in plannable_joints_rel_index]
     return conf
-
-
-def sample_positions_in_box(x_range, y_range, z_range):
-    x_range = np.array(x_range)
-    y_range = np.array(y_range)
-    z_range = np.array(z_range)
-    rand_pos = np.random.rand(3)
-    rand_pos[0] = rand_pos[0] * (x_range[1] - x_range[0]) + x_range[0]
-    rand_pos[1] = rand_pos[1] * (y_range[1] - y_range[0]) + y_range[0]
-    rand_pos[2] = rand_pos[2] * (z_range[1] - z_range[0]) + z_range[0]
-    return rand_pos
 
 
 def plan_joint_path(
@@ -217,3 +226,32 @@ def plan_joint_path(
     if path is None:
         raise NoPlanException("No Plan Found")
     return path
+
+
+def sample_positions_in_box(x_range, y_range, z_range):
+    x_range = np.array(x_range)
+    y_range = np.array(y_range)
+    z_range = np.array(z_range)
+    rand_pos = np.random.rand(3)
+    rand_pos[0] = rand_pos[0] * (x_range[1] - x_range[0]) + x_range[0]
+    rand_pos[1] = rand_pos[1] * (y_range[1] - y_range[0]) + y_range[0]
+    rand_pos[2] = rand_pos[2] * (z_range[1] - z_range[0]) + z_range[0]
+    return rand_pos
+
+
+def compute_grasp_pose(object_frame, grasp_orientation, grasp_distance, grasp_frame=EEF_GRASP_FRAME):
+    """
+    Compute grasping pose within an @object_frame wrt to the world frame.
+    Args:
+        object_frame (tuple): object frame to compute grasp in
+        grasp_orientation (tuple, list): quaternion of the grasping orientation
+        grasp_distance (float): grasp distance relative to the object frame center
+        grasp_frame (tuple): end effector grasping frame
+
+    Returns: grasp pose in the world frame
+
+    """
+    pose = (PBU.unit_point(), grasp_orientation)
+    transform = ((-grasp_distance * np.array(grasp_frame[0])).tolist(), grasp_frame[1])
+    grasp_pose = PBU.multiply(object_frame, pose, transform)
+    return grasp_pose

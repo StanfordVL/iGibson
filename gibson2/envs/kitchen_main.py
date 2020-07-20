@@ -205,9 +205,11 @@ def get_demo_arrange(env):
     all_rewards = []
     all_obs = []
 
-    can_pos = np.array(env.objects["can"].get_position())
-    can_pos[0] += 0.02
-    can_grasp_pose = (tuple(can_pos.tolist()), (0, 0, 1, 0))
+    # orn = T.quaternion_from_euler(0, np.pi / 2, np.pi * float(np.random.rand(1)) * 2)
+    orn = T.quaternion_from_euler(0, np.pi / 2, 0)
+    can_grasp_pose = PU.compute_grasp_pose(
+        object_frame=env.objects["can"].get_position_orientation(), grasp_orientation=orn, grasp_distance=0.02)
+
     path = skills.plan_skill_grasp(
         env.planner,
         obstacles=env.obstacles,
@@ -224,18 +226,29 @@ def get_demo_arrange(env):
 
     target_pos = np.array(env.objects["target"].get_position())
     target_pos[2] = PBU.stable_z(env.objects["can"].body_id, env.objects["target"].body_id)
-    can_place_pose = (target_pos, env.objects["target"].get_orientation())
+    can_place_pose = (target_pos, env.objects["can"].get_orientation())
 
     path = skills.plan_skill_place(
         env.planner,
         obstacles=env.obstacles,
         object_target_pose=can_place_pose,
         holding=env.objects["can"].body_id,
+        retract_distance=0.1,
         joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2)
     )
-
     states, actions, rewards, obs = execute_planned_path(env, path)
+    all_states.append(states)
+    all_actions.append(actions)
+    all_rewards.append(rewards)
+    all_obs.append(obs)
 
+    path = skills.plan_move_to(
+        env.planner,
+        obstacles=env.obstacles,
+        target_pose=(env.planner.ref_robot.get_eef_position() + np.array([0, 0, 0.03]), T.quaternion_from_euler(0, np.pi / 2, 0)),
+        joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2)
+    )
+    states, actions, rewards, obs = execute_planned_path(env, path)
     all_states.append(states)
     all_actions.append(actions)
     all_rewards.append(rewards)

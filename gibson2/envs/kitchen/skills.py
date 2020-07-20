@@ -5,6 +5,19 @@ from gibson2.envs.kitchen.robots import GRIPPER_CLOSE, GRIPPER_OPEN
 import gibson2.external.pybullet_tools.utils as PBU
 
 
+def plan_move_to(
+        planner,
+        obstacles,
+        target_pose,
+        joint_resolutions=None
+):
+    confs = planner.plan_joint_path(
+        target_pose=target_pose, obstacles=obstacles, resolutions=joint_resolutions)
+    conf_path = ConfigurationPath()
+    conf_path.append_segment(confs, gripper_state=GRIPPER_OPEN)
+    path = configuration_path_to_cartesian_path(planner, conf_path)
+    return path.interpolate(pos_resolution=0.05, orn_resolution=np.pi / 8)
+
 
 def plan_skill_open_prismatic(
         planner,
@@ -105,6 +118,7 @@ def plan_skill_place(
         obstacles,
         object_target_pose,
         holding,
+        retract_distance=0.,
         joint_resolutions=None
 ):
     """
@@ -114,6 +128,7 @@ def plan_skill_place(
         obstacles (list, tuple): a list obstacle ids
         object_target_pose (tuple): target pose for placing the object
         holding (int): object id of the object in hand
+        retract_distance (float): how far should the gripper retract after placing
         joint_resolutions (list, tuple): motion planning joint-space resolution
 
     Returns:
@@ -128,6 +143,11 @@ def plan_skill_place(
     conf_path.append_segment(confs, gripper_state=GRIPPER_CLOSE)
 
     place_path = configuration_path_to_cartesian_path(planner, conf_path)
+    place_path.append_pause(10)
+    if retract_distance > 0:
+        retract_pose = PBU.multiply(target_place_pose, ([-retract_distance, 0, 0], PBU.unit_quat()))
+        place_path.append(target_place_pose, GRIPPER_OPEN)
+        place_path.append(retract_pose, GRIPPER_OPEN)
 
     return place_path.interpolate(pos_resolution=0.05, orn_resolution=np.pi / 8)
 
