@@ -8,7 +8,7 @@ import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.envs.kitchen.plan_utils as PU
 import gibson2.envs.kitchen.skills as skills
 from gibson2.envs.kitchen.envs import env_factory
-from gibson2.envs.kitchen.env_utils import pose_to_array, pose_to_action
+from gibson2.envs.kitchen.env_utils import pose_to_array, pose_to_action_euler, pose_to_action_axis_vector
 
 
 """
@@ -37,7 +37,8 @@ def execute_planned_path(env, path):
 
         action = np.zeros(env.action_dimension)
         action[-1] = grip
-        action[:-1] = pose_to_action(cpose, tpose, max_dpos=env.MAX_DPOS, max_drot=env.MAX_DROT)
+        action[:-1] = pose_to_action_euler(cpose, tpose, max_dpos=env.MAX_DPOS, max_drot=env.MAX_DROT)
+        # action[:-1] = pose_to_action_axis_vector(cpose, tpose, max_dpos=env.MAX_DPOS, max_drot=env.MAX_DROT)
         actions.append(action)
 
         rewards.append(float(env.is_success()))
@@ -316,10 +317,10 @@ def playback(args):
     f = h5py.File(args.file, 'r')
     env_args = json.loads(f["data"].attrs["env_args"])
 
-    env = env_factory("BasicKitchenLiftCan", **env_args["env_kwargs"], use_gui=args.gui)
+    env = env_factory("TableTopArrange", **env_args["env_kwargs"], use_gui=args.gui)
     demos = list(f["data"].keys())
     for demo_id in demos:
-        env.reset()
+        env.reset_to(f["data/{}/states".format(demo_id)][0])
         actions = f["data/{}/actions".format(demo_id)][:]
 
         for i in range(400):
@@ -353,8 +354,8 @@ def main():
     args = parser.parse_args()
 
     np.random.seed(0)
-    # playback(args)
-    create_dataset(args)
+    playback(args)
+    # create_dataset(args)
     p.disconnect()
 
 

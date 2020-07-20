@@ -265,6 +265,24 @@ class PoseSaver(Saver):
         set_pose(self.body, self.pose)
         set_velocity(self.body, *self.velocity)
 
+    def serialize(self):
+        vec = np.zeros(13)  # pose: 7, vel: 6
+        vec[:3] = self.pose[0]
+        vec[3:7] = self.pose[1]
+        vec[7:10] = self.velocity[0]
+        vec[10:] = self.velocity[1]
+        return vec
+
+    @property
+    def serialized_length(self):
+        return 13
+
+    def deserialize(self, vec):
+        assert len(vec) == self.serialized_length
+        vec = vec.copy()
+        self.pose = (vec[:3], vec[3:7])
+        self.velocity = (vec[7:10], vec[10:])
+
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.body)
 
@@ -278,6 +296,18 @@ class ConfSaver(Saver):
 
     def restore(self):
         set_configuration(self.body, self.conf)
+
+    def serialize(self):
+        return np.array(self.conf)
+
+    @property
+    def serialized_length(self):
+        return len(self.conf)
+
+    def deserialize(self, vec):
+        assert len(vec) == self.serialized_length
+        vec = vec.copy()
+        self.conf = tuple(vec.tolist())
 
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.body)
@@ -293,6 +323,18 @@ class BodySaver(Saver):
         self.conf_saver = ConfSaver(body)
         self.savers = [self.pose_saver, self.conf_saver]
         # TODO: store velocities
+
+    @property
+    def serialized_length(self):
+        return self.pose_saver.serialized_length + self.conf_saver.serialized_length
+
+    def serialize(self):
+        return np.concatenate((self.pose_saver.serialize(), self.conf_saver.serialize()), axis=0)
+
+    def deserialize(self, vec):
+        assert len(vec) == self.serialized_length
+        self.pose_saver.deserialize(vec[:self.pose_saver.serialized_length])
+        self.conf_saver.deserialize(vec[self.pose_saver.serialized_length:])
 
     def apply_mapping(self, mapping):
         for saver in self.savers:
@@ -313,6 +355,19 @@ class WorldSaver(Saver):
     def restore(self):
         for body_saver in self.body_savers:
             body_saver.restore()
+
+    @property
+    def serialized_length(self):
+        return np.sum([bs.serialized_length for bs in self.body_savers])
+
+    def serialize(self):
+        return np.concatenate([bs.serialize() for bs in self.body_savers])
+
+    def deserialize(self, vec):
+        ind = 0
+        for bs in self.body_savers:
+            bs.deserialize(vec[ind:ind+bs.serialized_length])
+            ind += bs.serialized_length
 
 #####################################
 

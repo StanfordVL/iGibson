@@ -12,9 +12,10 @@ import gibson2.external.pybullet_tools.transformations as T
 from gibson2.envs.kitchen.camera import Camera
 from gibson2.envs.kitchen.robots import Arm, ConstraintActuatedRobot, PlannerRobot, Robot, Gripper
 from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articulated_object_dynamics, pose_to_array, \
-    change_object_rgba
+    change_object_rgba, action_to_delta_pose_axis_vector, action_to_delta_pose_euler
 import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.envs.kitchen.plan_utils as PU
+
 
 def env_factory(name, **kwargs):
     return eval(name)(**kwargs)
@@ -22,7 +23,7 @@ def env_factory(name, **kwargs):
 
 class BaseEnv(object):
     MAX_DPOS = 0.1
-    MAX_DROT = np.pi / 8
+    MAX_DROT = np.pi / 4
 
     def __init__(
             self,
@@ -142,20 +143,23 @@ class BaseEnv(object):
         self._reset_objects()
         return self.get_observation()
 
+    def reset_to(self, serialized_world_state):
+        state = PBU.WorldSaver()
+        state.deserialize(serialized_world_state)
+        state.restore()
+        self.robot.reset()
+        return self.get_observation()
+
     @property
     def sim_state(self):
-        return np.zeros(3)  # TODO: implement this
+        return PBU.WorldSaver().serialize()
 
     def step(self, action, sleep_per_sim_step=0.0):
         assert len(action) == self.action_dimension
         action = action.copy()
-        pos = action[:3]  # delta position
-        orn = action[3:6]  # delta rotation in euler angle
-        gri = action[-1]  # grasp or not
-        pos *= self.MAX_DPOS
-        orn *= self.MAX_DROT
-
-        orn = T.quaternion_from_euler(*orn)
+        gri = action[-1]
+        pos, orn = action_to_delta_pose_euler(action[:6], max_dpos=self.MAX_DPOS, max_drot=self.MAX_DROT)
+        # pos, orn = action_to_delta_pose_axis_vector(action[:6], max_dpos=self.MAX_DPOS, max_drot=self.MAX_DROT)
         self.robot.set_relative_eef_position_orientation(pos, orn)
         if gri > 0:
             self.robot.gripper.grasp()

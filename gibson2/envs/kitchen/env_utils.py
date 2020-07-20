@@ -5,6 +5,7 @@ from copy import deepcopy
 
 import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.external.pybullet_tools.transformations as T
+import gibson2.envs.kitchen.transform_utils as TU
 from gibson2.core.physics.interactive_objects import Object
 
 
@@ -212,12 +213,57 @@ def pose_to_array(pose):
     return np.hstack((pose[0], pose[1]))
 
 
-def pose_to_action(start_pose, target_pose, max_dpos, max_drot=None):
+def pose_to_action_euler(start_pose, target_pose, max_dpos, max_drot=None):
     action = np.zeros(6)
     action[:3] = target_pose[:3] - start_pose[:3]
-    action[3:6] = T.euler_from_quaternion(T.quaternion_multiply(target_pose[3:], T.quaternion_inverse(start_pose[3:])))
     action[:3] = np.clip(action[:3] / max_dpos, -1., 1.)
-    if max_dpos is not None:
+
+    action[3:6] = T.euler_from_quaternion(T.quaternion_multiply(target_pose[3:], T.quaternion_inverse(start_pose[3:])))
+    if max_drot is not None:
         action[3:] = np.clip(action[3:] / max_drot, -1., 1.)
     return action
 
+
+def action_to_delta_pose_euler(action, max_dpos, max_drot=None):
+    assert len(action) == 6
+    delta_pos = action[:3] * max_dpos
+
+    delta_euler = action[3:]
+    if max_drot is not None:
+        delta_euler *= max_drot
+
+    delta_rot = T.quaternion_from_euler(*delta_euler)
+    return delta_pos, delta_rot
+
+
+def pose_to_action_axis_vector(start_pose, target_pose, max_dpos, max_drot=None):
+    action = np.zeros(6)
+    action[:3] = target_pose[:3] - start_pose[:3]
+    action[:3] = np.clip(action[:3] / max_dpos, -1., 1.)
+    if not np.allclose(target_pose[:3] - start_pose[:3], action[:3] * max_dpos):
+        print("clipped position")
+
+    delta_quat = T.quaternion_multiply(target_pose[3:], T.quaternion_inverse(start_pose[3:]))
+    delta_axis, delta_angle = TU.quat2axisangle(delta_quat)
+    delta_rotation = -TU.axisangle2vec(delta_axis, delta_angle)
+    delta_rotation_cpy = delta_rotation.copy()
+    if max_drot is not None:
+        delta_rotation = np.clip(delta_rotation / max_drot, -1., 1.)
+    action[3:] = delta_rotation
+
+    if not np.allclose(delta_rotation_cpy, action[3:] * max_drot):
+        print("clipped rotation")
+
+    return action
+
+
+def action_to_delta_pose_axis_vector(action, max_dpos, max_drot=None):
+    assert len(action) == 6
+    delta_pos = action[:3] * max_dpos
+
+    delta_axis_vector = action[3:]
+    if max_drot is not None:
+        delta_axis_vector *= max_drot
+
+    delta_rot = TU.axisangle2quat(*TU.vec2axisangle(-delta_axis_vector))
+    return delta_pos, delta_rot
