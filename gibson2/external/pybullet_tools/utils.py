@@ -348,8 +348,8 @@ class BodySaver(Saver):
         return '{}({})'.format(self.__class__.__name__, self.body)
 
 class WorldSaver(Saver):
-    def __init__(self):
-        self.body_savers = [BodySaver(body) for body in get_bodies()]
+    def __init__(self, exclude_body_ids=()):
+        self.body_savers = [BodySaver(body) for body in get_bodies() if body not in exclude_body_ids]
         # TODO: add/remove new bodies
 
     def restore(self):
@@ -361,9 +361,12 @@ class WorldSaver(Saver):
         return np.sum([bs.serialized_length for bs in self.body_savers])
 
     def serialize(self):
-        return np.concatenate([bs.serialize() for bs in self.body_savers])
+        state = np.concatenate([bs.serialize() for bs in self.body_savers], axis=0)
+        assert self.serialized_length == len(state)
+        return state
 
     def deserialize(self, vec):
+        assert len(vec) == self.serialized_length
         ind = 0
         for bs in self.body_savers:
             bs.deserialize(vec[ind:ind+bs.serialized_length])

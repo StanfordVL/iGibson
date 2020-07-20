@@ -19,8 +19,11 @@ Motion plan -> task-space path
 task-space path -> gripper actuation
 """
 
+ACTION_NOISE = (0.01, 0.01, 0.01, np.pi / 16, np.pi / 16, np.pi / 16)
+# ACTION_NOISE = (0, 0, 0, 0, 0, 0)
 
-def execute_planned_path(env, path):
+
+def execute_planned_path(env, path, noise=None):
     """Execute a planned path an relabel actions."""
 
     all_obs = []
@@ -38,19 +41,22 @@ def execute_planned_path(env, path):
         action = np.zeros(env.action_dimension)
         action[-1] = grip
         action[:-1] = pose_to_action_euler(cpose, tpose, max_dpos=env.MAX_DPOS, max_drot=env.MAX_DROT)
+        if noise is not None:
+            assert len(noise) == (env.action_dimension - 1)
+            noise_arr = np.array(noise)
+            action[:6] += np.clip(np.random.randn(len(noise)) * noise_arr, -noise_arr * 2, noise_arr * 2)
         # action[:-1] = pose_to_action_axis_vector(cpose, tpose, max_dpos=env.MAX_DPOS, max_drot=env.MAX_DROT)
         actions.append(action)
-
-        rewards.append(float(env.is_success()))
-        states.append(env.sim_state)
+        states.append(env.serialized_world_state)
         all_obs.append(env.get_observation())
 
         env.step(action)
+        rewards.append(float(env.is_success()))
 
-    all_obs.append(env.get_observation())
-    actions.append(np.zeros(env.action_dimension))
-    rewards.append(float(env.is_success()))
-    states.append(env.sim_state)
+    # all_obs.append(env.get_observation())
+    # actions.append(np.zeros(env.action_dimension))
+    # rewards.append(float(env.is_success()))
+    # states.append(env.sim_state)
 
     all_obs = dict((k, np.array([all_obs[i][k] for i in range(len(all_obs))])) for k in all_obs[0])
     return states, actions, rewards, all_obs
@@ -199,7 +205,7 @@ def get_demo_pour(env):
     return all_states, all_actions, all_rewards, all_obs
 
 
-def get_demo_arrange(env):
+def get_demo_arrange(env, perturb=False):
     env.reset()
     all_states = []
     all_actions = []
@@ -217,9 +223,8 @@ def get_demo_arrange(env):
         grasp_pose=can_grasp_pose,
         reach_distance=0.05,
         lift_height=0.4,
-        joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2)
     )
-    states, actions, rewards, obs = execute_planned_path(env, path)
+    states, actions, rewards, obs = execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None)
     all_states.append(states)
     all_actions.append(actions)
     all_rewards.append(rewards)
@@ -235,9 +240,8 @@ def get_demo_arrange(env):
         object_target_pose=can_place_pose,
         holding=env.objects["can"].body_id,
         retract_distance=0.1,
-        joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2)
     )
-    states, actions, rewards, obs = execute_planned_path(env, path)
+    states, actions, rewards, obs = execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None)
     all_states.append(states)
     all_actions.append(actions)
     all_rewards.append(rewards)
@@ -247,9 +251,8 @@ def get_demo_arrange(env):
         env.planner,
         obstacles=env.obstacles,
         target_pose=(env.planner.ref_robot.get_eef_position() + np.array([0, 0, 0.03]), T.quaternion_from_euler(0, np.pi / 2, 0)),
-        joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2)
     )
-    states, actions, rewards, obs = execute_planned_path(env, path)
+    states, actions, rewards, obs = execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None)
     all_states.append(states)
     all_actions.append(actions)
     all_rewards.append(rewards)
@@ -288,12 +291,12 @@ def create_dataset(args):
     total_i = 0
     while success_i < args.n:
         try:
-            states, actions, rewards, all_obs = get_demo_arrange(env)
+            states, actions, rewards, all_obs = get_demo_arrange(env, perturb=args.perturb)
         except PU.NoPlanException as e:
             print(e)
             continue
-        total_i += 1
 
+        total_i += 1
         if not env.is_success():
             print("{}/{}".format(success_i, total_i))
             continue
@@ -317,10 +320,12 @@ def playback(args):
     f = h5py.File(args.file, 'r')
     env_args = json.loads(f["data"].attrs["env_args"])
 
-    env = env_factory("TableTopArrange", **env_args["env_kwargs"], use_gui=args.gui)
+    env = env_factory(env_args["env_name"], **env_args["env_kwargs"], use_gui=args.gui)
+    env.reset()
     demos = list(f["data"].keys())
     for demo_id in demos:
-        env.reset_to(f["data/{}/states".format(demo_id)][0])
+        states = f["data/{}/states".format(demo_id)][:]
+        env.reset_to(states[0])
         actions = f["data/{}/actions".format(demo_id)][:]
 
         for i in range(400):
@@ -328,8 +333,9 @@ def playback(args):
                 for _ in range(2):
                     p.stepSimulation()
             else:
+                print(np.allclose(states[i], env.serialized_world_state))
                 env.step(actions[i])
-        print(env.is_success())
+        print("success: {}".format(env.is_success()))
 
 
 def main():
@@ -348,6 +354,12 @@ def main():
     )
     parser.add_argument(
         "--gui",
+        action="store_true",
+        default=False
+    )
+
+    parser.add_argument(
+        "--perturb",
         action="store_true",
         default=False
     )

@@ -23,7 +23,7 @@ def env_factory(name, **kwargs):
 
 class BaseEnv(object):
     MAX_DPOS = 0.1
-    MAX_DROT = np.pi / 4
+    MAX_DROT = np.pi / 8
 
     def __init__(
             self,
@@ -144,15 +144,20 @@ class BaseEnv(object):
         return self.get_observation()
 
     def reset_to(self, serialized_world_state):
-        state = PBU.WorldSaver()
+        exclude = []
+        if self.planner is not None:
+            exclude.append(self.planner.body_id)
+        state = PBU.WorldSaver(exclude_body_ids=exclude)
         state.deserialize(serialized_world_state)
         state.restore()
-        self.robot.reset()
         return self.get_observation()
 
     @property
-    def sim_state(self):
-        return PBU.WorldSaver().serialize()
+    def serialized_world_state(self):
+        exclude = []
+        if self.planner is not None:
+            exclude.append(self.planner.body_id)
+        return PBU.WorldSaver(exclude_body_ids=exclude).serialize()
 
     def step(self, action, sleep_per_sim_step=0.0):
         assert len(action) == self.action_dimension
@@ -160,6 +165,7 @@ class BaseEnv(object):
         gri = action[-1]
         pos, orn = action_to_delta_pose_euler(action[:6], max_dpos=self.MAX_DPOS, max_drot=self.MAX_DROT)
         # pos, orn = action_to_delta_pose_axis_vector(action[:6], max_dpos=self.MAX_DPOS, max_drot=self.MAX_DROT)
+        # print(np.linalg.norm(pos), np.linalg.norm(T.euler_from_quaternion(orn)))
         self.robot.set_relative_eef_position_orientation(pos, orn)
         if gri > 0:
             self.robot.gripper.grasp()
