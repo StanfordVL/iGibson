@@ -102,8 +102,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.dist_tol = -1.0
 
         # tabletop_manip has shorter episode length
+        # TODO: randomize_object_pose eventually should be True
         if self.arena == 'tabletop_manip':
             self.max_step = int(self.max_step * 0.4)
+            self.randomize_object_pose = False
 
         self.rotate_occ_grid = rotate_occ_grid
         self.fine_motion_plan = self.config.get('fine_motion_plan', True)
@@ -2173,20 +2175,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 obstacle.set_position_orientation(pos, orn)
 
         elif self.arena == 'tabletop_manip':
-            self.tabletop_object_initial_pos = np.array([
-                np.random.uniform(
-                    self.tabletop_object_pos_range[0][0],
-                    self.tabletop_object_pos_range[0][1]),
-                np.random.uniform(
-                    self.tabletop_object_pos_range[1][0],
-                    self.tabletop_object_pos_range[1][1]),
-                self.tabletop_object_height
-            ])
-
-            dist = 0
-            # initial distance has to be >2x distance tolerance
-            while dist < (self.tabletop_object_dist_tol * 2.0):
-                self.tabletop_object_target_pos = np.array([
+            if self.randomize_object_pose:
+                self.tabletop_object_initial_pos = np.array([
                     np.random.uniform(
                         self.tabletop_object_pos_range[0][0],
                         self.tabletop_object_pos_range[0][1]),
@@ -2195,8 +2185,28 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         self.tabletop_object_pos_range[1][1]),
                     self.tabletop_object_height
                 ])
-                dist = l2_distance(self.tabletop_object_target_pos,
-                                   self.tabletop_object_initial_pos)
+
+                dist = 0
+                # initial distance has to be >2x distance tolerance
+                while dist < (self.tabletop_object_dist_tol * 2.0):
+                    self.tabletop_object_target_pos = np.array([
+                        np.random.uniform(
+                            self.tabletop_object_pos_range[0][0],
+                            self.tabletop_object_pos_range[0][1]),
+                        np.random.uniform(
+                            self.tabletop_object_pos_range[1][0],
+                            self.tabletop_object_pos_range[1][1]),
+                        self.tabletop_object_height
+                    ])
+                    dist = l2_distance(self.tabletop_object_target_pos,
+                                    self.tabletop_object_initial_pos)
+            else:
+                self.tabletop_object_initial_pos = np.array([
+                    -4.3, 0.16, self.tabletop_object_height
+                ])
+                self.tabletop_object_target_pos = np.array([
+                    -4.5, 0.0, self.tabletop_object_height
+                ])
 
             self.tabletop_object.set_position_orientation(
                 self.tabletop_object_initial_pos, self.tabletop_object_orn)
@@ -2538,7 +2548,6 @@ if __name__ == '__main__':
             #    state, reward, done, _ = nav_env.step(action)
             #    # print('reward', reward)
             if done:
-                print('Episode finished after {} timesteps'.format(i + 1))
                 print('Episode return:', episode_return)
                 print('Episode length:', info['episode_length'])
                 break
