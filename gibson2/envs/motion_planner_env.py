@@ -101,6 +101,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         if self.arena in ['push_chairs', 'push_drawers', 'tabletop_manip']:
             self.dist_tol = -1.0
 
+        # tabletop_manip has shorter episode length
+        if self.arena == 'tabletop_manip':
+            self.max_step = int(self.max_step * 0.4)
+
         self.rotate_occ_grid = rotate_occ_grid
         self.fine_motion_plan = self.config.get('fine_motion_plan', True)
         if self.arena == 'tabletop_manip' and not self.fine_motion_plan:
@@ -440,7 +444,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.tabletop_object_name = '036_wood_block'
             self.tabletop_object_scale = 1
             self.tabletop_object_height = 0.91
-            self.tabletop_object_dist_tol = 0.05
+            self.tabletop_object_dist_tol = 0.1
 
             self.tabletop_object_orn = [
                 -0.17487982428509494,
@@ -2180,7 +2184,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             ])
 
             dist = 0
-            while dist < 0.2:
+            # initial distance has to be >2x distance tolerance
+            while dist < (self.tabletop_object_dist_tol * 2.0):
                 self.tabletop_object_target_pos = np.array([
                     np.random.uniform(
                         self.tabletop_object_pos_range[0][0],
@@ -2327,7 +2332,7 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
                  ):
         if arena == 'tabletop_manip':
             # needs more accurate physics simulation
-            physics_timestep = min(physics_timestep, 1 / 60.0)
+            physics_timestep = min(physics_timestep, 1 / 100.0)
 
         super(MotionPlanningBaseArmContinuousEnv, self).__init__(
             config_file,
@@ -2362,6 +2367,10 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
         if self.arena == 'tabletop_manip':
             self.robots[0].arm_default_joint_positions = (
                 0.30322468280792236, 0, 0, 0, 0.25, 0, 0, 0)
+
+            # reduce arm maximum velocity by half
+            self.robots[0].action_high[-self.robots[0].arm_dim:] *= 0.5
+            self.robots[0].action_low[-self.robots[0].arm_dim:] *= 0.5
 
     def step(self, action):
         if self.arena == 'random_nav':
