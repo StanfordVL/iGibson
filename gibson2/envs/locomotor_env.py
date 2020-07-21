@@ -53,10 +53,6 @@ class NavigateEnv(BaseEnv):
                                           device_idx=device_idx,
                                           render_to_tensor=render_to_tensor)
         self.automatic_reset = automatic_reset
-        self.path_length=None
-        self.geodesic_dist=None
-        self.episode_return=None
-        self.spl=None
 
     def load_task_setup(self):
         """
