@@ -27,7 +27,7 @@ collision_reward_weight: -0.01
 collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collision with these agent's link ids
 
 # discount factor
-discount_factor: 0.99
+discount_factor: 0.999
 
 # termination condition
 dist_tol: 0.36  # body width
