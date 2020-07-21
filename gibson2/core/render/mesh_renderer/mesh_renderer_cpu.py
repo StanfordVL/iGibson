@@ -358,6 +358,33 @@ class Material(object):
     def __repr__(self):
         return self.__str__()
 
+class SwitchableMaterial(Material):
+    def __init__(self, type='texture', kd=[0.5, 0.5, 0.5], texture_id=-1, class_id=-1, instance_id=-1):
+        super(SwitchableMaterial, self).__init__(
+            type=type,
+            kd=kd,
+            texture_id=texture_id,
+            class_id=class_id,
+            instance_id=instance_id
+        )
+        self.texture_id_list = []
+    def load_images(self, renderer, filenames):
+        for fn in filenames:
+            self.texture_id_list.append(
+                renderer.r.loadTexture(fn)
+            )
+        self.texture_id = self.texture_id_list[0]
+
+    def shuffle(self):
+        self.texture_id = np.random.choice(self.texture_id_list)
+
+    def __str__(self):
+        return "SwitchableMaterial(type: {}, texture_id_list:{}, texture_id: {}, class_id: {}, instance_id: {}, color: {})".format(self.type,
+                                                                                                     self.texture_id_list,
+                                                                                                     self.texture_id,
+                                                                                                     self.class_id,
+                                                                                                     self.instance_id,
+                                                                                                     self.kd)
 
 class MeshRenderer(object):
     """
@@ -482,6 +509,7 @@ class MeshRenderer(object):
                     texture_scale=1.0,
                     load_texture=True,
                     load_sem_map=True,
+                    material_override=None,
                     ):
         """
         Load a wavefront obj file into the renderer and create a VisualObject to manage it.
@@ -527,7 +555,8 @@ class MeshRenderer(object):
 
         material_count = len(self.materials_mapping)
         materials_fn = {}
-
+        if material_override is not None and len(materials) > 0:
+            logging.warning("passed in one material ends up overriding multiple materials")
         for i, item in enumerate(materials):
             if load_texture and item.diffuse_texname != '':
                 materials_fn[i + material_count] = item.diffuse_texname
@@ -550,6 +579,8 @@ class MeshRenderer(object):
                     'texture', texture_id=texture_id, class_id=class_id, instance_id=instance_id)
             else:
                 material = Material('color', kd=item.diffuse)
+            if material_override is not None:
+                material = material_override
             self.materials_mapping[i + material_count] = material
 
         if input_kd is not None:  # append the default material in the end, in case material loading fails

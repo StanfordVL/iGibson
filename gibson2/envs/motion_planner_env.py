@@ -26,6 +26,7 @@ from gibson2.core.physics.interactive_objects import InteractiveObj
 from gibson2.core.physics.interactive_objects import VisualMarker
 from gibson2.envs.locomotor_env import NavigateRandomEnv
 from gibson2.core.render.utils import quat_pos_to_mat
+from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import SwitchableMaterial
 from transforms3d.euler import euler2quat
 from transforms3d.quaternions import quat2mat
 from IPython import embed
@@ -45,6 +46,22 @@ import random
 import collections
 import copy
 
+def get_random_mtl(renderer):
+    mtl = SwitchableMaterial()
+    mtl.load_images(renderer, [os.path.join(gibson2.assets_path, 'models', 'woods', fn) for fn in  [
+        "small_Wood12_col.png.png",    
+        "small_WoodFloor09_col.png.png",
+        "small_WoodFloor10_col.png.png",
+        "small_WoodFloor11_col.png.png",
+        "small_WoodFloor13_col.png.png",
+        "small_WoodFloor14_col.png.png",
+        "small_WoodFloor15_col.png.png",
+        "small_WoodFloor16_col.png.png",
+        "small_WoodFloor24_col.png.png",
+        "small_WoodFloor26_col.png.png",
+        "small_WoodFloor29_col.png.png",
+        ]])
+    return mtl
 
 class MotionPlanningBaseArmEnv(NavigateRandomEnv):
     def __init__(self,
@@ -201,6 +218,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.cabinet_drawers = []
         self.table = None
         self.tabletop_object = None
+        self.switchable_materials = []
 
         if self.scene.model_id == 'Avonia':
             # push_door, button_door
@@ -468,11 +486,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 else 'realdoor_closed.urdf'
             for scale, position, rotation in \
                     zip(door_scales, self.door_positions, self.door_rotations):
+                
                 door = InteractiveObj(
                     os.path.join(gibson2.assets_path, 'models',
                                  'scene_components', door_urdf),
                     scale=scale)
-                self.simulator.import_articulated_object(door, class_id=2)
+                random_mtl = get_random_mtl(self.simulator.renderer)
+                self.switchable_materials.append(random_mtl)
+                self.simulator.import_articulated_object(door, class_id=2, material_override=random_mtl)
                 # door pose is fixed
                 door.set_position_orientation(position, quatToXYZW(
                     euler2quat(0, 0, rotation), 'wxyz'))
@@ -1999,6 +2020,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                   self).reset_initial_and_target_pos()
 
     def before_reset_agent(self):
+        # randomize material
+        for mtl in self.switchable_materials:
+            mtl.shuffle()
+
         if self.arena in ['push_door', 'button_door',
                           'random_manip', 'random_manip_atomic']:
             self.door_opened = False
@@ -2501,8 +2526,7 @@ if __name__ == '__main__':
         episode_return = 0.0
         start = time.time()
         state = nav_env.reset()
-        embed()
-        for i in range(10000000):
+        for i in range(2):
             print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
             # embed()

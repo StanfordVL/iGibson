@@ -417,7 +417,7 @@ class Simulator:
         return ids
 
     @load_without_pybullet_vis
-    def import_articulated_object(self, obj, class_id=None):
+    def import_articulated_object(self, obj, class_id=None, material_override=None):
         """
         Import an articulated object into the simulator
 
@@ -444,7 +444,8 @@ class Simulator:
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
-                                              scale=np.array(dimensions))
+                                              scale=np.array(dimensions),
+                                              material_override=material_override)
                     self.visual_objects[filename] = len(
                         self.renderer.visual_objects) - 1
                 visual_objects.append(self.visual_objects[filename])
