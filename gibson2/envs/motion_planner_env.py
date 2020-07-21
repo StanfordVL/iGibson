@@ -481,6 +481,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 for i in range(p.getNumJoints(door.body_id)):
                     p.setCollisionFilterPair(
                         self.mesh_id, door.body_id, -1, i, 0)
+                    p.setCollisionFilterPair(
+                        1, door.body_id, -1, i, 0)
 
             for wall_pose in self.wall_poses:
                 wall = InteractiveObj(
@@ -915,51 +917,61 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # cur_rot = (cur_rot[0], cur_rot[1], cur_rot[2] +
         #            np.random.normal(0, rot_noise))
 
-        target_pos_local = self.global_to_local(self.target_pos)
+        # (mobile) manipulation tasks, no path or goal needed
+        if self.arena in ['push_drawers', 'push_chairs', 'tabletop_manip']:
+            waypoints_local_xy = np.zeros(self.scene.num_waypoints * 2)
+            target_pos_local_xy = np.zeros(2)
+            self.new_potential = 0.0
 
-        shortest_path, geodesic_dist = self.get_shortest_path()
+        # (interactive) navigation tasks, path and goal needed
+        else:
+            target_pos_local = self.global_to_local(self.target_pos)
+            # cache results for reward calculation
+            shortest_path, self.new_potential = self.get_shortest_path()
 
-        # geodesic_dist = 0.0
-        robot_z = self.robots[0].get_position()[2]
+            # geodesic_dist = 0.0
+            robot_z = self.robots[0].get_position()[2]
 
-        # closest_idx = np.argmin(np.linalg.norm(
-        #     cur_pos[:2] - self.shortest_path, axis=1))
-        # shortest_path = self.shortest_path[closest_idx:closest_idx +
-        #                                    self.scene.num_waypoints]
-        # num_remaining_waypoints = self.scene.num_waypoints - \
-        #     shortest_path.shape[0]
-        # if num_remaining_waypoints > 0:
-        #     remaining_waypoints = np.tile(
-        #         self.target_pos[:2], (num_remaining_waypoints, 1))
-        #     shortest_path = np.concatenate(
-        #         (shortest_path, remaining_waypoints), axis=0)
+            # closest_idx = np.argmin(np.linalg.norm(
+            #     cur_pos[:2] - self.shortest_path, axis=1))
+            # shortest_path = self.shortest_path[closest_idx:closest_idx +
+            #                                    self.scene.num_waypoints]
+            # num_remaining_waypoints = self.scene.num_waypoints - \
+            #     shortest_path.shape[0]
+            # if num_remaining_waypoints > 0:
+            #     remaining_waypoints = np.tile(
+            #         self.target_pos[:2], (num_remaining_waypoints, 1))
+            #     shortest_path = np.concatenate(
+            #         (shortest_path, remaining_waypoints), axis=0)
 
-        shortest_path = np.concatenate(
-            (shortest_path, robot_z * np.ones((shortest_path.shape[0], 1))),
-            axis=1)
+            shortest_path = np.concatenate(
+                (shortest_path,
+                robot_z * np.ones((shortest_path.shape[0], 1))),
+                axis=1)
 
-        waypoints_local_xy = np.array([
-            self.global_to_local(waypoint)[:2]
-            for waypoint in shortest_path]).flatten()
-        target_pos_local_xy = target_pos_local[:2]
+            waypoints_local_xy = np.array([
+                self.global_to_local(waypoint)[:2]
+                for waypoint in shortest_path]).flatten()
+            target_pos_local_xy = target_pos_local[:2]
 
-        # if self.use_occupancy_grid:
-        #     waypoints_img_vu = np.zeros_like(waypoints_local_xy)
-        #     target_pos_img_vu = np.zeros_like(target_pos_local_xy)
+            # if self.use_occupancy_grid:
+            #     waypoints_img_vu = np.zeros_like(waypoints_local_xy)
+            #     target_pos_img_vu = np.zeros_like(target_pos_local_xy)
 
-        #     for i in range(self.scene.num_waypoints):
-        #         waypoints_img_vu[2 * i] = -waypoints_local_xy[2 * i + 1] \
-        #             / (self.occupancy_range / 2.0)
-        #         waypoints_img_vu[2 * i + 1] = waypoints_local_xy[2 * i] \
-        #             / (self.occupancy_range / 2.0)
+            #     for i in range(self.scene.num_waypoints):
+            #         waypoints_img_vu[2 * i] = -waypoints_local_xy[2 * i + 1] \
+            #             / (self.occupancy_range / 2.0)
+            #         waypoints_img_vu[2 * i + 1] = waypoints_local_xy[2 * i] \
+            #             / (self.occupancy_range / 2.0)
 
-        #     target_pos_img_vu[0] = -target_pos_local_xy[1] / \
-        #         (self.occupancy_range / 2.0)
-        #     target_pos_img_vu[1] = target_pos_local_xy[0] / \
-        #         (self.occupancy_range / 2.0)
+            #     target_pos_img_vu[0] = -target_pos_local_xy[1] / \
+            #         (self.occupancy_range / 2.0)
+            #     target_pos_img_vu[1] = target_pos_local_xy[0] / \
+            #         (self.occupancy_range / 2.0)
 
-        #     waypoints_local_xy = waypoints_img_vu
-        #     target_pos_local_xy = target_pos_img_vu
+            #     waypoints_local_xy = waypoints_img_vu
+            #     target_pos_local_xy = target_pos_img_vu
+
         ee_pos_local = self.global_to_local(
             self.robots[0].get_end_effector_position())
         joint_pos = get_joint_positions(self.robot_id, self.arm_joint_ids)
@@ -975,12 +987,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                             joint_pos_cos,
                                             joint_vel,
                                             ))
+        # additional_states = np.concatenate((waypoints_local_xy,
+        #                                     target_pos_local_xy))
         additional_states = additional_states.astype(np.float32)
         # linear_velocity_local,
         # angular_velocity_local))
-
-        # cache results for reward calculation
-        self.new_potential = geodesic_dist
 
         assert len(additional_states) == self.additional_states_dim, \
             'additional states dimension mismatch, {}, {}'.format(
@@ -1202,7 +1213,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :return: arm_subgoal [x, y, z] in the world frame
         """
         # print('get_arm_subgoal', state['current_step'])
-        points = self.get_pc()
+        points = self.simulator.renderer.render_robot_cameras(modes=('3d'))[0]
         height, width = points.shape[0:2]
 
         arm_img_v = np.clip(int((action[4] + 1) / 2.0 * height), 0, height - 1)
@@ -2199,7 +2210,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 original_pos = obstacle_pose[0]
                 dist = l2_distance(np.array(current_pos),
                                    np.array(original_pos))
-                assert dist < 0.05, 'obstacle pose is >0.05m above the ground'
+                if dist > 0.05:
+                    print('obstacle pose is >0.05m above the ground')
         elif self.arena == 'tabletop_manip':
             if self.robot_constraint is not None:
                 p.removeConstraint(self.robot_constraint)
@@ -2498,13 +2510,13 @@ if __name__ == '__main__':
     for episode in range(100):
         print('Episode: {}'.format(episode))
         episode_return = 0.0
-        start = time.time()
         state = nav_env.reset()
         embed()
+        start = time.time()
         for i in range(10000000):
             print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
-            # embed()
+            embed()
             state, reward, done, info = nav_env.step(action)
             episode_return += reward
             print('Reward:', reward)

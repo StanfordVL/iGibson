@@ -305,13 +305,11 @@ class NavigateEnv(BaseEnv):
         sensor_reading[valid_mask == 0] = noise_value
         return sensor_reading
 
-    def get_depth(self):
+    def get_depth(self, raw_vision_outputs):
         """
         :return: depth sensor reading, normalized to [0.0, 1.0]
         """
-        depth = - \
-            self.simulator.renderer.render_robot_cameras(modes=('3d'))[
-                0][:, :, 2:3]
+        depth = -raw_vision_outputs['3d'][:, :, 2:3]
         # 0.0 is a special value for invalid entries
         depth[depth < self.depth_low] = 0.0
         depth[depth > self.depth_high] = 0.0
@@ -323,30 +321,29 @@ class NavigateEnv(BaseEnv):
 
         return depth
 
-    def get_rgb(self):
+    def get_rgb(self, raw_vision_outputs):
         """
         :return: RGB sensor reading, normalized to [0.0, 1.0]
         """
-        return self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
+        return raw_vision_outputs['rgb'][:, :, :3]
 
-    def get_pc(self):
+    def get_pc(self, raw_vision_outputs):
         """
         :return: pointcloud sensor reading
         """
-        return self.simulator.renderer.render_robot_cameras(modes=('3d'))[0]
+        return self.raw_vision_outputs['3d']
 
-    def get_normal(self):
+    def get_normal(self, raw_vision_outputs):
         """
         :return: surface normal reading
         """
-        return self.simulator.renderer.render_robot_cameras(modes='normal')
+        return raw_vision_outputs['normal']
 
-    def get_seg(self):
+    def get_seg(self, raw_vision_outputs):
         """
         :return: semantic segmentation mask, normalized to [0.0, 1.0]
         """
-        seg = self.simulator.renderer.render_robot_cameras(modes='seg')[
-            0][:, :, 0:1]
+        seg = raw_vision_outputs['seg'][:, :, 0:1]
         if self.num_object_classes is not None:
             seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
         return seg
@@ -381,28 +378,52 @@ class NavigateEnv(BaseEnv):
         scan = np.expand_dims(hit_fraction, 1).astype(np.float32)
         return scan
 
+    def get_raw_vision_outputs(self):
+        outputs = self.output
+        vision_modes = []
+        if 'rgb' in outputs or 'rgbd' in outputs:
+            vision_modes.append('rgb')
+        if 'depth' in outputs or 'rgbd' in outputs or 'pc' in outputs:
+            vision_modes.append('3d')
+        if 'normal' in outputs:
+            vision_modes.append('normal')
+        if 'seg' in outputs:
+            vision_modes.append('seg')
+
+        if len(vision_modes) == 0:
+            return {}
+
+        raw_vision_outputs = \
+            self.simulator.renderer.render_robot_cameras(modes=vision_modes)
+
+        return {
+            mode: value
+            for mode, value in zip(vision_modes, raw_vision_outputs)
+        }
+
     def get_state(self, collision_links=[]):
         """
         :param collision_links: collisions from last time step
         :return: observation as a dictionary
         """
         state = OrderedDict()
+        raw_vision_outputs = self.get_raw_vision_outputs()
         if 'sensor' in self.output:
             state['sensor'] = self.get_additional_states()
         if 'rgb' in self.output:
-            state['rgb'] = self.get_rgb()
+            state['rgb'] = self.get_rgb(raw_vision_outputs)
         if 'depth' in self.output:
-            state['depth'] = self.get_depth()
+            state['depth'] = self.get_depth(raw_vision_outputs)
         if 'pc' in self.output:
-            state['pc'] = self.get_pc()
+            state['pc'] = self.get_pc(raw_vision_outputs)
         if 'rgbd' in self.output:
-            rgb = self.get_rgb()
-            depth = self.get_depth()
+            rgb = self.get_rgb(raw_vision_outputs)
+            depth = self.get_depth(raw_vision_outputs)
             state['rgbd'] = np.concatenate((rgb, depth), axis=2)
         if 'normal' in self.output:
-            state['normal'] = self.get_normal()
+            state['normal'] = self.get_normal(raw_vision_outputs)
         if 'seg' in self.output:
-            state['seg'] = self.get_seg()
+            state['seg'] = self.get_seg(raw_vision_outputs)
         if 'rgb_filled' in self.output:
             with torch.no_grad():
                 tensor = transforms.ToTensor()(
@@ -612,6 +633,7 @@ class NavigateEnv(BaseEnv):
         self.episode_return += reward
 
         done, info = self.get_termination(collision_links, action, info)
+
         self.step_visualization()
 
         if done and self.automatic_reset:
