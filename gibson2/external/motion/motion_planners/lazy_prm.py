@@ -1,9 +1,9 @@
 from scipy.spatial.kdtree import KDTree
 from heapq import heappush, heappop
 from collections import namedtuple
-from utils import INF, elapsed_time
-from rrt_connect import direct_path
-from smoothing import smooth_path
+from gibson2.external.motion.motion_planners.utils import INF, elapsed_time
+from gibson2.external.motion.motion_planners.rrt_connect import direct_path
+from gibson2.external.motion.motion_planners.smoothing import smooth_path
 
 import random
 import time
@@ -135,7 +135,7 @@ def lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn, num_sampl
                              cost_fn=cost_fn, heuristic_fn=heuristic_fn,
                              max_cost=max_cost, max_time=max_time-elapsed_time(start_time))
         if path is None:
-            return None, edges, colliding_vertices, colliding_edges
+            return None, samples, edges, colliding_vertices, colliding_edges
         cost = sum(cost_fn(v1, v2) for v1, v2 in zip(path, path[1:]))
         print('Length: {} | Cost: {:.3f} | Vertices: {} | Edges: {} | Time: {:.3f}'.format(
             len(path), cost, len(colliding_vertices), len(colliding_edges), elapsed_time(start_time)))
@@ -147,15 +147,17 @@ def lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn, num_sampl
         solution.extend(extend_fn(samples[q1], samples[q2]))
     return solution, samples, edges, colliding_vertices, colliding_edges
 
-def replan_loop(start_conf, end_conf, sample_fn, extend_fn, collision_fn, params_list, smooth=0, **kwargs):
+def lazy_prm_replan_loop(start_conf, end_conf, sample_fn, extend_fn, collision_fn, params_list, smooth=0, **kwargs):
     if collision_fn(start_conf) or collision_fn(end_conf):
         return None
     path = direct_path(start_conf, end_conf, extend_fn, collision_fn)
     if path is not None:
         return path
     for num_samples in params_list:
-        path = lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn,
+        res = lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn,
                         num_samples=num_samples, **kwargs)
+        print(res)
+        path, samples, edges, colliding_vertices, colliding_edges = res
         if path is not None:
             return smooth_path(path, extend_fn, collision_fn, iterations=smooth)
     return None
