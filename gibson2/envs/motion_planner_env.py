@@ -105,7 +105,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # TODO: randomize_object_pose eventually should be True
         if self.arena == 'tabletop_manip':
             self.max_step = int(self.max_step * 0.4)
-            self.randomize_object_pose = False
+            # self.randomize_object_pose = False
 
         self.rotate_occ_grid = rotate_occ_grid
         self.fine_motion_plan = self.config.get('fine_motion_plan', True)
@@ -386,7 +386,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if self.arena == 'push_chairs':
                 self.table_pose = [[-4.3, 0.5, 0.55], -np.pi / 2.0]
             elif self.arena == 'tabletop_manip':
-                self.table_pose = [[-4.25, 0.15, 0.4], -np.pi / 2.0]
+                # self.table_pose = [[-4.25, 0.15, 0.4], -np.pi / 2.0]
+                self.table_pose = [[-4.25, -0.15, 0.4], -np.pi / 2.0]
 
             door_scales = [
                 1.3,
@@ -454,11 +455,17 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 -0.6311911117325094,
                 0.3175088588585192]
 
+            # self.tabletop_object_pos_range = np.array([
+            #     [-4.6, -3.9], [-0.1, 0.2]
+            # ])
             self.tabletop_object_pos_range = np.array([
-                [-4.6, -3.9], [-0.1, 0.2]
+                [-4.1, -4.1], [-0.4, -0.1]
             ])
+            # self.tabletop_object_target_range = np.array([
+            #     [-4.6, -3.9], [-0.1, 0.2]
+            # ])
             self.tabletop_object_target_range = np.array([
-                [-4.6, -3.9], [-0.1, 0.2]
+                [-4.6, -4.3], [-0.4, -0.1]
             ])
             self.tabletop_object_initial_pos = np.array([0, 0, 0])
             self.tabletop_object_target_pos = np.array([0, 0, 0])
@@ -953,7 +960,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             shortest_path = np.concatenate(
                 (shortest_path,
-                robot_z * np.ones((shortest_path.shape[0], 1))),
+                 robot_z * np.ones((shortest_path.shape[0], 1))),
                 axis=1)
 
             waypoints_local_xy = np.array([
@@ -994,6 +1001,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                             joint_pos_cos,
                                             joint_vel,
                                             ))
+        # additional_states = np.concatenate((
+        #     additional_states,
+        #     self.global_to_local(self.tabletop_object_state[0]),
+        #     self.global_to_local(self.tabletop_object_target_pos),
+        # ))
         # additional_states = np.concatenate((waypoints_local_xy,
         #                                     target_pos_local_xy))
         additional_states = additional_states.astype(np.float32)
@@ -2191,21 +2203,21 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 while dist < (self.tabletop_object_dist_tol * 2.0):
                     self.tabletop_object_target_pos = np.array([
                         np.random.uniform(
-                            self.tabletop_object_pos_range[0][0],
-                            self.tabletop_object_pos_range[0][1]),
+                            self.tabletop_object_target_range[0][0],
+                            self.tabletop_object_target_range[0][1]),
                         np.random.uniform(
-                            self.tabletop_object_pos_range[1][0],
-                            self.tabletop_object_pos_range[1][1]),
+                            self.tabletop_object_target_range[1][0],
+                            self.tabletop_object_target_range[1][1]),
                         self.tabletop_object_height
                     ])
                     dist = l2_distance(self.tabletop_object_target_pos,
-                                    self.tabletop_object_initial_pos)
+                                       self.tabletop_object_initial_pos)
             else:
                 self.tabletop_object_initial_pos = np.array([
-                    -4.3, 0.16, self.tabletop_object_height
+                    -4.3, -0.14, self.tabletop_object_height
                 ])
                 self.tabletop_object_target_pos = np.array([
-                    -4.5, 0.0, self.tabletop_object_height
+                    -4.5, -0.3, self.tabletop_object_height
                 ])
 
             self.tabletop_object.set_position_orientation(
@@ -2217,6 +2229,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             )
             self.tabletop_object_state = (self.tabletop_object_initial_pos,
                                           self.tabletop_object_orn)
+            if self.robot_constraint is not None:
+                p.removeConstraint(self.robot_constraint)
 
     def after_reset_agent(self):
         if self.arena in ['obstacles', 'semantic_obstacles', 'push_chairs']:
@@ -2229,8 +2243,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 if dist > 0.05:
                     print('obstacle pose is >0.05m above the ground')
         elif self.arena == 'tabletop_manip':
-            if self.robot_constraint is not None:
-                p.removeConstraint(self.robot_constraint)
             self.robot_constraint = \
                 p.createConstraint(0, -1, self.robots[0].robot_ids[0],
                                    -1, p.JOINT_FIXED,
@@ -2257,12 +2269,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 info['success'] = True
 
         elif self.arena == 'tabletop_manip':
+            tabletop_object_pos = self.tabletop_object.get_position()
             dist = l2_distance(
-                self.tabletop_object.get_position_orientation()[0][:2],
+                tabletop_object_pos[:2],
                 self.tabletop_object_target_pos[:2])
             if dist < self.tabletop_object_dist_tol:
                 done = True
                 info['success'] = True
+
+            # the object drops from the table
+            if tabletop_object_pos[2] < self.tabletop_object_height - 0.2:
+                done = True
+                info['success'] = False
 
         if done:
             self.compute_metrics(info)
@@ -2375,8 +2393,11 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
             self.action_space = self.robots[0].action_space
 
         if self.arena == 'tabletop_manip':
+            # self.robots[0].arm_default_joint_positions = (
+            #     0.30322468280792236, 0, 0, 0, 0.25, 0, 0, 0)
             self.robots[0].arm_default_joint_positions = (
-                0.30322468280792236, 0, 0, 0, 0.25, 0, 0, 0)
+                0.30322468280792236, -np.pi / 2.0, np.pi / 4.0, np.pi / 2.0,
+                np.pi / 2.0, -np.pi / 4.0, 0, 0)
 
             # reduce arm maximum velocity by half
             self.robots[0].action_high[-self.robots[0].arm_dim:] *= 0.5

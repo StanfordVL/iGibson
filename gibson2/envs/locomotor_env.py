@@ -748,7 +748,7 @@ class NavigateEnv(BaseEnv):
                 break
 
         if not land_success:
-            print("WARNING: Failed to land")
+            print("WARNING: Failed to land", obj_type, obj, pos, orn)
 
         if obj_type == 'robot':
             obj.robot_specific_reset()
