@@ -26,7 +26,7 @@ from gibson2.core.physics.interactive_objects import InteractiveObj
 from gibson2.core.physics.interactive_objects import VisualMarker
 from gibson2.envs.locomotor_env import NavigateRandomEnv
 from gibson2.core.render.utils import quat_pos_to_mat
-from transforms3d.euler import euler2quat
+from transforms3d.euler import euler2quat, quat2euler
 from transforms3d.quaternions import quat2mat
 from IPython import embed
 
@@ -101,11 +101,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         if self.arena in ['push_chairs', 'push_drawers', 'tabletop_manip']:
             self.dist_tol = -1.0
 
-        # tabletop_manip has shorter episode length
-        # TODO: randomize_object_pose eventually should be True
+        # tabletop_manip has shorter episode length and larger head tilt angle
+        head_tilt_angle = quat2euler(
+            p.getJointInfo(self.robots[0].robot_ids[0], 5)[15])[1]
         if self.arena == 'tabletop_manip':
             self.max_step = int(self.max_step * 0.4)
-            # self.randomize_object_pose = False
+            assert np.abs(head_tilt_angle - np.deg2rad(45)) < 1e-3, \
+                'head tilte angle should be 45 degrees for {}'.format(
+                    self.arena)
+        else:
+            assert np.abs(head_tilt_angle - np.deg2rad(10)) < 1e-3, \
+                'head tilte angle should be 10 degrees for {}'.format(
+                    self.arena)
 
         self.rotate_occ_grid = rotate_occ_grid
         self.fine_motion_plan = self.config.get('fine_motion_plan', True)
@@ -448,6 +455,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.tabletop_object_scale = 1
             self.tabletop_object_height = 0.91
             self.tabletop_object_dist_tol = 0.1
+            self.tabletop_object_interaction_reward = 1.0
 
             self.tabletop_object_orn = [
                 -0.17487982428509494,
@@ -606,13 +614,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     quatToXYZW(euler2quat(
                         0, 0, self.table_pose[1]), 'wxyz'))
                 self.table = obj
-                self.constraint = \
-                    p.createConstraint(
-                        0, -1, obj.body_id, -1, p.JOINT_FIXED,
-                        [0, 0, 1],
-                        self.table.get_position(),
-                        [0, 0, 0],
-                        self.table.get_orientation())
+                self.constraint = p.createConstraint(
+                    0, -1, obj.body_id, -1, p.JOINT_FIXED,
+                    [0, 0, 1],
+                    self.table.get_position(),
+                    [0, 0, 0],
+                    self.table.get_orientation())
 
                 # Add extra walls to let the LiDAR sense the table
                 # TODO: use a different table model
@@ -651,13 +658,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 p.setCollisionFilterPair(
                     1, self.table.body_id, -1, -1, 0)
 
-                self.constraint = \
-                    p.createConstraint(
-                        0, -1, obj.body_id, -1, p.JOINT_FIXED,
-                        [0, 0, 1],
-                        self.table.get_position(),
-                        [0, 0, 0],
-                        self.table.get_orientation())
+                self.constraint = p.createConstraint(
+                    0, -1, obj.body_id, -1, p.JOINT_FIXED,
+                    [0, 0, 1],
+                    self.table.get_position(),
+                    [0, 0, 0],
+                    self.table.get_orientation())
 
                 obj = YCBObject(name=self.tabletop_object_name,
                                 scale=self.tabletop_object_scale)
@@ -1066,8 +1072,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     objs_img_uv[i][0] = objs_local_xy[i][0] \
                         / self.occupancy_range * self.grid_resolution \
                         + (self.grid_resolution / 2)
-                    objs_img_uv[i][1] = \
-                        -objs_local_xy[i][1] \
+                    objs_img_uv[i][1] = -objs_local_xy[i][1] \
                         / self.occupancy_range * self.grid_resolution \
                         + (self.grid_resolution / 2)
                 obj_map = np.zeros_like(state['occupancy_grid'])
@@ -1917,6 +1922,11 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 if new_dist < self.tabletop_object_dist_tol:
                     arm_reward += self.success_reward
 
+                # encourage the robot arm to interact with the object
+                if l2_distance(old_state[0][:2], new_state[0][:2]) > 1e-3:
+                    print('PUSH', self.tabletop_object_interaction_reward)
+                    arm_reward += self.tabletop_object_interaction_reward
+
             reward += arm_reward
 
         return reward, info
@@ -2165,13 +2175,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             unique_obj.set_position_orientation(pos, orn)
 
             p.removeConstraint(self.constraint)
-            self.constraint = \
-                p.createConstraint(0, -1, unique_obj.body_id,
-                                   -1, p.JOINT_FIXED,
-                                   [0, 0, 1],
-                                   unique_obj.get_position(),
-                                   [0, 0, 0],
-                                   unique_obj.get_orientation())
+            self.constraint = p.createConstraint(0, -1, unique_obj.body_id,
+                                                 -1, p.JOINT_FIXED,
+                                                 [0, 0, 1],
+                                                 unique_obj.get_position(),
+                                                 [0, 0, 0],
+                                                 unique_obj.get_orientation())
 
             for obstacle, obstacle_pose in \
                     zip(self.walls, self.table_wall_poses):
@@ -2402,6 +2411,8 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
             # reduce arm maximum velocity by half
             self.robots[0].action_high[-self.robots[0].arm_dim:] *= 0.5
             self.robots[0].action_low[-self.robots[0].arm_dim:] *= 0.5
+
+            self.tabletop_object_interaction_reward /= 30.0
 
     def step(self, action):
         if self.arena == 'random_nav':
