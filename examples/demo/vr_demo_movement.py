@@ -8,6 +8,7 @@ from gibson2.core.physics.interactive_objects import YCBObject, InteractiveObj, 
 from gibson2.core.simulator import Simulator
 from gibson2 import assets_path, dataset_path
 from gibson2.utils.utils import parse_config
+from math import sqrt
 
 model_path = assets_path + '\\models\\'
 gripper_folder = model_path + '\\gripper\\'
@@ -57,10 +58,17 @@ if optimize:
 # Account for Gibson floors not being at z=0 - shift user height down by 0.2m
 s.setVROffset([0, 0, -0.2])
 
+def normalizeListVec(v):
+    length = v[0] ** 2 + v[1] ** 2 + v[2] ** 2
+    if length <= 0:
+        length = 1
+    v = [val/sqrt(length) for val in v]
+    return v
+
+vr_movement_speed = 0.01
+
 # Runs simulation
 while True:
-    start = time.time()
-
     if vrMode:
         eventList = s.pollVREvents()
         for event in eventList:
@@ -76,7 +84,7 @@ while True:
                 elif eventType == 'trigger_unpress':
                     rightGripperFraction = 0.0
 
-    s.step(shouldTime=True)
+    s.step(shouldTime=False)
 
     if vrMode:
         hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')
@@ -103,22 +111,17 @@ while True:
 
         current_offset = s.getVROffset()
 
-        # Move the VR player in the direction of the analog stick
-        # In this implementation, +ve x and +ve y correspond to the same axes in Gibson
-        # Only uses data from right controller
-        # TODO: Implement a system where movement is relative to direction of HMD?
-        if rIsValid:
-            # Small offsets since this method could be call 100 times a second
-            rTouchXOffset = rTouchX * 0.003
-            rTouchYOffset = rTouchY * 0.003
-            s.setVROffset([current_offset[0] + rTouchXOffset, current_offset[1] + rTouchYOffset, current_offset[2]])
-    
-    elapsed = time.time() - start
-    if (elapsed > 0):
-        curr_fps = 1/elapsed
-    else:
-        curr_fps = 2000
+        right, up, forward = s.getHmdCoordinateSystem()
 
-    print("Current fps: %f" % curr_fps)
+        # Move the VR player in the direction of the analog stick
+        # In this implementation, +ve x corresponds to right and +ve y corresponds to forward
+        # relative to the HMD
+        # Only uses data from right controller
+        if rIsValid:
+            vr_offset_vec = [right[i] * rTouchX + forward[i] * rTouchY for i in range(3)]
+            vr_offset_vec[2] = 0
+            vr_offset_vec = normalizeListVec(vr_offset_vec)
+            final_offset = [current_offset[i] + vr_offset_vec[i] * vr_movement_speed for i in range(3)]
+            s.setVROffset(final_offset)
 
 s.disconnect()
