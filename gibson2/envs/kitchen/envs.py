@@ -47,6 +47,7 @@ class BaseEnv(object):
         self.fixtures = ObjectBank()
         self.object_visuals = []
         self.planner = None
+        self._task_spec = np.array([0])
 
         self._setup_simulation()
         self._create_robot()
@@ -63,6 +64,10 @@ class BaseEnv(object):
     def action_dimension(self):
         """Action dimension"""
         return 7  # [x, y, z, ai, aj, ak, g]
+
+    @property
+    def task_spec(self):
+        return self._task_spec.copy()
 
     def _setup_simulation(self):
         if self._use_gui:
@@ -119,6 +124,9 @@ class BaseEnv(object):
     def _reset_objects(self):
         raise NotImplementedError
 
+    def _sample_task(self):
+        pass
+
     def _create_env_extras(self):
         pass
         # for _ in range(10):
@@ -141,6 +149,7 @@ class BaseEnv(object):
         self.robot.reset_base_position_orientation(*self._robot_base_pose)
         self.robot.reset()
         self._reset_objects()
+        self._sample_task()
         return self.get_observation()
 
     def reset_to(self, serialized_world_state):
@@ -344,8 +353,8 @@ class TableTopPour(TableTop):
         set_friction(mug.body_id)
         self.objects.add_object("mug_blue", mug)
 
-        self.blue_beads_ids = [PBU.create_sphere(0.01, mass=0.5, color=(0, 0, 1, 0.8)) for _ in range(10)]
-        self.red_beads_ids = [PBU.create_sphere(0.01, mass=0.5, color=(1, 0, 0, 0.8)) for _ in range(10)]
+        self.blue_beads_ids = [PBU.create_sphere(0.005, mass=0.1, color=(0, 0, 1, 0.8)) for _ in range(50)]
+        self.red_beads_ids = [PBU.create_sphere(0.005, mass=0.1, color=(1, 0, 0, 0.8)) for _ in range(50)]
 
     def _reset_objects(self):
         z = PBU.stable_z(self.objects["bowl_red"].body_id, self.fixtures["table"].body_id)
@@ -362,10 +371,10 @@ class TableTopPour(TableTop):
 
         beads_pos = self.objects["mug_red"].get_position()
         for i, bid in enumerate(self.red_beads_ids):
-            p.resetBasePositionAndOrientation(bid, beads_pos + np.array([0, 0, z + 0.2 + i * 0.025]), PBU.unit_quat())
+            p.resetBasePositionAndOrientation(bid, beads_pos + np.array([0, 0, z + 0.1 + i * 0.01]), PBU.unit_quat())
         beads_pos = self.objects["mug_blue"].get_position()
         for i, bid in enumerate(self.blue_beads_ids):
-            p.resetBasePositionAndOrientation(bid, beads_pos + np.array([0, 0, z + 0.2 + i * 0.025]), PBU.unit_quat())
+            p.resetBasePositionAndOrientation(bid, beads_pos + np.array([0, 0, z + 0.1 + i * 0.01]), PBU.unit_quat())
 
     def is_success(self):
         num_contained = 0
@@ -402,3 +411,76 @@ class TableTopArrange(TableTop):
     def is_success(self):
         on_top = PBU.is_placement(self.objects["can"].body_id, self.objects["target"].body_id, below_epsilon=1e-2)
         return on_top
+
+
+class TableTopArrangeHard(TableTop):
+    def __init__(self, **kwargs):
+        kwargs["robot_base_pose"] = ([0.0, 0.3, 1.4], T.quaternion_from_euler(0, np.pi / 2, 0))
+        super(TableTop, self).__init__(**kwargs)
+
+    def _sample_task(self):
+        self._task_spec = np.array([np.random.randint(0, 3), np.random.randint(3, 5)])
+
+    def set_goal(self, task_specs):
+        """Set env target with external specification"""
+        assert len(task_specs) == 2
+        self._task_spec = np.array(task_specs)
+        assert 0 <= self._task_spec[0] <= 2
+        assert 3 <= self._task_spec[1] <= 4
+
+    def _create_objects(self):
+        o = YCBObject('005_tomato_soup_can')
+        o.load()
+        p.changeDynamics(o.body_id, -1, mass=1.0)
+        set_friction(o.body_id)
+        self.objects.add_object("can", o)
+
+        o = YCBObject('025_mug')
+        o.load()
+        p.changeDynamics(o.body_id, -1, mass=1.0)
+        set_friction(o.body_id)
+        self.objects.add_object("mug", o)
+
+        o = YCBObject('006_mustard_bottle')
+        o.load()
+        p.changeDynamics(o.body_id, -1, mass=1.0)
+        set_friction(o.body_id)
+        self.objects.add_object("bottle", o)
+
+        target_id = PBU.create_box(0.15, 0.15, 0.01, mass=100, color=(0, 1, 0, 1))
+        target = Object()
+        target.body_id = target_id
+        target.loaded = True
+        self.objects.add_object("target1", target)
+
+        target_id = PBU.create_box(0.15, 0.15, 0.01, mass=100, color=(0, 0, 1, 1))
+        target = Object()
+        target.body_id = target_id
+        target.loaded = True
+        self.objects.add_object("target2", target)
+
+    def _reset_objects(self):
+        z = PBU.stable_z(self.objects["can"].body_id, self.fixtures["table"].body_id)
+        self.objects["can"].set_position_orientation(
+            PU.sample_positions_in_box([-0.3, -0.2], [-0.2, -0.1], [z, z]), PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["mug"].body_id, self.fixtures["table"].body_id)
+        self.objects["mug"].set_position_orientation(
+            PU.sample_positions_in_box([-0.1, 0.0], [-0.2, -0.1], [z, z]), PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["bottle"].body_id, self.fixtures["table"].body_id)
+        self.objects["bottle"].set_position_orientation(
+            PU.sample_positions_in_box([0.1, 0.2], [-0.2, -0.1], [z, z]), PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["target1"].body_id, self.fixtures["table"].body_id)
+        self.objects["target1"].set_position_orientation(
+            PU.sample_positions_in_box([0.1, 0.2], [0.3, 0.2], [z, z]), PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["target2"].body_id, self.fixtures["table"].body_id)
+        self.objects["target2"].set_position_orientation(
+            PU.sample_positions_in_box([-0.2, -0.1], [0.3, 0.2], [z, z]), PBU.unit_quat())
+
+    def is_success(self):
+        src_object_id = self.objects.body_ids[int(self.task_spec[0])]
+        tgt_object_id = self.objects.body_ids[int(self.task_spec[1])]
+        return PBU.is_center_stable(src_object_id, tgt_object_id, above_epsilon=0.04, below_epsilon=0.02)

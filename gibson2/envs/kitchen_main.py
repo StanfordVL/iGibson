@@ -30,8 +30,10 @@ def execute_planned_path(env, path, noise=None):
     actions = []
     rewards = []
     states = []
+    task_specs = []
 
     for i in range(len(path)):
+        task_specs.append(env.task_spec)
         tpose = path.arm_path[i]
         grip = path.gripper_path[i]
 
@@ -59,7 +61,30 @@ def execute_planned_path(env, path, noise=None):
     # states.append(env.sim_state)
 
     all_obs = dict((k, np.array([all_obs[i][k] for i in range(len(all_obs))])) for k in all_obs[0])
-    return states, actions, rewards, all_obs
+    states = np.stack(states)
+    actions = np.stack(actions)
+    rewards = np.stack(rewards)
+    task_specs = np.stack(task_specs)
+    return {"states": states, "actions": actions, "rewards": rewards, "obs": all_obs, "task_specs": task_specs}
+
+
+class Buffer(object):
+    def __init__(self):
+        self.data = dict()
+
+    def append(self, **kwargs):
+        for k, v in kwargs.items():
+            if k not in self.data:
+                self.data[k] = []
+            self.data[k].append(v)
+
+    def aggregate(self):
+        for k, v in self.data.items():
+            if isinstance(v[0], dict):
+                self.data[k] = dict((k, np.concatenate([v[i][k] for i in range(len(v))], axis=0)) for k in v[0])
+            else:
+                self.data[k] = np.concatenate(v, axis=0)
+        return self.data
 
 
 def get_demo_can_to_drawer(env):
@@ -156,7 +181,7 @@ def get_demo_lift_can(env):
     return all_states, all_actions, all_rewards, all_obs
 
 
-def get_demo_pour(env):
+def get_demo_pour(env, perturb=False):
     env.reset()
     all_states = []
     all_actions = []
@@ -182,7 +207,7 @@ def get_demo_pour(env):
     all_obs.append(obs)
 
     bowl_pos = np.array(env.objects["bowl_red"].get_position())
-    pour_pos = bowl_pos + np.array([-0.05, 0.0, 0.2])
+    pour_pos = bowl_pos + np.array([0, 0.05, 0.2])
     pour_pose = (tuple(pour_pos.tolist()), PBU.multiply_quats(T.quaternion_about_axis(np.pi * 2 / 3, (1, 0, 0)), env.objects["mug_red"].get_orientation()))
     path = skills.plan_skill_pour(
         env.planner,
@@ -265,6 +290,43 @@ def get_demo_arrange(env, perturb=False):
     return all_states, all_actions, all_rewards, all_obs
 
 
+def get_demo_arrange_hard(env, perturb=False):
+    buffer = Buffer()
+
+    env.reset()
+
+    # orn = T.quaternion_from_euler(0, np.pi / 2, np.pi * float(np.random.rand(1)) * 2)
+    src_object = env.objects.names[env.task_spec[0]]
+    tgt_object = env.objects.names[env.task_spec[1]]
+    orn = T.quaternion_from_euler(0, np.pi / 2, 0)
+    can_grasp_pose = PU.compute_grasp_pose(
+        object_frame=env.objects[src_object].get_position_orientation(), grasp_orientation=orn, grasp_distance=0.02)
+
+    path = skills.plan_skill_grasp(
+        env.planner,
+        obstacles=env.obstacles,
+        grasp_pose=can_grasp_pose,
+        reach_distance=0.05,
+        lift_height=0.2,
+    )
+    buffer.append(**execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
+
+    target_pos = np.array(env.objects[tgt_object].get_position())
+    target_pos[2] = PBU.stable_z(env.objects[src_object].body_id, env.objects[tgt_object].body_id) + 0.01
+    place_pose = (target_pos, env.objects[src_object].get_orientation())
+
+    path = skills.plan_skill_place(
+        env.planner,
+        obstacles=env.obstacles,
+        object_target_pose=place_pose,
+        holding=env.objects[src_object].body_id,
+        retract_distance=0.1,
+    )
+    buffer.append(**execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
+
+    return buffer.aggregate()
+
+
 def create_dataset(args):
     import h5py
     import json
@@ -273,7 +335,7 @@ def create_dataset(args):
         num_sim_per_step=5,
         sim_time_step=1./240.
     )
-    env = env_factory("TableTopArrange", **env_kwargs, use_planner=True, hide_planner=True, use_gui=args.gui)
+    env = env_factory("TableTopArrangeHard", **env_kwargs, use_planner=True, hide_planner=True, use_gui=args.gui)
 
     if os.path.exists(args.file):
         os.remove(args.file)
@@ -291,23 +353,27 @@ def create_dataset(args):
     total_i = 0
     while success_i < args.n:
         try:
-            states, actions, rewards, all_obs = get_demo_arrange(env, perturb=args.perturb)
+            buffer = get_demo_arrange_hard(env, perturb=args.perturb)
         except PU.NoPlanException as e:
             print(e)
             continue
-
+        for _ in range(30):
+            p.stepSimulation()
         total_i += 1
         if not env.is_success():
             print("{}/{}".format(success_i, total_i))
             continue
 
         f_demo_grp = f_sars_grp.create_group("demo_{}".format(success_i))
-        f_demo_grp.attrs["num_samples"] = (states.shape[0] - 1)
-        f_demo_grp.create_dataset("states", data=states[:-1])
-        f_demo_grp.create_dataset("actions", data=actions[:-1])
-        for k in all_obs:
-            f_demo_grp.create_dataset("obs/{}".format(k), data=all_obs[k][:-1])
-            f_demo_grp.create_dataset("next_obs/{}".format(k), data=all_obs[k][1:])
+        f_demo_grp.attrs["num_samples"] = (buffer["states"].shape[0] - 1)
+        f_demo_grp.create_dataset("states", data=buffer["states"][:-1])
+        f_demo_grp.create_dataset("actions", data=buffer["actions"][:-1])
+        f_demo_grp.create_dataset("task_specs", data=buffer["task_specs"][:-1])
+        f_demo_grp.create_dataset("rewards", data=buffer["rewards"][:-1])
+
+        for k in buffer["obs"]:
+            f_demo_grp.create_dataset("obs/{}".format(k), data=buffer["obs"][k][:-1])
+            f_demo_grp.create_dataset("next_obs/{}".format(k), data=buffer["obs"][k][1:])
         success_i += 1
         print("{}/{}".format(success_i, total_i))
     f.close()
@@ -325,16 +391,14 @@ def playback(args):
     demos = list(f["data"].keys())
     for demo_id in demos:
         states = f["data/{}/states".format(demo_id)][:]
+        task_spec = f["data/{}/task_specs".format(demo_id)][0]
         env.reset_to(states[0])
+        env.set_goal(task_specs=task_spec)
         actions = f["data/{}/actions".format(demo_id)][:]
 
-        for i in range(400):
-            if i >= len(actions):
-                for _ in range(2):
-                    p.stepSimulation()
-            else:
-                print(np.allclose(states[i], env.serialized_world_state))
-                env.step(actions[i])
+        for i in range(len(actions)):
+            # print(np.abs(states[i] - env.serialized_world_state).argmax())
+            env.step(actions[i])
         print("success: {}".format(env.is_success()))
 
 
@@ -366,8 +430,8 @@ def main():
     args = parser.parse_args()
 
     np.random.seed(0)
-    playback(args)
-    # create_dataset(args)
+    # playback(args)
+    create_dataset(args)
     p.disconnect()
 
 

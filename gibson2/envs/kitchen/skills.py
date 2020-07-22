@@ -5,11 +5,14 @@ from gibson2.envs.kitchen.robots import GRIPPER_CLOSE, GRIPPER_OPEN
 import gibson2.external.pybullet_tools.utils as PBU
 
 
+DEFAULT_JOINT_RESOLUTIONS = (0.1, 0.1, 0.1, np.pi * 0.05, np.pi * 0.05, np.pi * 0.05)
+
+
 def plan_move_to(
         planner,
         obstacles,
         target_pose,
-        joint_resolutions=None
+        joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
 ):
     confs = planner.plan_joint_path(
         target_pose=target_pose, obstacles=obstacles, resolutions=joint_resolutions)
@@ -25,7 +28,7 @@ def plan_skill_open_prismatic(
         grasp_pose,
         retract_distance,
         reach_distance=0.,
-        joint_resolutions=None
+        joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
 ):
     """
     plan skill for opening articulated object with prismatic joint (e.g., drawers)
@@ -74,9 +77,9 @@ def plan_skill_grasp(
         grasp_pose,
         reach_distance=0.,
         lift_height=0.,
-        joint_resolutions=None,
         grasp_speed=0.05,
         lift_speed=0.05,
+        joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
 ):
     """
     plan skill for opening articulated object with prismatic joint (e.g., drawers)
@@ -119,7 +122,7 @@ def plan_skill_place(
         object_target_pose,
         holding,
         retract_distance=0.,
-        joint_resolutions=None
+        joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
 ):
     """
     plan skill for placing an object at a target pose
@@ -158,7 +161,7 @@ def plan_skill_pour(
         object_target_pose,
         pour_angle,
         holding,
-        joint_resolutions=None
+        joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
 ):
     grasp_pose = PBU.multiply(PBU.invert(planner.ref_robot.get_eef_position_orientation()), PBU.get_pose(holding))
     target_pour_pose = PBU.end_effector_from_body(object_target_pose, grasp_pose)
@@ -173,3 +176,25 @@ def plan_skill_pour(
     pour_path = pour_path.interpolate(pos_resolution=0.025, orn_resolution=np.pi / 4)
     pour_path.append_pause(30)
     return pour_path
+
+
+class Skill(object):
+    def __init__(self):
+        pass
+
+
+class SkillLibrary(object):
+    def __init__(self, planner, obstacles):
+        self.planner = planner
+        self.obstacles = obstacles
+
+    @property
+    def skills(self):
+        return [
+            "grasp",
+            "place",
+            "pour"
+        ]
+
+    def grasp(self, ):
+        pass
