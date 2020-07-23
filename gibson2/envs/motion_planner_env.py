@@ -66,6 +66,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                  rotate_occ_grid=False,
                  randomize_object_pose=True,
                  log_dir=None,
+                 fine_motion_plan=None,
+                 mp_algo='birrt',
                  ):
         super(MotionPlanningBaseArmEnv, self).__init__(
             config_file,
@@ -86,6 +88,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.channel_first = channel_first
         self.randomize_object_pose = randomize_object_pose
         self.log_dir = log_dir
+        self.mp_algo = mp_algo
 
         # draw the shortest path on the occupancy map
         self.draw_path_on_map = draw_path_on_map
@@ -118,6 +121,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         self.rotate_occ_grid = rotate_occ_grid
         self.fine_motion_plan = self.config.get('fine_motion_plan', True)
+        if fine_motion_plan is not None:
+            self.fine_motion_plan = fine_motion_plan
         if self.arena in ['tabletop_manip', 'tabletop_reaching'] and \
                 not self.fine_motion_plan:
             print('WARNING: tabletop requires fine motion planning')
@@ -871,7 +876,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             grid_resolution=self.grid_resolution,
             robot_footprint_radius_in_map=self.robot_footprint_radius_in_map,
             obstacles=[],
-            algorithm='birrt')
+            algorithm=self.mp_algo)
 
         return path
 
@@ -1446,7 +1451,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             disabled_collisions=disabled_collisions,
             self_collisions=self_collisions,
             obstacles=mp_obstacles,
-            algorithm='birrt')
+            algorithm=self.mp_algo)
         self.episode_metrics['arm_mp_time'] += time.time() - plan_arm_start
         if arm_path is not None:
             if self.mode == 'gui':
