@@ -98,13 +98,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             assert self.arena in ['push_chairs', 'push_drawers']
 
         # disable navigation success
-        if self.arena in ['push_chairs', 'push_drawers', 'tabletop_manip']:
+        if self.arena in ['push_chairs', 'push_drawers',
+                          'tabletop_manip', 'tabletop_reaching']:
             self.dist_tol = -1.0
 
-        # tabletop_manip has shorter episode length and larger head tilt angle
+        # tabletop_manip and tabletop_reaching has shorter episode length and
+        # larger head tilt angle
         head_tilt_angle = quat2euler(
             p.getJointInfo(self.robots[0].robot_ids[0], 5)[15])[1]
-        if self.arena == 'tabletop_manip':
+        if self.arena in ['tabletop_manip', 'tabletop_reaching']:
             self.max_step = int(self.max_step * 0.4)
             assert np.abs(head_tilt_angle - np.deg2rad(45)) < 1e-3, \
                 'head tilte angle should be 45 degrees for {}'.format(
@@ -116,11 +118,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         self.rotate_occ_grid = rotate_occ_grid
         self.fine_motion_plan = self.config.get('fine_motion_plan', True)
-        if self.arena == 'tabletop_manip' and not self.fine_motion_plan:
-            print("WARNING: tabletop_manip requires fine motion planning")
+        if self.arena in ['tabletop_manip', 'tabletop_reaching'] and \
+                not self.fine_motion_plan:
+            print('WARNING: tabletop requires fine motion planning')
         self.arm_subgoal_threshold = 0.05
         self.failed_subgoal_penalty = -0.0
         self.arm_interaction_length = 0.25
+        self.continuous_action = False
+        self.base_subgoal_success = False
+        self.arm_subgoal_success = False
 
         self.prepare_motion_planner()
         self.update_action_space()
@@ -200,7 +206,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             for obj in self.cabinet_drawers:
                 self.mp_obstacles_id.append(obj.body_id)
 
-        if self.arena in ['push_chairs', 'tabletop_manip']:
+        if self.arena in ['push_chairs',
+                          'tabletop_manip', 'tabletop_reaching']:
             self.mp_obstacles_id.append(self.table.body_id)
 
         if self.arena == 'tabletop_manip':
@@ -393,8 +400,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if self.arena == 'push_chairs':
                 self.table_pose = [[-4.3, 0.5, 0.55], -np.pi / 2.0]
             elif self.arena == 'tabletop_manip':
-                # self.table_pose = [[-4.25, 0.15, 0.4], -np.pi / 2.0]
                 self.table_pose = [[-4.25, -0.15, 0.4], -np.pi / 2.0]
+            elif self.arena == 'tabletop_reaching':
+                self.table_pose = [[-4.25, 0.15, 0.4], -np.pi / 2.0]
 
             door_scales = [
                 1.3,
@@ -477,6 +485,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             ])
             self.tabletop_object_initial_pos = np.array([0, 0, 0])
             self.tabletop_object_target_pos = np.array([0, 0, 0])
+            self.tabletop_reaching_penalty = 1.0
+            self.tabletop_reaching_target_height = 0.83
+            self.tabletop_reaching_target_range = np.array([
+                [-4.6, -4.0], [-0.1, 0.2]
+            ])
+            self.tabletop_reaching_dist_tol = 0.2
         else:
             if self.arena != 'random_nav':
                 assert False, 'model_id unknown'
@@ -560,7 +574,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 p.changeDynamics(obstacle.body_id, -1, lateralFriction=0.5)
                 self.obstacles.append(obstacle)
 
-        elif self.arena in ['push_drawers', 'push_chairs', 'tabletop_manip']:
+        elif self.arena in ['push_drawers', 'push_chairs',
+                            'tabletop_manip', 'tabletop_reaching']:
             # Close off the room with doors
             for scale, position, rotation in \
                     zip(door_scales, self.door_positions, self.door_rotations):
@@ -638,7 +653,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         quatToXYZW(euler2quat(0, 0, wall_pose[1]), 'wxyz'))
                     self.walls.append(wall)
 
-            elif self.arena == 'tabletop_manip':
+            elif self.arena in ['tabletop_manip', 'tabletop_reaching']:
                 # load fixed table
                 obj = InteractiveObj(filename=os.path.join(
                     gibson2.assets_path,
@@ -665,22 +680,23 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     [0, 0, 0],
                     self.table.get_orientation())
 
-                obj = YCBObject(name=self.tabletop_object_name,
-                                scale=self.tabletop_object_scale)
-                self.simulator.import_object(obj, class_id=40)
-                self.tabletop_object = obj
-
                 obj = VisualMarker(
                     visual_shape=p.GEOM_CYLINDER,
                     rgba_color=[
                         1, 0, 0, 1],
                     radius=0.1,
-                    length=0.05,
-                    initial_offset=[0, 0, 0.05 / 2.0])
+                    length=0.02,
+                    initial_offset=[0, 0, 0.02 / 2.0])
                 self.simulator.import_object(obj, class_id=90)
                 self.tabletop_target_marker = obj
 
                 self.robot_constraint = None
+
+                if self.arena == 'tabletop_manip':
+                    obj = YCBObject(name=self.tabletop_object_name,
+                                    scale=self.tabletop_object_scale)
+                    self.simulator.import_object(obj, class_id=40)
+                    self.tabletop_object = obj
 
     def prepare_motion_planner(self):
         self.robot_id = self.robots[0].robot_ids[0]
@@ -756,7 +772,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if self.arena == 'random_nav':
                 action_dim = self.base_orn_num_bins * (self.q_value_size ** 2)
             elif self.arena in ['random_manip', 'random_manip_atomic',
-                                'tabletop_manip']:
+                                'tabletop_manip', 'tabletop_reaching']:
                 action_dim = self.push_vec_num_bins * (self.q_value_size ** 2)
             else:
                 action_dim = \
@@ -767,7 +783,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         else:
             if self.arena == 'random_nav':
                 action_dim = 3
-            elif self.arena in ['random_manip', 'tabletop_manip']:
+            elif self.arena in ['random_manip',
+                                'tabletop_manip', 'tabletop_reaching']:
                 action_dim = 4
             elif self.arena == 'random_manip_atomic':
                 self.atomic_action_num_directions = 12
@@ -938,7 +955,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         #            np.random.normal(0, rot_noise))
 
         # (mobile) manipulation tasks, no path or goal needed
-        if self.arena in ['push_drawers', 'push_chairs', 'tabletop_manip']:
+        if self.arena in ['push_drawers', 'push_chairs',
+                          'tabletop_manip', 'tabletop_reaching']:
             waypoints_local_xy = np.zeros(self.scene.num_waypoints * 2)
             target_pos_local_xy = np.zeros(2)
             self.new_potential = 0.0
@@ -1253,6 +1271,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         arm_subgoal = transform_mat.dot(
             np.array([-point[2], -point[0], point[1], 1]))[:3]
         self.arm_marker.set_position(arm_subgoal)
+        self.arm_subgoal = arm_subgoal
 
         push_vector_local = np.array(
             [action[6], action[7]]) * self.arm_interaction_length
@@ -1430,7 +1449,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             algorithm='birrt')
         self.episode_metrics['arm_mp_time'] += time.time() - plan_arm_start
         if arm_path is not None:
-            # print('arm mp succeeds')
             if self.mode == 'gui':
                 for joint_way_point in arm_path:
                     set_joint_positions(
@@ -1448,7 +1466,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             return True
         else:
-            # print('arm mp fails')
             set_joint_positions(self.robot_id, self.arm_joint_ids,
                                 self.arm_default_joint_positions)
             self.episode_metrics['arm_mp_failure'] += 1
@@ -1670,7 +1687,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             base_range = self.base_orn_num_bins * (self.q_value_size ** 2)
 
             if self.arena in ['random_manip', 'random_manip_atomic',
-                              'tabletop_manip']:
+                              'tabletop_manip', 'tabletop_reaching']:
                 action += base_range
 
             # base
@@ -1738,12 +1755,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if self.arena in ['random_nav',
                               'random_manip',
                               'random_manip_atomic',
-                              'tabletop_manip']:
+                              'tabletop_manip',
+                              'tabletop_reaching']:
                 new_action = np.zeros(8)
                 if self.arena == 'random_nav':
                     new_action[0] = 1.0
                     new_action[1:4] = action
-                elif self.arena in ['random_manip', 'tabletop_manip']:
+                elif self.arena in ['random_manip',
+                                    'tabletop_manip', 'tabletop_reaching']:
                     new_action[0] = -1.0
                     new_action[4:8] = action
                 elif self.arena == 'random_manip_atomic':
@@ -1770,11 +1789,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # action_noise = np.random.normal(0.0, 0.05, action.shape[0] - 1)
         # action[1:] = np.clip(action[1:] + action_noise, -1.0, 1.0)
 
+        self.base_subgoal_success = False
+        self.arm_subgoal_success = False
         if use_base:
             subgoal_success = self.move_base(action)
+            self.base_subgoal_success = subgoal_success
             # print('move_base:', subgoal_success)
         else:
             subgoal_success = self.move_arm(action)
+            self.arm_subgoal_success = subgoal_success
             # print('move_arm:', subgoal_success)
 
         # start = time.time()
@@ -1924,8 +1947,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
                 # encourage the robot arm to interact with the object
                 if l2_distance(old_state[0][:2], new_state[0][:2]) > 1e-3:
-                    print('PUSH', self.tabletop_object_interaction_reward)
                     arm_reward += self.tabletop_object_interaction_reward
+
+            elif self.arena == 'tabletop_reaching':
+                if self.continuous_action:
+                    arm_position = self.robots[0].get_end_effector_position()
+                else:
+                    arm_position = self.arm_subgoal
+                dist = l2_distance(arm_position,
+                                   self.tabletop_reaching_target_pos)
+                arm_reward += (-self.tabletop_reaching_penalty) * dist
+                if dist < self.tabletop_reaching_dist_tol:
+                    arm_reward += self.success_reward
 
             reward += arm_reward
 
@@ -1967,7 +2000,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                           'obstacles', 'semantic_obstacles',
                           'empty',
                           'random_manip', 'random_manip_atomic',
-                          'push_drawers', 'push_chairs', 'tabletop_manip']:
+                          'push_drawers', 'push_chairs',
+                          'tabletop_manip', 'tabletop_reaching']:
             floor_height = self.scene.get_floor_height(self.floor_num)
 
             if self.arena in ['random_manip', 'random_manip_atomic']:
@@ -2001,7 +2035,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     self.initial_orn_range_near_door[0],
                     self.initial_orn_range_near_door[1])
             elif self.arena in ['push_drawers', 'push_chairs',
-                                'tabletop_manip']:
+                                'tabletop_manip', 'tabletop_reaching']:
                 self.initial_orn_z = np.pi / 2.0
             else:
                 self.initial_orn_z = np.random.uniform(-np.pi, np.pi)
@@ -2241,6 +2275,21 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if self.robot_constraint is not None:
                 p.removeConstraint(self.robot_constraint)
 
+        elif self.arena == 'tabletop_reaching':
+            self.tabletop_reaching_target_pos = np.array([
+                np.random.uniform(
+                    self.tabletop_reaching_target_range[0][0],
+                    self.tabletop_reaching_target_range[0][1]),
+                np.random.uniform(
+                    self.tabletop_reaching_target_range[1][0],
+                    self.tabletop_reaching_target_range[1][1]),
+                self.tabletop_reaching_target_height,
+            ])
+            self.tabletop_target_marker.set_position(
+                self.tabletop_reaching_target_pos)
+            if self.robot_constraint is not None:
+                p.removeConstraint(self.robot_constraint)
+
     def after_reset_agent(self):
         if self.arena in ['obstacles', 'semantic_obstacles', 'push_chairs']:
             for obstacle, obstacle_pose in \
@@ -2251,7 +2300,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                    np.array(original_pos))
                 if dist > 0.05:
                     print('obstacle pose is >0.05m above the ground')
-        elif self.arena == 'tabletop_manip':
+        elif self.arena in ['tabletop_manip', 'tabletop_reaching']:
             self.robot_constraint = \
                 p.createConstraint(0, -1, self.robots[0].robot_ids[0],
                                    -1, p.JOINT_FIXED,
@@ -2291,6 +2340,17 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 done = True
                 info['success'] = False
 
+        elif self.arena == 'tabletop_reaching':
+            if self.continuous_action or self.arm_subgoal_success:
+                if self.continuous_action:
+                    arm_position = self.robots[0].get_end_effector_position()
+                else:
+                    arm_position = self.arm_subgoal
+                dist = l2_distance(arm_position,
+                                   self.tabletop_reaching_target_pos)
+                if dist < self.tabletop_reaching_dist_tol:
+                    done = True
+                    info['success'] = True
         if done:
             self.compute_metrics(info)
 
@@ -2298,8 +2358,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
     def compute_metrics(self, info):
         if self.arena == 'tabletop_manip':
-            dist_to_goal = l2_distance(self.tabletop_object.get_position()[:2],
-                                       self.tabletop_object_target_pos[:2])
+            dist_to_goal = l2_distance(
+                self.tabletop_object.get_position()[:2],
+                self.tabletop_object_target_pos[:2])
+        elif self.arena == 'tabletop_reaching':
+            if self.continuous_action:
+                arm_position = self.robots[0].get_end_effector_position()
+            else:
+                arm_position = self.arm_subgoal
+            dist_to_goal = l2_distance(arm_position,
+                                       self.tabletop_reaching_target_pos)
         else:
             dist_to_goal = self.get_geodesic_potential()
         self.episode_metrics['dist_to_goal'] = dist_to_goal
@@ -2367,7 +2435,7 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
                  arena=None,
                  log_dir=None,
                  ):
-        if arena == 'tabletop_manip':
+        if arena in ['tabletop_manip', 'tabletop_reaching']:
             # needs more accurate physics simulation
             physics_timestep = min(physics_timestep, 1 / 100.0)
 
@@ -2384,6 +2452,9 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
             collision_reward_weight=collision_reward_weight,
             log_dir=log_dir,
         )
+
+        self.continuous_action = True
+
         # revert back to raw action space
         if self.arena == 'random_nav':
             self.action_space = gym.spaces.Box(
@@ -2392,7 +2463,7 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
                 high=1.0,
                 dtype=np.float32)
         elif self.arena in ['random_manip', 'random_manip_atomic',
-                            'tabletop_manip']:
+                            'tabletop_manip', 'tabletop_reaching']:
             self.action_space = gym.spaces.Box(
                 shape=(self.robots[0].arm_dim,),
                 low=-1.0,
@@ -2401,18 +2472,20 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
         else:
             self.action_space = self.robots[0].action_space
 
-        if self.arena == 'tabletop_manip':
-            # self.robots[0].arm_default_joint_positions = (
-            #     0.30322468280792236, 0, 0, 0, 0.25, 0, 0, 0)
-            self.robots[0].arm_default_joint_positions = (
-                0.30322468280792236, -np.pi / 2.0, np.pi / 4.0, np.pi / 2.0,
-                np.pi / 2.0, -np.pi / 4.0, 0, 0)
+        if self.arena in ['tabletop_manip', 'tabletop_reaching']:
+            if self.arena == 'tabletop_manip':
+                self.robots[0].arm_default_joint_positions = (
+                    0.30322468280792236, -np.pi / 2.0, np.pi / 4.0,
+                    np.pi / 2.0, np.pi / 2.0, -np.pi / 4.0, 0, 0)
+                self.tabletop_object_interaction_reward /= 30.0
+            elif self.arena == 'tabletop_reaching':
+                self.robots[0].arm_default_joint_positions = (
+                    0.30322468280792236, 0, 0, 0, np.pi / 6.0, 0, 0, 0)
+                self.tabletop_reaching_penalty /= 30.0
 
             # reduce arm maximum velocity by half
             self.robots[0].action_high[-self.robots[0].arm_dim:] *= 0.5
             self.robots[0].action_low[-self.robots[0].arm_dim:] *= 0.5
-
-            self.tabletop_object_interaction_reward /= 30.0
 
     def step(self, action):
         if self.arena == 'random_nav':
@@ -2420,7 +2493,7 @@ class MotionPlanningBaseArmContinuousEnv(MotionPlanningBaseArmEnv):
             new_action[:2] = action
             action = new_action
         elif self.arena in ['random_manip', 'random_manip_atomic',
-                            'tabletop_manip']:
+                            'tabletop_manip', 'tabletop_reaching']:
             new_action = np.zeros(10)
             new_action[3:] = action
             action = new_action
@@ -2519,7 +2592,7 @@ if __name__ == '__main__':
                                  'empty', 'random_nav',
                                  'random_manip', 'random_manip_atomic',
                                  'push_drawers', 'push_chairs',
-                                 'tabletop_manip'],
+                                 'tabletop_manip', 'tabletop_reaching'],
                         default='push_door',
                         help='which arena to use (default: push_door)')
 
