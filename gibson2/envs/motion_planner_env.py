@@ -67,7 +67,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                  randomize_object_pose=True,
                  log_dir=None,
                  fine_motion_plan=None,
-                 mp_algo='birrt',
+                 base_mp_algo='birrt',
+                 arm_mp_algo='birrt',
                  ):
         super(MotionPlanningBaseArmEnv, self).__init__(
             config_file,
@@ -88,7 +89,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.channel_first = channel_first
         self.randomize_object_pose = randomize_object_pose
         self.log_dir = log_dir
-        self.mp_algo = mp_algo
+        self.base_mp_algo = base_mp_algo
+        self.arm_mp_algo = arm_mp_algo
 
         # draw the shortest path on the occupancy map
         self.draw_path_on_map = draw_path_on_map
@@ -140,6 +142,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.prepare_scene()
         self.prepare_mp_obstacles()
         self.prepare_logging()
+        # np.random.seed(0)
 
     def prepare_logging(self):
         if self.log_dir is not None:
@@ -157,6 +160,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.logger = logger
             self.logger.info('model_id: ' + self.scene.model_id)
             self.logger.info('arena: ' + self.arena)
+            self.logger.info('fine_motion_plan: ' + str(self.fine_motion_plan))
+            self.logger.info('base_mp_algo: ' + self.base_mp_algo)
+            self.logger.info('arm_mp_algo: ' + self.arm_mp_algo)
 
         self.metric_keys = [
             'episode_return',
@@ -495,7 +501,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.tabletop_reaching_target_range = np.array([
                 [-4.6, -4.0], [-0.1, 0.2]
             ])
-            self.tabletop_reaching_dist_tol = 0.2
+            self.tabletop_reaching_dist_tol = 0.1
         else:
             if self.arena != 'random_nav':
                 assert False, 'model_id unknown'
@@ -866,6 +872,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             grid = self.get_local_occupancy_grid(self.state)
         else:
             grid = self.get_local_occupancy_grid()
+        self.base_mp_resolutions = np.array([0.05, 0.05, 0.05])
 
         path = plan_base_motion_2d(
             self.robot_id,
@@ -875,8 +882,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             occupancy_range=self.occupancy_range,
             grid_resolution=self.grid_resolution,
             robot_footprint_radius_in_map=self.robot_footprint_radius_in_map,
+            resolutions=self.base_mp_resolutions,
             obstacles=[],
-            algorithm=self.mp_algo)
+            algorithm=self.base_mp_algo)
 
         return path
 
@@ -1451,7 +1459,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             disabled_collisions=disabled_collisions,
             self_collisions=self_collisions,
             obstacles=mp_obstacles,
-            algorithm=self.mp_algo)
+            algorithm=self.arm_mp_algo)
         self.episode_metrics['arm_mp_time'] += time.time() - plan_arm_start
         if arm_path is not None:
             if self.mode == 'gui':
@@ -1808,6 +1816,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # start = time.time()
         state, reward, done, info = self.compute_next_step(
             action, use_base, subgoal_success)
+
         # self.times['compute_next_step'].append(time.time() - start)
 
         self.step_visualization()
