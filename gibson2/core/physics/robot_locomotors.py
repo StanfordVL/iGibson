@@ -550,6 +550,9 @@ class Fetch(LocomotorRobot):
     def get_end_effector_position(self):
         return self.parts['gripper_link'].get_position()
 
+    def end_effector_part_index(self):
+        return self.parts['gripper_link'].body_part_index
+
     def load(self):
         ids = super(Fetch, self).load()
         robot_id = self.robot_ids[0]
@@ -598,6 +601,11 @@ class Fetch(LocomotorRobot):
                                              ])
 
         return ids
+
+    def tuck(self):
+        robot_id = self.robot_ids[0]
+        set_joint_positions(robot_id, self.arm_joints, self.arm_default_joint_positions)
+
 
 
 class JR2(LocomotorRobot):
@@ -731,3 +739,150 @@ class Locobot(LocomotorRobot):
 
     def get_end_effector_position(self):
         return self.parts['gripper_link'].get_position()
+
+
+
+
+class Movo(LocomotorRobot):
+    def __init__(self, config):
+        self.config = config
+        self.wheel_velocity = config.get('wheel_velocity', 1.0)
+        self.torso_lift_velocity = config.get('torso_lift_velocity', 1.0)
+        self.arm_velocity = config.get('arm_velocity', 1.0)
+        self.wheel_dim = 2
+        self.torso_lift_dim = 1
+        self.arm_dim = 7
+        LocomotorRobot.__init__(self,
+                                "movo_description/movo_robotiq_collision.urdf",
+                                action_dim=self.wheel_dim + self.torso_lift_dim + self.arm_dim,
+                                scale=config.get("robot_scale", 1.0),
+                                is_discrete=config.get("is_discrete", False),
+                                control="velocity",
+                                self_collision=True)
+
+    def set_up_continuous_action_space(self):
+        self.action_high = np.array([self.wheel_velocity] * self.wheel_dim +
+                                    [self.torso_lift_velocity] * self.torso_lift_dim +
+                                    [self.arm_velocity] * self.arm_dim)
+        self.action_low = -self.action_high
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
+                                           low=-1.0,
+                                           high=1.0,
+                                           dtype=np.float32)
+
+    def set_up_discrete_action_space(self):
+        assert False, "Fetch does not support discrete actions"
+
+    def robot_specific_reset(self):
+        super(Movo, self).robot_specific_reset()
+        self.tuck()
+
+        #set_joint_positions(self.robot_ids[0], self.arm_joints,
+        #                    self.arm_default_joint_positions)
+
+    def get_end_effector_position(self):
+        return self.parts['right_gripper_base_link'].get_position()
+    
+    def end_effector_part_index(self):
+        return self.parts['right_gripper_base_link'].body_part_index
+
+    def load(self):
+        ids = super(Movo, self).load()
+        robot_id = self.robot_ids[0]
+
+        # disable collision between torso_lift_joint and shoulder_lift_joint
+        #                   between torso_lift_joint and torso_fixed_joint
+        #                   between torso_lift_joint and upperarm_roll_link
+        #                   between caster_wheel_joint and estop_joint
+        #                   between caster_wheel_joint and laser_joint
+        #                   between caster_wheel_joint and torso_fixed_joint
+        #                   between caster_wheel_joint and l_wheel_joint
+        #                   between caster_wheel_joint and r_wheel_joint
+        # p.setCollisionFilterPair(robot_id, robot_id, 3, 13, 0)
+        # p.setCollisionFilterPair(robot_id, robot_id, 3, 14, 0)
+        # p.setCollisionFilterPair(robot_id, robot_id, 3, 22, 0)
+        # p.setCollisionFilterPair(robot_id, robot_id, 0, 20, 0)
+        # p.setCollisionFilterPair(robot_id, robot_id, 0, 21, 0)
+        # p.setCollisionFilterPair(robot_id, robot_id, 0, 22, 0)
+        # p.setCollisionFilterPair(robot_id, robot_id, 0, 1, 0)
+        # p.setCollisionFilterPair(robot_id, robot_id, 0, 2, 0)
+        NEVER_COLLISIONS = [
+            ('linear_actuator_fixed_link', 'right_base_link'), ('linear_actuator_fixed_link', 'right_shoulder_link'),
+            ('linear_actuator_fixed_link', 'left_base_link'), ('linear_actuator_fixed_link', 'left_shoulder_link'),
+            ('linear_actuator_fixed_link', 'laser_link'), ('linear_actuator_fixed_link', 'rear_laser_link'),
+            ('linear_actuator_link', 'pan_link'), ('linear_actuator_link', 'right_shoulder_link'),
+            ('linear_actuator_link', 'right_arm_half_1_link'), ('linear_actuator_link', 'left_shoulder_link'),
+            ('linear_actuator_link', 'left_arm_half_1_link'), ('right_wrist_spherical_2_link', 'right_robotiq_coupler_link'),
+            ('right_wrist_3_link', 'right_robotiq_coupler_link'), ('right_wrist_3_link', 'right_gripper_base_link'),
+            ('left_wrist_spherical_2_link', 'left_gripper_base_link'), ('left_wrist_3_link', 'left_gripper_base_link'),
+        ]
+
+        for link in range(p.getNumJoints(robot_id)):
+            p.changeVisualShape(robot_id, link, rgbaColor=[0.3,0.3,0.3,1])
+
+        for a,b in NEVER_COLLISIONS:
+            p.setCollisionFilterPair(robot_id, robot_id, link_from_name(robot_id, a), link_from_name(robot_id, b), 0)
+
+        # self.arm_default_joint_positions = (0.02,
+        #                                     np.pi / 2.0 - 0.4,
+        #                                     np.pi / 2.0 - 0.1,
+        #                                     -0.4,
+        #                                     np.pi / 2.0 + 0.1,
+        #                                     0.0, np.pi / 2.0,
+        #                                     0.0)
+
+        # a better pose to initiate manipulation
+        # self.arm_default_joint_positions = (
+        #     0.30322468280792236, -1.414019864768982,
+        #     1.5178184935241699, 0.8189625336474915,
+        #     2.200358942909668, 2.9631312579803466,
+        #     -1.2862852996643066, 0.0008453550418615341)
+
+        # use right arm
+
+        self.all_joints = joints_from_names(robot_id,  [
+        "linear_joint",
+        "right_shoulder_pan_joint",
+        "right_shoulder_lift_joint",
+        "right_arm_half_joint",
+        "right_elbow_joint",
+        "right_wrist_spherical_1_joint",
+        "right_wrist_spherical_2_joint",
+        "right_wrist_3_joint",
+        "left_shoulder_pan_joint",
+        "left_shoulder_lift_joint",
+        "left_arm_half_joint",
+        "left_elbow_joint",
+        "left_wrist_spherical_1_joint",
+        "left_wrist_spherical_2_joint",
+        "left_wrist_3_joint",
+        ]
+        )
+
+        self.homed = [0.35,
+                -1.5,-0.2,-0.175,-2.0,2.0,-1.24,-1.1, \
+                1.5,0.2,0.15,2.0,-2.0,1.24,1.1]
+                
+        self.tucked = [0.35,
+               -1.50058731470836, -1.3002625076695704, 0.5204845864369407, \
+               -2.6923805472917626, -0.02678584326934146, 0.5065742552588746, \
+               -1.562883631882778, 1.4985030054082276, 1.3029391734311935, \
+               -0.5550501568503153, 2.7085509095395244, 0.0635355572111023, \
+               -0.49385319702229646, 1.4302666388193424]
+
+        
+        self.arm_joints = joints_from_names(robot_id,
+                                            ['linear_joint'] + [item.format('right') for item in 
+                                            ['{}_shoulder_pan_joint', 
+                                            '{}_shoulder_lift_joint', 
+                                            '{}_arm_half_joint', 
+                                            '{}_elbow_joint',
+                                            '{}_wrist_spherical_1_joint', 
+                                            '{}_wrist_spherical_2_joint', 
+                                            '{}_wrist_3_joint']])
+
+        return ids
+
+    def tuck(self):
+        robot_id = self.robot_ids[0]
+        set_joint_positions(robot_id, self.all_joints, self.tucked)
