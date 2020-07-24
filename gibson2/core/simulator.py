@@ -535,6 +535,20 @@ class Simulator:
         x, y, z = self.renderer.vrsys.getVROffset()
         return [x, y, z]
 
+    # Gets the direction vectors representing the HMD's coordinate system in list form: x, y, z (in Gibson coordinates)
+    # List contains "right", "up" and "forward" vectors in that order
+    def getHmdCoordinateSystem(self):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+
+        vec_list = []
+
+        coordinate_sys = self.renderer.vrsys.getHmdCoordinateSystem()
+        for dir_vec in coordinate_sys:
+            vec_list.append(dir_vec)
+
+        return vec_list
+
     @staticmethod
     def update_position(instance):
         """

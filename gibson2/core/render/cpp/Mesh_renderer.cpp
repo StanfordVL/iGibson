@@ -1024,6 +1024,30 @@ public:
 		return offset;
 	}
 
+	// Gets normalized vectors representing HMD coordinate system
+	// Returns transformed x, y and z
+	// Represent "right", "up" and "forward" relative to headset, in iGibson coordinates
+	// TIMELINE: Call any time after postRenderVR
+	py::list getHmdCoordinateSystem() {
+		py::list vecList;
+
+		for (int i = 0; i < 3; i++) {
+			glm::vec3 transformedVrDir = getVec3ColFromMat4(i, hmdData.deviceTransform);
+			if (i == 2) {
+				transformedVrDir = transformedVrDir * -1.0f;
+			}
+			glm::vec3 transformedGibDir = glm::normalize(glm::vec3(vrToGib * glm::vec4(transformedVrDir, 1.0)));
+
+			py::list vec;
+			vec.append(transformedGibDir.x);
+			vec.append(transformedGibDir.y);
+			vec.append(transformedGibDir.z);
+			vecList.append(vec);
+		}
+
+		return vecList;
+	}
+
 	// Returns the projection and view matrices for the left and right eyes, to be used in rendering
 	// Returns in order Left P, left V, right P, right V
 	// Note: GLM is column-major, whereas numpy is row major, so we need to tranpose view matrices before conversion
@@ -1454,6 +1478,17 @@ private:
 		mat.m[2][3] = pos[2];
 	}
 
+	// Gets vector 3 representation of column from glm mat 4
+	// Useful for extracting rotation component from matrix
+	glm::vec3 getVec3ColFromMat4(int col_index, glm::mat4& mat) {
+		glm::vec3 v;
+		v.x = mat[col_index][0];
+		v.y = mat[col_index][1];
+		v.z = mat[col_index][2];
+
+		return v;
+	}
+
 	// Converts a SteamVR Matrix to a glm mat4
 	glm::mat4 convertSteamVRMatrixToGlmMat4(const vr::HmdMatrix34_t& matPose) {
 		glm::mat4 mat(
@@ -1596,6 +1631,7 @@ PYBIND11_MODULE(MeshRendererContext, m) {
 		pymoduleVR.def("getEyeTrackingData", &VRSystem::getEyeTrackingData);
 		pymoduleVR.def("setVROffset", &VRSystem::setVROffset);
 		pymoduleVR.def("getVROffset", &VRSystem::getVROffset);
+		pymoduleVR.def("getHmdCoordinateSystem", &VRSystem::getHmdCoordinateSystem);
 		pymoduleVR.def("preRenderVR", &VRSystem::preRenderVR);
 		pymoduleVR.def("postRenderVRForEye", &VRSystem::postRenderVRForEye);
 		pymoduleVR.def("postRenderVRUpdate", &VRSystem::postRenderVRUpdate);
