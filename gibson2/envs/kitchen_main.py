@@ -1,3 +1,6 @@
+import h5py
+import json
+
 import os
 import pybullet as p
 import time
@@ -20,13 +23,12 @@ task-space path -> gripper actuation
 """
 
 ACTION_NOISE = (0.01, 0.01, 0.01, np.pi / 16, np.pi / 16, np.pi / 16)
-# ACTION_NOISE = (0, 0, 0, 0, 0, 0)
 
 
 def execute_planned_path(env, path, noise=None):
     """Execute a planned path an relabel actions."""
 
-    all_obs = []
+    # all_obs = []
     actions = []
     rewards = []
     states = []
@@ -43,29 +45,30 @@ def execute_planned_path(env, path, noise=None):
         action = np.zeros(env.action_dimension)
         action[-1] = grip
         action[:-1] = pose_to_action_euler(cpose, tpose, max_dpos=env.MAX_DPOS, max_drot=env.MAX_DROT)
+        # action[:-1] = pose_to_action_axis_vector(cpose, tpose, max_dpos=env.MAX_DPOS, max_drot=env.MAX_DROT)
         if noise is not None:
             assert len(noise) == (env.action_dimension - 1)
             noise_arr = np.array(noise)
             action[:6] += np.clip(np.random.randn(len(noise)) * noise_arr, -noise_arr * 2, noise_arr * 2)
-        # action[:-1] = pose_to_action_axis_vector(cpose, tpose, max_dpos=env.MAX_DPOS, max_drot=env.MAX_DROT)
         actions.append(action)
         states.append(env.serialized_world_state)
-        all_obs.append(env.get_observation())
+        # all_obs.append(env.get_observation())
 
         env.step(action)
         rewards.append(float(env.is_success()))
 
     # all_obs.append(env.get_observation())
-    # actions.append(np.zeros(env.action_dimension))
-    # rewards.append(float(env.is_success()))
-    # states.append(env.sim_state)
+    actions.append(actions[-1])
+    rewards.append(float(env.is_success()))
+    states.append(env.serialized_world_state)
+    task_specs.append(env.task_spec)
 
-    all_obs = dict((k, np.array([all_obs[i][k] for i in range(len(all_obs))])) for k in all_obs[0])
+    # all_obs = dict((k, np.array([all_obs[i][k] for i in range(len(all_obs))])) for k in all_obs[0])
     states = np.stack(states)
     actions = np.stack(actions)
     rewards = np.stack(rewards)
     task_specs = np.stack(task_specs)
-    return {"states": states, "actions": actions, "rewards": rewards, "obs": all_obs, "task_specs": task_specs}
+    return {"states": states, "actions": actions, "rewards": rewards, "task_specs": task_specs}
 
 
 class Buffer(object):
@@ -87,12 +90,9 @@ class Buffer(object):
         return self.data
 
 
-def get_demo_can_to_drawer(env):
+def get_demo_can_to_drawer(env, perturb=False):
+    buffer = Buffer()
     env.reset()
-    all_states = []
-    all_actions = []
-    all_rewards = []
-    all_obs = []
 
     drawer_grasp_pose = (
         [0.3879213,  0.0072391,  0.71218301],
@@ -106,11 +106,7 @@ def get_demo_can_to_drawer(env):
         retract_distance=0.25,
         joint_resolutions=(0.25, 0.25, 0.25, 0.2, 0.2, 0.2)
     )
-    states, actions, rewards, obs = execute_planned_path(env, path)
-    all_states.append(states)
-    all_actions.append(actions)
-    all_rewards.append(rewards)
-    all_obs.append(obs)
+    buffer.append(**execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
 
     can_grasp_pose = ((0.03, -0.005, 1.06), (0, 0, 1, 0))
     path = skills.plan_skill_grasp(
@@ -121,11 +117,7 @@ def get_demo_can_to_drawer(env):
         lift_height=0.1,
         joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2)
     )
-    states, actions, rewards, obs = execute_planned_path(env, path)
-    all_states.append(states)
-    all_actions.append(actions)
-    all_rewards.append(rewards)
-    all_obs.append(obs)
+    buffer.append(**execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
 
     can_drop_pose = ((0.469, 0, 0.952), (0, 0, 1, 0))
     path = skills.plan_skill_place(
@@ -137,25 +129,13 @@ def get_demo_can_to_drawer(env):
     )
 
     path.append_pause(30)
-    states, actions, rewards, obs = execute_planned_path(env, path)
-    all_states.append(states)
-    all_actions.append(actions)
-    all_rewards.append(rewards)
-    all_obs.append(obs)
-
-    all_states = np.concatenate(all_states, axis=0)
-    all_actions = np.concatenate(all_actions, axis=0)
-    all_rewards = np.concatenate(all_rewards, axis=0)
-    all_obs = dict((k, np.concatenate([all_obs[i][k] for i in range(len(all_obs))], axis=0)) for k in all_obs[0])
-    return all_states, all_actions, all_rewards, all_obs
+    buffer.append(**execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
+    return buffer.aggregate()
 
 
-def get_demo_lift_can(env):
+def get_demo_lift_can(env, perturb=False):
+    buffer = Buffer()
     env.reset()
-    all_states = []
-    all_actions = []
-    all_rewards = []
-    all_obs = []
 
     can_pos = np.array(env.objects["can"].get_position())
     can_pos[0] += 0.02
@@ -168,25 +148,13 @@ def get_demo_lift_can(env):
         lift_height=0.2,
         joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2)
     )
-    states, actions, rewards, obs = execute_planned_path(env, path)
-    all_states.append(states)
-    all_actions.append(actions)
-    all_rewards.append(rewards)
-    all_obs.append(obs)
-
-    all_states = np.concatenate(all_states, axis=0)
-    all_actions = np.concatenate(all_actions, axis=0)
-    all_rewards = np.concatenate(all_rewards, axis=0)
-    all_obs = dict((k, np.concatenate([all_obs[i][k] for i in range(len(all_obs))], axis=0)) for k in all_obs[0])
-    return all_states, all_actions, all_rewards, all_obs
+    buffer.append(**execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
+    return buffer.aggregate()
 
 
 def get_demo_pour(env, perturb=False):
+    buffer = Buffer()
     env.reset()
-    all_states = []
-    all_actions = []
-    all_rewards = []
-    all_obs = []
 
     mug_pos = np.array(env.objects["mug_red"].get_position())
     mug_pos[0] += 0.02
@@ -200,11 +168,7 @@ def get_demo_pour(env, perturb=False):
         joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2),
         lift_speed=0.015
     )
-    states, actions, rewards, obs = execute_planned_path(env, path)
-    all_states.append(states)
-    all_actions.append(actions)
-    all_rewards.append(rewards)
-    all_obs.append(obs)
+    buffer.append(**execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
 
     bowl_pos = np.array(env.objects["bowl_red"].get_position())
     pour_pos = bowl_pos + np.array([0, 0.05, 0.2])
@@ -217,28 +181,17 @@ def get_demo_pour(env, perturb=False):
         holding=env.objects["mug_red"].body_id,
         joint_resolutions=(0.1, 0.1, 0.1, 0.2, 0.2, 0.2),
     )
-    states, actions, rewards, obs = execute_planned_path(env, path)
-    all_states.append(states)
-    all_actions.append(actions)
-    all_rewards.append(rewards)
-    all_obs.append(obs)
+    buffer.append(**execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
 
-    all_states = np.concatenate(all_states, axis=0)
-    all_actions = np.concatenate(all_actions, axis=0)
-    all_rewards = np.concatenate(all_rewards, axis=0)
-    all_obs = dict((k, np.concatenate([all_obs[i][k] for i in range(len(all_obs))], axis=0)) for k in all_obs[0])
-    return all_states, all_actions, all_rewards, all_obs
+    return buffer.aggregate()
 
 
 def get_demo_arrange(env, perturb=False):
-    env.reset()
-    all_states = []
-    all_actions = []
-    all_rewards = []
-    all_obs = []
+    buffer = Buffer()
 
+    env.reset()
     # orn = T.quaternion_from_euler(0, np.pi / 2, np.pi * float(np.random.rand(1)) * 2)
-    orn = T.quaternion_from_euler(0, np.pi / 2, 0)
+    orn = T.quaternion_from_euler(0, np.pi / 2, 0)  # top-down grasp
     can_grasp_pose = PU.compute_grasp_pose(
         object_frame=env.objects["can"].get_position_orientation(), grasp_orientation=orn, grasp_distance=0.02)
 
@@ -249,11 +202,7 @@ def get_demo_arrange(env, perturb=False):
         reach_distance=0.05,
         lift_height=0.4,
     )
-    states, actions, rewards, obs = execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None)
-    all_states.append(states)
-    all_actions.append(actions)
-    all_rewards.append(rewards)
-    all_obs.append(obs)
+    buffer.append(**execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
 
     target_pos = np.array(env.objects["target"].get_position())
     target_pos[2] = PBU.stable_z(env.objects["can"].body_id, env.objects["target"].body_id)
@@ -266,28 +215,16 @@ def get_demo_arrange(env, perturb=False):
         holding=env.objects["can"].body_id,
         retract_distance=0.1,
     )
-    states, actions, rewards, obs = execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None)
-    all_states.append(states)
-    all_actions.append(actions)
-    all_rewards.append(rewards)
-    all_obs.append(obs)
+    buffer.append(**execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
 
     path = skills.plan_move_to(
         env.planner,
         obstacles=env.obstacles,
         target_pose=(env.planner.ref_robot.get_eef_position() + np.array([0, 0, 0.03]), T.quaternion_from_euler(0, np.pi / 2, 0)),
     )
-    states, actions, rewards, obs = execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None)
-    all_states.append(states)
-    all_actions.append(actions)
-    all_rewards.append(rewards)
-    all_obs.append(obs)
+    buffer.append(**execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
 
-    all_states = np.concatenate(all_states, axis=0)
-    all_actions = np.concatenate(all_actions, axis=0)
-    all_rewards = np.concatenate(all_rewards, axis=0)
-    all_obs = dict((k, np.concatenate([all_obs[i][k] for i in range(len(all_obs))], axis=0)) for k in all_obs[0])
-    return all_states, all_actions, all_rewards, all_obs
+    return buffer.aggregate()
 
 
 def get_demo_arrange_hard(env, perturb=False):
@@ -327,10 +264,7 @@ def get_demo_arrange_hard(env, perturb=False):
     return buffer.aggregate()
 
 
-def create_dataset(args):
-    import h5py
-    import json
-
+def record_demos(args):
     env_kwargs = dict(
         num_sim_per_step=5,
         sim_time_step=1./240.
@@ -353,7 +287,7 @@ def create_dataset(args):
     total_i = 0
     while success_i < args.n:
         try:
-            buffer = get_demo_arrange_hard(env, perturb=args.perturb)
+            buffer = get_demo_arrange_hard(env, perturb=args.perturb_demo)
         except PU.NoPlanException as e:
             print(e)
             continue
@@ -365,24 +299,82 @@ def create_dataset(args):
             continue
 
         f_demo_grp = f_sars_grp.create_group("demo_{}".format(success_i))
-        f_demo_grp.attrs["num_samples"] = (buffer["states"].shape[0] - 1)
-        f_demo_grp.create_dataset("states", data=buffer["states"][:-1])
-        f_demo_grp.create_dataset("actions", data=buffer["actions"][:-1])
-        f_demo_grp.create_dataset("task_specs", data=buffer["task_specs"][:-1])
-        f_demo_grp.create_dataset("rewards", data=buffer["rewards"][:-1])
+        f_demo_grp.create_dataset("states", data=buffer["states"])
+        f_demo_grp.create_dataset("actions", data=buffer["actions"])
+        f_demo_grp.create_dataset("task_specs", data=buffer["task_specs"])
+        f_demo_grp.create_dataset("rewards", data=buffer["rewards"])
 
-        for k in buffer["obs"]:
-            f_demo_grp.create_dataset("obs/{}".format(k), data=buffer["obs"][k][:-1])
-            f_demo_grp.create_dataset("next_obs/{}".format(k), data=buffer["obs"][k][1:])
+        # for k in buffer["obs"]:
+        #     f_demo_grp.create_dataset("obs/{}".format(k), data=buffer["obs"][k][:-1])
+        #     f_demo_grp.create_dataset("next_obs/{}".format(k), data=buffer["obs"][k][1:])
         success_i += 1
         print("{}/{}".format(success_i, total_i))
     f.close()
 
 
-def playback(args):
-    import h5py
-    import json
+def extract_dataset(args, extract_by_action_playback=False):
+    f = h5py.File(args.file, 'r')
+    demos = list(f["data"].keys())
 
+    extract_name = 'states.hdf5' if args.extract_name is None else args.extract_name
+    out_path = os.path.join(os.path.dirname(args.file), extract_name)
+
+    out_f = h5py.File(out_path)
+    f_grp = out_f.create_group("data")
+
+    env_args = json.loads(f["data"].attrs["env_args"])
+    env_args["env_kwargs"]["obs_image"] = args.extract_image
+    env_args["env_kwargs"]["obs_depth"] = args.extract_depth
+    env_args["env_kwargs"]["obs_segmentation"] = args.extract_segmentation
+    env_args["env_kwargs"]["camera_height"] = args.width
+    env_args["env_kwargs"]["camera_width"] = args.height
+
+    f_grp.attrs["env_args"] = json.dumps(env_args)
+
+    env = env_factory(env_args["env_name"], **env_args["env_kwargs"])
+    env.reset()
+
+    for demo_id in demos:
+        states = f["data/{}/states".format(demo_id)][:]
+        task_spec = f["data/{}/task_specs".format(demo_id)][0]
+        env.reset_to(states[0], return_obs=False)
+        env.set_goal(task_specs=task_spec)
+
+        actions = f["data/{}/actions".format(demo_id)][:]
+
+        new_states = []
+        obs = []
+        for i in range(len(states) - 1):
+            obs.append(env.get_observation())
+            new_states.append(env.serialized_world_state)  # useful when extracting by playback actions
+            if extract_by_action_playback:
+                env.step(actions[i])
+            else:
+                env.reset_to(states[i + 1], return_obs=False)
+
+        new_states.append(env.serialized_world_state)
+        obs.append(env.get_observation())
+
+        # aggregate extracted states and observations
+        new_states = np.stack(new_states)
+        obs = dict((k, np.stack([obs[i][k] for i in range(len(obs))])) for k in obs[0])
+
+        demo_grp = f_grp.create_group(demo_id)
+        demo_grp.attrs["num_samples"] = new_states.shape[0] - 1
+
+        # create sars pairs
+        demo_grp.create_dataset("actions", data=actions[:-1])
+        demo_grp.create_dataset("rewards", data=f["data/{}/rewards".format(demo_id)][:-1])
+        demo_grp.create_dataset("task_specs", data=f["data/{}/task_specs".format(demo_id)][:-1])
+        demo_grp.create_dataset("states", data=new_states[:-1])
+        for k in obs:
+            demo_grp.create_dataset("obs/{}".format(k), data=obs[k][:-1])
+            demo_grp.create_dataset("next_obs/{}".format(k), data=obs[k][1:])
+
+        print("{} success: {}".format(demo_id, env.is_success()))
+
+
+def playback(args):
     f = h5py.File(args.file, 'r')
     env_args = json.loads(f["data"].attrs["env_args"])
 
@@ -397,7 +389,6 @@ def playback(args):
         actions = f["data/{}/actions".format(demo_id)][:]
 
         for i in range(len(actions)):
-            # print(np.abs(states[i] - env.serialized_world_state).argmax())
             env.step(actions[i])
         print("success: {}".format(env.is_success()))
 
@@ -407,10 +398,48 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--mode",
+        type=str,
+        required=True,
+        choices=["demo", "playback", "extract", "extract_by_action_playback"]
+    )
+    parser.add_argument(
         "--file",
         type=str,
         required=True
     )
+    parser.add_argument(
+        "--extract_name",
+        type=str,
+        default="states.hdf5"
+    )
+
+    parser.add_argument(
+        "--extract_image",
+        action="store_true",
+        default=False
+    )
+    parser.add_argument(
+        "--extract_depth",
+        action="store_true",
+        default=False
+    )
+    parser.add_argument(
+        "--extract_segmentation",
+        action="store_true",
+        default=False
+    )
+    parser.add_argument(
+        "--width",
+        default=128,
+        type=int
+    )
+    parser.add_argument(
+        "--height",
+        default=128,
+        type=int
+    )
+
     parser.add_argument(
         "--n",
         type=int,
@@ -423,15 +452,21 @@ def main():
     )
 
     parser.add_argument(
-        "--perturb",
+        "--perturb_demo",
         action="store_true",
         default=False
     )
+
+
     args = parser.parse_args()
 
     np.random.seed(0)
-    # playback(args)
-    create_dataset(args)
+    if args.mode == 'playback':
+        playback(args)
+    elif args.mode == 'demo':
+        record_demos(args)
+    else:
+        extract_dataset(args, extract_by_action_playback=(args.mode == "extract_by_action_playback"))
     p.disconnect()
 
 

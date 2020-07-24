@@ -146,7 +146,7 @@ def plan_skill_place(
     conf_path.append_segment(confs, gripper_state=GRIPPER_CLOSE)
 
     place_path = configuration_path_to_cartesian_path(planner, conf_path)
-    place_path.append_pause(10)
+    place_path.append_pause(3)
     if retract_distance > 0:
         retract_pose = PBU.multiply(target_place_pose, ([-retract_distance, 0, 0], PBU.unit_quat()))
         place_path.append(target_place_pose, GRIPPER_OPEN)

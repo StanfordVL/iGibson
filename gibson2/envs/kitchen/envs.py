@@ -33,6 +33,9 @@ class BaseEnv(object):
             use_planner=False,
             hide_planner=True,
             sim_time_step=1./240.,
+            obs_image=False,
+            obs_depth=False,
+            obs_segmentation=False,
             camera_width=256,
             camera_height=256,
     ):
@@ -43,6 +46,10 @@ class BaseEnv(object):
         self._use_gui = use_gui
         self._camera_width = camera_width
         self._camera_height = camera_height
+        self._obs_image = obs_image
+        self._obs_depth = obs_depth
+        self._obs_segmentation = obs_segmentation
+
         self.objects = ObjectBank()
         self.fixtures = ObjectBank()
         self.object_visuals = []
@@ -133,7 +140,7 @@ class BaseEnv(object):
         #     self.object_visuals.append(self.objects.create_virtual_copy(scale=1., rgba_alpha=0.3))
 
     def _create_sensors(self):
-        PBU.set_camera(45, -40, 2, (0, 0, 0))
+        PBU.set_camera(45, -45, 2, (0, 0, 0))
         self.camera = Camera(
             height=self._camera_width,
             width=self._camera_height,
@@ -152,14 +159,15 @@ class BaseEnv(object):
         self._sample_task()
         return self.get_observation()
 
-    def reset_to(self, serialized_world_state):
+    def reset_to(self, serialized_world_state, return_obs=True):
         exclude = []
         if self.planner is not None:
             exclude.append(self.planner.body_id)
         state = PBU.WorldSaver(exclude_body_ids=exclude)
         state.deserialize(serialized_world_state)
         state.restore()
-        return self.get_observation()
+        if return_obs:
+            return self.get_observation()
 
     @property
     def serialized_world_state(self):
@@ -194,27 +202,49 @@ class BaseEnv(object):
         rgb, depth, obj_map, link_map = self.camera.capture_frame()
         return rgb
 
-    def get_observation(self):
-        # get proprio
-        proprio = []
-        gpose = self.robot.get_eef_position_orientation()
-        proprio.append(np.array(self.robot.gripper.get_joint_positions()))
-        proprio.append(pose_to_array(gpose))
-        proprio = np.hstack(proprio).astype(np.float32)
+    def _get_pixel_observation(self, camera):
+        obs = {}
+        rgb, depth, seg_obj, seg_link = camera.capture_frame()
+        if self._obs_image:
+            obs["images"] = rgb
+        if self._obs_depth:
+            obs["depth"] = depth
+        if self._obs_segmentation:
+            obs["segmentation_objects"] = seg_obj
+            obs["segmentation_links"] = seg_link
+        return obs
 
+    def _get_state_observation(self):
         # get object info
+        gpose = self.robot.get_eef_position_orientation()
         object_states = self.objects.serialize()
         rel_link_poses = np.zeros_like(object_states["link_poses"])
         for i, lpose in enumerate(object_states["link_poses"]):
             rel_link_poses[i] = pose_to_array(PBU.multiply((lpose[:3], lpose[3:]), PBU.invert(gpose)))
-
         return {
-            "proprio": proprio,
             "link_poses": object_states["link_poses"],
             "link_relative_poses": rel_link_poses,
             "link_positions": object_states["link_poses"][:, :3],
             "link_relative_positions": rel_link_poses[:, :3]
         }
+
+    def _get_proprio_observation(self):
+        proprio = []
+        gpose = self.robot.get_eef_position_orientation()
+        proprio.append(np.array(self.robot.gripper.get_joint_positions()))
+        proprio.append(pose_to_array(gpose))
+        proprio = np.hstack(proprio).astype(np.float32)
+        return {
+            "proprio": proprio
+        }
+
+    def get_observation(self):
+        obs = {}
+        obs.update(self._get_proprio_observation())
+        obs.update(self._get_state_observation())
+        if self._obs_image or self._obs_depth or self._obs_segmentation:
+            obs.update(self._get_pixel_observation(self.camera))
+        return obs
 
     @property
     def obstacles(self):
