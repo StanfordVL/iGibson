@@ -90,6 +90,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.randomize_object_pose = randomize_object_pose
         self.log_dir = log_dir
         self.base_mp_algo = base_mp_algo
+        self.base_mp_resolutions = np.array([0.05, 0.05, 0.05])
         self.arm_mp_algo = arm_mp_algo
 
         # draw the shortest path on the occupancy map
@@ -865,19 +866,29 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.arm_interact_marker.load()
 
     def plan_base_motion_2d(self, x, y, theta):
-        half_size = self.map_size / 2.0
         if 'occupancy_grid' in self.output:
             grid = self.occupancy_grid
         elif 'scan' in self.output:
             grid = self.get_local_occupancy_grid(self.state)
         else:
             grid = self.get_local_occupancy_grid()
-        self.base_mp_resolutions = np.array([0.05, 0.05, 0.05])
 
+        yaw = self.robots[0].get_rpy()[2]
+        half_occupancy_range = self.occupancy_range / 2.0
+        robot_position_xy = self.robots[0].get_position()[:2]
+        corners = [
+            robot_position_xy + rotate_vector_2d(local_corner, -yaw)
+            for local_corner in [
+                np.array([half_occupancy_range, half_occupancy_range]),
+                np.array([half_occupancy_range, -half_occupancy_range]),
+                np.array([-half_occupancy_range, half_occupancy_range]),
+                np.array([-half_occupancy_range, -half_occupancy_range]),
+            ]
+        ]
         path = plan_base_motion_2d(
             self.robot_id,
             [x, y, theta],
-            ((-half_size, -half_size), (half_size, half_size)),
+            (tuple(np.min(corners, axis=0)), tuple(np.max(corners, axis=0))),
             map_2d=grid,
             occupancy_range=self.occupancy_range,
             grid_resolution=self.grid_resolution,
