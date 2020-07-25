@@ -7,7 +7,7 @@ build_graph: true
 load_texture: true
 trav_map_resolution: 0.1
 trav_map_erosion: 3
-initial_pos_z_offset: 0.0
+initial_pos_z_offset: 0.1
 
 # robot
 robot: Movo

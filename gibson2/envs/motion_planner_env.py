@@ -114,13 +114,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             p.getJointInfo(self.robots[0].robot_ids[0], 5)[15])[1]
         if self.arena in ['tabletop_manip', 'tabletop_reaching']:
             self.max_step = int(self.max_step * 0.4)
-            assert np.abs(head_tilt_angle - np.deg2rad(45)) < 1e-3, \
-                'head tilte angle should be 45 degrees for {}'.format(
-                    self.arena)
+            #assert np.abs(head_tilt_angle - np.deg2rad(45)) < 1e-3, \
+            #    'head tilte angle should be 45 degrees for {}'.format(
+            #        self.arena)
         else:
-            assert np.abs(head_tilt_angle - np.deg2rad(10)) < 1e-3, \
-                'head tilte angle should be 10 degrees for {}'.format(
-                    self.arena)
+            #assert np.abs(head_tilt_angle - np.deg2rad(10)) < 1e-3, \
+            #    'head tilte angle should be 10 degrees for {}'.format(
+            #        self.arena)
+            pass
 
         self.rotate_occ_grid = rotate_occ_grid
         self.fine_motion_plan = self.config.get('fine_motion_plan', True)
@@ -982,7 +983,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                    radius=int(self.robot_footprint_radius_in_map),
                    color=1,
                    thickness=-1)
+        #cv2.imshow('occ', occupancy_grid * 200)
         return occupancy_grid
+
 
     def get_additional_states(self):
         # pos_noise = 0.0
@@ -1366,7 +1369,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.get_ik_parameters()
 
         n_attempt = 0
-        max_attempt = 50
+        max_attempt = 200
         sample_fn = get_sample_fn(self.robot_id, self.arm_joint_ids)
         base_pose = get_base_values(self.robot_id)
 
@@ -1396,7 +1399,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             dist = l2_distance(
                 self.robots[0].get_end_effector_position(), arm_subgoal)
-            print('dist', dist)
+            #print('dist', dist)
             if dist > self.arm_subgoal_threshold:
                 n_attempt += 1
                 continue
@@ -1410,11 +1413,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.reset_object_states()
 
             # arm should not have any collision
-            collision_free = self.is_collision_free(
+            if self.config['robot'] == 'Movo':
+                collision_free = self.is_collision_free(
+                body_a=self.robot_id,
+                link_a_list=self.arm_joint_ids[1:])
+                # ignore linear link
+            else:
+                collision_free = self.is_collision_free(
                 body_a=self.robot_id,
                 link_a_list=self.arm_joint_ids)
+
             if not collision_free:
                 n_attempt += 1
+                #print('arm has collision')
                 continue
 
             # gripper should not have any self-collision
@@ -1425,6 +1436,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 body_b=self.robot_id)
             if not collision_free:
                 n_attempt += 1
+                print('gripper has collision')
                 continue
 
             self.episode_metrics['arm_ik_time'] += time.time() - ik_start
@@ -1482,7 +1494,26 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 (link_from_name(self.robot_id, 'torso_lift_link'),
                  link_from_name(self.robot_id, 'elbow_flex_link'))}
         elif self.config['robot'] == 'Movo':
-            disabled_collisions = {}
+            disabled_collisions = {
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_shoulder_link')),
+                (link_from_name(self.robot_id, 'right_base_link'), 
+                link_from_name(self.robot_id,'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_arm_half_1_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_arm_half_2_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_forearm_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_wrist_spherical_1_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_wrist_spherical_2_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_wrist_3_link')),
+                (link_from_name(self.robot_id, 'right_wrist_spherical_2_link'), 
+                link_from_name(self.robot_id, 'right_robotiq_coupler_link'))
+                }
 
         if self.fine_motion_plan:
             self_collisions = True
@@ -1680,7 +1711,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
             if self.config['robot'] == 'Movo':
-                self.control_tuck_left()
+                self.robots[0].control_tuck_left()
             self.simulator_step()
             set_base_values_with_z(
                 self.robot_id, base_pose, z=self.initial_height)
@@ -1742,6 +1773,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return subgoal_success
 
     def step(self, action):
+        print('eye', self.robots[0].eyes.get_position())
         # start = time.time()
         # action[0] = base_or_arm
         # action[1] = base_subgoal_theta
