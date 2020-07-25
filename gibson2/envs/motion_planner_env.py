@@ -1399,7 +1399,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             dist = l2_distance(
                 self.robots[0].get_end_effector_position(), arm_subgoal)
-            #print('dist', dist)
+            print('dist', dist)
             if dist > self.arm_subgoal_threshold:
                 n_attempt += 1
                 continue
@@ -1425,7 +1425,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             if not collision_free:
                 n_attempt += 1
-                #print('arm has collision')
+                print('arm has collision')
                 continue
 
             # gripper should not have any self-collision
@@ -1512,7 +1512,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 (link_from_name(self.robot_id, 'linear_actuator_link'), 
                 link_from_name(self.robot_id, 'right_wrist_3_link')),
                 (link_from_name(self.robot_id, 'right_wrist_spherical_2_link'), 
-                link_from_name(self.robot_id, 'right_robotiq_coupler_link'))
+                link_from_name(self.robot_id, 'right_robotiq_coupler_link')),
+                (link_from_name(self.robot_id, 'right_shoulder_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link'))
                 }
 
         if self.fine_motion_plan:
@@ -1523,6 +1525,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             mp_obstacles = []
 
         plan_arm_start = time.time()
+
+        if self.config['robot'] == 'Fetch':
+            allow_collision_links = [19]
+        elif self.config['robot'] == 'Movo':
+            allow_collision_links = [23,24]
+
         arm_path = plan_joint_motion(
             self.robot_id,
             self.arm_joint_ids,
@@ -1530,7 +1538,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             disabled_collisions=disabled_collisions,
             self_collisions=self_collisions,
             obstacles=mp_obstacles,
-            algorithm=self.arm_mp_algo)
+            algorithm=self.arm_mp_algo,
+            allow_collision_links=allow_collision_links,
+            )
         self.episode_metrics['arm_mp_time'] += time.time() - plan_arm_start
         if arm_path is not None:
             if self.mode == 'gui':
@@ -1747,12 +1757,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # start = time.time()
         arm_joint_positions = self.get_arm_joint_positions(arm_subgoal)
         # self.times['get_arm_joint_positions'].append(time.time() - start)
-        # print('get_arm_joint_positions', time.time() - start)
+        print('get_arm_joint_positions successful')
 
         # start = time.time()
         subgoal_success = self.reach_arm_subgoal(arm_joint_positions)
         # self.times['reach_arm_subgoal'].append(time.time() - start)
-        # print('reach_arm_subgoal', time.time() - start)
+        print('reach_arm_subgoal', subgoal_success)
 
         # start = time.time()
         # p.restoreState(stateId=state_id)
@@ -2744,11 +2754,17 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         episode_return = 0.0
         state = nav_env.reset()
-        embed()
         start = time.time()
         for i in range(10000000):
             print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
+            pos=[1.2, -1.3, 0]
+            orn=-np.pi / 2
+            nav_env.robots[0].set_position_orientation(pos=pos, orn=quatToXYZW(euler2quat(0, 0, orn), 'wxyz'));
+            for i in range(3):
+                nav_env.simulator.sync()
+                nav_env.simulator.step()
+
             embed()
             state, reward, done, info = nav_env.step(action)
             episode_return += reward
@@ -2760,10 +2776,10 @@ if __name__ == '__main__':
             #    action = nav_env.action_space.sample()
             #    state, reward, done, _ = nav_env.step(action)
             #    # print('reward', reward)
-            if done:
-                print('Episode return:', episode_return)
-                print('Episode length:', info['episode_length'])
-                break
+            #if done:
+            #    print('Episode return:', episode_return)
+            #    print('Episode length:', info['episode_length'])
+            #    break
         print("Time", time.time() - start)
 
     for key in nav_env.times:
