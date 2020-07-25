@@ -5,8 +5,8 @@ model_id: Samuels
 is_interactive: false
 build_graph: true
 load_texture: true
-trav_map_resolution: 0.1
-trav_map_erosion: 3
+trav_map_resolution: 0.2
+trav_map_erosion: 2
 initial_pos_z_offset: 0.1
 
 # robot
