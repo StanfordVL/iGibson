@@ -781,10 +781,10 @@ class Movo(LocomotorRobot):
         #                    self.arm_default_joint_positions)
 
     def get_end_effector_position(self):
-        return self.parts['right_gripper_base_link'].get_position()
+        return self.parts['right_gripper_link'].get_position()
     
     def end_effector_part_index(self):
-        return self.parts['right_gripper_base_link'].body_part_index
+        return self.parts['right_gripper_link'].body_part_index
 
     def load(self):
         ids = super(Movo, self).load()
@@ -815,6 +815,7 @@ class Movo(LocomotorRobot):
             ('linear_actuator_link', 'left_arm_half_1_link'), ('right_wrist_spherical_2_link', 'right_robotiq_coupler_link'),
             ('right_wrist_3_link', 'right_robotiq_coupler_link'), ('right_wrist_3_link', 'right_gripper_base_link'),
             ('left_wrist_spherical_2_link', 'left_gripper_base_link'), ('left_wrist_3_link', 'left_gripper_base_link'),
+            ('right_gripper_base_link', 'right_gripper_link')
         ]
 
         for link in range(p.getNumJoints(robot_id)):
@@ -859,6 +860,16 @@ class Movo(LocomotorRobot):
         ]
         )
 
+        self.arm_joints = joints_from_names(robot_id,
+                                            ['linear_joint'] + [item.format('right') for item in 
+                                            ['{}_shoulder_pan_joint', 
+                                            '{}_shoulder_lift_joint', 
+                                            '{}_arm_half_joint', 
+                                            '{}_elbow_joint',
+                                            '{}_wrist_spherical_1_joint', 
+                                            '{}_wrist_spherical_2_joint', 
+                                            '{}_wrist_3_joint']])
+
         self.homed = [0.35,
                 -1.5,-0.2,-0.175,-2.0,2.0,-1.24,-1.1, \
                 1.5,0.2,0.15,2.0,-2.0,1.24,1.1]
@@ -870,19 +881,12 @@ class Movo(LocomotorRobot):
                -0.5550501568503153, 2.7085509095395244, 0.0635355572111023, \
                -0.49385319702229646, 1.4302666388193424]
 
-        
-        self.arm_joints = joints_from_names(robot_id,
-                                            ['linear_joint'] + [item.format('right') for item in 
-                                            ['{}_shoulder_pan_joint', 
-                                            '{}_shoulder_lift_joint', 
-                                            '{}_arm_half_joint', 
-                                            '{}_elbow_joint',
-                                            '{}_wrist_spherical_1_joint', 
-                                            '{}_wrist_spherical_2_joint', 
-                                            '{}_wrist_3_joint']])
-
         return ids
 
     def tuck(self):
         robot_id = self.robot_ids[0]
         set_joint_positions(robot_id, self.all_joints, self.tucked)
+
+    def control_tuck_left(self):
+        robot_id = self.robot_ids[0]
+        control_joints(robot_id, self.all_joints[8:], self.tucked[8:])

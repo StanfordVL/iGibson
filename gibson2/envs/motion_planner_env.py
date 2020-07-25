@@ -1319,7 +1319,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             dist = l2_distance(
                 self.robots[0].get_end_effector_position(), arm_subgoal)
-            #print('dist', dist)
+            print('dist', dist)
             if dist > self.arm_subgoal_threshold:
                 n_attempt += 1
                 continue
@@ -1382,6 +1382,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :param arm_joint_positions
         :return: whether arm_joint_positions is achieved
         """
+        if self.config['robot'] == 'Movo':
+            self.robots[0].tuck()
+
         set_joint_positions(self.robot_id, self.arm_joint_ids,
                             self.arm_default_joint_positions)
 
@@ -1441,6 +1444,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             return True
         else:
             # print('arm mp fails')
+            if self.config['robot'] == 'Movo':
+                self.robots[0].tuck()
             set_joint_positions(self.robot_id, self.arm_joint_ids,
                                 self.arm_default_joint_positions)
             self.episode_metrics['arm_mp_failure'] += 1
@@ -1598,6 +1603,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 joint_positions = joint_positions[:8]
 
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
+            if self.config['robot'] == 'Movo':
+                self.control_tuck_left()
             self.simulator_step()
             set_base_values_with_z(
                 self.robot_id, base_pose, z=self.initial_height)
@@ -1937,6 +1944,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         if not use_base:
             set_joint_positions(self.robot_id, self.arm_joint_ids,
                                 self.arm_default_joint_positions)
+            if self.config['robot'] == 'Movo':
+                self.robots[0].tuck()
 
         self.simulator.sync()
         state = self.get_state()
