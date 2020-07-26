@@ -18,6 +18,8 @@ fetch_config = parse_config(configs_folder + 'fetch_p2p_nav.yaml')
 optimize = True
 # Toggle this to only use renderer without VR, for testing purposes
 vrMode = True
+# Possible types: hmd_relative, torso_relative
+movement_type = 'torso_relative'
 
 # Timestep should always be set to 1/90 to match VR system's 90fps
 s = Simulator(mode='vr', timestep = 1/90.0, msaa=True, vrFullscreen=False, vrEyeTracking=False, optimize_render=optimize, vrMode=vrMode)
@@ -25,18 +27,12 @@ scene = BuildingScene('Placida', is_interactive=False)
 scene.sleep = optimize
 s.import_scene(scene)
 
-# Fetch robot in scene
-#fetch = Fetch(fetch_config)
-#s.import_robot(fetch)
-#fetch.set_position([0,0,0])
-#fetch.robot_specific_reset()
-
 # Grippers represent hands
-lGripper = GripperObj(gripper_folder + 'gripper.urdf')
+lGripper = GripperObj()
 s.import_articulated_object(lGripper)
 lGripper.set_position([0.0, 0.0, 1.5])
 
-rGripper = GripperObj(gripper_folder + 'gripper.urdf')
+rGripper = GripperObj()
 s.import_articulated_object(rGripper)
 rGripper.set_position([0.0, 0.0, 1.0])
 
@@ -111,7 +107,10 @@ while True:
 
         current_offset = s.getVROffset()
 
-        right, up, forward = s.getHmdCoordinateSystem()
+        relative_device = 'hmd'
+        if movement_type == 'torso_relative':
+            relative_device = 'right_controller'
+        right, up, forward = s.getDeviceCoordinateSystem(relative_device)
 
         # Move the VR player in the direction of the analog stick
         # In this implementation, +ve x corresponds to right and +ve y corresponds to forward

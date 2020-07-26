@@ -3,7 +3,11 @@ import os
 import pybullet_data
 import gibson2
 import numpy as np
+from gibson2 import assets_path
+from gibson2.utils.utils import multQuatLists
 
+gripper_path = assets_path + '\\models\\gripper\\gripper.urdf'
+vr_hand_path = assets_path + '\\models\\vr_hand\\vr_hand.urdf'
 
 class Object(object):
     def __init__(self):
@@ -230,14 +234,43 @@ class InteractiveObj(Object):
 
         return body_id
 
+class VrHand(InteractiveObj):
+    """
+    Represents the human hand used for VR programs
+    """
+
+    def __init__(self, scale=1):
+        super().__init__(vr_hand_path)
+        self.filename = vr_hand_path
+        self.scale = scale
+        # Hand needs to be rotated by 90 degrees to visually align with VR controller
+        self.base_rot = p.getQuaternionFromEuler([90, 0, 0])
+    
+    def _load(self):
+        self.body_id = super()._load()
+        for jointIndex in range(p.getNumJoints(self.body_id)):
+            tup = p.getJointInfo(self.body_id, jointIndex)
+            idx = tup[0]
+            name = tup[1]
+            print("Joint {0} has name {1}", idx, name)
+            #p.resetJointState(self.body_id, jointIndex, 0)
+            #p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=0, force=0)
+        self.cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], [0, 0, 0])
+
+        return self.body_id
+
+    def move_hand(self, trans, rot, maxForce=500):
+        final_rot = multQuatLists(self.base_rot, rot)
+        p.changeConstraint(self.cid, trans, rot, maxForce=maxForce)
+
 class GripperObj(InteractiveObj):
     """
     Represents the gripper used for VR controllers
     """
 
-    def __init__(self, filename, scale=1):
-        super().__init__(filename)
-        self.filename = filename
+    def __init__(self, scale=1):
+        super().__init__(gripper_path)
+        self.filename = gripper_path
         self.scale = scale
         self.max_joint = 0.550569
     
@@ -270,21 +303,6 @@ class GripperObj(InteractiveObj):
     
     def move_gripper(self, trans, rot, maxForce=500):
         p.changeConstraint(self.cid, trans, rot, maxForce=maxForce)
-
-    def get_position(self):
-        pos, _ = p.getBasePositionAndOrientation(self.body_id)
-        return pos
-
-    def get_orientation(self):
-        _, orn = p.getBasePositionAndOrientation(self.body_id)
-        return orn
-
-    def set_position(self, pos):
-        org_pos, org_orn = p.getBasePositionAndOrientation(self.body_id)
-        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
-
-    def set_position_rotation(self, pos, orn):
-        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
 
 class SoftObject(Object):
     def __init__(self, filename, basePosition=[0, 0, 0], baseOrientation=[0, 0, 0, 1], scale=-1, mass=-1,
