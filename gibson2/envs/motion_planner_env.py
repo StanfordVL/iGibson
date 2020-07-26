@@ -113,7 +113,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         head_tilt_angle = quat2euler(
             p.getJointInfo(self.robots[0].robot_ids[0], 5)[15])[1]
         if self.arena in ['tabletop_manip', 'tabletop_reaching']:
-            self.max_step = int(self.max_step * 0.4)
+            self.max_step = int(self.max_step * 0.2)
             assert np.abs(head_tilt_angle - np.deg2rad(45)) < 1e-3, \
                 'head tilte angle should be 45 degrees for {}'.format(
                     self.arena)
