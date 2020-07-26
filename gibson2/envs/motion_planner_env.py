@@ -766,7 +766,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                        'wrist_roll_joint'
                                                    ])
         elif self.config['robot'] == 'Movo':
-            self.arm_default_joint_positions = (0.35, -1.50058731470836, -1.3002625076695704, 0.5204845864369407, \
+            self.arm_default_joint_positions = (0.205, -1.50058731470836, -1.3002625076695704, 0.5204845864369407, \
                -2.6923805472917626, -0.02678584326934146, 0.5065742552588746, \
                -1.562883631882778)
             self.arm_joint_ids = joints_from_names(self.robot_id,
@@ -1008,7 +1008,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         else:
             target_pos_local = self.global_to_local(self.target_pos)
             # cache results for reward calculation
-            shortest_path, self.new_potential = self.get_shortest_path()
+            shortest_path, self.new_potential = self.get_shortest_path(entire_path=False)
+            print('shortest_path', shortest_path)
 
             # geodesic_dist = 0.0
             robot_z = self.robots[0].get_position()[2]
@@ -1375,6 +1376,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         # find collision-free IK solution for arm_subgoal
         while n_attempt < max_attempt:
+            if self.config['robot'] == 'Movo':
+                self.robots[0].tuck()
             set_joint_positions(self.robot_id, self.arm_joint_ids, sample_fn())
             arm_joint_positions = p.calculateInverseKinematics(
                 self.robot_id,
@@ -2758,14 +2761,23 @@ if __name__ == '__main__':
         for i in range(10000000):
             print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
-            pos=[1.2, -1.3, 0]
-            orn=-np.pi / 2
-            nav_env.robots[0].set_position_orientation(pos=pos, orn=quatToXYZW(euler2quat(0, 0, orn), 'wxyz'));
-            for i in range(3):
-                nav_env.simulator.sync()
-                nav_env.simulator.step()
 
-            embed()
+            debug_save = []
+
+            for p in [-1.3, -1.4, -1.5]:
+                pos=[1.2, -1.3, 0]
+                orn=-np.pi / 2
+                nav_env.robots[0].set_position_orientation(pos=pos, orn=quatToXYZW(euler2quat(0, 0, orn), 'wxyz'));
+                for i in range(3):
+                    nav_env.simulator.sync()
+                    nav_env.simulator.step()
+
+                s = nav_env.get_state()
+                debug_save.append(s)
+            np.save('{}_state.npy'.format(nav_env.config['robot']), debug_save)
+            exit()
+
+            #embed()
             state, reward, done, info = nav_env.step(action)
             episode_return += reward
             print('Reward:', reward)

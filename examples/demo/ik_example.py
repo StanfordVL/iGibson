@@ -53,6 +53,9 @@ def main():
     print(max_limits)
     print(min_limits)
 
+    for i in range(p.getNumJoints(robot_id)):
+        print(p.getJointInfo(robot_id, i))
+
     def accurateCalculateInverseKinematics(robotid, endEffectorId, targetPos, threshold, maxIter):
         sample_fn = get_sample_fn(robotid, arm_joints)
         set_joint_positions(robotid, arm_joints, sample_fn())

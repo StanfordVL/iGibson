@@ -28,6 +28,11 @@ def main():
     s.import_robot(movo)
 
     robot_id = movo.robot_ids[0]
+    for i in range(p.getNumJoints(robot_id)):
+        print(p.getJointInfo(robot_id, i))
+        
+    exit()
+
 
     all_joints = joints_from_names(robot_id,  [
         "linear_joint",
