@@ -15,10 +15,17 @@ from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articul
     change_object_rgba, action_to_delta_pose_axis_vector, action_to_delta_pose_euler
 import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.envs.kitchen.plan_utils as PU
+import gibson2.envs.kitchen.skills as skills
 
 
 def env_factory(name, **kwargs):
-    return eval(name)(**kwargs)
+    if name.endswith("Skill"):
+        name = name[:-5]
+        kwargs["use_skills"] = True
+        kwargs["use_planner"] = True
+        return EnvSkillWrapper(eval(name)(**kwargs))
+    else:
+        return eval(name)(**kwargs)
 
 
 class BaseEnv(object):
@@ -38,6 +45,7 @@ class BaseEnv(object):
             obs_segmentation=False,
             camera_width=256,
             camera_height=256,
+            use_skills=False,
     ):
         self._hide_planner = hide_planner
         self._robot_base_pose = robot_base_pose
@@ -54,6 +62,7 @@ class BaseEnv(object):
         self.fixtures = ObjectBank()
         self.object_visuals = []
         self.planner = None
+        self.skill_lib = None
         self._task_spec = np.array([0])
 
         self._setup_simulation()
@@ -63,6 +72,9 @@ class BaseEnv(object):
         self._create_env_extras()
         if use_planner:
             self._create_planner()
+        if use_skills:
+            assert use_planner
+            self._create_skill_lib()
 
         self.initial_world = PBU.WorldSaver()
         assert isinstance(self.robot, Robot)
@@ -75,6 +87,9 @@ class BaseEnv(object):
     @property
     def task_spec(self):
         return self._task_spec.copy()
+
+    def _create_skill_lib(self):
+        return None
 
     def _setup_simulation(self):
         if self._use_gui:
@@ -157,6 +172,8 @@ class BaseEnv(object):
         self.robot.reset()
         self._reset_objects()
         self._sample_task()
+        if self.skill_lib is not None:
+            self.skill_lib.reset()
         return self.get_observation()
 
     def reset_to(self, serialized_world_state, return_obs=True):
@@ -176,7 +193,7 @@ class BaseEnv(object):
             exclude.append(self.planner.body_id)
         return PBU.WorldSaver(exclude_body_ids=exclude).serialize()
 
-    def step(self, action, sleep_per_sim_step=0.0):
+    def step(self, action, sleep_per_sim_step=0.0, return_obs=True):
         assert len(action) == self.action_dimension
         action = action.copy()
         gri = action[-1]
@@ -191,6 +208,9 @@ class BaseEnv(object):
         for _ in range(self._num_sim_per_step):
             p.stepSimulation()
             time.sleep(sleep_per_sim_step)
+
+        if return_obs:
+            return self.get_reward(), self.is_done(), {}
 
         return self.get_observation(), self.get_reward(), self.is_done(), {}
 
@@ -265,6 +285,45 @@ class BaseEnv(object):
     def name(self):
         """Environment name"""
         return self.__class__.__name__
+
+
+class EnvSkillWrapper(object):
+    def __init__(self, env):
+        self.env = env
+        self.skill_lib = env.skill_lib
+
+    @property
+    def action_dimension(self):
+        return self.skill_lib.action_dimension + len(self.env.objects)
+
+    def step(self, actions, sleep_per_sim_step=0.0):
+        skill_params = actions[:self.skill_lib.action_dimension]
+        object_index = int(np.argmax(actions[self.skill_lib.action_dimension:]))
+        object_id = self.env.objects.body_ids[object_index]
+        path = self.skill_lib.plan(params=skill_params, target_object_id=object_id)
+        PU.execute_planned_path(self.env, path, sleep_per_sim_step=sleep_per_sim_step)
+        return self.get_observation(), self.get_reward(), self.is_done(), {}
+
+    def __getattr__(self, attr):
+        """
+        This method is a fallback option on any methods the original dataset might support.
+        """
+
+        # using getattr ensures that both __getattribute__ and __getattr__ (fallback) get called
+        # (see https://stackoverflow.com/questions/3278077/difference-between-getattr-vs-getattribute)
+        orig_attr = getattr(self.env, attr)
+        if callable(orig_attr):
+
+            def hooked(*args, **kwargs):
+                result = orig_attr(*args, **kwargs)
+                # prevent wrapped_class from becoming unwrapped
+                if result == self.env:
+                    return self
+                return result
+
+            return hooked
+        else:
+            return orig_attr
 
 
 class BasicKitchenEnv(BaseEnv):
@@ -514,3 +573,10 @@ class TableTopArrangeHard(TableTop):
         src_object_id = self.objects.body_ids[int(self.task_spec[0])]
         tgt_object_id = self.objects.body_ids[int(self.task_spec[1])]
         return PBU.is_center_stable(src_object_id, tgt_object_id, above_epsilon=0.04, below_epsilon=0.02)
+
+    def _create_skill_lib(self):
+        lib_skills = (
+            skills.GraspDistDiscreteOrn(lift_distance=0.1),
+            skills.PlacePosDiscreteOrn(retract_distance=0.1)
+        )
+        self.skill_lib = skills.SkillLibrary(self.planner, obstacles=self.obstacles, skills=lib_skills)

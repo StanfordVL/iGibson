@@ -5,6 +5,7 @@ import numpy as np
 import pybullet as p
 import gibson2.external.pybullet_tools.transformations as T
 import gibson2.external.pybullet_tools.utils as PBU
+from gibson2.envs.kitchen.env_utils import pose_to_array, pose_to_action_euler, pose_to_action_axis_vector
 
 
 EEF_GRASP_FRAME = ((1, 0, 0), PBU.unit_quat())
@@ -255,3 +256,70 @@ def compute_grasp_pose(object_frame, grasp_orientation, grasp_distance, grasp_fr
     transform = ((-grasp_distance * np.array(grasp_frame[0])).tolist(), grasp_frame[1])
     grasp_pose = PBU.multiply(object_frame, pose, transform)
     return grasp_pose
+
+
+def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0):
+    """Execute a planned path an relabel actions."""
+
+    # all_obs = []
+    actions = []
+    rewards = []
+    states = []
+    task_specs = []
+
+    for i in range(len(path)):
+        task_specs.append(env.task_spec)
+        tpose = path.arm_path[i]
+        grip = path.gripper_path[i]
+
+        cpose = pose_to_array(env.robot.get_eef_position_orientation())
+        tpose = pose_to_array(tpose)
+
+        action = np.zeros(env.action_dimension)
+        action[-1] = grip
+        action[:-1] = pose_to_action_euler(cpose, tpose, max_dpos=env.MAX_DPOS, max_drot=env.MAX_DROT)
+        # action[:-1] = pose_to_action_axis_vector(cpose, tpose, max_dpos=env.MAX_DPOS, max_drot=env.MAX_DROT)
+        if noise is not None:
+            assert len(noise) == (env.action_dimension - 1)
+            noise_arr = np.array(noise)
+            action[:6] += np.clip(np.random.randn(len(noise)) * noise_arr, -noise_arr * 2, noise_arr * 2)
+        actions.append(action)
+        states.append(env.serialized_world_state)
+        # all_obs.append(env.get_observation())
+
+        env.step(action, sleep_per_sim_step=sleep_per_sim_step, return_obs=False)
+        rewards.append(float(env.is_success()))
+
+    # all_obs.append(env.get_observation())
+    actions.append(actions[-1])
+    rewards.append(float(env.is_success()))
+    states.append(env.serialized_world_state)
+    task_specs.append(env.task_spec)
+
+    # all_obs = dict((k, np.array([all_obs[i][k] for i in range(len(all_obs))])) for k in all_obs[0])
+    states = np.stack(states)
+    actions = np.stack(actions)
+    rewards = np.stack(rewards)
+    task_specs = np.stack(task_specs)
+    return {"states": states, "actions": actions, "rewards": rewards, "task_specs": task_specs}
+
+
+def executed_skill(env, skill_lib, skill_params, target_object_id, skill_step, noise=None, sleep_per_sim_step=0.0):
+    path = skill_lib.plan(params=skill_params, target_object_id=target_object_id)
+    state_traj = execute_planned_path(env, path, noise=noise, sleep_per_sim_step=sleep_per_sim_step)
+    traj_len = state_traj["states"].shape[0]
+
+    object_index_enc = np.zeros(len(env.objects))
+    object_index_enc[env.objects.body_ids.index(target_object_id)] = 1
+
+    skill_params_traj = np.tile(skill_params, (traj_len, 1))
+    object_index_enc_traj = np.tile(object_index_enc, (traj_len, 1))
+    skill_step_traj = np.array([skill_step] * traj_len)
+    skill_begin = np.zeros(traj_len)
+    skill_begin[0] = 1
+
+    state_traj["skill_step"] = skill_step_traj
+    state_traj["skill_begin"] = skill_begin
+    state_traj["skill_params"] = skill_params_traj
+    state_traj["skill_object_index"] = object_index_enc_traj
+    return state_traj, skill_step + 1
