@@ -93,7 +93,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.base_mp_algo = base_mp_algo
         self.base_mp_resolutions = np.array([0.05, 0.05, 0.05])
         self.arm_mp_algo = arm_mp_algo
-        self.optimize_iter=optimize_iter
+        self.optimize_iter = optimize_iter
         # draw the shortest path on the occupancy map
         self.draw_path_on_map = draw_path_on_map
         if self.draw_path_on_map:
@@ -165,6 +165,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.logger.info('fine_motion_plan: ' + str(self.fine_motion_plan))
             self.logger.info('base_mp_algo: ' + self.base_mp_algo)
             self.logger.info('arm_mp_algo: ' + self.arm_mp_algo)
+            self.logger.info('optimize_iter: ' + str(self.optimize_iter))
 
         self.metric_keys = [
             'episode_return',
