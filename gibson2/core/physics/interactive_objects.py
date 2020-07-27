@@ -226,8 +226,10 @@ class InteractiveObj(Object):
     def _load(self):
         body_id = p.loadURDF(self.filename, globalScaling=self.scale,
                              flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+        if 'processed' in self.filename:
+            p.changeDynamics(body_id, -1, mass=0.1)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
-
+ 
         return body_id
 
 class GripperObj(InteractiveObj):
