@@ -69,6 +69,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                  fine_motion_plan=None,
                  base_mp_algo='birrt',
                  arm_mp_algo='birrt',
+                 optimize_iter=0,
                  ):
         super(MotionPlanningBaseArmEnv, self).__init__(
             config_file,
@@ -92,7 +93,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.base_mp_algo = base_mp_algo
         self.base_mp_resolutions = np.array([0.05, 0.05, 0.05])
         self.arm_mp_algo = arm_mp_algo
-
+        self.optimize_iter=optimize_iter
         # draw the shortest path on the occupancy map
         self.draw_path_on_map = draw_path_on_map
         if self.draw_path_on_map:
@@ -895,7 +896,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             robot_footprint_radius_in_map=self.robot_footprint_radius_in_map,
             resolutions=self.base_mp_resolutions,
             obstacles=[],
-            algorithm=self.base_mp_algo)
+            algorithm=self.base_mp_algo,
+            optimize_iter=self.optimize_iter)
 
         return path
 
