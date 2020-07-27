@@ -1028,11 +1028,22 @@ public:
 	// Returns transformed x, y and z
 	// Represent "right", "up" and "forward" relative to headset, in iGibson coordinates
 	// TIMELINE: Call any time after postRenderVR
-	py::list getHmdCoordinateSystem() {
+	py::list getDeviceCoordinateSystem(char* device) {
 		py::list vecList;
+		glm::mat4 deviceTransform;
+
+		if (!strcmp(device, "hmd")) {
+			deviceTransform = hmdData.deviceTransform;
+		}
+		else if (!strcmp(device, "left_controller")) {
+			deviceTransform = leftControllerData.deviceTransform;
+		}
+		else if (!strcmp(device, "right_controller")) {
+			deviceTransform = rightControllerData.deviceTransform;
+		}
 
 		for (int i = 0; i < 3; i++) {
-			glm::vec3 transformedVrDir = getVec3ColFromMat4(i, hmdData.deviceTransform);
+			glm::vec3 transformedVrDir = getVec3ColFromMat4(i, deviceTransform);
 			if (i == 2) {
 				transformedVrDir = transformedVrDir * -1.0f;
 			}
@@ -1631,7 +1642,7 @@ PYBIND11_MODULE(MeshRendererContext, m) {
 		pymoduleVR.def("getEyeTrackingData", &VRSystem::getEyeTrackingData);
 		pymoduleVR.def("setVROffset", &VRSystem::setVROffset);
 		pymoduleVR.def("getVROffset", &VRSystem::getVROffset);
-		pymoduleVR.def("getHmdCoordinateSystem", &VRSystem::getHmdCoordinateSystem);
+		pymoduleVR.def("getDeviceCoordinateSystem", &VRSystem::getDeviceCoordinateSystem);
 		pymoduleVR.def("preRenderVR", &VRSystem::preRenderVR);
 		pymoduleVR.def("postRenderVRForEye", &VRSystem::postRenderVRForEye);
 		pymoduleVR.def("postRenderVRUpdate", &VRSystem::postRenderVRUpdate);
