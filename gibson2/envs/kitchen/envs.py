@@ -1,6 +1,8 @@
 import numpy as np
 import os
 import time
+import cv2
+import copy
 
 import pybullet as p
 import pybullet_data
@@ -15,7 +17,7 @@ from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articul
     change_object_rgba, action_to_delta_pose_axis_vector, action_to_delta_pose_euler
 import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.envs.kitchen.plan_utils as PU
-
+import gibson2.envs.kitchen.transform_utils as TU
 
 def env_factory(name, **kwargs):
     return eval(name)(**kwargs)
@@ -35,6 +37,7 @@ class BaseEnv(object):
             sim_time_step=1./240.,
             obs_image=False,
             obs_depth=False,
+            obs_match=False,
             obs_segmentation=False,
             camera_width=256,
             camera_height=256,
@@ -48,6 +51,7 @@ class BaseEnv(object):
         self._camera_height = camera_height
         self._obs_image = obs_image
         self._obs_depth = obs_depth
+        self._obs_match = obs_match
         self._obs_segmentation = obs_segmentation
 
         self.objects = ObjectBank()
@@ -202,17 +206,104 @@ class BaseEnv(object):
         rgb, depth, obj_map, link_map = self.camera.capture_frame()
         return rgb
 
-    def _get_pixel_observation(self, camera):
+    def _get_pixel_observation(self, camera, id):
         obs = {}
         rgb, depth, seg_obj, seg_link = camera.capture_frame()
         if self._obs_image:
-            obs["images"] = rgb
+            obs["images_{0}".format(id)] = rgb
         if self._obs_depth:
-            obs["depth"] = depth
+            obs["depth_{0}".format(id)] = depth
         if self._obs_segmentation:
-            obs["segmentation_objects"] = seg_obj
-            obs["segmentation_links"] = seg_link
+            obs["segmentation_objects_{0}".format(id)] = seg_obj
+            obs["segmentation_links_{0}".format(id)] = seg_link
         return obs
+
+    def _depth_to_pointcloud(self, depth, cam):
+        far = cam._far
+        near = cam._near
+        img_height = cam._height
+        img_width = cam._width
+
+        # turn real depth to NDC position (camera projection frustrum frame)
+        depth_buffer = (far - far * near / depth) / (far - near)
+
+        # combine projection_mat and view_mat to get the NDC to world frame transformation
+        projectionMatrix = np.asarray(cam._projection_matrix).reshape([4, 4], order='F')
+        viewMatrix = np.asarray(cam._view_matrix).reshape([4, 4], order='F')
+        tran_pix_world = np.linalg.inv(np.matmul(projectionMatrix, viewMatrix))
+
+        # NDC to world frame, https://stackoverflow.com/questions/59128880/getting-world-coordinates-from-opengl-depth-buffer/62247245#62247245?newreg=426bcff0d25a4a0bbab29dd93f26c4e2
+        xmap = np.array([[((2 * w - img_width) / img_width) for w in range(0, img_width)] for h in range(0, img_height)]).flatten()
+        ymap = np.array([[(-(2 * h - img_height) / img_height) for w in range(0, img_width)] for h in range(0, img_height)]).flatten()
+        depth_buffer = (2 * depth_buffer - 1.).flatten()
+        ones = np.array([[1. for w in range(0, img_width)] for h in range(0, img_height)]).flatten()
+        pixPos = np.array([xmap, ymap, depth_buffer, ones])
+        position = np.matmul(tran_pix_world, pixPos).transpose()
+        position /= position[:, 3].reshape(img_height*img_width, 1).repeat(4, axis=1)
+        pointCloud = copy.deepcopy(position)[:, :3]
+
+        return pointCloud
+
+    def _get_pixel_matches(self, cam_1, cam_2, num_matches=4000):
+        rgb_1, depth_1, _, _ = cam_1.capture_frame()
+        rgb_2, depth_2, _, _ = cam_2.capture_frame()
+
+        far = cam_1._far
+        near = cam_1._near
+        img_height = cam_1._height
+        img_width = cam_1._width
+
+        # turn camera's depth to NDC
+        depth_buffer = (far - far * near / depth_1) / (far - near)
+
+        # get camera_1's the NDC to world frame transformation
+        projectionMatrix = np.asarray(cam_1._projection_matrix).reshape([4, 4], order='F')
+        viewMatrix = np.asarray(cam_1._view_matrix).reshape([4, 4], order='F')
+        tran_pix_world = np.linalg.inv(np.matmul(projectionMatrix, viewMatrix))
+
+        # camera_1's NDC to world frame
+        xmap = np.array([[((2 * w - img_width) / img_width) for w in range(0, img_width)] for h in range(0, img_height)]).flatten()
+        ymap = np.array([[(-(2 * h - img_height) / img_height) for w in range(0, img_width)] for h in range(0, img_height)]).flatten()
+        depth_buffer = (2 * depth_buffer - 1.).flatten()
+        ones = np.array([[1. for w in range(0, img_width)] for h in range(0, img_height)]).flatten()
+        pixPos = np.array([xmap, ymap, depth_buffer, ones])
+        position = np.matmul(tran_pix_world, pixPos)
+
+        # get camera_2's the world frame to NDC transformation
+        projectionMatrix_2 = np.asarray(cam_2._projection_matrix).reshape([4, 4], order='F')
+        viewMatrix_2 = np.asarray(cam_2._view_matrix).reshape([4, 4], order='F')
+        tran_world_pix = np.matmul(projectionMatrix_2, viewMatrix_2)
+
+        # camera_2's world frame to NDC
+        pixPos_2 = np.matmul(tran_world_pix, position).transpose()
+        pixPos_2 /= pixPos_2[:, 3].reshape(img_height * img_width, 1).repeat(4, axis=1)
+
+        # camera_2's NDC to depth
+        xmap_2 = pixPos_2[:, 1]
+        ymap_2 = pixPos_2[:, 0]
+        depth_buffer_2 = pixPos_2[:, 2]
+        depth_buffer_2 = (depth_buffer_2 + 1) / 2.
+        xmap_2 = ((img_height - xmap_2 * img_height) / 2.).astype(np.int16)
+        ymap_2 = ((img_width + ymap_2 * img_width) / 2.).astype(np.int16)
+        depth_buffer_2 = far * near / (far - (far - near) * depth_buffer_2)
+
+        # calculate matches
+        matches = []
+        for i in range(0, img_height):
+            for j in range(0, img_width):
+                idx = i * img_height + j
+                if xmap_2[idx] < 0 or xmap_2[idx] >= img_height or ymap_2[idx] < 0 or ymap_2[idx] >= img_width:
+                    continue
+                if abs(depth_2[xmap_2[idx]][ymap_2[idx]] - depth_buffer_2[idx]) < 0.1:
+                    matches.append([i, j, xmap_2[idx], ymap_2[idx]]) # [image_1_x, image_1_y, image_2_x, image_2_y]
+        matches = np.array(matches)
+
+        select_idx = np.random.choice(len(matches), num_matches)
+        matches = matches[select_idx]
+
+        return {
+            "matches": matches
+        }
 
     def _get_state_observation(self):
         # get object info
@@ -243,7 +334,10 @@ class BaseEnv(object):
         obs.update(self._get_proprio_observation())
         obs.update(self._get_state_observation())
         if self._obs_image or self._obs_depth or self._obs_segmentation:
-            obs.update(self._get_pixel_observation(self.camera))
+            obs.update(self._get_pixel_observation(self.camera, 1))
+            obs.update(self._get_pixel_observation(self.camera_2, 2))
+        if self._obs_match:
+            obs.update(self._get_pixel_matches(self.camera, self.camera_2))
         return obs
 
     @property
@@ -332,6 +426,7 @@ class TableTop(BaseEnv):
 
     def _create_sensors(self):
         PBU.set_camera(45, -45, 0.8, (0, 0, 0.7))
+
         self.camera = Camera(
             height=self._camera_width,
             width=self._camera_height,
@@ -340,7 +435,17 @@ class TableTop(BaseEnv):
             far=10.,
             renderer=p.ER_TINY_RENDERER
         )
-        self.camera.set_pose_ypr((0, 0, 0.7), distance=0.8, yaw=45, pitch=-45)
+        self.camera.set_pose_ypr((0, 0, 0.7), distance=0.7, yaw=145, pitch=-20)
+
+        self.camera_2 = Camera(
+            height=self._camera_width,
+            width=self._camera_height,
+            fov=60,
+            near=0.01,
+            far=10.,
+            renderer=p.ER_TINY_RENDERER
+        )
+        self.camera_2.set_pose_ypr((0, 0, 0.7), distance=0.7, yaw=215, pitch=-40)
 
     def _create_fixtures(self):
         p.loadMJCF(os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml"))
