@@ -12,7 +12,7 @@ import gibson2.envs.kitchen.plan_utils as PU
 import gibson2.envs.kitchen.skills as skills
 from gibson2.envs.kitchen.envs import env_factory
 from gibson2.envs.kitchen.env_utils import pose_to_array, pose_to_action_euler, pose_to_action_axis_vector
-
+import cv2
 
 """
 Task plans -> skill parameters
@@ -325,6 +325,7 @@ def extract_dataset(args, extract_by_action_playback=False):
     env_args = json.loads(f["data"].attrs["env_args"])
     env_args["env_kwargs"]["obs_image"] = args.extract_image
     env_args["env_kwargs"]["obs_depth"] = args.extract_depth
+    env_args["env_kwargs"]["obs_match"] = args.extract_matches
     env_args["env_kwargs"]["obs_segmentation"] = args.extract_segmentation
     env_args["env_kwargs"]["camera_height"] = args.width
     env_args["env_kwargs"]["camera_width"] = args.height
@@ -368,6 +369,7 @@ def extract_dataset(args, extract_by_action_playback=False):
         demo_grp.create_dataset("task_specs", data=f["data/{}/task_specs".format(demo_id)][:-1])
         demo_grp.create_dataset("states", data=new_states[:-1])
         for k in obs:
+            print(k)
             demo_grp.create_dataset("obs/{}".format(k), data=obs[k][:-1])
             demo_grp.create_dataset("next_obs/{}".format(k), data=obs[k][1:])
 
@@ -417,12 +419,17 @@ def main():
     parser.add_argument(
         "--extract_image",
         action="store_true",
-        default=False
+        default=True
     )
     parser.add_argument(
         "--extract_depth",
         action="store_true",
-        default=False
+        default=True
+    )
+    parser.add_argument(
+        "--extract_matches",
+        action="store_true",
+        default=True
     )
     parser.add_argument(
         "--extract_segmentation",
@@ -443,7 +450,7 @@ def main():
     parser.add_argument(
         "--n",
         type=int,
-        default=10
+        default=100
     )
     parser.add_argument(
         "--gui",
