@@ -237,31 +237,77 @@ class InteractiveObj(Object):
 class VrHand(InteractiveObj):
     """
     Represents the human hand used for VR programs
+
+    Joint indices and names:
+
+    Joint 0 has name palm__base
+    Joint 1 has name Rproximal__palm
+    Joint 2 has name Rmiddle__Rproximal
+    Joint 3 has name Rtip__Rmiddle
+    Joint 4 has name Mproximal__palm
+    Joint 5 has name Mmiddle__Mproximal
+    Joint 6 has name Mtip__Mmiddle
+    Joint 7 has name Pproximal__palm
+    Joint 8 has name Pmiddle__Pproximal
+    Joint 9 has name Ptip__Pmiddle
+    Joint 10 has name palm__thumb_base
+    Joint 11 has name Tproximal__thumb_base
+    Joint 12 has name Tmiddle__Tproximal
+    Joint 13 has name Ttip__Tmiddle
+    Joint 14 has name Iproximal__palm
+    Joint 15 has name Imiddle__Iproximal
+    Joint 16 has name Itip__Imiddle
     """
 
     def __init__(self, scale=1):
         super().__init__(vr_hand_path)
         self.filename = vr_hand_path
         self.scale = scale
-        # Hand needs to be rotated by 90 degrees to visually align with VR controller
-        self.base_rot = p.getQuaternionFromEuler([90, 0, 0])
+        # Hand needs to be rotated to visually align with VR controller
+        # TODO: Make this alignment better (will require some experimentation)
+        # TODO: Make sure this works for the left hand as well
+        self.base_rot = p.getQuaternionFromEuler([0, 160, -80])
+        self.open_frac = 0.1
+        # Lists of joint indices for hand part
+        self.base_idxs = [0]
+        # Proximal indices for non-thumb fingers
+        self.proximal_idxs = [1, 4, 7, 14]
+        # Middle indices for non-thumb fingers
+        self.middle_idxs = [2, 5, 8, 15]
+        # Tip indices for non-thumb fingers
+        self.tip_idxs = [3, 6, 9, 16]
+        # Thumb base (rotates instead of contracting)
+        self.thumb_base_idxs = [10]
+        # Thumb indices (proximal, middle, tip)
+        self.thumb_idxs = [11, 12, 13]
+        # Open positions for all joints
+        self.open_pos = [0, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 1.0, 0.1, 0.1, 0.1, 0.2, 0.3, 0.4]
+        # Closed positions for all joints
+        self.close_pos = [0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 1.2, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8]
     
     def _load(self):
         self.body_id = super()._load()
         for jointIndex in range(p.getNumJoints(self.body_id)):
-            tup = p.getJointInfo(self.body_id, jointIndex)
-            idx = tup[0]
-            name = tup[1]
-            print("Joint {0} has name {1}", idx, name)
-            #p.resetJointState(self.body_id, jointIndex, 0)
-            #p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=0, force=0)
-        self.cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], [0, 0, 0])
+            open_pos = self.open_pos[jointIndex]
+            p.resetJointState(self.body_id, jointIndex, open_pos)
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=open_pos)
+        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], [0, 0, 0])
 
         return self.body_id
 
     def move_hand(self, trans, rot, maxForce=500):
-        final_rot = multQuatLists(self.base_rot, rot)
-        p.changeConstraint(self.cid, trans, rot, maxForce=maxForce)
+        final_rot = multQuatLists(rot, self.base_rot)
+        p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=maxForce)
+
+    # Close frac of 1 indicates fully closed joint, and close frac of 0 indicates fully open joint
+    # Joints move smoothly between their values in self.open_pos and self.close_pos
+    def toggle_finger_state(self, close_frac):
+        for jointIndex in range(p.getNumJoints(self.body_id)):
+            open_pos = self.open_pos[jointIndex]
+            close_pos = self.close_pos[jointIndex]
+            interp_frac = (close_pos - open_pos) * close_frac
+            target_pos = open_pos + interp_frac
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos)
 
 class GripperObj(InteractiveObj):
     """
@@ -278,6 +324,8 @@ class GripperObj(InteractiveObj):
         self.body_id = super()._load()
         jointPositions = [0.550569, 0.000000, 0.549657, 0.000000]
         for jointIndex in range(p.getNumJoints(self.body_id)):
+            joint_info = p.getJointInfo(self.body_id, jointIndex)
+            print("Joint name %s and index %d" % (joint_info[1], joint_info[0]))
             p.resetJointState(self.body_id, jointIndex, jointPositions[jointIndex])
             p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=0, force=0)
         

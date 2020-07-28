@@ -38,36 +38,22 @@ if optimize:
     s.optimize_data()
 
 # Account for Gibson floors not being at z=0 - shift user height down by 0.2m
-s.setVROffset([0, 0, -0.2])
+s.setVROffset([1.0, 0, -0.2])
 
 # Runs simulation
 while True:
-    eventList = s.pollVREvents()
-    for event in eventList:
-        deviceType, eventType = event
-        if deviceType == 'left_controller':
-            if eventType == 'trigger_press':
-                leftGripperFraction = 0.8
-            elif eventType == 'trigger_unpress':
-                leftGripperFraction = 0.0
-        elif deviceType == 'right_controller':
-            if eventType == 'trigger_press':
-                rightGripperFraction = 0.8
-            elif eventType == 'trigger_unpress':
-                rightGripperFraction = 0.0
-
     s.step(shouldTime=False)
 
     hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')
     lIsValid, lTrans, lRot = s.getDataForVRDevice('left_controller')
     rIsValid, rTrans, rRot = s.getDataForVRDevice('right_controller')
 
-    if lIsValid:
-        lHand.move_hand(lTrans, lRot)
-        #lGripper.set_close_fraction(leftGripperFraction)
+    lTrig, lTouchX, lTouchY = s.getButtonDataForController('left_controller')
+    rTrig, rTouchX, rTouchY = s.getButtonDataForController('right_controller')
 
+    # TODO: Add left hand back in for testing
     if rIsValid:
         rHand.move_hand(rTrans, rRot)
-        #rGripper.set_close_fraction(rightGripperFraction)
+        rHand.toggle_finger_state(rTrig)
 
 s.disconnect()
