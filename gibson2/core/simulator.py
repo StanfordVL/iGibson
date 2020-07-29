@@ -11,9 +11,6 @@ import numpy as np
 import platform
 import time
 
-# Note: pass in mode='vr' to use the simulator in VR mode
-# Note 2: vrWidth and vrHeight can be set to manually change the VR resolution
-# It is, however, recommended to use the VR headset's native 2016 x 2240 resolution where possible
 class Simulator:
     def __init__(self,
                  gravity=9.8,

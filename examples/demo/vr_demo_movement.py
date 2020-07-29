@@ -65,21 +65,6 @@ vr_movement_speed = 0.01
 
 # Runs simulation
 while True:
-    if vrMode:
-        eventList = s.pollVREvents()
-        for event in eventList:
-            deviceType, eventType = event
-            if deviceType == 'left_controller':
-                if eventType == 'trigger_press':
-                    leftGripperFraction = 0.8
-                elif eventType == 'trigger_unpress':
-                    leftGripperFraction = 0.0
-            elif deviceType == 'right_controller':
-                if eventType == 'trigger_press':
-                    rightGripperFraction = 0.8
-                elif eventType == 'trigger_unpress':
-                    rightGripperFraction = 0.0
-
     s.step(shouldTime=False)
 
     if vrMode:
@@ -90,20 +75,13 @@ while True:
         lTrig, lTouchX, lTouchY = s.getButtonDataForController('left_controller')
         rTrig, rTouchX, rTouchY = s.getButtonDataForController('right_controller')
 
-        # Uncomment to see/debug analog data
-        #print("Printing trigger and touch data for left then right:")
-        #if lIsValid:
-        #    print("Left: ", lTrig, lTouchX, lTouchY)
-        #if rIsValid:
-        #    print("Right: ", rTrig, rTouchX, rTouchY)
-
         if lIsValid:
             lGripper.move_gripper(lTrans, lRot)
-            lGripper.set_close_fraction(leftGripperFraction)
+            lGripper.set_close_fraction(lTrig)
 
         if rIsValid:
             rGripper.move_gripper(rTrans, rRot)
-            rGripper.set_close_fraction(rightGripperFraction)
+            rGripper.set_close_fraction(rTrig)
 
         current_offset = s.getVROffset()
 

@@ -265,7 +265,6 @@ class VrHand(InteractiveObj):
         self.scale = scale
         # Hand needs to be rotated to visually align with VR controller
         # TODO: Make this alignment better (will require some experimentation)
-        # TODO: Make sure this works for the left hand as well
         self.base_rot = p.getQuaternionFromEuler([0, 160, -80])
         self.open_frac = 0.1
         # Lists of joint indices for hand part
