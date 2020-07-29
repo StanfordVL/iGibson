@@ -25,11 +25,11 @@ scene.sleep = optimize
 s.import_scene(scene)
 
 # Grippers represent hands
-lGripper = GripperObj(gripper_folder + 'gripper.urdf')
+lGripper = GripperObj()
 s.import_articulated_object(lGripper)
 lGripper.set_position([0.0, 0.0, 1.5])
 
-rGripper = GripperObj(gripper_folder + 'gripper.urdf')
+rGripper = GripperObj()
 s.import_articulated_object(rGripper)
 rGripper.set_position([0.0, 0.0, 1.0])
 

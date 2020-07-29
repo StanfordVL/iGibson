@@ -24,18 +24,12 @@ scene = BuildingScene('Rs_interactive', build_graph=False, is_interactive=True)
 scene.sleep = optimize
 s.import_scene(scene)
 
-# Fetch robot in scene
-#fetch = Fetch(fetch_config)
-#s.import_robot(fetch)
-#fetch.set_position([0,0,0])
-#fetch.robot_specific_reset()
-
 # Grippers represent hands
-lGripper = GripperObj(gripper_folder + 'gripper.urdf')
+lGripper = GripperObj()
 s.import_articulated_object(lGripper)
 lGripper.set_position([0.0, 0.0, 1.5])
 
-rGripper = GripperObj(gripper_folder + 'gripper.urdf')
+rGripper = GripperObj()
 s.import_articulated_object(rGripper)
 rGripper.set_position([0.0, 0.0, 1.0])
 
