@@ -9,6 +9,7 @@ import gibson2.external.pybullet_tools.transformations as T
 import gibson2.external.pybullet_tools.utils as PBU
 
 import gibson2.envs.kitchen.plan_utils as PU
+from gibson2.envs.kitchen.plan_utils import Buffer
 import gibson2.envs.kitchen.skills as skills
 from gibson2.envs.kitchen.envs import env_factory, EnvSkillWrapper
 
@@ -22,25 +23,6 @@ task-space path -> gripper actuation
 """
 
 ACTION_NOISE = (0.01, 0.01, 0.01, np.pi / 16, np.pi / 16, np.pi / 16)
-
-
-class Buffer(object):
-    def __init__(self):
-        self.data = dict()
-
-    def append(self, **kwargs):
-        for k, v in kwargs.items():
-            if k not in self.data:
-                self.data[k] = []
-            self.data[k].append(v)
-
-    def aggregate(self):
-        for k, v in self.data.items():
-            if isinstance(v[0], dict):
-                self.data[k] = dict((k, np.concatenate([v[i][k] for i in range(len(v))], axis=0)) for k in v[0])
-            else:
-                self.data[k] = np.concatenate(v, axis=0)
-        return self.data
 
 
 def get_demo_can_to_drawer(env, perturb=False):
@@ -223,12 +205,12 @@ def get_demo_arrange_hard_skill(env, perturb=False):
     skill_seq = []
     params = env.skill_lib.get_serialized_skill_params("grasp_dist_discrete_orn", grasp_orn_name="top", grasp_distance=0.05)
     skill_seq.append((params, env.objects.body_ids[env.task_spec[0]]))
-    params = env.skill_lib.get_serialized_skill_params("place_pos_discrete_orn", place_orn_name="front", place_pos=(0, 0, 0.01))
+    params = env.skill_lib.get_serialized_skill_params("place_pos_discrete_orn", place_orn_name="front", pour_pos=(0, 0, 0.01))
     skill_seq.append((params, env.objects.body_ids[env.task_spec[1]]))
 
     skill_step = 0
     for skill_param, object_id in skill_seq:
-        traj, skill_step = PU.executed_skill(
+        traj, skill_step = PU.execute_skill(
             env, env.skill_lib, skill_param,
             target_object_id=object_id,
             skill_step=skill_step,
@@ -243,7 +225,7 @@ def record_demos(args):
         num_sim_per_step=5,
         sim_time_step=1./240.,
     )
-    env = env_factory("TableTopArrangeHard", **env_kwargs, use_planner=True, hide_planner=True, use_gui=args.gui, use_skills=True)
+    env = env_factory("KitchenCoffee", **env_kwargs, use_planner=True, hide_planner=True, use_gui=args.gui, use_skills=True)
 
     if os.path.exists(args.file):
         os.remove(args.file)
@@ -257,26 +239,38 @@ def record_demos(args):
     )
     f_sars_grp.attrs["env_args"] = json.dumps(env_args)
 
-    success_i = 0
-    total_i = 0
-    while success_i < args.n:
+    n_success = 0
+    n_total = 0
+    n_kept = 0
+    while n_kept < args.n:
+        t = time.time()
         try:
-            buffer = get_demo_arrange_hard_skill(env, perturb=args.perturb_demo)
+            # buffer = get_demo_arrange_hard_skill(env, perturb=args.perturb_demo)
+            buffer = env.get_demo(noise=ACTION_NOISE if args.perturb_demo else None)
         except PU.NoPlanException as e:
             print(e)
             continue
-        for _ in range(30):
-            p.stepSimulation()
-        total_i += 1
-        if not env.is_success():
-            print("{}/{}".format(success_i, total_i))
-            continue
+        if args.gui:
+            for _ in range(100):
+                p.stepSimulation()
 
-        f_demo_grp = f_sars_grp.create_group("demo_{}".format(success_i))
+        elapsed = time.time() - t
+        traj_len = len(list(buffer.values())[0])
+
+        n_total += 1
+        if not env.is_success():
+            print("{}/{}".format(n_success, n_total))
+            if not args.keep_failed_demos:
+                print("{}/{}/{}, time={:.5f}, len={}".format(n_success, n_kept, n_total, elapsed, traj_len))
+                continue
+        else:
+            n_success += 1
+        n_kept += 1
+
+        f_demo_grp = f_sars_grp.create_group("demo_{}".format(n_kept - 1))
         for k in buffer:
             f_demo_grp.create_dataset(k, data=buffer[k])
-        success_i += 1
-        print("{}/{}".format(success_i, total_i))
+        print("{}/{}/{}, time={:.5f}, len={}".format(n_success, n_kept, n_total, elapsed, traj_len))
     f.close()
 
 
@@ -332,8 +326,8 @@ def extract_dataset(args):
 
         # create sars pairs
         org_f_grp = f["data/{}".format(demo_id)]
-        for k in org_f_grp:
-            if k != "states":
+        for k in org_f_grp.keys():
+            if k not in ["states", "obs", "next_obs"]:
                 demo_grp.create_dataset(k, data=org_f_grp[k][:-1])
 
         demo_grp.create_dataset("states", data=new_states[:-1])
@@ -370,7 +364,12 @@ def extract_dataset_skills(args):
 
     for demo_id in demos:
         mask = f["data/{}/skill_begin".format(demo_id)][:].astype(np.bool)
+        mask_inds = np.where(mask)[0]
+        skill_len = mask_inds[1:] - mask_inds[:-1]
+        for mi, sl in zip(mask_inds[:-1], skill_len):
+            mask[mi: mi + int(sl * 0.5)] = True
         mask[-1] = True
+
         states = f["data/{}/states".format(demo_id)][mask, ...]
         task_spec = f["data/{}/task_specs".format(demo_id)][0]
         env.reset_to(states[0], return_obs=False)
@@ -401,7 +400,7 @@ def extract_dataset_skills(args):
 
         # create sars pairs
         org_f_grp = f["data/{}".format(demo_id)]
-        for k in org_f_grp:
+        for k in org_f_grp.keys():
             if k not in ["states", "actions"]:
                 demo_grp.create_dataset(k, data=org_f_grp[k][mask, ...][:-1])
         demo_grp.create_dataset("states", data=new_states[:-1])
@@ -444,6 +443,12 @@ def main():
     )
     parser.add_argument(
         "--extract_by_action_playback",
+        action="store_true",
+        default=False
+    )
+
+    parser.add_argument(
+        "--keep_failed_demos",
         action="store_true",
         default=False
     )

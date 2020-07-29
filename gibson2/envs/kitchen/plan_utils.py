@@ -304,7 +304,7 @@ def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0):
     return {"states": states, "actions": actions, "rewards": rewards, "task_specs": task_specs}
 
 
-def executed_skill(env, skill_lib, skill_params, target_object_id, skill_step, noise=None, sleep_per_sim_step=0.0):
+def execute_skill(env, skill_lib, skill_params, target_object_id, skill_step, noise=None, sleep_per_sim_step=0.0):
     path = skill_lib.plan(params=skill_params, target_object_id=target_object_id)
     state_traj = execute_planned_path(env, path, noise=noise, sleep_per_sim_step=sleep_per_sim_step)
     traj_len = state_traj["states"].shape[0]
@@ -323,3 +323,26 @@ def executed_skill(env, skill_lib, skill_params, target_object_id, skill_step, n
     state_traj["skill_params"] = skill_params_traj
     state_traj["skill_object_index"] = object_index_enc_traj
     return state_traj, skill_step + 1
+
+
+class Buffer(object):
+    def __init__(self):
+        self.data = dict()
+
+    def append(self, **kwargs):
+        for k, v in kwargs.items():
+            if k not in self.data:
+                self.data[k] = []
+            self.data[k].append(v)
+
+    def aggregate(self):
+        for k, v in self.data.items():
+            if isinstance(v[0], dict):
+                self.data[k] = dict((k, np.concatenate([v[i][k] for i in range(len(v))], axis=0)) for k in v[0])
+            else:
+                self.data[k] = np.concatenate(v, axis=0)
+        return self.data
+
+    def __len__(self):
+        from IPython import embed; embed()
+        return len(list(self.data.values())[0])

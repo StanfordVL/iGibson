@@ -166,6 +166,9 @@ class Robot(object):
     def get_eef_position_orientation(self):
         return p.getLinkState(self.body_id, self.eef_link_index)[:2]
 
+    def get_eef_velocity(self):
+        return p.getLinkState(self.body_id, self.eef_link_index)[-2:]  # linear, angular vel
+
     def get_eef_position(self):
         return self.get_eef_position_orientation()[0]
 

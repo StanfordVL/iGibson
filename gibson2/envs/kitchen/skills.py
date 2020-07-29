@@ -173,30 +173,46 @@ def plan_skill_pour(
         planner,
         obstacles,
         object_target_pose,
-        pour_angle,
         holding,
+        pour_angle_speed=np.pi / 64,
         joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
 ):
     grasp_pose = PBU.multiply(PBU.invert(planner.ref_robot.get_eef_position_orientation()), PBU.get_pose(holding))
+    object_orn = PBU.get_pose(holding)[1]
+    target_pose = PBU.end_effector_from_body((object_target_pose[0], object_orn), grasp_pose)
     target_pour_pose = PBU.end_effector_from_body(object_target_pose, grasp_pose)
 
     confs = planner.plan_joint_path(
-        target_pose=target_pour_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=(holding,))
+        target_pose=target_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=(holding,))
 
     conf_path = ConfigurationPath()
     conf_path.append_segment(confs, gripper_state=GRIPPER_CLOSE)
 
-    pour_path = configuration_path_to_cartesian_path(planner, conf_path)
-    pour_path = pour_path.interpolate(pos_resolution=0.025, orn_resolution=np.pi / 4)
+    approach_path = configuration_path_to_cartesian_path(planner, conf_path)
+    approach_path = approach_path.interpolate(pos_resolution=0.025, orn_resolution=np.pi / 4)
+
+    pour_path = CartesianPath()
+    pour_path.append(target_pose, gripper_state=GRIPPER_CLOSE)
+    pour_path.append(target_pour_pose, gripper_state=GRIPPER_CLOSE)
+    pour_path = pour_path.interpolate(pos_resolution=0.025, orn_resolution=pour_angle_speed)
     pour_path.append_pause(30)
-    return pour_path
+    return approach_path + pour_path
 
 
 class Skill(object):
-    def __init__(self, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS):
+    def __init__(
+            self,
+            requires_holding=False,
+            acquires_holding=False,
+            releases_holding=False,
+            joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
+    ):
         self.planner = None
         self.obstacles = None
         self.joint_resolutions = joint_resolutions
+        self.requires_holding = requires_holding
+        self.acquires_holding = acquires_holding
+        self.releases_holding = releases_holding
 
     @property
     def action_dimension(self):
@@ -212,19 +228,17 @@ class Skill(object):
     def get_serialized_skill_params(self, **kwargs):
         raise NotImplementedError
 
-    @property
-    def requires_holding(self):
-        return False
-
-    @property
-    def acquires_holding(self):
-        return False
-
 
 class GraspDistOrn(Skill):
-    def __init__(self, *args, **kwargs):
-        self.lift_height = kwargs.pop("lift_distance", 0.1)
-        super(GraspDistOrn, self).__init__(*args, **kwargs)
+    def __init__(self, lift_height=0.1, lift_speed=0.05, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS):
+        super(GraspDistOrn, self).__init__(
+            acquires_holding=True,
+            requires_holding=False,
+            releases_holding=False,
+            joint_resolutions=joint_resolutions
+        )
+        self.lift_height = lift_height
+        self.lift_speed = lift_speed
 
     @property
     def name(self):
@@ -244,7 +258,8 @@ class GraspDistOrn(Skill):
             obstacles=self.obstacles,
             grasp_pose=grasp_pose,
             joint_resolutions=self.joint_resolutions,
-            lift_height=self.lift_height
+            lift_height=self.lift_height,
+            lift_speed=self.lift_speed
         )
         return traj
 
@@ -253,10 +268,6 @@ class GraspDistOrn(Skill):
         params[0] = grasp_distance
         params[1:] = TU.axisangle2vec(*TU.quat2axisangle(grasp_orn))
         return params
-
-    @property
-    def acquires_holding(self):
-        return True
 
 
 class GraspDistDiscreteOrn(GraspDistOrn):
@@ -279,7 +290,8 @@ class GraspDistDiscreteOrn(GraspDistOrn):
             obstacles=self.obstacles,
             grasp_pose=grasp_pose,
             joint_resolutions=self.joint_resolutions,
-            lift_height=self.lift_height
+            lift_height=self.lift_height,
+            lift_speed=self.lift_speed
         )
         return traj
 
@@ -292,9 +304,14 @@ class GraspDistDiscreteOrn(GraspDistOrn):
 
 
 class PlacePosOrn(Skill):
-    def __init__(self, *args, **kwargs):
-        self.retract_distance = kwargs.pop("retract_distance", 0.1)
-        super(PlacePosOrn, self).__init__(*args, **kwargs)
+    def __init__(self, retract_distance=0.1, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS):
+        super(PlacePosOrn, self).__init__(
+            requires_holding=True,
+            releases_holding=True,
+            acquires_holding=False,
+            joint_resolutions=joint_resolutions
+        )
+        self.retract_distance = retract_distance
 
     @property
     def name(self):
@@ -327,10 +344,6 @@ class PlacePosOrn(Skill):
         params[:3] = place_pos
         params[3:] = TU.axisangle2vec(*TU.quat2axisangle(place_orn))
         return params
-
-    @property
-    def requires_holding(self):
-        return True
 
 
 class PlacePosDiscreteOrn(PlacePosOrn):
@@ -368,6 +381,89 @@ class PlacePosDiscreteOrn(PlacePosOrn):
         orn_index = ORIENTATION_NAMES.index(place_orn_name)
         params[:3] = place_pos
         params[3 + orn_index] = 1
+        return params
+
+
+class PourPosOrn(Skill):
+    def __init__(self, pour_angle_speed=np.pi / 64, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS):
+        super(PourPosOrn, self).__init__(
+            requires_holding=True,
+            acquires_holding=False,
+            releases_holding=False,
+            joint_resolutions=joint_resolutions
+        )
+        self._pour_angle_speed = pour_angle_speed
+
+    @property
+    def name(self):
+        return "pour_pos_orn"
+
+    @property
+    def action_dimension(self):
+        return 6  # [x, y, z, ai, aj, az]
+
+    def plan(self, params, target_object_id=None, holding_id=None):
+        assert len(params) == self.action_dimension
+        target_pos = np.array(PBU.get_pose(target_object_id)[0])
+        target_pos += params[:3]
+        orn = TU.axisangle2quat(*TU.vec2axisangle(params[3:]))
+        pour_pose = (target_pos, orn)
+
+        traj = plan_skill_pour(
+            self.planner,
+            obstacles=self.obstacles,
+            object_target_pose=pour_pose,
+            holding=holding_id,
+            joint_resolutions=self.joint_resolutions,
+            pour_angle_speed=self._pour_angle_speed
+        )
+        return traj
+
+    def get_serialized_skill_params(self, pour_pos, pour_orn):
+        params = np.zeros(self.action_dimension)
+        params[:3] = pour_pos
+        params[3:] = TU.axisangle2vec(*TU.quat2axisangle(pour_orn))
+        return params
+
+
+class PourPosAngle(PourPosOrn):
+    @property
+    def name(self):
+        return "pour_pos_angle"
+
+    @property
+    def action_dimension(self):
+        return 4  # [x, y, z, \theta]
+
+    def plan(self, params, target_object_id=None, holding_id=None):
+        assert len(params) == self.action_dimension
+        target_pos = np.array(PBU.get_pose(target_object_id)[0])
+        pour_pos = target_pos + params[:3]
+
+        cur_orn = np.array(PBU.get_pose(holding_id)[1])
+        angle = -params[3]
+        xy_vec = target_pos[:2] - pour_pos[:2]
+        perp_xy_vec = np.array([xy_vec[1], -xy_vec[0], 0])
+
+        rot = T.quaternion_about_axis(angle, perp_xy_vec)
+        orn = T.quaternion_multiply(rot, cur_orn)
+
+        pour_pose = (pour_pos, orn)
+
+        traj = plan_skill_pour(
+            self.planner,
+            obstacles=self.obstacles,
+            object_target_pose=pour_pose,
+            holding=holding_id,
+            joint_resolutions=self.joint_resolutions,
+            pour_angle_speed=self._pour_angle_speed
+        )
+        return traj
+
+    def get_serialized_skill_params(self, pour_pos, pour_angle):
+        params = np.zeros(self.action_dimension)
+        params[:3] = pour_pos
+        params[3] = pour_angle
         return params
 
 
@@ -433,14 +529,16 @@ class SkillLibrary(object):
     def plan(self, params, target_object_id):
         skill_index, skill_params = self._parse_serialized_skill_params(params)
         skill = self.skills[skill_index]
+        # print(skill.name)
         if skill.requires_holding:
             if self._holding is None:
                 raise NoPlanException("Robot is not holding anything but is trying to run {}".format(skill.name))
             traj = skill.plan(skill_params, target_object_id=target_object_id, holding_id=self._holding)
-            self._holding = None
+            if skill.releases_holding:
+                self._holding = None
         elif skill.acquires_holding:
             if self._holding is not None:
-                raise NoPlanException("Robot is not holding something but is trying to run {}".format(skill.name))
+                raise NoPlanException("Robot is holding something but is trying to run {}".format(skill.name))
             traj = skill.plan(skill_params, target_object_id=target_object_id)
             self._holding = target_object_id
         else:

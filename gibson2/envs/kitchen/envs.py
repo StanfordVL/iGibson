@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import time
+from copy import deepcopy
 
 import pybullet as p
 import pybullet_data
@@ -8,6 +9,7 @@ import gibson2
 
 from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject, Object
 import gibson2.external.pybullet_tools.transformations as T
+from gibson2.envs.kitchen.transform_utils import quat2col
 
 from gibson2.envs.kitchen.camera import Camera
 from gibson2.envs.kitchen.robots import Arm, ConstraintActuatedRobot, PlannerRobot, Robot, Gripper
@@ -59,6 +61,7 @@ class BaseEnv(object):
         self._obs_segmentation = obs_segmentation
 
         self.objects = ObjectBank()
+        self.interactive_objects = ObjectBank()
         self.fixtures = ObjectBank()
         self.object_visuals = []
         self.planner = None
@@ -174,6 +177,8 @@ class BaseEnv(object):
         self._sample_task()
         if self.skill_lib is not None:
             self.skill_lib.reset()
+        for o in self.interactive_objects.object_list:
+            o.reset()
         return self.get_observation()
 
     def reset_to(self, serialized_world_state, return_obs=True):
@@ -205,11 +210,15 @@ class BaseEnv(object):
             self.robot.gripper.grasp()
         else:
             self.robot.gripper.ungrasp()
+
+        for o in self.interactive_objects.object_list:
+            o.step(self.objects.object_list)
+
         for _ in range(self._num_sim_per_step):
             p.stepSimulation()
             time.sleep(sleep_per_sim_step)
 
-        if return_obs:
+        if not return_obs:
             return self.get_reward(), self.is_done(), {}
 
         return self.get_observation(), self.get_reward(), self.is_done(), {}
@@ -250,9 +259,16 @@ class BaseEnv(object):
 
     def _get_proprio_observation(self):
         proprio = []
-        gpose = self.robot.get_eef_position_orientation()
         proprio.append(np.array(self.robot.gripper.get_joint_positions()))
-        proprio.append(pose_to_array(gpose))
+        gpos, gorn = self.robot.get_eef_position_orientation()
+        gorn = quat2col(gorn)
+        gpose = np.concatenate([gpos, gorn])
+        proprio.append(gpose)
+
+        gvel = np.concatenate(self.robot.get_eef_velocity(), axis=0)
+        proprio.append(gvel)
+        # proprio.append(pose_to_array(self.robot.get_eef_position_orientation()))
+
         proprio = np.hstack(proprio).astype(np.float32)
         return {
             "proprio": proprio
@@ -317,7 +333,7 @@ class EnvSkillWrapper(object):
             def hooked(*args, **kwargs):
                 result = orig_attr(*args, **kwargs)
                 # prevent wrapped_class from becoming unwrapped
-                if result == self.env:
+                if not isinstance(result, np.ndarray) and result == self.env:
                     return self
                 return result
 
@@ -580,3 +596,201 @@ class TableTopArrangeHard(TableTop):
             skills.PlacePosDiscreteOrn(retract_distance=0.1)
         )
         self.skill_lib = skills.SkillLibrary(self.planner, obstacles=self.obstacles, skills=lib_skills)
+
+
+class Faucet(Object):
+    def __init__(
+            self,
+            num_beads=20,
+            dispense_freq=1,
+            dispense_height=0.3,
+            base_color=(0.75, 0.75, 0.75, 1),
+            beads_color=(0, 0, 1, 1),
+            beads_size=0.015
+    ):
+        self._dispense_freq = dispense_freq
+        self._dispense_height = dispense_height
+        self._beads = []
+        self._next_bead_index = 0
+        self._n_step_since = 0
+        self._base_color = base_color
+        self._beads_color = beads_color
+        self._beads_size = beads_size
+        self._num_beads = num_beads
+        super(Faucet, self).__init__()
+
+    @property
+    def beads(self):
+        return deepcopy(self._beads)
+
+    def load(self):
+        self.body_id = PBU.create_box(0.15, 0.15, 0.01, mass=100, color=self._base_color)
+        self._beads = [PBU.create_sphere(
+            self._beads_size, mass=PBU.STATIC_MASS, color=self._beads_color
+        ) for _ in range(self._num_beads)]
+        self.loaded = True
+
+    def reset(self):
+        self._next_bead_index = 0
+        for i, b in enumerate(self._beads):
+            p.resetBasePositionAndOrientation(b, self.get_position() + np.array([0, 0, 10 + b * 0.1]), PBU.unit_quat())
+            p.changeDynamics(b, -1, mass=PBU.STATIC_MASS)
+
+        self._n_step_since = 0
+
+    def _try_dispense(self, task_objs):
+        if self._next_bead_index == self._num_beads:
+            return
+        bid = self._beads[self._next_bead_index]
+        prev_pose = PBU.get_pose(bid)
+        PBU.set_pose(bid, (self.get_position() + np.array([0, 0, self._dispense_height]), PBU.unit_quat()))
+        for oid in [o.body_id for o in task_objs] + self._beads:
+            if oid != bid and PBU.body_collision(oid, bid):
+                PBU.set_pose(bid, prev_pose)
+                return
+        p.changeDynamics(bid, -1, mass=0.3)
+        self._next_bead_index += 1
+
+    def step(self, task_objs):
+        should_dispense = False
+        for o in task_objs:
+            if o.body_id == self.body_id:
+                continue
+            center_place = PBU.is_center_stable(o.body_id, self.body_id, above_epsilon=0.01, below_epsilon=0.02)
+            in_contact = PBU.body_collision(self.body_id, o.body_id)
+            should_dispense = should_dispense or (center_place and in_contact)
+        if should_dispense and self._n_step_since >= self._dispense_freq:
+            self._try_dispense(task_objs)
+            self._n_step_since = 0
+        else:
+            self._n_step_since += 1
+
+
+class Platform(Object):
+    def __init__(self, color=(0, 1, 0, 1), size=(0.15, 0.15, 0.01)):
+        super(Platform, self).__init__()
+        self._color = color
+        self._size = size
+
+    def load(self):
+        self.body_id = PBU.create_box(*self._size, mass=100, color=self._color)
+        self.loaded = True
+
+
+class KitchenCoffee(TableTop):
+    def __init__(self, **kwargs):
+        super(KitchenCoffee, self).__init__(**kwargs)
+
+    def _create_sensors(self):
+        PBU.set_camera(45, -60, 0.8, (0, 0, 0.7))
+        self.camera = Camera(
+            height=self._camera_width,
+            width=self._camera_height,
+            fov=60,
+            near=0.01,
+            far=10.,
+            renderer=p.ER_TINY_RENDERER
+        )
+        self.camera.set_pose_ypr((0, 0, 0.7), distance=0.8, yaw=45, pitch=-60)
+
+    def _create_objects(self):
+        o = YCBObject('025_mug')
+        o.load()
+        p.changeDynamics(o.body_id, -1, mass=1.0)
+        set_friction(o.body_id)
+        self.objects.add_object("mug", o)
+
+        o = Faucet(num_beads=10, dispense_freq=1, beads_color=(111 / 255, 78 / 255, 55 / 255, 1))
+        o.load()
+        self.objects.add_object("faucet_coffee", o)
+        self.interactive_objects.add_object("faucet_coffee", o)
+
+        o = Faucet(num_beads=10, dispense_freq=1, beads_color=(1, 1, 1, 1))
+        o.load()
+        self.objects.add_object("faucet_milk", o)
+        self.interactive_objects.add_object("faucet_milk", o)
+
+        o = YCBObject('024_bowl')
+        o.load()
+        p.changeDynamics(o.body_id, -1, mass=10.0)
+        self.objects.add_object("bowl", o)
+
+    def _create_skill_lib(self):
+        lib_skills = (
+            skills.GraspDistDiscreteOrn(lift_height=0.1, lift_speed=0.01),
+            skills.PlacePosDiscreteOrn(retract_distance=0.1),
+            skills.PourPosAngle(pour_angle_speed=np.pi / 32)
+        )
+        self.skill_lib = skills.SkillLibrary(self.planner, obstacles=self.obstacles, skills=lib_skills)
+
+    def _reset_objects(self):
+        z = PBU.stable_z(self.objects["mug"].body_id, self.fixtures["table"].body_id)
+        self.objects["mug"].set_position_orientation(
+            PU.sample_positions_in_box([0.2, 0.3], [-0.2, -0.1], [z, z]), PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["faucet_coffee"].body_id, self.fixtures["table"].body_id)
+        pos = PU.sample_positions_in_box([0.2, 0.3], [0.1, 0.2], [z, z])
+        coffee_pos = pos + np.array([0, 0.075, 0])
+        milk_pos = pos + np.array([0, -0.075, 0])
+        self.objects["faucet_coffee"].set_position_orientation(coffee_pos, PBU.unit_quat())
+        self.objects["faucet_milk"].set_position_orientation(milk_pos, PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["bowl"].body_id, self.fixtures["table"].body_id)
+        self.objects["bowl"].set_position_orientation(
+            PU.sample_positions_in_box([-0.3, -0.2], [-0.05, 0.05], [z, z]), PBU.unit_quat())
+
+    def _sample_task(self):
+        self._task_spec = np.random.randint(0, 2, size=1)
+
+    def set_goal(self, task_specs):
+        """Set env target with external specification"""
+        assert len(task_specs) == 1
+        self._task_spec = np.array(task_specs)
+        assert 0 <= self._task_spec[0] <= 1
+
+    def get_demo(self, noise=None):
+        self.reset()
+        buffer = PU.Buffer()
+        skill_seq = []
+        params = self.skill_lib.get_serialized_skill_params(
+            "grasp_dist_discrete_orn", grasp_orn_name="back", grasp_distance=0.05)
+        skill_seq.append((params, self.objects["mug"].body_id))
+
+        target_faucet = "faucet_milk" if self.task_spec[0] == 1 else "faucet_coffee"
+        place_delta = np.array((0, 0, 0.01))
+        place_delta[:2] += (np.random.rand(2) - 0.5) * 0.1
+        params = self.skill_lib.get_serialized_skill_params(
+            "place_pos_discrete_orn", place_orn_name="front", place_pos=place_delta)
+        skill_seq.append((params, self.objects[target_faucet].body_id))
+
+        params = self.skill_lib.get_serialized_skill_params(
+            "grasp_dist_discrete_orn", grasp_orn_name="back", grasp_distance=0.05)
+        skill_seq.append((params, self.objects["mug"].body_id))
+
+        pour_delta = np.array([0, 0, 0.3])
+        pour_delta[:2] += (np.random.rand(2) - 0.5) * 0.1
+        pour_angle = float(np.random.rand(1) * np.pi / 2) + np.pi / 2
+
+        params = self.skill_lib.get_serialized_skill_params(
+            "pour_pos_angle", pour_pos=np.array(pour_delta), pour_angle=pour_angle)
+        skill_seq.append((params, self.objects["bowl"].body_id))
+
+        skill_step = 0
+        for skill_param, object_id in skill_seq:
+            traj, skill_step = PU.execute_skill(
+                self, self.skill_lib, skill_param,
+                target_object_id=object_id,
+                skill_step=skill_step,
+                noise=noise
+            )
+            buffer.append(**traj)
+        return buffer.aggregate()
+
+    def is_success(self):
+        beads = self.objects["faucet_milk"].beads if self.task_spec[0] == 1 else self.objects["faucet_coffee"].beads
+        num_contained = 0
+        bowl_aabb = PBU.get_aabb(self.objects["bowl"].body_id, -1)
+        for bid in beads:
+            if PBU.aabb_contains_point(p.getBasePositionAndOrientation(bid)[0], bowl_aabb):
+                num_contained += 1
+        return num_contained >= 3

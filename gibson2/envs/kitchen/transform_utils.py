@@ -401,6 +401,11 @@ def quat2mat(quaternion):
     )
 
 
+def quat2col(quat):
+    mat = quat2mat(quat)
+    return np.concatenate([mat[:, 0], mat[:, 1]])
+
+
 def quat2axisangle(quat):
     """
     Converts (x, y, z, w) quaternion to axis-angle format.
@@ -804,3 +809,7 @@ def get_pose_error(target_pose, current_pose):
     error[:3] = pos_err
     error[3:] = rot_err
     return error
+
+
+def project_a_to_b(vec_a, vec_b):
+    return np.dot(vec_a, vec_b) * vec_b / (np.dot(vec_b, vec_b))
