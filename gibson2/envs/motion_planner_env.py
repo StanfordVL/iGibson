@@ -259,7 +259,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             ]
 
             # button_door
-            button_scales = [
+            self.button_scales = [
                 2.0,
                 2.0,
             ]
@@ -316,7 +316,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.target_pos_range = np.array([[-40, -30], [1.25, 1.75]])
 
             # button_door
-            button_scales = [
+            self.button_scales = [
                 2.0,
                 2.0,
             ]
@@ -371,7 +371,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             # self.target_pos_range = np.array([
             #     [0.0, 0.0], [0.0, 0.0]
             # ])
-            button_scales = [
+            self.button_scales = [
                 1.7,
             ]
             self.button_positions = [
@@ -551,7 +551,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.button_reward = 5.0
 
                 self.buttons = []
-                for scale in button_scales:
+                for scale in self.button_scales:
                     button = InteractiveObj(
                         os.path.join(gibson2.assets_path,
                                      'models',
@@ -2114,6 +2114,20 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 door.set_position_orientation(
                     pos, quatToXYZW(euler2quat(0, 0, orn), 'wxyz'))
             if self.arena == 'button_door':
+                if self.current_episode % 50 == 0:
+                    self.buttons = []
+                    for scale in self.button_scales:
+                        button = InteractiveObj(
+                            os.path.join(gibson2.assets_path,
+                                     'models',
+                                     'scene_components',
+                                     'eswitch',
+                                     'eswitch.urdf'),
+                            scale=scale)
+                        self.simulator.import_articulated_object(
+                            button, class_id=255)
+                        self.buttons.append(button)
+
                 self.button_states = np.zeros(len(self.buttons))
                 for button, button_pos_range, button_rot, button_state in \
                         zip(self.buttons,
