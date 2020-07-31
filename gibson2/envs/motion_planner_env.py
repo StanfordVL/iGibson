@@ -846,26 +846,65 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                         old_shape[2], old_shape[0], old_shape[1])
 
     def update_visualization(self):
+        arrow_length = 0.25
+        arrow_width = 0.05
+
+        # self.base_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
+        #                                 rgba_color=[1, 0, 0, 1],
+        #                                 radius=0.05,
+        #                                 length=2.0,
+        #                                 initial_offset=[0, 0, 2.0 / 2])
         self.base_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
                                         rgba_color=[1, 0, 0, 1],
-                                        radius=0.05,
-                                        length=2.0,
-                                        initial_offset=[0, 0, 2.0 / 2])
+                                        radius=0.3,
+                                        length=0.1,
+                                        initial_offset=[0, 0, 0.1 / 2])
         self.base_marker.load()
 
-        self.arm_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
-                                       rgba_color=[1, 1, 0, 1],
-                                       radius=0.1,
-                                       length=0.1,
-                                       initial_offset=[0, 0, 0.1 / 2])
-        self.arm_marker.load()
+        self.base_arrow = VisualMarker(
+            visual_shape=p.GEOM_BOX,
+            rgba_color=[1, 0, 0, 1],
+            half_extents=[arrow_length, arrow_width, arrow_width])
+        self.base_arrow.load()
 
-        self.arm_interact_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER,
-                                                rgba_color=[1, 0, 1, 1],
-                                                radius=0.1,
-                                                length=0.1,
-                                                initial_offset=[0, 0, 0.1 / 2])
-        self.arm_interact_marker.load()
+        self.base_arrow_left = VisualMarker(
+            visual_shape=p.GEOM_BOX,
+            rgba_color=[1, 0, 0, 1],
+            half_extents=[arrow_length / 2, arrow_width, arrow_width])
+        self.base_arrow_left.load()
+
+        self.base_arrow_right = VisualMarker(
+            visual_shape=p.GEOM_BOX,
+            rgba_color=[1, 0, 0, 1],
+            half_extents=[arrow_length / 2, arrow_width, arrow_width])
+        self.base_arrow_right.load()
+
+        self.arm_marker = VisualMarker(visual_shape=p.GEOM_SPHERE,
+                                       rgba_color=[1, 1, 0, 1],
+                                       radius=0.05)
+        self.arm_marker.load()
+        # self.arm_interact_marker = VisualMarker(visual_shape=p.GEOM_SPHERE,
+        #                                         rgba_color=[1, 0, 1, 1],
+        #                                         radius=0.1)
+        # self.arm_interact_marker.load()
+
+        self.arm_arrow = VisualMarker(
+            visual_shape=p.GEOM_BOX,
+            rgba_color=[1, 0, 0, 1],
+            half_extents=[arrow_length / 2, arrow_width / 2, arrow_width / 2])
+        self.arm_arrow.load()
+
+        self.arm_arrow_left = VisualMarker(
+            visual_shape=p.GEOM_BOX,
+            rgba_color=[1, 0, 0, 1],
+            half_extents=[arrow_length / 4, arrow_width / 2, arrow_width / 2])
+        self.arm_arrow_left.load()
+
+        self.arm_arrow_right = VisualMarker(
+            visual_shape=p.GEOM_BOX,
+            rgba_color=[1, 0, 0, 1],
+            half_extents=[arrow_length / 4, arrow_width / 2, arrow_width / 2])
+        self.arm_arrow_right.load()
 
     def plan_base_motion_2d(self, x, y, theta):
         if 'occupancy_grid' in self.output:
@@ -1201,9 +1240,39 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         base_subgoal_orn = action[3] * np.pi
         base_subgoal_orn += yaw
 
-        self.base_marker.set_position(base_subgoal_pos)
+        self.update_base_marker(base_subgoal_pos, base_subgoal_orn)
 
         return base_subgoal_pos, base_subgoal_orn
+
+    def update_base_marker(self, base_subgoal_pos, base_subgoal_orn):
+        self.base_marker.set_position(base_subgoal_pos)
+
+        offset = rotate_vector_2d(
+            np.array([self.base_arrow.half_extents[0], 0.0]),
+            -base_subgoal_orn)
+        offset = np.append(offset, 0.0)
+        self.base_arrow.set_position_orientation(
+            base_subgoal_pos + offset,
+            quatToXYZW(euler2quat(0, 0, base_subgoal_orn), 'wxyz'))
+
+        offset[:2] *= 2.0
+        base_subgoal_orn_left = base_subgoal_orn - np.pi / 4.0
+        offset_left = rotate_vector_2d(
+            np.array([self.base_arrow_left.half_extents[0], 0.0]),
+            -base_subgoal_orn_left)
+        offset_left = np.append(offset_left, 0.0)
+        self.base_arrow_left.set_position_orientation(
+            base_subgoal_pos + offset - offset_left * 0.7,
+            quatToXYZW(euler2quat(0, 0, base_subgoal_orn_left), 'wxyz'))
+
+        base_subgoal_orn_right = base_subgoal_orn + np.pi / 4.0
+        offset_right = rotate_vector_2d(
+            np.array([self.base_arrow_right.half_extents[0], 0.0]),
+            -base_subgoal_orn_right)
+        offset_right = np.append(offset_right, 0.0)
+        self.base_arrow_right.set_position_orientation(
+            base_subgoal_pos + offset - offset_right * 0.7,
+            quatToXYZW(euler2quat(0, 0, base_subgoal_orn_right), 'wxyz'))
 
     def reach_base_subgoal(self, base_subgoal_pos, base_subgoal_orn):
         """
@@ -1297,7 +1366,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                               camera_pose[5]])
         arm_subgoal = transform_mat.dot(
             np.array([-point[2], -point[0], point[1], 1]))[:3]
-        self.arm_marker.set_position(arm_subgoal)
         self.arm_subgoal = arm_subgoal
 
         push_vector_local = np.array(
@@ -1305,9 +1373,42 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         push_vector = rotate_vector_2d(
             push_vector_local, -self.robots[0].get_rpy()[2])
         push_vector = np.append(push_vector, 0.0)
-        self.arm_interact_marker.set_position(arm_subgoal + push_vector)
+
+        self.update_arm_marker(arm_subgoal, push_vector)
 
         return arm_subgoal
+
+    def update_arm_marker(self, arm_subgoal_pos, push_vector):
+        self.arm_marker.set_position(arm_subgoal_pos)
+        # self.arm_interact_marker.set_position(arm_subgoal_pos + push_vector)
+
+        arm_subgoal_orn = np.arctan2(push_vector[1], push_vector[0])
+        offset = rotate_vector_2d(
+            np.array([self.arm_arrow.half_extents[0], 0.0]),
+            -arm_subgoal_orn)
+        offset = np.append(offset, 0.0)
+        self.arm_arrow.set_position_orientation(
+            arm_subgoal_pos + offset,
+            quatToXYZW(euler2quat(0, 0, arm_subgoal_orn), 'wxyz'))
+
+        offset[:2] *= 2.0
+        arm_subgoal_orn_left = arm_subgoal_orn - np.pi / 4.0
+        offset_left = rotate_vector_2d(
+            np.array([self.arm_arrow_left.half_extents[0], 0.0]),
+            -arm_subgoal_orn_left)
+        offset_left = np.append(offset_left, 0.0)
+        self.arm_arrow_left.set_position_orientation(
+            arm_subgoal_pos + offset - offset_left * 0.7,
+            quatToXYZW(euler2quat(0, 0, arm_subgoal_orn_left), 'wxyz'))
+
+        arm_subgoal_orn_right = arm_subgoal_orn + np.pi / 4.0
+        offset_right = rotate_vector_2d(
+            np.array([self.arm_arrow_right.half_extents[0], 0.0]),
+            -arm_subgoal_orn_right)
+        offset_right = np.append(offset_right, 0.0)
+        self.arm_arrow_right.set_position_orientation(
+            arm_subgoal_pos + offset - offset_right * 0.7,
+            quatToXYZW(euler2quat(0, 0, arm_subgoal_orn_right), 'wxyz'))
 
     def is_collision_free(self, body_a, link_a_list,
                           body_b=None, link_b_list=None):
@@ -1695,6 +1796,13 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         return subgoal_success
 
+    def clear_base_arm_marker(self):
+        for obj in [self.base_marker, self.base_arrow,
+                    self.base_arrow_left, self.base_arrow_right,
+                    self.arm_marker, self.arm_arrow,
+                    self.arm_arrow_left, self.arm_arrow_right]:
+            obj.set_position([100, 100, 100])
+
     def step(self, action):
         # start = time.time()
         # action[0] = base_or_arm
@@ -1706,7 +1814,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # action[6] = arm_push_vector_x
         # action[7] = arm_push_vector_y
         # print('-' * 20)
+        # if self.log_dir is not None:
+        #     self.logger.info(
+        #         'robot_position: ' + ','.join([str(elem) for elem in self.robots[0].get_position()]))
+        #     self.logger.info(
+        #         'robot_orientation: ' + ','.join([str(elem) for elem in self.robots[0].get_orientation()]))
+        #     self.logger.info('action: ' + ','.join(
+        #         [str(elem) for elem in action]))
+        #     self.logger.info('button_state: ' + str(p.getJointState(
+        #         self.buttons[self.door_idx].body_id,
+        #         self.button_axis_link_id)[0]))
+
         self.current_step += 1
+        self.clear_base_arm_marker()
         if self.action_map:
             # print('action', action)
             assert 0 <= action < self.action_space.n
