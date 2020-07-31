@@ -1,7 +1,6 @@
 import numpy as np
 import os
 import time
-from copy import deepcopy
 
 import pybullet as p
 import pybullet_data
@@ -14,10 +13,11 @@ from gibson2.envs.kitchen.transform_utils import quat2col
 from gibson2.envs.kitchen.camera import Camera
 from gibson2.envs.kitchen.robots import Arm, ConstraintActuatedRobot, PlannerRobot, Robot, Gripper
 from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articulated_object_dynamics, pose_to_array, \
-    change_object_rgba, action_to_delta_pose_axis_vector, action_to_delta_pose_euler
+    change_object_rgba, action_to_delta_pose_axis_vector, action_to_delta_pose_euler, objects_center_in_container
 import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.envs.kitchen.plan_utils as PU
 import gibson2.envs.kitchen.skills as skills
+from gibson2.envs.kitchen.objects import Faucet, Platform
 
 
 def env_factory(name, **kwargs):
@@ -598,85 +598,6 @@ class TableTopArrangeHard(TableTop):
         self.skill_lib = skills.SkillLibrary(self.planner, obstacles=self.obstacles, skills=lib_skills)
 
 
-class Faucet(Object):
-    def __init__(
-            self,
-            num_beads=20,
-            dispense_freq=1,
-            dispense_height=0.3,
-            base_color=(0.75, 0.75, 0.75, 1),
-            beads_color=(0, 0, 1, 1),
-            beads_size=0.015
-    ):
-        self._dispense_freq = dispense_freq
-        self._dispense_height = dispense_height
-        self._beads = []
-        self._next_bead_index = 0
-        self._n_step_since = 0
-        self._base_color = base_color
-        self._beads_color = beads_color
-        self._beads_size = beads_size
-        self._num_beads = num_beads
-        super(Faucet, self).__init__()
-
-    @property
-    def beads(self):
-        return deepcopy(self._beads)
-
-    def load(self):
-        self.body_id = PBU.create_box(0.15, 0.15, 0.01, mass=100, color=self._base_color)
-        self._beads = [PBU.create_sphere(
-            self._beads_size, mass=PBU.STATIC_MASS, color=self._beads_color
-        ) for _ in range(self._num_beads)]
-        self.loaded = True
-
-    def reset(self):
-        self._next_bead_index = 0
-        for i, b in enumerate(self._beads):
-            p.resetBasePositionAndOrientation(b, self.get_position() + np.array([0, 0, 10 + b * 0.1]), PBU.unit_quat())
-            p.changeDynamics(b, -1, mass=PBU.STATIC_MASS)
-
-        self._n_step_since = 0
-
-    def _try_dispense(self, task_objs):
-        if self._next_bead_index == self._num_beads:
-            return
-        bid = self._beads[self._next_bead_index]
-        prev_pose = PBU.get_pose(bid)
-        PBU.set_pose(bid, (self.get_position() + np.array([0, 0, self._dispense_height]), PBU.unit_quat()))
-        for oid in [o.body_id for o in task_objs] + self._beads:
-            if oid != bid and PBU.body_collision(oid, bid):
-                PBU.set_pose(bid, prev_pose)
-                return
-        p.changeDynamics(bid, -1, mass=0.3)
-        self._next_bead_index += 1
-
-    def step(self, task_objs):
-        should_dispense = False
-        for o in task_objs:
-            if o.body_id == self.body_id:
-                continue
-            center_place = PBU.is_center_stable(o.body_id, self.body_id, above_epsilon=0.01, below_epsilon=0.02)
-            in_contact = PBU.body_collision(self.body_id, o.body_id)
-            should_dispense = should_dispense or (center_place and in_contact)
-        if should_dispense and self._n_step_since >= self._dispense_freq:
-            self._try_dispense(task_objs)
-            self._n_step_since = 0
-        else:
-            self._n_step_since += 1
-
-
-class Platform(Object):
-    def __init__(self, color=(0, 1, 0, 1), size=(0.15, 0.15, 0.01)):
-        super(Platform, self).__init__()
-        self._color = color
-        self._size = size
-
-    def load(self):
-        self.body_id = PBU.create_box(*self._size, mass=100, color=self._color)
-        self.loaded = True
-
-
 class KitchenCoffee(TableTop):
     def __init__(self, **kwargs):
         super(KitchenCoffee, self).__init__(**kwargs)
@@ -748,7 +669,53 @@ class KitchenCoffee(TableTop):
         self._task_spec = np.array(task_specs)
         assert 0 <= self._task_spec[0] <= 1
 
-    def get_demo(self, noise=None):
+    def get_demo_suboptimal(self, noise=None):
+        self.reset()
+        buffer = PU.Buffer()
+        skill_seq = []
+        params = self.skill_lib.get_serialized_skill_params(
+            "grasp_dist_discrete_orn", grasp_orn_name="back", grasp_distance=0.05)
+        skill_seq.append((params, self.objects["mug"].body_id))
+
+        place_delta = np.array((0, 0, 0.01))
+        place_delta[0] += (np.random.rand(1) - 0.5) * 0.05
+
+        # place_delta[1] += 0.075 + (np.random.rand(1) - 0.5) * 0.3
+        # params = self.skill_lib.get_serialized_skill_params(
+        #     "place_pos_discrete_orn", place_orn_name="front", place_pos=place_delta)
+        # skill_seq.append((params, self.objects["faucet_milk"].body_id))
+
+        target_faucet = np.random.choice(["faucet_milk", "faucet_coffee"])
+        # place_delta[1] += (np.random.rand(1) - 0.5) * 0.15
+        place_delta[1] += (np.random.rand(1) - 0.2) * 0.15 * (-1 if target_faucet == 'faucet_milk' else 1)
+        params = self.skill_lib.get_serialized_skill_params(
+            "place_pos_discrete_orn", place_orn_name="front", place_pos=place_delta)
+        skill_seq.append((params, self.objects[target_faucet].body_id))
+
+        params = self.skill_lib.get_serialized_skill_params(
+            "grasp_dist_discrete_orn", grasp_orn_name="back", grasp_distance=0.05)
+        skill_seq.append((params, self.objects["mug"].body_id))
+
+        pour_delta = np.array([0, 0, 0.3])
+        pour_delta[:2] += (np.random.rand(2) * 0.1 + 0.03) * np.random.choice([-1, 1], size=2)
+        pour_angle = float(np.random.rand(1) * np.pi * 0.75) + np.pi * 0.25
+
+        params = self.skill_lib.get_serialized_skill_params(
+            "pour_pos_angle", pour_pos=np.array(pour_delta), pour_angle=pour_angle)
+        skill_seq.append((params, self.objects["bowl"].body_id))
+
+        skill_step = 0
+        for skill_param, object_id in skill_seq:
+            traj, skill_step = PU.execute_skill(
+                self, self.skill_lib, skill_param,
+                target_object_id=object_id,
+                skill_step=skill_step,
+                noise=noise
+            )
+            buffer.append(**traj)
+        return buffer.aggregate()
+
+    def get_demo_expert(self, noise=None):
         self.reset()
         buffer = PU.Buffer()
         skill_seq = []
@@ -788,9 +755,13 @@ class KitchenCoffee(TableTop):
 
     def is_success(self):
         beads = self.objects["faucet_milk"].beads if self.task_spec[0] == 1 else self.objects["faucet_coffee"].beads
-        num_contained = 0
-        bowl_aabb = PBU.get_aabb(self.objects["bowl"].body_id, -1)
-        for bid in beads:
-            if PBU.aabb_contains_point(p.getBasePositionAndOrientation(bid)[0], bowl_aabb):
-                num_contained += 1
-        return num_contained >= 3
+        return len(objects_center_in_container(beads, self.objects["bowl"].body_id)) >= 3
+
+    def is_success_subtasks(self):
+        beads = self.objects["faucet_milk"].beads if self.task_spec[0] == 1 else self.objects["faucet_coffee"].beads
+        num_beads_in_mug = len(objects_center_in_container(beads, self.objects["mug"].body_id))
+        num_beads_in_bowl = len(objects_center_in_container(beads, self.objects["bowl"].body_id))
+        return {
+            "fill_mug": num_beads_in_mug >= 3,
+            "fill_bowl": num_beads_in_bowl >= 3
+        }

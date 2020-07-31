@@ -246,7 +246,7 @@ def record_demos(args):
         t = time.time()
         try:
             # buffer = get_demo_arrange_hard_skill(env, perturb=args.perturb_demo)
-            buffer = env.get_demo(noise=ACTION_NOISE if args.perturb_demo else None)
+            buffer = env.get_demo_suboptimal(noise=ACTION_NOISE if args.perturb_demo else None)
         except PU.NoPlanException as e:
             print(e)
             continue
@@ -259,18 +259,18 @@ def record_demos(args):
 
         n_total += 1
         if not env.is_success():
-            print("{}/{}".format(n_success, n_total))
+            n_kept += 1 if args.keep_failed_demos else 0
+            print("{}/{}/{}, time={:.5f}, len={}".format(n_success, n_kept, n_total, elapsed, traj_len))
             if not args.keep_failed_demos:
-                print("{}/{}/{}, time={:.5f}, len={}".format(n_success, n_kept, n_total, elapsed, traj_len))
                 continue
         else:
             n_success += 1
-        n_kept += 1
+            n_kept += 1
+            print("{}/{}/{}, time={:.5f}, len={}".format(n_success, n_kept, n_total, elapsed, traj_len))
 
         f_demo_grp = f_sars_grp.create_group("demo_{}".format(n_kept - 1))
         for k in buffer:
             f_demo_grp.create_dataset(k, data=buffer[k])
-        print("{}/{}/{}, time={:.5f}, len={}".format(n_success, n_kept, n_total, elapsed, traj_len))
     f.close()
 
 
@@ -281,6 +281,8 @@ def extract_dataset(args):
     extract_name = 'states.hdf5' if args.extract_name is None else args.extract_name
     out_path = os.path.join(os.path.dirname(args.file), extract_name)
 
+    if os.path.exists(out_path):
+        os.remove(out_path)
     out_f = h5py.File(out_path)
     f_grp = out_f.create_group("data")
 
@@ -346,6 +348,8 @@ def extract_dataset_skills(args):
     extract_name = 'states.hdf5' if args.extract_name is None else args.extract_name
     out_path = os.path.join(os.path.dirname(args.file), extract_name)
 
+    if os.path.exists(out_path):
+        os.remove(out_path)
     out_f = h5py.File(out_path)
     f_grp = out_f.create_group("data")
 
@@ -355,7 +359,8 @@ def extract_dataset_skills(args):
     env_args["env_kwargs"]["obs_segmentation"] = args.extract_segmentation
     env_args["env_kwargs"]["camera_height"] = args.width
     env_args["env_kwargs"]["camera_width"] = args.height
-    env_args["env_name"] += "Skill"
+    if not env_args["env_name"].endswith("Skill"):
+        env_args["env_name"] += "Skill"
 
     f_grp.attrs["env_args"] = json.dumps(env_args)
 
@@ -364,11 +369,15 @@ def extract_dataset_skills(args):
 
     for demo_id in demos:
         mask = f["data/{}/skill_begin".format(demo_id)][:].astype(np.bool)
+        mask[-1] = True
         mask_inds = np.where(mask)[0]
         skill_len = mask_inds[1:] - mask_inds[:-1]
+        # only extract first @skill_frame_ratio fraction of the frames for each skill
         for mi, sl in zip(mask_inds[:-1], skill_len):
-            mask[mi: mi + int(sl * 0.5)] = True
-        mask[-1] = True
+            mask[mi: mi + max(1, int(sl * args.skill_frame_ratio))] = True
+
+        # extract the last @skill_frame_ratio fraction of the demo for goals
+        mask[mask_inds[-2] + int(skill_len[-1] * (1 - args.skill_frame_ratio)):] = True
 
         states = f["data/{}/states".format(demo_id)][mask, ...]
         task_spec = f["data/{}/task_specs".format(demo_id)][0]
@@ -417,9 +426,10 @@ def playback(args):
     env_args = json.loads(f["data"].attrs["env_args"])
 
     env = env_factory(env_args["env_name"], **env_args["env_kwargs"], use_gui=args.gui)
-    env.reset()
+    # env.reset()
     demos = list(f["data"].keys())
     for demo_id in demos:
+        env.reset()
         states = f["data/{}/states".format(demo_id)][:]
         task_spec = f["data/{}/task_specs".format(demo_id)][0]
         env.reset_to(states[0])
@@ -428,6 +438,34 @@ def playback(args):
 
         for i in range(len(actions)):
             env.step(actions[i])
+        print("success: {}".format(env.is_success()))
+
+
+def playback_compare(args):
+    f = h5py.File(args.file, 'r')
+    env_args = json.loads(f["data"].attrs["env_args"])
+
+    env = env_factory(env_args["env_name"], **env_args["env_kwargs"], use_gui=args.gui)
+    # env.reset()
+    demos = list(f["data"].keys())
+    for demo_id in demos:
+        env.reset()
+        states = f["data/{}/states".format(demo_id)][:]
+        task_spec = f["data/{}/task_specs".format(demo_id)][0]
+        env.reset_to(states[0])
+        env.set_goal(task_specs=task_spec)
+        actions = f["data/{}/actions".format(demo_id)][:]
+        rollout_video = []
+        for i in range(len(actions)):
+            rollout_video.append(env.render())
+            env.step(actions[i])
+
+        org_video = []
+        env.reset()
+        for i in range(len(actions)):
+            env.reset_to(states[i])
+            org_video.append(env.render())
+
         print("success: {}".format(env.is_success()))
 
 
@@ -445,6 +483,11 @@ def main():
         "--extract_by_action_playback",
         action="store_true",
         default=False
+    )
+    parser.add_argument(
+        "--skill_frame_ratio",
+        default=0.3,
+        type=float
     )
 
     parser.add_argument(

@@ -267,3 +267,12 @@ def action_to_delta_pose_axis_vector(action, max_dpos, max_drot=None):
 
     delta_rot = TU.axisangle2quat(*TU.vec2axisangle(-delta_axis_vector))
     return delta_pos, delta_rot
+
+
+def objects_center_in_container(candidates, container_id, container_link=-1):
+    contained = []
+    container_aabb = PBU.get_aabb(container_id, container_link)
+    for bid in candidates:
+        if PBU.aabb_contains_point(p.getBasePositionAndOrientation(bid)[0], container_aabb):
+            contained.append(bid)
+    return contained
