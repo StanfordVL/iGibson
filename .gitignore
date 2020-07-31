@@ -7,7 +7,6 @@
 src/
 pw
 *.o
-*.ipynb
 *.out
 npz/
 *.npy
