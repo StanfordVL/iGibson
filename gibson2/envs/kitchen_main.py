@@ -292,6 +292,7 @@ def extract_dataset(args):
     env_args["env_kwargs"]["obs_segmentation"] = args.extract_segmentation
     env_args["env_kwargs"]["camera_height"] = args.width
     env_args["env_kwargs"]["camera_width"] = args.height
+    env_args["env_kwargs"]["obs_crop"] = args.extract_crop
 
     f_grp.attrs["env_args"] = json.dumps(env_args)
 
@@ -359,6 +360,7 @@ def extract_dataset_skills(args):
     env_args["env_kwargs"]["obs_segmentation"] = args.extract_segmentation
     env_args["env_kwargs"]["camera_height"] = args.width
     env_args["env_kwargs"]["camera_width"] = args.height
+    env_args["env_kwargs"]["obs_crop"] = args.extract_crop
     if not env_args["env_name"].endswith("Skill"):
         env_args["env_name"] += "Skill"
 
@@ -508,6 +510,11 @@ def main():
 
     parser.add_argument(
         "--extract_image",
+        action="store_true",
+        default=False
+    )
+    parser.add_argument(
+        "--extract_crop",
         action="store_true",
         default=False
     )

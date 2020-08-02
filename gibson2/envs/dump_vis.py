@@ -123,5 +123,5 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    # vis_all(args.input_path, args.output_path)
-    vis_image(args.input_path, args.output_path)
+    vis_all(args.input_path, args.output_path)
+    # vis_image(args.input_path, args.output_path)

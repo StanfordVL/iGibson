@@ -10,7 +10,7 @@ from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject, 
 import gibson2.external.pybullet_tools.transformations as T
 from gibson2.envs.kitchen.transform_utils import quat2col
 
-from gibson2.envs.kitchen.camera import Camera
+from gibson2.envs.kitchen.camera import Camera, crop_pad_resize, get_bbox2d_from_segmentation
 from gibson2.envs.kitchen.robots import Arm, ConstraintActuatedRobot, PlannerRobot, Robot, Gripper
 from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articulated_object_dynamics, pose_to_array, \
     change_object_rgba, action_to_delta_pose_axis_vector, action_to_delta_pose_euler, objects_center_in_container
@@ -47,6 +47,8 @@ class BaseEnv(object):
             obs_segmentation=False,
             camera_width=256,
             camera_height=256,
+            obs_crop=False,
+            obs_crop_size=24,
             use_skills=False,
     ):
         self._hide_planner = hide_planner
@@ -59,6 +61,8 @@ class BaseEnv(object):
         self._obs_image = obs_image
         self._obs_depth = obs_depth
         self._obs_segmentation = obs_segmentation
+        self._obs_crop = obs_crop
+        self.obs_crop_size = obs_crop_size
 
         self.objects = ObjectBank()
         self.interactive_objects = ObjectBank()
@@ -234,8 +238,15 @@ class BaseEnv(object):
     def _get_pixel_observation(self, camera):
         obs = {}
         rgb, depth, seg_obj, seg_link = camera.capture_frame()
+        bbox = None
+        if self._obs_crop:
+            bbox = get_bbox2d_from_segmentation(seg_obj, self.objects.body_ids)
         if self._obs_image:
             obs["images"] = rgb
+            if self._obs_crop:
+                obs["image_crops"] = crop_pad_resize(
+                    rgb, bbox=bbox[:, 1:], target_size=self.obs_crop_size, expand_ratio=1.1)
+                obs["image_crops_flat"] = obs["image_crops"].reshape((-1, self.obs_crop_size, 3))
         if self._obs_depth:
             obs["depth"] = depth
         if self._obs_segmentation:

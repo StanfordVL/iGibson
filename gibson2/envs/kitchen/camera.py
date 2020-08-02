@@ -103,10 +103,12 @@ class Camera(object):
         depth_map = get_depth_map(depth, near=self._near, far=self._far)
         return rgb[:, :, :3].astype(np.uint8), depth_map, obj_idmap, link_idmap
 
-    def get_crops(self, object_ids, expand_ratio=1.1):
+    def get_crops(self, object_ids, target_size=24, expand_ratio=1.1):
         rgb, depth, obj_seg, link_seg = self.capture_frame()
         bbox = get_bbox2d_from_segmentation(obj_seg, object_ids)
-        return crop_pad_resize(rgb, bbox[:, 1:], 24, expand_ratio=expand_ratio)
+        rgb_crop = crop_pad_resize(rgb, bbox[:, 1:], target_size=target_size, expand_ratio=expand_ratio)
+        depth_crop = crop_pad_resize(depth, bbox[:, 1:], target_size=target_size, expand_ratio=expand_ratio)
+        return rgb_crop, depth_crop
 
 
 def get_bbox2d_from_mask(bmask):
@@ -175,9 +177,9 @@ def draw_boxes(image, boxes, labels=None):
     return np.array(image)
 
 
-def crop_pad_resize(images, bbox, target_size, expand_ratio=1.0):
-    crops = np.zeros((bbox.shape[0], target_size, target_size, 3), dtype=images.dtype)
-    im_pil = Image.fromarray(images.copy())
+def crop_pad_resize(image, bbox, target_size, expand_ratio=1.0):
+    crops = np.zeros((bbox.shape[0], target_size, target_size, 3), dtype=image.dtype)
+    im_pil = Image.fromarray(image.copy())
     for i, box in enumerate(bbox):
         if np.all(box == 0):
             continue
