@@ -111,6 +111,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         # tabletop_manip and tabletop_reaching has shorter episode length and
         # larger head tilt angle
+        # Remove for old tabletop_manip setup, use 10 degrees head_tilt_angle
         head_tilt_angle = quat2euler(
             p.getJointInfo(self.robots[0].robot_ids[0], 5)[15])[1]
         if self.arena in ['tabletop_manip', 'tabletop_reaching']:
@@ -415,6 +416,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.table_pose = [[-4.3, 0.5, 0.55], -np.pi / 2.0]
             elif self.arena == 'tabletop_manip':
                 self.table_pose = [[-4.25, -0.15, 0.4], -np.pi / 2.0]
+                # Un-comment for old tabletop_manip setup
+                # self.table_pose = [[-4.25, 0.15, 0.4], -np.pi / 2.0]
             elif self.arena == 'tabletop_reaching':
                 self.table_pose = [[-4.25, 0.15, 0.4], -np.pi / 2.0]
 
@@ -485,18 +488,20 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 -0.6311911117325094,
                 0.3175088588585192]
 
-            # self.tabletop_object_pos_range = np.array([
-            #     [-4.6, -3.9], [-0.1, 0.2]
-            # ])
             self.tabletop_object_pos_range = np.array([
                 [-4.1, -4.1], [-0.4, -0.1]
             ])
-            # self.tabletop_object_target_range = np.array([
-            #     [-4.6, -3.9], [-0.1, 0.2]
-            # ])
+
             self.tabletop_object_target_range = np.array([
                 [-4.6, -4.3], [-0.4, -0.1]
             ])
+            # Un-comment for old tabletop_manip setup
+            # self.tabletop_object_pos_range = np.array([
+            #     [-4.6, -3.9], [-0.1, 0.2]
+            # ])
+            # self.tabletop_object_target_range = np.array([
+            #     [-4.6, -3.9], [-0.1, 0.2]
+            # ])
             self.tabletop_object_initial_pos = np.array([0, 0, 0])
             self.tabletop_object_target_pos = np.array([0, 0, 0])
             self.tabletop_reaching_penalty = 1.0
@@ -550,7 +555,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 self.button_threshold = -0.05
                 self.button_reward = 5.0
 
-                self.buttons = []
                 for scale in self.button_scales:
                     button = InteractiveObj(
                         os.path.join(gibson2.assets_path,
@@ -2234,19 +2238,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 door.set_position_orientation(
                     pos, quatToXYZW(euler2quat(0, 0, orn), 'wxyz'))
             if self.arena == 'button_door':
-                if self.current_episode % 50 == 0:
-                    self.buttons = []
-                    for scale in self.button_scales:
-                        button = InteractiveObj(
-                            os.path.join(gibson2.assets_path,
-                                     'models',
-                                     'scene_components',
-                                     'eswitch',
-                                     'eswitch.urdf'),
-                            scale=scale)
-                        self.simulator.import_articulated_object(
-                            button, class_id=255)
-                        self.buttons.append(button)
+                # if self.current_episode % 50 == 0:
+                #     self.buttons = []
+                #     for scale in self.button_scales:
+                #         button = InteractiveObj(
+                #             os.path.join(gibson2.assets_path,
+                #                          'models',
+                #                          'scene_components',
+                #                          'eswitch',
+                #                          'eswitch.urdf'),
+                #             scale=scale)
+                #         self.simulator.import_articulated_object(
+                #             button, class_id=255)
+                #         self.buttons.append(button)
 
                 self.button_states = np.zeros(len(self.buttons))
                 for button, button_pos_range, button_rot, button_state in \
@@ -2430,7 +2434,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.tabletop_target_marker.set_position(
                 [self.tabletop_object_target_pos[0],
                  self.tabletop_object_target_pos[1],
-                 self.tabletop_object_height - 0.1]
+                 self.tabletop_object_height - 0.08]
             )
             self.tabletop_object_state = (self.tabletop_object_initial_pos,
                                           self.tabletop_object_orn)
