@@ -144,6 +144,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         self.prepare_scene()
         self.prepare_mp_obstacles()
         self.prepare_logging()
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         # np.random.seed(0)
 
     def prepare_logging(self):
@@ -512,9 +513,15 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         if self.arena in ['push_door', 'button_door',
                           'random_manip', 'random_manip_atomic']:
             self.door_axis_link_id = 1
-            door_urdf = 'realdoor.urdf' if self.arena in \
+            door_urdf = 'realdoor_scaled.urdf' if self.arena in \
                 ['push_door', 'random_manip', 'random_manip_atomic'] \
                 else 'realdoor_closed.urdf'
+
+            if self.scene.model_id == 'candcenter':
+                door_urdf = 'realdoor_scaled.urdf' if self.arena in \
+                    ['push_door', 'random_manip', 'random_manip_atomic'] \
+                    else 'realdoor_closed_scaled.urdf'
+            print(door_urdf)
             for scale, position, rotation in \
                     zip(door_scales, self.door_positions, self.door_rotations):
                 door = InteractiveObj(
@@ -1567,6 +1574,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             mp_obstacles = []
 
         plan_arm_start = time.time()
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         arm_path = plan_joint_motion(
             self.robot_id,
             self.arm_joint_ids,
@@ -1575,6 +1583,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self_collisions=self_collisions,
             obstacles=mp_obstacles,
             algorithm=self.arm_mp_algo)
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         self.episode_metrics['arm_mp_time'] += time.time() - plan_arm_start
         if arm_path is not None:
             if self.mode == 'gui':
@@ -1769,7 +1778,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # self.times['stash_object_states'].append(time.time() - start)
 
         # start = time.time()
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         arm_joint_positions = self.get_arm_joint_positions(arm_subgoal)
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         # self.times['get_arm_joint_positions'].append(time.time() - start)
         # print('get_arm_joint_positions', time.time() - start)
 
@@ -1952,8 +1963,13 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             action, use_base, subgoal_success)
 
         # self.times['compute_next_step'].append(time.time() - start)
-
-        self.step_visualization()
+        if self.mode == 'gui':
+            if self.arena in ['push_drawers', 'push_chairs', 'tabletop_manip', 'tabletop_reaching']:
+                self.target_pos_vis_obj.set_position([0,0,100])
+                for item in self.waypoints_vis:
+                    item.set_position([0,0,100])
+            else:
+                self.step_visualization()
         # print('step time:', time.time() - start)
         return state, reward, done, info
 
@@ -2235,6 +2251,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                     pos, quatToXYZW(euler2quat(0, 0, orn), 'wxyz'))
             if self.arena == 'button_door':
                 if self.current_episode % 50 == 0:
+                    for button in self.buttons:
+                        p.removeBody(button.body_id)
                     self.buttons = []
                     for scale in self.button_scales:
                         button = InteractiveObj(

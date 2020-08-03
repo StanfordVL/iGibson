@@ -210,6 +210,7 @@ class BuildingScene(Scene):
                                               posObj=[0, 0, 0],
                                               ornObj=[0, 0, 0, 1])
             p.setCollisionFilterPair(self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
+            p.changeVisualShape(floor_body_id, -1, rgbaColor=[0,0,0,0])
             self.floor_body_ids.append(floor_body_id)
 
     def load_trav_map(self):
