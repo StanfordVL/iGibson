@@ -8,6 +8,7 @@ from gibson2.core.physics.interactive_objects import YCBObject, InteractiveObj, 
 from gibson2.core.simulator import Simulator
 from gibson2 import assets_path, dataset_path
 from gibson2.utils.utils import parse_config
+from gibson2.utils.vr_utils import translate_vr_position_by_vecs
 from math import sqrt
 
 model_path = assets_path + '\\models\\'
@@ -54,16 +55,6 @@ if optimize:
 # Account for Gibson floors not being at z=0 - shift user height down by 0.2m
 s.setVROffset([0, 0, -0.2])
 
-def normalizeListVec(v):
-    length = v[0] ** 2 + v[1] ** 2 + v[2] ** 2
-    if length <= 0:
-        length = 1
-    v = [val/sqrt(length) for val in v]
-    return v
-
-vr_movement_speed = 0.01
-
-# Runs simulation
 while True:
     s.step(shouldTime=False)
 
@@ -71,7 +62,6 @@ while True:
         hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')
         lIsValid, lTrans, lRot = s.getDataForVRDevice('left_controller')
         rIsValid, rTrans, rRot = s.getDataForVRDevice('right_controller')
-        # TODO: Make nice interface functions for this function
         lTrig, lTouchX, lTouchY = s.getButtonDataForController('left_controller')
         rTrig, rTouchX, rTouchY = s.getButtonDataForController('right_controller')
 
@@ -83,8 +73,6 @@ while True:
             rGripper.move_gripper(rTrans, rRot)
             rGripper.set_close_fraction(rTrig)
 
-        current_offset = s.getVROffset()
-
         relative_device = 'hmd'
         if movement_type == 'torso_relative':
             relative_device = 'right_controller'
@@ -95,10 +83,7 @@ while True:
         # relative to the HMD
         # Only uses data from right controller
         if rIsValid:
-            vr_offset_vec = [right[i] * rTouchX + forward[i] * rTouchY for i in range(3)]
-            vr_offset_vec[2] = 0
-            vr_offset_vec = normalizeListVec(vr_offset_vec)
-            final_offset = [current_offset[i] + vr_offset_vec[i] * vr_movement_speed for i in range(3)]
-            s.setVROffset(final_offset)
+            new_offset = translate_vr_position_by_vecs(rTouchX, rTouchY, right, forward, s.getVROffset(), 0.01)
+            s.setVROffset(new_offset)
 
 s.disconnect()

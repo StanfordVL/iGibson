@@ -72,3 +72,11 @@ def multQuatLists(q0, q1):
             w0 * z1 + x0 * y1 - y0 * x1 + z0 * w1,
             w0 * w1 - x0 * x1 - y0 * y1 - z0 * z1]
 
+def normalizeListVec(v):
+    """Normalizes a vector list."""
+    length = v[0] ** 2 + v[1] ** 2 + v[2] ** 2
+    if length <= 0:
+        length = 1
+    v = [val/np.sqrt(length) for val in v]
+    return v
+
