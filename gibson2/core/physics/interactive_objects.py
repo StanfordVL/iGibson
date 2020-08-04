@@ -257,16 +257,36 @@ class VrHand(InteractiveObj):
     Joint 14 has name Iproximal__palm
     Joint 15 has name Imiddle__Iproximal
     Joint 16 has name Itip__Imiddle
+
+    Link names in order:
+    base
+    palm
+    Rproximal
+    RmiRmiddle
+    Rtip
+    Mproximal
+    Mmiddle
+    Mtip
+    Pproximal
+    Pmiddle
+    Ptip
+    thumb base
+    Tproximal
+    TmiTmiddle
+    Ttip
+    Iproximal
+    ImiImiddle
+    Itip
     """
 
-    def __init__(self, scale=1):
+    def __init__(self, scale=1, start_pos=[0,0,0]):
         super().__init__(vr_hand_path)
         self.filename = vr_hand_path
         self.scale = scale
+        self.start_pos = start_pos
         # Hand needs to be rotated to visually align with VR controller
         # TODO: Make this alignment better (will require some experimentation)
         self.base_rot = p.getQuaternionFromEuler([0, 160, -80])
-        self.open_frac = 0.1
         # Lists of joint indices for hand part
         self.base_idxs = [0]
         # Proximal indices for non-thumb fingers
@@ -286,11 +306,17 @@ class VrHand(InteractiveObj):
     
     def _load(self):
         self.body_id = super()._load()
+        self.set_position(self.start_pos)
         for jointIndex in range(p.getNumJoints(self.body_id)):
+            # Make masses larger for greater stability
+            # Mass is in kg, friction is coefficient
+            p.changeDynamics(self.body_id, jointIndex, mass=0.2, lateralFriction=0.8)
             open_pos = self.open_pos[jointIndex]
             p.resetJointState(self.body_id, jointIndex, open_pos)
-            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=open_pos)
-        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], [0, 0, 0])
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=open_pos, force=500)
+        # Keep base light for easier hand movement
+        p.changeDynamics(self.body_id, -1, mass=0.05, lateralFriction=0.8)
+        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.start_pos)
 
         return self.body_id
 
@@ -300,13 +326,13 @@ class VrHand(InteractiveObj):
 
     # Close frac of 1 indicates fully closed joint, and close frac of 0 indicates fully open joint
     # Joints move smoothly between their values in self.open_pos and self.close_pos
-    def toggle_finger_state(self, close_frac):
+    def toggle_finger_state(self, close_frac, maxForce=500):
         for jointIndex in range(p.getNumJoints(self.body_id)):
             open_pos = self.open_pos[jointIndex]
             close_pos = self.close_pos[jointIndex]
             interp_frac = (close_pos - open_pos) * close_frac
             target_pos = open_pos + interp_frac
-            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos)
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos, force=maxForce)
 
 class GripperObj(InteractiveObj):
     """
