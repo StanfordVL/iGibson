@@ -496,6 +496,14 @@ class Simulator:
         isValid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(deviceName)
         return [isValid, translation, rotation]
 
+    # Get world position of HMD without offset
+    def getHmdWorldPos(self):
+        if not self.use_vr_renderer:
+            return None
+        
+        _, _, _, hmd_world_pos = self.renderer.vrsys.getDataForVRDevice('hmd')
+        return hmd_world_pos
+
     # Call this after getDataForVRDevice - returns analog data for a specific controller
     # Controller can be left_controller or right_controller
     # Returns trigger_fraction, touchpad finger position x, touchpad finger position y
