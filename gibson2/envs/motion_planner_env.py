@@ -2238,20 +2238,22 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 door.set_position_orientation(
                     pos, quatToXYZW(euler2quat(0, 0, orn), 'wxyz'))
             if self.arena == 'button_door':
-                # if self.current_episode % 50 == 0:
-                #     self.buttons = []
-                #     for scale in self.button_scales:
-                #         button = InteractiveObj(
-                #             os.path.join(gibson2.assets_path,
-                #                          'models',
-                #                          'scene_components',
-                #                          'eswitch',
-                #                          'eswitch.urdf'),
-                #             scale=scale)
-                #         self.simulator.import_articulated_object(
-                #             button, class_id=255)
-                #         self.buttons.append(button)
-
+                if self.current_episode % 50 == 0:
+                    for button in self.buttons:
+                        p.removeBody(button.body_id)
+                    self.buttons = []
+                    for scale in self.button_scales:
+                        button = InteractiveObj(
+                            os.path.join(gibson2.assets_path,
+                                         'models',
+                                         'scene_components',
+                                         'eswitch',
+                                         'eswitch.urdf'),
+                                        scale=scale)
+                        self.simulator.import_articulated_object(
+                            button, class_id=255)
+                        self.buttons.append(button)
+                
                 self.button_states = np.zeros(len(self.buttons))
                 for button, button_pos_range, button_rot, button_state in \
                         zip(self.buttons,
