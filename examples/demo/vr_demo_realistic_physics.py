@@ -18,8 +18,6 @@ scene = BuildingScene('Placida', is_interactive=False)
 scene.sleep = optimize
 s.import_scene(scene)
 
-p.setGravity(0,0,0)
-
 # VR hand object
 rHand = VrHand(start_pos=[0.0, 0.5, 1.5])
 s.import_articulated_object(rHand)
@@ -27,24 +25,32 @@ s.import_articulated_object(rHand)
 # Heavy robot
 heavy_robot = InteractiveObj(sample_urdf_folder + 'object_H3ygj6efM8V.urdf')
 s.import_object(heavy_robot)
-heavy_robot.set_position([1, 0, 1.2])
+heavy_robot.set_position([1, 0.2, 1])
 # Robot is just a base, so use -1 as link index for changing dynamics
 p.changeDynamics(heavy_robot.body_id, -1, mass=500)
+
+# Medium robot
+medium_robot = InteractiveObj(sample_urdf_folder + 'object_H3ygj6efM8V.urdf')
+s.import_object(medium_robot)
+medium_robot.set_position([1, 0, 1])
+# Robot is just a base, so use -1 as link index for changing dynamics
+p.changeDynamics(medium_robot.body_id, -1, mass=50)
 
 # Light robot
 light_robot = InteractiveObj(sample_urdf_folder + 'object_H3ygj6efM8V.urdf')
 s.import_object(light_robot)
-light_robot.set_position([1, -0.2, 1.2])
+light_robot.set_position([1, -0.2, 1])
 
 # Heavy mustard
 heavy_bottle = YCBObject('006_mustard_bottle')
 s.import_object(heavy_bottle)
-heavy_bottle.set_position([1, -0.4, 1.2])
+heavy_bottle.set_position([1, -0.4, 1])
+p.changeDynamics(heavy_bottle.body_id, -1, mass=500)
 
 # Light mustard
 light_bottle = YCBObject('006_mustard_bottle')
 s.import_object(light_bottle)
-light_bottle.set_position([1, -0.6, 1.2])
+light_bottle.set_position([1, -0.6, 1])
 
 if optimize:
     s.optimize_data()
