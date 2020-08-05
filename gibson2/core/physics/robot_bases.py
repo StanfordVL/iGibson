@@ -245,12 +245,6 @@ class BodyPart:
     def contact_list(self):
         return p.getContactPoints(self.bodies[self.body_index], -1, self.body_part_index, -1)
 
-    def create_movement_constraint(self):
-        self.movement_cid = p.createConstraint(self.bodies[self.body_index], -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.get_position())
-    
-    def change_movement_constraint(self, position, orientation, maxForce=500):
-        p.changeConstraint(self.movement_cid, orientation, position, maxForce=maxForce)
-
 class Joint:
     def __init__(self, joint_name, bodies, body_index, joint_index):
         self.bodies = bodies

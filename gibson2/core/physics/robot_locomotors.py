@@ -481,7 +481,7 @@ class Freight(LocomotorRobot):
 
 
 class Fetch(LocomotorRobot):
-    def __init__(self, config):
+    def __init__(self, config, vr_mode=False):
         self.config = config
         self.wheel_velocity = config.get('wheel_velocity', 1.0)
         self.torso_lift_velocity = config.get('torso_lift_velocity', 1.0)
@@ -489,8 +489,9 @@ class Fetch(LocomotorRobot):
         self.wheel_dim = 2
         self.torso_lift_dim = 1
         self.arm_dim = 7
+        self.urdf_filename = "fetch/fetch.urdf" if not vr_mode else "fetch/fetch_vr.urdf"
         LocomotorRobot.__init__(self,
-                                "fetch/fetch.urdf",
+                                self.urdf_filename,
                                 action_dim=self.wheel_dim + self.torso_lift_dim + self.arm_dim,
                                 scale=config.get("robot_scale", 1.0),
                                 is_discrete=config.get("is_discrete", False),
@@ -538,6 +539,16 @@ class Fetch(LocomotorRobot):
 
     def get_end_effector_position(self):
         return self.parts['gripper_link'].get_position()
+    
+    # TODO: Figure out how to create gripper constraint properly
+    def create_end_effector_constraint(self, start_pos):
+        effector_part = self.parts['gripper_link']
+        effector_id = effector_part.bodies[effector_part.body_index]
+        effector_link_id = 19
+        self.movement_cid = p.createConstraint(effector_id, effector_link_id, -1, effector_link_id, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], start_pos)
+    
+    def change_movement_constraint(self, position, orientation, maxForce=500):
+        p.changeConstraint(self.movement_cid, orientation, position, maxForce=maxForce)
 
     def load(self):
         ids = super(Fetch, self).load()
