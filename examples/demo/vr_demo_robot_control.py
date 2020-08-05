@@ -29,7 +29,7 @@ scene.sleep = optimize
 s.import_scene(scene)
 
 # User controls fetch in this demo
-fetch = Fetch(fetch_config)
+fetch = Fetch(fetch_config, vr_mode=True)
 s.import_robot(fetch)
 fetch.set_position([-1.5,0,0])
 fetch.robot_specific_reset()
@@ -46,9 +46,10 @@ if optimize:
     s.optimize_data()
 
 fetch_height = 1.2
-# Gripper link is the end effector for fetch
-gripper_part = fetch.parts['gripper_link']
-gripper_part.create_movement_constraint()
+
+effector_start_pos = fetch.get_end_effector_position()
+# TODO: This is not quite working yet
+#fetch.create_end_effector_constraint(effector_start_pos)
 
 while True:
     s.step(shouldTime=False)
@@ -59,6 +60,11 @@ while True:
         rIsValid, rTrans, rRot = s.getDataForVRDevice('right_controller')
         lTrig, lTouchX, lTouchY = s.getButtonDataForController('left_controller')
         rTrig, rTouchX, rTouchY = s.getButtonDataForController('right_controller')
+
+        # Only use z angle to rotate fetch around vertical axis
+        _, _, hmd_z = p.getEulerFromQuaternion(hmdRot)
+        fetch_rot = p.getQuaternionFromEuler([0, 0, hmd_z])
+        fetch.set_orientation(fetch_rot)
 
         hmd_world_pos = s.getHmdWorldPos()
         fetch_pos = fetch.get_position()
@@ -79,8 +85,9 @@ while True:
         # relative to the HMD
         # Only uses data from right controller
         if rIsValid:
-            new_fetch_position = translate_vr_position_by_vecs(rTouchX, rTouchY, right, forward, fetch.get_position(), 0.05)
+            new_fetch_position = translate_vr_position_by_vecs(rTouchX, rTouchY, right, forward, fetch.get_position(), 0.005)
             fetch.set_position(new_fetch_position)
-            gripper_part.change_movement_constraint(rTrans, rRot)
+            # TODO: This is not quite working yet
+            #fetch.change_movement_constraint(rTrans, rRot)
 
 s.disconnect()
