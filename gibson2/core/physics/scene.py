@@ -15,8 +15,12 @@ import cv2
 import networkx as nx
 import pickle
 import logging
+import xml.etree.ElementTree as ET
 
 class Scene:
+    def __init__(self):
+        self.is_interactive = False
+
     def load(self):
         raise NotImplementedError()
 
@@ -24,6 +28,8 @@ class EmptyScene(Scene):
     """
     A empty scene for debugging
     """
+    def __init__(self):
+        super().__init__()
     def load(self):
         self.build_graph = False
         self.is_interactive = False
@@ -36,6 +42,9 @@ class StadiumScene(Scene):
     """
     A simple stadium scene for debugging
     """
+    def __init__(self):
+        super().__init__()
+
     def load(self):
         self.build_graph = False
         self.is_interactive = False
@@ -103,6 +112,7 @@ class BuildingScene(Scene):
         :param waypoint_resolution: resolution of adjacent way points
         :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect what the robots see
         """
+        super().__init__()
         logging.info("Building scene: {}".format(model_id))
         self.model_id = model_id
         self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
@@ -386,3 +396,65 @@ class BuildingScene(Scene):
     def get_floor_height(self, floor):
         return self.floors[floor]
 
+
+class Link(object):
+    """
+    A link is an element in iGibson scene.
+    """
+    def __init__(self, element):
+        self.attrib = element.attrib
+        self.name = self.attrib['name']
+
+
+    def __repr__(self):
+        return "link {}".format(self.name)
+
+
+class Joint(object):
+    """
+        A joint in iGibson scene
+    """
+    def __init__(self, element):
+        self.attrib = element.attrib
+        self.name = self.attrib['name']
+        self.type = self.attrib['type']
+        self.parent_link_name = element.findall('parent')[0].attrib['link']
+        self.child_link_name = element.findall('child')[0].attrib['link']
+
+    def __repr__(self):
+        return "joint {} child {} parent {}".format(self.name, self.child_link_name, self.parent_link_name)
+
+class GSDFScene(Scene):
+    """
+    Scenes defined with iGibson Scene Description Format (gsdf).
+
+    gsdf is an extension of urdf that we use to define an interactive scene. It has better support for object scaling
+    and randomization.
+
+    """
+    def __init__(self, scene_file):
+        super().__init__()
+        self.scene_file = scene_file
+        self.scene_tree = ET.parse(self.scene_file)
+        self.links = []
+        self.joints = []
+        self.links_by_name = {}
+        self.joints_by_name = {}
+
+        for link in self.scene_tree.findall('link'):
+            l = Link(link)
+            self.links.append(l)
+            self.links_by_name[l.name] = l
+
+        for joint in self.scene_tree.findall('joint'):
+            j = Joint(joint)
+            self.joints.append(j)
+            self.joints_by_name[j.name] = j
+
+        for item in self.links:
+            print(item)
+        for item in self.joints:
+            print(item)
+
+    def load(self):
+        return []
