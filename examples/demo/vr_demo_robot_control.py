@@ -8,7 +8,7 @@ from gibson2.core.physics.interactive_objects import YCBObject, InteractiveObj, 
 from gibson2.core.simulator import Simulator
 from gibson2 import assets_path, dataset_path
 from gibson2.utils.utils import parse_config
-from gibson2.utils.vr_utils import translate_vr_position_by_vecs
+from gibson2.utils.vr_utils import get_normalized_translation_vec, translate_vr_position_by_vecs
 from math import sqrt
 
 model_path = assets_path + '\\models\\'
@@ -20,7 +20,7 @@ optimize = True
 # Toggle this to only use renderer without VR, for testing purposes
 vrMode = True
 # Possible types: hmd_relative, torso_relative
-movement_type = 'hmd_relative'
+movement_type = 'torso_relative'
 
 # Timestep should always be set to 1/90 to match VR system's 90fps
 s = Simulator(mode='vr', timestep = 1/90.0, msaa=True, vrFullscreen=False, vrEyeTracking=False, optimize_render=optimize, vrMode=vrMode)
@@ -28,14 +28,11 @@ scene = BuildingScene('Placida', is_interactive=False)
 scene.sleep = optimize
 s.import_scene(scene)
 
-# Grippers represent hands
-lGripper = GripperObj()
-s.import_articulated_object(lGripper)
-lGripper.set_position([0.0, 0.0, 1.5])
-
-rGripper = GripperObj()
-s.import_articulated_object(rGripper)
-rGripper.set_position([0.0, 0.0, 1.0])
+# User controls fetch in this demo
+fetch = Fetch(fetch_config, vr_mode=True)
+s.import_robot(fetch)
+fetch.set_position([-1.5,0,0])
+fetch.robot_specific_reset()
 
 # Load objects in the environment
 for i in range(5):
@@ -45,15 +42,14 @@ for i in range(5):
     bottle_pos = [1 ,0 - 0.2 * i, 1]
     p.resetBasePositionAndOrientation(bottle.body_id, bottle_pos, org_orn)
 
-# Controls how closed each gripper is (maximally open to start)
-leftGripperFraction = 0.0
-rightGripperFraction = 0.0
-
 if optimize:
     s.optimize_data()
 
-# Account for Gibson floors not being at z=0 - shift user height down by 0.2m
-s.setVROffset([0, 0, -0.2])
+fetch_height = 1.2
+
+effector_start_pos = fetch.get_end_effector_position()
+# TODO: This is not quite working yet
+#fetch.create_end_effector_constraint(effector_start_pos)
 
 while True:
     s.step(shouldTime=False)
@@ -65,17 +61,23 @@ while True:
         lTrig, lTouchX, lTouchY = s.getButtonDataForController('left_controller')
         rTrig, rTouchX, rTouchY = s.getButtonDataForController('right_controller')
 
-        if lIsValid:
-            lGripper.move_gripper(lTrans, lRot)
-            lGripper.set_close_fraction(lTrig)
+        # Only use z angle to rotate fetch around vertical axis
+        _, _, hmd_z = p.getEulerFromQuaternion(hmdRot)
+        fetch_rot = p.getQuaternionFromEuler([0, 0, hmd_z])
+        fetch.set_orientation(fetch_rot)
 
-        if rIsValid:
-            rGripper.move_gripper(rTrans, rRot)
-            rGripper.set_close_fraction(rTrig)
+        hmd_world_pos = s.getHmdWorldPos()
+        fetch_pos = fetch.get_position()
+
+        # Calculate x and y offset to get to fetch position
+        # z offset is to the desired hmd height, corresponding to fetch head height
+        offset_to_fetch = [fetch_pos[0] - hmd_world_pos[0], 
+                        fetch_pos[1] - hmd_world_pos[1], 
+                        fetch_height - hmd_world_pos[2]] 
+
+        s.setVROffset(offset_to_fetch)
 
         relative_device = 'hmd'
-        if movement_type == 'torso_relative':
-            relative_device = 'right_controller'
         right, up, forward = s.getDeviceCoordinateSystem(relative_device)
 
         # Move the VR player in the direction of the analog stick
@@ -83,7 +85,9 @@ while True:
         # relative to the HMD
         # Only uses data from right controller
         if rIsValid:
-            new_offset = translate_vr_position_by_vecs(rTouchX, rTouchY, right, forward, s.getVROffset(), 0.01)
-            s.setVROffset(new_offset)
+            new_fetch_position = translate_vr_position_by_vecs(rTouchX, rTouchY, right, forward, fetch.get_position(), 0.005)
+            fetch.set_position(new_fetch_position)
+            # TODO: This is not quite working yet
+            #fetch.change_movement_constraint(rTrans, rRot)
 
 s.disconnect()

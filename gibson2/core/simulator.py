@@ -11,9 +11,6 @@ import numpy as np
 import platform
 import time
 
-# Note: pass in mode='vr' to use the simulator in VR mode
-# Note 2: vrWidth and vrHeight can be set to manually change the VR resolution
-# It is, however, recommended to use the VR headset's native 2016 x 2240 resolution where possible
 class Simulator:
     def __init__(self,
                  gravity=9.8,
@@ -498,6 +495,14 @@ class Simulator:
         # Use fourth variable in list to get actual hmd position in space
         isValid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(deviceName)
         return [isValid, translation, rotation]
+
+    # Get world position of HMD without offset
+    def getHmdWorldPos(self):
+        if not self.use_vr_renderer:
+            return None
+        
+        _, _, _, hmd_world_pos = self.renderer.vrsys.getDataForVRDevice('hmd')
+        return hmd_world_pos
 
     # Call this after getDataForVRDevice - returns analog data for a specific controller
     # Controller can be left_controller or right_controller
