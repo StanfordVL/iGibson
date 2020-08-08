@@ -19,7 +19,7 @@ optimize = True
 # Toggle this to only use renderer without VR, for testing purposes
 vrMode = True
 # Possible types: hmd_relative, torso_relative
-movement_type = 'torso_relative'
+movement_type = 'hmd_relative'
 
 # Timestep should always be set to 1/90 to match VR system's 90fps
 s = Simulator(mode='vr', timestep = 1/90.0, msaa=True, vrFullscreen=False, vrEyeTracking=False, optimize_render=optimize, vrMode=vrMode)
