@@ -1,0 +1,345 @@
+import numpy as np
+import os
+import time
+
+import pybullet as p
+import gibson2
+
+from gibson2.envs.kitchen.transform_utils import quat2col
+
+from gibson2.envs.kitchen.camera import Camera, crop_pad_resize, get_bbox2d_from_segmentation
+from gibson2.envs.kitchen.robots import Arm, ConstraintActuatedRobot, PlannerRobot, Robot, Gripper
+import gibson2.envs.kitchen.env_utils as EU
+import gibson2.external.pybullet_tools.utils as PBU
+import gibson2.envs.kitchen.plan_utils as PU
+
+
+class BaseEnv(object):
+    MAX_DPOS = 0.1
+    MAX_DROT = np.pi / 8
+
+    def __init__(
+            self,
+            robot_base_pose,
+            num_sim_per_step,
+            use_gui=False,
+            use_planner=False,
+            hide_planner=True,
+            sim_time_step=1./240.,
+            obs_image=False,
+            obs_depth=False,
+            obs_segmentation=False,
+            camera_width=256,
+            camera_height=256,
+            obs_crop=False,
+            obs_crop_size=24,
+            use_skills=False,
+    ):
+        self._hide_planner = hide_planner
+        self._robot_base_pose = robot_base_pose
+        self._num_sim_per_step = num_sim_per_step
+        self._sim_time_step = sim_time_step
+        self._use_gui = use_gui
+        self._camera_width = camera_width
+        self._camera_height = camera_height
+        self._obs_image = obs_image
+        self._obs_depth = obs_depth
+        self._obs_segmentation = obs_segmentation
+        self._obs_crop = obs_crop
+        self.obs_crop_size = obs_crop_size
+
+        self.objects = EU.ObjectBank()
+        self.interactive_objects = EU.ObjectBank()
+        self.fixtures = EU.ObjectBank()
+        self.object_visuals = []
+        self.planner = None
+        self.skill_lib = None
+        self._task_spec = np.array([0])
+
+        self._setup_simulation()
+        self._create_robot()
+        self._create_env()
+        self._create_sensors()
+        self._create_env_extras()
+        if use_planner:
+            self._create_planner()
+        if use_skills:
+            assert use_planner
+            self._create_skill_lib()
+
+        self.initial_world = PBU.WorldSaver()
+        assert isinstance(self.robot, Robot)
+
+    @property
+    def action_dimension(self):
+        """Action dimension"""
+        return 7  # [x, y, z, ai, aj, ak, g]
+
+    @property
+    def task_spec(self):
+        return self._task_spec.copy()
+
+    def _create_skill_lib(self):
+        raise NotImplementedError
+
+    def _setup_simulation(self):
+        if self._use_gui:
+            p.connect(p.GUI)
+        else:
+            p.connect(p.DIRECT)
+        p.setGravity(0, 0, -9.8)
+        p.setTimeStep(self._sim_time_step)
+
+    def _create_robot(self):
+        gripper = Gripper(
+            joint_names=("left_gripper_joint", "right_gripper_joint"),
+            finger_link_names=("left_gripper", "left_tip", "right_gripper", "right_tip")
+        )
+        gripper.load(os.path.join(gibson2.assets_path, 'models/grippers/basic_gripper/gripper.urdf'))
+        robot = ConstraintActuatedRobot(
+            eef_link_name="eef_link", init_base_pose=self._robot_base_pose, gripper=gripper)
+
+        self.robot = robot
+
+    def _create_planner(self):
+        shadow_gripper = Gripper(
+            joint_names=("left_gripper_joint", "right_gripper_joint"),
+            finger_link_names=("left_gripper", "left_tip", "right_gripper", "right_tip")
+        )
+        shadow_gripper.load(
+            os.path.join(gibson2.assets_path, 'models/grippers/basic_gripper/gripper_plannable.urdf'),
+            scale=1.2  # make the planner robot slightly larger than the real gripper to allow imprecise plan
+        )
+        arm = Arm(joint_names=("txj", "tyj", "tzj", "rxj", "ryj", "rzj"))
+        arm.load(body_id=shadow_gripper.body_id)
+        planner = PlannerRobot(
+            eef_link_name="eef_link",
+            init_base_pose=self._robot_base_pose,
+            gripper=shadow_gripper,
+            arm=arm,
+            plannable_joint_names=arm.joint_names,
+            # plan_objects=PlannerObjectBank.create_from(
+            #     self.objects, scale=1.2, rgba_alpha=0. if self._hide_planner else 0.7)
+        )
+        planner.setup(self.robot, hide_planner=self._hide_planner)
+        self.planner = planner
+
+    def _create_env(self):
+        self._create_fixtures()
+        self._create_objects()
+
+    def _create_fixtures(self):
+        raise NotImplementedError
+
+    def _create_objects(self):
+        raise NotImplementedError
+
+    def _reset_objects(self):
+        raise NotImplementedError
+
+    def _sample_task(self):
+        pass
+
+    def _create_env_extras(self):
+        pass
+        # for _ in range(10):
+        #     self.object_visuals.append(self.objects.create_virtual_copy(scale=1., rgba_alpha=0.3))
+
+    def _create_sensors(self):
+        PBU.set_camera(45, -45, 2, (0, 0, 0))
+        self.camera = Camera(
+            height=self._camera_width,
+            width=self._camera_height,
+            fov=60,
+            near=0.01,
+            far=10.,
+            renderer=p.ER_TINY_RENDERER
+        )
+        self.camera.set_pose_ypr((0, 0, 0.5), distance=2.0, yaw=45, pitch=-45)
+
+    def reset(self):
+        self.initial_world.restore()
+        self.robot.reset_base_position_orientation(*self._robot_base_pose)
+        self.robot.reset()
+        self._reset_objects()
+        self._sample_task()
+        if self.skill_lib is not None:
+            self.skill_lib.reset()
+        for o in self.interactive_objects.object_list:
+            o.reset()
+        return self.get_observation()
+
+    def reset_to(self, serialized_world_state, return_obs=True):
+        exclude = []
+        if self.planner is not None:
+            exclude.append(self.planner.body_id)
+        state = PBU.WorldSaver(exclude_body_ids=exclude)
+        state.deserialize(serialized_world_state)
+        state.restore()
+        if return_obs:
+            return self.get_observation()
+
+    @property
+    def serialized_world_state(self):
+        exclude = []
+        if self.planner is not None:
+            exclude.append(self.planner.body_id)
+        return PBU.WorldSaver(exclude_body_ids=exclude).serialize()
+
+    def step(self, action, sleep_per_sim_step=0.0, return_obs=True):
+        assert len(action) == self.action_dimension
+        action = action.copy()
+        gri = action[-1]
+        pos, orn = EU.action_to_delta_pose_euler(action[:6], max_dpos=self.MAX_DPOS, max_drot=self.MAX_DROT)
+        # pos, orn = action_to_delta_pose_axis_vector(action[:6], max_dpos=self.MAX_DPOS, max_drot=self.MAX_DROT)
+        # print(np.linalg.norm(pos), np.linalg.norm(T.euler_from_quaternion(orn)))
+        self.robot.set_relative_eef_position_orientation(pos, orn)
+        if gri > 0:
+            self.robot.gripper.grasp()
+        else:
+            self.robot.gripper.ungrasp()
+
+        for o in self.interactive_objects.object_list:
+            o.step(self.objects.object_list)
+
+        for _ in range(self._num_sim_per_step):
+            p.stepSimulation()
+            time.sleep(sleep_per_sim_step)
+
+        if not return_obs:
+            return self.get_reward(), self.is_done(), {}
+
+        return self.get_observation(), self.get_reward(), self.is_done(), {}
+
+    def get_reward(self):
+        return float(self.is_success())
+
+    def render(self, mode):
+        """Render"""
+        rgb, depth, obj_map, link_map = self.camera.capture_frame()
+        return rgb
+
+    def _get_pixel_observation(self, camera):
+        obs = {}
+        rgb, depth, seg_obj, seg_link = camera.capture_frame()
+        bbox = None
+        if self._obs_crop:
+            bbox = get_bbox2d_from_segmentation(seg_obj, self.objects.body_ids)
+        if self._obs_image:
+            obs["images"] = rgb
+            if self._obs_crop:
+                obs["image_crops"] = crop_pad_resize(
+                    rgb, bbox=bbox[:, 1:], target_size=self.obs_crop_size, expand_ratio=1.1)
+                obs["image_crops_flat"] = obs["image_crops"].reshape((-1, self.obs_crop_size, 3))
+        if self._obs_depth:
+            obs["depth"] = depth
+        if self._obs_segmentation:
+            obs["segmentation_objects"] = seg_obj
+            obs["segmentation_links"] = seg_link
+        return obs
+
+    def _get_state_observation(self):
+        # get object info
+        gpose = self.robot.get_eef_position_orientation()
+        object_states = self.objects.serialize()
+        rel_link_poses = np.zeros_like(object_states["link_poses"])
+        for i, lpose in enumerate(object_states["link_poses"]):
+            rel_link_poses[i] = EU.pose_to_array(PBU.multiply((lpose[:3], lpose[3:]), PBU.invert(gpose)))
+        return {
+            "link_poses": object_states["link_poses"],
+            "link_relative_poses": rel_link_poses,
+            "link_positions": object_states["link_poses"][:, :3],
+            "link_relative_positions": rel_link_poses[:, :3]
+        }
+
+    def _get_proprio_observation(self):
+        proprio = []
+        proprio.append(np.array(self.robot.gripper.get_joint_positions()))
+        gpos, gorn = self.robot.get_eef_position_orientation()
+        gorn = quat2col(gorn)
+        gpose = np.concatenate([gpos, gorn])
+        proprio.append(gpose)
+
+        gvel = np.concatenate(self.robot.get_eef_velocity(), axis=0)
+        proprio.append(gvel)
+        # proprio.append(pose_to_array(self.robot.get_eef_position_orientation()))
+
+        proprio = np.hstack(proprio).astype(np.float32)
+        return {
+            "proprio": proprio
+        }
+
+    def _get_feature_observation(self):
+        return {}
+
+    def get_observation(self):
+        obs = {}
+        obs.update(self._get_proprio_observation())
+        obs.update(self._get_state_observation())
+        obs.update(self._get_feature_observation())
+        obs["task_specs"] = self.task_spec
+        if self._obs_image or self._obs_depth or self._obs_segmentation:
+            obs.update(self._get_pixel_observation(self.camera))
+        return obs
+
+    @property
+    def obstacles(self):
+        return self.objects.body_ids + self.fixtures.body_ids
+
+    def set_goal(self, **kwargs):
+        """Set env target with external specification"""
+        pass
+
+    def is_done(self):
+        """Check if the agent is done (not necessarily successful)."""
+        return False
+
+    def is_success(self):
+        return self.is_success_all_tasks()["task"]
+
+    def is_success_all_tasks(self):
+        return {"task": False}
+
+    @property
+    def name(self):
+        """Environment name"""
+        return self.__class__.__name__
+
+
+class EnvSkillWrapper(object):
+    def __init__(self, env):
+        self.env = env
+        self.skill_lib = env.skill_lib
+
+    @property
+    def action_dimension(self):
+        return self.skill_lib.action_dimension + len(self.env.objects)
+
+    def step(self, actions, sleep_per_sim_step=0.0):
+        skill_params = actions[:self.skill_lib.action_dimension]
+        object_index = int(np.argmax(actions[self.skill_lib.action_dimension:]))
+        object_id = self.env.objects.body_ids[object_index]
+        path = self.skill_lib.plan(params=skill_params, target_object_id=object_id)
+        PU.execute_planned_path(self.env, path, sleep_per_sim_step=sleep_per_sim_step)
+        return self.get_observation(), self.get_reward(), self.is_done(), {}
+
+    def __getattr__(self, attr):
+        """
+        This method is a fallback option on any methods the original dataset might support.
+        """
+
+        # using getattr ensures that both __getattribute__ and __getattr__ (fallback) get called
+        # (see https://stackoverflow.com/questions/3278077/difference-between-getattr-vs-getattribute)
+        orig_attr = getattr(self.env, attr)
+        if callable(orig_attr):
+
+            def hooked(*args, **kwargs):
+                result = orig_attr(*args, **kwargs)
+                # prevent wrapped_class from becoming unwrapped
+                if not isinstance(result, np.ndarray) and result == self.env:
+                    return self
+                return result
+
+            return hooked
+        else:
+            return orig_attr

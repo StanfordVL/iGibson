@@ -379,7 +379,7 @@ def extract_dataset_skills(args):
             mask[mi: mi + max(1, int(sl * args.skill_frame_ratio))] = True
 
         # extract the last @skill_frame_ratio fraction of the demo for goals
-        mask[mask_inds[-2] + int(skill_len[-1] * (1 - args.skill_frame_ratio)):] = True
+        # mask[mask_inds[-2] + int(skill_len[-1] * (1 - args.skill_frame_ratio)):] = True
 
         states = f["data/{}/states".format(demo_id)][mask, ...]
         task_spec = f["data/{}/task_specs".format(demo_id)][0]
@@ -555,10 +555,15 @@ def main():
         action="store_true",
         default=False
     )
+    parser.add_argument(
+        "--seed",
+        default=0,
+        type=int
+    )
 
     args = parser.parse_args()
 
-    np.random.seed(0)
+    np.random.seed(args.seed)
     if args.mode == 'playback':
         playback(args)
     elif args.mode == 'demo':

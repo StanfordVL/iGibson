@@ -195,7 +195,6 @@ def plan_skill_pour(
     pour_path.append(target_pose, gripper_state=GRIPPER_CLOSE)
     pour_path.append(target_pour_pose, gripper_state=GRIPPER_CLOSE)
     pour_path = pour_path.interpolate(pos_resolution=0.025, orn_resolution=pour_angle_speed)
-    pour_path.append_pause(30)
     return approach_path + pour_path
 
 
@@ -304,7 +303,7 @@ class GraspDistDiscreteOrn(GraspDistOrn):
 
 
 class PlacePosOrn(Skill):
-    def __init__(self, retract_distance=0.1, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS):
+    def __init__(self, retract_distance=0.1, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, num_pause_steps=0):
         super(PlacePosOrn, self).__init__(
             requires_holding=True,
             releases_holding=True,
@@ -312,6 +311,7 @@ class PlacePosOrn(Skill):
             joint_resolutions=joint_resolutions
         )
         self.retract_distance = retract_distance
+        self.num_pause_steps = num_pause_steps
 
     @property
     def name(self):
@@ -337,6 +337,7 @@ class PlacePosOrn(Skill):
             retract_distance=self.retract_distance,
             joint_resolutions=self.joint_resolutions
         )
+        traj.append_pause(self.num_pause_steps)
         return traj
 
     def get_serialized_skill_params(self, place_pos, place_orn):
@@ -374,6 +375,7 @@ class PlacePosDiscreteOrn(PlacePosOrn):
             retract_distance=self.retract_distance,
             joint_resolutions=self.joint_resolutions
         )
+        traj.append_pause(self.num_pause_steps)
         return traj
 
     def get_serialized_skill_params(self, place_pos, place_orn_name):
@@ -385,14 +387,15 @@ class PlacePosDiscreteOrn(PlacePosOrn):
 
 
 class PourPosOrn(Skill):
-    def __init__(self, pour_angle_speed=np.pi / 64, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS):
+    def __init__(self, pour_angle_speed=np.pi / 64, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, num_pause_steps=30):
         super(PourPosOrn, self).__init__(
             requires_holding=True,
             acquires_holding=False,
             releases_holding=False,
             joint_resolutions=joint_resolutions
         )
-        self._pour_angle_speed = pour_angle_speed
+        self.pour_angle_speed = pour_angle_speed
+        self.num_pause_steps = num_pause_steps
 
     @property
     def name(self):
@@ -415,8 +418,9 @@ class PourPosOrn(Skill):
             object_target_pose=pour_pose,
             holding=holding_id,
             joint_resolutions=self.joint_resolutions,
-            pour_angle_speed=self._pour_angle_speed
+            pour_angle_speed=self.pour_angle_speed
         )
+        traj.append_pause(self.num_pause_steps)
         return traj
 
     def get_serialized_skill_params(self, pour_pos, pour_orn):
@@ -456,8 +460,9 @@ class PourPosAngle(PourPosOrn):
             object_target_pose=pour_pose,
             holding=holding_id,
             joint_resolutions=self.joint_resolutions,
-            pour_angle_speed=self._pour_angle_speed
+            pour_angle_speed=self.pour_angle_speed
         )
+        traj.append_pause(self.num_pause_steps)
         return traj
 
     def get_serialized_skill_params(self, pour_pos, pour_angle):
@@ -529,6 +534,7 @@ class SkillLibrary(object):
     def plan(self, params, target_object_id):
         skill_index, skill_params = self._parse_serialized_skill_params(params)
         skill = self.skills[skill_index]
+        # print(skill.name, skill_params, target_object_id)
         # print(skill.name)
         if skill.requires_holding:
             if self._holding is None:
