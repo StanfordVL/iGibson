@@ -5,9 +5,9 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 os.sys.path.insert(0, parentdir)
 import pybullet_data
-from gibson2.utils.assets_utils import get_model_path, get_texture_file
+from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path
 from gibson2.utils.utils import l2_distance
-from gibson2.core.physics.interactive_objects import InteractiveObj
+from gibson2.core.physics.interactive_objects import InteractiveObj, InteractiveObj2
 
 import numpy as np
 from PIL import Image
@@ -424,27 +424,32 @@ class Joint(object):
     def __repr__(self):
         return "joint {} child {} parent {}".format(self.name, self.child_link_name, self.parent_link_name)
 
-class GSDFScene(Scene):
+class iGSDFScene(Scene):
     """
-    Scenes defined with iGibson Scene Description Format (gsdf).
+    Scenes defined with iGibson Scene Description Format (igsdf).
 
-    gsdf is an extension of urdf that we use to define an interactive scene. It has better support for object scaling
-    and randomization.
+    igsdf is an extension of urdf that we use to define an interactive scene. It has better support for object scaling,
+    urdf nesting and randomization.
 
     """
-    def __init__(self, scene_file):
+    def __init__(self, scene_name):
         super().__init__()
-        self.scene_file = scene_file
+        self.scene_file = get_ig_scene_path(scene_name) + "/" + scene_name + ".urdf"
         self.scene_tree = ET.parse(self.scene_file)
         self.links = []
         self.joints = []
         self.links_by_name = {}
         self.joints_by_name = {}
+        self.nested_urdfs = []
 
         for link in self.scene_tree.findall('link'):
             l = Link(link)
             self.links.append(l)
             self.links_by_name[l.name] = l
+            if 'category' in link.attrib:
+                int_objs = InteractiveObj2(link)
+                self.nested_urdfs.append(int_objs)
+
 
         for joint in self.scene_tree.findall('joint'):
             j = Joint(joint)
@@ -457,4 +462,8 @@ class GSDFScene(Scene):
             print(item)
 
     def load(self):
-        return []
+        obj_ids = []
+        for urdf in self.nested_urdfs:
+            obj_ids.append(urdf.load())
+
+        return obj_ids
