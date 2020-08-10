@@ -2,6 +2,10 @@ import pybullet as p
 import os
 import gibson2
 import numpy as np
+import random
+
+from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path, get_ig_model_path, get_ig_category_path
+import xml.etree.ElementTree as ET
 
 
 class Object(object):
@@ -206,6 +210,45 @@ class BoxShape(Object):
 
         return body_id
 
+
+class InteractiveObj2(Object):
+    """
+    Interactive Objects are represented as a urdf, but doesn't have motors
+    """
+
+    def __init__(self, xml_element):
+        super(InteractiveObj2, self).__init__()
+        if xml_element.attrib["category"] == "building":
+            filename = get_ig_scene_path(xml_element.attrib['model']) + "/" + xml_element.attrib['model'] + "_building.urdf"
+        else:
+            category_path = get_ig_category_path(xml_element.attrib['category'])
+            if xml_element.attrib['model'] == 'random':
+                assert len(os.listdir(category_path)) != 0, "There are no models in category folder {}".format(category_path)
+                model_name = random.choice(os.listdir(category_path))
+            else:
+                model_name = xml_element.attrib['model']
+
+            filename = get_ig_model_path(xml_element.attrib['category'], model_name)+ "/" + model_name + ".urdf"            
+ 
+        self.filename = filename
+
+        print("Loading " + filename)
+
+        self.object_tree = ET.parse(filename)
+
+        for joint in self.object_tree.findall('joint'):
+            if joint.attrib['type'] == 'floating':
+                print("Floating!")
+                exit(-1)
+
+        #TODOs: 1) really deal with floating sub elements, 2) deal with scaling with different dimensions
+
+    def _load(self):
+        body_id = p.loadURDF(self.filename, 
+                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+        self.mass = p.getDynamicsInfo(body_id, -1)[0]
+
+        return body_id
 
 class InteractiveObj(Object):
     """
