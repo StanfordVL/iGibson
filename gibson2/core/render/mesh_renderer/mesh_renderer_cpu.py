@@ -338,8 +338,8 @@ class MeshRenderer(object):
   
         if os.environ.get('GIBSON_DEVICE_ID', None):
             device = int(os.environ.get('GIBSON_DEVICE_ID'))
-            logging.info(f"GIBSON_DEVICE_ID environment variable has been manually set. "
-                         f"Using device {device} for rendering")
+            logging.info("GIBSON_DEVICE_ID environment variable has been manually set. "
+                         "Using device {} for rendering".format(device))
         else:
             available_devices = get_available_devices()
             if device_idx < len(available_devices):
