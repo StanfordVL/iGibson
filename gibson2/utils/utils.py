@@ -18,11 +18,14 @@ def parse_config(config):
     return config_data
 
 # Geometry related
-def rotate_vector_3d(v, r, p, y):
+def rotate_vector_3d(v, r, p, y, cck = True):
     """Rotates 3d vector by roll, pitch and yaw counterclockwise"""
     local_to_global = R.from_euler('xyz', [r, p, y]).as_dcm()
-    global_to_local = local_to_global.T
-    return np.dot(global_to_local, v)
+    if cck:
+        global_to_local = local_to_global.T
+        return np.dot(global_to_local, v)
+    else:
+        return np.dot(local_to_global, v)
 
 def rotate_vector_2d(v, yaw):
     """Rotates 2d vector by yaw counterclockwise"""
