@@ -3,6 +3,7 @@ import os
 import gibson2
 import numpy as np
 import random
+import json
 
 from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path, get_ig_model_path, get_ig_category_path
 import xml.etree.ElementTree as ET
@@ -218,17 +219,24 @@ class InteractiveObj2(Object):
 
     def __init__(self, xml_element):
         super(InteractiveObj2, self).__init__()
-        if xml_element.attrib["category"] == "building":
-            filename = get_ig_scene_path(xml_element.attrib['model']) + "/" + xml_element.attrib['model'] + "_building.urdf"
-        else:
-            category_path = get_ig_category_path(xml_element.attrib['category'])
-            if xml_element.attrib['model'] == 'random':
-                assert len(os.listdir(category_path)) != 0, "There are no models in category folder {}".format(category_path)
-                model_name = random.choice(os.listdir(category_path))
-            else:
-                model_name = xml_element.attrib['model']
 
-            filename = get_ig_model_path(xml_element.attrib['category'], model_name)+ "/" + model_name + ".urdf"            
+        category = xml_element.attrib["category"]
+        model = xml_element.attrib['model']
+        model_path = ""
+                
+        if category == "building":
+            model_path = get_ig_scene_path(model)
+            filename = model_path + "/" + model + "_building.urdf"
+        else:
+            category_path = get_ig_category_path(category)
+            if model == 'random':
+                assert len(os.listdir(category_path)) != 0, "There are no models in category folder {}".format(category_path)
+                model = random.choice(os.listdir(category_path))
+            else:
+                model = xml_element.attrib['model']
+
+            model_path = get_ig_model_path(category, model)
+            filename = model_path + "/" + model + ".urdf"            
  
         self.filename = filename
 
@@ -236,10 +244,56 @@ class InteractiveObj2(Object):
 
         self.object_tree = ET.parse(filename)
 
-        for joint in self.object_tree.findall('joint'):
-            if joint.attrib['type'] == 'floating':
-                print("Floating!")
-                exit(-1)
+
+        # Change the mesh filenames to include the entire path
+        for mesh in self.object_tree.iter("mesh"):
+            mesh.attrib['filename'] = model_path + "/" + mesh.attrib['filename']
+
+        # Apply the bounding box size
+        # TODO: possible error: the scaling is not wrt the base frame but wrt to its own origin
+        # For example, for a body that is defined wrt to a joint with rotation wrt to the base link, the scaling is along the rotated axis
+        if "bounding_box" in xml_element.keys():
+            bounding_box = np.array([float(val) for val in xml_element.attrib["bounding_box"].split(" ")])
+            print(bounding_box)
+            with open(model_path + '/misc/bbox.json', 'r') as bbox_file:
+                data = json.load(bbox_file)
+                bbox_max = np.array(data['max'])
+                bbox_min = np.array(data['min'])
+                original_bbox = bbox_max - bbox_min
+            scale = np.divide(bounding_box, original_bbox) 
+            print(scale)
+
+            #Apply the scale to all elements: meshes, joint parameters
+            for mesh in self.object_tree.iter("mesh"):
+                if "scale" in mesh.keys():
+                    current_scale = np.array([float(val) for val in mesh.attrib["scale"].split(" ")])
+                    new_scale = np.multiply(current_scale, scale)
+                    mesh.attrib['scale'] = ' '.join(map(str, new_scale))
+
+                else:
+                    mesh.set('scale',' '.join(map(str, scale)))
+
+            for origin in self.object_tree.iter("origin"):
+                current_origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
+                new_origin_xyz = np.multiply(current_origin_xyz, scale)
+                origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
+                #print("New origin xyz {}",new_origin_xyz)
+
+            for axis in self.object_tree.iter("axis"):
+                current_axis_xyz = np.array([float(val) for val in axis.attrib["xyz"].split(" ")])
+                new_axis_xyz = np.multiply(current_axis_xyz, scale)
+                new_axis_xyz /= np.linalg.norm(new_axis_xyz)
+                axis.attrib['xyz'] = ' '.join(map(str, new_axis_xyz))
+                #print("New axis xyz {}",new_axis_xyz)
+                
+            
+
+        # return self.object_tree
+
+        # for joint in self.object_tree.findall('joint'):
+        #     if joint.attrib['type'] == 'floating':
+        #         print("Floating!")
+        #         exit(-1)
 
         #TODOs: 1) really deal with floating sub elements, 2) deal with scaling with different dimensions
 
