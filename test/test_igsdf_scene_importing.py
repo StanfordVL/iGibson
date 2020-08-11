@@ -15,11 +15,9 @@ config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 def test_import_igsdf():
     
     scene = iGSDFScene('Beechwood_0')
-    print("good1")
-    s = Simulator(mode='pbgui', image_width=640,
+    s = Simulator(mode='gui', image_width=640,
                  image_height=480,)
-    s.import_scene(scene)
-    print("good2")
+    s.import_ig_scene(scene)
 
     turtlebot1 = Turtlebot(config)
     s.import_robot(turtlebot1)
