@@ -202,6 +202,18 @@ class Simulator:
         return new_objects
 
     @load_without_pybullet_vis
+    def import_ig_scene(self, scene):
+        """
+        Import scene from iGSDF class
+        :param scene: iGSDFScene instance
+        :return: ids from scene.load function
+        """
+        ids = scene.load()
+        for id in ids:
+            self.import_articulated_object_by_id(id, class_id=id)
+        return ids
+
+    @load_without_pybullet_vis
     def import_object(self, obj, class_id=None):
         """
         Import a non-articulated object into the simulator
@@ -365,13 +377,18 @@ class Simulator:
             class_id = self.next_class_id
         self.next_class_id += 1
 
-        ids = obj.load()
+        id = obj.load()
+        return self.import_articulated_object_by_id(id, class_id=class_id)
+
+    @load_without_pybullet_vis
+    def import_articulated_object_by_id(self, id, class_id=None):
+
         visual_objects = []
         link_ids = []
         poses_rot = []
         poses_trans = []
 
-        for shape in p.getVisualShapeData(ids):
+        for shape in p.getVisualShapeData(id):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
@@ -423,14 +440,14 @@ class Simulator:
 
         self.renderer.add_instance_group(object_ids=visual_objects,
                                          link_ids=link_ids,
-                                         pybullet_uuid=ids,
+                                         pybullet_uuid=id,
                                          class_id=class_id,
                                          poses_rot=poses_rot,
                                          poses_trans=poses_trans,
                                          dynamic=True,
                                          robot=None)
 
-        return ids
+        return id
 
     def step(self):
         """
