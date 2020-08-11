@@ -17,6 +17,8 @@ import pickle
 import logging
 import xml.etree.ElementTree as ET
 
+import gibson2
+
 class Scene:
     def __init__(self):
         self.is_interactive = False
@@ -443,27 +445,72 @@ class iGSDFScene(Scene):
         self.nested_urdfs = []
 
         for link in self.scene_tree.findall('link'):
-            l = Link(link)
-            self.links.append(l)
-            self.links_by_name[l.name] = l
+
+            # l = Link(link)
+            # self.links.append(l)
+            # self.links_by_name[l.name] = l
             if 'category' in link.attrib:
-                int_objs = InteractiveObj2(link)
-                self.nested_urdfs.append(int_objs)
+                embedded_urdf = InteractiveObj2(link)
+
+                original_name = link.attrib['name']
+
+                for link_emb in embedded_urdf.object_tree.iter('link'):
+                    if link_emb.attrib['name'] == "base_link": 
+                        # The base_link get renamed as the link tag indicates                       
+                        link.attrib.update(link_emb.attrib)
+                        link.attrib['name'] = original_name
+                        link.extend(list(link_emb))
+                    else:
+                        # The other links get also renamed to add the name of the link tag as prefix
+                        # This allows us to load several instances of the same object
+                        link_emb.attrib['name'] = original_name + "_" + link_emb.attrib['name']
+                        self.scene_tree.getroot().append(link_emb)
+
+                for joint_emb in embedded_urdf.object_tree.iter('joint'):
+                    # We change the joint name
+                    joint_emb.attrib["name"] = original_name + "_" + joint_emb.attrib["name"]
+                    # We change the child link names
+                    for child_emb in joint_emb.findall('child'):
+                        if child_emb.attrib['link'] == "base_link":
+                            child_emb.attrib['link'] = original_name
+                        else:
+                            child_emb.attrib['link'] = original_name + "_" + child_emb.attrib['link']
+                    # and the parent link names
+                    for parent_emb in joint_emb.findall('parent'):
+                        if parent_emb.attrib['link'] == "base_link":
+                            parent_emb.attrib['link'] = original_name
+                        else:
+                            parent_emb.attrib['link'] = original_name + "_" + parent_emb.attrib['link']
+
+                    # and add the joint
+                    self.scene_tree.getroot().append(joint_emb)
+
+        for child in self.scene_tree.getroot():
+            print("{} {}", child.tag, child.attrib)
+
+        
+        self.scene_tree.write(gibson2.ig_dataset_path + "/scene_instance.urdf")
 
 
-        for joint in self.scene_tree.findall('joint'):
-            j = Joint(joint)
-            self.joints.append(j)
-            self.joints_by_name[j.name] = j
+        # for joint in self.scene_tree.findall('joint'):
+        #     j = Joint(joint)
+        #     self.joints.append(j)
+        #     self.joints_by_name[j.name] = j
 
-        for item in self.links:
-            print(item)
-        for item in self.joints:
-            print(item)
+        # for item in self.links:
+        #     print(item)
+        # for item in self.joints:
+        #     print(item)
 
     def load(self):
-        obj_ids = []
-        for urdf in self.nested_urdfs:
-            obj_ids.append(urdf.load())
+        # obj_ids = []
+        # for urdf in self.nested_urdfs:
+        #     obj_ids.append(urdf.load())
 
-        return obj_ids
+        # for joint in self.joints:
+
+        body_id = p.loadURDF(gibson2.ig_dataset_path + "/scene_instance.urdf", 
+                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+        self.mass = p.getDynamicsInfo(body_id, -1)[0]
+
+        return [body_id]
