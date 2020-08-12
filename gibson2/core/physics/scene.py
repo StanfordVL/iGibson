@@ -6,7 +6,7 @@ parentdir = os.path.dirname(currentdir)
 os.sys.path.insert(0, parentdir)
 import pybullet_data
 from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path
-from gibson2.utils.utils import l2_distance
+from gibson2.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZWFromRotMat
 from gibson2.core.physics.interactive_objects import InteractiveObj, InteractiveObj2
 
 import numpy as np
@@ -398,34 +398,6 @@ class BuildingScene(Scene):
     def get_floor_height(self, floor):
         return self.floors[floor]
 
-
-class Link(object):
-    """
-    A link is an element in iGibson scene.
-    """
-    def __init__(self, element):
-        self.attrib = element.attrib
-        self.name = self.attrib['name']
-
-
-    def __repr__(self):
-        return "link {}".format(self.name)
-
-
-class Joint(object):
-    """
-        A joint in iGibson scene
-    """
-    def __init__(self, element):
-        self.attrib = element.attrib
-        self.name = self.attrib['name']
-        self.type = self.attrib['type']
-        self.parent_link_name = element.findall('parent')[0].attrib['link']
-        self.child_link_name = element.findall('child')[0].attrib['link']
-
-    def __repr__(self):
-        return "joint {} child {} parent {}".format(self.name, self.child_link_name, self.parent_link_name)
-
 class iGSDFScene(Scene):
     """
     Scenes defined with iGibson Scene Description Format (igsdf).
@@ -485,32 +457,184 @@ class iGSDFScene(Scene):
                     # and add the joint
                     self.scene_tree.getroot().append(joint_emb)
 
-        for child in self.scene_tree.getroot():
-            print("{} {}", child.tag, child.attrib)
+        self.file_ctr = 0
+        self.urdfs_no_floating = {}
+        self.save_urdfs_without_floating_joints()  
 
-        
-        self.scene_tree.write(gibson2.ig_dataset_path + "/scene_instance.urdf")
-
-
-        # for joint in self.scene_tree.findall('joint'):
-        #     j = Joint(joint)
-        #     self.joints.append(j)
-        #     self.joints_by_name[j.name] = j
-
-        # for item in self.links:
-        #     print(item)
-        # for item in self.joints:
-        #     print(item)
 
     def load(self):
-        # obj_ids = []
-        # for urdf in self.nested_urdfs:
-        #     obj_ids.append(urdf.load())
-
-        # for joint in self.joints:
-
-        body_id = p.loadURDF(gibson2.ig_dataset_path + "/scene_instance.urdf", 
+        body_ids = []
+        for urdf in self.urdfs_no_floating:
+            logging.info("Loading " + self.urdfs_no_floating[urdf][0])
+            body_id = p.loadURDF(self.urdfs_no_floating[urdf][0], 
                              flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-        self.mass = p.getDynamicsInfo(body_id, -1)[0]
+            logging.info("Moving URDF to ", self.urdfs_no_floating[urdf][1])
+            transformation = self.urdfs_no_floating[urdf][1]
+            orn = quatXYZWFromRotMat(transformation[0:3,0:3])
+            p.resetBasePositionAndOrientation(body_id, transformation[0:3,3], orn)
+            self.mass = p.getDynamicsInfo(body_id, -1)[0]
+            body_ids += [body_id]
+        return body_ids
 
-        return [body_id]
+
+    def save_urdfs_without_floating_joints(self):
+
+        def splitter(parent_map, child_map, joint_map):
+            for (joint_name, joint_tuple) in joint_map.items():
+                logging.debug("Joint: ", joint_name)
+                if joint_tuple[2] == "floating":
+                    logging.debug("Splitting floating joint")
+                    # separate into the two parts and call recursively splitter with each part
+                    parent_of_floating = joint_tuple[0]
+                    child_of_floating = joint_tuple[1]
+                    
+                    parent_map1 = {}
+                    child_map1 = {}
+                    joint_map1 = {}
+                    parent_map2 = {}
+                    child_map2 = {}
+                    joint_map2 = {}
+                    
+                    # Find all links "down" the floating joint
+                    logging.debug("Finding children")
+                    logging.debug("Child of floating: ",child_of_floating )
+                    all_children = [child_of_floating]
+                    children_rec = [child_of_floating]
+                    while len(children_rec) != 0:
+                        new_children_rec = []
+                        for child in children_rec:
+                            if child in child_map:
+                                new_children_rec += child_map[child]
+                                
+                        all_children += [new_child[0] for new_child in new_children_rec]
+                        children_rec = [new_child[0] for new_child in new_children_rec]
+
+                    logging.debug("All children of the floating joint: ", all_children)
+
+                    # Separate joints in map1 and map2
+                    # The ones in map2 are the ones with the child pointing to one of the links "down" the floating joint
+                    logging.debug("Splitting joints")
+                    for (joint_name2, joint_tuple2) in joint_map.items():
+                        if joint_name2 != joint_name:
+                            if joint_tuple2[1] in all_children:
+                                joint_map2[joint_name2] = joint_tuple2
+                            else:
+                                joint_map1[joint_name2] = joint_tuple2                 
+
+                    # Separate children into map1 and map2
+                    # Careful with the child_map because every key of the dict (name of parent) points to a list of children
+                    logging.debug("Splitting children")
+                    for parent in child_map:
+                        child_list = child_map[parent]
+                        if parent in all_children:
+                            child_map2[parent] = child_list
+                        else:
+                            child_map1[parent] = [item for item in child_list if item[0] != child_of_floating]
+
+                    # Separate parents into map1 and map2
+                    for child in parent_map:
+                        if child != child_of_floating:
+                            if child in all_children:
+                                parent_map2[child] = parent_map[child]
+                            else:
+                                parent_map1[child] = parent_map[child]              
+
+                    ret1 = splitter(parent_map1, child_map1, joint_map1)
+                    ret2 = splitter(parent_map2, child_map2, joint_map2)
+                    ret = ret1 + ret2
+                    return ret
+            return [(parent_map, child_map, joint_map)]
+        #Pybullet doesn't read floating joints
+        #Find them and separate into different objects
+
+        parent_map = {} # map from name of child to name of its parent, joint name and type of connection
+        child_map = {} # map from name of parent to list of names of children, joint names and types of connection
+        joint_map = {} # map from name of joint to names of parent and child and type
+ 
+        for joint in self.scene_tree.iter("joint"):
+            parent_name = joint.find("parent").attrib["link"]
+            child_name = joint.find("child").attrib["link"]
+            joint_name = joint.attrib["name"]
+            joint_type = joint.attrib["type"]
+            
+            parent_map[child_name] = (parent_name, joint_name, joint_type)
+            if parent_name in child_map:
+                child_map[parent_name].append((child_name, joint_name, joint_type))
+            else:
+                child_map[parent_name] = [(child_name, joint_name, joint_type)]
+
+            joint_xyz = np.array([float(val) for val in joint.find("origin").attrib["xyz"].split(" ")])
+
+            if 'rpy' in joint.find("origin").attrib:
+                joint_rpy = np.array([float(val) for val in joint.find("origin").attrib["rpy"].split(" ")])
+            else:
+                joint_rpy = np.array([0.,0.,0.])
+
+            joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
+            joint_map[joint_name] = (parent_name, child_name, joint_type, joint_frame)
+
+        # Call recursively to split the tree into connected parts without floating joints
+        splitted_maps = splitter(parent_map, child_map, joint_map)
+
+        extended_splitted_dict = {}
+        world_idx = 0
+        for (count, split) in enumerate(splitted_maps):
+
+            logging.debug("Parent map: ",split[0])
+            logging.debug("Child map: ",split[1])
+            logging.debug("Joint map: ",split[2])
+            all_links = []
+            
+            for parent in split[0]:
+                if parent not in all_links:
+                    all_links.append(parent)
+
+            for child in split[1]:
+                if child not in all_links:
+                    all_links.append(child)
+
+            logging.debug("all links: ", all_links)
+
+            extended_splitted_dict[count] = ((split[0], split[1], split[2], all_links, np.array([])))
+            if "world" in all_links:
+                world_idx = count
+                logging.debug("World idx: ", world_idx)
+
+        # Find the transformations, starting from "world" link
+        for (joint_name, joint_tuple) in joint_map.items():
+            logging.debug("Joint: ", joint_name)
+            if joint_tuple[2] == "floating":
+                logging.debug("floating")
+                parent_name = joint_tuple[0]
+                transformation = joint_tuple[3]
+
+                while parent_name != "world":
+                    # Find the joint where the link with name "parent_name" is child
+                    joint_up = [joint for joint in self.scene_tree.findall("joint") if joint.find("child").attrib["link"] == parent_name][0]
+                    joint_transform = joint_map[joint_up.attrib["name"]][3]
+                    transformation = np.multiply(transformation, joint_transform)
+                    parent_name = joint_map[joint_up.attrib["name"]][0]
+
+                child_name = joint_tuple[1]
+                for esd in extended_splitted_dict:
+                    if child_name in extended_splitted_dict[esd][3]:
+                        extended_splitted_dict[esd] = (extended_splitted_dict[esd][0], extended_splitted_dict[esd][1], extended_splitted_dict[esd][2],
+                            extended_splitted_dict[esd][3], transformation)
+
+        logging.debug("Number of splits: ",len(extended_splitted_dict))
+        logging.info("Instantiating scene into the following urdfs:")
+        for esd_key in extended_splitted_dict:            
+            xml_tree_parent = ET.ElementTree(ET.fromstring('<robot name="split_' + str(esd_key) + '"></robot>'))
+            for link_name in extended_splitted_dict[esd_key][3]:
+                link_to_add = [link for link in self.scene_tree.findall("link") if link.attrib["name"] == link_name][0]
+                xml_tree_parent.getroot().append(link_to_add)
+
+            for joint_name in extended_splitted_dict[esd_key][2]:
+                joint_to_add = [joint for joint in self.scene_tree.findall("joint") if joint.attrib["name"] == joint_name][0]
+                xml_tree_parent.getroot().append(joint_to_add)
+            
+            urdf_file_name = gibson2.ig_dataset_path + "/scene_instance" + str(self.file_ctr)+ ".urdf"
+            self.urdfs_no_floating[self.file_ctr] = (urdf_file_name, extended_splitted_dict[esd][4]) # Change 0 by the pose of this branch
+            xml_tree_parent.write(urdf_file_name)
+            self.file_ctr +=1 
+            logging.info(urdf_file_name)

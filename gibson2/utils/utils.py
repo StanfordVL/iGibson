@@ -3,6 +3,7 @@ import numpy as np
 import yaml
 import collections.abc
 from scipy.spatial.transform import Rotation as R
+from transforms3d import quaternions
 
 # File I/O related
 def parse_config(config):
@@ -26,6 +27,13 @@ def rotate_vector_3d(v, r, p, y, cck = True):
         return np.dot(global_to_local, v)
     else:
         return np.dot(local_to_global, v)
+
+def get_transform_from_xyz_rpy(xyz, rpy):
+    rotation = R.from_euler('xyz', [rpy[0], rpy[1], rpy[2]]).as_dcm()
+    transformation = np.eye(4)
+    transformation[0:3,0:3] = rotation
+    transformation[0:3,3] = xyz
+    return transformation
 
 def rotate_vector_2d(v, yaw):
     """Rotates 2d vector by yaw counterclockwise"""
@@ -63,3 +71,9 @@ def quatToXYZW(orn, seq):
         "Quaternion sequence {} is not valid, please double check.".format(seq)
     inds = [seq.index(axis) for axis in 'xyzw']
     return orn[inds]
+
+def quatXYZWFromRotMat(rot_mat):
+    quatWXYZ = quaternions.mat2quat(rot_mat)
+    quatXYZW = quatToXYZW(quatWXYZ, 'wxyz')
+    return quatToXYZW
+
