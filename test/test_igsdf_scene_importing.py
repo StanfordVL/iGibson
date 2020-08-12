@@ -17,8 +17,7 @@ def test_import_igsdf():
     scene = iGSDFScene('Beechwood_0')
     s = Simulator(mode='iggui', image_width=640,
                  image_height=480,)
-    s.import_scene(scene)
-    print("good2")
+    s.import_ig_scene(scene)
 
     turtlebot1 = Turtlebot(config)
     s.import_robot(turtlebot1)
