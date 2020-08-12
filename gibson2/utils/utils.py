@@ -75,5 +75,5 @@ def quatToXYZW(orn, seq):
 def quatXYZWFromRotMat(rot_mat):
     quatWXYZ = quaternions.mat2quat(rot_mat)
     quatXYZW = quatToXYZW(quatWXYZ, 'wxyz')
-    return quatToXYZW
+    return quatXYZW
 
