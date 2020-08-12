@@ -457,6 +457,12 @@ class iGSDFScene(Scene):
                     # and add the joint
                     self.scene_tree.getroot().append(joint_emb)
 
+                for item in list(embedded_urdf.object_tree.getroot()):
+                    if item.tag not in ['link', 'joint']:
+                        print(item)
+                        self.scene_tree.getroot().append(item)
+
+
         self.file_ctr = 0
         self.urdfs_no_floating = {}
         self.save_urdfs_without_floating_joints()  
@@ -468,10 +474,11 @@ class iGSDFScene(Scene):
             logging.info("Loading " + self.urdfs_no_floating[urdf][0])
             body_id = p.loadURDF(self.urdfs_no_floating[urdf][0], 
                              flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-            logging.info("Moving URDF to ", self.urdfs_no_floating[urdf][1])
+            logging.info("Moving URDF to " + np.array_str(self.urdfs_no_floating[urdf][1]))
             transformation = self.urdfs_no_floating[urdf][1]
-            orn = quatXYZWFromRotMat(transformation[0:3,0:3])
-            p.resetBasePositionAndOrientation(body_id, transformation[0:3,3], orn)
+            oriii = np.array(quatXYZWFromRotMat(transformation[0:3,0:3]))
+            transl = transformation[0:3,3]
+            p.resetBasePositionAndOrientation(body_id, transl, oriii)
             self.mass = p.getDynamicsInfo(body_id, -1)[0]
             body_ids += [body_id]
         return body_ids
@@ -595,14 +602,14 @@ class iGSDFScene(Scene):
 
             logging.debug("all links: ", all_links)
 
-            extended_splitted_dict[count] = ((split[0], split[1], split[2], all_links, np.array([])))
+            extended_splitted_dict[count] = ((split[0], split[1], split[2], all_links, np.eye(4)))
             if "world" in all_links:
                 world_idx = count
                 logging.debug("World idx: ", world_idx)
 
         # Find the transformations, starting from "world" link
         for (joint_name, joint_tuple) in joint_map.items():
-            logging.debug("Joint: ", joint_name)
+            logging.debug("Joint: " + joint_name)
             if joint_tuple[2] == "floating":
                 logging.debug("floating")
                 parent_name = joint_tuple[0]
@@ -612,7 +619,7 @@ class iGSDFScene(Scene):
                     # Find the joint where the link with name "parent_name" is child
                     joint_up = [joint for joint in self.scene_tree.findall("joint") if joint.find("child").attrib["link"] == parent_name][0]
                     joint_transform = joint_map[joint_up.attrib["name"]][3]
-                    transformation = np.multiply(transformation, joint_transform)
+                    transformation = np.dot(joint_transform, transformation)
                     parent_name = joint_map[joint_up.attrib["name"]][0]
 
                 child_name = joint_tuple[1]
@@ -625,6 +632,8 @@ class iGSDFScene(Scene):
         logging.info("Instantiating scene into the following urdfs:")
         for esd_key in extended_splitted_dict:            
             xml_tree_parent = ET.ElementTree(ET.fromstring('<robot name="split_' + str(esd_key) + '"></robot>'))
+            
+
             for link_name in extended_splitted_dict[esd_key][3]:
                 link_to_add = [link for link in self.scene_tree.findall("link") if link.attrib["name"] == link_name][0]
                 xml_tree_parent.getroot().append(link_to_add)
@@ -632,9 +641,14 @@ class iGSDFScene(Scene):
             for joint_name in extended_splitted_dict[esd_key][2]:
                 joint_to_add = [joint for joint in self.scene_tree.findall("joint") if joint.attrib["name"] == joint_name][0]
                 xml_tree_parent.getroot().append(joint_to_add)
+
+            # Copy the elements that are not joint or link (e.g. material)
+            for item in list(self.scene_tree.getroot()):
+                if item.tag not in ['link', 'joint']:                    
+                    xml_tree_parent.getroot().append(item)
             
-            urdf_file_name = gibson2.ig_dataset_path + "/scene_instance" + str(self.file_ctr)+ ".urdf"
-            self.urdfs_no_floating[self.file_ctr] = (urdf_file_name, extended_splitted_dict[esd][4]) # Change 0 by the pose of this branch
+            urdf_file_name = gibson2.ig_dataset_path + "/scene_instance" + str(esd_key)+ ".urdf"
+            print(extended_splitted_dict[esd_key][4])
+            self.urdfs_no_floating[esd_key] = (urdf_file_name, extended_splitted_dict[esd_key][4]) # Change 0 by the pose of this branch
             xml_tree_parent.write(urdf_file_name)
-            self.file_ctr +=1 
             logging.info(urdf_file_name)
