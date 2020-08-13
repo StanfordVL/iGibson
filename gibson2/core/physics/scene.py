@@ -459,7 +459,7 @@ class iGSDFScene(Scene):
 
                 for item in list(embedded_urdf.object_tree.getroot()):
                     if item.tag not in ['link', 'joint']:
-                        print(item)
+                        
                         self.scene_tree.getroot().append(item)
 
 
@@ -472,8 +472,8 @@ class iGSDFScene(Scene):
         body_ids = []
         for urdf in self.urdfs_no_floating:
             logging.info("Loading " + self.urdfs_no_floating[urdf][0])
-            body_id = p.loadURDF(self.urdfs_no_floating[urdf][0], 
-                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+            body_id = p.loadURDF(self.urdfs_no_floating[urdf][0]) 
+                             #flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
             logging.info("Moving URDF to " + np.array_str(self.urdfs_no_floating[urdf][1]))
             transformation = self.urdfs_no_floating[urdf][1]
             oriii = np.array(quatXYZWFromRotMat(transformation[0:3,0:3]))
@@ -486,14 +486,20 @@ class iGSDFScene(Scene):
 
     def save_urdfs_without_floating_joints(self):
 
-        def splitter(parent_map, child_map, joint_map):
+        def splitter(parent_map, child_map, joint_map, single_child_link):
+            new_single_child_link = []
             for (joint_name, joint_tuple) in joint_map.items():
                 logging.debug("Joint: ", joint_name)
                 if joint_tuple[2] == "floating":
+
                     logging.debug("Splitting floating joint")
                     # separate into the two parts and call recursively splitter with each part
                     parent_of_floating = joint_tuple[0]
                     child_of_floating = joint_tuple[1]
+
+                    # If the children of float is not parent of any link, we add it to the sengle_child_link
+                    if child_of_floating not in child_map.keys():
+                        new_single_child_link += [child_of_floating]
                     
                     parent_map1 = {}
                     child_map1 = {}
@@ -504,7 +510,7 @@ class iGSDFScene(Scene):
                     
                     # Find all links "down" the floating joint
                     logging.debug("Finding children")
-                    logging.debug("Child of floating: ",child_of_floating )
+                    logging.info("Child of floating: " + child_of_floating )
                     all_children = [child_of_floating]
                     children_rec = [child_of_floating]
                     while len(children_rec) != 0:
@@ -516,7 +522,7 @@ class iGSDFScene(Scene):
                         all_children += [new_child[0] for new_child in new_children_rec]
                         children_rec = [new_child[0] for new_child in new_children_rec]
 
-                    logging.debug("All children of the floating joint: ", all_children)
+                    logging.info("All children of the floating joint: " + " ".join(all_children))
 
                     # Separate joints in map1 and map2
                     # The ones in map2 are the ones with the child pointing to one of the links "down" the floating joint
@@ -531,12 +537,13 @@ class iGSDFScene(Scene):
                     # Separate children into map1 and map2
                     # Careful with the child_map because every key of the dict (name of parent) points to a list of children
                     logging.debug("Splitting children")
-                    for parent in child_map:
-                        child_list = child_map[parent]
-                        if parent in all_children:
-                            child_map2[parent] = child_list
-                        else:
-                            child_map1[parent] = [item for item in child_list if item[0] != child_of_floating]
+                    for parent in child_map: # iterate all links that are parent of 1 or more joints
+                        child_list = child_map[parent]  # for each parent, get the list of children
+                        if parent in all_children:  # if the parent link was in the list of all children of the floating joint
+                            child_map2[parent] = child_list # save the list as list of children of the parent link in the children floating suburdf
+                        else: #otherwise, it is one of the links parents of the floating joint
+                            child_map1[parent] = [item for item in child_list if item[0] != child_of_floating] # save the list as the list of
+                            # children of the parent in the parent floating suburdf, except the children connected by the floating joint
 
                     # Separate parents into map1 and map2
                     for child in parent_map:
@@ -546,11 +553,16 @@ class iGSDFScene(Scene):
                             else:
                                 parent_map1[child] = parent_map[child]              
 
-                    ret1 = splitter(parent_map1, child_map1, joint_map1)
-                    ret2 = splitter(parent_map2, child_map2, joint_map2)
+                    ret1 = splitter(parent_map1, child_map1, joint_map1, [])
+                    ret2 = splitter(parent_map2, child_map2, joint_map2, new_single_child_link)
                     ret = ret1 + ret2
                     return ret
-            return [(parent_map, child_map, joint_map)]
+            return [(parent_map, child_map, joint_map, single_child_link)]
+
+
+        urdf_file_name = gibson2.ig_dataset_path + "/scene_instances/scene_instance_full.urdf"
+        self.scene_tree.write(urdf_file_name)
+
         #Pybullet doesn't read floating joints
         #Find them and separate into different objects
 
@@ -558,7 +570,7 @@ class iGSDFScene(Scene):
         child_map = {} # map from name of parent to list of names of children, joint names and types of connection
         joint_map = {} # map from name of joint to names of parent and child and type
  
-        for joint in self.scene_tree.iter("joint"):
+        for joint in self.scene_tree.iter("joint"): # We iterate over joints to build maps
             parent_name = joint.find("parent").attrib["link"]
             child_name = joint.find("child").attrib["link"]
             joint_name = joint.attrib["name"]
@@ -581,15 +593,17 @@ class iGSDFScene(Scene):
             joint_map[joint_name] = (parent_name, child_name, joint_type, joint_frame)
 
         # Call recursively to split the tree into connected parts without floating joints
-        splitted_maps = splitter(parent_map, child_map, joint_map)
+        single_floating_links = []
+        splitted_maps = splitter(parent_map, child_map, joint_map, single_floating_links)
 
         extended_splitted_dict = {}
         world_idx = 0
         for (count, split) in enumerate(splitted_maps):
 
-            logging.debug("Parent map: ",split[0])
-            logging.debug("Child map: ",split[1])
-            logging.debug("Joint map: ",split[2])
+            # print("Parent map: ",split[0])
+            # print("Child map: ",split[1])
+            # print("Joint map: ",split[2])
+            # print("Single floating links: ",split[3])
             all_links = []
             
             for parent in split[0]:
@@ -600,7 +614,11 @@ class iGSDFScene(Scene):
                 if child not in all_links:
                     all_links.append(child)
 
-            logging.debug("all links: ", all_links)
+            for link in split[3]:
+                if link not in all_links:
+                    all_links.append(link)
+
+            #print("all links: ", all_links)
 
             extended_splitted_dict[count] = ((split[0], split[1], split[2], all_links, np.eye(4)))
             if "world" in all_links:
@@ -632,6 +650,8 @@ class iGSDFScene(Scene):
         logging.info("Instantiating scene into the following urdfs:")
         for esd_key in extended_splitted_dict:            
             xml_tree_parent = ET.ElementTree(ET.fromstring('<robot name="split_' + str(esd_key) + '"></robot>'))
+
+            logging.debug("links " + " ".join(extended_splitted_dict[esd_key][3]))
             
 
             for link_name in extended_splitted_dict[esd_key][3]:
@@ -647,8 +667,7 @@ class iGSDFScene(Scene):
                 if item.tag not in ['link', 'joint']:                    
                     xml_tree_parent.getroot().append(item)
             
-            urdf_file_name = gibson2.ig_dataset_path + "/scene_instance" + str(esd_key)+ ".urdf"
-            print(extended_splitted_dict[esd_key][4])
+            urdf_file_name = gibson2.ig_dataset_path + "/scene_instances/scene_instance" + str(esd_key)+ ".urdf"
             self.urdfs_no_floating[esd_key] = (urdf_file_name, extended_splitted_dict[esd_key][4]) # Change 0 by the pose of this branch
             xml_tree_parent.write(urdf_file_name)
             logging.info(urdf_file_name)
