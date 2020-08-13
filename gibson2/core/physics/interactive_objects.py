@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from gibson2.utils.utils import rotate_vector_3d
 
 import logging
-
+import math
 
 class Object(object):
     def __init__(self):
@@ -256,70 +256,94 @@ class InteractiveObj2(Object):
         # We need to scale 1) the meshes, 2) the position of meshes, 3) the position of joints, 4) the orientation axis of joints
         # The problem is that those quantities are given wrt. its parent link frame, and this can be rotated wrt. the frame the scale was given in
         # Solution: parse the kin tree joint by joint, extract the rotation, rotate the scale, apply rotated scale to 1, 2, 3, 4 in the child link frame
+        if "bounding_box" in xml_element.keys() and "scale" in xml_element.keys():
+            logging.error("You cannot define both scale and bounding box size defined to embed a URDF")
+            exit(-1)
+
         if "bounding_box" in xml_element.keys():
             bounding_box = np.array([float(val) for val in xml_element.attrib["bounding_box"].split(" ")])
             logging.debug(bounding_box)
-            with open(model_path + '/misc/bbox.json', 'r') as bbox_file:
+
+            with open(model_path + '/meta/bbox.json', 'r') as bbox_file:
                 data = json.load(bbox_file)
                 bbox_max = np.array(data['max'])
                 bbox_min = np.array(data['min'])
                 original_bbox = bbox_max - bbox_min
             scale = np.divide(bounding_box, original_bbox) 
-            logging.debug(scale)
 
-            parent_link_name = "base_link"
-            while parent_link_name != None:
-                parent_link = [link for link in self.object_tree.findall("link") if link.attrib["name"] == parent_link_name][0]
+        elif "scale" in xml_element.keys():
+            scale = np.array([float(val) for val in xml_element.attrib["scale"].split(" ")])            
+        else:
+            scale = np.array([1., 1., 1.])
 
-                for xml_child in parent_link.iter():
-                    #Apply the scale to all elements: meshes, joint parameters
-                    for mesh in xml_child.iter("mesh"):
-                        if "scale" in mesh.keys():
-                            current_scale = np.array([float(val) for val in mesh.attrib["scale"].split(" ")])
-                            new_scale = np.multiply(current_scale, scale)
-                            mesh.attrib['scale'] = ' '.join(map(str, new_scale))
+        logging.info("Scale: " + np.array2string(scale))
 
-                        else:
-                            mesh.set('scale',' '.join(map(str, scale)))
+        parent_link_name = "base_link"
+        while parent_link_name != None:
+            parent_link = [link for link in self.object_tree.findall("link") if link.attrib["name"] == parent_link_name][0]
 
-                    for origin in xml_child.iter("origin"):
+            #Apply the scale to all elements: meshes, joint parameters
+
+            def round_up(n, decimals=0): 
+                multiplier = 10 ** decimals 
+                return math.ceil(n * multiplier) / multiplier
+
+            decimals = 4
+
+            for mesh in parent_link.iter("mesh"):
+                if "scale" in mesh.attrib:
+                    current_scale = np.array([float(val) for val in mesh.attrib["scale"].split(" ")])
+                    new_scale = np.multiply(current_scale, scale)
+                    new_scale = np.array([round_up(val, decimals) for val in new_scale])
+                    #new_scale_str = "{0:.2f} {1:.2f} {2:.2f}".format(*new_scale)
+                    mesh.attrib['scale'] = ' '.join(map(str, new_scale))
+
+                else:
+                    #new_scale_str = "{0:.2f} {1:.2f} {2:.2f}".format(*scale)
+                    new_scale = np.array([round_up(val, decimals) for val in scale])
+                    mesh.set('scale',' '.join(map(str, new_scale)))
+
+            for origin in parent_link.iter("origin"):
+                current_origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
+                new_origin_xyz = np.multiply(current_origin_xyz, scale)
+                new_origin_xyz = np.array([round_up(val, decimals) for val in new_origin_xyz])
+                origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
+                #print("New origin xyz {}",new_origin_xyz)
+
+            logging.debug(parent_link.attrib["name"])
+
+            joint_news = [joint for joint in self.object_tree.findall("joint") if joint.find("parent").attrib["link"] == parent_link.attrib["name"]]
+            if len(joint_news) != 0:
+
+                for joint_new in joint_news:
+
+                    # The location of the joint frames are scaled in the direction of the parent (current scale)
+                    for origin in joint_new.iter("origin"):
                         current_origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
                         new_origin_xyz = np.multiply(current_origin_xyz, scale)
+                        new_origin_xyz = np.array([round_up(val, decimals) for val in new_origin_xyz])
                         origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
-                        #print("New origin xyz {}",new_origin_xyz)
 
-                logging.debug(parent_link.attrib["name"])
+                    # Get the rotation of the joint frame and apply it to the scale
+                    if "rpy" in joint_new.keys():
+                        joint_frame_rot = np.array([float(val) for val in joint_new.attrib['rpy'].split(" ")])
+                        # Rotate the scale
+                        scale = rotate_vector_3d(scale, *joint_frame_rot, cck=True)
+                        scale = np.absolute(scale)
 
-                joint_news = [joint for joint in self.object_tree.findall("joint") if joint.find("parent").attrib["link"] == parent_link.attrib["name"]]
-                if len(joint_news) != 0:
+                    # The axis of the joint is defined in the joint frame, we scale it after applying the rotation
+                    for axis in self.object_tree.iter("axis"):
+                        current_axis_xyz = np.array([float(val) for val in axis.attrib["xyz"].split(" ")])
+                        new_axis_xyz = np.multiply(current_axis_xyz, scale)
+                        new_axis_xyz /= np.linalg.norm(new_axis_xyz)
+                        new_axis_xyz = np.array([round_up(val, decimals) for val in new_axis_xyz])
+                        axis.attrib['xyz'] = ' '.join(map(str, new_axis_xyz))
+                        #print("New axis xyz {}",new_axis_xyz)
 
-                    for joint_new in joint_news:
-
-                        # The location of the joint frames are scaled in the direction of the parent (current scale)
-                        for origin in joint_new.iter("origin"):
-                            current_origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
-                            new_origin_xyz = np.multiply(current_origin_xyz, scale)
-                            origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
-
-                        # Get the rotation of the joint frame and apply it to the scale
-                        if "rpy" in joint_new.keys():
-                            joint_frame_rot = np.array([float(val) for val in joint_new.attrib['rpy'].split(" ")])
-                            # Rotate the scale
-                            scale = rotate_vector_3d(scale, *joint_frame_rot, cck=True)
-                            scale = np.absolute(scale)
-
-                        # The axis of the joint is defined in the joint frame, we scale it after applying the rotation
-                        for axis in self.object_tree.iter("axis"):
-                            current_axis_xyz = np.array([float(val) for val in axis.attrib["xyz"].split(" ")])
-                            new_axis_xyz = np.multiply(current_axis_xyz, scale)
-                            new_axis_xyz /= np.linalg.norm(new_axis_xyz)
-                            axis.attrib['xyz'] = ' '.join(map(str, new_axis_xyz))
-                            #print("New axis xyz {}",new_axis_xyz)
-
-                        # Update the parent_link_name to the child in this joint
-                        parent_link_name = joint_news[0].find("child").attrib["link"]
-                else:
-                    parent_link_name = None
+                    # Update the parent_link_name to the child in this joint
+                    parent_link_name = joint_news[0].find("child").attrib["link"]
+            else:
+                parent_link_name = None
 
     def _load(self):
         body_id = p.loadURDF(self.filename, 
