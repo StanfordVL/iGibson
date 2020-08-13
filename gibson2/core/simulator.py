@@ -170,12 +170,12 @@ class Simulator:
                 visual_object = None
                 if type == p.GEOM_MESH:
                     filename = filename.decode('utf-8')
-                    if filename not in self.visual_objects.keys():
+                    if (filename,(*dimensions)) not in self.visual_objects.keys():
                         self.renderer.load_object(filename,
                                                   texture_scale=texture_scale,
                                                   load_texture=load_texture)
-                        self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                    visual_object = self.visual_objects[filename]
+                        self.visual_objects[(filename,(*dimensions))] = len(self.renderer.visual_objects) - 1
+                    visual_object = self.visual_objects[(filename,(*dimensions))]
                 elif type == p.GEOM_PLANE:
                     pass
                     # By default, we add an additional floor surface to "smooth out" that of the original mesh.
@@ -238,14 +238,14 @@ class Simulator:
             visual_object = None
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if filename not in self.visual_objects.keys():
+                if (filename,(*dimensions)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                visual_object = self.visual_objects[filename]
+                    self.visual_objects[(filename,(*dimensions))] = len(self.renderer.visual_objects) - 1
+                visual_object = self.visual_objects[(filename,(*dimensions))]
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
                 self.renderer.load_object(
@@ -306,14 +306,14 @@ class Simulator:
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if filename not in self.visual_objects.keys():
+                if (filename,(*dimensions)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                visual_objects.append(self.visual_objects[filename])
+                    self.visual_objects[(filename,(*dimensions))] = len(self.renderer.visual_objects) - 1
+                visual_objects.append(self.visual_objects[(filename,(*dimensions))])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
@@ -392,14 +392,14 @@ class Simulator:
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if filename not in self.visual_objects.keys():
+                if (filename,(*dimensions)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                visual_objects.append(self.visual_objects[filename])
+                    self.visual_objects[(filename,(*dimensions))] = len(self.renderer.visual_objects) - 1
+                visual_objects.append(self.visual_objects[(filename,(*dimensions))])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
