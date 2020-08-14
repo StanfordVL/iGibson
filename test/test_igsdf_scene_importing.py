@@ -10,6 +10,8 @@ import gibson2
 
 from gibson2.utils.assets_utils import download_assets, download_demo_data
 
+import time
+
 config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 
 def test_import_igsdf():
@@ -22,8 +24,17 @@ def test_import_igsdf():
     turtlebot1 = Turtlebot(config)
     s.import_robot(turtlebot1)
     turtlebot1.set_position([0.5, 0, 3.5])
+
+    start = time.time()
+    end = time.time()
+
     for i in range(150000000):
+
         s.step()
+        end = time.time()
+        print("Elapsed time: ", end-start)
+        print("Frequency: ", 1/(end-start))
+        start = end
 
     s.disconnect()
     print("end")

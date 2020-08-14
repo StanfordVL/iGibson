@@ -214,27 +214,42 @@ class BoxShape(Object):
 
         return body_id
 
+def round_up(n, decimals=0): 
+    multiplier = 10 ** decimals 
+    return math.ceil(n * multiplier) / multiplier
 
-class InteractiveObj2(Object):
+class URDFObject(Object):
     """
-    Interactive Objects are represented as a urdf, but doesn't have motors
+    URDFObjects are instantiated from a URDF file. They can be composed of one or more links and joints. They should be passive
+    We use this class to deparse our modified link tag for URDFs that embed objects into scenes
     """
 
-    def __init__(self, xml_element):
-        super(InteractiveObj2, self).__init__()
+    def __init__(self, xml_element, random_groups):
+        super(URDFObject, self).__init__()
 
         category = xml_element.attrib["category"]
         model = xml_element.attrib['model']
         model_path = ""
                 
+        # Find the urdf file that defines this object
         if category == "building":
             model_path = get_ig_scene_path(model)
             filename = model_path + "/" + model + "_building.urdf"
         else:
             category_path = get_ig_category_path(category)
+            assert len(os.listdir(category_path)) != 0, "There are no models in category folder {}".format(category_path)
             if model == 'random':
-                assert len(os.listdir(category_path)) != 0, "There are no models in category folder {}".format(category_path)
-                model = random.choice(os.listdir(category_path))
+                # Using random group to assign the same model to a group of objects
+                if "random_group" in xml_element.attrib:
+                    if xml_element.attrib["random_group"] in random_groups:
+                        model = random_groups[xml_element.attrib["random_group"]]
+                    else:
+                        # The first instance of the group we chose a random model and we save it
+                        model = random.choice(os.listdir(category_path))
+                        random_groups[xml_element.attrib["random_group"]] = model
+                else:
+                    # Using a random instance
+                    model = random.choice(os.listdir(category_path))
             else:
                 model = xml_element.attrib['model']
 
@@ -242,108 +257,98 @@ class InteractiveObj2(Object):
             filename = model_path + "/" + model + ".urdf"            
  
         self.filename = filename
-
         logging.info("Loading " + filename)
-
-        self.object_tree = ET.parse(filename)
-
+        self.object_tree = ET.parse(filename) #Parse the URDF
 
         # Change the mesh filenames to include the entire path
         for mesh in self.object_tree.iter("mesh"):
             mesh.attrib['filename'] = model_path + "/" + mesh.attrib['filename']
 
-        # Apply the bounding box size
-        # We need to scale 1) the meshes, 2) the position of meshes, 3) the position of joints, 4) the orientation axis of joints
-        # The problem is that those quantities are given wrt. its parent link frame, and this can be rotated wrt. the frame the scale was given in
-        # Solution: parse the kin tree joint by joint, extract the rotation, rotate the scale, apply rotated scale to 1, 2, 3, 4 in the child link frame
+        # Apply the desired bounding box size / scale
+        # First obtain the scaling factor
         if "bounding_box" in xml_element.keys() and "scale" in xml_element.keys():
             logging.error("You cannot define both scale and bounding box size defined to embed a URDF")
             exit(-1)
 
         if "bounding_box" in xml_element.keys():
+            # Obtain the scale as the ratio between the desired bounding box size and the normal bounding box size of the object at scale (1,1,1)
             bounding_box = np.array([float(val) for val in xml_element.attrib["bounding_box"].split(" ")])
             logging.debug(bounding_box)
-
             with open(model_path + '/meta/bbox.json', 'r') as bbox_file:
                 data = json.load(bbox_file)
                 bbox_max = np.array(data['max'])
                 bbox_min = np.array(data['min'])
                 original_bbox = bbox_max - bbox_min
             scale = np.divide(bounding_box, original_bbox) 
-
         elif "scale" in xml_element.keys():
             scale = np.array([float(val) for val in xml_element.attrib["scale"].split(" ")])            
         else:
             scale = np.array([1., 1., 1.])
-
         logging.info("Scale: " + np.array2string(scale))
 
-        parent_link_name = "base_link"
-        while parent_link_name != None:
-            parent_link = [link for link in self.object_tree.findall("link") if link.attrib["name"] == parent_link_name][0]
+        # We need to scale 1) the meshes, 2) the position of meshes, 3) the position of joints, 4) the orientation axis of joints
+        # The problem is that those quantities are given wrt. its parent link frame, and this can be rotated wrt. the frame the scale was given in
+        # Solution: parse the kin tree joint by joint, extract the rotation, rotate the scale, apply rotated scale to 1, 2, 3, 4 in the child link frame
 
-            #Apply the scale to all elements: meshes, joint parameters
+        # First, define the scale in each link reference frame
+        # and apply it to the joint values
+        scales_in_lf = {}
+        scales_in_lf["base_link"] = scale
+        while True:
+            for joint in self.object_tree.iter("joint"):
+                parent_link_name = joint.find("parent").attrib["link"]
+                child_link_name = joint.find("child").attrib["link"]
+                if parent_link_name in scales_in_lf and child_link_name not in scales_in_lf:
+                    scale_in_parent_lf = scales_in_lf[parent_link_name]
 
-            def round_up(n, decimals=0): 
-                multiplier = 10 ** decimals 
-                return math.ceil(n * multiplier) / multiplier
-
-            decimals = 4
-
-            for mesh in parent_link.iter("mesh"):
-                if "scale" in mesh.attrib:
-                    current_scale = np.array([float(val) for val in mesh.attrib["scale"].split(" ")])
-                    new_scale = np.multiply(current_scale, scale)
-                    new_scale = np.array([round_up(val, decimals) for val in new_scale])
-                    #new_scale_str = "{0:.2f} {1:.2f} {2:.2f}".format(*new_scale)
-                    mesh.attrib['scale'] = ' '.join(map(str, new_scale))
-
-                else:
-                    #new_scale_str = "{0:.2f} {1:.2f} {2:.2f}".format(*scale)
-                    new_scale = np.array([round_up(val, decimals) for val in scale])
-                    mesh.set('scale',' '.join(map(str, new_scale)))
-
-            for origin in parent_link.iter("origin"):
-                current_origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
-                new_origin_xyz = np.multiply(current_origin_xyz, scale)
-                new_origin_xyz = np.array([round_up(val, decimals) for val in new_origin_xyz])
-                origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
-                #print("New origin xyz {}",new_origin_xyz)
-
-            logging.debug(parent_link.attrib["name"])
-
-            joint_news = [joint for joint in self.object_tree.findall("joint") if joint.find("parent").attrib["link"] == parent_link.attrib["name"]]
-            if len(joint_news) != 0:
-
-                for joint_new in joint_news:
-
-                    # The location of the joint frames are scaled in the direction of the parent (current scale)
-                    for origin in joint_new.iter("origin"):
+                    # The location of the joint frame is scaled in using the scale in the parent frame
+                    for origin in joint.iter("origin"):
                         current_origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
-                        new_origin_xyz = np.multiply(current_origin_xyz, scale)
-                        new_origin_xyz = np.array([round_up(val, decimals) for val in new_origin_xyz])
+                        new_origin_xyz = np.multiply(current_origin_xyz, scale_in_parent_lf)
+                        new_origin_xyz = np.array([round_up(val, 4) for val in new_origin_xyz])
                         origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
 
                     # Get the rotation of the joint frame and apply it to the scale
-                    if "rpy" in joint_new.keys():
-                        joint_frame_rot = np.array([float(val) for val in joint_new.attrib['rpy'].split(" ")])
+                    if "rpy" in joint.keys():
+                        joint_frame_rot = np.array([float(val) for val in joint.attrib['rpy'].split(" ")])
                         # Rotate the scale
-                        scale = rotate_vector_3d(scale, *joint_frame_rot, cck=True)
-                        scale = np.absolute(scale)
+                        scale_in_child_lf = rotate_vector_3d(scale_in_parent_lf, *joint_frame_rot, cck=True)
+                        scale_in_child_lf = np.absolute(scale_in_child_lf)                        
+                    else:
+                        scale_in_child_lf = scale_in_parent_lf
+
+                    scales_in_lf[joint.find("child").attrib["link"]] = scale_in_child_lf
 
                     # The axis of the joint is defined in the joint frame, we scale it after applying the rotation
-                    for axis in self.object_tree.iter("axis"):
+                    for axis in joint.iter("axis"):
                         current_axis_xyz = np.array([float(val) for val in axis.attrib["xyz"].split(" ")])
-                        new_axis_xyz = np.multiply(current_axis_xyz, scale)
+                        new_axis_xyz = np.multiply(current_axis_xyz, scale_in_child_lf)
                         new_axis_xyz /= np.linalg.norm(new_axis_xyz)
-                        new_axis_xyz = np.array([round_up(val, decimals) for val in new_axis_xyz])
+                        new_axis_xyz = np.array([round_up(val, 4) for val in new_axis_xyz])
                         axis.attrib['xyz'] = ' '.join(map(str, new_axis_xyz))
-                        #print("New axis xyz {}",new_axis_xyz)
 
-                    # Update the parent_link_name to the child in this joint
-                    parent_link_name = joint_news[0].find("child").attrib["link"]
-            else:
-                parent_link_name = None
+                    break # Iterate again the for loop since we added new elements to the dictionary
+
+            break #If we reach this point is because all joints have been processed and we have the scale in all link frames
+
+        # Now iterate over all links and scale the meshes and positions
+        for link in self.object_tree.iter("link"):
+            scale_in_lf = scales_in_lf[link.attrib["name"]]
+            #Apply the scale to all mesh elements within the link (original scale and origin)
+            for mesh in link.iter("mesh"):
+                if "scale" in mesh.attrib:
+                    mesh_scale = np.array([float(val) for val in mesh.attrib["scale"].split(" ")])
+                    new_scale = np.multiply(mesh_scale, scale_in_lf)
+                    new_scale = np.array([round_up(val, 4) for val in new_scale])
+                    mesh.attrib['scale'] = ' '.join(map(str, new_scale))
+                else:
+                    new_scale = np.array([round_up(val, 4) for val in scale_in_lf])
+                    mesh.set('scale',' '.join(map(str, new_scale)))
+            for origin in link.iter("origin"):
+                origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
+                new_origin_xyz = np.multiply(origin_xyz, scale_in_lf)
+                new_origin_xyz = np.array([round_up(val, 4) for val in new_origin_xyz])
+                origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
 
     def _load(self):
         body_id = p.loadURDF(self.filename, 
