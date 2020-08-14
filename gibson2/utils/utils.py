@@ -35,6 +35,10 @@ def get_transform_from_xyz_rpy(xyz, rpy):
     transformation[0:3,3] = xyz
     return transformation
 
+def get_rpy_from_transform(transform):
+    rpy = R.from_dcm(transform[0:3,0:3]).as_euler('xyz')
+    return rpy
+
 def rotate_vector_2d(v, yaw):
     """Rotates 2d vector by yaw counterclockwise"""
     local_to_global = R.from_euler('z', yaw).as_dcm()
