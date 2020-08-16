@@ -230,6 +230,9 @@ class URDFObject(Object):
         category = xml_element.attrib["category"]
         model = xml_element.attrib['model']
         model_path = ""
+
+        print("Category", category)
+        print("Model", model)
                 
         # Find the urdf file that defines this object
         if category == "building":
@@ -241,12 +244,13 @@ class URDFObject(Object):
             if model == 'random':
                 # Using random group to assign the same model to a group of objects
                 if "random_group" in xml_element.attrib:
-                    if xml_element.attrib["random_group"] in random_groups:
-                        model = random_groups[xml_element.attrib["random_group"]]
+                    random_group = xml_element.attrib["random_group"]
+                    if (category, xml_element.attrib["random_group"]) in random_groups:
+                        model = random_groups[(category, xml_element.attrib["random_group"])]
                     else:
                         # The first instance of the group we chose a random model and we save it
                         model = random.choice(os.listdir(category_path))
-                        random_groups[xml_element.attrib["random_group"]] = model
+                        random_groups[(category, xml_element.attrib["random_group"])] = model
                 else:
                     # Using a random instance
                     model = random.choice(os.listdir(category_path))
@@ -270,15 +274,19 @@ class URDFObject(Object):
             logging.error("You cannot define both scale and bounding box size defined to embed a URDF")
             exit(-1)
 
+        if os.path.exists(model_path + '/misc/bbox.json'):
+            with open(model_path + '/misc/bbox.json', 'r') as bbox_file:
+                bbox_data = json.load(bbox_file)
+                bbox_max = np.array(bbox_data['max'])
+                bbox_min = np.array(bbox_data['min'])
+        else:
+            bbox_max = np.zeros(3)
+            bbox_min = np.zeros(3)
+
         if "bounding_box" in xml_element.keys():
             # Obtain the scale as the ratio between the desired bounding box size and the normal bounding box size of the object at scale (1,1,1)
-            bounding_box = np.array([float(val) for val in xml_element.attrib["bounding_box"].split(" ")])
-            logging.debug(bounding_box)
-            with open(model_path + '/meta/bbox.json', 'r') as bbox_file:
-                data = json.load(bbox_file)
-                bbox_max = np.array(data['max'])
-                bbox_min = np.array(data['min'])
-                original_bbox = bbox_max - bbox_min
+            bounding_box = np.array([float(val) for val in xml_element.attrib["bounding_box"].split(" ")])            
+            original_bbox = bbox_max - bbox_min
             scale = np.divide(bounding_box, original_bbox) 
         elif "scale" in xml_element.keys():
             scale = np.array([float(val) for val in xml_element.attrib["scale"].split(" ")])            
@@ -294,7 +302,9 @@ class URDFObject(Object):
         # and apply it to the joint values
         scales_in_lf = {}
         scales_in_lf["base_link"] = scale
-        while True:
+        all_processed = False
+        while not all_processed:
+            all_processed = True
             for joint in self.object_tree.iter("joint"):
                 parent_link_name = joint.find("parent").attrib["link"]
                 child_link_name = joint.find("child").attrib["link"]
@@ -317,6 +327,8 @@ class URDFObject(Object):
                     else:
                         scale_in_child_lf = scale_in_parent_lf
 
+                    #print("Adding: ", joint.find("child").attrib["link"])
+
                     scales_in_lf[joint.find("child").attrib["link"]] = scale_in_child_lf
 
                     # The axis of the joint is defined in the joint frame, we scale it after applying the rotation
@@ -327,9 +339,7 @@ class URDFObject(Object):
                         new_axis_xyz = np.array([round_up(val, 4) for val in new_axis_xyz])
                         axis.attrib['xyz'] = ' '.join(map(str, new_axis_xyz))
 
-                    break # Iterate again the for loop since we added new elements to the dictionary
-
-            break #If we reach this point is because all joints have been processed and we have the scale in all link frames
+                    all_processed = False # Iterate again the for loop since we added new elements to the dictionary
 
         # Now iterate over all links and scale the meshes and positions
         for link in self.object_tree.iter("link"):
@@ -349,6 +359,12 @@ class URDFObject(Object):
                 new_origin_xyz = np.multiply(origin_xyz, scale_in_lf)
                 new_origin_xyz = np.array([round_up(val, 4) for val in new_origin_xyz])
                 origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
+
+        # Finally, we need to know where is the base_link origin wrt. the bounding box center. That allows us to place the model
+        # correctly since the joint transformations given in the scene urdf are for the bounding box center
+        scale = scales_in_lf["base_link"]
+        bbox_center_in_blf = (bbox_max + bbox_min)/2.0 # Coordinates of the bounding box center in the base_link frame
+        self.scaled_bbxc_in_blf = scale*bbox_center_in_blf # We scale the location. We will subtract this to the joint location
 
     def _load(self):
         body_id = p.loadURDF(self.filename, 

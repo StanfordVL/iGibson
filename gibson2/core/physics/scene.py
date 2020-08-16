@@ -622,7 +622,7 @@ def save_urdfs_without_floating_joints(tree, file_prefix, merge_fj):
     urdfs_no_floating = {}
     for esd_key in extended_splitted_dict:            
         xml_tree_parent = ET.ElementTree(ET.fromstring('<robot name="split_' + str(esd_key) + '"></robot>'))
-        logging.info("links " + " ".join(extended_splitted_dict[esd_key][3]))        
+        logging.debug("links " + " ".join(extended_splitted_dict[esd_key][3]))        
 
         for link_name in extended_splitted_dict[esd_key][3]:
             link_to_add = [link for link in tree.findall("link") if link.attrib["name"] == link_name][0]
@@ -677,8 +677,14 @@ class iGSDFScene(Scene):
 
             if 'category' in link.attrib:
                 embedded_urdf = URDFObject(link, self.random_groups)
-
                 base_link_name = link.attrib['name']
+
+                # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
+                joint_connecting_embedded_link = \
+                    [joint for joint in self.scene_tree.findall("joint") if joint.find("child").attrib["link"] == base_link_name][0]
+                joint_xyz = np.array([float(val) for val in joint_connecting_embedded_link.find("origin").attrib["xyz"].split(" ")])
+                joint_new_xyz = joint_xyz - embedded_urdf.scaled_bbxc_in_blf
+                joint_connecting_embedded_link.find("origin").attrib["xyz"] = "{0:f} {1:f} {2:f}".format(*joint_new_xyz)
 
                 for link_emb in embedded_urdf.object_tree.iter('link'):
                     if link_emb.attrib['name'] == "base_link": 
