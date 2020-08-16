@@ -19,6 +19,8 @@ import xml.etree.ElementTree as ET
 
 import gibson2
 import math
+import time
+
 
 class Scene:
     def __init__(self):
@@ -664,13 +666,19 @@ class iGSDFScene(Scene):
 
         # We have two ways of processing:
         # 1) merge all urdfs into a composed urdf, then separate the floating parts
+        # Even if we merge the floats, the appended URDFs could have many links. There is a pybullet limitation
+        # to maximum 128 joints in a single object. We will separate the URDFs fixed connected to the "world"
         # 2) have one urdf per object
-        self.compose_urdf = True 
+        self.compose_urdf = False 
 
         # If this flag is true, we merge fixed joints into unique bodies
         self.merge_fj = True
 
         self.random_groups = {}
+
+        timestr = time.strftime("%Y%m%d-%H%M%S") #Current time string to use to save the temporal urdfs
+        #Create the subfolder
+        os.mkdir(gibson2.ig_dataset_path + "/scene_instances/" + timestr)
 
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):
@@ -730,7 +738,7 @@ class iGSDFScene(Scene):
                             self.scene_tree.getroot().append(item)
                 else:
                     # Deal with the joint connecting the embedded urdf to the main link (world or building)
-                    urdf_file_name_prefix = gibson2.ig_dataset_path + "/scene_instances/" + base_link_name # + ".urdf"
+                    urdf_file_name_prefix = gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/" + base_link_name # + ".urdf"
 
                     # Find the joint in the main urdf that defines the connection to the embedded urdf
                     for joint in self.scene_tree.iter('joint'):
@@ -756,7 +764,7 @@ class iGSDFScene(Scene):
 
                             # Deal with floating joints inside the embedded urdf
                             urdfs_no_floating = save_urdfs_without_floating_joints(embedded_urdf.object_tree, 
-                                gibson2.ig_dataset_path + "/scene_instances/" + base_link_name, self.merge_fj)  
+                                gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/" + base_link_name, self.merge_fj)  
 
                             # append a new tuple of file name of the instantiated embedded urdf 
                             # and the transformation (!= None if its connection was floating)
@@ -766,10 +774,10 @@ class iGSDFScene(Scene):
 
         if self.compose_urdf:
             self.file_ctr = 0            
-            urdf_file_name = gibson2.ig_dataset_path + "/scene_instances/scene_instance_full.urdf"
+            urdf_file_name = gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/scene_instance_full.urdf"
             self.scene_tree.write(urdf_file_name)
             self.urdfs_no_floating = save_urdfs_without_floating_joints(self.scene_tree, 
-                gibson2.ig_dataset_path + "/scene_instances/scene_instance", self.merge_fj)  
+                gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/scene_instance", self.merge_fj)  
 
 
     def load(self):
