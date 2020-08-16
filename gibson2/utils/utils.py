@@ -29,6 +29,12 @@ def rotate_vector_3d(v, r, p, y, cck = True):
         return np.dot(local_to_global, v)
 
 def get_transform_from_xyz_rpy(xyz, rpy):
+    """
+    Returns a homogeneous transformation matrix (numpy array 4x4)
+    for the given translation and rotation in roll,pitch,yaw
+    xyz = Array of the translation
+    rpy = Array with roll, pitch, yaw rotations
+    """
     rotation = R.from_euler('xyz', [rpy[0], rpy[1], rpy[2]]).as_dcm()
     transformation = np.eye(4)
     transformation[0:3,0:3] = rotation
@@ -36,6 +42,11 @@ def get_transform_from_xyz_rpy(xyz, rpy):
     return transformation
 
 def get_rpy_from_transform(transform):
+    """
+    Returns the roll, pitch, yaw angles (Euler) for a given rotation or 
+    homogeneous transformation matrix
+    transformation = Array with the rotation (3x3) or full transformation (4x4)
+    """
     rpy = R.from_dcm(transform[0:3,0:3]).as_euler('xyz')
     return rpy
 
