@@ -689,7 +689,10 @@ class iGSDFScene(Scene):
 
                 # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
                 joint_connecting_embedded_link = \
-                    [joint for joint in self.scene_tree.findall("joint") if joint.find("child").attrib["link"] == base_link_name][0]
+                    [joint for joint in self.scene_tree.findall("joint") 
+                            if joint.find("child").attrib["link"] 
+                                == base_link_name][0]
+
                 joint_xyz = np.array([float(val) for val in joint_connecting_embedded_link.find("origin").attrib["xyz"].split(" ")])
                 joint_new_xyz = joint_xyz - embedded_urdf.scaled_bbxc_in_blf
                 joint_connecting_embedded_link.find("origin").attrib["xyz"] = "{0:f} {1:f} {2:f}".format(*joint_new_xyz)

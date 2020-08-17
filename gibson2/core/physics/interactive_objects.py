@@ -287,6 +287,7 @@ class URDFObject(Object):
             # Obtain the scale as the ratio between the desired bounding box size and the normal bounding box size of the object at scale (1,1,1)
             bounding_box = np.array([float(val) for val in xml_element.attrib["bounding_box"].split(" ")])            
             original_bbox = bbox_max - bbox_min
+            print(original_bbox)
             scale = np.divide(bounding_box, original_bbox) 
         elif "scale" in xml_element.keys():
             scale = np.array([float(val) for val in xml_element.attrib["scale"].split(" ")])            
@@ -364,7 +365,7 @@ class URDFObject(Object):
         # correctly since the joint transformations given in the scene urdf are for the bounding box center
         scale = scales_in_lf["base_link"]
         bbox_center_in_blf = (bbox_max + bbox_min)/2.0 # Coordinates of the bounding box center in the base_link frame
-        self.scaled_bbxc_in_blf = scale*bbox_center_in_blf # We scale the location. We will subtract this to the joint location
+        self.scaled_bbxc_in_blf = -scale*bbox_center_in_blf # We scale the location. We will subtract this to the joint location
 
     def _load(self):
         body_id = p.loadURDF(self.filename, 
