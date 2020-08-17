@@ -672,7 +672,7 @@ class iGSDFScene(Scene):
         self.compose_urdf = False 
 
         # If this flag is true, we merge fixed joints into unique bodies
-        self.merge_fj = True
+        self.merge_fj = False
 
         self.random_groups = {}
 
