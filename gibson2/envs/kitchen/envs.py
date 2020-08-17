@@ -14,7 +14,7 @@ from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articul
 import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.envs.kitchen.plan_utils as PU
 import gibson2.envs.kitchen.skills as skills
-from gibson2.envs.kitchen.objects import Faucet, Platform
+from gibson2.envs.kitchen.objects import Faucet, Box
 from gibson2.envs.kitchen.base_env import BaseEnv, EnvSkillWrapper
 
 
@@ -323,11 +323,15 @@ class KitchenCoffee(TableTop):
         p.changeDynamics(o.body_id, -1, mass=10.0)
         self.objects.add_object("bowl", o)
 
+        # o = InteractiveObj(filename=os.path.join(gibson2.assets_path, "models/rbo/microwave/configuration/microwave.urdf"))
+        # o.load()
+        # self.objects.add_object("microwave", o)
+
     def _create_skill_lib(self):
         lib_skills = (
-            skills.GraspDistDiscreteOrn(lift_height=0.1, lift_speed=0.01),
-            skills.PlacePosDiscreteOrn(retract_distance=0.1, num_pause_steps=30),
-            skills.PourPosAngle(pour_angle_speed=np.pi / 32, num_pause_steps=30)
+            skills.GraspDistDiscreteOrn(lift_height=0.1, lift_speed=0.01, verbose=True),
+            skills.PlacePosDiscreteOrn(retract_distance=0.1, num_pause_steps=30, verbose=True),
+            skills.PourPosAngle(pour_angle_speed=np.pi / 32, num_pause_steps=30, verbose=True)
         )
         self.skill_lib = skills.SkillLibrary(self.planner, obstacles=self.obstacles, skills=lib_skills)
 
@@ -346,6 +350,11 @@ class KitchenCoffee(TableTop):
         z = PBU.stable_z(self.objects["bowl"].body_id, self.fixtures["table"].body_id)
         self.objects["bowl"].set_position_orientation(
             PU.sample_positions_in_box([-0.3, -0.2], [-0.05, 0.05], [z, z]), PBU.unit_quat())
+
+        # p.resetBasePositionAndOrientation(self.objects["microwave"].body_id, (0, 0, 0), skills.ORIENTATIONS["top"])
+        # z = PBU.stable_z(self.objects["microwave"].body_id, self.fixtures["table"].body_id)
+        # self.objects["microwave"].set_position_orientation(
+        #     PU.sample_positions_in_box([-0.3, -0.2], [-0.3, -0.3], [z, z]),  skills.ORIENTATIONS["top"])
 
     def _get_feature_observation(self):
         num_beads = np.zeros((len(self.objects), 2))
@@ -477,7 +486,7 @@ class KitchenCoffee(TableTop):
             self.objects["faucet_milk"].beads, self.objects["mug"].body_id))
         num_beads_in_bowl_milk = len(objects_center_in_container(
             self.objects["faucet_milk"].beads, self.objects["bowl"].body_id))
-        num_beads_in_mug_coffee= len(objects_center_in_container(
+        num_beads_in_mug_coffee = len(objects_center_in_container(
             self.objects["faucet_coffee"].beads, self.objects["mug"].body_id))
         num_beads_in_bowl_coffee = len(objects_center_in_container(
             self.objects["faucet_coffee"].beads, self.objects["bowl"].body_id))
@@ -490,3 +499,100 @@ class KitchenCoffee(TableTop):
         }
         successes["task"] = successes["fill_bowl"]
         return successes
+
+
+class Kitchen(BaseEnv):
+    def __init__(self, **kwargs):
+        kwargs["robot_base_pose"] = ([0.5, 0.3, 1.2], [0, 0, 1, 0])
+        super(Kitchen, self).__init__(**kwargs)
+
+    def _create_sensors(self):
+        PBU.set_camera(45, -45, 2.0, (0, 0, 0.7))
+        self.camera = Camera(
+            height=self._camera_width,
+            width=self._camera_height,
+            fov=60,
+            near=0.01,
+            far=10.,
+            renderer=p.ER_TINY_RENDERER
+        )
+        self.camera.set_pose_ypr((0, 0, 0.7), distance=2.0, yaw=45, pitch=-45)
+
+    def _create_fixtures(self):
+        p.loadMJCF(os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml"))
+        box = Box(color=(0.5, 0.5, 0.5, 1.0), size=(0.6, 1.0, 1.0))
+        box.load()
+        box.set_position((0.0, 1.0, 0.5))
+        p.changeDynamics(box.body_id, -1, mass=1000.0)
+        self.fixtures.add_object("platform1", box)
+
+    def _create_objects(self):
+        drawer = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf'))
+        drawer.load()
+        drawer.set_position([0, 0, 0.5])
+        set_articulated_object_dynamics(drawer.body_id)
+        self.objects.add_object("drawer", drawer)
+
+        stove = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cooktop/textured.urdf'), scale=0.7)
+        stove.load()
+        p.changeDynamics(stove.body_id, -1, mass=1000.0)
+
+        self.objects.add_object("stove", stove)
+
+        can = YCBObject('005_tomato_soup_can')
+        can.load()
+        p.changeDynamics(can.body_id, -1, mass=1.0)
+        set_friction(can.body_id)
+        self.objects.add_object("can", can)
+        # cabinet = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf'))
+        # cabinet.load()
+        # cabinet.set_position([0, 0, 2])
+        # set_articulated_object_dynamics(cabinet.body_id)
+        # self.objects.add_object("cabinet", cabinet)
+
+    def _reset_objects(self):
+        z = PBU.stable_z(self.objects["stove"].body_id, self.fixtures["platform1"].body_id)
+        self.objects["stove"].set_position_orientation(
+            PU.sample_positions_in_box([0.0, 0.0], [1.0, 1.0], [z, z]), PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["can"].body_id, self.objects["drawer"].body_id, surface_link=2) - 0.15
+        self.objects["can"].set_position_orientation(
+            PU.sample_positions_in_box([0.2, 0.2], [0.0, 0.0], [z, z]), PBU.unit_quat())
+
+    def _create_skill_lib(self):
+        lib_skills = (
+            skills.GraspDistDiscreteOrn(lift_height=0.1, lift_speed=0.01, verbose=True),
+            skills.PlacePosDiscreteOrn(retract_distance=0.1, num_pause_steps=30, verbose=True),
+            skills.PourPosAngle(pour_angle_speed=np.pi / 32, num_pause_steps=30, verbose=True),
+            skills.OperatePrismaticPosDistance(verbose=True)
+        )
+        self.skill_lib = skills.SkillLibrary(self.planner, obstacles=self.obstacles, skills=lib_skills)
+
+    def get_demo_expert(self, noise=None):
+        # for i in range(4):
+        #     p.changeDynamics(self.robot.body_id, i, mass=0.01)
+        self.reset()
+        buffer = PU.Buffer()
+        skill_seq = []
+        params = self.skill_lib.get_serialized_skill_params(
+            "operate_prismatic_pos_distance", grasp_pos=(0.37, 0.0, 0.19), prismatic_move_distance=-0.4)
+        skill_seq.append((params, self.objects["drawer"].body_id))
+
+        params = self.skill_lib.get_serialized_skill_params(
+            "grasp_dist_discrete_orn", grasp_orn_name="top", grasp_distance=0.05)
+        skill_seq.append((params, self.objects["can"].body_id))
+
+        params = self.skill_lib.get_serialized_skill_params(
+            "place_pos_discrete_orn", place_orn_name="front", place_pos=[0, 0, 0])
+        skill_seq.append((params, self.objects["stove"].body_id))
+
+        skill_step = 0
+        for skill_param, object_id in skill_seq:
+            traj, skill_step = PU.execute_skill(
+                self, self.skill_lib, skill_param,
+                target_object_id=object_id,
+                skill_step=skill_step,
+                noise=noise
+            )
+            buffer.append(**traj)
+        return buffer.aggregate()

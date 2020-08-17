@@ -74,9 +74,9 @@ class Faucet(Object):
             self._n_step_since += 1
 
 
-class Platform(Object):
+class Box(Object):
     def __init__(self, color=(0, 1, 0, 1), size=(0.15, 0.15, 0.01)):
-        super(Platform, self).__init__()
+        super(Box, self).__init__()
         self._color = color
         self._size = size
 

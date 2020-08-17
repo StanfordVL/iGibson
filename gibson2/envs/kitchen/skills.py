@@ -19,6 +19,8 @@ ORIENTATIONS = OrderedDict({
 
 ORIENTATION_NAMES = list(ORIENTATIONS.keys())
 
+DRAWER_GRASP_ORN = T.quaternion_from_euler(-np.pi / 2, 0, np.pi)
+
 DEFAULT_JOINT_RESOLUTIONS = (0.1, 0.1, 0.1, np.pi * 0.05, np.pi * 0.05, np.pi * 0.05)
 
 
@@ -40,7 +42,7 @@ def plan_skill_open_prismatic(
         planner,
         obstacles,
         grasp_pose,
-        retract_distance,
+        prismatic_move_distance,
         reach_distance=0.,
         joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
 ):
@@ -50,7 +52,7 @@ def plan_skill_open_prismatic(
         planner (PlannerRobot): planner
         obstacles (list, tuple): a list obstacle ids
         grasp_pose (tuple): pose for grasping the handle
-        retract_distance (float): distance for retract to open
+        prismatic_move_distance (float): distance for retract to open
         reach_distance (float): distance for reaching to grasp
         joint_resolutions (list, tuple): motion planning joint-space resolution
 
@@ -71,7 +73,7 @@ def plan_skill_open_prismatic(
     grasp_path = grasp_path.interpolate(pos_resolution=0.05, orn_resolution=np.pi/8)
 
     # retract to open
-    retract_pose = PBU.multiply(grasp_pose, ([-retract_distance, 0, 0], PBU.unit_quat()))
+    retract_pose = PBU.multiply(grasp_pose, ([prismatic_move_distance, 0, 0], PBU.unit_quat()))
     retract_path = CartesianPath()
     retract_path.append(grasp_pose, gripper_state=GRIPPER_CLOSE)
     retract_path.append(retract_pose, gripper_state=GRIPPER_CLOSE)
@@ -81,7 +83,7 @@ def plan_skill_open_prismatic(
     # retract a bit more to make room for the next motion
     retract_more_pose = PBU.multiply(retract_pose, ([-0.10, 0, 0], PBU.unit_quat()))
     retract_path.append(retract_more_pose, gripper_state=GRIPPER_OPEN)
-    retract_path = retract_path.interpolate(pos_resolution=0.01, orn_resolution=np.pi/8)  # slowly open
+    retract_path = retract_path.interpolate(pos_resolution=0.005, orn_resolution=np.pi/8)  # slowly open
     return grasp_path + retract_path
 
 
@@ -204,7 +206,8 @@ class Skill(object):
             requires_holding=False,
             acquires_holding=False,
             releases_holding=False,
-            joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
+            joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
+            verbose=False
     ):
         self.planner = None
         self.obstacles = None
@@ -212,6 +215,7 @@ class Skill(object):
         self.requires_holding = requires_holding
         self.acquires_holding = acquires_holding
         self.releases_holding = releases_holding
+        self.verbose = verbose
 
     @property
     def action_dimension(self):
@@ -229,12 +233,13 @@ class Skill(object):
 
 
 class GraspDistOrn(Skill):
-    def __init__(self, lift_height=0.1, lift_speed=0.05, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS):
+    def __init__(self, lift_height=0.1, lift_speed=0.05, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, verbose=False):
         super(GraspDistOrn, self).__init__(
             acquires_holding=True,
             requires_holding=False,
             releases_holding=False,
-            joint_resolutions=joint_resolutions
+            joint_resolutions=joint_resolutions,
+            verbose=verbose
         )
         self.lift_height = lift_height
         self.lift_speed = lift_speed
@@ -303,12 +308,13 @@ class GraspDistDiscreteOrn(GraspDistOrn):
 
 
 class PlacePosOrn(Skill):
-    def __init__(self, retract_distance=0.1, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, num_pause_steps=0):
+    def __init__(self, retract_distance=0.1, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, num_pause_steps=0, verbose=False):
         super(PlacePosOrn, self).__init__(
             requires_holding=True,
             releases_holding=True,
             acquires_holding=False,
-            joint_resolutions=joint_resolutions
+            joint_resolutions=joint_resolutions,
+            verbose=verbose
         )
         self.retract_distance = retract_distance
         self.num_pause_steps = num_pause_steps
@@ -361,11 +367,16 @@ class PlacePosDiscreteOrn(PlacePosOrn):
 
         target_pos = np.array(PBU.get_pose(target_object_id)[0])
         target_pos[2] = PBU.stable_z(holding_id, target_object_id)
+        params = params.copy()
+        params[2] = max(params[2], 0)
         target_pos += params[:3]
 
         orn_idx = int(np.argmax(params[3:]))
         orn = ORIENTATIONS[ORIENTATION_NAMES[orn_idx]]
         place_pose = (target_pos, orn)
+
+        if self.verbose:
+            print("[place] pos: {}, orn: {}".format(params[:3], ORIENTATION_NAMES[orn_idx]))
 
         traj = plan_skill_place(
             self.planner,
@@ -387,12 +398,13 @@ class PlacePosDiscreteOrn(PlacePosOrn):
 
 
 class PourPosOrn(Skill):
-    def __init__(self, pour_angle_speed=np.pi / 64, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, num_pause_steps=30):
+    def __init__(self, pour_angle_speed=np.pi / 64, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, num_pause_steps=30, verbose=False):
         super(PourPosOrn, self).__init__(
             requires_holding=True,
             acquires_holding=False,
             releases_holding=False,
-            joint_resolutions=joint_resolutions
+            joint_resolutions=joint_resolutions,
+            verbose=verbose
         )
         self.pour_angle_speed = pour_angle_speed
         self.num_pause_steps = num_pause_steps
@@ -409,6 +421,7 @@ class PourPosOrn(Skill):
         assert len(params) == self.action_dimension
         target_pos = np.array(PBU.get_pose(target_object_id)[0])
         target_pos += params[:3]
+
         orn = TU.axisangle2quat(*TU.vec2axisangle(params[3:]))
         pour_pose = (target_pos, orn)
 
@@ -454,6 +467,9 @@ class PourPosAngle(PourPosOrn):
 
         pour_pose = (pour_pos, orn)
 
+        if self.verbose:
+            print("[pour] distance: {}, z: {}, angle={}".format(np.linalg.norm(params[:2]), params[2], angle))
+
         traj = plan_skill_pour(
             self.planner,
             obstacles=self.obstacles,
@@ -469,6 +485,53 @@ class PourPosAngle(PourPosOrn):
         params = np.zeros(self.action_dimension)
         params[:3] = pour_pos
         params[3] = pour_angle
+        return params
+
+
+class OperatePrismaticPosDistance(Skill):
+    def __init__(self, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, num_pause_steps=0, verbose=False):
+        super(OperatePrismaticPosDistance, self).__init__(
+            requires_holding=False,
+            acquires_holding=False,
+            releases_holding=False,
+            joint_resolutions=joint_resolutions,
+            verbose=verbose
+        )
+        self.num_pause_steps = num_pause_steps
+
+    @property
+    def name(self):
+        return "operate_prismatic_pos_distance"
+
+    @property
+    def action_dimension(self):
+        return 4  # [x, y, z, d]
+
+    def plan(self, params, target_object_id=None, holding_id=None):
+        assert len(params) == self.action_dimension
+        delta_pos = params[:3]
+        distance = params[3]
+
+        target_pos = np.array(PBU.get_pose(target_object_id)[0])
+        target_pos += delta_pos
+
+        grasp_pose = (target_pos, DRAWER_GRASP_ORN)
+
+        traj = plan_skill_open_prismatic(
+            self.planner,
+            obstacles=self.obstacles,
+            grasp_pose=grasp_pose,
+            prismatic_move_distance=distance,
+            reach_distance=0.05,
+            joint_resolutions=self.joint_resolutions,
+        )
+        traj.append_pause(self.num_pause_steps)
+        return traj
+
+    def get_serialized_skill_params(self, grasp_pos, prismatic_move_distance):
+        params = np.zeros(self.action_dimension)
+        params[:3] = grasp_pos
+        params[3] = prismatic_move_distance
         return params
 
 

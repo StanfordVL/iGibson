@@ -38,7 +38,7 @@ def get_demo_can_to_drawer(env, perturb=False):
         obstacles=env.obstacles,
         grasp_pose=drawer_grasp_pose,
         reach_distance=0.05,
-        retract_distance=0.25,
+        prismatic_move_distance=0.25,
         joint_resolutions=(0.25, 0.25, 0.25, 0.2, 0.2, 0.2)
     )
     buffer.append(**PU.execute_planned_path(env, path, noise=ACTION_NOISE if perturb else None))
@@ -225,7 +225,7 @@ def record_demos(args):
         num_sim_per_step=5,
         sim_time_step=1./240.,
     )
-    env = env_factory("KitchenCoffee", **env_kwargs, use_planner=True, hide_planner=True, use_gui=args.gui, use_skills=True)
+    env = env_factory(args.env, **env_kwargs, use_planner=True, hide_planner=True, use_gui=args.gui, use_skills=True)
 
     if os.path.exists(args.file):
         os.remove(args.file)
@@ -246,7 +246,7 @@ def record_demos(args):
         t = time.time()
         try:
             # buffer = get_demo_arrange_hard_skill(env, perturb=args.perturb_demo)
-            buffer = env.get_demo_suboptimal(noise=ACTION_NOISE if args.perturb_demo else None)
+            buffer = env.get_demo_expert(noise=ACTION_NOISE if args.perturb_demo else None)
         except PU.NoPlanException as e:
             print(e)
             continue
@@ -471,6 +471,21 @@ def playback_compare(args):
         print("success: {}".format(env.is_success()))
 
 
+def view_scene(args):
+    env = env_factory(
+        args.env,
+        num_sim_per_step=5,
+        sim_time_step=1./240.,
+        use_planner=True,
+        use_skills=True,
+        use_gui=args.gui
+    )
+
+    while True:
+        p.stepSimulation()
+        time.sleep(1/240.)
+
+
 def main():
     import argparse
 
@@ -479,7 +494,7 @@ def main():
         "--mode",
         type=str,
         required=True,
-        choices=["demo", "playback", "extract", "extract_skill"]
+        choices=["demo", "playback", "extract", "extract_skill", "view"]
     )
     parser.add_argument(
         "--extract_by_action_playback",
@@ -488,7 +503,7 @@ def main():
     )
     parser.add_argument(
         "--skill_frame_ratio",
-        default=0.3,
+        default=0.0,
         type=float
     )
 
@@ -500,8 +515,13 @@ def main():
     parser.add_argument(
         "--file",
         type=str,
-        required=True
     )
+
+    parser.add_argument(
+        "--env",
+        type=str,
+    )
+
     parser.add_argument(
         "--extract_name",
         type=str,
@@ -570,8 +590,10 @@ def main():
         record_demos(args)
     elif args.mode == "extract":
         extract_dataset(args)
-    else:
+    elif args.mode == "extract_skill":
         extract_dataset_skills(args)
+    else:
+        view_scene(args)
     p.disconnect()
 
 

@@ -88,7 +88,8 @@ def draw_mug_positions(mug_pos, mug_fill_success, epoch, save_path=None):
     ax.scatter([0, 0.15], [0, 0], s=[200, 200], c='grey')
     ax.set_xlim([-0.075, 0.25])
     ax.set_ylim([-0.07, 0.07])
-    ax.text(-0.05, 0.06, "epoch={}, success={:.3f}".format(epoch, np.mean(mug_fill_success.astype(np.float32))))
+    ax.text(-0.05, 0.06, "epoch={}, success={:.3f}, no_plan={:.3f}".format(
+        epoch, np.mean(mug_fill_success.astype(np.float32)), len(mug_fill_success) / 50))
     if save_path is not None:
         fig.savefig(save_path)
     return get_img_from_fig(fig, dpi=80)
@@ -103,7 +104,8 @@ def draw_pour_orns(pour_orn, mug_pos_to_bowl, success, epoch, save_path=None):
     ax.scatter(pour_orn, bowl_dist, c=success_colors)
     ax.set_xlim([0, np.pi])
     ax.set_ylim([0, 0.15])
-    ax.text(-0.05, 0.12, "epoch={}, success={:.3f}".format(epoch, np.mean(success.astype(np.float32))))
+    ax.text(-0.05, 0.12, "epoch={}, success={:.3f}, no_plan={:.3f}".format(
+        epoch, np.mean(success.astype(np.float32)), len(success) / 50))
     if save_path is not None:
         fig.savefig(save_path)
     return get_img_from_fig(fig, dpi=80)
