@@ -218,16 +218,16 @@ class NavigateEnv(BaseEnv):
         self.initial_pos_vis_obj.load()
         self.target_pos_vis_obj.load()
 
-        if self.scene.build_graph:
-            self.num_waypoints_vis = 250
-            self.waypoints_vis = [VisualMarker(visual_shape=p.GEOM_CYLINDER,
-                                               rgba_color=[0, 1, 0, 0.3],
-                                               radius=0.1,
-                                               length=cyl_length,
-                                               initial_offset=[0, 0, cyl_length / 2.0])
-                                  for _ in range(self.num_waypoints_vis)]
-            for waypoint in self.waypoints_vis:
-                waypoint.load()
+        #if self.scene.build_graph:
+            #self.num_waypoints_vis = 50
+            #self.waypoints_vis = [VisualMarker(visual_shape=p.GEOM_CYLINDER,
+            #                                   rgba_color=[0, 1, 0, 0.3],
+            #                                   radius=0.1,
+            #                                   length=cyl_length,
+            #                                   initial_offset=[0, 0, cyl_length / 2.0])
+            #                      for _ in range(self.num_waypoints_vis)]
+            #for waypoint in self.waypoints_vis:
+            #    waypoint.load()
 
     def load_miscellaneous_variables(self):
         """
@@ -486,6 +486,7 @@ class NavigateEnv(BaseEnv):
         else:
             source = self.robots[0].get_position()[:2]
         target = self.target_pos[:2]
+        #print('source', source, 'target', target)
         return self.scene.get_shortest_path(self.floor_num, source, target, entire_path=entire_path)
 
     def get_geodesic_potential(self):
@@ -605,14 +606,14 @@ class NavigateEnv(BaseEnv):
             shortest_path, _ = self.get_shortest_path(entire_path=True)
             floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(
                 self.floor_num)
-            num_nodes = min(self.num_waypoints_vis, shortest_path.shape[0])
-            for i in range(num_nodes):
-                self.waypoints_vis[i].set_position(pos=np.array([shortest_path[i][0],
-                                                                 shortest_path[i][1],
-                                                                 floor_height]))
-            for i in range(num_nodes, self.num_waypoints_vis):
-                self.waypoints_vis[i].set_position(
-                    pos=np.array([0.0, 0.0, 100.0]))
+            #num_nodes = min(self.num_waypoints_vis, shortest_path.shape[0])
+            #for i in range(num_nodes):
+            #    self.waypoints_vis[i].set_position(pos=np.array([shortest_path[i][0],
+            #                                                     shortest_path[i][1],
+            #                                                     floor_height]))
+            #for i in range(num_nodes, self.num_waypoints_vis):
+            #    self.waypoints_vis[i].set_position(
+            #        pos=np.array([0.0, 0.0, 100.0]))
 
     def step(self, action):
         """

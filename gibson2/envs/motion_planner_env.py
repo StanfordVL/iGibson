@@ -18,6 +18,7 @@ from gibson2.external.pybullet_tools.utils import set_base_values_with_z
 from gibson2.external.pybullet_tools.utils import get_base_values
 from gibson2.external.pybullet_tools.utils import plan_base_motion_2d
 from gibson2.external.pybullet_tools.utils import joints_from_names
+from gibson2.external.pybullet_tools.utils import get_moving_links
 from gibson2.utils.utils import l2_distance, quatToXYZW
 from gibson2.utils.utils import rotate_vector_2d, rotate_vector_3d
 from gibson2.core.physics.interactive_objects import BoxShape
@@ -118,10 +119,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             assert np.abs(head_tilt_angle - np.deg2rad(45)) < 1e-3, \
                 'head tilte angle should be 45 degrees for {}'.format(
                     self.arena)
+
         else:
-            assert np.abs(head_tilt_angle - np.deg2rad(10)) < 1e-3, \
-                'head tilte angle should be 10 degrees for {}'.format(
-                    self.arena)
+            #assert np.abs(head_tilt_angle - np.deg2rad(10)) < 1e-3, \
+            #    'head tilte angle should be 10 degrees for {}'.format(
+            #        self.arena)
+            pass
 
         self.rotate_occ_grid = rotate_occ_grid
         self.fine_motion_plan = self.config.get('fine_motion_plan', True)
@@ -727,7 +730,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         self.grid_resolution = 128
         self.occupancy_range = 5.0  # m
-        robot_footprint_radius = 0.279
+        robot_footprint_radius = 0.32
         self.robot_footprint_radius_in_map = int(
             robot_footprint_radius / self.occupancy_range *
             self.grid_resolution)
@@ -752,25 +755,44 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         #     np.pi / 2.0,
         #     0.0
         # )
-        self.arm_default_joint_positions = (0.30322468280792236,
-                                            -1.414019864768982,
-                                            1.5178184935241699,
-                                            0.8189625336474915,
-                                            2.200358942909668,
-                                            2.9631312579803466,
-                                            -1.2862852996643066,
-                                            0.0008453550418615341)
-        self.arm_joint_ids = joints_from_names(self.robot_id,
-                                               [
-                                                   'torso_lift_joint',
-                                                   'shoulder_pan_joint',
-                                                   'shoulder_lift_joint',
-                                                   'upperarm_roll_joint',
-                                                   'elbow_flex_joint',
-                                                   'forearm_roll_joint',
-                                                   'wrist_flex_joint',
-                                                   'wrist_roll_joint'
-                                               ])
+
+        if self.config['robot'] == 'Fetch':
+            self.arm_default_joint_positions = (0.30322468280792236,
+                                                -1.414019864768982,
+                                                1.5178184935241699,
+                                                0.8189625336474915,
+                                                2.200358942909668,
+                                                2.9631312579803466,
+                                                -1.2862852996643066,
+                                                0.0008453550418615341)
+            self.arm_joint_ids = joints_from_names(self.robot_id,
+                                                   [
+                                                       'torso_lift_joint',
+                                                       'shoulder_pan_joint',
+                                                       'shoulder_lift_joint',
+                                                       'upperarm_roll_joint',
+                                                       'elbow_flex_joint',
+                                                       'forearm_roll_joint',
+                                                       'wrist_flex_joint',
+                                                       'wrist_roll_joint'
+                                                   ])
+        elif self.config['robot'] == 'Movo':
+            self.arm_default_joint_positions = (0.205, -1.50058731470836, -1.3002625076695704, 0.5204845864369407, \
+               -2.6923805472917626, -0.02678584326934146, 0.5065742552588746, \
+               -1.562883631882778)
+            self.arm_joint_ids = joints_from_names(self.robot_id,
+                                                   ["linear_joint",
+                                                   "right_shoulder_pan_joint",
+                                                    "right_shoulder_lift_joint",
+                                                    "right_arm_half_joint",
+                                                    "right_elbow_joint",
+                                                    "right_wrist_spherical_1_joint",
+                                                    "right_wrist_spherical_2_joint",
+                                                    "right_wrist_3_joint",
+                                                       ])
+            self.arm_joint_ids_all = get_moving_links(self.robot_id, self.arm_joint_ids)
+            self.arm_joint_ids_all = [item for item in self.arm_joint_ids_all if item != self.robots[0].end_effector_part_index()]
+
 
     def update_action_space(self):
         # action[0] = base_or_arm
@@ -949,14 +971,14 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return path
 
     def get_local_occupancy_grid(self, state=None):
-        assert self.config['robot'] in ['Turtlebot', 'Fetch']
+        assert self.config['robot'] in ['Turtlebot', 'Fetch', 'Movo']
         if self.config['robot'] == 'Turtlebot':
             # Hokuyo URG-04LX-UG01
             laser_linear_range = 5.6
             laser_angular_range = 240.0
             min_laser_dist = 0.05
             laser_link_name = 'scan_link'
-        elif self.config['robot'] == 'Fetch':
+        elif self.config['robot'] == 'Fetch' or self.config['robot'] == 'Movo':
             # SICK TiM571-2050101 Laser Range Finder
             laser_linear_range = 25.0
             laser_angular_range = 220.0
@@ -1015,7 +1037,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                    radius=int(self.robot_footprint_radius_in_map),
                    color=1,
                    thickness=-1)
+        #cv2.imshow('occ', occupancy_grid * 200)
         return occupancy_grid
+
 
     def get_additional_states(self):
         # pos_noise = 0.0
@@ -1038,7 +1062,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         else:
             target_pos_local = self.global_to_local(self.target_pos)
             # cache results for reward calculation
-            shortest_path, self.new_potential = self.get_shortest_path()
+            shortest_path, self.new_potential = self.get_shortest_path(entire_path=False)
+            #print('shortest_path', shortest_path)
 
             # geodesic_dist = 0.0
             robot_z = self.robots[0].get_position()[2]
@@ -1461,16 +1486,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.get_ik_parameters()
 
         n_attempt = 0
-        max_attempt = 50
+        max_attempt = 200
         sample_fn = get_sample_fn(self.robot_id, self.arm_joint_ids)
         base_pose = get_base_values(self.robot_id)
 
         # find collision-free IK solution for arm_subgoal
         while n_attempt < max_attempt:
+            if self.config['robot'] == 'Movo':
+                self.robots[0].tuck()
             set_joint_positions(self.robot_id, self.arm_joint_ids, sample_fn())
             arm_joint_positions = p.calculateInverseKinematics(
                 self.robot_id,
-                self.robots[0].parts['gripper_link'].body_part_index,
+                self.robots[0].end_effector_part_index(),
                 targetPosition=arm_subgoal,
                 # targetOrientation=self.robots[0].get_orientation(),
                 lowerLimits=min_limits,
@@ -1479,12 +1506,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 restPoses=rest_position,
                 jointDamping=joint_damping,
                 solver=p.IK_DLS,
-                maxNumIterations=100)[2:10]
+                maxNumIterations=100)
+
+            if self.config['robot'] == 'Fetch':
+                arm_joint_positions = arm_joint_positions[2:10]
+            elif self.config['robot'] == 'Movo':
+                arm_joint_positions = arm_joint_positions[:8]
+
             set_joint_positions(
                 self.robot_id, self.arm_joint_ids, arm_joint_positions)
 
             dist = l2_distance(
                 self.robots[0].get_end_effector_position(), arm_subgoal)
+            # print('dist', dist)
             if dist > self.arm_subgoal_threshold:
                 n_attempt += 1
                 continue
@@ -1498,21 +1532,30 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.reset_object_states()
 
             # arm should not have any collision
-            collision_free = self.is_collision_free(
+            if self.config['robot'] == 'Movo':
+                collision_free = self.is_collision_free(
+                body_a=self.robot_id,
+                link_a_list=self.arm_joint_ids_all)
+                # ignore linear link
+            else:
+                collision_free = self.is_collision_free(
                 body_a=self.robot_id,
                 link_a_list=self.arm_joint_ids)
+
             if not collision_free:
                 n_attempt += 1
+                #print('arm has collision')
                 continue
 
             # gripper should not have any self-collision
             collision_free = self.is_collision_free(
                 body_a=self.robot_id,
                 link_a_list=[
-                    self.robots[0].parts['gripper_link'].body_part_index],
+                    self.robots[0].end_effector_part_index()],
                 body_b=self.robot_id)
             if not collision_free:
                 n_attempt += 1
+                print('gripper has collision')
                 continue
 
             self.episode_metrics['arm_ik_time'] += time.time() - ik_start
@@ -1547,6 +1590,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         :param arm_joint_positions
         :return: whether arm_joint_positions is achieved
         """
+        if self.config['robot'] == 'Movo':
+            self.robots[0].tuck()
+
         set_joint_positions(self.robot_id, self.arm_joint_ids,
                             self.arm_default_joint_positions)
 
@@ -1554,17 +1600,53 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             self.episode_metrics['arm_ik_failure'] += 1
             return False
 
-        disabled_collisions = {
-            (link_from_name(self.robot_id, 'torso_lift_link'),
-             link_from_name(self.robot_id, 'torso_fixed_link')),
-            (link_from_name(self.robot_id, 'torso_lift_link'),
-             link_from_name(self.robot_id, 'shoulder_lift_link')),
-            (link_from_name(self.robot_id, 'torso_lift_link'),
-             link_from_name(self.robot_id, 'upperarm_roll_link')),
-            (link_from_name(self.robot_id, 'torso_lift_link'),
-             link_from_name(self.robot_id, 'forearm_roll_link')),
-            (link_from_name(self.robot_id, 'torso_lift_link'),
-             link_from_name(self.robot_id, 'elbow_flex_link'))}
+        if self.config['robot'] == 'Fetch':
+            disabled_collisions = {
+                (link_from_name(self.robot_id, 'torso_lift_link'),
+                 link_from_name(self.robot_id, 'torso_fixed_link')),
+                (link_from_name(self.robot_id, 'torso_lift_link'),
+                 link_from_name(self.robot_id, 'shoulder_lift_link')),
+                (link_from_name(self.robot_id, 'torso_lift_link'),
+                 link_from_name(self.robot_id, 'upperarm_roll_link')),
+                (link_from_name(self.robot_id, 'torso_lift_link'),
+                 link_from_name(self.robot_id, 'forearm_roll_link')),
+                (link_from_name(self.robot_id, 'torso_lift_link'),
+                 link_from_name(self.robot_id, 'elbow_flex_link'))}
+        elif self.config['robot'] == 'Movo':
+            disabled_collisions = {
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_shoulder_link')),
+                (link_from_name(self.robot_id, 'right_base_link'), 
+                link_from_name(self.robot_id,'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_arm_half_1_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_arm_half_2_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_forearm_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_wrist_spherical_1_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_wrist_spherical_2_link')),
+                (link_from_name(self.robot_id, 'linear_actuator_link'), 
+                link_from_name(self.robot_id, 'right_wrist_3_link')),
+                (link_from_name(self.robot_id, 'right_wrist_spherical_2_link'), 
+                link_from_name(self.robot_id, 'right_robotiq_coupler_link')),
+                (link_from_name(self.robot_id, 'right_shoulder_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'left_base_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'left_shoulder_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'left_arm_half_2_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'right_arm_half_2_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'right_arm_half_1_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'left_arm_half_1_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                }
 
         if self.fine_motion_plan:
             self_collisions = True
@@ -1575,6 +1657,12 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         plan_arm_start = time.time()
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+
+        if self.config['robot'] == 'Fetch':
+            allow_collision_links = [19]
+        elif self.config['robot'] == 'Movo':
+            allow_collision_links = [23,24]
+
         arm_path = plan_joint_motion(
             self.robot_id,
             self.arm_joint_ids,
@@ -1582,15 +1670,23 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             disabled_collisions=disabled_collisions,
             self_collisions=self_collisions,
             obstacles=mp_obstacles,
-            algorithm=self.arm_mp_algo)
+            algorithm=self.arm_mp_algo,
+            allow_collision_links=allow_collision_links,
+            )
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         self.episode_metrics['arm_mp_time'] += time.time() - plan_arm_start
+        
+        base_pose = get_base_values(self.robot_id)
         if arm_path is not None:
             if self.mode == 'gui':
                 for joint_way_point in arm_path:
                     set_joint_positions(
                         self.robot_id, self.arm_joint_ids, joint_way_point)
-                    time.sleep(0.02)  # animation
+                    #self.simulator.step()
+
+                    #set_base_values_with_z(
+                    #    self.robot_id, base_pose, z=self.initial_height)
+                    #time.sleep(0.02)  # animation
             else:
                 set_joint_positions(
                     self.robot_id, self.arm_joint_ids, arm_joint_positions)
@@ -1603,6 +1699,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             return True
         else:
+            # print('arm mp fails')
+            if self.config['robot'] == 'Movo':
+                self.robots[0].tuck()
             set_joint_positions(self.robot_id, self.arm_joint_ids,
                                 self.arm_default_joint_positions)
             self.episode_metrics['arm_mp_failure'] += 1
@@ -1663,17 +1762,27 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 *self.tabletop_object_state)
 
     def get_ik_parameters(self):
-        max_limits = [0., 0.] + \
-            get_max_limits(self.robot_id, self.arm_joint_ids)
-        min_limits = [0., 0.] + \
-            get_min_limits(self.robot_id, self.arm_joint_ids)
-        # increase torso_lift_joint lower limit to 0.02 to avoid self-collision
-        min_limits[2] += 0.02
-        rest_position = [0., 0.] + \
-            list(get_joint_positions(self.robot_id, self.arm_joint_ids))
-        joint_range = list(np.array(max_limits) - np.array(min_limits))
-        joint_range = [item + 1 for item in joint_range]
-        joint_damping = [0.1 for _ in joint_range]
+        if self.config['robot'] == 'Fetch':
+            max_limits = [0., 0.] + \
+                get_max_limits(self.robot_id, self.arm_joint_ids)
+            min_limits = [0., 0.] + \
+                get_min_limits(self.robot_id, self.arm_joint_ids)
+            # increase torso_lift_joint lower limit to 0.02 to avoid self-collision
+            min_limits[2] += 0.02
+            rest_position = [0., 0.] + \
+                list(get_joint_positions(self.robot_id, self.arm_joint_ids))
+            joint_range = list(np.array(max_limits) - np.array(min_limits))
+            joint_range = [item + 1 for item in joint_range]
+            joint_damping = [0.1 for _ in joint_range]
+            
+        elif self.config['robot'] == 'Movo':
+            max_limits = get_max_limits(self.robot_id, self.robots[0].all_joints)
+            min_limits = get_min_limits(self.robot_id, self.robots[0].all_joints)
+            rest_position = list(get_joint_positions(self.robot_id, self.robots[0].all_joints))
+            joint_range = list(np.array(max_limits) - np.array(min_limits))
+            joint_range = [item + 1 for item in joint_range]
+            joint_damping = [0.1 for _ in joint_range]
+        
         return (
             max_limits, min_limits, rest_position,
             joint_range, joint_damping
@@ -1733,7 +1842,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             joint_positions = p.calculateInverseKinematics(
                 self.robot_id,
-                self.robots[0].parts['gripper_link'].body_part_index,
+                self.robots[0].end_effector_part_index(),
                 targetPosition=push_goal,
                 # targetOrientation=self.robots[0].get_orientation(),
                 lowerLimits=min_limits,
@@ -1742,9 +1851,16 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 restPoses=rest_position,
                 jointDamping=joint_damping,
                 solver=p.IK_DLS,
-                maxNumIterations=100)[2:10]
+                maxNumIterations=100)
+
+            if self.config['robot'] == 'Fetch':
+                joint_positions = joint_positions[2:10]
+            elif self.config['robot'] == 'Movo':
+                joint_positions = joint_positions[:8]
 
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
+            if self.config['robot'] == 'Movo':
+                self.robots[0].control_tuck_left()
             self.simulator_step()
             set_base_values_with_z(
                 self.robot_id, base_pose, z=self.initial_height)
@@ -1782,12 +1898,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         arm_joint_positions = self.get_arm_joint_positions(arm_subgoal)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         # self.times['get_arm_joint_positions'].append(time.time() - start)
-        # print('get_arm_joint_positions', time.time() - start)
 
         # start = time.time()
         subgoal_success = self.reach_arm_subgoal(arm_joint_positions)
         # self.times['reach_arm_subgoal'].append(time.time() - start)
-        # print('reach_arm_subgoal', time.time() - start)
 
         # start = time.time()
         # p.restoreState(stateId=state_id)
@@ -2132,6 +2246,8 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         if not use_base:
             set_joint_positions(self.robot_id, self.arm_joint_ids,
                                 self.arm_default_joint_positions)
+            if self.config['robot'] == 'Movo':
+                self.robots[0].tuck()
 
         self.simulator.sync()
         state = self.get_state()
@@ -2156,6 +2272,17 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # print('compute_next_step', self.state['current_step'])
         # print('reward', reward)
         # time.sleep(3)
+
+        state['sensor'][22:] = np.array(
+            [ 1.1066653e-01,  4.8220795e-02,  1.2000595e+00,  3.0276859e-01,
+            -1.4137154e+00,  1.5177654e+00,  8.1926394e-01,  2.2003491e+00,
+            2.9632292e+00, -1.2863159e+00,  8.3037489e-04, -9.8768812e-01,
+            9.9859416e-01,  7.3064345e-01,  8.0829090e-01,  1.7741929e-01,
+            -9.5980763e-01,  8.3037477e-04,  1.5643573e-01,  5.3006023e-02,
+            6.8275923e-01, -5.8878332e-01, -9.8413533e-01,  2.8065875e-01,
+            9.9999964e-01, -9.9663794e-02,  6.4813800e-02, -5.9966124e-03,
+            6.0995504e-02, -8.5612042e-03,  1.4930778e-02, -7.5732898e-03,
+            -8.5354820e-03], dtype=np.float32)
 
         return state, reward, done, info
 
@@ -2816,12 +2943,16 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         episode_return = 0.0
         state = nav_env.reset()
-        embed()
         start = time.time()
         for i in range(10000000):
             print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
-            embed()
+
+            pos=[1.2, -1.3, 0]
+            orn=-np.pi / 2
+            nav_env.robots[0].set_position_orientation(pos=pos, orn=quatToXYZW(euler2quat(0, 0, orn), 'wxyz'));
+
+            action = nav_env.action_space.sample()
             state, reward, done, info = nav_env.step(action)
             episode_return += reward
             print('Reward:', reward)
@@ -2832,10 +2963,10 @@ if __name__ == '__main__':
             #    action = nav_env.action_space.sample()
             #    state, reward, done, _ = nav_env.step(action)
             #    # print('reward', reward)
-            if done:
-                print('Episode return:', episode_return)
-                print('Episode length:', info['episode_length'])
-                break
+            #if done:
+            #    print('Episode return:', episode_return)
+            #    print('Episode length:', info['episode_length'])
+            #    break
         print("Time", time.time() - start)
 
     for key in nav_env.times:

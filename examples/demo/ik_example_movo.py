@@ -1,5 +1,5 @@
 import yaml
-from gibson2.core.physics.robot_locomotors import Turtlebot, JR2_Kinova, Fetch
+from gibson2.core.physics.robot_locomotors import Turtlebot, JR2_Kinova, Fetch, Movo
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import EmptyScene
 from gibson2.core.physics.interactive_objects import InteractiveObj, BoxShape, YCBObject
@@ -24,17 +24,50 @@ def main():
     s = Simulator(mode='gui', timestep=1 / 240.0)
     scene = EmptyScene()
     s.import_scene(scene)
-    fetch = Fetch(config)
-    s.import_robot(fetch)
+    movo = Movo(config)
+    s.import_robot(movo)
 
-    robot_id = fetch.robot_ids[0]
+    robot_id = movo.robot_ids[0]
+    for i in range(p.getNumJoints(robot_id)):
+        print(p.getJointInfo(robot_id, i))
+        
+    exit()
 
-    arm_joints = joints_from_names(robot_id, ['torso_lift_joint','shoulder_pan_joint', 'shoulder_lift_joint', 'upperarm_roll_joint',
-                                              'elbow_flex_joint', 'forearm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint'])
+
+    all_joints = joints_from_names(robot_id,  [
+        "linear_joint",
+        "right_shoulder_pan_joint",
+        "right_shoulder_lift_joint",
+        "right_arm_half_joint",
+        "right_elbow_joint",
+        "right_wrist_spherical_1_joint",
+        "right_wrist_spherical_2_joint",
+        "right_wrist_3_joint",
+        "left_shoulder_pan_joint",
+        "left_shoulder_lift_joint",
+        "left_arm_half_joint",
+        "left_elbow_joint",
+        "left_wrist_spherical_1_joint",
+        "left_wrist_spherical_2_joint",
+        "left_wrist_3_joint",
+        ]
+        )
+
+    arm_joints = joints_from_names(robot_id,
+                                            ['linear_joint'] + [item.format('right') for item in 
+                                            ['{}_shoulder_pan_joint', 
+                                            '{}_shoulder_lift_joint', 
+                                            '{}_arm_half_joint', 
+                                            '{}_elbow_joint',
+                                            '{}_wrist_spherical_1_joint', 
+                                            '{}_wrist_spherical_2_joint', 
+                                            '{}_wrist_3_joint']])
+    
+
     #finger_joints = joints_from_names(robot_id, ['l_gripper_finger_joint', 'r_gripper_finger_joint'])
-    fetch.robot_body.reset_position([0, 0, 0])
-    fetch.robot_body.reset_orientation([0, 0, 1, 0])
-    x,y,z = fetch.get_end_effector_position()
+    movo.robot_body.reset_position([0, 0, 0])
+    movo.robot_body.reset_orientation([0, 0, 1, 0])
+    x,y,z = movo.get_end_effector_position()
     #set_joint_positions(robot_id, finger_joints, [0.04,0.04])
     print(x,y,z)
 
@@ -44,17 +77,14 @@ def main():
     #max_limits = [0,0] + get_max_limits(robot_id, arm_joints) + [0.05,0.05]
     #min_limits = [0,0] + get_min_limits(robot_id, arm_joints) + [0,0]
     #rest_position = [0,0] + list(get_joint_positions(robot_id, arm_joints)) + [0.04,0.04]
-    max_limits = [0,0] + get_max_limits(robot_id, arm_joints)
-    min_limits = [0,0] + get_min_limits(robot_id, arm_joints)
-    rest_position = [0,0] + list(get_joint_positions(robot_id, arm_joints))
+    max_limits = get_max_limits(robot_id, all_joints)
+    min_limits = get_min_limits(robot_id, all_joints)
+    rest_position = list(get_joint_positions(robot_id, all_joints))
     joint_range = list(np.array(max_limits) - np.array(min_limits))
     joint_range = [item + 1 for item in joint_range]
     jd = [0.1 for item in joint_range]
     print(max_limits)
     print(min_limits)
-
-    for i in range(p.getNumJoints(robot_id)):
-        print(p.getJointInfo(robot_id, i))
 
     def accurateCalculateInverseKinematics(robotid, endEffectorId, targetPos, threshold, maxIter):
         sample_fn = get_sample_fn(robotid, arm_joints)
@@ -67,7 +97,7 @@ def main():
                                                       jointRanges = joint_range,
                                                       restPoses = rest_position,
                                                       jointDamping = jd)
-            set_joint_positions(robotid, arm_joints, jointPoses[2:10])
+            set_joint_positions(robotid, arm_joints, jointPoses[:8])
             ls = p.getLinkState(robotid, endEffectorId)
             newPos = ls[4]
 
@@ -82,12 +112,12 @@ def main():
 
     while True:
         with Profiler("Simulation step"):
-            fetch.robot_body.reset_position([0, 0, 0])
-            fetch.robot_body.reset_orientation([0, 0, 1, 0])
+            movo.robot_body.reset_position([0, 0, 0])
+            movo.robot_body.reset_orientation([0, 0, 1, 0])
             threshold = 0.01
             maxIter = 100
-            joint_pos = accurateCalculateInverseKinematics(robot_id, fetch.parts['gripper_link'].body_part_index, [x, y, z],
-                                                           threshold, maxIter)[2:10]
+            joint_pos = accurateCalculateInverseKinematics(robot_id, movo.parts['right_gripper_link'].body_part_index, [x, y, z],
+                                                           threshold, maxIter)[:8]
 
             #set_joint_positions(robot_id, finger_joints, [0.04, 0.04])
             s.step()

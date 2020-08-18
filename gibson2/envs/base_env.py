@@ -1,5 +1,5 @@
 from gibson2.core.physics.robot_locomotors \
-    import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot
+    import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot, Movo
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import EmptyScene, StadiumScene, BuildingScene
 import gibson2
@@ -108,6 +108,8 @@ class BaseEnv(gym.Env):
             robot = Fetch(self.config)
         elif self.config['robot'] == 'Locobot':
             robot = Locobot(self.config)
+        elif self.config['robot'] == 'Movo':
+            robot = Movo(self.config)
         else:
             raise Exception('unknown robot type: {}'.format(self.config['robot']))
 
