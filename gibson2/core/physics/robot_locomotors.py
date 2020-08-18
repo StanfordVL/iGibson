@@ -815,7 +815,9 @@ class Movo(LocomotorRobot):
             ('linear_actuator_link', 'left_arm_half_1_link'), ('right_wrist_spherical_2_link', 'right_robotiq_coupler_link'),
             ('right_wrist_3_link', 'right_robotiq_coupler_link'), ('right_wrist_3_link', 'right_gripper_base_link'),
             ('left_wrist_spherical_2_link', 'left_gripper_base_link'), ('left_wrist_3_link', 'left_gripper_base_link'),
-            ('right_gripper_base_link', 'right_gripper_link')
+            ('right_gripper_base_link', 'right_gripper_link'), ('linear_actuator_fixed_link','left_arm_half_1_link'),
+            ('linear_actuator_fixed_link', 'left_arm_half_2_link')
+            
         ]
 
         for link in range(p.getNumJoints(robot_id)):

@@ -2590,12 +2590,19 @@ def any_link_pair_collision(body1, links1, body2, links2=None, **kwargs):
         if (body1 == body2) and (link1 == link2):
             continue
         if pairwise_link_collision(body1, link1, body2, link2, **kwargs):
+            # print('body {} link {} body {} link {}'.format(body1, link1, body2, link2))
             return True
     return False
 
 
 def body_collision(body1, body2, max_distance=MAX_DISTANCE):  # 10000
     # TODO: confirm that this doesn't just check the base link
+    
+    #for i in range(p.getNumJoints(body1)):
+    #    for j in range(p.getNumJoints(body2)):
+    #        #if len(p.getContactPoints(body1, body2, i, j)) > 0:
+    #            #print('body {} {} collide with body {} {}'.format(body1, i, body2, j))
+
     return len(p.getClosestPoints(bodyA=body1, bodyB=body2, distance=max_distance,
                                   physicsClientId=CLIENT)) != 0  # getContactPoints`
 
@@ -2893,11 +2900,11 @@ def get_collision_fn(body, joints, obstacles, attachments, self_collisions, disa
             # Self-collisions should not have the max_distance parameter
             # , **kwargs):
             if pairwise_link_collision(body, link1, body, link2):
-                print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
+                #print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
                 return True
         for body1, body2 in check_body_pairs:
             if pairwise_collision(body1, body2, **kwargs):
-                print('body collision', body1, body2)
+                # print('body collision', body1, body2)
                 #print(get_body_name(body1), get_body_name(body2))
                 return True
         return False
@@ -2935,10 +2942,10 @@ def plan_direct_joint_motion(body, joints, end_conf, **kwargs):
 
 def check_initial_end(start_conf, end_conf, collision_fn):
     if collision_fn(start_conf):
-        print("Warning: initial configuration is in collision")
+        # print("Warning: initial configuration is in collision")
         return False
     if collision_fn(end_conf):
-        print("Warning: end configuration is in collision")
+        # print("Warning: end configuration is in collision")
         return False
     return True
 

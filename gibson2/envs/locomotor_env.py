@@ -486,7 +486,7 @@ class NavigateEnv(BaseEnv):
         else:
             source = self.robots[0].get_position()[:2]
         target = self.target_pos[:2]
-        print('source', source, 'target', target)
+        #print('source', source, 'target', target)
         return self.scene.get_shortest_path(self.floor_num, source, target, entire_path=entire_path)
 
     def get_geodesic_potential(self):

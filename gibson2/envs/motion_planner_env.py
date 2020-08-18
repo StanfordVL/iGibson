@@ -18,6 +18,7 @@ from gibson2.external.pybullet_tools.utils import set_base_values_with_z
 from gibson2.external.pybullet_tools.utils import get_base_values
 from gibson2.external.pybullet_tools.utils import plan_base_motion_2d
 from gibson2.external.pybullet_tools.utils import joints_from_names
+from gibson2.external.pybullet_tools.utils import get_moving_links
 from gibson2.utils.utils import l2_distance, quatToXYZW
 from gibson2.utils.utils import rotate_vector_2d, rotate_vector_3d
 from gibson2.core.physics.interactive_objects import BoxShape
@@ -719,7 +720,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
         self.grid_resolution = 128
         self.occupancy_range = 5.0  # m
-        robot_footprint_radius = 0.279
+        robot_footprint_radius = 0.32
         self.robot_footprint_radius_in_map = int(
             robot_footprint_radius / self.occupancy_range *
             self.grid_resolution)
@@ -779,6 +780,9 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                                                     "right_wrist_spherical_2_joint",
                                                     "right_wrist_3_joint",
                                                        ])
+            self.arm_joint_ids_all = get_moving_links(self.robot_id, self.arm_joint_ids)
+            self.arm_joint_ids_all = [item for item in self.arm_joint_ids_all if item != self.robots[0].end_effector_part_index()]
+
 
     def update_action_space(self):
         # action[0] = base_or_arm
@@ -1009,7 +1013,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             target_pos_local = self.global_to_local(self.target_pos)
             # cache results for reward calculation
             shortest_path, self.new_potential = self.get_shortest_path(entire_path=False)
-            print('shortest_path', shortest_path)
+            #print('shortest_path', shortest_path)
 
             # geodesic_dist = 0.0
             robot_z = self.robots[0].get_position()[2]
@@ -1402,7 +1406,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             dist = l2_distance(
                 self.robots[0].get_end_effector_position(), arm_subgoal)
-            print('dist', dist)
+            # print('dist', dist)
             if dist > self.arm_subgoal_threshold:
                 n_attempt += 1
                 continue
@@ -1419,7 +1423,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             if self.config['robot'] == 'Movo':
                 collision_free = self.is_collision_free(
                 body_a=self.robot_id,
-                link_a_list=self.arm_joint_ids[1:])
+                link_a_list=self.arm_joint_ids_all)
                 # ignore linear link
             else:
                 collision_free = self.is_collision_free(
@@ -1428,7 +1432,7 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
 
             if not collision_free:
                 n_attempt += 1
-                print('arm has collision')
+                #print('arm has collision')
                 continue
 
             # gripper should not have any self-collision
@@ -1517,7 +1521,19 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
                 (link_from_name(self.robot_id, 'right_wrist_spherical_2_link'), 
                 link_from_name(self.robot_id, 'right_robotiq_coupler_link')),
                 (link_from_name(self.robot_id, 'right_shoulder_link'), 
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link'))
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'left_base_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'left_shoulder_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'left_arm_half_2_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'right_arm_half_2_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'right_arm_half_1_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                (link_from_name(self.robot_id, 'left_arm_half_1_link'), 
+                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
                 }
 
         if self.fine_motion_plan:
@@ -1545,12 +1561,18 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
             allow_collision_links=allow_collision_links,
             )
         self.episode_metrics['arm_mp_time'] += time.time() - plan_arm_start
+        
+        base_pose = get_base_values(self.robot_id)
         if arm_path is not None:
             if self.mode == 'gui':
                 for joint_way_point in arm_path:
                     set_joint_positions(
                         self.robot_id, self.arm_joint_ids, joint_way_point)
-                    time.sleep(0.02)  # animation
+                    #self.simulator.step()
+
+                    #set_base_values_with_z(
+                    #    self.robot_id, base_pose, z=self.initial_height)
+                    #time.sleep(0.02)  # animation
             else:
                 set_joint_positions(
                     self.robot_id, self.arm_joint_ids, arm_joint_positions)
@@ -1760,12 +1782,10 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # start = time.time()
         arm_joint_positions = self.get_arm_joint_positions(arm_subgoal)
         # self.times['get_arm_joint_positions'].append(time.time() - start)
-        print('get_arm_joint_positions successful')
 
         # start = time.time()
         subgoal_success = self.reach_arm_subgoal(arm_joint_positions)
         # self.times['reach_arm_subgoal'].append(time.time() - start)
-        print('reach_arm_subgoal', subgoal_success)
 
         # start = time.time()
         # p.restoreState(stateId=state_id)
@@ -1786,7 +1806,6 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         return subgoal_success
 
     def step(self, action):
-        print('eye', self.robots[0].eyes.get_position())
         # start = time.time()
         # action[0] = base_or_arm
         # action[1] = base_subgoal_theta
@@ -2113,6 +2132,17 @@ class MotionPlanningBaseArmEnv(NavigateRandomEnv):
         # print('compute_next_step', self.state['current_step'])
         # print('reward', reward)
         # time.sleep(3)
+
+        state['sensor'][22:] = np.array(
+            [ 1.1066653e-01,  4.8220795e-02,  1.2000595e+00,  3.0276859e-01,
+            -1.4137154e+00,  1.5177654e+00,  8.1926394e-01,  2.2003491e+00,
+            2.9632292e+00, -1.2863159e+00,  8.3037489e-04, -9.8768812e-01,
+            9.9859416e-01,  7.3064345e-01,  8.0829090e-01,  1.7741929e-01,
+            -9.5980763e-01,  8.3037477e-04,  1.5643573e-01,  5.3006023e-02,
+            6.8275923e-01, -5.8878332e-01, -9.8413533e-01,  2.8065875e-01,
+            9.9999964e-01, -9.9663794e-02,  6.4813800e-02, -5.9966124e-03,
+            6.0995504e-02, -8.5612042e-03,  1.4930778e-02, -7.5732898e-03,
+            -8.5354820e-03], dtype=np.float32)
 
         return state, reward, done, info
 
@@ -2762,22 +2792,11 @@ if __name__ == '__main__':
             print('Step: {}'.format(i))
             action = nav_env.action_space.sample()
 
-            debug_save = []
+            pos=[1.2, -1.3, 0]
+            orn=-np.pi / 2
+            nav_env.robots[0].set_position_orientation(pos=pos, orn=quatToXYZW(euler2quat(0, 0, orn), 'wxyz'));
 
-            for p in [-1.3, -1.4, -1.5]:
-                pos=[1.2, -1.3, 0]
-                orn=-np.pi / 2
-                nav_env.robots[0].set_position_orientation(pos=pos, orn=quatToXYZW(euler2quat(0, 0, orn), 'wxyz'));
-                for i in range(3):
-                    nav_env.simulator.sync()
-                    nav_env.simulator.step()
-
-                s = nav_env.get_state()
-                debug_save.append(s)
-            np.save('{}_state.npy'.format(nav_env.config['robot']), debug_save)
-            exit()
-
-            #embed()
+            action = nav_env.action_space.sample()
             state, reward, done, info = nav_env.step(action)
             episode_return += reward
             print('Reward:', reward)
