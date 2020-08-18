@@ -21,7 +21,7 @@ from gibson2.external.motion.motion_planners.rrt_connect import birrt, direct_pa
 from gibson2.external.motion.motion_planners.rrt_star import rrt_star
 from gibson2.external.motion.motion_planners.lazy_prm import lazy_prm_replan_loop
 from gibson2.external.motion.motion_planners.rrt import rrt
-
+from gibson2.external.motion.motion_planners.smoothing import optimize_path
 #from ..motion.motion_planners.rrt_connect import birrt, direct_path
 import cv2
 
@@ -3160,7 +3160,8 @@ def plan_base_motion(body, end_conf, base_limits, obstacles=[], direct=False,
 
 def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, grid_resolution, robot_footprint_radius_in_map,
                         obstacles=[], weights=1 * np.ones(3), resolutions=0.05 * np.ones(3),
-                        max_distance=MAX_DISTANCE, min_goal_dist=0.02, algorithm='birrt', **kwargs):
+                        max_distance=MAX_DISTANCE, min_goal_dist = 0.02, algorithm='birrt', optimize_iter=0, 
+                        **kwargs):
     def sample_fn():
         x, y = np.random.uniform(*base_limits)
         theta = np.random.uniform(*CIRCULAR_LIMITS)
@@ -3241,19 +3242,25 @@ def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, gr
     if collision_fn(end_conf):
         # print("Warning: end configuration is in collision")
         return None
+    
     if algorithm == 'direct':
-        return direct_path(start_conf, end_conf, extend_fn, collision_fn)
+        path = direct_path(start_conf, end_conf, extend_fn, collision_fn)
     elif algorithm == 'birrt':
-        return birrt(start_conf, end_conf, distance_fn,
+        path = birrt(start_conf, end_conf, distance_fn,
                      sample_fn, extend_fn, collision_fn, **kwargs)
     elif algorithm == 'rrt_star':
-        return rrt_star(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, max_iterations=5000, **kwargs)
+        path = rrt_star(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, max_iterations=5000, **kwargs)
     elif algorithm == 'rrt':
-        return rrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, iterations=5000, **kwargs)
+        path = rrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, iterations=5000, **kwargs)
     elif algorithm == 'lazy_prm':
-        return lazy_prm_replan_loop(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, [250, 500, 1000, 2000, 4000, 4000], **kwargs)
+        path = lazy_prm_replan_loop(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, [250, 500, 1000, 2000, 4000, 4000], **kwargs)
     else:
-        return None
+        path = None
+
+    if optimize_iter > 0 and path is not None:
+        path = optimize_path(path, extend_fn, collision_fn, iterations=optimize_iter)
+
+    return path
 
 #####################################
 
