@@ -36,14 +36,16 @@ def convert_scene(scene_name):
         for c, obj in enumerate(all_objs):
 
             obj_category = obj["category"].lower()
-            if obj_category in ['stool', 'fence', 'window']:
+            # if obj_category in ['stool', 'fence', 'window']:
             # if obj_category not in ['piano', 'chair', 'door', 'sofa']:
-            # if obj_category not in ['cabinet']:
+            if obj_category not in ['door', 'sofa']:
+            # if obj_category not in ['table']:
                 # print("We don't have yet models of ", obj_category)
                 continue
+            # obj_category = 'pool_table'
 
             # total += 1
-            # if total > 5: 
+            # if total > 1: 
                 # break
 
             link_name = obj_category + "_" + str(c)
@@ -61,7 +63,7 @@ def convert_scene(scene_name):
             bbox_y = np.linalg.norm(edge_y)
             print(bbox_x, bbox_y)
             z_bbox_coords = obj['z']
-            bbox_z = z_bbox_coords[1] - z_bbox_coords[0]
+            bbox_z = (z_bbox_coords[1] - z_bbox_coords[0]) * 0.999
 
             # Ugly hack: Apparently the image had x-y swapped so we need to swap them also here
             link_el.set("bounding_box", "{0:f} {1:f} {2:f}".format(bbox_y, bbox_x, bbox_z))
