@@ -1,12 +1,18 @@
 import os
 import numpy as np
 import yaml
-import collections.abc
+import collections
 from scipy.spatial.transform import Rotation as R
 
 # File I/O related
 def parse_config(config):
-    if isinstance(config, collections.abc.Mapping):
+
+    try:
+        collectionsAbc = collections.abc
+    except AttributeError:
+        collectionsAbc = collections
+
+    if isinstance(config, collectionsAbc.Mapping):
         return config
     else:
         assert isinstance(config, str)
