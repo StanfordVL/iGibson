@@ -14,7 +14,7 @@ parentdir = os.path.dirname(currentdir)
 os.sys.path.insert(0, parentdir)
 
 
-class BaseRobot:
+class BaseRobot(object):
     """
     Base class for mujoco xml/ROS urdf based agents.
     Handles object loading
