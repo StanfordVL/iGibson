@@ -15,6 +15,10 @@ class NoPlanException(Exception):
     pass
 
 
+class PreconditionNotSatisfied(NoPlanException):
+    pass
+
+
 @contextmanager
 def world_saved():
     saved_world = PBU.WorldSaver()
@@ -76,8 +80,19 @@ class Path(object):
     def path_arr(self):
         return np.concatenate((self.arm_path_arr, self.gripper_path_arr), axis=1)
 
+    def __copy__(self):
+        return self.__class__(arm_path=deepcopy(self._arm_path), gripper_path=deepcopy(self._gripper_path))
+
+    def __deepcopy__(self, memodict={}):
+        return self.__copy__()
+
     def __add__(self, other):
         assert isinstance(other, Path)
+        # Hard copy if the other path is empty
+        if other.arm_path is None and other.gripper_path is None:
+            return self.__copy__()
+
+        # otherwise concatenate the copied paths
         new_arm_path = deepcopy(self._arm_path) + deepcopy(other.arm_path)
         new_gripper_path = None
         if self._gripper_path is not None:
@@ -225,7 +240,7 @@ def plan_joint_path(
             smooth=50
         )
     if path is None:
-        raise NoPlanException("No Plan Found")
+        raise NoPlanException("No Motion Plan Found")
     return path
 
 
@@ -291,7 +306,7 @@ def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0):
         rewards.append(float(env.is_success()))
 
     # all_obs.append(env.get_observation())
-    actions.append(actions[-1])
+    actions.append(np.zeros(env.action_dimension))
     rewards.append(float(env.is_success()))
     states.append(env.serialized_world_state)
     task_specs.append(env.task_spec)
@@ -305,8 +320,35 @@ def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0):
 
 
 def execute_skill(env, skill_lib, skill_params, target_object_id, skill_step, noise=None, sleep_per_sim_step=0.0):
-    path = skill_lib.plan(params=skill_params, target_object_id=target_object_id)
+    """
+    Execute a skill given @skill_params and @target_object_id
+
+    Try execute the skill. If skill fails in any way, record the exception and replace the path with an empty path
+    execute_planned_path() will return a state_traj of length 1 (the current state) in this case.
+
+    Args:
+        env (BaseEnv): environment
+        skill_lib (SkillLibrary): a library of skills to run
+        skill_params (np.ndarray): an array of skill parameters
+        target_object_id (int): target object body id in pybullet
+        skill_step (int): current skill step in an episode
+        noise (tuple): trajectory noise along each action dimension. None if no noise.
+        sleep_per_sim_step (float): time to sleep in-between control steps.
+
+    Returns:
+        state_traj (dict): a dictionary of recorded trajectory
+        skill_step (int): the next skill step
+        skill_exception (NoPlanException): None of no exception is caught
+    """
+    skill_exception = None
+    try:
+        path = skill_lib.plan(params=skill_params, target_object_id=target_object_id)
+    except NoPlanException as e:
+        skill_exception = e
+        path = CartesianPath(arm_path=[], gripper_path=[])
     state_traj = execute_planned_path(env, path, noise=noise, sleep_per_sim_step=sleep_per_sim_step)
+
+    # augment the trajectory with skill information
     traj_len = state_traj["states"].shape[0]
 
     object_index_enc = np.zeros(len(env.objects))
@@ -315,6 +357,8 @@ def execute_skill(env, skill_lib, skill_params, target_object_id, skill_step, no
     skill_params_traj = np.tile(skill_params, (traj_len, 1))
     object_index_enc_traj = np.tile(object_index_enc, (traj_len, 1))
     skill_step_traj = np.array([skill_step] * traj_len)
+    # record whether skill succeeded or not
+    skill_success = np.ones(traj_len) if skill_exception is None else np.zeros(traj_len)
     skill_begin = np.zeros(traj_len)
     skill_begin[0] = 1
 
@@ -322,7 +366,31 @@ def execute_skill(env, skill_lib, skill_params, target_object_id, skill_step, no
     state_traj["skill_begin"] = skill_begin
     state_traj["skill_params"] = skill_params_traj
     state_traj["skill_object_index"] = object_index_enc_traj
-    return state_traj, skill_step + 1
+    state_traj["skill_success"] = skill_success
+
+    exec_info = dict(
+        exception=skill_exception
+    )
+    return state_traj, exec_info
+
+
+def record_single_step_state(env, skill_params, target_object_id, skill_step, skill_success):
+    state = dict(
+        states=np.array(env.serialized_world_state)[None, :],
+        rewards=np.array([[0.]]),
+        actions=np.zeros((1, env.action_dimension)),
+        task_specs=np.array(env.task_spec)[None, :]
+    )
+
+    object_index_enc = np.zeros((1, len(env.objects)))
+    object_index_enc[0, env.objects.body_ids.index(target_object_id)] = 1
+
+    state["skill_step"] = np.array([skill_step])
+    state["skill_begin"] = np.array([1])
+    state["skill_params"] = skill_params[None, :]
+    state["skill_object_index"] = object_index_enc
+    state["skill_success"] = np.array([float(skill_success)])
+    return state
 
 
 class Buffer(object):

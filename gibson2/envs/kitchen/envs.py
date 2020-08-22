@@ -281,7 +281,7 @@ class TableTopArrangeHard(TableTop):
             skills.GraspDistDiscreteOrn(lift_distance=0.1),
             skills.PlacePosDiscreteOrn(retract_distance=0.1)
         )
-        self.skill_lib = skills.SkillLibrary(self.planner, obstacles=self.obstacles, skills=lib_skills)
+        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
 
 
 class KitchenCoffee(TableTop):
@@ -329,11 +329,11 @@ class KitchenCoffee(TableTop):
 
     def _create_skill_lib(self):
         lib_skills = (
-            skills.GraspDistDiscreteOrn(lift_height=0.1, lift_speed=0.01, verbose=True),
-            skills.PlacePosDiscreteOrn(retract_distance=0.1, num_pause_steps=30, verbose=True),
-            skills.PourPosAngle(pour_angle_speed=np.pi / 32, num_pause_steps=30, verbose=True)
+            skills.GraspDistDiscreteOrn(name="grasp_dist_discrete_orn", lift_height=0.1, lift_speed=0.01, verbose=True),
+            skills.PlacePosDiscreteOrn(name="place_pos_discrete_orn", retract_distance=0.1, num_pause_steps=30, verbose=True),
+            skills.PourPosAngle(name="pour_pos_angle", pour_angle_speed=np.pi / 32, num_pause_steps=30, verbose=True)
         )
-        self.skill_lib = skills.SkillLibrary(self.planner, obstacles=self.obstacles, skills=lib_skills)
+        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
 
     def _reset_objects(self):
         z = PBU.stable_z(self.objects["mug"].body_id, self.fixtures["table"].body_id)
@@ -432,16 +432,15 @@ class KitchenCoffee(TableTop):
             "pour_pos_angle", pour_pos=np.array(pour_delta), pour_angle=pour_angle)
         skill_seq.append((params, self.objects["bowl"].body_id))
 
-        skill_step = 0
-        for skill_param, object_id in skill_seq:
-            traj, skill_step = PU.execute_skill(
+        for skill_step, (skill_param, object_id) in enumerate(skill_seq):
+            traj, exec_info = PU.execute_skill(
                 self, self.skill_lib, skill_param,
                 target_object_id=object_id,
                 skill_step=skill_step,
                 noise=noise
             )
             buffer.append(**traj)
-        return buffer.aggregate()
+        return buffer.aggregate(), None
 
     def get_demo_expert(self, noise=None):
         self.reset()
@@ -470,16 +469,15 @@ class KitchenCoffee(TableTop):
             "pour_pos_angle", pour_pos=np.array(pour_delta), pour_angle=pour_angle)
         skill_seq.append((params, self.objects["bowl"].body_id))
 
-        skill_step = 0
-        for skill_param, object_id in skill_seq:
-            traj, skill_step = PU.execute_skill(
+        for skill_step, (skill_param, object_id) in enumerate(skill_seq):
+            traj, exec_info = PU.execute_skill(
                 self, self.skill_lib, skill_param,
                 target_object_id=object_id,
                 skill_step=skill_step,
                 noise=noise
             )
             buffer.append(**traj)
-        return buffer.aggregate()
+        return buffer.aggregate(), None
 
     def is_success_all_tasks(self):
         num_beads_in_mug_milk = len(objects_center_in_container(
@@ -499,6 +497,118 @@ class KitchenCoffee(TableTop):
         }
         successes["task"] = successes["fill_bowl"]
         return successes
+
+
+class KitchenCoffeeAP(KitchenCoffee):
+    def _create_skill_lib(self):
+        def fill_bowl(objects, pl):
+            num_beads_in_bowl = len(objects_center_in_container(
+                objects["faucet_" + pl].beads, objects["bowl"].body_id))
+            return num_beads_in_bowl >= 3
+
+        lib_skills = (
+            skills.GraspDistDiscreteOrn(
+                name="grasp", lift_height=0.1, lift_speed=0.01,
+            ),
+            skills.GraspDistDiscreteOrn(
+                name="grasp_fill_mug_any", lift_height=0.1, lift_speed=0.01,
+                precondition_fn=lambda: self.is_success_all_tasks()["fill_mug_any"]
+            ),
+            skills.PlacePosDiscreteOrn(
+                name="place", retract_distance=0.1, num_pause_steps=30,
+            ),
+            skills.PourPosAngle(
+                name="pour", pour_angle_speed=np.pi / 32, num_pause_steps=30,
+            ),
+            skills.ConditionSkill(
+                name="fill_bowl_milk", precondition_fn=lambda objs=self.objects: fill_bowl(self.objects, "milk"),
+            ),
+            skills.ConditionSkill(
+                name="fill_bowl_coffee", precondition_fn=lambda objs=self.objects: fill_bowl(self.objects, "coffee")
+            )
+        )
+        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills, verbose=True)
+
+    def get_demo_suboptimal(self, noise=None):
+        self.reset()
+        buffer = PU.Buffer()
+        skill_seq = []
+        params = self.skill_lib.get_serialized_skill_params(
+            "grasp", grasp_orn_name="back", grasp_distance=0.05)
+        skill_seq.append((params, self.objects["mug"].body_id))
+
+        place_delta = np.array((0, 0, 0.01))
+        place_delta[0] += (np.random.rand(1) - 0.5) * 0.05
+
+        ##################### continuous
+        # full
+        # place_delta[1] += 0.075 + (np.random.rand(1) - 0.5) * 0.3
+
+        # centered
+        # target_faucet = np.random.choice(["faucet_milk", "faucet_coffee"])
+        # place_delta[1] += 0.075 + 0.075 * (-1 if target_faucet == 'faucet_milk' else 1) + (np.random.rand(1) - 0.5) * 0.04
+
+        # correct goal
+        # target_faucet = "faucet_milk" if self.task_spec[0] == 1 else "faucet_coffee"
+        # if target_faucet == "faucet_milk":
+        #     place_delta[1] += (np.random.rand(1) - 0.5) * 0.15
+        # else:
+        #     place_delta[1] += 0.15 + (np.random.rand(1) - 0.5) * 0.15
+        #
+        # params = self.skill_lib.get_serialized_skill_params(
+        #     "place_pos_discrete_orn", place_orn_name="front", place_pos=place_delta)
+        # skill_seq.append((params, self.objects["faucet_milk"].body_id))
+
+        ################# discrete
+        target_faucet = np.random.choice(["faucet_milk", "faucet_coffee"])
+        # target_faucet = "faucet_milk" if self.task_spec[0] == 1 else "faucet_coffee"
+        # discrete-unbiased
+        place_delta[1] += (np.random.rand(1) - 0.5) * 0.15
+        # discrete-biased
+        # place_delta[1] += (np.random.rand(1) - 0.2) * 0.15 * (-1 if target_faucet == 'faucet_milk' else 1)
+
+        params = self.skill_lib.get_serialized_skill_params(
+            "place", place_orn_name="front", place_pos=place_delta)
+        skill_seq.append((params, self.objects[target_faucet].body_id))
+
+        params = self.skill_lib.get_serialized_skill_params(
+            "grasp_fill_mug_any", grasp_orn_name="back", grasp_distance=0.05)
+        skill_seq.append((params, self.objects["mug"].body_id))
+
+        pour_delta = np.array([0, 0, 0.3])
+        pour_delta[:2] += (np.random.rand(2) * 0.1 + 0.03) * np.random.choice([-1, 1], size=2)
+        pour_angle = float(np.random.rand(1) * np.pi * 0.75) + np.pi * 0.25
+
+        params = self.skill_lib.get_serialized_skill_params(
+            "pour", pour_pos=np.array(pour_delta), pour_angle=pour_angle)
+        skill_seq.append((params, self.objects["bowl"].body_id))
+
+        # check goal
+        target_faucet = "faucet_milk" if self.task_spec[0] == 1 else "faucet_coffee"
+        if target_faucet == "faucet_milk":
+            params = self.skill_lib.get_serialized_skill_params(
+                "fill_bowl_milk", pour_pos=np.array(pour_delta), pour_angle=pour_angle)
+            skill_seq.append((params, self.objects["bowl"].body_id))
+        else:
+            params = self.skill_lib.get_serialized_skill_params(
+                "fill_bowl_coffee", pour_pos=np.array(pour_delta), pour_angle=pour_angle)
+            skill_seq.append((params, self.objects["bowl"].body_id))
+
+        skill_step = 0
+        exception = None
+        for skill_param, object_id in skill_seq:
+            traj, exec_info = PU.execute_skill(
+                self, self.skill_lib, skill_param,
+                target_object_id=object_id,
+                skill_step=skill_step,
+                noise=noise
+            )
+            buffer.append(**traj)
+            if exec_info["exception"] is not None:
+                exception = exec_info["exception"]
+                break
+
+        return buffer.aggregate(), exception
 
 
 class Kitchen(BaseEnv):
@@ -566,7 +676,7 @@ class Kitchen(BaseEnv):
             skills.PourPosAngle(pour_angle_speed=np.pi / 32, num_pause_steps=30, verbose=True),
             skills.OperatePrismaticPosDistance(verbose=True)
         )
-        self.skill_lib = skills.SkillLibrary(self.planner, obstacles=self.obstacles, skills=lib_skills)
+        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
 
     def get_demo_expert(self, noise=None):
         # for i in range(4):
@@ -586,13 +696,12 @@ class Kitchen(BaseEnv):
             "place_pos_discrete_orn", place_orn_name="front", place_pos=[0, 0, 0])
         skill_seq.append((params, self.objects["stove"].body_id))
 
-        skill_step = 0
-        for skill_param, object_id in skill_seq:
-            traj, skill_step = PU.execute_skill(
+        for skill_step, (skill_param, object_id) in enumerate(skill_seq):
+            traj, exec_info = PU.execute_skill(
                 self, self.skill_lib, skill_param,
                 target_object_id=object_id,
                 skill_step=skill_step,
                 noise=noise
             )
             buffer.append(**traj)
-        return buffer.aggregate()
+        return buffer.aggregate(), None

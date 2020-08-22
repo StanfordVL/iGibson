@@ -4,7 +4,7 @@ from collections import OrderedDict
 import gibson2.envs.kitchen.transform_utils as TU
 import gibson2.external.pybullet_tools.transformations as T
 from gibson2.envs.kitchen.plan_utils import ConfigurationPath, CartesianPath, configuration_path_to_cartesian_path, \
-    compute_grasp_pose, NoPlanException
+    compute_grasp_pose, NoPlanException, PreconditionNotSatisfied
 from gibson2.envs.kitchen.robots import GRIPPER_CLOSE, GRIPPER_OPEN
 import gibson2.external.pybullet_tools.utils as PBU
 
@@ -203,19 +203,24 @@ def plan_skill_pour(
 class Skill(object):
     def __init__(
             self,
+            name='skill',
             requires_holding=False,
             acquires_holding=False,
             releases_holding=False,
             joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
-            verbose=False
+            verbose=False,
+            precondition_fn=None,
     ):
         self.planner = None
         self.obstacles = None
+        self.env = None
         self.joint_resolutions = joint_resolutions
         self.requires_holding = requires_holding
         self.acquires_holding = acquires_holding
         self.releases_holding = releases_holding
         self.verbose = verbose
+        self.precondition_fn = precondition_fn
+        self._name = name
 
     @property
     def action_dimension(self):
@@ -223,30 +228,42 @@ class Skill(object):
 
     @property
     def name(self):
-        raise NotImplementedError
+        return self._name
 
     def plan(self, params, **kwargs):
         raise NotImplementedError
+
+    def precondition_satisfied(self):
+        if self.precondition_fn is not None:
+            return self.precondition_fn()
+        else:
+            return True
 
     def get_serialized_skill_params(self, **kwargs):
         raise NotImplementedError
 
 
 class GraspDistOrn(Skill):
-    def __init__(self, lift_height=0.1, lift_speed=0.05, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, verbose=False):
+    def __init__(
+            self,
+            name="grasp_dist_orn",
+            lift_height=0.1,
+            lift_speed=0.05,
+            joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
+            verbose=False,
+            precondition_fn=None
+    ):
         super(GraspDistOrn, self).__init__(
+            name=name,
             acquires_holding=True,
             requires_holding=False,
             releases_holding=False,
             joint_resolutions=joint_resolutions,
-            verbose=verbose
+            verbose=verbose,
+            precondition_fn=precondition_fn
         )
         self.lift_height = lift_height
         self.lift_speed = lift_speed
-
-    @property
-    def name(self):
-        return "grasp_dist_orn"
 
     @property
     def action_dimension(self):
@@ -276,10 +293,6 @@ class GraspDistOrn(Skill):
 
 class GraspDistDiscreteOrn(GraspDistOrn):
     @property
-    def name(self):
-        return "grasp_dist_discrete_orn"
-
-    @property
     def action_dimension(self):
         return len(ORIENTATIONS) + 1
 
@@ -289,6 +302,11 @@ class GraspDistDiscreteOrn(GraspDistOrn):
         orn = ORIENTATIONS[ORIENTATION_NAMES[pose_idx]]
         grasp_pose = compute_grasp_pose(
             PBU.get_pose(target_object_id), grasp_orientation=orn, grasp_distance=params[0])
+
+        if self.verbose:
+            oname = self.env.objects.body_id_to_name(target_object_id)
+            print("{}({}) dist={}, orn={}".format(self.name, oname, params[0], ORIENTATION_NAMES[pose_idx]))
+
         traj= plan_skill_grasp(
             planner=self.planner,
             obstacles=self.obstacles,
@@ -308,20 +326,26 @@ class GraspDistDiscreteOrn(GraspDistOrn):
 
 
 class PlacePosOrn(Skill):
-    def __init__(self, retract_distance=0.1, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, num_pause_steps=0, verbose=False):
+    def __init__(
+            self,
+            name="place_pos_orn",
+            retract_distance=0.1,
+            joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
+            num_pause_steps=0,
+            verbose=False,
+            precondition_fn=None
+    ):
         super(PlacePosOrn, self).__init__(
+            name=name,
             requires_holding=True,
             releases_holding=True,
             acquires_holding=False,
             joint_resolutions=joint_resolutions,
-            verbose=verbose
+            verbose=verbose,
+            precondition_fn=precondition_fn
         )
         self.retract_distance = retract_distance
         self.num_pause_steps = num_pause_steps
-
-    @property
-    def name(self):
-        return "place_pos_orn"
 
     @property
     def action_dimension(self):
@@ -355,10 +379,6 @@ class PlacePosOrn(Skill):
 
 class PlacePosDiscreteOrn(PlacePosOrn):
     @property
-    def name(self):
-        return "place_pos_discrete_orn"
-
-    @property
     def action_dimension(self):
         return len(ORIENTATIONS) + 3
 
@@ -376,7 +396,9 @@ class PlacePosDiscreteOrn(PlacePosOrn):
         place_pose = (target_pos, orn)
 
         if self.verbose:
-            print("[place] pos: {}, orn: {}".format(params[:3], ORIENTATION_NAMES[orn_idx]))
+            target_name = self.env.objects.body_id_to_name(target_object_id)
+            hold_name = self.env.objects.body_id_to_name(holding_id)
+            print("{}({}, {}) pos={}, orn={}".format(self.name, hold_name, target_name, params[:3], ORIENTATION_NAMES[orn_idx]))
 
         traj = plan_skill_place(
             self.planner,
@@ -398,20 +420,26 @@ class PlacePosDiscreteOrn(PlacePosOrn):
 
 
 class PourPosOrn(Skill):
-    def __init__(self, pour_angle_speed=np.pi / 64, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, num_pause_steps=30, verbose=False):
+    def __init__(
+            self,
+            name="pour_pos_orn",
+            pour_angle_speed=np.pi / 64,
+            joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
+            num_pause_steps=30,
+            verbose=False,
+            precondition_fn=None
+    ):
         super(PourPosOrn, self).__init__(
+            name=name,
             requires_holding=True,
             acquires_holding=False,
             releases_holding=False,
             joint_resolutions=joint_resolutions,
-            verbose=verbose
+            verbose=verbose,
+            precondition_fn=precondition_fn
         )
         self.pour_angle_speed = pour_angle_speed
         self.num_pause_steps = num_pause_steps
-
-    @property
-    def name(self):
-        return "pour_pos_orn"
 
     @property
     def action_dimension(self):
@@ -445,10 +473,6 @@ class PourPosOrn(Skill):
 
 class PourPosAngle(PourPosOrn):
     @property
-    def name(self):
-        return "pour_pos_angle"
-
-    @property
     def action_dimension(self):
         return 4  # [x, y, z, \theta]
 
@@ -468,7 +492,10 @@ class PourPosAngle(PourPosOrn):
         pour_pose = (pour_pos, orn)
 
         if self.verbose:
-            print("[pour] distance: {}, z: {}, angle={}".format(np.linalg.norm(params[:2]), params[2], angle))
+            target_name = self.env.objects.body_id_to_name(target_object_id)
+            hold_name = self.env.objects.body_id_to_name(holding_id)
+            print("{}({}, {}) distance={}, z={}, angle={}".format(
+                self.name, hold_name, target_name, np.linalg.norm(params[:2]), params[2], angle))
 
         traj = plan_skill_pour(
             self.planner,
@@ -489,19 +516,24 @@ class PourPosAngle(PourPosOrn):
 
 
 class OperatePrismaticPosDistance(Skill):
-    def __init__(self, joint_resolutions=DEFAULT_JOINT_RESOLUTIONS, num_pause_steps=0, verbose=False):
+    def __init__(
+            self,
+            name="operate_prismatic_pos_distance",
+            joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
+            num_pause_steps=0,
+            verbose=False,
+            precondition_fn=None
+    ):
         super(OperatePrismaticPosDistance, self).__init__(
+            name=name,
             requires_holding=False,
             acquires_holding=False,
             releases_holding=False,
             joint_resolutions=joint_resolutions,
-            verbose=verbose
+            verbose=verbose,
+            precondition_fn=precondition_fn
         )
         self.num_pause_steps = num_pause_steps
-
-    @property
-    def name(self):
-        return "operate_prismatic_pos_distance"
 
     @property
     def action_dimension(self):
@@ -535,14 +567,49 @@ class OperatePrismaticPosDistance(Skill):
         return params
 
 
+class ConditionSkill(Skill):
+    def __init__(
+            self,
+            name="condition",
+            joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
+            verbose=False,
+            precondition_fn=None
+    ):
+        super(ConditionSkill, self).__init__(
+            name=name,
+            requires_holding=False,
+            acquires_holding=False,
+            releases_holding=False,
+            joint_resolutions=joint_resolutions,
+            verbose=verbose,
+            precondition_fn=precondition_fn
+        )
+
+    @property
+    def action_dimension(self):
+        return 1
+
+    def plan(self, params, target_object_id=None, holding_id=None):
+        assert len(params) == self.action_dimension
+        if self.verbose:
+            print(self.name)
+        return CartesianPath(arm_path=[], gripper_path=[])
+
+    def get_serialized_skill_params(self, **kwargs):
+        return np.zeros(1)
+
+
 class SkillLibrary(object):
-    def __init__(self, planner, obstacles, skills):
+    def __init__(self, env, planner, obstacles, skills, verbose=False):
         self.planner = planner
         self.obstacles = obstacles
+        self.env = env
         self._skills = skills
         for s in self.skills:
             s.planner = planner
             s.obstacles = obstacles
+            s.env = env
+            s.verbose =verbose
         self._holding = None
 
     @property
@@ -564,7 +631,7 @@ class SkillLibrary(object):
 
     @property
     def action_dimension(self):
-        return len(self.skills) + np.sum([s.action_dimension for s in self.skills])
+        return int(len(self.skills) + np.sum([s.action_dimension for s in self.skills]))
 
     def _parse_serialized_skill_params(self, all_params):
         assert len(all_params) == self.action_dimension
@@ -597,6 +664,8 @@ class SkillLibrary(object):
     def plan(self, params, target_object_id):
         skill_index, skill_params = self._parse_serialized_skill_params(params)
         skill = self.skills[skill_index]
+        if not skill.precondition_satisfied():
+            raise PreconditionNotSatisfied("Precondition for skill '{}' is not satisfied".format(skill.name))
         # print(skill.name, skill_params, target_object_id)
         # print(skill.name)
         if skill.requires_holding:
