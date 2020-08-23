@@ -841,7 +841,7 @@ class SkillLibrary(object):
                 ind += s.action_dimension
         return None
 
-    def _parse_skill_params(self, all_params):
+    def _parse_skill_param_dict(self, all_params):
         """
         parse skill parameters
         Args:
@@ -973,10 +973,21 @@ class SkillLibrary(object):
             meta["{}|type".format(p)] = [1] if skill_is_cont else [0]
         return meta
 
+    def get_serialized_skill_param_mask(self, all_params):
+        assert all_params.shape[0] == self.action_dimension
+        masks = np.zeros(self.action_dimension - len(self.skills))
+        skill_index = int(np.argmax(all_params[:len(self.skills)]))
+        assert skill_index < len(self.skills)
+        ind = 0
+        for i, s in enumerate(self.skills):
+            if i == skill_index:
+                masks[ind: ind + s.action_dimension] = 1
+            ind += s.action_dimension
+        return masks
+
     def plan(self, params, target_object_id):
         if isinstance(params, dict):
-            assert False
-            skill_index, skill_params = self._parse_skill_params(params)
+            skill_index, skill_params = self._parse_skill_param_dict(params)
             skill_params = self.skills[skill_index].serialize_skill_param_dict(skill_params)
         else:
             skill_index, skill_params = self._parse_serialized_skill_params(params)

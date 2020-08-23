@@ -425,17 +425,23 @@ def extract_dataset_skills(args):
 
         ep_indices = np.arange(new_states.shape[0])
         assert len(ep_indices) >= 1
-        if not args.extract_no_next_obs:
+        # optionally extract next obs
+        if args.extract_next_obs:
             ep_indices = ep_indices[:-1]
 
         for k in org_f_grp.keys():
-            if k not in ["states", "actions"]:
+            if k == "skill_param_dict":
+                # skill_param_dict is a dictionary
+                for kk in org_f_grp[k].keys():
+                    demo_grp.create_dataset("{}/{}".format(k, kk), data=org_f_grp[k][kk][mask, ...][ep_indices])
+            elif k not in ["states", "actions"]:
                 demo_grp.create_dataset(k, data=org_f_grp[k][mask, ...][ep_indices])
         demo_grp.create_dataset("states", data=new_states[ep_indices])
         demo_grp.create_dataset("actions", data=actions[ep_indices])
+
         for k in obs:
             demo_grp.create_dataset("obs/{}".format(k), data=obs[k][ep_indices])
-            if not args.extract_no_next_obs:
+            if args.extract_next_obs:
                 demo_grp.create_dataset("next_obs/{}".format(k), data=obs[k][1:])
 
         demo_grp.attrs["num_samples"] = demo_grp["states"].shape[0]
@@ -576,7 +582,7 @@ def main():
         default=False
     )
     parser.add_argument(
-        "--extract_no_next_obs",
+        "--extract_next_obs",
         action="store_true",
         default=False
     )

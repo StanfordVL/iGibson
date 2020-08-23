@@ -357,6 +357,9 @@ def execute_skill(env, skill_lib, skill_params, target_object_id, skill_step, no
     object_index_enc_traj = np.tile(object_index_enc, (traj_len, 1))
     # skill parameters
     skill_params_traj = np.tile(skill_params, (traj_len, 1))
+    # skill masks
+    skill_param_masks = skill_lib.get_serialized_skill_param_mask(skill_params)
+    skill_param_masks = np.tile(skill_param_masks, (traj_len, 1))
     # step index for the skill
     skill_step_traj = np.array([skill_step] * traj_len)
     # record whether skill succeeded or not
@@ -368,6 +371,7 @@ def execute_skill(env, skill_lib, skill_params, target_object_id, skill_step, no
     state_traj["skill_step"] = skill_step_traj
     state_traj["skill_begin"] = skill_begin
     state_traj["skill_params"] = skill_params_traj
+    state_traj["skill_param_masks"] = skill_param_masks
     state_traj["skill_object_index"] = object_index_enc_traj
     state_traj["skill_success"] = skill_success
 

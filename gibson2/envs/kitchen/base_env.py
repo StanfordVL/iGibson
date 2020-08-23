@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import time
+from copy import deepcopy
 
 import pybullet as p
 import gibson2
@@ -316,8 +317,15 @@ class EnvSkillWrapper(object):
         return self.skill_lib.action_dimension + len(self.env.objects)
 
     def step(self, actions, sleep_per_sim_step=0.0):
-        skill_params = actions[:self.skill_lib.action_dimension]
-        object_index = int(np.argmax(actions[self.skill_lib.action_dimension:]))
+        if isinstance(actions, np.ndarray):
+            skill_params = actions[:self.skill_lib.action_dimension]
+            object_index = int(np.argmax(actions[self.skill_lib.action_dimension:]))
+        elif isinstance(actions, dict):
+            actions = deepcopy(actions)
+            object_index = int(np.argmax(actions.pop("skill_object_index")))
+            skill_params = actions
+        else:
+            raise TypeError("Wrong actions data type: expecting np.ndarray or dict, got {}".format(type(actions)))
         object_id = self.env.objects.body_ids[object_index]
         path = self.skill_lib.plan(params=skill_params, target_object_id=object_id)
         PU.execute_planned_path(self.env, path, sleep_per_sim_step=sleep_per_sim_step)
