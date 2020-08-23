@@ -9,13 +9,13 @@ from gibson2.envs.kitchen.robots import GRIPPER_CLOSE, GRIPPER_OPEN
 import gibson2.external.pybullet_tools.utils as PBU
 
 
-ORIENTATIONS = OrderedDict({
-    "front": T.quaternion_from_euler(0, 0, 0),
-    "left": T.quaternion_from_euler(0, 0, np.pi / 2),
-    "right": T.quaternion_from_euler(0, 0, -np.pi / 2),
-    "back": T.quaternion_from_euler(0, 0, np.pi),
-    "top": T.quaternion_from_euler(0, np.pi / 2, 0),
-})
+ORIENTATIONS = OrderedDict(
+    front=T.quaternion_from_euler(0, 0, 0),
+    left=T.quaternion_from_euler(0, 0, np.pi / 2),
+    right=T.quaternion_from_euler(0, 0, -np.pi / 2),
+    back=T.quaternion_from_euler(0, 0, np.pi),
+    top=T.quaternion_from_euler(0, np.pi / 2, 0),
+)
 
 ORIENTATION_NAMES = list(ORIENTATIONS.keys())
 
@@ -200,9 +200,102 @@ def plan_skill_pour(
     return approach_path + pour_path
 
 
+class SkillParams(object):
+    def __init__(self, low=None, high=None, size=None):
+        self._low = None
+        self._high = None
+
+    def sample(self, mode=None, low=None, high=None, choices=None, sampler_fn=None):
+        raise NotImplementedError
+
+    @property
+    def low(self):
+        return self._low.copy()
+
+    @property
+    def high(self):
+        return self._high.copy()
+
+    @property
+    def default(self):
+        return (self._high - self._low) / 2 + self._low
+
+    @property
+    def sample_shape(self):
+        return self._low.shape
+
+
+class SkillParamsContinuous(SkillParams):
+    def __init__(self, low=None, high=None, size=None):
+        super(SkillParamsContinuous, self).__init__()
+        if size is not None:
+            self._low = np.zeros(size)  # place holder
+        if low is not None:
+            self._low = np.array(low)
+        assert self._low is not None
+        if high is None:
+            high = self._low
+        self._high = np.array(high)
+        assert self._low.shape == self._high.shape
+        assert np.all(self._high >= self._low)
+
+    def sample(self, mode='uniform', low=None, high=None, choices=None, sampler_fn=None):
+        assert mode in ['uniform', 'normal']
+        low = self.low if low is None else np.array(low)
+        high = self.high if high is None else np.array(high)
+        sample = None
+        if sampler_fn is not None:
+            sample = sampler_fn()
+            assert sample.shape == self.sample_shape
+            assert np.all(np.bitwise_and(sample >= self._low, sample <= self._high))
+        elif choices is not None:
+            for c in choices:
+                assert c.shape == self.sample_shape
+            sample = np.array(choices[np.random.randint(low=0, high=len(choices))])
+        elif mode == 'uniform':
+            sample = np.random.rand(*self.sample_shape) * (high - low) + low
+        elif mode == 'normal':
+            mu = (high - low) / 2 + low
+            sigma = (high - low) / 2
+            sample = np.random.randn(*self.sample_shape) * sigma + mu
+            sample = np.clip(sample, low, high)
+        return sample
+
+
+class SkillParamsDiscrete(SkillParams):
+    def __init__(self, low=None, high=None, size=None):
+        super(SkillParamsDiscrete, self).__init__()
+        assert low is None
+        assert high is None
+        assert size is not None
+        self._low = np.zeros(size)
+        self._high = np.ones(size)
+
+    @property
+    def default(self):
+        return self.low
+
+    def sample(self, mode=None, low=None, high=None, choices=None, sampler_fn=None):
+        if sampler_fn is not None:
+            sample_ind = sampler_fn()
+            assert 0 <= sample_ind < self.sample_shape[0]
+        elif choices is not None:
+            choices = np.array(choices)
+            assert len(choices.shape) == 1
+            assert np.all(np.bitwise_and(choices >= 0, choices < self.sample_shape[0]))  # ensure samples are in-range
+            sample_ind = np.random.choice(choices)
+        else:
+            sample_ind = np.random.randint(low=0, high=self.sample_shape[0])
+        sample = np.zeros(self.sample_shape)
+        sample[sample_ind] = 1
+
+        return sample
+
+
 class Skill(object):
     def __init__(
             self,
+            params=None,
             name='skill',
             requires_holding=False,
             acquires_holding=False,
@@ -211,6 +304,10 @@ class Skill(object):
             verbose=False,
             precondition_fn=None,
     ):
+        self.params = params
+        if params is None:
+            self.params = self.get_default_params()  # dummy
+        assert isinstance(self.params, OrderedDict)
         self.planner = None
         self.obstacles = None
         self.env = None
@@ -222,13 +319,55 @@ class Skill(object):
         self.precondition_fn = precondition_fn
         self._name = name
 
+    def get_default_params(self):
+        return OrderedDict(dummy=SkillParamsContinuous(low=np.zeros(1)))
+
     @property
     def action_dimension(self):
-        raise NotImplementedError
+        return int(np.sum(p.sample_shape[0] for p in self.params.values()))
 
     @property
     def name(self):
         return self._name
+
+    @property
+    def parameters(self):
+        return self.params
+
+    @property
+    def parameter_ranges(self):
+        low = np.concatenate([p.low for p in self.params.values()])
+        high = np.concatenate([p.high for p in self.params.values()])
+        return low, high
+
+    def serialize_skill_param_dict(self, param_dict):
+        """
+        Serialize a dictionary of parameters to a numpy array
+
+        Args:
+            param_dict (dict): named parameters
+
+        Returns:
+            params: np.ndarray
+        """
+        return np.concatenate([param_dict[k] for k in self.params], axis=0)
+
+    def deserialize_skill_param_array(self, params):
+        """
+        De-serialize a params array to a dictionary of params (assuming ordered by keys of @self.params)
+
+        Args:
+            params (np.ndarray): named parameters
+
+        Returns:
+            params: OrderedDict
+        """
+        param_dict = OrderedDict()
+        ind = 0
+        for k in self.params:
+            param_dict[k] = params[ind: ind + self.params[k].sample_shape[0]]
+            ind += self.params[k].sample_shape[0]
+        return param_dict
 
     def plan(self, params, **kwargs):
         raise NotImplementedError
@@ -239,13 +378,41 @@ class Skill(object):
         else:
             return True
 
-    def get_serialized_skill_params(self, **kwargs):
+    def get_skill_params(self, **kwargs):
         raise NotImplementedError
+
+    def get_serialized_skill_params(self, **kwargs):
+        param_dict = self.get_skill_params(**kwargs)
+        for p in self.params:
+            assert p in param_dict
+            assert self.params[p].sample_shape == param_dict[p].shape
+        return self.serialize_skill_param_dict(param_dict)
+
+    def sample_skill_params(self, **kwargs):
+        param_dict = OrderedDict()
+        for k in kwargs:
+            assert k in list(self.params.keys()), \
+                "{} is not a valid skill param, choices are: {}".format(k, self.params.keys())
+        for p in self.params:
+            sample_kwargs = kwargs.get(p, dict())
+            param_dict[p] = self.params[p].sample(**sample_kwargs)
+        return param_dict
+
+    def get_default_skill_params(self):
+        param_dict = OrderedDict()
+        for p in self.params:
+            param_dict[p] = self.params[p].default
+        return param_dict
+
+    def sample_serialized_skill_params(self, **kwargs):
+        param_dict = self.sample_skill_params(**kwargs)
+        return self.serialize_skill_param_dict(param_dict)
 
 
 class GraspDistOrn(Skill):
     def __init__(
             self,
+            params=None,
             name="grasp_dist_orn",
             lift_height=0.1,
             lift_speed=0.05,
@@ -254,6 +421,7 @@ class GraspDistOrn(Skill):
             precondition_fn=None
     ):
         super(GraspDistOrn, self).__init__(
+            params=params,
             name=name,
             acquires_holding=True,
             requires_holding=False,
@@ -265,9 +433,11 @@ class GraspDistOrn(Skill):
         self.lift_height = lift_height
         self.lift_speed = lift_speed
 
-    @property
-    def action_dimension(self):
-        return 4
+    def get_default_params(self):
+        return OrderedDict(
+            grasp_distance=SkillParamsContinuous(size=1),
+            grasp_orn=SkillParamsContinuous(size=3)
+        )
 
     def plan(self, params, target_object_id=None):
         assert len(params) == self.action_dimension
@@ -284,17 +454,20 @@ class GraspDistOrn(Skill):
         )
         return traj
 
-    def get_serialized_skill_params(self, grasp_orn, grasp_distance):
-        params = np.zeros(self.action_dimension)
-        params[0] = grasp_distance
-        params[1:] = TU.axisangle2vec(*TU.quat2axisangle(grasp_orn))
+    def get_skill_params(self, grasp_orn, grasp_distance):
+        params = OrderedDict(
+            grasp_distance=grasp_distance,
+            grasp_orn=TU.axisangle2vec(*TU.quat2axisangle(grasp_orn))
+        )
         return params
 
 
 class GraspDistDiscreteOrn(GraspDistOrn):
-    @property
-    def action_dimension(self):
-        return len(ORIENTATIONS) + 1
+    def get_default_params(self):
+        return OrderedDict(
+            grasp_distance=SkillParamsContinuous(size=1),
+            grasp_orn=SkillParamsDiscrete(size=len(ORIENTATIONS))
+        )
 
     def plan(self, params, target_object_id=None):
         assert len(params) == self.action_dimension
@@ -317,17 +490,21 @@ class GraspDistDiscreteOrn(GraspDistOrn):
         )
         return traj
 
-    def get_serialized_skill_params(self, grasp_orn_name, grasp_distance):
-        params = np.zeros(self.action_dimension)
+    def get_skill_params(self, grasp_orn_name, grasp_distance):
         orn_index = ORIENTATION_NAMES.index(grasp_orn_name)
-        params[0] = grasp_distance
-        params[1 + orn_index] = 1
+        orn = np.zeros(len(ORIENTATION_NAMES))
+        orn[orn_index] = 1
+        params = OrderedDict(
+            grasp_distance=grasp_distance,
+            grasp_orn=orn
+        )
         return params
 
 
 class PlacePosOrn(Skill):
     def __init__(
             self,
+            params=None,
             name="place_pos_orn",
             retract_distance=0.1,
             joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
@@ -336,6 +513,7 @@ class PlacePosOrn(Skill):
             precondition_fn=None
     ):
         super(PlacePosOrn, self).__init__(
+            params=params,
             name=name,
             requires_holding=True,
             releases_holding=True,
@@ -347,9 +525,11 @@ class PlacePosOrn(Skill):
         self.retract_distance = retract_distance
         self.num_pause_steps = num_pause_steps
 
-    @property
-    def action_dimension(self):
-        return 6
+    def get_default_params(self):
+        return OrderedDict(
+            place_pos=SkillParamsContinuous(size=3),
+            place_orn=SkillParamsContinuous(size=3)
+        )
 
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
@@ -370,17 +550,20 @@ class PlacePosOrn(Skill):
         traj.append_pause(self.num_pause_steps)
         return traj
 
-    def get_serialized_skill_params(self, place_pos, place_orn):
-        params = np.zeros(self.action_dimension)
-        params[:3] = place_pos
-        params[3:] = TU.axisangle2vec(*TU.quat2axisangle(place_orn))
+    def get_skill_params(self, place_pos, place_orn):
+        params = OrderedDict(
+            place_pos=place_pos,
+            place_orn=TU.axisangle2vec(*TU.quat2axisangle(place_orn))
+        )
         return params
 
 
 class PlacePosDiscreteOrn(PlacePosOrn):
-    @property
-    def action_dimension(self):
-        return len(ORIENTATIONS) + 3
+    def get_default_params(self):
+        return OrderedDict(
+            place_pos=SkillParamsContinuous(size=3),
+            place_orn=SkillParamsDiscrete(size=len(ORIENTATIONS))
+        )
 
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
@@ -411,17 +594,21 @@ class PlacePosDiscreteOrn(PlacePosOrn):
         traj.append_pause(self.num_pause_steps)
         return traj
 
-    def get_serialized_skill_params(self, place_pos, place_orn_name):
-        params = np.zeros(self.action_dimension)
+    def get_skill_params(self, place_pos, place_orn_name):
         orn_index = ORIENTATION_NAMES.index(place_orn_name)
-        params[:3] = place_pos
-        params[3 + orn_index] = 1
+        orn = np.zeros(len(ORIENTATION_NAMES))
+        orn[orn_index] = 1
+        params = OrderedDict(
+            place_pos=place_pos,
+            place_orn=orn
+        )
         return params
 
 
 class PourPosOrn(Skill):
     def __init__(
             self,
+            params=None,
             name="pour_pos_orn",
             pour_angle_speed=np.pi / 64,
             joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
@@ -430,6 +617,7 @@ class PourPosOrn(Skill):
             precondition_fn=None
     ):
         super(PourPosOrn, self).__init__(
+            params=params,
             name=name,
             requires_holding=True,
             acquires_holding=False,
@@ -441,9 +629,11 @@ class PourPosOrn(Skill):
         self.pour_angle_speed = pour_angle_speed
         self.num_pause_steps = num_pause_steps
 
-    @property
-    def action_dimension(self):
-        return 6  # [x, y, z, ai, aj, az]
+    def get_default_params(self):
+        return OrderedDict(
+            pour_pos=SkillParamsContinuous(size=3),
+            pour_orn=SkillParamsContinuous(size=3)
+        )
 
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
@@ -464,17 +654,20 @@ class PourPosOrn(Skill):
         traj.append_pause(self.num_pause_steps)
         return traj
 
-    def get_serialized_skill_params(self, pour_pos, pour_orn):
-        params = np.zeros(self.action_dimension)
-        params[:3] = pour_pos
-        params[3:] = TU.axisangle2vec(*TU.quat2axisangle(pour_orn))
+    def get_skill_params(self, pour_pos, pour_orn):
+        params = OrderedDict(
+            pour_pos=pour_pos,
+            pour_orn=TU.axisangle2vec(*TU.quat2axisangle(pour_orn))
+        )
         return params
 
 
 class PourPosAngle(PourPosOrn):
-    @property
-    def action_dimension(self):
-        return 4  # [x, y, z, \theta]
+    def get_default_params(self):
+        return OrderedDict(
+            pour_pos=SkillParamsContinuous(size=3),
+            pour_angle=SkillParamsContinuous(size=1)
+        )
 
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
@@ -508,10 +701,11 @@ class PourPosAngle(PourPosOrn):
         traj.append_pause(self.num_pause_steps)
         return traj
 
-    def get_serialized_skill_params(self, pour_pos, pour_angle):
-        params = np.zeros(self.action_dimension)
-        params[:3] = pour_pos
-        params[3] = pour_angle
+    def get_skill_params(self, pour_pos, pour_angle):
+        params = OrderedDict(
+            pour_pos=pour_pos,
+            pour_angle=pour_angle
+        )
         return params
 
 
@@ -535,9 +729,11 @@ class OperatePrismaticPosDistance(Skill):
         )
         self.num_pause_steps = num_pause_steps
 
-    @property
-    def action_dimension(self):
-        return 4  # [x, y, z, d]
+    def get_default_params(self):
+        return OrderedDict(
+            grasp_pos=SkillParamsContinuous(size=3),
+            prismatic_move_distance=SkillParamsContinuous(size=1)
+        )
 
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
@@ -560,10 +756,11 @@ class OperatePrismaticPosDistance(Skill):
         traj.append_pause(self.num_pause_steps)
         return traj
 
-    def get_serialized_skill_params(self, grasp_pos, prismatic_move_distance):
-        params = np.zeros(self.action_dimension)
-        params[:3] = grasp_pos
-        params[3] = prismatic_move_distance
+    def get_skill_params(self, grasp_pos, prismatic_move_distance):
+        params = OrderedDict(
+            grasp_pos=grasp_pos,
+            prismatic_move_distance=prismatic_move_distance
+        )
         return params
 
 
@@ -585,18 +782,16 @@ class ConditionSkill(Skill):
             precondition_fn=precondition_fn
         )
 
-    @property
-    def action_dimension(self):
-        return 1
-
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
         if self.verbose:
             print(self.name)
         return CartesianPath(arm_path=[], gripper_path=[])
 
-    def get_serialized_skill_params(self, **kwargs):
-        return np.zeros(1)
+    def get_skill_params(self, **kwargs):
+        return OrderedDict(
+            dummy=np.zeros(1)
+        )
 
 
 class SkillLibrary(object):
@@ -646,6 +841,26 @@ class SkillLibrary(object):
                 ind += s.action_dimension
         return None
 
+    def _parse_skill_params(self, all_params):
+        """
+        parse skill parameters
+        Args:
+            all_params (dict): dict that maps skill + param name to params
+
+        Returns:
+            skill_index: int
+            skill_params: dict
+        """
+        skill_index = int(all_params["skill_index"].argmax())
+        skill = self.skills[skill_index]
+        skill_params = OrderedDict()
+        for k in all_params:
+            skill_name, param_name = k.split('|')
+            if skill_name == skill.name:
+                assert param_name in skill.parameters
+                skill_params[param_name] = all_params[k]
+        return skill_index, skill_params
+
     def get_serialized_skill_params(self, skill_name, **kwargs):
         params = np.zeros(self.action_dimension)
         skill_index = self.name_to_skill_index(skill_name)
@@ -661,13 +876,114 @@ class SkillLibrary(object):
 
         return params
 
+    def sample_serialized_skill_params(self, skill_name, **kwargs):
+        params = np.zeros(self.action_dimension)
+        skill_index = self.name_to_skill_index(skill_name)
+        skill_params = self.skills[skill_index].sample_serialized_skill_params(**kwargs)
+        params[skill_index] = 1
+
+        ind = 0
+        for i, s in enumerate(self.skills):
+            if i == skill_index:
+                params[len(self.skills) + ind: len(self.skills) + ind + s.action_dimension] = skill_params
+            else:
+                ind += s.action_dimension
+
+        return params
+
+    def flatten_skill_param_key(self, skill_name, skill_params):
+        new_params = OrderedDict()
+        for p in skill_params:
+            new_key = "{}|{}".format(skill_name, p)
+            new_params[new_key] = skill_params[p]
+        return new_params
+
+    def get_skill_params(self, skill_name, **kwargs):
+        param_dict = OrderedDict()
+        for skill in self.skills:
+            if skill.name == skill_name:
+                param_dict.update(self.flatten_skill_param_key(skill.name, skill.get_skill_params(**kwargs)))
+            else:
+                param_dict.update(self.flatten_skill_param_key(skill.name, skill.get_default_skill_params()))  # dummy
+        skill_index = self.skill_names.index(skill_name)
+        skill_index_arr = np.zeros(len(self.skills))
+        skill_index_arr[skill_index] = 1
+        param_dict["skill_index"] = skill_index_arr
+        return param_dict
+
+    def sample_skill_params(self, skill_name, **kwargs):
+        param_dict = OrderedDict()
+        for skill in self.skills:
+            if skill.name == skill_name:
+                param_dict.update(self.flatten_skill_param_key(skill.name, skill.sample_skill_params(**kwargs)))
+            else:
+                param_dict.update(self.flatten_skill_param_key(skill.name, skill.get_default_skill_params()))  # dummy
+        skill_index = self.skill_names.index(skill_name)
+        skill_index_arr = np.zeros(len(self.skills))
+        skill_index_arr[skill_index] = 1
+        param_dict["skill_index"] = skill_index_arr
+        return param_dict
+
+    def deserialize_skill_params(self, all_params):
+        """
+        Deserialize a skill param array to a dictionary of skill params
+        Args:
+            all_params (np.ndarray): all skill params
+
+        Returns:
+            skill_param_dict: OrderedDict
+        """
+        assert all_params.shape[0] == self.action_dimension
+        param_dict = OrderedDict()
+
+        skill_index = int(np.argmax(all_params[:len(self.skills)]))
+        assert skill_index < len(self.skills)
+        ind = 0
+        params = all_params[len(self.skills):]
+        for i, skill in enumerate(self.skills):
+            skill_params = skill.deserialize_skill_param_array(params[ind: ind + skill.action_dimension])
+            param_dict.update(self.flatten_skill_param_key(skill.name, skill_params))
+            ind += skill.action_dimension
+        skill_index_arr = np.zeros(len(self.skills))
+        skill_index_arr[skill_index] = 1
+        param_dict["skill_index"] = skill_index_arr
+        return param_dict
+
+    def get_skill_param_dict_metadata(self, param_dict):
+        """
+        Get masks for skill param dict
+
+        Args:
+            param_dict (dict): a dictionary of skill parameters
+
+        Returns:
+            param_dict_mask: dict
+
+        """
+        meta = OrderedDict()
+        skill_index = int(param_dict["skill_index"].argmax())
+        target_skill_name = self.skills[skill_index].name
+        for p, v in param_dict.items():
+            if p == "skill_index":
+                continue
+            skill_name, param_name = p.split("|")
+            meta["{}|mask".format(p)] = [1] if skill_name == target_skill_name else [0]
+            skill = self.skills[self.skill_names.index(skill_name)]
+            skill_is_cont = isinstance(skill.parameters[param_name], SkillParamsContinuous)
+            meta["{}|type".format(p)] = [1] if skill_is_cont else [0]
+        return meta
+
     def plan(self, params, target_object_id):
-        skill_index, skill_params = self._parse_serialized_skill_params(params)
+        if isinstance(params, dict):
+            assert False
+            skill_index, skill_params = self._parse_skill_params(params)
+            skill_params = self.skills[skill_index].serialize_skill_param_dict(skill_params)
+        else:
+            skill_index, skill_params = self._parse_serialized_skill_params(params)
         skill = self.skills[skill_index]
         if not skill.precondition_satisfied():
             raise PreconditionNotSatisfied("Precondition for skill '{}' is not satisfied".format(skill.name))
-        # print(skill.name, skill_params, target_object_id)
-        # print(skill.name)
+
         if skill.requires_holding:
             if self._holding is None:
                 raise NoPlanException("Robot is not holding anything but is trying to run {}".format(skill.name))

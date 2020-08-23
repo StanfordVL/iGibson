@@ -351,14 +351,17 @@ def execute_skill(env, skill_lib, skill_params, target_object_id, skill_step, no
     # augment the trajectory with skill information
     traj_len = state_traj["states"].shape[0]
 
+    # one-hot encoding for the object
     object_index_enc = np.zeros(len(env.objects))
     object_index_enc[env.objects.body_ids.index(target_object_id)] = 1
-
-    skill_params_traj = np.tile(skill_params, (traj_len, 1))
     object_index_enc_traj = np.tile(object_index_enc, (traj_len, 1))
+    # skill parameters
+    skill_params_traj = np.tile(skill_params, (traj_len, 1))
+    # step index for the skill
     skill_step_traj = np.array([skill_step] * traj_len)
     # record whether skill succeeded or not
     skill_success = np.ones(traj_len) if skill_exception is None else np.zeros(traj_len)
+    # mark the beginning of a skill in a trajectory
     skill_begin = np.zeros(traj_len)
     skill_begin[0] = 1
 
@@ -368,29 +371,37 @@ def execute_skill(env, skill_lib, skill_params, target_object_id, skill_step, no
     state_traj["skill_object_index"] = object_index_enc_traj
     state_traj["skill_success"] = skill_success
 
+    # record detailed skill params
+    skill_param_dict = skill_lib.deserialize_skill_params(skill_params)
+    skill_param_dict.update(skill_lib.get_skill_param_dict_metadata(skill_param_dict))
+    for k, v in skill_param_dict.items():
+        skill_param_dict[k] = np.tile(v, (traj_len, 1))
+
+    state_traj["skill_param_dict"] = skill_param_dict
+
     exec_info = dict(
         exception=skill_exception
     )
     return state_traj, exec_info
 
 
-def record_single_step_state(env, skill_params, target_object_id, skill_step, skill_success):
-    state = dict(
-        states=np.array(env.serialized_world_state)[None, :],
-        rewards=np.array([[0.]]),
-        actions=np.zeros((1, env.action_dimension)),
-        task_specs=np.array(env.task_spec)[None, :]
-    )
-
-    object_index_enc = np.zeros((1, len(env.objects)))
-    object_index_enc[0, env.objects.body_ids.index(target_object_id)] = 1
-
-    state["skill_step"] = np.array([skill_step])
-    state["skill_begin"] = np.array([1])
-    state["skill_params"] = skill_params[None, :]
-    state["skill_object_index"] = object_index_enc
-    state["skill_success"] = np.array([float(skill_success)])
-    return state
+# def record_single_step_state(env, skill_params, target_object_id, skill_step, skill_success):
+#     state = dict(
+#         states=np.array(env.serialized_world_state)[None, :],
+#         rewards=np.array([[0.]]),
+#         actions=np.zeros((1, env.action_dimension)),
+#         task_specs=np.array(env.task_spec)[None, :]
+#     )
+#
+#     object_index_enc = np.zeros((1, len(env.objects)))
+#     object_index_enc[0, env.objects.body_ids.index(target_object_id)] = 1
+#
+#     state["skill_step"] = np.array([skill_step])
+#     state["skill_begin"] = np.array([1])
+#     state["skill_params"] = skill_params[None, :]
+#     state["skill_object_index"] = object_index_enc
+#     state["skill_success"] = np.array([float(skill_success)])
+#     return state
 
 
 class Buffer(object):
@@ -404,13 +415,21 @@ class Buffer(object):
             self.data[k].append(v)
 
     def aggregate(self):
+        data = dict()
         for k, v in self.data.items():
             if isinstance(v[0], dict):
-                self.data[k] = dict((k, np.concatenate([v[i][k] for i in range(len(v))], axis=0)) for k in v[0])
+                data[k] = dict((k, np.concatenate([v[i][k] for i in range(len(v))], axis=0)) for k in v[0])
             else:
-                self.data[k] = np.concatenate(v, axis=0)
-        return self.data
+                data[k] = np.concatenate(v, axis=0)
+        # make sure all data items agree on sequence dimension
+        v0 = list(data.values())[0]
+        for v in data.values():
+            if isinstance(v, dict):
+                for vv in v.values():
+                    assert v0.shape[0] == vv.shape[0]
+            else:
+                assert v.shape[0] == v0.shape[0]
+        return data
 
     def __len__(self):
-        from IPython import embed; embed()
         return len(list(self.data.values())[0])

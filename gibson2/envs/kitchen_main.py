@@ -276,7 +276,11 @@ def record_demos(args):
 
         f_demo_grp = f_sars_grp.create_group("demo_{}".format(n_kept - 1))
         for k in buffer:
-            f_demo_grp.create_dataset(k, data=buffer[k])
+            if isinstance(buffer[k], dict):
+                for kk in buffer[k]:
+                    f_demo_grp.create_dataset(k + "/" + kk, data=buffer[k][kk])
+            else:
+                f_demo_grp.create_dataset(k, data=buffer[k])
     f.close()
 
 
