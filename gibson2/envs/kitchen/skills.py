@@ -241,8 +241,16 @@ class SkillParamsContinuous(SkillParams):
 
     def sample(self, mode='uniform', low=None, high=None, choices=None, sampler_fn=None):
         assert mode in ['uniform', 'normal']
-        low = self.low if low is None else np.array(low)
-        high = self.high if high is None else np.array(high)
+        if low is not None:
+            low = np.array(low)
+            assert low.shape == self.sample_shape
+        else:
+            low = self.low
+        if high is not None:
+            high = np.array(high)
+            assert high.shape == self.sample_shape
+        else:
+            high = self.high
         sample = None
         if sampler_fn is not None:
             sample = sampler_fn()
@@ -843,9 +851,10 @@ class SkillLibrary(object):
 
     def _parse_skill_param_dict(self, all_params):
         """
-        parse skill parameters
+        parse skill parameters dictionary
+
         Args:
-            all_params (dict): dict that maps skill + param name to params
+            all_params (dict): dict that maps "skill_name | param_name" to params
 
         Returns:
             skill_index: int
@@ -931,7 +940,7 @@ class SkillLibrary(object):
             all_params (np.ndarray): all skill params
 
         Returns:
-            skill_param_dict: OrderedDict
+            an OrderedDict that maps "skill_name | param_name" to params
         """
         assert all_params.shape[0] == self.action_dimension
         param_dict = OrderedDict()
@@ -954,11 +963,10 @@ class SkillLibrary(object):
         Get masks for skill param dict
 
         Args:
-            param_dict (dict): a dictionary of skill parameters
+            param_dict (dict): an OrderedDict that maps "skill_name | param_name" to params
 
         Returns:
-            param_dict_mask: dict
-
+            an OrderedDict that maps "skill_name | param_name | mask / type " to an integer
         """
         meta = OrderedDict()
         skill_index = int(param_dict["skill_index"].argmax())
@@ -967,13 +975,23 @@ class SkillLibrary(object):
             if p == "skill_index":
                 continue
             skill_name, param_name = p.split("|")
-            meta["{}|mask".format(p)] = [1] if skill_name == target_skill_name else [0]
+            meta["{}|mask".format(p)] = np.ones(1) if skill_name == target_skill_name else np.zeros(1)
             skill = self.skills[self.skill_names.index(skill_name)]
             skill_is_cont = isinstance(skill.parameters[param_name], SkillParamsContinuous)
-            meta["{}|type".format(p)] = [1] if skill_is_cont else [0]
+            meta["{}|type".format(p)] = np.ones(1) if skill_is_cont else np.zeros(1)
         return meta
 
     def get_serialized_skill_param_mask(self, all_params):
+        """
+        Get a binary mask for the valid skill parameters (useful for network training).
+
+        Args:
+            all_params (np.ndarray): all parameters, including the prepended skill index
+
+        Returns:
+            masks, excluding dimension for skill index
+
+        """
         assert all_params.shape[0] == self.action_dimension
         masks = np.zeros(self.action_dimension - len(self.skills))
         skill_index = int(np.argmax(all_params[:len(self.skills)]))

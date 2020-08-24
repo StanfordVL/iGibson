@@ -330,11 +330,11 @@ class KitchenCoffee(TableTop):
 
     def _create_skill_lib(self):
         lib_skills = (
-            skills.GraspDistDiscreteOrn(name="grasp_dist_discrete_orn", lift_height=0.1, lift_speed=0.01, verbose=True),
-            skills.PlacePosDiscreteOrn(name="place_pos_discrete_orn", retract_distance=0.1, num_pause_steps=30, verbose=True),
-            skills.PourPosAngle(name="pour_pos_angle", pour_angle_speed=np.pi / 32, num_pause_steps=30, verbose=True)
+            skills.GraspDistDiscreteOrn(name="grasp_dist_discrete_orn", lift_height=0.1, lift_speed=0.01),
+            skills.PlacePosDiscreteOrn(name="place_pos_discrete_orn", retract_distance=0.1, num_pause_steps=30),
+            skills.PourPosAngle(name="pour_pos_angle", pour_angle_speed=np.pi / 32, num_pause_steps=30)
         )
-        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
+        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills, verbose=True)
 
     def _reset_objects(self):
         z = PBU.stable_z(self.objects["mug"].body_id, self.fixtures["table"].body_id)
@@ -540,7 +540,7 @@ class KitchenCoffeeAP(KitchenCoffee):
         params = self.skill_lib.sample_serialized_skill_params(
             "grasp",
             grasp_orn=dict(choices=[3]),
-            grasp_distance=dict(low=0.05, high=0.05)
+            grasp_distance=dict(low=[0.05], high=[0.05])
         )
         skill_seq.append((params, self.objects["mug"].body_id))
 
@@ -555,7 +555,7 @@ class KitchenCoffeeAP(KitchenCoffee):
         params = self.skill_lib.sample_serialized_skill_params(
             "grasp_fill_mug_any",
             grasp_orn=dict(choices=[3]),
-            grasp_distance=dict(low=0.05, high=0.05)
+            grasp_distance=dict(low=[0.05], high=[0.05])
         )
         skill_seq.append((params, self.objects["mug"].body_id))
 
@@ -654,12 +654,12 @@ class Kitchen(BaseEnv):
 
     def _create_skill_lib(self):
         lib_skills = (
-            skills.GraspDistDiscreteOrn(lift_height=0.1, lift_speed=0.01, verbose=True),
-            skills.PlacePosDiscreteOrn(retract_distance=0.1, num_pause_steps=30, verbose=True),
-            skills.PourPosAngle(pour_angle_speed=np.pi / 32, num_pause_steps=30, verbose=True),
-            skills.OperatePrismaticPosDistance(verbose=True)
+            skills.GraspDistDiscreteOrn(lift_height=0.1, lift_speed=0.01),
+            skills.PlacePosDiscreteOrn(retract_distance=0.1, num_pause_steps=30),
+            skills.PourPosAngle(pour_angle_speed=np.pi / 32, num_pause_steps=30),
+            skills.OperatePrismaticPosDistance()
         )
-        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
+        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills, verbose=True)
 
     def get_demo_expert(self, noise=None):
         # for i in range(4):

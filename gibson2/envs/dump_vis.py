@@ -144,8 +144,8 @@ def vis_image(hdf5_file, image_path):
 
     mug_pos, mug_fill_success, pour_orn, bowl_fill_success, mug_pos_to_bowl = get_coffee_results(env, f)
     f.close()
-    # draw_mug_positions(mug_pos, mug_fill_success, epoch=0, save_path=image_path)
-    draw_pour_orns(pour_orn, bowl_fill_success, epoch=0, save_path=image_path)
+    draw_mug_positions(mug_pos, mug_fill_success, epoch=0, save_path=image_path + "_place.png")
+    draw_pour_orns(pour_orn, mug_pos_to_bowl, bowl_fill_success, epoch=0, save_path=image_path + "_pour.png")
 
 
 if __name__ == "__main__":
@@ -162,5 +162,5 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    vis_all(args.input_path, args.output_path)
-    # vis_image(args.input_path, args.output_path)
+    # vis_all(args.input_path, args.output_path)
+    vis_image(args.input_path, args.output_path)
