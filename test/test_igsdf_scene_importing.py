@@ -14,11 +14,11 @@ import time
 
 config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 
+
 def test_import_igsdf():
-    
     scene = iGSDFScene('Beechwood_0')
     s = Simulator(mode='headless', image_width=512,
-                 image_height=512,)
+                  image_height=512, )
     s.import_ig_scene(scene)
 
     # turtlebot1 = Turtlebot(config)
@@ -27,20 +27,21 @@ def test_import_igsdf():
 
     start = time.time()
     end = time.time()
-
+    s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
     for i in range(150000000):
-
         s.step()
         end = time.time()
-        print("Elapsed time: ", end-start)
-        print("Frequency: ", 1/(end-start))
+        print("Elapsed time: ", end - start)
+        print("Frequency: ", 1 / (end - start))
         start = end
 
     s.disconnect()
     print("end")
 
+
 def main():
     test_import_igsdf()
+
 
 if __name__ == "__main__":
     main()
