@@ -90,6 +90,7 @@ class InstanceGroup(object):
         self.dynamic = dynamic
         self.tf_tree = None
         self.use_pbr = False
+        self.use_pbr_mapping = False
         self.roughness = 1
         self.metalness = 0
 
@@ -900,4 +901,9 @@ class MeshRenderer(object):
                 for item in self.render(modes=modes, hidden=[instance]):
                     frames.append(item)
         return frames
+
+    def use_pbr(self, use_pbr, use_pbr_mapping):
+        for instance in self.instances:
+            instance.use_pbr = use_pbr
+            instance.use_pbr_mapping = use_pbr_mapping
 
