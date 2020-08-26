@@ -13,11 +13,7 @@ const float Epsilon = 0.001; // This program needs larger eps.
 const uint NumSamples = 1024;
 const float InvNumSamples = 1.0 / float(NumSamples);
 
-#if VULKAN
-layout(set=0, binding=1, rg16f) restrict writeonly uniform image2D LUT;
-#else
 layout(binding=0, rg16f) restrict writeonly uniform image2D LUT;
-#endif // VULKAN
 
 // Compute Van der Corput radical inverse
 // See: http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
