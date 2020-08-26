@@ -12,36 +12,16 @@ const float Epsilon = 0.00001;
 const uint NumSamples = 1024;
 const float InvNumSamples = 1.0 / float(NumSamples);
 
-// In Vulkan whole mip tail is bound to the descriptor set and appropriate mip level is selected via a push constant.
-#if VULKAN
-layout(constant_id=0) const int NumMipLevels = 1;
-layout(set=0, binding=0) uniform samplerCube inputTexture;
-layout(set=0, binding=2, rgba16f) restrict writeonly uniform imageCube outputTexture[NumMipLevels];
-#else
 // In OpenGL only a single mip level is bound.
 const int NumMipLevels = 1;
 layout(binding=0) uniform samplerCube inputTexture;
 layout(binding=0, rgba16f) restrict writeonly uniform imageCube outputTexture[NumMipLevels];
-#endif // VULKAN
 
-#if VULKAN
-layout(push_constant) uniform PushConstants
-{
-	// Output texture mip level (without base mip level).
-	int level;
-	// Roughness value to pre-filter for.
-	float roughness;
-} pushConstants;
-
-#define PARAM_LEVEL     pushConstants.level
-#define PARAM_ROUGHNESS pushConstants.roughness
-#else
 // Roughness value to pre-filter for.
 layout(location=0) uniform float roughness;
 
 #define PARAM_LEVEL     0
 #define PARAM_ROUGHNESS roughness
-#endif // VULKAN
 
 // Compute Van der Corput radical inverse
 // See: http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
