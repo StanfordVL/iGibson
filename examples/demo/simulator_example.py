@@ -16,8 +16,8 @@ def main():
                           build_graph=True,
                           pybullet_load_texture=True)
     s.import_scene(scene)
-    #turtlebot = Turtlebot(config)
-    #s.import_robot(turtlebot)
+    turtlebot = Turtlebot(config)
+    s.import_robot(turtlebot)
 
     for _ in range(10):
         obj = YCBObject('003_cracker_box')
@@ -34,7 +34,7 @@ def main():
 
     for i in range(10000):
         with Profiler('Simulator step'):
-            #turtlebot.apply_action([0.1,0.1])
+            turtlebot.apply_action([0.1,0.1])
             s.step()
             rgb = s.renderer.render_robot_cameras(modes=('rgb'))
 

@@ -362,7 +362,7 @@ class MeshRenderer(object):
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
     def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False,
-                 enable_shadow=False):
+                 enable_shadow=False, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr')):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -370,6 +370,7 @@ class MeshRenderer(object):
         :param device_idx: which GPU to run the renderer on
         :param use_fisheye: use fisheye shader or not
         :param enable_shadow: enable shadow in the rgb rendering
+        :param env_texture_filename: texture filename for PBR lighting
         """
         self.shaderProgram = None
         self.fbo = None
@@ -424,15 +425,8 @@ class MeshRenderer(object):
         logging.debug('Is using fisheye camera: {}'.format(self.fisheye))
 
         if self.fisheye:
-            self.shaderProgram = self.r.compile_shader_meshrenderer(
-                        "".join(open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                        'shaders/fisheye_vert.shader')).readlines()).replace(
-                                            "FISHEYE_SIZE", str(self.width / 2)),
-                        "".join(open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                        'shaders/fisheye_frag.shader')).readlines()).replace(
-                                            "FISHEYE_SIZE", str(self.width / 2)))
+            logging.error('Fisheye is currently not supported.')
+            exit(1)
         else:
             self.shaderProgram = self.r.compile_shader_meshrenderer(
                         "".join(open(
@@ -457,7 +451,7 @@ class MeshRenderer(object):
         self.materials_mapping = {}
         self.mesh_materials = []
 
-        self.env_texture_filename = os.path.join(gibson2.assets_path, 'test', 'Rs.hdr')
+        self.env_texture_filename = env_texture_filename
         self.setup_pbr()
 
     def setup_pbr(self):
@@ -574,8 +568,6 @@ class MeshRenderer(object):
         vertex_normal = np.array(attrib.normals).reshape((len(attrib.normals)//3, 3))
         vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords)//2, 2))
 
-
-
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
             material_id = shape.mesh.material_ids[0]  # assume one shape only has one material
@@ -587,7 +579,6 @@ class MeshRenderer(object):
             shape_vertex_index = np_indices[:,0]
             shape_normal_index = np_indices[:,1]
             shape_texcoord_index = np_indices[:,2]
-
             shape_vertex = vertex_position[shape_vertex_index]
 
             if len(vertex_normal) == 0:
@@ -599,8 +590,6 @@ class MeshRenderer(object):
                 shape_texcoord = np.zeros((shape_vertex.shape[0], 2)) #dummy texcoord if texcoord is not available
             else:
                 shape_texcoord = vertex_texcoord[shape_texcoord_index]
-
-
 
             if not transform_orn is None:
                 orn = quat2rotmat(xyzw2wxyz(transform_orn))
@@ -621,21 +610,13 @@ class MeshRenderer(object):
             r = 1.0 / (delta_uv1[:,0] * delta_uv2[:,1] - delta_uv1[:,1] * delta_uv2[:,0])
             tangent = (delta_pos1 * delta_uv2[:,1][:,None] - delta_pos2 * delta_uv1[:,1][:,None]) * r[:,None]
             bitangent = (delta_pos2 * delta_uv1[:,0][:,None] - delta_pos1 * delta_uv2[:,0][:,None]) * r[:,None]
-
             bitangent = bitangent.repeat(3, axis=0)
             tangent = tangent.repeat(3, axis=0)
-
             vertices = np.concatenate(
                 [shape_vertex * scale, shape_normal, shape_texcoord, tangent, bitangent], axis=-1)
-
-
             faces = np.array(range(len(vertices))).reshape((len(vertices)//3, 3))
-
-
             vertexData = vertices.astype(np.float32)
-
             [VAO, VBO] = self.r.load_object_meshrenderer(self.shaderProgram, vertexData)
-
             self.VAOs.append(VAO)
             self.VBOs.append(VBO)
             self.faces.append(faces)
@@ -650,7 +631,6 @@ class MeshRenderer(object):
             logging.debug('mesh_materials: {}'.format(self.mesh_materials))
             VAO_ids.append(self.get_num_objects() - 1)
 
-        #release(scene)
         new_obj = VisualObject(obj_path, VAO_ids, len(self.visual_objects), self)
         self.visual_objects.append(new_obj)
         return VAO_ids

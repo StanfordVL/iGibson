@@ -42,8 +42,8 @@ void main(void)
 	vec3 v = getSamplingVector();
 
 	// Convert Cartesian direction vector to spherical coordinates.
-	float phi   = atan(v.y, v.x);
-	float theta = acos(v.z);
+	float phi   = atan(v.y, v.x); // here we use z-up convention, so y and z are swapped from original code
+	float theta = acos(v.z); // here we use z-up convention, so y and z are swapped from original code
 
 	// Sample equirectangular texture.
 	vec4 color = texture(inputTexture, vec2(phi/TwoPI, theta/PI));
