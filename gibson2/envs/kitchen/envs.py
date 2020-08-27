@@ -373,6 +373,7 @@ class KitchenCoffee(TableTop):
 
     def _sample_task(self):
         self._task_spec = np.random.randint(0, 2, size=1)
+        self._target_faucet = "faucet_milk" if self._task_spec[0] == 1 else "faucet_coffee"
 
     def set_goal(self, task_specs):
         """Set env target with external specification"""
@@ -400,8 +401,7 @@ class KitchenCoffee(TableTop):
         # place_delta[1] += 0.075 + 0.075 * (-1 if target_faucet == 'faucet_milk' else 1) + (np.random.rand(1) - 0.5) * 0.04
 
         # correct goal
-        target_faucet = "faucet_milk" if self.task_spec[0] == 1 else "faucet_coffee"
-        if target_faucet == "faucet_milk":
+        if self._target_faucet == "faucet_milk":
             place_delta[1] += (np.random.rand(1) - 0.5) * 0.15
         else:
             place_delta[1] += 0.15 + (np.random.rand(1) - 0.5) * 0.15
@@ -451,12 +451,11 @@ class KitchenCoffee(TableTop):
             "grasp_dist_discrete_orn", grasp_orn_name="back", grasp_distance=0.05)
         skill_seq.append((params, self.objects["mug"].body_id))
 
-        target_faucet = "faucet_milk" if self.task_spec[0] == 1 else "faucet_coffee"
         place_delta = np.array((0, 0, 0.01))
         place_delta[:2] += (np.random.rand(2) - 0.5) * 0.1
         params = self.skill_lib.get_serialized_skill_params(
             "place_pos_discrete_orn", place_orn_name="front", place_pos=place_delta)
-        skill_seq.append((params, self.objects[target_faucet].body_id))
+        skill_seq.append((params, self.objects[self._target_faucet].body_id))
 
         params = self.skill_lib.get_serialized_skill_params(
             "grasp_dist_discrete_orn", grasp_orn_name="back", grasp_distance=0.05)
@@ -491,8 +490,8 @@ class KitchenCoffee(TableTop):
             self.objects["faucet_coffee"].beads, self.objects["bowl"].body_id))
 
         successes = {
-            "fill_mug": num_beads_in_mug_milk >= 3 if self.task_spec[0] == 1 else num_beads_in_mug_coffee >= 3,
-            "fill_bowl": num_beads_in_bowl_milk >= 3 if self.task_spec[0] == 1 else num_beads_in_bowl_coffee >= 3,
+            "fill_mug": num_beads_in_mug_milk >= 3 if self._target_faucet == "faucet_milk" else num_beads_in_mug_coffee >= 3,
+            "fill_bowl": num_beads_in_bowl_milk >= 3 if self._target_faucet == "faucet_milk" else num_beads_in_bowl_coffee >= 3,
             "fill_mug_any": num_beads_in_mug_milk >= 3 or num_beads_in_mug_coffee >= 3,
             "fill_bowl_any": num_beads_in_bowl_milk >= 3 or num_beads_in_bowl_coffee >= 3,
         }
@@ -501,6 +500,17 @@ class KitchenCoffee(TableTop):
 
 
 class KitchenCoffeeAP(KitchenCoffee):
+    def set_goal(self, task_specs):
+        """Set env target with external specification"""
+        self._task_spec = np.array(task_specs)
+
+    def _sample_task(self):
+        skill_name = np.random.choice(["fill_bowl_milk", "fill_bowl_coffee"])
+        self._task_spec = np.array([self.skill_lib.name_to_skill_index(skill_name), self.objects.names.index("bowl")])
+        self._target_faucet = "faucet_milk" if skill_name == "fill_bowl_milk" else "faucet_coffee"
+        self._task_skill_name = skill_name
+        self._task_object_name = "bowl"
+
     def _create_skill_lib(self):
         def fill_bowl(objects, pl):
             num_beads_in_bowl = len(objects_center_in_container(
@@ -589,6 +599,107 @@ class KitchenCoffeeAP(KitchenCoffee):
             buffer.append(**traj)
             if exec_info["exception"] is not None:
                 exception = exec_info["exception"]
+                break
+        else:
+            assert self.is_success()
+
+        return buffer.aggregate(), exception
+
+
+class SimpleCoffeeAP(KitchenCoffee):
+    def set_goal(self, task_specs):
+        """Set env target with external specification"""
+        self._task_spec = np.array(task_specs)
+
+    def _sample_task(self):
+        skill_name = np.random.choice(["grasp_fill_mug_milk", "grasp_fill_mug_coffee"])
+        self._task_spec = np.array([self.skill_lib.name_to_skill_index(skill_name), self.objects.names.index("mug")])
+        self._target_faucet = "faucet_milk" if skill_name == "grasp_fill_mug_milk" else "faucet_coffee"
+        self._task_skill_name = skill_name
+        self._task_object_name = "mug"
+
+    def is_success_all_tasks(self):
+        num_beads_in_mug_milk = len(objects_center_in_container(
+            self.objects["faucet_milk"].beads, self.objects["mug"].body_id))
+        num_beads_in_mug_coffee = len(objects_center_in_container(
+            self.objects["faucet_coffee"].beads, self.objects["mug"].body_id))
+
+        successes = {
+            "fill_mug": num_beads_in_mug_milk >= 3 if self._target_faucet == "faucet_milk" else num_beads_in_mug_coffee >= 3,
+            "fill_mug_any": num_beads_in_mug_milk >= 3 or num_beads_in_mug_coffee >= 3,
+        }
+        successes["task"] = successes["fill_mug"]
+        return successes
+
+    def _create_skill_lib(self):
+        def fill_mug(objects, pl):
+            num_beads_in_bowl = len(objects_center_in_container(
+                objects["faucet_" + pl].beads, objects["mug"].body_id))
+            return num_beads_in_bowl >= 3
+
+        lib_skills = (
+            skills.GraspDistDiscreteOrn(
+                name="grasp", lift_height=0.1, lift_speed=0.01
+            ),
+            skills.GraspDistDiscreteOrn(
+                name="grasp_fill_mug_milk", lift_height=0.1, lift_speed=0.01,
+                precondition_fn=lambda objs=self.objects: fill_mug(self.objects, "milk"),
+            ),
+            skills.GraspDistDiscreteOrn(
+                name="grasp_fill_mug_coffee", lift_height=0.1, lift_speed=0.01,
+                precondition_fn=lambda objs=self.objects: fill_mug(self.objects, "coffee"),
+            ),
+            skills.PlacePosDiscreteOrn(
+                name="place", retract_distance=0.1, num_pause_steps=30,
+            ),
+        )
+        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills, verbose=True)
+
+    def get_demo_suboptimal(self, noise=None):
+        self.reset()
+        param_set = OrderedDict()
+        param_set["grasp"] = self.skill_lib.sample_serialized_skill_params(
+            "grasp",
+            grasp_orn=dict(choices=[3]),
+            grasp_distance=dict(low=[0.05], high=[0.05])
+        )
+
+        param_set["place"] = self.skill_lib.sample_serialized_skill_params(
+            "place",
+            place_orn=dict(choices=[0]),
+            place_pos=dict(low=(-0.025, -0.075, 0.01), high=(0.025, 0.075, 0.01))
+        )
+
+        param_set["grasp_fill_mug_milk"] = self.skill_lib.sample_serialized_skill_params(
+            "grasp_fill_mug_milk",
+            grasp_orn=dict(choices=[3]),
+            grasp_distance=dict(low=[0.05], high=[0.05])
+        )
+
+        param_set["grasp_fill_mug_coffee"] = self.skill_lib.sample_serialized_skill_params(
+            "grasp_fill_mug_coffee",
+            grasp_orn=dict(choices=[3]),
+            grasp_distance=dict(low=[0.05], high=[0.05])
+        )
+
+        buffer = PU.Buffer()
+        exception = None
+        for skill_step in range(10):
+            object_id = np.random.choice(self.objects.body_ids)
+            skill_name = np.random.choice(list(param_set.keys()))
+            skill_param = param_set[skill_name]
+            print(skill_step, skill_name, object_id)
+
+            traj, exec_info = PU.execute_skill(
+                self, self.skill_lib, skill_param,
+                target_object_id=object_id,
+                skill_step=skill_step,
+                noise=noise
+            )
+            buffer.append(**traj)
+            if exec_info["exception"] is not None:
+                exception = exec_info["exception"]
+            if self.is_success():
                 break
 
         return buffer.aggregate(), exception

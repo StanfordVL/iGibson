@@ -293,7 +293,7 @@ class BaseEnv(object):
 
     def is_done(self):
         """Check if the agent is done (not necessarily successful)."""
-        return False
+        return self.is_success()
 
     def is_success(self):
         return self.is_success_all_tasks()["task"]
