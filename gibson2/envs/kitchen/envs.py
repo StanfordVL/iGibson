@@ -765,37 +765,101 @@ class Kitchen(BaseEnv):
 
     def _create_skill_lib(self):
         lib_skills = (
-            skills.GraspDistDiscreteOrn(lift_height=0.1, lift_speed=0.01),
-            skills.PlacePosDiscreteOrn(retract_distance=0.1, num_pause_steps=30),
-            skills.PourPosAngle(pour_angle_speed=np.pi / 32, num_pause_steps=30),
-            skills.OperatePrismaticPosDistance()
+            skills.GraspDistDiscreteOrn(
+                name="grasp", lift_height=0.1, lift_speed=0.01,
+                joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
+            ),
+            skills.PlacePosDiscreteOrn(
+                name="place", retract_distance=0.1, num_pause_steps=30,
+                joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
+            ),
+            skills.OperatePrismaticPosDistance(
+                name="open_prismatic",
+                joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32))
         )
         self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills, verbose=True)
 
-    def get_demo_expert(self, noise=None):
+    def get_demo_suboptimal(self, noise=None):
         # for i in range(4):
         #     p.changeDynamics(self.robot.body_id, i, mass=0.01)
         self.reset()
+        param_set = OrderedDict()
+        param_set["open_prismatic"] = lambda: self.skill_lib.sample_serialized_skill_params(
+            "open_prismatic",
+            grasp_pos=dict(low=[0.4, -0.03, 0.15], high=[0.35, 0.03, 0.25]),
+            prismatic_move_distance=dict(low=[-0.2], high=[-0.3])
+        )
+
+        param_set["grasp"] = lambda: self.skill_lib.sample_serialized_skill_params(
+            "grasp",
+            grasp_orn=dict(choices=[4]),
+            grasp_distance=dict(low=[0.05], high=[0.05])
+        )
+
+        # params = self.skill_lib.sample_serialized_skill_params(
+        #     "place",
+        #     place_orn=dict(choices=[0]),
+        #     place_pos=dict(low=[0, 0, 0.01], high=[0, 0, 0.01])
+        # )
+        # skill_seq.append((params, self.objects["stove"].body_id))
+        combos = [("open_prismatic", self.objects.name_to_body_id("drawer")),
+                  ("grasp", self.objects.name_to_body_id("can"))]
+
         buffer = PU.Buffer()
-        skill_seq = []
-        params = self.skill_lib.get_serialized_skill_params(
-            "operate_prismatic_pos_distance", grasp_pos=(0.37, 0.0, 0.19), prismatic_move_distance=-0.4)
-        skill_seq.append((params, self.objects["drawer"].body_id))
+        exception = None
+        for skill_step in range(10):
+            skill_name, object_id = combos[int(np.random.randint(0, 2))]
+            skill_param = param_set[skill_name]
+            print(skill_step, skill_name, object_id)
 
-        params = self.skill_lib.get_serialized_skill_params(
-            "grasp_dist_discrete_orn", grasp_orn_name="top", grasp_distance=0.05)
-        skill_seq.append((params, self.objects["can"].body_id))
-
-        params = self.skill_lib.get_serialized_skill_params(
-            "place_pos_discrete_orn", place_orn_name="front", place_pos=[0, 0, 0])
-        skill_seq.append((params, self.objects["stove"].body_id))
-
-        for skill_step, (skill_param, object_id) in enumerate(skill_seq):
             traj, exec_info = PU.execute_skill(
-                self, self.skill_lib, skill_param,
+                self, self.skill_lib, skill_param(),
                 target_object_id=object_id,
                 skill_step=skill_step,
                 noise=noise
             )
             buffer.append(**traj)
-        return buffer.aggregate(), None
+            if exec_info["exception"] is not None:
+                exception = exec_info["exception"]
+                print(exception)
+            if self.is_success():
+                break
+
+        return buffer.aggregate(), exception
+
+    # def _create_robot(self):
+    #     from gibson2.envs.kitchen.robots import Gripper, JointActuatedRobot, Arm
+    #     gripper = Gripper(
+    #         joint_names=("left_gripper_joint", "right_gripper_joint"),
+    #         finger_link_names=("left_gripper", "left_tip", "right_gripper", "right_tip")
+    #     )
+    #     gripper.load(os.path.join(gibson2.assets_path, 'models/grippers/basic_gripper/gripper_plannable.urdf'))
+    #     arm = Arm(joint_names=("txj", "tyj", "tzj", "rxj", "ryj", "rzj"))
+    #     arm.load(body_id=gripper.body_id)
+    #     robot = JointActuatedRobot(
+    #         eef_link_name="eef_link", init_base_pose=self._robot_base_pose, gripper=gripper, arm=arm)
+    #
+    #     self.robot = robot
+    #
+    # def step(self, action, sleep_per_sim_step=0.0, return_obs=True):
+    #     assert len(action) == self.action_dimension
+    #     import time
+    #     action = action.copy()
+    #     gri = action[-1]
+    #     self.robot.close_loop_joint_control(action[:6])
+    #     if gri > 0:
+    #         self.robot.gripper.grasp()
+    #     else:
+    #         self.robot.gripper.ungrasp()
+    #
+    #     for o in self.interactive_objects.object_list:
+    #         o.step(self.objects.object_list)
+    #
+    #     for _ in range(self._num_sim_per_step):
+    #         p.stepSimulation()
+    #         time.sleep(sleep_per_sim_step)
+    #
+    #     if not return_obs:
+    #         return self.get_reward(), self.is_done(), {}
+    #
+    #     return self.get_observation(), self.get_reward(), self.is_done(), {}

@@ -185,6 +185,17 @@ def configuration_path_to_cartesian_path(planner_robot, conf_path):
     return pose_path
 
 
+def move_to_end_of_configuration_path(planner_robot, conf_path):
+    """
+    Move the planner robot to the end of a configuration path
+    Args:
+        planner_robot (PlannerRobot): planner robot
+        conf_path (ConfigurationPath): configuration paths
+
+    """
+    planner_robot.reset_plannable_joint_positions(conf_path.arm_path[-1])
+
+
 def inverse_kinematics(robot_bid, eef_link, plannable_joints, target_pose):
     """
     Compute inverse kinematics for an end effector pose wrt to a list of plannable joints
@@ -236,8 +247,9 @@ def plan_joint_path(
             resolutions=resolutions,
             attachments=attachments,
             restarts=10,
-            iterations=100,
-            smooth=50
+            iterations=50,
+            smooth=30,
+            max_distance=1e-3
         )
     if path is None:
         raise NoPlanException("No Motion Plan Found")
@@ -301,6 +313,47 @@ def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0):
         actions.append(action)
         states.append(env.serialized_world_state)
         # all_obs.append(env.get_observation())
+
+        env.step(action, sleep_per_sim_step=sleep_per_sim_step, return_obs=False)
+        rewards.append(float(env.is_success()))
+
+    # all_obs.append(env.get_observation())
+    actions.append(np.zeros(env.action_dimension))
+    rewards.append(float(env.is_success()))
+    states.append(env.serialized_world_state)
+    task_specs.append(env.task_spec)
+
+    # all_obs = dict((k, np.array([all_obs[i][k] for i in range(len(all_obs))])) for k in all_obs[0])
+    states = np.stack(states)
+    actions = np.stack(actions)
+    rewards = np.stack(rewards)
+    task_specs = np.stack(task_specs)
+    return {"states": states, "actions": actions, "rewards": rewards, "task_specs": task_specs}
+
+
+def execute_planned_joint_path(env, path, noise=None, sleep_per_sim_step=0.0):
+    """Execute a planned path an relabel actions."""
+
+    # all_obs = []
+    actions = []
+    rewards = []
+    states = []
+    task_specs = []
+
+    for i in range(len(path)):
+        task_specs.append(env.task_spec)
+        conf = path.arm_path[i]
+        grip = path.gripper_path[i]
+
+        action = np.zeros(env.action_dimension)
+        action[-1] = grip
+        action[:-1] = conf
+        if noise is not None:
+            assert len(noise) == (env.action_dimension - 1)
+            noise_arr = np.array(noise)
+            action[:6] += np.clip(np.random.randn(len(noise)) * noise_arr, -noise_arr * 2, noise_arr * 2)
+        actions.append(action)
+        states.append(env.serialized_world_state)
 
         env.step(action, sleep_per_sim_step=sleep_per_sim_step, return_obs=False)
         rewards.append(float(env.is_success()))

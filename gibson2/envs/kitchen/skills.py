@@ -4,7 +4,8 @@ from collections import OrderedDict
 import gibson2.envs.kitchen.transform_utils as TU
 import gibson2.external.pybullet_tools.transformations as T
 from gibson2.envs.kitchen.plan_utils import ConfigurationPath, CartesianPath, configuration_path_to_cartesian_path, \
-    compute_grasp_pose, NoPlanException, PreconditionNotSatisfied
+    compute_grasp_pose, NoPlanException, PreconditionNotSatisfied, move_to_end_of_configuration_path
+from gibson2.envs.kitchen.robots import PlannerRobot
 from gibson2.envs.kitchen.robots import GRIPPER_CLOSE, GRIPPER_OPEN
 import gibson2.external.pybullet_tools.utils as PBU
 
@@ -85,6 +86,54 @@ def plan_skill_open_prismatic(
     retract_path.append(retract_more_pose, gripper_state=GRIPPER_OPEN)
     retract_path = retract_path.interpolate(pos_resolution=0.005, orn_resolution=np.pi/8)  # slowly open
     return grasp_path + retract_path
+
+
+def joint_plan_skill_open_prismatic(
+        planner,
+        obstacles,
+        grasp_pose,
+        prismatic_move_distance,
+        reach_distance=0.,
+        joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
+):
+    """
+    plan skill for opening articulated object with prismatic joint (e.g., drawers)
+    Args:
+        planner (PlannerRobot): planner
+        obstacles (list, tuple): a list obstacle ids
+        grasp_pose (tuple): pose for grasping the handle
+        prismatic_move_distance (float): distance for retract to open
+        reach_distance (float): distance for reaching to grasp
+        joint_resolutions (list, tuple): motion planning joint-space resolution
+
+    Returns:
+        path (CartesianPath)
+    """
+    # approach handle
+    approach_pose = PBU.multiply(grasp_pose, ([-reach_distance, 0, 0], PBU.unit_quat()))
+    approach_confs = planner.plan_joint_path(
+        target_pose=approach_pose, obstacles=obstacles, resolutions=joint_resolutions)
+    conf_path = ConfigurationPath()
+    conf_path.append_segment(approach_confs, gripper_state=GRIPPER_OPEN)
+    move_to_end_of_configuration_path(planner, conf_path)
+    grasp_pose_conf = planner.inverse_kinematics(grasp_pose)
+    conf_path.append(grasp_pose_conf, gripper_state=GRIPPER_OPEN)
+    conf_path.append_segment([grasp_pose_conf] * 5, gripper_state=GRIPPER_CLOSE)
+    move_to_end_of_configuration_path(planner, conf_path)
+
+    # retract to open
+    retract_pose = PBU.multiply(grasp_pose, ([prismatic_move_distance, 0, 0], PBU.unit_quat()))
+    retract_pose_conf = planner.inverse_kinematics(retract_pose)
+    conf_path.append(retract_pose_conf, gripper_state=GRIPPER_CLOSE)
+    conf_path.append_pause(5)
+    conf_path.append_segment([retract_pose_conf] * 2, gripper_state=GRIPPER_OPEN)
+
+    # retract a bit more to make room for the next motion
+    retract_more_pose = PBU.multiply(retract_pose, ([-0.10, 0, 0], PBU.unit_quat()))
+    retract_more_pose_conf = planner.inverse_kinematics(retract_more_pose)
+    conf_path.append(retract_more_pose_conf, gripper_state=GRIPPER_OPEN)
+    return conf_path.interpolate(resolutions=[np.pi / 32] * 6)
+    # return conf_path
 
 
 def plan_skill_grasp(
@@ -258,7 +307,7 @@ class SkillParamsContinuous(SkillParams):
             assert np.all(np.bitwise_and(sample >= self._low, sample <= self._high))
         elif choices is not None:
             for c in choices:
-                assert c.shape == self.sample_shape
+                assert np.array(c).shape == self.sample_shape
             sample = np.array(choices[np.random.randint(low=0, high=len(choices))])
         elif mode == 'uniform':
             sample = np.random.rand(*self.sample_shape) * (high - low) + low

@@ -37,6 +37,9 @@ class ObjectBank(object):
     def body_id_to_name(self, body_id):
         return self.names[self.body_ids.index(body_id)]
 
+    def name_to_body_id(self, name):
+        return self.body_ids[self.names.index(name)]
+
     def __getitem__(self, name):
         return self._objects[name]
 

@@ -226,7 +226,7 @@ def record_demos(args):
         num_sim_per_step=5,
         sim_time_step=1./240.,
     )
-    env = env_factory(args.env, **env_kwargs, use_planner=True, hide_planner=True, use_gui=args.gui, use_skills=True)
+    env = env_factory(args.env, **env_kwargs, use_planner=True, hide_planner=False, use_gui=args.gui, use_skills=True)
 
     if os.path.exists(args.file):
         os.remove(args.file)
@@ -249,7 +249,6 @@ def record_demos(args):
             # buffer = get_demo_arrange_hard_skill(env, perturb=args.perturb_demo)
             buffer, plan_exception = env.get_demo_suboptimal(noise=ACTION_NOISE if args.perturb_demo else None)
             if plan_exception is not None:
-                print(plan_exception)
                 if not args.keep_interrupted_demos:
                     continue
         except PU.NoPlanException as e:

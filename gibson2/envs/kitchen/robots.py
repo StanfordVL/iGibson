@@ -355,6 +355,13 @@ class ConstraintActuatedRobot(Robot):
 
     def set_eef_position_orientation(self, pos, orn):
         p.changeConstraint(self.cid, pos, orn)
+        # for _ in range(20):
+        #     if np.allclose(pos, self.get_eef_position(), atol=1e-3):
+        #         break
+        #     # p.changeConstraint(self.cid, pos, orn)
+        #     p.stepSimulation()
+        # else:
+        #     print("ooe")
 
 
 class ConstraintTargetActuatedRobot(ConstraintActuatedRobot):
@@ -395,3 +402,14 @@ class JointActuatedRobot(Robot):
 
     def set_actuated_joint_positions(self, positions):
         return self.arm.set_joint_positions(positions=positions, force=100000)
+
+    def close_loop_joint_control(self, target, tolerance=1e-3):
+        assert (len(self.actuated_joints) == len(target))
+        positions = PBU.get_joint_positions(self.body_id, self.actuated_joints)
+        for _ in range(20):
+            if np.allclose(target, positions, atol=tolerance, rtol=0):
+                break
+            PBU.control_joints(self.body_id, self.actuated_joints, target)
+            p.stepSimulation()
+            positions = PBU.get_joint_positions(self.body_id, self.actuated_joints)
+            print(target, positions)
