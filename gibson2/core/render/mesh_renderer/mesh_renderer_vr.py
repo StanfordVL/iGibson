@@ -26,8 +26,6 @@ class MeshRendererVR():
         else:
             self.renderer = rendererType(width=self.width, height=self.height, msaa=self.msaa, useGlfwWindow=True, fullscreen=self.fullscreen, optimize=self.optimize)
 
-        self.fig = plt.figure()
-
     # Sets the position of the VR system (HMD, left controller, right controller).
     # Can be used for many things, including adjusting height and teleportation-based movement
     def set_vr_offset(self, pos):

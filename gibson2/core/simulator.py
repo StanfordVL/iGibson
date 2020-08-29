@@ -25,6 +25,7 @@ class Simulator:
                  auto_sync=True,
                  optimize_render=False,
                  msaa=False,
+                 use_dynamic_timestep=False,
                  vrWidth=None,
                  vrHeight=None,
                  vrFullscreen=True,
@@ -69,6 +70,10 @@ class Simulator:
 
         if self.mode in ['vr']:
             self.use_vr_renderer = True
+        
+        self.use_dynamic_timestep = use_dynamic_timestep
+        # Low pass-filtered average frame time, set to 0 to start
+        self.avg_frame_time = 0
                    
         # renderer
         self.msaa = msaa
@@ -85,6 +90,7 @@ class Simulator:
         self.render_to_tensor = render_to_tensor
         self.auto_sync = auto_sync
         self.optimize_render = optimize_render
+        self.max_haptic_duration = 4000
         self.load()
 
     def set_timestep(self, timestep):
@@ -444,23 +450,34 @@ class Simulator:
     def optimize_data(self):
         self.renderer.optimize_vertex_and_texture()
 
-    def step(self, shouldTime=False):
+    def step(self, shouldPrintTime=False):
         """
         Step the simulation and update positions in renderer
         """
-        if shouldTime:
-            startTime = time.time()
+        start_time = time.time()
+
         p.stepSimulation()
-        if shouldTime:
-            physicsTime = time.time() - startTime
-            t = time.time()
+
+        physics_time = time.time() - start_time
+        curr_time = time.time()
+
         if self.auto_sync:
             self.sync()
-        if shouldTime:
-            renderTime = time.time() - t
-            print("Physics time: %f" % float(physicsTime/0.001))
-            print("Render time: %f" % float(renderTime/0.001))
-            print("Total frame time: %f" % float((physicsTime + renderTime)/0.001))
+
+        render_time = time.time() - curr_time
+        curr_frame_time = physics_time + render_time
+        if self.use_dynamic_timestep:
+            # Run through low pass filter so spikes/drops in fps don't affect physics
+            self.avg_frame_time = self.avg_frame_time * 0.9 + curr_frame_time * 0.1 if self.avg_frame_time > 0 else curr_frame_time
+            if shouldPrintTime:
+                print("New physics fps: %f" % float(1/self.avg_frame_time))
+            self.set_timestep(self.avg_frame_time)
+
+        if shouldPrintTime:
+            print("Physics time: %f" % float(physics_time/0.001))
+            print("Render time: %f" % float(render_time/0.001))
+            print("Total frame time: %f" % float(curr_frame_time/0.001))
+            print("Curr fps: %f" % float(1/curr_frame_time))
             print("___________________________________")
 
     def sync(self):
@@ -473,8 +490,8 @@ class Simulator:
         if (self.use_ig_renderer or self.use_vr_renderer) and not self.viewer is None:
             self.viewer.update()
     
-    # Call this before step - returns all VR events that have happened since last step call
-    # Returns a list of lists. Each sub-list contains deviceType and eventType. List is empty is all events are invalid
+    # Returns event data as list of lists. Each sub-list contains deviceType and eventType. List is empty is all 
+    # events are invalid. 
     # deviceType: left_controller, right_controller
     # eventType: grip_press, grip_unpress, trigger_press, trigger_unpress, touchpad_press, touchpad_unpress,
     # touchpad_touch, touchpad_untouch, menu_press, menu_unpress (menu is the application button)
@@ -487,7 +504,7 @@ class Simulator:
 
     # Call this after step - returns all VR device data for a specific device
     # Device can be hmd, left_controller or right_controller
-    # Return isValid (indicating validity of data), translation and rotation in Gibson world space
+    # Returns isValid (indicating validity of data), translation and rotation in Gibson world space
     def getDataForVRDevice(self, deviceName):
         if not self.use_vr_renderer:
             return [None, None, None]
@@ -508,7 +525,7 @@ class Simulator:
     # Controller can be left_controller or right_controller
     # Returns trigger_fraction, touchpad finger position x, touchpad finger position y
     # Data is only valid if isValid is true from previous call to getDataForVRDevice
-    # Trigger data: 0 (closed) <------> 1 (open)
+    # Trigger data: 1 (closed) <------> 0 (open)
     # Analog data: X: -1 (left) <-----> 1 (right) and Y: -1 (bottom) <------> 1 (top)
     def getButtonDataForController(self, controllerName):
         if not self.use_vr_renderer:
@@ -554,6 +571,14 @@ class Simulator:
             vec_list.append(dir_vec)
 
         return vec_list
+
+    # Triggers a haptic pulse of the specified strength (0 is weakest, 1 is strongest)
+    # Device can be one of "hmd", "left_controller" or "right_controller"
+    def triggerHapticPulse(self, device, strength):
+        if not self.use_vr_renderer:
+            print("Error: can't use haptics without VR system!")
+        else:
+            self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
 
     @staticmethod
     def update_position(instance):

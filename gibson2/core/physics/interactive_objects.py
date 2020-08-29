@@ -190,6 +190,13 @@ class VisualMarker(Object):
         _, original_orn = p.getBasePositionAndOrientation(self.body_id)
         p.resetBasePositionAndOrientation(self.body_id, pos, original_orn)
 
+    def set_marker_orn(self, orn):
+        original_pos, _ = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, original_pos, orn)
+
+    def set_marker_state(self, pos, orn):
+        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+
 
 class BoxShape(Object):
     def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], visual_only=False, mass=1000, color=[1, 1, 1, 1]):
