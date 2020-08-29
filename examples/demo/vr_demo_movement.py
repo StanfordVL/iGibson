@@ -23,7 +23,7 @@ vrMode = True
 movement_type = 'torso_relative'
 
 # Timestep should always be set to 1/90 to match VR system's 90fps
-s = Simulator(mode='vr', timestep = 1/90.0, msaa=True, vrFullscreen=False, vrEyeTracking=False, optimize_render=optimize, vrMode=vrMode)
+s = Simulator(mode='vr', timestep = 1/90.0, msaa=True, use_dynamic_timestep=True, vrFullscreen=False, vrEyeTracking=False, optimize_render=optimize, vrMode=vrMode)
 scene = BuildingScene('Placida', is_interactive=False)
 scene.sleep = optimize
 s.import_scene(scene)
@@ -56,7 +56,7 @@ if optimize:
 s.setVROffset([0, 0, -0.2])
 
 while True:
-    s.step(shouldTime=False)
+    s.step(shouldPrintTime=True)
 
     if vrMode:
         hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')

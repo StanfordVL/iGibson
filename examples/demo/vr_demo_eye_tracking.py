@@ -81,7 +81,7 @@ while True:
                     rightGripperFraction = 0.0
                     shouldMoveMarker = False
 
-    s.step(shouldTime=shouldTime)
+    s.step(shouldPrintTime=shouldTime)
 
     if vrMode:
         hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')

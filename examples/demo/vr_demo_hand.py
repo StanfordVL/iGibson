@@ -36,7 +36,7 @@ if optimize:
 s.setVROffset([1.0, 0, -0.4])
 
 while True:
-    s.step(shouldTime=False)
+    s.step(shouldPrintTime=False)
 
     hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')
     lIsValid, lTrans, lRot = s.getDataForVRDevice('left_controller')
