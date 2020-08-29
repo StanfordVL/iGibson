@@ -316,6 +316,21 @@ class EnvSkillWrapper(object):
     def action_dimension(self):
         return self.skill_lib.action_dimension + len(self.env.objects)
 
+    def parse_action_array_to_skill_info(self, action):
+        assert action.shape[0] == self.action_dimension
+        skill_dict = dict()
+        skill_params = action[:self.skill_lib.action_dimension]
+        skill_object_index = int(np.argmax(action[self.skill_lib.action_dimension:]))
+        skill_object_index_arr = np.zeros(len(self.env.objects))
+        skill_object_index_arr[skill_object_index] = 1
+        skill_dict["skill_params"] = skill_params
+        skill_dict["skill_param_masks"] = self.skill_lib.get_serialized_skill_param_mask(skill_params)
+        skill_dict["skill_object_index"] = skill_object_index_arr
+        skill_param_dict = self.skill_lib.deserialize_skill_params(skill_params)
+        skill_param_dict.update(self.skill_lib.get_skill_param_dict_metadata(skill_param_dict))
+        skill_dict["skill_param_dict"] = skill_param_dict
+        return skill_dict
+
     def step(self, actions, sleep_per_sim_step=0.0):
         if isinstance(actions, np.ndarray):
             skill_params = actions[:self.skill_lib.action_dimension]

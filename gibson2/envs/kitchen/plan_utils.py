@@ -475,7 +475,7 @@ class Buffer(object):
         data = dict()
         for k, v in self.data.items():
             if isinstance(v[0], dict):
-                data[k] = dict((k, np.concatenate([v[i][k] for i in range(len(v))], axis=0)) for k in v[0])
+                data[k] = dict((kk, np.concatenate([v[i][kk] for i in range(len(v))], axis=0)) for kk in v[0])
             else:
                 data[k] = np.concatenate(v, axis=0)
         # make sure all data items agree on sequence dimension

@@ -519,20 +519,32 @@ class KitchenCoffeeAP(KitchenCoffee):
 
         lib_skills = (
             skills.GraspDistDiscreteOrn(
-                name="grasp", lift_height=0.1, lift_speed=0.01
+                name="grasp", lift_height=0.1, lift_speed=0.01,
+                params=OrderedDict(
+                    grasp_distance=skills.SkillParamsContinuous(low=[0.05], high=[0.05]),
+                    grasp_orn=skills.SkillParamsDiscrete(size=len(skills.ORIENTATIONS))
+                )
             ),
             skills.GraspDistDiscreteOrn(
                 name="grasp_fill_mug_any", lift_height=0.1, lift_speed=0.01,
-                precondition_fn=lambda: self.is_success_all_tasks()["fill_mug_any"]
+                precondition_fn=lambda: self.is_success_all_tasks()["fill_mug_any"],
+                params=OrderedDict(
+                    grasp_distance=skills.SkillParamsContinuous(low=[0.05], high=[0.05]),
+                    grasp_orn=skills.SkillParamsDiscrete(size=len(skills.ORIENTATIONS)),
+                )
             ),
             skills.PlacePosDiscreteOrn(
                 name="place", retract_distance=0.1, num_pause_steps=30,
+                params=OrderedDict(
+                    place_pos=skills.SkillParamsContinuous(low=(-0.025, -0.075, 0.01), high=(0.025, 0.075, 0.01)),
+                    place_orn=skills.SkillParamsDiscrete(size=len(skills.ORIENTATIONS)),
+                )
             ),
             skills.PourPosAngle(
                 name="pour", pour_angle_speed=np.pi / 32, num_pause_steps=30,
                 params=OrderedDict(
-                    pour_pos=skills.SkillParamsContinuous(low=(-1, -1, 0), high=(1, 1, 1)),
-                    pour_angle=skills.SkillParamsContinuous(low=(0,), high=(np.pi,))
+                    pour_pos=skills.SkillParamsContinuous(low=(-0.1, -0.1, 0.25), high=(0.1, 0.1, 0.35)),
+                    pour_angle=skills.SkillParamsContinuous(low=(np.pi * 0.25,), high=(np.pi,))
                 )
             ),
             skills.ConditionSkill(
@@ -602,6 +614,45 @@ class KitchenCoffeeAP(KitchenCoffee):
                 break
         else:
             assert self.is_success()
+
+        return buffer.aggregate(), exception
+
+    def get_demo_random(self, noise=None):
+        self.reset()
+        param_set = OrderedDict()
+        param_set["grasp"] = lambda: self.skill_lib.sample_serialized_skill_params(
+            "grasp", grasp_orn=dict(choices=[3]),
+        )
+        param_set["place"] = lambda: self.skill_lib.sample_serialized_skill_params(
+            "place", place_orn=dict(choices=[0]),
+        )
+        # param_set["grasp_fill_mug_any"] = self.skill_lib.sample_serialized_skill_params(
+        #     "grasp_fill_mug_any", grasp_orn=dict(choices=[3]),
+        # )
+        param_set["pour"] = lambda: self.skill_lib.sample_serialized_skill_params("pour")
+        param_set["fill_bowl_milk"] = lambda: self.skill_lib.sample_serialized_skill_params("fill_bowl_milk")
+        param_set["fill_bowl_coffee"] = lambda: self.skill_lib.sample_serialized_skill_params("fill_bowl_coffee")
+
+        buffer = PU.Buffer()
+        exception = None
+        for skill_step in range(10):
+            object_id = np.random.choice(self.objects.body_ids)
+            skill_name = np.random.choice(list(param_set.keys()))
+            skill_param = param_set[skill_name]()
+
+            traj, exec_info = PU.execute_skill(
+                self, self.skill_lib, skill_param,
+                target_object_id=object_id,
+                skill_step=skill_step,
+                noise=noise
+            )
+            buffer.append(**traj)
+            if exec_info["exception"] is not None:
+                exception = exec_info["exception"]
+            print(skill_step, skill_name, object_id, exception)
+
+            if self.is_success():
+                break
 
         return buffer.aggregate(), exception
 

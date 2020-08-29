@@ -345,7 +345,6 @@ class SkillParamsDiscrete(SkillParams):
             sample_ind = np.random.randint(low=0, high=self.sample_shape[0])
         sample = np.zeros(self.sample_shape)
         sample[sample_ind] = 1
-
         return sample
 
 
@@ -419,6 +418,8 @@ class Skill(object):
         Returns:
             params: OrderedDict
         """
+        assert params.shape[0] == self.action_dimension
+        params = params.copy()
         param_dict = OrderedDict()
         ind = 0
         for k in self.params:
@@ -498,9 +499,10 @@ class GraspDistOrn(Skill):
 
     def plan(self, params, target_object_id=None):
         assert len(params) == self.action_dimension
-        grasp_orn_quat = TU.axisangle2quat(*TU.vec2axisangle(params[1:]))
+        params = self.deserialize_skill_param_array(params)
+        grasp_orn_quat = TU.axisangle2quat(*TU.vec2axisangle(params["grasp_orn"]))
         grasp_pose = compute_grasp_pose(
-            PBU.get_pose(target_object_id), grasp_orientation=grasp_orn_quat, grasp_distance=params[0])
+            PBU.get_pose(target_object_id), grasp_orientation=grasp_orn_quat, grasp_distance=params["grasp_distance"])
         traj= plan_skill_grasp(
             planner=self.planner,
             obstacles=self.obstacles,
@@ -512,7 +514,7 @@ class GraspDistOrn(Skill):
         return traj
 
     def get_skill_params(self, grasp_orn, grasp_distance):
-        params = OrderedDict(
+        params = dict(
             grasp_distance=grasp_distance,
             grasp_orn=TU.axisangle2vec(*TU.quat2axisangle(grasp_orn))
         )
@@ -528,14 +530,16 @@ class GraspDistDiscreteOrn(GraspDistOrn):
 
     def plan(self, params, target_object_id=None):
         assert len(params) == self.action_dimension
-        pose_idx = int(np.argmax(params[1:]))
+        params = self.deserialize_skill_param_array(params)
+        pose_idx = int(np.argmax(params["grasp_orn"]))
         orn = ORIENTATIONS[ORIENTATION_NAMES[pose_idx]]
         grasp_pose = compute_grasp_pose(
-            PBU.get_pose(target_object_id), grasp_orientation=orn, grasp_distance=params[0])
+            PBU.get_pose(target_object_id), grasp_orientation=orn, grasp_distance=params["grasp_distance"])
 
         if self.verbose:
             oname = self.env.objects.body_id_to_name(target_object_id)
-            print("{}({}) dist={}, orn={}".format(self.name, oname, params[0], ORIENTATION_NAMES[pose_idx]))
+            print("{}({}) dist={}, orn={}".format(
+                self.name, oname, params["grasp_distance"], ORIENTATION_NAMES[pose_idx]))
 
         traj= plan_skill_grasp(
             planner=self.planner,
@@ -551,7 +555,7 @@ class GraspDistDiscreteOrn(GraspDistOrn):
         orn_index = ORIENTATION_NAMES.index(grasp_orn_name)
         orn = np.zeros(len(ORIENTATION_NAMES))
         orn[orn_index] = 1
-        params = OrderedDict(
+        params = dict(
             grasp_distance=grasp_distance,
             grasp_orn=orn
         )
@@ -590,10 +594,12 @@ class PlacePosOrn(Skill):
 
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
+        params = self.deserialize_skill_param_array(params)
         target_pos = np.array(PBU.get_pose(target_object_id)[0])
         target_pos[2] = PBU.stable_z(holding_id, target_object_id)
-        target_pos += params[:3]
-        orn = TU.axisangle2quat(*TU.vec2axisangle(params[3:]))
+        params["place_pos"][2] = max(params["place_pos"][2], 0)  # z clipping
+        target_pos += params["place_pos"]
+        orn = TU.axisangle2quat(*TU.vec2axisangle(params["place_orn"]))
         place_pose = (target_pos, orn)
 
         traj = plan_skill_place(
@@ -608,7 +614,7 @@ class PlacePosOrn(Skill):
         return traj
 
     def get_skill_params(self, place_pos, place_orn):
-        params = OrderedDict(
+        params = dict(
             place_pos=place_pos,
             place_orn=TU.axisangle2vec(*TU.quat2axisangle(place_orn))
         )
@@ -624,21 +630,21 @@ class PlacePosDiscreteOrn(PlacePosOrn):
 
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
+        params = self.deserialize_skill_param_array(params)
 
         target_pos = np.array(PBU.get_pose(target_object_id)[0])
         target_pos[2] = PBU.stable_z(holding_id, target_object_id)
-        params = params.copy()
-        params[2] = max(params[2], 0)
-        target_pos += params[:3]
+        params["place_pos"][2] = max(params["place_pos"][2], 0)  # z clipping
+        target_pos += params["place_pos"]
 
-        orn_idx = int(np.argmax(params[3:]))
+        orn_idx = int(np.argmax(params["place_orn"]))
         orn = ORIENTATIONS[ORIENTATION_NAMES[orn_idx]]
         place_pose = (target_pos, orn)
 
         if self.verbose:
             target_name = self.env.objects.body_id_to_name(target_object_id)
             hold_name = self.env.objects.body_id_to_name(holding_id)
-            print("{}({}, {}) pos={}, orn={}".format(self.name, hold_name, target_name, params[:3], ORIENTATION_NAMES[orn_idx]))
+            print("{}({}, {}) pos={}, orn={}".format(self.name, hold_name, target_name, params["place_pos"], ORIENTATION_NAMES[orn_idx]))
 
         traj = plan_skill_place(
             self.planner,
@@ -655,7 +661,7 @@ class PlacePosDiscreteOrn(PlacePosOrn):
         orn_index = ORIENTATION_NAMES.index(place_orn_name)
         orn = np.zeros(len(ORIENTATION_NAMES))
         orn[orn_index] = 1
-        params = OrderedDict(
+        params = dict(
             place_pos=place_pos,
             place_orn=orn
         )
@@ -694,10 +700,12 @@ class PourPosOrn(Skill):
 
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
-        target_pos = np.array(PBU.get_pose(target_object_id)[0])
-        target_pos += params[:3]
+        params = self.deserialize_skill_param_array(params)
 
-        orn = TU.axisangle2quat(*TU.vec2axisangle(params[3:]))
+        target_pos = np.array(PBU.get_pose(target_object_id)[0])
+        target_pos += params["pour_pos"]
+
+        orn = TU.axisangle2quat(*TU.vec2axisangle(params["pour_orn"]))
         pour_pose = (target_pos, orn)
 
         traj = plan_skill_pour(
@@ -712,7 +720,7 @@ class PourPosOrn(Skill):
         return traj
 
     def get_skill_params(self, pour_pos, pour_orn):
-        params = OrderedDict(
+        params = dict(
             pour_pos=pour_pos,
             pour_orn=TU.axisangle2vec(*TU.quat2axisangle(pour_orn))
         )
@@ -728,11 +736,13 @@ class PourPosAngle(PourPosOrn):
 
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
+        params = self.deserialize_skill_param_array(params)
+
         target_pos = np.array(PBU.get_pose(target_object_id)[0])
-        pour_pos = target_pos + params[:3]
+        pour_pos = target_pos + params["pour_pos"]
 
         cur_orn = np.array(PBU.get_pose(holding_id)[1])
-        angle = -params[3]
+        angle = -params["pour_angle"]
         xy_vec = target_pos[:2] - pour_pos[:2]
         perp_xy_vec = np.array([xy_vec[1], -xy_vec[0], 0])
 
@@ -745,7 +755,7 @@ class PourPosAngle(PourPosOrn):
             target_name = self.env.objects.body_id_to_name(target_object_id)
             hold_name = self.env.objects.body_id_to_name(holding_id)
             print("{}({}, {}) distance={}, z={}, angle={}".format(
-                self.name, hold_name, target_name, np.linalg.norm(params[:2]), params[2], angle))
+                self.name, hold_name, target_name, np.linalg.norm(params["pour_pos"][:2]), params["pour_pos"][2], angle))
 
         traj = plan_skill_pour(
             self.planner,
@@ -794,8 +804,9 @@ class OperatePrismaticPosDistance(Skill):
 
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
-        delta_pos = params[:3]
-        distance = params[3]
+        params = self.deserialize_skill_param_array(params)
+        delta_pos = params["grasp_pos"]
+        distance = params["prismatic_move_distance"]
 
         target_pos = np.array(PBU.get_pose(target_object_id)[0])
         target_pos += delta_pos
@@ -1065,6 +1076,8 @@ class SkillLibrary(object):
         if skill.requires_holding:
             if self._holding is None:
                 raise NoPlanException("Robot is not holding anything but is trying to run {}".format(skill.name))
+            if self._holding == target_object_id:
+                raise NoPlanException("Applying skill {} to the object that is being held".format(skill.name))
             traj = skill.plan(skill_params, target_object_id=target_object_id, holding_id=self._holding)
             if skill.releases_holding:
                 self._holding = None
