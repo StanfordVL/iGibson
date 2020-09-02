@@ -463,13 +463,14 @@ class NavigateEnv(BaseEnv):
         collision_links_flatten = [item for sublist in collision_links for item in sublist]
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
-        if self.reward_type == 'l2':
-            new_potential = self.get_l2_potential()
-        elif self.reward_type == 'geodesic':
-            new_potential = self.get_geodesic_potential()
-        potential_reward = self.potential - new_potential
-        reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
-        self.potential = new_potential
+        if self.reward_type in ['l2', 'geodesic']:
+            if self.reward_type == 'l2':
+                new_potential = self.get_l2_potential()
+            elif self.reward_type == 'geodesic':
+                new_potential = self.get_geodesic_potential()
+            potential_reward = self.potential - new_potential
+            reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+            self.potential = new_potential
 
         collision_reward = float(len(collision_links_flatten) > 0)
         self.collision_step += int(collision_reward)
