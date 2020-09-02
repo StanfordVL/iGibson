@@ -8,7 +8,7 @@ from gibson2.utils.utils import parse_config
 import os
 import gibson2
 
-from gibson2.utils.assets_utils import download_assets, download_demo_data, get_ig_scene_path
+from gibson2.utils.assets_utils import download_assets, download_demo_data, get_ig_scene_path, get_ig_category_path
 
 import argparse
 import xml.etree.ElementTree as ET
@@ -19,7 +19,9 @@ import math
 
 config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 
-def convert_scene(scene_name):
+
+
+def convert_scene(scene_name, select_best=False):
     
     scene_file = get_ig_scene_path(scene_name) + "/" + scene_name + "_orig.urdf"
     scene_tree = ET.parse(scene_file)
@@ -54,10 +56,6 @@ def convert_scene(scene_name):
             if obj_category not in categories:
                 categories += [obj_category]
 
-            link_el = ET.SubElement(scene_tree.getroot(), 'link', dict([("name", link_name), ("category", obj_category), ("model", "random")]))
-            if obj['instance'] is not None:
-                link_el.set("random_group", str(obj['instance']))
-
             edge_x = obj['edge_x']
             bbox_x = np.linalg.norm(edge_x)
             edge_y = obj['edge_y']
@@ -65,6 +63,40 @@ def convert_scene(scene_name):
             print(bbox_x, bbox_y)
             z_bbox_coords = obj['z']
             bbox_z = (z_bbox_coords[1] - z_bbox_coords[0]) * 0.99
+
+            if select_best:
+                cat_dir = get_ig_category_path(obj_category)
+                objs = os.listdir(cat_dir)
+                obj_id_to_scale_rsd = [] 
+                for obj_id in objs:
+                    obj_dir = os.path.join(cat_dir, obj_id)
+                    bbox_json = os.path.join(obj_dir, 'misc', 'bbox.json')
+                    with open(bbox_json, 'r') as fp:
+                        bbox_data = json.load(fp)
+                    min_x,min_y,min_z = bbox_data['min']
+                    max_x,max_y,max_z = bbox_data['max']
+
+                    obj_lenx,obj_leny,obj_lenz=max_x-min_x, max_y-min_y,max_z-min_z
+                    scale_x,scale_y,scale_z = bbox_y/obj_lenx,bbox_x/obj_leny,bbox_z/obj_lenz
+                    scale_vector = np.asarray([scale_x, scale_y, scale_z])
+                    scale_rsd = np.std(scale_vector) / np.mean(scale_vector) 
+                    obj_id_to_scale_rsd.append((scale_rsd, obj_id))
+
+                obj_id_to_scale_rsd.sort(key= lambda x: x[0])
+                _, obj_id = obj_id_to_scale_rsd[0]
+                link_el = ET.SubElement(scene_tree.getroot(), 'link', 
+                        dict([("name", link_name), 
+                              ("category", obj_category), 
+                              ("model", obj_id)]))
+            else:
+                link_el = ET.SubElement(scene_tree.getroot(), 'link', 
+                        dict([("name", link_name), 
+                              ("category", obj_category), 
+                              ("model", "random")]))
+
+            if obj['instance'] is not None:
+                link_el.set("random_group", str(obj['instance']))
+
 
             # Ugly hack: Apparently the image had x-y swapped so we need to swap them also here
             link_el.set("bounding_box", "{0:f} {1:f} {2:f}".format(bbox_y, bbox_x, bbox_z))
@@ -174,10 +206,11 @@ def get_coords(edge_x, edge_y, center):
 def main():
     parser = argparse.ArgumentParser(description='Convert from old json annotation into new urdf models.')
     parser.add_argument('scene_names', metavar='s', type=str, nargs='+', help='The name of the scene to process')
+    parser.add_argument('--select_best', dest='select_best', action='store_true' )
 
     args = parser.parse_args()
     for scene_name in args.scene_names:
-        convert_scene(scene_name)
+        convert_scene(scene_name, select_best=args.select_best)
 
 if __name__ == "__main__":
     main()
