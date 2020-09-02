@@ -38,10 +38,13 @@ def convert_scene(scene_name, select_best=False):
         for c, obj in enumerate(all_objs):
 
             obj_category = obj["category"].lower()
-            if obj_category in ['stool', 'fence', 'table']:
+            # if obj_category not in ['table','plant', 'cabinet']:
+            # if obj_category not in ['sofa', 'carpet', 'coffee_table', 'stool']:
             # if obj_category not in ['piano', 'chair', 'door', 'sofa']:
-            # if obj_category not in ['door', 'window', 'cabinet']:
+            # if obj_category not in ['plant', 'cabinet']:
+            # if obj_category not in ['plant']:
             # if obj_category not in ['table']:
+            if obj_category in ['chair']:
             # if obj_category in ['table']:
                 # print("We don't have yet models of ", obj_category)
                 continue
@@ -60,9 +63,9 @@ def convert_scene(scene_name, select_best=False):
             bbox_x = np.linalg.norm(edge_x)
             edge_y = obj['edge_y']
             bbox_y = np.linalg.norm(edge_y)
-            print(bbox_x, bbox_y)
             z_bbox_coords = obj['z']
             bbox_z = (z_bbox_coords[1] - z_bbox_coords[0]) * 0.99
+            print(bbox_x, bbox_y, bbox_z)
 
             if select_best:
                 cat_dir = get_ig_category_path(obj_category)
@@ -105,7 +108,6 @@ def convert_scene(scene_name, select_best=False):
 
             joint_el = ET.SubElement(scene_tree.getroot(), 'joint', dict([("name", joint_name)]))
 
-            print(obj['is_fixed'])
             if obj['is_fixed'] == True:
                 joint_el.set("type", "fixed")
             else:
@@ -118,12 +120,12 @@ def convert_scene(scene_name, select_best=False):
             yaw = -obj['theta'] + math.pi / 2.
 
             bbox_file = os.path.join(bbox_dir, "{}.obj".format(c))
-            center = obj['center']
             # edge_x= np.asarray(obj['edge_x'])
             # edge_y= np.asarray(obj['edge_y'])
             # z= obj['z']
             # gen_cube_obj(center, edge_x, edge_y, z, bbox_file, is_color=True)
-            write_obj(*gen_rotated_obj(center, bbox_x,bbox_y,z_bbox_coords, yaw),bbox_file )
+            write_obj(*gen_rotated_obj(obj['center'], bbox_x,bbox_y,
+                       z_bbox_coords, obj['theta']),bbox_file )
 
             # Ugly hack: Apparently the image had x-y swapped so we need to swap them also here
             origin = \

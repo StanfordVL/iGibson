@@ -364,8 +364,11 @@ class URDFObject(Object):
         # Finally, we need to know where is the base_link origin wrt. the bounding box center. That allows us to place the model
         # correctly since the joint transformations given in the scene urdf are for the bounding box center
         scale = scales_in_lf["base_link"]
+        self.scale = scale
+        self.bbox = (bbox_max, bbox_min)
         bbox_center_in_blf = (bbox_max + bbox_min)/2.0 # Coordinates of the bounding box center in the base_link frame
-        self.scaled_bbxc_in_blf = -scale*bbox_center_in_blf # We scale the location. We will subtract this to the joint location
+        c_x,c_y,c_z= scale*bbox_center_in_blf # We scale the location. We will subtract this to the joint location
+        self.scaled_bbxc_in_blf = np.array([c_x,-c_y,c_z]) # We scale the location. We will subtract this to the joint location
 
     def _load(self):
         body_id = p.loadURDF(self.filename, 

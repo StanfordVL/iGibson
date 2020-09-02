@@ -695,6 +695,11 @@ class iGSDFScene(Scene):
 
                 joint_xyz = np.array([float(val) for val in joint_connecting_embedded_link.find("origin").attrib["xyz"].split(" ")])
                 joint_new_xyz = joint_xyz - embedded_urdf.scaled_bbxc_in_blf
+                # if base_link_name != 'building':
+                    # print(joint_new_xyz, embedded_urdf.scaled_bbxc_in_blf)
+                    # print(embedded_urdf.scale,embedded_urdf.bbox)
+                    # import pdb
+                    # pdb.set_trace()
                 joint_connecting_embedded_link.find("origin").attrib["xyz"] = "{0:f} {1:f} {2:f}".format(*joint_new_xyz)
 
                 for link_emb in embedded_urdf.object_tree.iter('link'):
