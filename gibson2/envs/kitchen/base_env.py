@@ -343,7 +343,7 @@ class EnvSkillWrapper(object):
             raise TypeError("Wrong actions data type: expecting np.ndarray or dict, got {}".format(type(actions)))
         object_id = self.env.objects.body_ids[object_index]
         path = self.skill_lib.plan(params=skill_params, target_object_id=object_id)
-        PU.execute_planned_path(self.env, path, sleep_per_sim_step=sleep_per_sim_step)
+        PU.execute_planned_path(self.env, path, sleep_per_sim_step=sleep_per_sim_step, store_full_trajectory=False)
         return self.get_observation(), self.get_reward(), self.is_done(), {}
 
     def __getattr__(self, attr):

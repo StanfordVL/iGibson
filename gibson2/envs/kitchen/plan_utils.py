@@ -285,7 +285,7 @@ def compute_grasp_pose(object_frame, grasp_orientation, grasp_distance, grasp_fr
     return grasp_pose
 
 
-def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0):
+def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0, store_full_trajectory=True):
     """Execute a planned path an relabel actions."""
 
     # all_obs = []
@@ -295,7 +295,6 @@ def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0):
     task_specs = []
 
     for i in range(len(path)):
-        task_specs.append(env.task_spec)
         tpose = path.arm_path[i]
         grip = path.gripper_path[i]
 
@@ -310,12 +309,15 @@ def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0):
             assert len(noise) == (env.action_dimension - 1)
             noise_arr = np.array(noise)
             action[:6] += np.clip(np.random.randn(len(noise)) * noise_arr, -noise_arr * 2, noise_arr * 2)
-        actions.append(action)
-        states.append(env.serialized_world_state)
-        # all_obs.append(env.get_observation())
+
+        if store_full_trajectory or i == 0:
+            actions.append(action)
+            states.append(env.serialized_world_state)
+            task_specs.append(env.task_spec)
 
         env.step(action, sleep_per_sim_step=sleep_per_sim_step, return_obs=False)
-        rewards.append(float(env.is_success()))
+        if store_full_trajectory or i == 0:
+            rewards.append(float(env.is_success()))
 
     # all_obs.append(env.get_observation())
     actions.append(np.zeros(env.action_dimension))
@@ -399,7 +401,8 @@ def execute_skill(env, skill_lib, skill_params, target_object_id, skill_step, no
     except NoPlanException as e:
         skill_exception = e
         path = CartesianPath(arm_path=[], gripper_path=[])
-    state_traj = execute_planned_path(env, path, noise=noise, sleep_per_sim_step=sleep_per_sim_step)
+    state_traj = execute_planned_path(
+        env, path, noise=noise, sleep_per_sim_step=sleep_per_sim_step, store_full_trajectory=False)
 
     # augment the trajectory with skill information
     traj_len = state_traj["states"].shape[0]

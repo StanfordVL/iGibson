@@ -635,7 +635,7 @@ class KitchenCoffeeAP(KitchenCoffee):
 
         buffer = PU.Buffer()
         exception = None
-        for skill_step in range(10):
+        for skill_step in range(20):
             object_id = np.random.choice(self.objects.body_ids)
             skill_name = np.random.choice(list(param_set.keys()))
             skill_param = param_set[skill_name]()
@@ -653,6 +653,49 @@ class KitchenCoffeeAP(KitchenCoffee):
 
             if self.is_success():
                 break
+
+        return buffer.aggregate(), exception
+
+    def get_demo_skeleton(self, noise=None):
+        self.reset()
+        param_seq = []
+        param_seq.append((
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            "mug"
+        ))
+        param_seq.append((
+            lambda: self.skill_lib.sample_serialized_skill_params("place", place_orn=dict(choices=[0])),
+            self._target_faucet
+        ))
+        param_seq.append((
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            "mug"
+        ))
+        param_seq.append((
+            lambda: self.skill_lib.sample_serialized_skill_params("pour"),
+            "bowl"
+        ))
+        param_seq.append((
+            lambda: self.skill_lib.sample_serialized_skill_params(self._task_skill_name),
+            self._task_object_name
+        ))
+
+        buffer = PU.Buffer()
+        exception = None
+        for skill_step, (param_func, object_name) in enumerate(param_seq):
+            skill_param = param_func()
+            traj, exec_info = PU.execute_skill(
+                self, self.skill_lib, skill_param,
+                target_object_id=self.objects.name_to_body_id(object_name),
+                skill_step=skill_step,
+                noise=noise
+            )
+            buffer.append(**traj)
+            if exec_info["exception"] is not None:
+                exception = exec_info["exception"]
+
+        if exception is None:
+            assert self.is_success()
 
         return buffer.aggregate(), exception
 
