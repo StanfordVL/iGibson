@@ -596,7 +596,7 @@ class MeshRenderer(object):
                 orn = quat2rotmat(xyzw2wxyz(transform_orn))
                 shape_vertex = shape_vertex.dot(orn[:3, :3].T)
             if not transform_pos is None:
-                shape_vertex += np.array(transform_pos)
+                shape_vertex += np.array(transform_pos) / scale
 
             v0 = shape_vertex[0::3,:]
             v1 = shape_vertex[1::3,:]

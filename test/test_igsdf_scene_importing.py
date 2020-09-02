@@ -17,8 +17,8 @@ config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 
 def test_import_igsdf():
     scene = iGSDFScene('Rs')
-    s = Simulator(mode='iggui', image_width=1920,
-                  image_height=1080, )
+    s = Simulator(mode='iggui', image_width=512,
+                  image_height=512, )
     s.import_ig_scene(scene)
 
     # turtlebot1 = Turtlebot(config)
@@ -29,6 +29,8 @@ def test_import_igsdf():
     end = time.time()
     s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
     for i in range(150000000):
+        # import pdb
+        # pdb.set_trace()
         s.step()
         end = time.time()
         print("Elapsed time: ", end - start)
