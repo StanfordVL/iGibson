@@ -362,7 +362,8 @@ class MeshRenderer(object):
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
     def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False,
-                 enable_shadow=False, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr')):
+                 enable_shadow=False, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr'),
+                 optimized=False):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -388,7 +389,9 @@ class MeshRenderer(object):
         self.faces = []
         self.instances = []
         self.fisheye = use_fisheye
-
+        self.optimized = optimized
+        self.texture_files = []
+        self.texture_load_counter = 0
         self.enable_shadow = enable_shadow
   
         if os.environ.get('GIBSON_DEVICE_ID', None):
@@ -531,25 +534,57 @@ class MeshRenderer(object):
         for i, item in enumerate(materials):
             if item.diffuse_texname != '' and load_texture:
                 obj_dir = os.path.dirname(obj_path)
-                texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
-                self.textures.append(texture)
+                if self.optimized:
+                    tex_filename = os.path.join(obj_dir, item.diffuse_texname)
+                    texture = self.texture_load_counter
+                    # Avoid duplicating textures
+                    if tex_filename not in self.texture_files:
+                        self.texture_files.append(tex_filename)
+                        self.texture_load_counter += 1
+                else:
+                    texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
+                    self.textures.append(texture)
 
                 texture_metallic = None
                 texture_roughness = None
                 texture_normal = None
 
                 if item.metallic_texname != '' and load_texture: # map_Pm
-                    texture_metallic = self.r.loadTexture(os.path.join(obj_dir, item.metallic_texname))
-                    self.textures.append(texture_metallic)
+                    if self.optimized:
+                        tex_filename = os.path.join(obj_dir, item.metallic_texname)
+                        texture_metallic = self.texture_load_counter
+                        # Avoid duplicating textures
+                        if tex_filename not in self.texture_files:
+                            self.texture_files.append(tex_filename)
+                            self.texture_load_counter += 1
+                    else:
+                        texture_metallic = self.r.loadTexture(os.path.join(obj_dir, item.metallic_texname))
+                        self.textures.append(texture_metallic)
 
                 if item.roughness_texname != '' and load_texture: # map_Pr
-                    texture_roughness = self.r.loadTexture(os.path.join(obj_dir, item.roughness_texname))
-                    self.textures.append(texture_roughness)
+                    if self.optimized:
+                        tex_filename = os.path.join(obj_dir, item.roughness_texname)
+                        texture_roughness = self.texture_load_counter
+                        # Avoid duplicating textures
+                        if tex_filename not in self.texture_files:
+                            self.texture_files.append(tex_filename)
+                            self.texture_load_counter += 1
+                    else:
+                        texture_roughness = self.r.loadTexture(os.path.join(obj_dir, item.roughness_texname))
+                        self.textures.append(texture_roughness)
 
                 if item.bump_texname != '' and load_texture: # map_bump, use bump map for normal
                     # because for some reason norm. key does not work
-                    texture_normal = self.r.loadTexture(os.path.join(obj_dir, item.bump_texname))
-                    self.textures.append(texture_normal)
+                    if self.optimized:
+                        tex_filename = os.path.join(obj_dir, item.bump_texname)
+                        texture_normal = self.texture_load_counter
+                        # Avoid duplicating textures
+                        if tex_filename not in self.texture_files:
+                            self.texture_files.append(tex_filename)
+                            self.texture_load_counter += 1
+                    else:
+                        texture_normal = self.r.loadTexture(os.path.join(obj_dir, item.bump_texname))
+                        self.textures.append(texture_normal)
 
                 material = Material('texture', texture_id=texture, metallic_texture_id=texture_metallic,
                                     roughness_texture_id=texture_roughness, normal_texture_id=texture_normal)
@@ -797,12 +832,17 @@ class MeshRenderer(object):
         else:
             self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
-        for instance in self.instances:
-            if not instance in hidden:
-                if self.enable_shadow:
-                    instance.render(shadow_pass=2)
-                else:
-                    instance.render(shadow_pass=0)
+        if self.optimized:
+            self.update_dynamic_positions()
+            self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P)
+            self.r.renderOptimized(self.optimized_VAO)
+        else:
+            for instance in self.instances:
+                if not instance in hidden:
+                    if self.enable_shadow:
+                        instance.render(shadow_pass=2)
+                    else:
+                        instance.render(shadow_pass=0)
 
         self.r.render_meshrenderer_post()
         if self.msaa:
@@ -844,7 +884,12 @@ class MeshRenderer(object):
         ]
             fbo_list += [self.fbo_ms]
 
-        self.r.clean_meshrenderer(clean_list, self.textures, fbo_list, self.VAOs, self.VBOs)
+        if self.optimized:
+            self.r.clean_meshrenderer_optimized(clean_list, [self.tex_id_1, self.tex_id_2], fbo_list,
+                                                [self.optimized_VAO], [self.optimized_VBO], [self.optimized_EBO])
+            # TODO: self.VAOs, self.VBOs might also need to be cleaned
+        else:
+            self.r.clean_meshrenderer(clean_list, self.textures, fbo_list, self.VAOs, self.VBOs)
         self.color_tex_rgb = None
         self.color_tex_normal = None
         self.color_tex_semantics = None
@@ -901,3 +946,128 @@ class MeshRenderer(object):
                     frames.append(item)
         return frames
 
+    def optimize_vertex_and_texture(self):
+        for tex_file in self.texture_files:
+            print("Texture: ", tex_file)
+        cutoff = 4000 * 4000
+        shouldShrinkSmallTextures = True
+        smallTexSize = 512
+        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(self.texture_files,
+                                                                                               cutoff,
+                                                                                               shouldShrinkSmallTextures,
+                                                                                               smallTexSize)
+        self.textures.append(self.tex_id_1)
+        self.textures.append(self.tex_id_2)
+
+        offset_faces = []
+
+        curr_index_offset = 0
+        for i in range(len(self.vertex_data)):
+            face_idxs = self.faces[i]
+            offset_face_idxs = face_idxs + curr_index_offset
+            offset_faces.append(offset_face_idxs)
+            curr_index_offset += len(self.vertex_data[i])
+
+        # List of all primitives to render - these are the shapes that each have a vao_id
+        # Some of these may share visual data, but have unique transforms
+        duplicate_vao_ids = []
+        class_id_array = []
+
+        for instance in self.instances:
+            if isinstance(instance, Instance):
+                ids = instance.object.VAO_ids
+                duplicate_vao_ids.extend(ids)
+                class_id_array.extend([float(instance.class_id) / 255.0] * len(ids))
+            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
+                id_sum = 0
+                for vo in instance.objects:
+                    ids = vo.VAO_ids
+                    duplicate_vao_ids.extend(ids)
+                    id_sum += len(ids)
+                class_id_array.extend([float(instance.class_id) / 255.0] * id_sum)
+
+        # Variables needed for multi draw elements call
+        index_ptr_offsets = []
+        index_counts = []
+        indices = []
+        diffuse_color_array = []
+        tex_num_array = []
+        tex_layer_array = []
+
+        index_offset = 0
+        for id in duplicate_vao_ids:
+            index_ptr_offsets.append(index_offset)
+            id_idxs = list(offset_faces[id].flatten())
+            indices.extend(id_idxs)
+            index_count = len(id_idxs)
+            index_counts.append(index_count)
+            index_offset += index_count
+
+            # Generate other rendering data, including diffuse color and texture layer
+            id_material = self.materials_mapping[self.mesh_materials[id]]
+            texture_id = id_material.texture_id
+            if texture_id == -1 or texture_id is None:
+                tex_num_array.append(-1)
+                tex_layer_array.append(-1)
+            else:
+                tex_num, tex_layer = self.tex_id_layer_mapping[texture_id]
+                tex_num_array.append(tex_num)
+                tex_layer_array.append(tex_layer)
+
+            kd = np.asarray(id_material.kd, dtype=np.float32)
+            # Add padding so can store diffuse color as vec4
+            # The 4th element is set to 1 as that is what is used by the fragment shader
+            kd_vec_4 = [kd[0], kd[1], kd[2], 1.0]
+            diffuse_color_array.append(np.ascontiguousarray(kd_vec_4, dtype=np.float32))
+
+        # Convert data into numpy arrays for easy use in pybind
+        index_ptr_offsets = np.ascontiguousarray(index_ptr_offsets, dtype=np.int32)
+        index_counts = np.ascontiguousarray(index_counts, dtype=np.int32)
+        indices = np.ascontiguousarray(indices, dtype=np.int32)
+
+        # Convert frag shader data to list of vec4 for use in uniform buffer objects
+        frag_shader_data = []
+        for i in range(len(duplicate_vao_ids)):
+            data_list = [float(tex_num_array[i]), float(tex_layer_array[i]), class_id_array[i], 0.0]
+            frag_shader_data.append(np.ascontiguousarray(data_list, dtype=np.float32))
+
+        merged_frag_shader_data = np.ascontiguousarray(np.concatenate(frag_shader_data, axis=0), np.float32)
+        merged_diffuse_color_array = np.ascontiguousarray(np.concatenate(diffuse_color_array, axis=0), np.float32)
+
+        merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
+        print("Merged vertex data shape:")
+        print(merged_vertex_data.shape)
+
+        if self.msaa:
+            buffer = self.fbo_ms
+        else:
+            buffer = self.fbo
+
+        self.optimized_VAO, self.optimized_VBO, self.optimized_EBO = self.r.renderSetup(self.shaderProgram, self.V,
+                                                                                        self.P, self.lightpos,
+                                                                                        self.lightcolor,
+                                                                                        merged_vertex_data,
+                                                                                        index_ptr_offsets, index_counts,
+                                                                                        indices,
+                                                                                        merged_frag_shader_data,
+                                                                                        merged_diffuse_color_array,
+                                                                                        self.tex_id_1, self.tex_id_2,
+                                                                                        buffer)
+
+    def update_dynamic_positions(self):
+        """
+        A function to update all dynamic positions.
+        """
+        trans_data = []
+        rot_data = []
+
+        for instance in self.instances:
+            if isinstance(instance, Instance):
+                trans_data.append(instance.pose_trans)
+                rot_data.append(instance.pose_rot)
+            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
+                trans_data.extend(instance.poses_trans)
+                rot_data.extend(instance.poses_rot)
+
+        self.pose_trans_array = np.ascontiguousarray(np.concatenate(trans_data, axis=0))
+        self.pose_rot_array = np.ascontiguousarray(np.concatenate(rot_data, axis=0))
