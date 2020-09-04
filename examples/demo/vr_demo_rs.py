@@ -59,7 +59,7 @@ while True:
                 elif eventType == 'trigger_unpress':
                     rightGripperFraction = 0.0
 
-    s.step(shouldTime=True)
+    s.step(shouldPrintTime=True)
 
     if vrMode:
         hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')

@@ -532,6 +532,7 @@ public:
 		printf("number of textures %d\n", num_textures);
 		for (int i = 0; i < num_textures; i++) {
 			std::string filename = filenames[i];
+			std::cout << "Filename is: " << filename << std::endl;
 			int w;
 			int h;
 			int comp;
@@ -580,6 +581,7 @@ public:
 
 			// Texture goes in larger bucket if larger than cutoff
 			if (score >= texCutoff) {
+				std::cout << "Appending texture with name: " << filenames[i] << " to large bucket" << std::endl;
 				texIndices[0].push_back(i);
 				tex_info_i.append(0);
 				tex_info_i.append(firstTexLayerNum);
@@ -588,6 +590,7 @@ public:
 				firstTexLayerNum++;
 			}
 			else {
+				std::cout << "Appending texture with name: " << filenames[i] << " to small bucket" << std::endl;
 				texIndices[1].push_back(i);
 				tex_info_i.append(1);
 				tex_info_i.append(secondTexLayerNum);
@@ -625,8 +628,8 @@ public:
 			int layerNum = firstTexLayerNum;
 			if (i == 1) layerNum = secondTexLayerNum;
 
-			int out_w = texLayerDims[2 * i];
-			int out_h = texLayerDims[2 * i + 1];
+			int out_w = texLayerDims[2 * static_cast<long long int>(i)];
+			int out_h = texLayerDims[2 * static_cast<long long int>(i + 1)];
 
 			// Gibson tends to have many more smaller textures, so we reduce their size to avoid memory overload
 			if (i == 1 && shouldShrinkSmallTextures) {
@@ -1058,6 +1061,31 @@ public:
 
 		return vecList;
 	}
+
+	// Causes a haptic pulse in the specified controller, for a user-specified duration
+	// Note: Haptic pulses can only trigger every 5ms, regardless of duration
+	// TIMELINE: Call after physics/rendering have been stepped in the simulator
+	void triggerHapticPulseForDevice(char* device, unsigned short microSecondDuration) {
+		DeviceData ddata;
+		if (!strcmp(device, "hmd")) {
+			ddata = hmdData;
+		}
+		else if (!strcmp(device, "left_controller")) {
+			ddata = leftControllerData;
+		}
+		else if (!strcmp(device, "right_controller")) {
+			ddata = rightControllerData;
+		}
+
+		if (ddata.index == -1) {
+			std::cerr << "HAPTIC ERROR: Device " << device << " does not have a valid index." << std::endl;
+		}
+
+		// Currently haptics are only supported on one axis (touchpad axis)
+		uint32_t hapticAxis = 0;
+		m_pHMD->TriggerHapticPulse(ddata.index, hapticAxis, microSecondDuration);
+	}
+
 
 	// Returns the projection and view matrices for the left and right eyes, to be used in rendering
 	// Returns in order Left P, left V, right P, right V
@@ -1643,6 +1671,7 @@ PYBIND11_MODULE(MeshRendererContext, m) {
 		pymoduleVR.def("setVROffset", &VRSystem::setVROffset);
 		pymoduleVR.def("getVROffset", &VRSystem::getVROffset);
 		pymoduleVR.def("getDeviceCoordinateSystem", &VRSystem::getDeviceCoordinateSystem);
+		pymoduleVR.def("triggerHapticPulseForDevice", &VRSystem::triggerHapticPulseForDevice);
 		pymoduleVR.def("preRenderVR", &VRSystem::preRenderVR);
 		pymoduleVR.def("postRenderVRForEye", &VRSystem::postRenderVRForEye);
 		pymoduleVR.def("postRenderVRUpdate", &VRSystem::postRenderVRUpdate);

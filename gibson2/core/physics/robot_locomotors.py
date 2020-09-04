@@ -531,24 +531,40 @@ class Fetch(LocomotorRobot):
         rest_position = (0.02, np.pi / 2.0 - 0.4, np.pi / 2.0 - 0.1, -0.4, np.pi / 2.0 + 0.1, 0.0, np.pi / 2.0, 0.0)
         # might be a better pose to initiate manipulation
         # rest_position = (0.30322468280792236, -1.414019864768982,
-        #                  1.5178184935241699, 0.8189625336474915,
-        #                  2.200358942909668, 2.9631312579803466,
-        #                  -1.2862852996643066, 0.0008453550418615341)
+        #                 1.5178184935241699, 0.8189625336474915,
+        #                 2.200358942909668, 2.9631312579803466,
+        #                 -1.2862852996643066, 0.0008453550418615341)
 
         set_joint_positions(robot_id, arm_joints, rest_position)
 
     def get_end_effector_position(self):
         return self.parts['gripper_link'].get_position()
     
-    # TODO: Figure out how to create gripper constraint properly
-    def create_end_effector_constraint(self, start_pos):
-        effector_part = self.parts['gripper_link']
-        effector_id = effector_part.bodies[effector_part.body_index]
-        effector_link_id = 19
-        self.movement_cid = p.createConstraint(effector_id, effector_link_id, -1, effector_link_id, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], start_pos)
-    
-    def change_movement_constraint(self, position, orientation, maxForce=500):
-        p.changeConstraint(self.movement_cid, orientation, position, maxForce=maxForce)
+    # Return body id of fetch robot
+    def get_fetch_body_id(self):
+        return self.robot_body.bodies[self.robot_body.body_index]
+
+    # Set open/close fraction of the end grippers
+    def set_fetch_gripper_fraction(self, frac, maxForce=500):
+        min_joint = 0.0
+        max_joint = 0.05
+        right_finger_joint_idx = 20
+        left_finger_joint_idx = 21
+        # TODO: Set more friction on grippers using p.changeDynamics?
+        #  min_joint + frac * (max_joint - min_joint)
+        target_pos = 0.05
+        p.setJointMotorControl2(self.get_fetch_body_id(),
+                                right_finger_joint_idx, 
+                                p.POSITION_CONTROL, 
+                                targetPosition=target_pos, 
+                                force=maxForce)
+        
+        p.setJointMotorControl2(self.get_fetch_body_id(),
+                                left_finger_joint_idx, 
+                                p.POSITION_CONTROL, 
+                                targetPosition=target_pos, 
+                                force=maxForce)
+
 
     def load(self):
         ids = super(Fetch, self).load()

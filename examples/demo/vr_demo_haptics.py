@@ -58,7 +58,10 @@ if optimize:
 # Start user close to counter for interaction
 s.setVROffset([1.0, 0, -0.4])
 
-while True:
+# Haptic pulse strength (0 is weakest, 1 is strongest)
+haptic_pulse_strength = 1.0
+
+while True:    
     s.step(shouldPrintTime=False)
 
     rIsValid, rTrans, rRot = s.getDataForVRDevice('right_controller')
@@ -68,6 +71,11 @@ while True:
     right, _, forward = s.getDeviceCoordinateSystem(relative_device)
 
     if rIsValid:
+        # Test varying haptic strength with the rTrigger fraction
+        # Closed trigger causes 0 vibration - open to increase strength
+        print('Trigger close fraction: ', rTrig)
+        s.triggerHapticPulse('right_controller', 1 - rTrig)
+
         rHand.move_hand(rTrans, rRot)
         rHand.toggle_finger_state(rTrig)
 

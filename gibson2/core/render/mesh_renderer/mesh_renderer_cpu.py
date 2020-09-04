@@ -454,9 +454,12 @@ class MeshRenderer(object):
                 materials_fn[i + material_count] = item.diffuse_texname
                 obj_dir = os.path.dirname(obj_path)
                 if self.optimize:
-                    self.texture_files.append(os.path.join(obj_dir, item.diffuse_texname))
+                    tex_filename = os.path.join(obj_dir, item.diffuse_texname)
                     texture = self.texture_load_counter
-                    self.texture_load_counter += 1
+                    # Avoid duplicating textures
+                    if tex_filename not in self.texture_files:
+                        self.texture_files.append(tex_filename)
+                        self.texture_load_counter += 1
                 else:
                     texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
                     self.textures.append(texture)
@@ -535,14 +538,14 @@ class MeshRenderer(object):
         return VAO_ids
 
     def optimize_vertex_and_texture(self):
-        print(self.texture_files)
+        for tex_file in self.texture_files:
+            print("Texture: ", tex_file)
         cutoff = 4000 * 4000
         shouldShrinkSmallTextures = True
         smallTexSize = 512
         self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(self.texture_files, cutoff, shouldShrinkSmallTextures, smallTexSize)
         self.textures.append(self.tex_id_1)
         self.textures.append(self.tex_id_2)
-        print(self.tex_id_1, self.tex_id_2)
 
         offset_faces = []
 
