@@ -90,6 +90,7 @@ class InstanceGroup(object):
         self.dynamic = dynamic
         self.tf_tree = None
         self.use_pbr = False
+        self.use_pbr_mapping = False
         self.roughness = 1
         self.metalness = 0
 
