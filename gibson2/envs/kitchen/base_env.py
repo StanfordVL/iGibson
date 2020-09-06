@@ -208,17 +208,17 @@ class BaseEnv(object):
             time.sleep(sleep_per_sim_step)
 
         if not return_obs:
-            return self.get_reward(), self.is_done(), {}
-
-        return self.get_observation(), self.get_reward(), self.is_done(), {}
+            return None, self.get_reward(), self.is_done(), {}
+        else:
+            return self.get_observation(), self.get_reward(), self.is_done(), {}
 
     def get_reward(self):
         return float(self.is_success())
 
-    def render(self, mode):
+    def render(self, mode, width=None, height=None):
         """Render"""
-        rgb, depth, obj_map, link_map = self.camera.capture_frame()
-        return rgb
+        rgba, _, _ = self.camera.capture_raw(width=width, height=height)
+        return rgba[:, :, :3]
 
     def _get_pixel_observation(self, camera):
         obs = {}
@@ -363,7 +363,7 @@ class EnvSkillWrapper(object):
         skill_name = self.skill_lib.skill_names[int(np.argmax(skill_index_arr))]
         return self.skill_lib.sample_serialized_skill_params(skill_name)
 
-    def step(self, actions, sleep_per_sim_step=0.0):
+    def step(self, actions, sleep_per_sim_step=0.0, return_obs=True, step_callback=None):
         if isinstance(actions, np.ndarray):
             skill_params = actions[:self.skill_lib.action_dimension]
             object_index = int(np.argmax(actions[self.skill_lib.action_dimension:]))
@@ -375,8 +375,19 @@ class EnvSkillWrapper(object):
             raise TypeError("Wrong actions data type: expecting np.ndarray or dict, got {}".format(type(actions)))
         object_id = self.env.objects.body_ids[object_index]
         path = self.skill_lib.plan(params=skill_params, target_object_id=object_id)
-        PU.execute_planned_path(self.env, path, sleep_per_sim_step=sleep_per_sim_step, store_full_trajectory=False)
-        return self.get_observation(), self.get_reward(), self.is_done(), {}
+
+        PU.execute_planned_path(
+            self.env,
+            path,
+            sleep_per_sim_step=sleep_per_sim_step,
+            store_full_trajectory=False,
+            step_callback=step_callback
+
+        )
+        if return_obs:
+            return self.get_observation(), self.get_reward(), self.is_done(), {}
+        else:
+            return None, self.get_reward(), self.is_done(), {}
 
     def __getattr__(self, attr):
         """

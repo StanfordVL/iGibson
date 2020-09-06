@@ -82,26 +82,29 @@ class Camera(object):
             upAxisIndex=up_axis
         )
 
-    def capture_raw(self):
-        width, height, rgb, depth, seg = p.getCameraImage(
-            self._width,
-            self._height,
+    def capture_raw(self, width=None, height=None):
+        width = self._width if width is None else width
+        height = self._height if height is None else height
+
+        ret_width, ret_height, rgba, depth, seg = p.getCameraImage(
+            width,
+            height,
             list(self._view_matrix),
             list(self._projection_matrix),
             renderer=p.ER_TINY_RENDERER
         )
-        assert(width == self._width)
-        assert(height == self._height)
-        rgb = np.reshape(rgb, (height, width, 4))
+        assert(ret_width == width)
+        assert(ret_height == height)
+        rgba = np.reshape(rgba, (height, width, 4))  # rgba
         depth = np.reshape(depth, (height, width))
         seg = np.reshape(seg, (height, width))
-        return rgb, depth, seg
+        return rgba, depth, seg
 
-    def capture_frame(self):
-        rgb, depth, seg = self.capture_raw()
+    def capture_frame(self, width=None, height=None):
+        rgba, depth, seg = self.capture_raw(width, height)
         obj_idmap, link_idmap = get_segmentation_mask_object_and_link_index(seg)
         depth_map = get_depth_map(depth, near=self._near, far=self._far)
-        return rgb[:, :, :3].astype(np.uint8), depth_map, obj_idmap, link_idmap
+        return rgba[:, :, :3].astype(np.uint8), depth_map, obj_idmap, link_idmap
 
     def get_crops(self, object_ids, target_size=24, expand_ratio=1.1):
         rgb, depth, obj_seg, link_seg = self.capture_frame()

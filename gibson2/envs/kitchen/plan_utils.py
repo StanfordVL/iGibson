@@ -285,7 +285,7 @@ def compute_grasp_pose(object_frame, grasp_orientation, grasp_distance, grasp_fr
     return grasp_pose
 
 
-def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0, store_full_trajectory=True):
+def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0, store_full_trajectory=True, step_callback=None):
     """Execute a planned path an relabel actions."""
 
     # all_obs = []
@@ -315,10 +315,15 @@ def execute_planned_path(env, path, noise=None, sleep_per_sim_step=0.0, store_fu
             states.append(env.serialized_world_state)
             task_specs.append(env.task_spec)
 
+        if step_callback is not None:
+            step_callback(i)
+
         env.step(action, sleep_per_sim_step=sleep_per_sim_step, return_obs=False)
         if store_full_trajectory or i == 0:
             rewards.append(float(env.is_success()))
 
+    if step_callback is not None:
+        step_callback(len(path))
     # all_obs.append(env.get_observation())
     actions.append(np.zeros(env.action_dimension))
     rewards.append(float(env.is_success()))
