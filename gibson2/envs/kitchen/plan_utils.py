@@ -445,25 +445,6 @@ def execute_skill(env, skill_lib, skill_params, target_object_id, skill_step, no
     return state_traj, exec_info
 
 
-# def record_single_step_state(env, skill_params, target_object_id, skill_step, skill_success):
-#     state = dict(
-#         states=np.array(env.serialized_world_state)[None, :],
-#         rewards=np.array([[0.]]),
-#         actions=np.zeros((1, env.action_dimension)),
-#         task_specs=np.array(env.task_spec)[None, :]
-#     )
-#
-#     object_index_enc = np.zeros((1, len(env.objects)))
-#     object_index_enc[0, env.objects.body_ids.index(target_object_id)] = 1
-#
-#     state["skill_step"] = np.array([skill_step])
-#     state["skill_begin"] = np.array([1])
-#     state["skill_params"] = skill_params[None, :]
-#     state["skill_object_index"] = object_index_enc
-#     state["skill_success"] = np.array([float(skill_success)])
-#     return state
-
-
 class Buffer(object):
     def __init__(self):
         self.data = dict()

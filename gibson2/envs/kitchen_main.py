@@ -247,7 +247,7 @@ def record_demos(args):
         t = time.time()
         try:
             # buffer = get_demo_arrange_hard_skill(env, perturb=args.perturb_demo)
-            buffer, plan_exception = env.get_demo_suboptimal(noise=ACTION_NOISE if args.perturb_demo else None)
+            buffer, plan_exception = env.get_demo_skeleton(noise=ACTION_NOISE if args.perturb_demo else None)
             if plan_exception is not None:
                 if not args.keep_interrupted_demos:
                     continue

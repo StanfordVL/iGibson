@@ -868,6 +868,7 @@ class SkillLibrary(object):
         self.obstacles = obstacles
         self.env = env
         self._skills = skills
+        assert len(set(self.skill_names)) == len(self.skill_names)  # make sure all skill names are unique
         for s in self.skills:
             s.planner = planner
             s.obstacles = obstacles
@@ -891,6 +892,11 @@ class SkillLibrary(object):
 
     def name_to_skill_index(self, name):
         return self.skill_names.index(name)
+
+    def skill_index_to_array(self, skill_index):
+        arr = np.zeros(len(self))
+        arr[skill_index]= 1
+        return arr
 
     @property
     def action_dimension(self):

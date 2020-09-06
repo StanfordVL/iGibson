@@ -40,6 +40,11 @@ class ObjectBank(object):
     def name_to_body_id(self, name):
         return self.body_ids[self.names.index(name)]
 
+    def object_index_to_array(self, object_index):
+        arr = np.zeros(len(self))
+        arr[object_index] = 1
+        return arr
+
     def __getitem__(self, name):
         return self._objects[name]
 

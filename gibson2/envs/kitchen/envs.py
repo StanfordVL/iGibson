@@ -612,8 +612,6 @@ class KitchenCoffeeAP(KitchenCoffee):
             if exec_info["exception"] is not None:
                 exception = exec_info["exception"]
                 break
-        else:
-            assert self.is_success()
 
         return buffer.aggregate(), exception
 
@@ -698,6 +696,30 @@ class KitchenCoffeeAP(KitchenCoffee):
             assert self.is_success()
 
         return buffer.aggregate(), exception
+
+    def get_task_skeleton(self):
+        param_seq = []
+        param_seq.append((
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            "mug"
+        ))
+        param_seq.append((
+            lambda: self.skill_lib.sample_serialized_skill_params("place", place_orn=dict(choices=[0])),
+            self._target_faucet
+        ))
+        param_seq.append((
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            "mug"
+        ))
+        param_seq.append((
+            lambda: self.skill_lib.sample_serialized_skill_params("pour"),
+            "bowl"
+        ))
+        param_seq.append((
+            lambda: self.skill_lib.sample_serialized_skill_params(self._task_skill_name),
+            self._task_object_name
+        ))
+        return param_seq
 
 
 class SimpleCoffeeAP(KitchenCoffee):

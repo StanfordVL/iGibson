@@ -331,6 +331,38 @@ class EnvSkillWrapper(object):
         skill_dict["skill_param_dict"] = skill_param_dict
         return skill_dict
 
+    def random_action_generator(self, horizon=None):
+        """generate random valid actions"""
+        step_i = 0
+        while horizon is None or step_i < horizon:
+            skill_index, object_index = self.sample_skill()
+            skill_index_param = self.sample_skill_param(skill_index_arr=skill_index)
+            yield np.concatenate([skill_index_param, object_index])
+
+    def skeleton_action_generator(self):
+        """generate actions with ground truth skill skeleton and sampled parameters."""
+        for param_func, object_name in self.env.get_task_skeleton():
+            skill_param = param_func()
+            object_index = self.env.objects.names.index(object_name)
+            object_index = self.env.objects.object_index_to_array(object_index)
+            yield np.concatenate([skill_param, object_index])
+
+    def sample_skill(self):
+        """Sample skill_index, object_index pairs"""
+        skill_index_arr = self.skill_lib.skill_index_to_array(np.random.randint(0, len(self.skill_lib)))
+        object_index_arr = self.env.objects.object_index_to_array(np.random.randint(0, len(self.env.objects)))
+        return skill_index_arr, object_index_arr
+
+    def get_goal_skill(self):
+        skill_index_arr = self.skill_lib.skill_index_to_array(self.env.task_spec[0])
+        object_index_arr = self.env.objects.object_index_to_array(self.env.task_spec[1])
+        return skill_index_arr, object_index_arr
+
+    def sample_skill_param(self, skill_index_arr):
+        assert len(skill_index_arr) == len(self.skill_lib)
+        skill_name = self.skill_lib.skill_names[int(np.argmax(skill_index_arr))]
+        return self.skill_lib.sample_serialized_skill_params(skill_name)
+
     def step(self, actions, sleep_per_sim_step=0.0):
         if isinstance(actions, np.ndarray):
             skill_params = actions[:self.skill_lib.action_dimension]
