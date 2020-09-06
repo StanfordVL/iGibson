@@ -682,6 +682,7 @@ class KitchenCoffeeAP(KitchenCoffee):
         exception = None
         for skill_step, (param_func, object_name) in enumerate(param_seq):
             skill_param = param_func()
+            print(self.skill_lib.skill_params_to_string(skill_param, self.objects.name_to_body_id(object_name)))
             traj, exec_info = PU.execute_skill(
                 self, self.skill_lib, skill_param,
                 target_object_id=self.objects.name_to_body_id(object_name),

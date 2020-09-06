@@ -363,7 +363,14 @@ class EnvSkillWrapper(object):
         skill_name = self.skill_lib.skill_names[int(np.argmax(skill_index_arr))]
         return self.skill_lib.sample_serialized_skill_params(skill_name)
 
+    def action_to_string(self, actions):
+        skill_params = actions[:self.skill_lib.action_dimension]
+        object_index = int(np.argmax(actions[self.skill_lib.action_dimension:]))
+        object_id = self.env.objects.body_ids[object_index]
+        return self.skill_lib.skill_params_to_string(skill_params, object_id)
+
     def step(self, actions, sleep_per_sim_step=0.0, return_obs=True, step_callback=None):
+        assert actions.shape[0] == self.action_dimension
         if isinstance(actions, np.ndarray):
             skill_params = actions[:self.skill_lib.action_dimension]
             object_index = int(np.argmax(actions[self.skill_lib.action_dimension:]))

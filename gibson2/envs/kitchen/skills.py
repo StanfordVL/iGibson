@@ -396,6 +396,18 @@ class Skill(object):
         high = np.concatenate([p.high for p in self.params.values()])
         return low, high
 
+    def skill_params_to_string(self, params, target_object_id):
+        """
+        Convert a parameter array and target_object_id to human-readable string
+        Args:
+            params (np.ndarray): serialized skill params
+            target_object_id (int): object id of the skill
+        Returns:
+            msg: str
+        """
+        assert len(params) == self.action_dimension
+        return "{}({})".format(self.name, self.env.objects.body_id_to_name(target_object_id))
+
     def serialize_skill_param_dict(self, param_dict):
         """
         Serialize a dictionary of parameters to a numpy array
@@ -528,6 +540,13 @@ class GraspDistDiscreteOrn(GraspDistOrn):
             grasp_orn=SkillParamsDiscrete(size=len(ORIENTATIONS))
         )
 
+    def skill_params_to_string(self, params, target_object_id):
+        msg = Skill.skill_params_to_string(self, params, target_object_id)
+        params = self.deserialize_skill_param_array(params)
+        pose_idx = int(np.argmax(params["grasp_orn"]))
+        param_str = "dist={}, orn={}".format(params["grasp_distance"], ORIENTATION_NAMES[pose_idx])
+        return msg + " " + param_str
+
     def plan(self, params, target_object_id=None):
         assert len(params) == self.action_dimension
         params = self.deserialize_skill_param_array(params)
@@ -535,11 +554,6 @@ class GraspDistDiscreteOrn(GraspDistOrn):
         orn = ORIENTATIONS[ORIENTATION_NAMES[pose_idx]]
         grasp_pose = compute_grasp_pose(
             PBU.get_pose(target_object_id), grasp_orientation=orn, grasp_distance=params["grasp_distance"])
-
-        if self.verbose:
-            oname = self.env.objects.body_id_to_name(target_object_id)
-            print("{}({}) dist={}, orn={}".format(
-                self.name, oname, params["grasp_distance"], ORIENTATION_NAMES[pose_idx]))
 
         traj= plan_skill_grasp(
             planner=self.planner,
@@ -592,6 +606,12 @@ class PlacePosOrn(Skill):
             place_orn=SkillParamsContinuous(size=3)
         )
 
+    def skill_params_to_string(self, params, target_object_id):
+        msg = Skill.skill_params_to_string(self, params, target_object_id)
+        params = self.deserialize_skill_param_array(params)
+        param_str = "pos(x, y)={}, orn={}".format(params["place_pos"][:2], params["place_orn"])
+        return msg + " " + param_str
+
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
         params = self.deserialize_skill_param_array(params)
@@ -628,6 +648,13 @@ class PlacePosDiscreteOrn(PlacePosOrn):
             place_orn=SkillParamsDiscrete(size=len(ORIENTATIONS))
         )
 
+    def skill_params_to_string(self, params, target_object_id):
+        msg = Skill.skill_params_to_string(self, params, target_object_id)
+        params = self.deserialize_skill_param_array(params)
+        orn_idx = int(np.argmax(params["place_orn"]))
+        param_str = "pos(x, y)={}, orn={}".format(params["place_pos"][:2], ORIENTATION_NAMES[orn_idx])
+        return msg + " " + param_str
+
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
         params = self.deserialize_skill_param_array(params)
@@ -640,11 +667,6 @@ class PlacePosDiscreteOrn(PlacePosOrn):
         orn_idx = int(np.argmax(params["place_orn"]))
         orn = ORIENTATIONS[ORIENTATION_NAMES[orn_idx]]
         place_pose = (target_pos, orn)
-
-        if self.verbose:
-            target_name = self.env.objects.body_id_to_name(target_object_id)
-            hold_name = self.env.objects.body_id_to_name(holding_id)
-            print("{}({}, {}) pos={}, orn={}".format(self.name, hold_name, target_name, params["place_pos"], ORIENTATION_NAMES[orn_idx]))
 
         traj = plan_skill_place(
             self.planner,
@@ -734,6 +756,12 @@ class PourPosAngle(PourPosOrn):
             pour_angle=SkillParamsContinuous(size=1)
         )
 
+    def skill_params_to_string(self, params, target_object_id):
+        msg = Skill.skill_params_to_string(self, params, target_object_id)
+        params = self.deserialize_skill_param_array(params)
+        param_str = "pos={}, angle={}".format(params["pour_pos"], -params["pour_angle"])
+        return msg + " " + param_str
+
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
         params = self.deserialize_skill_param_array(params)
@@ -750,12 +778,6 @@ class PourPosAngle(PourPosOrn):
         orn = T.quaternion_multiply(rot, cur_orn)
 
         pour_pose = (pour_pos, orn)
-
-        if self.verbose:
-            target_name = self.env.objects.body_id_to_name(target_object_id)
-            hold_name = self.env.objects.body_id_to_name(holding_id)
-            print("{}({}, {}) distance={}, z={}, angle={}".format(
-                self.name, hold_name, target_name, np.linalg.norm(params["pour_pos"][:2]), params["pour_pos"][2], angle))
 
         traj = plan_skill_pour(
             self.planner,
@@ -795,6 +817,12 @@ class OperatePrismaticPosDistance(Skill):
             precondition_fn=precondition_fn
         )
         self.num_pause_steps = num_pause_steps
+
+    def skill_params_to_string(self, params, target_object_id):
+        msg = Skill.skill_params_to_string(self, params, target_object_id)
+        params = self.deserialize_skill_param_array(params)
+        param_str = "pos={}, move_distance={}".format(params["grasp_pos"], params["prismatic_move_distance"])
+        return msg + " " + param_str
 
     def get_default_params(self):
         return OrderedDict(
@@ -852,8 +880,6 @@ class ConditionSkill(Skill):
 
     def plan(self, params, target_object_id=None, holding_id=None):
         assert len(params) == self.action_dimension
-        if self.verbose:
-            print(self.name)
         return CartesianPath(arm_path=[], gripper_path=[])
 
     def get_skill_params(self, **kwargs):
@@ -873,7 +899,7 @@ class SkillLibrary(object):
             s.planner = planner
             s.obstacles = obstacles
             s.env = env
-            s.verbose =verbose
+            s.verbose = verbose
         self._holding = None
 
     @property
@@ -901,6 +927,10 @@ class SkillLibrary(object):
     @property
     def action_dimension(self):
         return int(len(self.skills) + np.sum([s.action_dimension for s in self.skills]))
+
+    def skill_params_to_string(self, params, target_object_id):
+        skill_index, skill_params = self._parse_serialized_skill_params(params)
+        return self.skills[skill_index].skill_params_to_string(skill_params, target_object_id=target_object_id)
 
     def _parse_serialized_skill_params(self, all_params):
         assert len(all_params) == self.action_dimension
