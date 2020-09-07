@@ -1071,15 +1071,24 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glBindBuffer(GL_ARRAY_BUFFER, VBO);
 		float* mergedVertexDataPtr = (float*)mergedVertexData.request().ptr;
 		glBufferData(GL_ARRAY_BUFFER, mergedVertexData.size() * sizeof(float), mergedVertexDataPtr, GL_STATIC_DRAW);
+
 		GLuint positionAttrib = glGetAttribLocation(shaderProgram, "position");
-		GLuint normalAttrib = glGetAttribLocation(shaderProgram, "normal");
-		GLuint texcoordAttrib = glGetAttribLocation(shaderProgram, "texCoords");
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(positionAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);
-		glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)12);
-		glVertexAttribPointer(texcoordAttrib, 2, GL_FLOAT, GL_TRUE, 32, (void*)24);
+        GLuint normalAttrib = glGetAttribLocation(shaderProgram, "normal");
+        GLuint coordsAttrib = glGetAttribLocation(shaderProgram, "texCoords");
+        GLuint tangentlAttrib = glGetAttribLocation(shaderProgram, "tangent");
+        GLuint bitangentAttrib = glGetAttribLocation(shaderProgram, "bitangent");
+
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glEnableVertexAttribArray(3);
+        glEnableVertexAttribArray(4);
+
+        glVertexAttribPointer(positionAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 0);
+        glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 12);
+        glVertexAttribPointer(coordsAttrib, 2, GL_FLOAT, GL_TRUE, 56, (void *) 24);
+        glVertexAttribPointer(tangentlAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 32);
+        glVertexAttribPointer(bitangentAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 44);
 
 		glBindVertexArray(0);
 
