@@ -149,11 +149,14 @@ public:
 
 	py::list renderSetup(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor,
 		py::array_t<float> mergedVertexData, py::array_t<int> index_ptr_offsets, py::array_t<int> index_counts,
-		py::array_t<int> indices, py::array_t<float> mergedFragData, py::array_t<float> mergedDiffuseData,
-		int tex_id_1, int tex_id_2, GLuint fb);
+		py::array_t<int> indices, py::array_t<float> mergedFragData, py::array_t<float> mergedFragRMData,
+		py::array_t<float> mergedFragNData,
+		py::array_t<float> mergedDiffuseData,
+		int tex_id_1, int tex_id_2, GLuint fb,
+		float use_pbr);
 
 	void updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array, py::array_t<float> pose_rot_array,
-	py::array_t<float> V, py::array_t<float> P) ;
+	py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos) ;
 
 	void renderOptimized(GLuint VAO);
 };

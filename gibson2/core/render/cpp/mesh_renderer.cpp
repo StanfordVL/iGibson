@@ -1048,8 +1048,11 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 	// Performs optimized render setup
 	py::list MeshRendererContext::renderSetup(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor,
 		py::array_t<float> mergedVertexData, py::array_t<int> index_ptr_offsets, py::array_t<int> index_counts,
-		py::array_t<int> indices, py::array_t<float> mergedFragData, py::array_t<float> mergedDiffuseData,
-		int tex_id_1, int tex_id_2, GLuint fb) {
+		py::array_t<int> indices, py::array_t<float> mergedFragData, py::array_t<float> mergedFragRMData,
+		py::array_t<float> mergedFragNData,
+		py::array_t<float> mergedDiffuseData,
+		int tex_id_1, int tex_id_2, GLuint fb,
+		float use_pbr) {
 		// First set up VAO and corresponding attributes
 		GLuint VAO;
 		glGenVertexArrays(1, &VAO);
@@ -1109,6 +1112,8 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 
 		// Set up shaders
 		float* fragData = (float*)mergedFragData.request().ptr;
+        float* fragRMData = (float*)mergedFragRMData.request().ptr;
+		float* fragNData = (float*)mergedFragNData.request().ptr;
 		float* diffuseData = (float*)mergedDiffuseData.request().ptr;
 		int fragDataSize = mergedFragData.size();
 		int diffuseDataSize = mergedDiffuseData.size();
@@ -1124,17 +1129,21 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
+        glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
+
 		printf("multidrawcount %d\n", multidrawCount);
 
 		glGenBuffers(1, &uboTexColorData);
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTexColorData);
-		texColorDataSize = 2 * 16 * MAX_ARRAY_SIZE;
+		texColorDataSize = 4 * 16 * MAX_ARRAY_SIZE;
 		glBufferData(GL_UNIFORM_BUFFER, texColorDataSize, NULL, GL_STATIC_DRAW);
 		GLuint texColorDataIdx = glGetUniformBlockIndex(shaderProgram, "TexColorData");
 		glUniformBlockBinding(shaderProgram, texColorDataIdx, 0);
 		glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboTexColorData);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, fragDataSize * sizeof(float), fragData);
-		glBufferSubData(GL_UNIFORM_BUFFER, texColorDataSize / 2, diffuseDataSize * sizeof(float), diffuseData);
+        glBufferSubData(GL_UNIFORM_BUFFER, 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragRMData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 2 * 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragNData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 3 * 16 * MAX_ARRAY_SIZE, diffuseDataSize * sizeof(float), diffuseData);
 
 		glGenBuffers(1, &uboTransformData);
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
@@ -1153,8 +1162,20 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D_ARRAY, tex_id_2);
 
+        glActiveTexture(GL_TEXTURE2);
+        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture.id);
+
+        glActiveTexture(GL_TEXTURE3);
+        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture.id);
+
+        glActiveTexture(GL_TEXTURE4);
+        if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT.id);
+
 		glUniform1i(bigTexLoc, 0);
 		glUniform1i(smallTexLoc, 1);
+		glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 2);
+        glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 3);
+        glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 4);
 
 		glUseProgram(0);
 
@@ -1167,7 +1188,8 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 	}
 
 	// Updates positions and rotations in vertex shader
-	void MeshRendererContext::updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array, py::array_t<float> pose_rot_array, py::array_t<float> V, py::array_t<float> P) {
+	void MeshRendererContext::updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array,
+	py::array_t<float> pose_rot_array, py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos) {
 		glUseProgram(shaderProgram);
 
 		float* transPtr = (float*)pose_trans_array.request().ptr;
@@ -1182,8 +1204,12 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 
 		float* Vptr = (float*)V.request().ptr;
 		float* Pptr = (float*)P.request().ptr;
+        float *eye_pos_ptr = (float *) eye_pos.request().ptr;
+
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+        glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
+
 	}
 
 	// Optimized rendering function that is called once per frame for all merged data
