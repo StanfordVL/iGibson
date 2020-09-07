@@ -14,12 +14,12 @@ import cv2
 import pickle as pkl
 
 
-def benchmark(render_to_tensor=False, resolution=512, obj_num = 100, optimize = True):
+def benchmark(render_to_tensor=False, resolution=512, obj_num = 100, optimized = True):
     
     n_frame = 200
     
-    if optimize:
-        renderer = MeshRenderer(width=512, height=512, msaa=True, vertical_fov=90, optimize=True, device_idx=1)
+    if optimized:
+        renderer = MeshRenderer(width=512, height=512, msaa=True, vertical_fov=90, optimized=True, device_idx=1)
     else:
         renderer = MeshRenderer(width=512, height=512, msaa=True, vertical_fov=90, enable_shadow=False)
 
@@ -63,7 +63,7 @@ def benchmark(render_to_tensor=False, resolution=512, obj_num = 100, optimize = 
     print(renderer.materials_mapping, renderer.mesh_materials)
     #print(renderer.texture_files)
 
-    if optimize:
+    if optimized:
         renderer.optimize_vertex_and_texture()
 
     start = time.time()
@@ -76,20 +76,18 @@ def benchmark(render_to_tensor=False, resolution=512, obj_num = 100, optimize = 
 
         frame = renderer.render(modes=('rgb'))
         #print(frame)
-        # cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
-        # cv2.waitKey(1)
+        cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
+        cv2.waitKey(1)
     elapsed = time.time()-start
     print('{} fps'.format(n_frame/elapsed))
     return obj_num, n_frame/elapsed
+
 def main():
     #benchmark(render_to_tensor=True, resolution=512)
     results = []
     
-    for obj_num in [item **2 for item in [1,2,3,4,5,6,7,8,9,10,11,12]]:
-        res = benchmark(render_to_tensor=False, resolution=512, obj_num=obj_num, optimize = False)
-        results.append(res)
-        pkl.dump(results, open('pbr_no_shadow.pkl', 'wb'))
-
+    for obj_num in [item **2 for item in [10]]:
+        res = benchmark(render_to_tensor=False, resolution=512, obj_num=obj_num, optimized = True)
 
 if __name__ == '__main__':
     main()

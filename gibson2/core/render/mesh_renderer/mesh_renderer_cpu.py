@@ -349,8 +349,10 @@ class Material(object):
             and self.roughness_texture_id is not None and self.normal_texture_id is not None
 
     def __str__(self):
-        return "Material(type: {}, texture_id: {}, color: {})".format(self.type, self.texture_id,
-                                                                      self.kd)
+        return "Material(type: {}, texture_id: {}, metallic_texture_id:{}, roughness_texture_id:{}, " \
+               "normal_texture_id:{}, color: {})".format(self.type, self.texture_id, self.metallic_texture_id,
+                                                         self.roughness_texture_id, self.normal_texture_id,
+                                                         self.kd)
 
     def __repr__(self):
         return self.__str__()
@@ -431,7 +433,16 @@ class MeshRenderer(object):
             logging.error('Fisheye is currently not supported.')
             exit(1)
         else:
-            self.shaderProgram = self.r.compile_shader_meshrenderer(
+            if self.optimized:
+                self.shaderProgram = self.r.compile_shader_meshrenderer(
+                    "".join(open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                     'shaders/optimized_vert.shader')).readlines()),
+                    "".join(open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                     'shaders/optimized_frag.shader')).readlines()))
+            else:
+                self.shaderProgram = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/vert.shader')).readlines()),
@@ -541,6 +552,8 @@ class MeshRenderer(object):
                     if tex_filename not in self.texture_files:
                         self.texture_files.append(tex_filename)
                         self.texture_load_counter += 1
+                    else:
+                        texture = self.texture_files.index(tex_filename)
                 else:
                     texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
                     self.textures.append(texture)
@@ -557,6 +570,8 @@ class MeshRenderer(object):
                         if tex_filename not in self.texture_files:
                             self.texture_files.append(tex_filename)
                             self.texture_load_counter += 1
+                        else:
+                            texture_metallic = self.texture_files.index(tex_filename)
                     else:
                         texture_metallic = self.r.loadTexture(os.path.join(obj_dir, item.metallic_texname))
                         self.textures.append(texture_metallic)
@@ -569,6 +584,8 @@ class MeshRenderer(object):
                         if tex_filename not in self.texture_files:
                             self.texture_files.append(tex_filename)
                             self.texture_load_counter += 1
+                        else:
+                            texture_roughness = self.texture_files.index(tex_filename)
                     else:
                         texture_roughness = self.r.loadTexture(os.path.join(obj_dir, item.roughness_texname))
                         self.textures.append(texture_roughness)
@@ -582,6 +599,8 @@ class MeshRenderer(object):
                         if tex_filename not in self.texture_files:
                             self.texture_files.append(tex_filename)
                             self.texture_load_counter += 1
+                        else:
+                            texture_normal = self.texture_files.index(tex_filename)
                     else:
                         texture_normal = self.r.loadTexture(os.path.join(obj_dir, item.bump_texname))
                         self.textures.append(texture_normal)
@@ -956,6 +975,8 @@ class MeshRenderer(object):
                                                                                                cutoff,
                                                                                                shouldShrinkSmallTextures,
                                                                                                smallTexSize)
+        print(self.tex_id_layer_mapping)
+        print(len(self.texture_files), self.texture_files)
         self.textures.append(self.tex_id_1)
         self.textures.append(self.tex_id_2)
 
@@ -1010,6 +1031,7 @@ class MeshRenderer(object):
                 tex_num_array.append(-1)
                 tex_layer_array.append(-1)
             else:
+                print(id_material, texture_id)
                 tex_num, tex_layer = self.tex_id_layer_mapping[texture_id]
                 tex_num_array.append(tex_num)
                 tex_layer_array.append(tex_layer)
