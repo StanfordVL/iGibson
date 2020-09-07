@@ -19,12 +19,14 @@ def benchmark(render_to_tensor=False, resolution=512, obj_num = 100, optimized =
     n_frame = 200
     
     if optimized:
-        renderer = MeshRenderer(width=512, height=512, msaa=True, vertical_fov=90, optimized=True, device_idx=1)
+        renderer = MeshRenderer(width=resolution, height=resolution, msaa=True, vertical_fov=90, optimized=True, device_idx=1)
     else:
-        renderer = MeshRenderer(width=512, height=512, msaa=True, vertical_fov=90, enable_shadow=False)
+        renderer = MeshRenderer(width=resolution, height=resolution, msaa=True, vertical_fov=90, enable_shadow=False)
 
     renderer.load_object('plane/plane_z_up_0.obj', scale=[3,3,3])
     renderer.add_instance(0)
+    renderer.instances[-1].use_pbr = True
+    renderer.instances[-1].use_pbr_mapping = True
     renderer.set_pose([0,0,-1.5,1, 0, 0.0, 0.0], -1)
 
     
@@ -54,8 +56,7 @@ def benchmark(render_to_tensor=False, resolution=512, obj_num = 100, optimized =
                     renderer.set_pose([obj_i-obj_count_x/2., obj_j-obj_count_x/2.,0,0.7071067690849304, 0.7071067690849304, 0.0, 0.0], -1)
                     renderer.instances[-1].use_pbr = True
                     renderer.instances[-1].use_pbr_mapping = True
-                    renderer.instances[-1].metalness = 1
-                    renderer.instances[-1].roughness = 0.1
+
             i += 1
             
 
@@ -74,7 +75,7 @@ def benchmark(render_to_tensor=False, resolution=512, obj_num = 100, optimized =
         camera_pose = np.array([px, py, pz])
         renderer.set_camera(camera_pose, [0,0,0], [0, 0, 1])
 
-        frame = renderer.render(modes=('rgb'))
+        frame = renderer.render(modes=('rgb', 'normal'))
         #print(frame)
         cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
         cv2.waitKey(1)

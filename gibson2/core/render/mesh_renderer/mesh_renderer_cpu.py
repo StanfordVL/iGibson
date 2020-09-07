@@ -853,7 +853,7 @@ class MeshRenderer(object):
 
         if self.optimized:
             self.update_dynamic_positions()
-            self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P)
+            self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P, self.camera)
             self.r.renderOptimized(self.optimized_VAO)
         else:
             for instance in self.instances:
@@ -1014,6 +1014,13 @@ class MeshRenderer(object):
         diffuse_color_array = []
         tex_num_array = []
         tex_layer_array = []
+        roughness_tex_num_array = []
+        roughness_tex_layer_array = []
+        metallic_tex_num_array = []
+        metallic_tex_layer_array = []
+        normal_tex_num_array = []
+        normal_tex_layer_array = []
+
 
         index_offset = 0
         for id in duplicate_vao_ids:
@@ -1031,10 +1038,36 @@ class MeshRenderer(object):
                 tex_num_array.append(-1)
                 tex_layer_array.append(-1)
             else:
-                print(id_material, texture_id)
                 tex_num, tex_layer = self.tex_id_layer_mapping[texture_id]
                 tex_num_array.append(tex_num)
                 tex_layer_array.append(tex_layer)
+
+            roughness_texture_id = id_material.roughness_texture_id
+            if roughness_texture_id == -1 or roughness_texture_id is None:
+                roughness_tex_num_array.append(-1)
+                roughness_tex_layer_array.append(-1)
+            else:
+                tex_num, tex_layer = self.tex_id_layer_mapping[roughness_texture_id]
+                roughness_tex_num_array.append(tex_num)
+                roughness_tex_layer_array.append(tex_layer)
+
+            metallic_texture_id = id_material.metallic_texture_id
+            if metallic_texture_id == -1 or metallic_texture_id is None:
+                metallic_tex_num_array.append(-1)
+                metallic_tex_layer_array.append(-1)
+            else:
+                tex_num, tex_layer = self.tex_id_layer_mapping[metallic_texture_id]
+                metallic_tex_num_array.append(tex_num)
+                metallic_tex_layer_array.append(tex_layer)
+
+            normal_texture_id = id_material.normal_texture_id
+            if normal_texture_id == -1 or normal_texture_id is None:
+                normal_tex_num_array.append(-1)
+                normal_tex_layer_array.append(-1)
+            else:
+                tex_num, tex_layer = self.tex_id_layer_mapping[normal_texture_id]
+                normal_tex_num_array.append(tex_num)
+                normal_tex_layer_array.append(tex_layer)
 
             kd = np.asarray(id_material.kd, dtype=np.float32)
             # Add padding so can store diffuse color as vec4
@@ -1049,11 +1082,27 @@ class MeshRenderer(object):
 
         # Convert frag shader data to list of vec4 for use in uniform buffer objects
         frag_shader_data = []
+        frag_shader_roughness_metallic_data = []
+        frag_shader_normal_data = []
+
         for i in range(len(duplicate_vao_ids)):
             data_list = [float(tex_num_array[i]), float(tex_layer_array[i]), class_id_array[i], 0.0]
             frag_shader_data.append(np.ascontiguousarray(data_list, dtype=np.float32))
+            roughness_metallic_data_list = [float(roughness_tex_num_array[i]),
+                                            float(roughness_tex_layer_array[i]),
+                                            float(metallic_tex_num_array[i]),
+                                            float(metallic_tex_layer_array[i]),
+                                            ]
+            frag_shader_roughness_metallic_data.append(np.ascontiguousarray(roughness_metallic_data_list, dtype=np.float32))
+            normal_data_list = [float(normal_tex_num_array[i]),
+                                float(normal_tex_layer_array[i]),
+                                0.0, 0.0
+                                ]
+            frag_shader_normal_data.append(np.ascontiguousarray(normal_data_list, dtype=np.float32))
 
         merged_frag_shader_data = np.ascontiguousarray(np.concatenate(frag_shader_data, axis=0), np.float32)
+        merged_frag_shader_roughness_metallic_data = np.ascontiguousarray(np.concatenate(frag_shader_roughness_metallic_data, axis=0), np.float32)
+        merged_frag_shader_normal_data = np.ascontiguousarray(np.concatenate(frag_shader_normal_data, axis=0), np.float32)
         merged_diffuse_color_array = np.ascontiguousarray(np.concatenate(diffuse_color_array, axis=0), np.float32)
 
         merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
@@ -1065,6 +1114,12 @@ class MeshRenderer(object):
         else:
             buffer = self.fbo
 
+        self.use_pbr = False
+        for instance in self.instances:
+            if instance.use_pbr:
+                self.use_pbr = True
+                break
+
         self.optimized_VAO, self.optimized_VBO, self.optimized_EBO = self.r.renderSetup(self.shaderProgram, self.V,
                                                                                         self.P, self.lightpos,
                                                                                         self.lightcolor,
@@ -1072,9 +1127,12 @@ class MeshRenderer(object):
                                                                                         index_ptr_offsets, index_counts,
                                                                                         indices,
                                                                                         merged_frag_shader_data,
+                                                                                        merged_frag_shader_roughness_metallic_data,
+                                                                                        merged_frag_shader_normal_data,
                                                                                         merged_diffuse_color_array,
                                                                                         self.tex_id_1, self.tex_id_2,
-                                                                                        buffer)
+                                                                                        buffer,
+                                                                                        float(self.use_pbr))
 
     def update_dynamic_positions(self):
         """
