@@ -966,7 +966,6 @@ class MeshRenderer(object):
                     frames.append(item)
         return frames
 
-<<<<<<< HEAD
     def optimize_vertex_and_texture(self):
         for tex_file in self.texture_files:
             print("Texture: ", tex_file)
