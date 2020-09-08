@@ -693,6 +693,46 @@ class PlacePosDiscreteOrn(PlacePosOrn):
         return params
 
 
+class PlacePosYawOrn(PlacePosOrn):
+    def get_default_params(self):
+        return OrderedDict(
+            place_pos=SkillParamsContinuous(size=3),
+            place_orn=SkillParamsContinuous(size=1)
+        )
+
+    def skill_params_to_string(self, params, target_object_id):
+        msg = Skill.skill_params_to_string(self, params, target_object_id)
+        params = self.deserialize_skill_param_array(params)
+        with np.printoptions(precision=4, suppress=True):
+            param_str = "pos={}, orn={}".format(params["place_pos"], params["place_orn"])
+        return msg + " " + param_str
+
+    def plan(self, params, target_object_id=None, holding_id=None):
+        assert len(params) == self.action_dimension
+        params = self.deserialize_skill_param_array(params)
+
+        target_pos = np.array(PBU.get_pose(target_object_id)[0])
+        target_pos[2] = PBU.stable_z(holding_id, target_object_id)
+        params["place_pos"][2] = max(params["place_pos"][2], 0)  # z clipping
+        target_pos += params["place_pos"]
+
+        yaw = params["place_orn"]
+        orn = T.quaternion_about_axis(yaw, axis=(0, 0, 1))
+
+        place_pose = (target_pos, orn)
+
+        traj = plan_skill_place(
+            self.planner,
+            obstacles=self.obstacles,
+            object_target_pose=place_pose,
+            holding=holding_id,
+            retract_distance=self.retract_distance,
+            joint_resolutions=self.joint_resolutions
+        )
+        traj.append_pause(self.num_pause_steps)
+        return traj
+
+
 class PourPosOrn(Skill):
     def __init__(
             self,
