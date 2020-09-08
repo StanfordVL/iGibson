@@ -90,6 +90,7 @@ class InstanceGroup(object):
         self.dynamic = dynamic
         self.tf_tree = None
         self.use_pbr = False
+        self.use_pbr_mapping = False
         self.roughness = 1
         self.metalness = 0
 
@@ -398,8 +399,8 @@ class MeshRenderer(object):
   
         if os.environ.get('GIBSON_DEVICE_ID', None):
             device = int(os.environ.get('GIBSON_DEVICE_ID'))
-            logging.info("GIBSON_DEVICE_ID environment variable has been manually set. ",
-                         "Using device {} for rendering'.format(device)")
+            logging.info("GIBSON_DEVICE_ID environment variable has been manually set. "
+                         "Using device {} for rendering".format(device))
         else:
             available_devices = get_available_devices()
             if device_idx < len(available_devices):
@@ -649,7 +650,7 @@ class MeshRenderer(object):
                 orn = quat2rotmat(xyzw2wxyz(transform_orn))
                 shape_vertex = shape_vertex.dot(orn[:3, :3].T)
             if not transform_pos is None:
-                shape_vertex += np.array(transform_pos)
+                shape_vertex += np.array(transform_pos) / scale
 
             v0 = shape_vertex[0::3,:]
             v1 = shape_vertex[1::3,:]
@@ -965,6 +966,7 @@ class MeshRenderer(object):
                     frames.append(item)
         return frames
 
+<<<<<<< HEAD
     def optimize_vertex_and_texture(self):
         for tex_file in self.texture_files:
             print("Texture: ", tex_file)
@@ -1151,3 +1153,9 @@ class MeshRenderer(object):
 
         self.pose_trans_array = np.ascontiguousarray(np.concatenate(trans_data, axis=0))
         self.pose_rot_array = np.ascontiguousarray(np.concatenate(rot_data, axis=0))
+
+    def use_pbr(self, use_pbr, use_pbr_mapping):
+        for instance in self.instances:
+            instance.use_pbr = use_pbr
+            instance.use_pbr_mapping = use_pbr_mapping
+

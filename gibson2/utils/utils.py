@@ -3,6 +3,7 @@ import numpy as np
 import yaml
 import collections.abc
 from scipy.spatial.transform import Rotation as R
+from transforms3d import quaternions
 
 # File I/O related
 def parse_config(config):
@@ -18,11 +19,36 @@ def parse_config(config):
     return config_data
 
 # Geometry related
-def rotate_vector_3d(v, r, p, y):
+def rotate_vector_3d(v, r, p, y, cck = True):
     """Rotates 3d vector by roll, pitch and yaw counterclockwise"""
     local_to_global = R.from_euler('xyz', [r, p, y]).as_dcm()
-    global_to_local = local_to_global.T
-    return np.dot(global_to_local, v)
+    if cck:
+        global_to_local = local_to_global.T
+        return np.dot(global_to_local, v)
+    else:
+        return np.dot(local_to_global, v)
+
+def get_transform_from_xyz_rpy(xyz, rpy):
+    """
+    Returns a homogeneous transformation matrix (numpy array 4x4)
+    for the given translation and rotation in roll,pitch,yaw
+    xyz = Array of the translation
+    rpy = Array with roll, pitch, yaw rotations
+    """
+    rotation = R.from_euler('xyz', [rpy[0], rpy[1], rpy[2]]).as_dcm()
+    transformation = np.eye(4)
+    transformation[0:3,0:3] = rotation
+    transformation[0:3,3] = xyz
+    return transformation
+
+def get_rpy_from_transform(transform):
+    """
+    Returns the roll, pitch, yaw angles (Euler) for a given rotation or 
+    homogeneous transformation matrix
+    transformation = Array with the rotation (3x3) or full transformation (4x4)
+    """
+    rpy = R.from_dcm(transform[0:3,0:3]).as_euler('xyz')
+    return rpy
 
 def rotate_vector_2d(v, yaw):
     """Rotates 2d vector by yaw counterclockwise"""
@@ -60,3 +86,9 @@ def quatToXYZW(orn, seq):
         "Quaternion sequence {} is not valid, please double check.".format(seq)
     inds = [seq.index(axis) for axis in 'xyzw']
     return orn[inds]
+
+def quatXYZWFromRotMat(rot_mat):
+    quatWXYZ = quaternions.mat2quat(rot_mat)
+    quatXYZW = quatToXYZW(quatWXYZ, 'wxyz')
+    return quatXYZW
+
