@@ -170,12 +170,12 @@ class Simulator:
                 visual_object = None
                 if type == p.GEOM_MESH:
                     filename = filename.decode('utf-8')
-                    if filename not in self.visual_objects.keys():
+                    if (filename,(*dimensions)) not in self.visual_objects.keys():
                         self.renderer.load_object(filename,
                                                   texture_scale=texture_scale,
                                                   load_texture=load_texture)
-                        self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                    visual_object = self.visual_objects[filename]
+                        self.visual_objects[(filename,(*dimensions))] = len(self.renderer.visual_objects) - 1
+                    visual_object = self.visual_objects[(filename,(*dimensions))]
                 elif type == p.GEOM_PLANE:
                     pass
                     # By default, we add an additional floor surface to "smooth out" that of the original mesh.
@@ -202,6 +202,18 @@ class Simulator:
         return new_objects
 
     @load_without_pybullet_vis
+    def import_ig_scene(self, scene):
+        """
+        Import scene from iGSDF class
+        :param scene: iGSDFScene instance
+        :return: ids from scene.load function
+        """
+        ids = scene.load()
+        for id in ids:
+            self.import_articulated_object_by_id(id, class_id=id)
+        return ids
+
+    @load_without_pybullet_vis
     def import_object(self, obj, class_id=None):
         """
         Import a non-articulated object into the simulator
@@ -226,14 +238,14 @@ class Simulator:
             visual_object = None
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if filename not in self.visual_objects.keys():
+                if (filename,(*dimensions)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                visual_object = self.visual_objects[filename]
+                    self.visual_objects[(filename,(*dimensions))] = len(self.renderer.visual_objects) - 1
+                visual_object = self.visual_objects[(filename,(*dimensions))]
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
                 self.renderer.load_object(
@@ -294,14 +306,14 @@ class Simulator:
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if filename not in self.visual_objects.keys():
+                if (filename,(*dimensions)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                visual_objects.append(self.visual_objects[filename])
+                    self.visual_objects[(filename,(*dimensions))] = len(self.renderer.visual_objects) - 1
+                visual_objects.append(self.visual_objects[(filename,(*dimensions))])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
@@ -365,24 +377,29 @@ class Simulator:
             class_id = self.next_class_id
         self.next_class_id += 1
 
-        ids = obj.load()
+        id = obj.load()
+        return self.import_articulated_object_by_id(id, class_id=class_id)
+
+    @load_without_pybullet_vis
+    def import_articulated_object_by_id(self, id, class_id=None):
+
         visual_objects = []
         link_ids = []
         poses_rot = []
         poses_trans = []
 
-        for shape in p.getVisualShapeData(ids):
+        for shape in p.getVisualShapeData(id):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if filename not in self.visual_objects.keys():
+                if (filename,(*dimensions)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                visual_objects.append(self.visual_objects[filename])
+                    self.visual_objects[(filename,(*dimensions))] = len(self.renderer.visual_objects) - 1
+                visual_objects.append(self.visual_objects[(filename,(*dimensions))])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
@@ -423,14 +440,14 @@ class Simulator:
 
         self.renderer.add_instance_group(object_ids=visual_objects,
                                          link_ids=link_ids,
-                                         pybullet_uuid=ids,
+                                         pybullet_uuid=id,
                                          class_id=class_id,
                                          poses_rot=poses_rot,
                                          poses_trans=poses_trans,
                                          dynamic=True,
                                          robot=None)
 
-        return ids
+        return id
 
     def step(self):
         """

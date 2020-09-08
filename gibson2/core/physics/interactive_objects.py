@@ -2,7 +2,15 @@ import pybullet as p
 import os
 import gibson2
 import numpy as np
+import random
+import json
 
+from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path, get_ig_model_path, get_ig_category_path
+import xml.etree.ElementTree as ET
+from gibson2.utils.utils import rotate_vector_3d
+
+import logging
+import math
 
 class Object(object):
     def __init__(self):
@@ -206,6 +214,168 @@ class BoxShape(Object):
 
         return body_id
 
+def round_up(n, decimals=0): 
+    multiplier = 10 ** decimals 
+    return math.ceil(n * multiplier) / multiplier
+
+class URDFObject(Object):
+    """
+    URDFObjects are instantiated from a URDF file. They can be composed of one or more links and joints. They should be passive
+    We use this class to deparse our modified link tag for URDFs that embed objects into scenes
+    """
+
+    def __init__(self, xml_element, random_groups):
+        super(URDFObject, self).__init__()
+
+        category = xml_element.attrib["category"]
+        model = xml_element.attrib['model']
+        model_path = ""
+
+        print("Category", category)
+        print("Model", model)
+                
+        # Find the urdf file that defines this object
+        if category == "building":
+            model_path = get_ig_scene_path(model)
+            filename = model_path + "/" + model + "_building.urdf"
+        else:
+            category_path = get_ig_category_path(category)
+            assert len(os.listdir(category_path)) != 0, "There are no models in category folder {}".format(category_path)
+            if model == 'random':
+                # Using random group to assign the same model to a group of objects
+                if "random_group" in xml_element.attrib:
+                    random_group = xml_element.attrib["random_group"]
+                    if (category, xml_element.attrib["random_group"]) in random_groups:
+                        model = random_groups[(category, xml_element.attrib["random_group"])]
+                    else:
+                        # The first instance of the group we chose a random model and we save it
+                        model = random.choice(os.listdir(category_path))
+                        random_groups[(category, xml_element.attrib["random_group"])] = model
+                else:
+                    # Using a random instance
+                    model = random.choice(os.listdir(category_path))
+            else:
+                model = xml_element.attrib['model']
+
+            model_path = get_ig_model_path(category, model)
+            filename = model_path + "/" + model + ".urdf"            
+ 
+        self.filename = filename
+        logging.info("Loading " + filename)
+        self.object_tree = ET.parse(filename) #Parse the URDF
+
+        # Change the mesh filenames to include the entire path
+        for mesh in self.object_tree.iter("mesh"):
+            mesh.attrib['filename'] = model_path + "/" + mesh.attrib['filename']
+
+        # Apply the desired bounding box size / scale
+        # First obtain the scaling factor
+        if "bounding_box" in xml_element.keys() and "scale" in xml_element.keys():
+            logging.error("You cannot define both scale and bounding box size defined to embed a URDF")
+            exit(-1)
+
+        if os.path.exists(model_path + '/misc/bbox.json'):
+            with open(model_path + '/misc/bbox.json', 'r') as bbox_file:
+                bbox_data = json.load(bbox_file)
+                bbox_max = np.array(bbox_data['max'])
+                bbox_min = np.array(bbox_data['min'])
+        else:
+            bbox_max = np.zeros(3)
+            bbox_min = np.zeros(3)
+
+        if "bounding_box" in xml_element.keys():
+            # Obtain the scale as the ratio between the desired bounding box size and the normal bounding box size of the object at scale (1,1,1)
+            bounding_box = np.array([float(val) for val in xml_element.attrib["bounding_box"].split(" ")])            
+            original_bbox = bbox_max - bbox_min
+            print(original_bbox)
+            scale = np.divide(bounding_box, original_bbox) 
+        elif "scale" in xml_element.keys():
+            scale = np.array([float(val) for val in xml_element.attrib["scale"].split(" ")])            
+        else:
+            scale = np.array([1., 1., 1.])
+        logging.info("Scale: " + np.array2string(scale))
+
+        # We need to scale 1) the meshes, 2) the position of meshes, 3) the position of joints, 4) the orientation axis of joints
+        # The problem is that those quantities are given wrt. its parent link frame, and this can be rotated wrt. the frame the scale was given in
+        # Solution: parse the kin tree joint by joint, extract the rotation, rotate the scale, apply rotated scale to 1, 2, 3, 4 in the child link frame
+
+        # First, define the scale in each link reference frame
+        # and apply it to the joint values
+        scales_in_lf = {}
+        scales_in_lf["base_link"] = scale
+        all_processed = False
+        while not all_processed:
+            all_processed = True
+            for joint in self.object_tree.iter("joint"):
+                parent_link_name = joint.find("parent").attrib["link"]
+                child_link_name = joint.find("child").attrib["link"]
+                if parent_link_name in scales_in_lf and child_link_name not in scales_in_lf:
+                    scale_in_parent_lf = scales_in_lf[parent_link_name]
+
+                    # The location of the joint frame is scaled in using the scale in the parent frame
+                    for origin in joint.iter("origin"):
+                        current_origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
+                        new_origin_xyz = np.multiply(current_origin_xyz, scale_in_parent_lf)
+                        new_origin_xyz = np.array([round_up(val, 4) for val in new_origin_xyz])
+                        origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
+
+                    # Get the rotation of the joint frame and apply it to the scale
+                    if "rpy" in joint.keys():
+                        joint_frame_rot = np.array([float(val) for val in joint.attrib['rpy'].split(" ")])
+                        # Rotate the scale
+                        scale_in_child_lf = rotate_vector_3d(scale_in_parent_lf, *joint_frame_rot, cck=True)
+                        scale_in_child_lf = np.absolute(scale_in_child_lf)                        
+                    else:
+                        scale_in_child_lf = scale_in_parent_lf
+
+                    #print("Adding: ", joint.find("child").attrib["link"])
+
+                    scales_in_lf[joint.find("child").attrib["link"]] = scale_in_child_lf
+
+                    # The axis of the joint is defined in the joint frame, we scale it after applying the rotation
+                    for axis in joint.iter("axis"):
+                        current_axis_xyz = np.array([float(val) for val in axis.attrib["xyz"].split(" ")])
+                        new_axis_xyz = np.multiply(current_axis_xyz, scale_in_child_lf)
+                        new_axis_xyz /= np.linalg.norm(new_axis_xyz)
+                        new_axis_xyz = np.array([round_up(val, 4) for val in new_axis_xyz])
+                        axis.attrib['xyz'] = ' '.join(map(str, new_axis_xyz))
+
+                    all_processed = False # Iterate again the for loop since we added new elements to the dictionary
+
+        # Now iterate over all links and scale the meshes and positions
+        for link in self.object_tree.iter("link"):
+            scale_in_lf = scales_in_lf[link.attrib["name"]]
+            #Apply the scale to all mesh elements within the link (original scale and origin)
+            for mesh in link.iter("mesh"):
+                if "scale" in mesh.attrib:
+                    mesh_scale = np.array([float(val) for val in mesh.attrib["scale"].split(" ")])
+                    new_scale = np.multiply(mesh_scale, scale_in_lf)
+                    new_scale = np.array([round_up(val, 4) for val in new_scale])
+                    mesh.attrib['scale'] = ' '.join(map(str, new_scale))
+                else:
+                    new_scale = np.array([round_up(val, 4) for val in scale_in_lf])
+                    mesh.set('scale',' '.join(map(str, new_scale)))
+            for origin in link.iter("origin"):
+                origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
+                new_origin_xyz = np.multiply(origin_xyz, scale_in_lf)
+                new_origin_xyz = np.array([round_up(val, 4) for val in new_origin_xyz])
+                origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
+
+        # Finally, we need to know where is the base_link origin wrt. the bounding box center. That allows us to place the model
+        # correctly since the joint transformations given in the scene urdf are for the bounding box center
+        scale = scales_in_lf["base_link"]
+        self.scale = scale
+        self.bbox = (bbox_max, bbox_min)
+        bbox_center_in_blf = (bbox_max + bbox_min)/2.0 # Coordinates of the bounding box center in the base_link frame
+        c_x,c_y,c_z= scale*bbox_center_in_blf # We scale the location. We will subtract this to the joint location
+        self.scaled_bbxc_in_blf = np.array([c_x,-c_y,c_z]) # We scale the location. We will subtract this to the joint location
+
+    def _load(self):
+        body_id = p.loadURDF(self.filename, 
+                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+        self.mass = p.getDynamicsInfo(body_id, -1)[0]
+
+        return body_id
 
 class InteractiveObj(Object):
     """
