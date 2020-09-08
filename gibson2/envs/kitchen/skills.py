@@ -544,7 +544,8 @@ class GraspDistDiscreteOrn(GraspDistOrn):
         msg = Skill.skill_params_to_string(self, params, target_object_id)
         params = self.deserialize_skill_param_array(params)
         pose_idx = int(np.argmax(params["grasp_orn"]))
-        param_str = "dist={}, orn={}".format(params["grasp_distance"], ORIENTATION_NAMES[pose_idx])
+        with np.printoptions(precision=4, suppress=True):
+            param_str = "dist={}, orn={}".format(params["grasp_distance"], ORIENTATION_NAMES[pose_idx])
         return msg + " " + param_str
 
     def plan(self, params, target_object_id=None):
@@ -609,7 +610,8 @@ class PlacePosOrn(Skill):
     def skill_params_to_string(self, params, target_object_id):
         msg = Skill.skill_params_to_string(self, params, target_object_id)
         params = self.deserialize_skill_param_array(params)
-        param_str = "pos(x, y)={}, orn={}".format(params["place_pos"][:2], params["place_orn"])
+        with np.printoptions(precision=4, suppress=True):
+            param_str = "pos={}, orn={}".format(params["place_pos"], params["place_orn"])
         return msg + " " + param_str
 
     def plan(self, params, target_object_id=None, holding_id=None):
@@ -652,7 +654,8 @@ class PlacePosDiscreteOrn(PlacePosOrn):
         msg = Skill.skill_params_to_string(self, params, target_object_id)
         params = self.deserialize_skill_param_array(params)
         orn_idx = int(np.argmax(params["place_orn"]))
-        param_str = "pos(x, y)={}, orn={}".format(params["place_pos"][:2], ORIENTATION_NAMES[orn_idx])
+        with np.printoptions(precision=4, suppress=True):
+            param_str = "pos={}, orn={}".format(params["place_pos"], ORIENTATION_NAMES[orn_idx])
         return msg + " " + param_str
 
     def plan(self, params, target_object_id=None, holding_id=None):
@@ -759,7 +762,8 @@ class PourPosAngle(PourPosOrn):
     def skill_params_to_string(self, params, target_object_id):
         msg = Skill.skill_params_to_string(self, params, target_object_id)
         params = self.deserialize_skill_param_array(params)
-        param_str = "pos={}, angle={}".format(params["pour_pos"], -params["pour_angle"])
+        with np.printoptions(precision=4, suppress=True):
+            param_str = "pos={}, angle={}".format(params["pour_pos"], -params["pour_angle"])
         return msg + " " + param_str
 
     def plan(self, params, target_object_id=None, holding_id=None):
@@ -801,6 +805,7 @@ class PourPosAngle(PourPosOrn):
 class OperatePrismaticPosDistance(Skill):
     def __init__(
             self,
+            params=None,
             name="operate_prismatic_pos_distance",
             joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
             num_pause_steps=0,
@@ -808,6 +813,7 @@ class OperatePrismaticPosDistance(Skill):
             precondition_fn=None
     ):
         super(OperatePrismaticPosDistance, self).__init__(
+            params=params,
             name=name,
             requires_holding=False,
             acquires_holding=False,
@@ -821,7 +827,8 @@ class OperatePrismaticPosDistance(Skill):
     def skill_params_to_string(self, params, target_object_id):
         msg = Skill.skill_params_to_string(self, params, target_object_id)
         params = self.deserialize_skill_param_array(params)
-        param_str = "pos={}, move_distance={}".format(params["grasp_pos"], params["prismatic_move_distance"])
+        with np.printoptions(precision=4, suppress=True):
+            param_str = "pos={}, move_distance={}".format(params["grasp_pos"], params["prismatic_move_distance"])
         return msg + " " + param_str
 
     def get_default_params(self):
