@@ -29,64 +29,6 @@ def env_factory(name, **kwargs):
         return eval(name)(**kwargs)
 
 
-class BasicKitchenEnv(BaseEnv):
-    def __init__(self, **kwargs):
-        kwargs["robot_base_pose"] = ([0.5, 0.3, 1.2], [0, 0, 1, 0])
-        super(BasicKitchenEnv, self).__init__(**kwargs)
-
-    def _create_fixtures(self):
-        floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-        p.loadMJCF(floor)
-
-    def _create_objects(self):
-        drawer = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf'))
-        drawer.load()
-        drawer.set_position([0, 0, 0.5])
-        set_articulated_object_dynamics(drawer.body_id)
-        self.objects.add_object("drawer", drawer)
-
-        # cabinet = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf'))
-        # cabinet.load()
-        # cabinet.set_position([0, 0, 2])
-        # set_articulated_object_dynamics(cabinet.body_id)
-        # self.objects.add_object("cabinet", cabinet)
-
-        can = YCBObject('005_tomato_soup_can')
-        can.load()
-        p.changeDynamics(can.body_id, -1, mass=1.0)
-        set_friction(can.body_id)
-
-        z = PBU.stable_z(can.body_id, self.objects["drawer"].body_id)
-        can.set_position_orientation([0, 0, z], [0, 0, 0, 1])
-
-        self.objects.add_object("can", can)
-
-
-class BasicKitchenCanInDrawer(BasicKitchenEnv):
-    def is_success_all_tasks(self):
-        """Check if the task condition is reached."""
-        can_position = self.objects["can"].get_position()
-        drawer_aabb = PBU.get_aabb(self.objects["drawer"].body_id, 2)
-        return {"task": PBU.aabb_contains_point(can_position, drawer_aabb)}
-
-    def _reset_objects(self):
-        z = PBU.stable_z(self.objects["can"].body_id, self.objects["drawer"].body_id)
-        self.objects["can"].set_position_orientation([0, 0, z], [0, 0, 0, 1])
-
-
-class BasicKitchenLiftCan(BasicKitchenEnv):
-    def is_success_all_tasks(self):
-        """Check if the task condition is reached."""
-        can_position = self.objects["can"].get_position()
-        surface_z = PBU.stable_z(self.objects["can"].body_id, self.objects["drawer"].body_id)
-        return {"task": can_position[2] - surface_z > 0.1}
-
-    def _reset_objects(self):
-        z = PBU.stable_z(self.objects["can"].body_id, self.objects["drawer"].body_id)
-        rand_pos = PU.sample_positions_in_box([-0.1, 0.1], [-0.1, 0.1], [z, z])
-        self.objects["can"].set_position_orientation([rand_pos[0], rand_pos[1], z], [0, 0, 0, 1])
-
-
 class TableTop(BaseEnv):
     def __init__(self, **kwargs):
         kwargs["robot_base_pose"] = ([0.5, 0.3, 1.2], [0, 0, 1, 0])
@@ -117,174 +59,6 @@ class TableTop(BaseEnv):
         self.fixtures.add_object("table", table)
 
 
-class TableTopPour(TableTop):
-    def _create_objects(self):
-        bowl = YCBObject('024_bowl')
-        bowl.load()
-        p.changeDynamics(bowl.body_id, -1, mass=10.0)
-        set_friction(bowl.body_id)
-        self.objects.add_object("bowl_red", bowl)
-
-        bowl = YCBObject('024_bowl')
-        bowl.load()
-        p.changeDynamics(bowl.body_id, -1, mass=1.0)
-        change_object_rgba(bowl.body_id, (0, 0, 1, 1))
-        set_friction(bowl.body_id)
-        self.objects.add_object("bowl_blue", bowl)
-
-        mug = YCBObject('025_mug')
-        mug.load()
-        p.changeDynamics(mug.body_id, -1, mass=1.0)
-        set_friction(mug.body_id)
-        self.objects.add_object("mug_red", mug)
-
-        mug = YCBObject('025_mug')
-        mug.load()
-        p.changeDynamics(mug.body_id, -1, mass=1.0)
-        change_object_rgba(mug.body_id, (0, 0, 1, 1))
-        set_friction(mug.body_id)
-        self.objects.add_object("mug_blue", mug)
-
-        self.blue_beads_ids = [PBU.create_sphere(0.005, mass=0.1, color=(0, 0, 1, 0.8)) for _ in range(50)]
-        self.red_beads_ids = [PBU.create_sphere(0.005, mass=0.1, color=(1, 0, 0, 0.8)) for _ in range(50)]
-
-    def _reset_objects(self):
-        z = PBU.stable_z(self.objects["bowl_red"].body_id, self.fixtures["table"].body_id)
-        self.objects["bowl_red"].set_position_orientation(
-            PU.sample_positions_in_box([-0.25, -0.15], [-0.05, 0.05], [z, z]), PBU.unit_quat())
-        self.objects["bowl_blue"].set_position_orientation(
-            PU.sample_positions_in_box([-0.25, -0.15], [0.25, 0.35], [z, z]), PBU.unit_quat())
-        # [0.15, 0.25], [-0.05, 0.05]
-        z = PBU.stable_z(self.objects["mug_red"].body_id, self.fixtures["table"].body_id)
-        self.objects["mug_red"].set_position_orientation(
-            PU.sample_positions_in_box([0.15, 0.25], [-0.05, 0.05], [z, z]), PBU.unit_quat())
-        self.objects["mug_blue"].set_position_orientation(
-            PU.sample_positions_in_box([0.15, 0.25], [0.25, 0.35], [z, z]), PBU.unit_quat())
-
-        beads_pos = self.objects["mug_red"].get_position()
-        for i, bid in enumerate(self.red_beads_ids):
-            p.resetBasePositionAndOrientation(bid, beads_pos + np.array([0, 0, z + 0.1 + i * 0.01]), PBU.unit_quat())
-        beads_pos = self.objects["mug_blue"].get_position()
-        for i, bid in enumerate(self.blue_beads_ids):
-            p.resetBasePositionAndOrientation(bid, beads_pos + np.array([0, 0, z + 0.1 + i * 0.01]), PBU.unit_quat())
-
-    def is_success_all_tasks(self):
-        num_contained = 0
-        bowl_aabb = PBU.get_aabb(self.objects["bowl_red"].body_id, -1)
-        for bid in self.red_beads_ids:
-            if PBU.aabb_contains_point(p.getBasePositionAndOrientation(bid)[0], bowl_aabb):
-                num_contained += 1
-        return {"task": float(num_contained) / len(self.red_beads_ids) > 0.5}
-
-
-class TableTopArrange(TableTop):
-    def _create_objects(self):
-        can = YCBObject('005_tomato_soup_can')
-        can.load()
-        p.changeDynamics(can.body_id, -1, mass=1.0)
-        set_friction(can.body_id)
-        self.objects.add_object("can", can)
-
-        target_id = PBU.create_box(0.15, 0.15, 0.01, mass=100, color=(0, 1, 0, 1))
-        target = Object()
-        target.body_id = target_id
-        target.loaded = True
-        self.objects.add_object("target", target)
-
-    def _reset_objects(self):
-        z = PBU.stable_z(self.objects["can"].body_id, self.fixtures["table"].body_id)
-        self.objects["can"].set_position_orientation(
-            PU.sample_positions_in_box([-0.1, 0.1], [-0.3, -0.1], [z, z]), PBU.unit_quat())
-
-        z = PBU.stable_z(self.objects["target"].body_id, self.fixtures["table"].body_id)
-        self.objects["target"].set_position_orientation(
-            PU.sample_positions_in_box([-0.05, 0.05], [0.3, 0.2], [z, z]), PBU.unit_quat())
-
-    def is_success_all_tasks(self):
-        on_top = PBU.is_placement(self.objects["can"].body_id, self.objects["target"].body_id, below_epsilon=1e-2)
-        return {"task": on_top}
-
-
-class TableTopArrangeHard(TableTop):
-    def __init__(self, **kwargs):
-        kwargs["robot_base_pose"] = ([0.0, 0.3, 1.4], T.quaternion_from_euler(0, np.pi / 2, 0))
-        super(TableTop, self).__init__(**kwargs)
-
-    def _sample_task(self):
-        self._task_spec = np.array([np.random.randint(0, 3), np.random.randint(3, 5)])
-
-    def set_goal(self, task_specs):
-        """Set env target with external specification"""
-        assert len(task_specs) == 2
-        self._task_spec = np.array(task_specs)
-        assert 0 <= self._task_spec[0] <= 2
-        assert 3 <= self._task_spec[1] <= 4
-
-    def _create_objects(self):
-        o = YCBObject('005_tomato_soup_can')
-        o.load()
-        p.changeDynamics(o.body_id, -1, mass=1.0)
-        set_friction(o.body_id)
-        self.objects.add_object("can", o)
-
-        o = YCBObject('025_mug')
-        o.load()
-        p.changeDynamics(o.body_id, -1, mass=1.0)
-        set_friction(o.body_id)
-        self.objects.add_object("mug", o)
-
-        o = YCBObject('006_mustard_bottle')
-        o.load()
-        p.changeDynamics(o.body_id, -1, mass=1.0)
-        set_friction(o.body_id)
-        self.objects.add_object("bottle", o)
-
-        target_id = PBU.create_box(0.15, 0.15, 0.01, mass=100, color=(0, 1, 0, 1))
-        target = Object()
-        target.body_id = target_id
-        target.loaded = True
-        self.objects.add_object("target1", target)
-
-        target_id = PBU.create_box(0.15, 0.15, 0.01, mass=100, color=(0, 0, 1, 1))
-        target = Object()
-        target.body_id = target_id
-        target.loaded = True
-        self.objects.add_object("target2", target)
-
-    def _reset_objects(self):
-        z = PBU.stable_z(self.objects["can"].body_id, self.fixtures["table"].body_id)
-        self.objects["can"].set_position_orientation(
-            PU.sample_positions_in_box([-0.3, -0.2], [-0.2, -0.1], [z, z]), PBU.unit_quat())
-
-        z = PBU.stable_z(self.objects["mug"].body_id, self.fixtures["table"].body_id)
-        self.objects["mug"].set_position_orientation(
-            PU.sample_positions_in_box([-0.1, 0.0], [-0.2, -0.1], [z, z]), PBU.unit_quat())
-
-        z = PBU.stable_z(self.objects["bottle"].body_id, self.fixtures["table"].body_id)
-        self.objects["bottle"].set_position_orientation(
-            PU.sample_positions_in_box([0.1, 0.2], [-0.2, -0.1], [z, z]), PBU.unit_quat())
-
-        z = PBU.stable_z(self.objects["target1"].body_id, self.fixtures["table"].body_id)
-        self.objects["target1"].set_position_orientation(
-            PU.sample_positions_in_box([0.1, 0.2], [0.3, 0.2], [z, z]), PBU.unit_quat())
-
-        z = PBU.stable_z(self.objects["target2"].body_id, self.fixtures["table"].body_id)
-        self.objects["target2"].set_position_orientation(
-            PU.sample_positions_in_box([-0.2, -0.1], [0.3, 0.2], [z, z]), PBU.unit_quat())
-
-    def is_success_all_tasks(self):
-        src_object_id = self.objects.body_ids[int(self.task_spec[0])]
-        tgt_object_id = self.objects.body_ids[int(self.task_spec[1])]
-        return {"task": PBU.is_center_stable(src_object_id, tgt_object_id, above_epsilon=0.04, below_epsilon=0.02)}
-
-    def _create_skill_lib(self):
-        lib_skills = (
-            skills.GraspDistDiscreteOrn(lift_distance=0.1),
-            skills.PlacePosDiscreteOrn(retract_distance=0.1)
-        )
-        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
-
-
 class KitchenCoffee(TableTop):
     def __init__(self, **kwargs):
         super(KitchenCoffee, self).__init__(**kwargs)
@@ -309,7 +83,6 @@ class KitchenCoffee(TableTop):
         self.objects.add_object("mug", o)
 
         o = Faucet(num_beads=10, dispense_freq=1, beads_color=(111 / 255, 78 / 255, 55 / 255, 1))
-        # o = Faucet(num_beads=10, dispense_freq=1, beads_color=(0.9, 0.9, 0, 1))
         o.load()
         self.objects.add_object("faucet_coffee", o)
         self.interactive_objects.add_object("faucet_coffee", o)
@@ -323,18 +96,6 @@ class KitchenCoffee(TableTop):
         o.load()
         p.changeDynamics(o.body_id, -1, mass=10.0)
         self.objects.add_object("bowl", o)
-
-        # o = InteractiveObj(filename=os.path.join(gibson2.assets_path, "models/rbo/microwave/configuration/microwave.urdf"))
-        # o.load()
-        # self.objects.add_object("microwave", o)
-
-    def _create_skill_lib(self):
-        lib_skills = (
-            skills.GraspDistDiscreteOrn(name="grasp_dist_discrete_orn", lift_height=0.1, lift_speed=0.01),
-            skills.PlacePosDiscreteOrn(name="place_pos_discrete_orn", retract_distance=0.1, num_pause_steps=30),
-            skills.PourPosAngle(name="pour_pos_angle", pour_angle_speed=np.pi / 32, num_pause_steps=30)
-        )
-        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills, verbose=True)
 
     def _reset_objects(self):
         z = PBU.stable_z(self.objects["mug"].body_id, self.fixtures["table"].body_id)
@@ -371,114 +132,8 @@ class KitchenCoffee(TableTop):
         )
         return obs
 
-    def _sample_task(self):
-        self._task_spec = np.random.randint(0, 2, size=1)
-        self._target_faucet = "faucet_milk" if self._task_spec[0] == 1 else "faucet_coffee"
 
-    def set_goal(self, task_specs):
-        """Set env target with external specification"""
-        assert len(task_specs) == 1
-        self._task_spec = np.array(task_specs)
-        assert 0 <= self._task_spec[0] <= 1
-
-    def get_demo_suboptimal(self, noise=None):
-        self.reset()
-        buffer = PU.Buffer()
-        skill_seq = []
-        params = self.skill_lib.get_serialized_skill_params(
-            "grasp_dist_discrete_orn", grasp_orn_name="back", grasp_distance=0.05)
-        skill_seq.append((params, self.objects["mug"].body_id))
-
-        place_delta = np.array((0, 0, 0.01))
-        place_delta[0] += (np.random.rand(1) - 0.5) * 0.05
-
-        ##################### continuous
-        # full
-        # place_delta[1] += 0.075 + (np.random.rand(1) - 0.5) * 0.3
-
-        # centered
-        # target_faucet = np.random.choice(["faucet_milk", "faucet_coffee"])
-        # place_delta[1] += 0.075 + 0.075 * (-1 if target_faucet == 'faucet_milk' else 1) + (np.random.rand(1) - 0.5) * 0.04
-
-        # correct goal
-        if self._target_faucet == "faucet_milk":
-            place_delta[1] += (np.random.rand(1) - 0.5) * 0.15
-        else:
-            place_delta[1] += 0.15 + (np.random.rand(1) - 0.5) * 0.15
-
-        params = self.skill_lib.get_serialized_skill_params(
-            "place_pos_discrete_orn", place_orn_name="front", place_pos=place_delta)
-        skill_seq.append((params, self.objects["faucet_milk"].body_id))
-
-        ################# discrete
-        # target_faucet = np.random.choice(["faucet_milk", "faucet_coffee"])
-        # discrete-unbiased
-        # place_delta[1] += (np.random.rand(1) - 0.5) * 0.15
-        # discrete-biased
-        # place_delta[1] += (np.random.rand(1) - 0.2) * 0.15 * (-1 if target_faucet == 'faucet_milk' else 1)
-
-        # params = self.skill_lib.get_serialized_skill_params(
-        #     "place_pos_discrete_orn", place_orn_name="front", place_pos=place_delta)
-        # skill_seq.append((params, self.objects[target_faucet].body_id))
-
-        params = self.skill_lib.get_serialized_skill_params(
-            "grasp_dist_discrete_orn", grasp_orn_name="back", grasp_distance=0.05)
-        skill_seq.append((params, self.objects["mug"].body_id))
-
-        pour_delta = np.array([0, 0, 0.3])
-        pour_delta[:2] += (np.random.rand(2) * 0.1 + 0.03) * np.random.choice([-1, 1], size=2)
-        pour_angle = float(np.random.rand(1) * np.pi * 0.75) + np.pi * 0.25
-
-        params = self.skill_lib.get_serialized_skill_params(
-            "pour_pos_angle", pour_pos=np.array(pour_delta), pour_angle=pour_angle)
-        skill_seq.append((params, self.objects["bowl"].body_id))
-
-        for skill_step, (skill_param, object_id) in enumerate(skill_seq):
-            traj, exec_info = PU.execute_skill(
-                self, self.skill_lib, skill_param,
-                target_object_id=object_id,
-                skill_step=skill_step,
-                noise=noise
-            )
-            buffer.append(**traj)
-        return buffer.aggregate(), None
-
-    def get_demo_expert(self, noise=None):
-        self.reset()
-        buffer = PU.Buffer()
-        skill_seq = []
-        params = self.skill_lib.get_serialized_skill_params(
-            "grasp_dist_discrete_orn", grasp_orn_name="back", grasp_distance=0.05)
-        skill_seq.append((params, self.objects["mug"].body_id))
-
-        place_delta = np.array((0, 0, 0.01))
-        place_delta[:2] += (np.random.rand(2) - 0.5) * 0.1
-        params = self.skill_lib.get_serialized_skill_params(
-            "place_pos_discrete_orn", place_orn_name="front", place_pos=place_delta)
-        skill_seq.append((params, self.objects[self._target_faucet].body_id))
-
-        params = self.skill_lib.get_serialized_skill_params(
-            "grasp_dist_discrete_orn", grasp_orn_name="back", grasp_distance=0.05)
-        skill_seq.append((params, self.objects["mug"].body_id))
-
-        pour_delta = np.array([0, 0, 0.3])
-        pour_delta[:2] += (np.random.rand(2) - 0.5) * 0.1
-        pour_angle = float(np.random.rand(1) * np.pi / 2) + np.pi / 2
-
-        params = self.skill_lib.get_serialized_skill_params(
-            "pour_pos_angle", pour_pos=np.array(pour_delta), pour_angle=pour_angle)
-        skill_seq.append((params, self.objects["bowl"].body_id))
-
-        for skill_step, (skill_param, object_id) in enumerate(skill_seq):
-            traj, exec_info = PU.execute_skill(
-                self, self.skill_lib, skill_param,
-                target_object_id=object_id,
-                skill_step=skill_step,
-                noise=noise
-            )
-            buffer.append(**traj)
-        return buffer.aggregate(), None
-
+class KitchenCoffeeAP(KitchenCoffee):
     def is_success_all_tasks(self):
         num_beads_in_mug_milk = len(objects_center_in_container(
             self.objects["faucet_milk"].beads, self.objects["mug"].body_id))
@@ -497,12 +152,6 @@ class KitchenCoffee(TableTop):
         }
         successes["task"] = successes["fill_bowl"]
         return successes
-
-
-class KitchenCoffeeAP(KitchenCoffee):
-    def set_goal(self, task_specs):
-        """Set env target with external specification"""
-        self._task_spec = np.array(task_specs)
 
     def _sample_task(self):
         skill_name = np.random.choice(["fill_bowl_milk", "fill_bowl_coffee"])
@@ -543,7 +192,7 @@ class KitchenCoffeeAP(KitchenCoffee):
             skills.PourPosAngle(
                 name="pour", pour_angle_speed=np.pi / 32, num_pause_steps=30,
                 params=OrderedDict(
-                    pour_pos=skills.SkillParamsContinuous(low=(-0.1, -0.1, 0.25), high=(0.1, 0.1, 0.35)),
+                    pour_pos=skills.SkillParamsContinuous(low=(-0.1, -0.1, 0.3), high=(0.1, 0.1, 0.3)),
                     pour_angle=skills.SkillParamsContinuous(low=(np.pi * 0.25,), high=(np.pi,))
                 )
             ),
@@ -556,67 +205,7 @@ class KitchenCoffeeAP(KitchenCoffee):
         )
         self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills, verbose=True)
 
-    def get_demo_suboptimal(self, noise=None):
-        self.reset()
-        skill_seq = []
-        params = self.skill_lib.sample_serialized_skill_params(
-            "grasp",
-            grasp_orn=dict(choices=[3]),
-            grasp_distance=dict(low=[0.05], high=[0.05])
-        )
-        skill_seq.append((params, self.objects["mug"].body_id))
-
-        params = self.skill_lib.sample_serialized_skill_params(
-            "place",
-            place_orn=dict(choices=[0]),
-            place_pos=dict(low=(-0.025, -0.075, 0.01), high=(0.025, 0.075, 0.01))
-        )
-        target_faucet = np.random.choice(["faucet_milk", "faucet_coffee"])
-        skill_seq.append((params, self.objects[target_faucet].body_id))
-
-        params = self.skill_lib.sample_serialized_skill_params(
-            "grasp_fill_mug_any",
-            grasp_orn=dict(choices=[3]),
-            grasp_distance=dict(low=[0.05], high=[0.05])
-        )
-        skill_seq.append((params, self.objects["mug"].body_id))
-
-        def get_pour_pos():
-            pour_delta = np.array([0, 0, 0.3])
-            pour_delta[:2] += (np.random.rand(2) * 0.1 + 0.03) * np.random.choice([-1, 1], size=2)
-            return pour_delta
-
-        params = self.skill_lib.sample_serialized_skill_params(
-            "pour",
-            pour_pos=dict(sampler_fn=get_pour_pos),
-            pour_angle=dict(low=[np.pi * 0.25], high=[np.pi])
-        )
-        skill_seq.append((params, self.objects["bowl"].body_id))
-
-        # check goal
-        final_skill_name = "fill_bowl_milk" if self.task_spec[0] == 1 else "fill_bowl_coffee"
-        params = self.skill_lib.get_serialized_skill_params(final_skill_name)
-        skill_seq.append((params, self.objects["bowl"].body_id))
-
-        buffer = PU.Buffer()
-        skill_step = 0
-        exception = None
-        for skill_param, object_id in skill_seq:
-            traj, exec_info = PU.execute_skill(
-                self, self.skill_lib, skill_param,
-                target_object_id=object_id,
-                skill_step=skill_step,
-                noise=noise
-            )
-            buffer.append(**traj)
-            if exec_info["exception"] is not None:
-                exception = exec_info["exception"]
-                break
-
-        return buffer.aggregate(), exception
-
-    def get_demo_random(self, noise=None):
-        self.reset()
+    def get_random_skeleton(self, horizon):
         param_set = OrderedDict()
         param_set["grasp"] = lambda: self.skill_lib.sample_serialized_skill_params(
             "grasp", grasp_orn=dict(choices=[3]),
@@ -624,79 +213,14 @@ class KitchenCoffeeAP(KitchenCoffee):
         param_set["place"] = lambda: self.skill_lib.sample_serialized_skill_params(
             "place", place_orn=dict(choices=[0]),
         )
-        # param_set["grasp_fill_mug_any"] = self.skill_lib.sample_serialized_skill_params(
-        #     "grasp_fill_mug_any", grasp_orn=dict(choices=[3]),
-        # )
         param_set["pour"] = lambda: self.skill_lib.sample_serialized_skill_params("pour")
         param_set["fill_bowl_milk"] = lambda: self.skill_lib.sample_serialized_skill_params("fill_bowl_milk")
         param_set["fill_bowl_coffee"] = lambda: self.skill_lib.sample_serialized_skill_params("fill_bowl_coffee")
-
-        buffer = PU.Buffer()
-        exception = None
-        for skill_step in range(20):
-            object_id = np.random.choice(self.objects.body_ids)
+        skeleton = []
+        for _ in range(horizon):
+            object_name = np.random.choice(self.objects.names)
             skill_name = np.random.choice(list(param_set.keys()))
-            skill_param = param_set[skill_name]()
-
-            traj, exec_info = PU.execute_skill(
-                self, self.skill_lib, skill_param,
-                target_object_id=object_id,
-                skill_step=skill_step,
-                noise=noise
-            )
-            buffer.append(**traj)
-            if exec_info["exception"] is not None:
-                exception = exec_info["exception"]
-            print(skill_step, skill_name, object_id, exception)
-
-            if self.is_success():
-                break
-
-        return buffer.aggregate(), exception
-
-    def get_demo_skeleton(self, noise=None):
-        self.reset()
-        param_seq = []
-        param_seq.append((
-            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
-            "mug"
-        ))
-        param_seq.append((
-            lambda: self.skill_lib.sample_serialized_skill_params("place", place_orn=dict(choices=[0])),
-            self._target_faucet
-        ))
-        param_seq.append((
-            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
-            "mug"
-        ))
-        param_seq.append((
-            lambda: self.skill_lib.sample_serialized_skill_params("pour"),
-            "bowl"
-        ))
-        param_seq.append((
-            lambda: self.skill_lib.sample_serialized_skill_params(self._task_skill_name),
-            self._task_object_name
-        ))
-
-        buffer = PU.Buffer()
-        exception = None
-        for skill_step, (param_func, object_name) in enumerate(param_seq):
-            skill_param = param_func()
-            print(self.skill_lib.skill_params_to_string(skill_param, self.objects.name_to_body_id(object_name)))
-            traj, exec_info = PU.execute_skill(
-                self, self.skill_lib, skill_param,
-                target_object_id=self.objects.name_to_body_id(object_name),
-                skill_step=skill_step,
-                noise=noise
-            )
-            buffer.append(**traj)
-            if exec_info["exception"] is not None:
-                exception = exec_info["exception"]
-
-        if exception is None:
-            assert self.is_success()
-
-        return buffer.aggregate(), exception
+            skeleton.append((skeleton[skill_name], object_name))
 
     def get_task_skeleton(self):
         param_seq = []
@@ -712,8 +236,14 @@ class KitchenCoffeeAP(KitchenCoffee):
             lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
             "mug"
         ))
+
+        def get_pour_pos():
+            pour_delta = np.array([0, 0, 0.3])
+            pour_delta[:2] += (np.random.rand(2) * 0.07 + 0.03) * np.random.choice([-1, 1], size=2)
+            return pour_delta
+
         param_seq.append((
-            lambda: self.skill_lib.sample_serialized_skill_params("pour"),
+            lambda: self.skill_lib.sample_serialized_skill_params("pour", pour_pos=dict(sampler_fn=get_pour_pos)),
             "bowl"
         ))
         param_seq.append((
@@ -724,14 +254,10 @@ class KitchenCoffeeAP(KitchenCoffee):
 
 
 class SimpleCoffeeAP(KitchenCoffee):
-    def set_goal(self, task_specs):
-        """Set env target with external specification"""
-        self._task_spec = np.array(task_specs)
-
     def _sample_task(self):
-        skill_name = np.random.choice(["grasp_fill_mug_milk", "grasp_fill_mug_coffee"])
+        skill_name = np.random.choice(["fill_mug_milk", "fill_mug_coffee"])
         self._task_spec = np.array([self.skill_lib.name_to_skill_index(skill_name), self.objects.names.index("mug")])
-        self._target_faucet = "faucet_milk" if skill_name == "grasp_fill_mug_milk" else "faucet_coffee"
+        self._target_faucet = "faucet_milk" if skill_name == "fill_mug_milk" else "faucet_coffee"
         self._task_skill_name = skill_name
         self._task_object_name = "mug"
 
@@ -756,70 +282,56 @@ class SimpleCoffeeAP(KitchenCoffee):
 
         lib_skills = (
             skills.GraspDistDiscreteOrn(
-                name="grasp", lift_height=0.1, lift_speed=0.01
-            ),
-            skills.GraspDistDiscreteOrn(
-                name="grasp_fill_mug_milk", lift_height=0.1, lift_speed=0.01,
-                precondition_fn=lambda objs=self.objects: fill_mug(self.objects, "milk"),
-            ),
-            skills.GraspDistDiscreteOrn(
-                name="grasp_fill_mug_coffee", lift_height=0.1, lift_speed=0.01,
-                precondition_fn=lambda objs=self.objects: fill_mug(self.objects, "coffee"),
+                name="grasp", lift_height=0.1, lift_speed=0.01,
+                params=OrderedDict(
+                    grasp_distance=skills.SkillParamsContinuous(low=[0.05], high=[0.05]),
+                    grasp_orn=skills.SkillParamsDiscrete(size=len(skills.ORIENTATIONS))
+                )
             ),
             skills.PlacePosDiscreteOrn(
                 name="place", retract_distance=0.1, num_pause_steps=30,
+                params=OrderedDict(
+                    place_pos=skills.SkillParamsContinuous(low=(-0.025, -0.075, 0.01), high=(0.025, 0.075, 0.01)),
+                    place_orn=skills.SkillParamsDiscrete(size=len(skills.ORIENTATIONS)),
+                )
             ),
-        )
-        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills, verbose=True)
-
-    def get_demo_suboptimal(self, noise=None):
-        self.reset()
-        param_set = OrderedDict()
-        param_set["grasp"] = self.skill_lib.sample_serialized_skill_params(
-            "grasp",
-            grasp_orn=dict(choices=[3]),
-            grasp_distance=dict(low=[0.05], high=[0.05])
-        )
-
-        param_set["place"] = self.skill_lib.sample_serialized_skill_params(
-            "place",
-            place_orn=dict(choices=[0]),
-            place_pos=dict(low=(-0.025, -0.075, 0.01), high=(0.025, 0.075, 0.01))
-        )
-
-        param_set["grasp_fill_mug_milk"] = self.skill_lib.sample_serialized_skill_params(
-            "grasp_fill_mug_milk",
-            grasp_orn=dict(choices=[3]),
-            grasp_distance=dict(low=[0.05], high=[0.05])
-        )
-
-        param_set["grasp_fill_mug_coffee"] = self.skill_lib.sample_serialized_skill_params(
-            "grasp_fill_mug_coffee",
-            grasp_orn=dict(choices=[3]),
-            grasp_distance=dict(low=[0.05], high=[0.05])
-        )
-
-        buffer = PU.Buffer()
-        exception = None
-        for skill_step in range(10):
-            object_id = np.random.choice(self.objects.body_ids)
-            skill_name = np.random.choice(list(param_set.keys()))
-            skill_param = param_set[skill_name]
-            print(skill_step, skill_name, object_id)
-
-            traj, exec_info = PU.execute_skill(
-                self, self.skill_lib, skill_param,
-                target_object_id=object_id,
-                skill_step=skill_step,
-                noise=noise
+            skills.ConditionSkill(
+                name="fill_mug_milk", precondition_fn=lambda objs=self.objects: fill_mug(self.objects, "milk"),
+            ),
+            skills.ConditionSkill(
+                name="fill_mug_coffee", precondition_fn=lambda objs=self.objects: fill_mug(self.objects, "coffee"),
             )
-            buffer.append(**traj)
-            if exec_info["exception"] is not None:
-                exception = exec_info["exception"]
-            if self.is_success():
-                break
+        )
+        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
 
-        return buffer.aggregate(), exception
+    def get_random_skeleton(self, horizon):
+        param_set = OrderedDict()
+        param_set["grasp"] = lambda: self.skill_lib.sample_serialized_skill_params(
+            "grasp", grasp_orn=dict(choices=[3]),
+        )
+        param_set["place"] = lambda: self.skill_lib.sample_serialized_skill_params(
+            "place", place_orn=dict(choices=[0]),
+        )
+        param_set["fill_mug_milk"] = lambda: self.skill_lib.sample_serialized_skill_params("fill_mug_milk")
+        param_set["fill_mug_coffee"] = lambda: self.skill_lib.sample_serialized_skill_params("fill_mug_coffee")
+        skeleton = []
+        for _ in range(horizon):
+            object_name = np.random.choice(self.objects.names)
+            skill_name = np.random.choice(list(param_set.keys()))
+            skeleton.append((skeleton[skill_name], object_name))
+
+    def get_task_skeleton(self):
+        param_seq = [(
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            "mug"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("place", place_orn=dict(choices=[0])),
+            self._target_faucet
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params(self._task_skill_name),
+            self._task_object_name
+        )]
+        return param_seq
 
 
 class Kitchen(BaseEnv):
@@ -865,11 +377,6 @@ class Kitchen(BaseEnv):
         p.changeDynamics(can.body_id, -1, mass=1.0)
         set_friction(can.body_id)
         self.objects.add_object("can", can)
-        # cabinet = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf'))
-        # cabinet.load()
-        # cabinet.set_position([0, 0, 2])
-        # set_articulated_object_dynamics(cabinet.body_id)
-        # self.objects.add_object("cabinet", cabinet)
 
     def _reset_objects(self):
         z = PBU.stable_z(self.objects["stove"].body_id, self.fixtures["platform1"].body_id)
@@ -880,69 +387,56 @@ class Kitchen(BaseEnv):
         self.objects["can"].set_position_orientation(
             PU.sample_positions_in_box([0.2, 0.2], [0.0, 0.0], [z, z]), PBU.unit_quat())
 
+
+class KitchenAP(Kitchen):
+    def _sample_task(self):
+        pass
+
+    def is_success_all_tasks(self):
+        return {
+            "task": PBU.is_placement(self.objects["can"].body_id, self.objects["stove"].body_id, below_epsilon=1e-2)
+        }
+
     def _create_skill_lib(self):
         lib_skills = (
             skills.GraspDistDiscreteOrn(
                 name="grasp", lift_height=0.1, lift_speed=0.01,
+                params=OrderedDict(
+                    grasp_distance=skills.SkillParamsContinuous(low=[0.05], high=[0.05]),
+                    grasp_orn=skills.SkillParamsDiscrete(size=len(skills.ORIENTATIONS))
+                ),
                 joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
             ),
-            skills.PlacePosDiscreteOrn(
+            skills.PlacePosYawOrn(
                 name="place", retract_distance=0.1, num_pause_steps=30,
+                params=OrderedDict(
+                    place_pos=skills.SkillParamsContinuous(low=[-0.1, -0.1, 0.01], high=[0.1, 0.1, 0.01]),
+                    place_orn=skills.SkillParamsContinuous(low=[0], high=[np.pi])
+                ),
                 joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
             ),
             skills.OperatePrismaticPosDistance(
                 name="open_prismatic",
+                params=OrderedDict(
+                    grasp_pos=skills.SkillParamsContinuous(low=[0.35, -0.03, 0.15], high=[0.4, 0.03, 0.25]),
+                    prismatic_move_distance=skills.SkillParamsContinuous(low=[-0.3], high=[-0.2])
+                ),
                 joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32))
         )
-        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills, verbose=True)
+        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
 
-    def get_demo_suboptimal(self, noise=None):
-        # for i in range(4):
-        #     p.changeDynamics(self.robot.body_id, i, mass=0.01)
-        self.reset()
-        param_set = OrderedDict()
-        param_set["open_prismatic"] = lambda: self.skill_lib.sample_serialized_skill_params(
-            "open_prismatic",
-            grasp_pos=dict(low=[0.4, -0.03, 0.15], high=[0.35, 0.03, 0.25]),
-            prismatic_move_distance=dict(low=[-0.2], high=[-0.3])
-        )
-
-        param_set["grasp"] = lambda: self.skill_lib.sample_serialized_skill_params(
-            "grasp",
-            grasp_orn=dict(choices=[4]),
-            grasp_distance=dict(low=[0.05], high=[0.05])
-        )
-
-        # params = self.skill_lib.sample_serialized_skill_params(
-        #     "place",
-        #     place_orn=dict(choices=[0]),
-        #     place_pos=dict(low=[0, 0, 0.01], high=[0, 0, 0.01])
-        # )
-        # skill_seq.append((params, self.objects["stove"].body_id))
-        combos = [("open_prismatic", self.objects.name_to_body_id("drawer")),
-                  ("grasp", self.objects.name_to_body_id("can"))]
-
-        buffer = PU.Buffer()
-        exception = None
-        for skill_step in range(10):
-            skill_name, object_id = combos[int(np.random.randint(0, 2))]
-            skill_param = param_set[skill_name]
-            print(skill_step, skill_name, object_id)
-
-            traj, exec_info = PU.execute_skill(
-                self, self.skill_lib, skill_param(),
-                target_object_id=object_id,
-                skill_step=skill_step,
-                noise=noise
-            )
-            buffer.append(**traj)
-            if exec_info["exception"] is not None:
-                exception = exec_info["exception"]
-                print(exception)
-            if self.is_success():
-                break
-
-        return buffer.aggregate(), exception
+    def get_task_skeleton(self):
+        skeleton = [(
+            lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic"),
+            "drawer"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[4])),
+            "can"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("place"),
+            "stove"
+        )]
+        return skeleton
 
     # def _create_robot(self):
     #     from gibson2.envs.kitchen.robots import Gripper, JointActuatedRobot, Arm

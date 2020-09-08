@@ -139,7 +139,7 @@ class BaseEnv(object):
         raise NotImplementedError
 
     def _sample_task(self):
-        pass
+        raise NotImplementedError
 
     def _create_env_extras(self):
         pass
@@ -287,9 +287,9 @@ class BaseEnv(object):
     def obstacles(self):
         return self.objects.body_ids + self.fixtures.body_ids
 
-    def set_goal(self, **kwargs):
+    def set_goal(self, task_specs):
         """Set env target with external specification"""
-        pass
+        self._task_spec = np.array(task_specs)
 
     def is_done(self):
         """Check if the agent is done (not necessarily successful)."""
@@ -305,6 +305,26 @@ class BaseEnv(object):
     def name(self):
         """Environment name"""
         return self.__class__.__name__
+
+    def execute_skeleton(self, skeleton, noise=None):
+        buffer = PU.Buffer()
+        exception = None
+        for skill_step, (param_func, object_name) in enumerate(skeleton):
+            skill_param = param_func()
+            print(self.skill_lib.skill_params_to_string(skill_param, self.objects.name_to_body_id(object_name)))
+            traj, exec_info = PU.execute_skill(
+                self, self.skill_lib, skill_param,
+                target_object_id=self.objects.name_to_body_id(object_name),
+                skill_step=skill_step,
+                noise=noise
+            )
+            buffer.append(**traj)
+            if exec_info["exception"] is not None:
+                exception = exec_info["exception"]
+
+        if exception is None:  # goal skill is run
+            assert self.is_success()
+        return buffer.aggregate(), exception
 
 
 class EnvSkillWrapper(object):
