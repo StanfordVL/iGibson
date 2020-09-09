@@ -46,6 +46,10 @@ This is needed for bullet
 https://cmake.org/download/
 Needed for building MeshRendererContext and Pybind.
 
+* SRAnipal (needed for eye tracking):
+https://hub.vive.com/en-US/download
+
+Download the VIVE_SRanipalInstaller msi file and install SRAnipal.
 
 Gibson
 ======
@@ -86,16 +90,31 @@ $ cd iGibson
 $ pip install -e .
 ```
 
-Then copy and past the openvr_api.dll file from the top-level iGibson folder and put it into the iGibson/gibson2/core/render/mesh_renderer/Release folder.
-
 Should end printing 'Successfully installed gibson2'
 
-You can find VR tests in iGibson/test and VR demos iGibson/examples/demo
+* Copy dlls into the mesh_renderer/Release folder:
+Copy and paste the following dll files into iGibson/gibson2/core/render/mesh_renderer/Release:
+1) openvr_api.dll in render/openvr
+2) All the dll files in render/sranipal
 
-* Example: run the stadium interaction demo in the folder iGibson/examples/demo:
+You can find all the VR demos iGibson/examples/demo
 
-$ python vr_interaction_demo_ohoopee.py
+Run:
+
+$ python vr_demo_hand.py (for a scene with an interactive hand)
+
+or 
+
+$ python vr_demo_rs.py (for the current state-of-the-art Gibson graphics)
+
+To see the features of the VR software.
 
 To use the gripper asset featured in the interaction demos, please download the 'gripper' folder at this link: https://drive.google.com/drive/folders/1-lHTtUuEgs9zzcievvvVdjHP0BdN7Du4?usp=sharing, and put it in assets/models (wherever your assets folder is).
+To use the VR hand asset, please download and unzip the asset and put it into assets/models under the folder name 'vr_hand'.
+Link to VR hand: https://drive.google.com/file/d/117qb1r_YHHVdQuwLD83N_nd0la57j9hZ/view?usp=sharing
 
 Have fun in VR!
+
+Helpful tips:
+Press ESCAPE to force the fullscreen rendering window to close during program execution.
+Before using SRAnipal eye tracking, you may want to re-calibrate the eye tracker. Please go to the Vive system settings to perform this calibration.

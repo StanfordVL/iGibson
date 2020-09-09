@@ -296,7 +296,7 @@ class MeshRenderer(object):
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False, shouldHideWindow=True, optimize=False):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False, useGlfwWindow=False, fullscreen=False, optimize=False):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -324,16 +324,13 @@ class MeshRenderer(object):
         self.instances = []
         self.fisheye = use_fisheye
         self.msaa = msaa
+        self.useGlfwWindow = useGlfwWindow
+        self.fullscreen = fullscreen
         self.optimize = optimize
 
-        self.shouldHideWindow = shouldHideWindow
-
         self.r = MeshRendererContext.MeshRendererContext(width, height)
-        self.r.init(shouldHideWindow)
+        self.r.init(self.useGlfwWindow, self.fullscreen)
         self.r.glad_init()
-
-        if not self.shouldHideWindow:
-            self.r.setupCompanionWindow()
 
         self.glstring = self.r.getstring_meshrenderer()
 
@@ -372,15 +369,6 @@ class MeshRenderer(object):
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/frag.shader')).readlines()))
-
-        if not shouldHideWindow:
-            [self.windowShaderProgram, _] = self.r.compile_shader_meshrenderer(
-                        "".join(open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                        'shaders/companion_window_vert.shader')).readlines()),
-                        "".join(open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                        'shaders/companion_window_frag.shader')).readlines()))
 
         self.lightpos = [0, 0, 0]
         self.setup_framebuffer()
@@ -466,9 +454,12 @@ class MeshRenderer(object):
                 materials_fn[i + material_count] = item.diffuse_texname
                 obj_dir = os.path.dirname(obj_path)
                 if self.optimize:
-                    self.texture_files.append(os.path.join(obj_dir, item.diffuse_texname))
+                    tex_filename = os.path.join(obj_dir, item.diffuse_texname)
                     texture = self.texture_load_counter
-                    self.texture_load_counter += 1
+                    # Avoid duplicating textures
+                    if tex_filename not in self.texture_files:
+                        self.texture_files.append(tex_filename)
+                        self.texture_load_counter += 1
                 else:
                     texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
                     self.textures.append(texture)
@@ -547,13 +538,14 @@ class MeshRenderer(object):
         return VAO_ids
 
     def optimize_vertex_and_texture(self):
-        print(self.texture_files)
+        for tex_file in self.texture_files:
+            print("Texture: ", tex_file)
         cutoff = 4000 * 4000
-        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(self.texture_files, cutoff)
+        shouldShrinkSmallTextures = True
+        smallTexSize = 512
+        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(self.texture_files, cutoff, shouldShrinkSmallTextures, smallTexSize)
         self.textures.append(self.tex_id_1)
         self.textures.append(self.tex_id_2)
-        print(self.tex_id_1, self.tex_id_2)
-        print(self.tex_id_layer_mapping)
 
         offset_faces = []
 
@@ -606,8 +598,6 @@ class MeshRenderer(object):
                 tex_num_array.append(-1)
                 tex_layer_array.append(-1)
             else:
-                print(texture_id)
-                print(self.tex_id_layer_mapping)
                 tex_num, tex_layer = self.tex_id_layer_mapping[texture_id]
                 tex_num_array.append(tex_num)
                 tex_layer_array.append(tex_layer)
@@ -635,9 +625,6 @@ class MeshRenderer(object):
         merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
         print("Merged vertex data shape:")
         print(merged_vertex_data.shape)
-
-        print("index_counts", index_counts)
-        print("index_ptr_offsets", index_ptr_offsets)
 
         if self.msaa:
             buffer = self.fbo_ms
@@ -789,7 +776,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), shouldReadBuffer=True):
+    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -798,7 +785,6 @@ class MeshRenderer(object):
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-
         if self.msaa:
             self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
         else:
@@ -818,13 +804,13 @@ class MeshRenderer(object):
         if self.msaa:
             self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
-        if (shouldReadBuffer):
+        if not self.useGlfwWindow:
             return self.readbuffer(modes)
     
+    # The viewer is responsible for calling this function to update the window, if cv2 is not being used for window display
     def render_companion_window(self):
-        self.r.renderCompanionWindow(self.windowShaderProgram, self.color_tex_rgb)
-        self.r.post_render_glfw()
-    
+        self.r.render_companion_window_from_buffer(self.fbo)
+
     def get_visual_objects(self):
         return self.visual_objects
 
