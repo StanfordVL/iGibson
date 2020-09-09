@@ -957,7 +957,8 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 			if (i == 1) layerNum = secondTexLayerNum;
 
 			int out_w = texLayerDims[2 * static_cast<long long int>(i)];
-			int out_h = texLayerDims[2 * static_cast<long long int>(i + 1)];
+			int out_h = texLayerDims[2 * static_cast<long long int>(i) + 1];
+
 
 			// Gibson tends to have many more smaller textures, so we reduce their size to avoid memory overload
 			if (i == 1 && shouldShrinkSmallTextures) {
