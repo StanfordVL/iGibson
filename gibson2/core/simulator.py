@@ -11,9 +11,6 @@ import numpy as np
 import platform
 import time
 
-# Note: pass in mode='vr' to use the simulator in VR mode
-# Note 2: vrWidth and vrHeight can be set to manually change the VR resolution
-# It is, however, recommended to use the VR headset's native 2016 x 2240 resolution where possible
 class Simulator:
     def __init__(self,
                  gravity=9.8,
@@ -28,9 +25,11 @@ class Simulator:
                  auto_sync=True,
                  optimize_render=False,
                  msaa=False,
+                 use_dynamic_timestep=False,
                  vrWidth=None,
                  vrHeight=None,
-                 vrMsaa=False,
+                 vrFullscreen=True,
+		         vrEyeTracking=False,
                  vrMode=True):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
@@ -71,12 +70,17 @@ class Simulator:
 
         if self.mode in ['vr']:
             self.use_vr_renderer = True
+        
+        self.use_dynamic_timestep = use_dynamic_timestep
+        # Low pass-filtered average frame time, set to 0 to start
+        self.avg_frame_time = 0
                    
         # renderer
         self.msaa = msaa
         self.vrWidth = vrWidth
         self.vrHeight = vrHeight
-        self.vrMsaa = vrMsaa
+        self.vrFullscreen = vrFullscreen
+        self.vrEyeTracking = vrEyeTracking
         self.vrMode = vrMode
         self.image_width = image_width
         self.image_height = image_height
@@ -86,6 +90,7 @@ class Simulator:
         self.render_to_tensor = render_to_tensor
         self.auto_sync = auto_sync
         self.optimize_render = optimize_render
+        self.max_haptic_duration = 4000
         self.load()
 
     def set_timestep(self, timestep):
@@ -119,7 +124,7 @@ class Simulator:
         Set up MeshRenderer and physics simulation client. Initialize the list of objects.
         """
         if self.use_vr_renderer:
-            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.vrMsaa, optimize=self.optimize_render, vrMode=self.vrMode)
+            self.renderer = MeshRendererVR(MeshRenderer, vrWidth=self.vrWidth, vrHeight=self.vrHeight, msaa=self.msaa, fullscreen=self.vrFullscreen, optimize=self.optimize_render, useEyeTracking=self.vrEyeTracking, vrMode=self.vrMode)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                      height=self.image_height,
@@ -441,14 +446,39 @@ class Simulator:
                                          robot=None)
 
         return ids
+    
+    def optimize_data(self):
+        self.renderer.optimize_vertex_and_texture()
 
-    def step(self):
+    def step(self, shouldPrintTime=False):
         """
         Step the simulation and update positions in renderer
         """
+        start_time = time.time()
+
         p.stepSimulation()
+
+        physics_time = time.time() - start_time
+        curr_time = time.time()
+
         if self.auto_sync:
             self.sync()
+
+        render_time = time.time() - curr_time
+        curr_frame_time = physics_time + render_time
+        if self.use_dynamic_timestep:
+            # Run through low pass filter so spikes/drops in fps don't affect physics
+            self.avg_frame_time = self.avg_frame_time * 0.9 + curr_frame_time * 0.1 if self.avg_frame_time > 0 else curr_frame_time
+            if shouldPrintTime:
+                print("New physics fps: %f" % float(1/self.avg_frame_time))
+            self.set_timestep(self.avg_frame_time)
+
+        if shouldPrintTime:
+            print("Physics time: %f" % float(physics_time/0.001))
+            print("Render time: %f" % float(render_time/0.001))
+            print("Total frame time: %f" % float(curr_frame_time/0.001))
+            print("Curr fps: %f" % float(1/curr_frame_time))
+            print("___________________________________")
 
     def sync(self):
         """
@@ -460,8 +490,8 @@ class Simulator:
         if (self.use_ig_renderer or self.use_vr_renderer) and not self.viewer is None:
             self.viewer.update()
     
-    # Call this before step - returns all VR events that have happened since last step call
-    # Returns a list of lists. Each sub-list contains deviceType and eventType. List is empty is all events are invalid
+    # Returns event data as list of lists. Each sub-list contains deviceType and eventType. List is empty is all 
+    # events are invalid. 
     # deviceType: left_controller, right_controller
     # eventType: grip_press, grip_unpress, trigger_press, trigger_unpress, touchpad_press, touchpad_unpress,
     # touchpad_touch, touchpad_untouch, menu_press, menu_unpress (menu is the application button)
@@ -473,23 +503,82 @@ class Simulator:
         return eventData
 
     # Call this after step - returns all VR device data for a specific device
-    # Return isValid (indicating validity of data), translation and rotation in Gibson world space
+    # Device can be hmd, left_controller or right_controller
+    # Returns isValid (indicating validity of data), translation and rotation in Gibson world space
     def getDataForVRDevice(self, deviceName):
         if not self.use_vr_renderer:
-            return [None, None, None, None]
+            return [None, None, None]
 
-        isValid, translation, rotation, hmdActualPos = self.renderer.vrsys.getDataForVRDevice(deviceName)
-        return [isValid, translation, rotation, hmdActualPos]
+        # Use fourth variable in list to get actual hmd position in space
+        isValid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(deviceName)
+        return [isValid, translation, rotation]
 
-    # Sets the VR camera to a specific position, eg. the head of a robot
-    def setVRCamera(self, pos=None, shouldReset=False):
+    # Get world position of HMD without offset
+    def getHmdWorldPos(self):
+        if not self.use_vr_renderer:
+            return None
+        
+        _, _, _, hmd_world_pos = self.renderer.vrsys.getDataForVRDevice('hmd')
+        return hmd_world_pos
+
+    # Call this after getDataForVRDevice - returns analog data for a specific controller
+    # Controller can be left_controller or right_controller
+    # Returns trigger_fraction, touchpad finger position x, touchpad finger position y
+    # Data is only valid if isValid is true from previous call to getDataForVRDevice
+    # Trigger data: 1 (closed) <------> 0 (open)
+    # Analog data: X: -1 (left) <-----> 1 (right) and Y: -1 (bottom) <------> 1 (top)
+    def getButtonDataForController(self, controllerName):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+        
+        trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(controllerName)
+        return [trigger_fraction, touch_x, touch_y]
+    
+    # Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
+    # Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
+    def getEyeTrackingData(self):
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
+        return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
+
+    # Sets the translational offset of the VR system (HMD, left controller, right controller)
+    # Can be used for many things, including adjusting height and teleportation-based movement
+    # Input must be a list of three floats, corresponding to x, y, z in Gibson coordinate space
+    def setVROffset(self, pos=None):
         if not self.use_vr_renderer:
             return
-        
-        if shouldReset == False and pos is not None:
-            self.renderer.set_vr_camera(pos)
-        elif shouldReset == True:
-            self.renderer.reset_vr_camera()
+
+        self.renderer.set_vr_offset(pos)
+
+    # Gets the current VR offset vector in list form: x, y, z (in Gibson coordinates)
+    def getVROffset(self):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+
+        x, y, z = self.renderer.vrsys.getVROffset()
+        return [x, y, z]
+
+    # Gets the direction vectors representing the device's coordinate system in list form: x, y, z (in Gibson coordinates)
+    # List contains "right", "up" and "forward" vectors in that order
+    # Device can be one of "hmd", "left_controller" or "right_controller"
+    def getDeviceCoordinateSystem(self, device):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+
+        vec_list = []
+
+        coordinate_sys = self.renderer.vrsys.getDeviceCoordinateSystem(device)
+        for dir_vec in coordinate_sys:
+            vec_list.append(dir_vec)
+
+        return vec_list
+
+    # Triggers a haptic pulse of the specified strength (0 is weakest, 1 is strongest)
+    # Device can be one of "hmd", "left_controller" or "right_controller"
+    def triggerHapticPulse(self, device, strength):
+        if not self.use_vr_renderer:
+            print("Error: can't use haptics without VR system!")
+        else:
+            self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
 
     @staticmethod
     def update_position(instance):

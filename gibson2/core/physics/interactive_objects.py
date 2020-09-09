@@ -3,7 +3,11 @@ import os
 import pybullet_data
 import gibson2
 import numpy as np
+from gibson2 import assets_path
+from gibson2.utils.utils import multQuatLists
 
+gripper_path = assets_path + '\\models\\gripper\\gripper.urdf'
+vr_hand_path = assets_path + '\\models\\vr_hand\\vr_hand.urdf'
 
 class Object(object):
     def __init__(self):
@@ -182,6 +186,17 @@ class VisualMarker(Object):
     def set_color(self, color):
         p.changeVisualShape(self.body_id, -1, rgbaColor=color)
 
+    def set_marker_pos(self, pos):
+        _, original_orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, original_orn)
+
+    def set_marker_orn(self, orn):
+        original_pos, _ = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, original_pos, orn)
+
+    def set_marker_state(self, pos, orn):
+        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+
 
 class BoxShape(Object):
     def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], visual_only=False, mass=1000, color=[1, 1, 1, 1]):
@@ -226,14 +241,114 @@ class InteractiveObj(Object):
 
         return body_id
 
+class VrHand(InteractiveObj):
+    """
+    Represents the human hand used for VR programs
+
+    Joint indices and names:
+
+    Joint 0 has name palm__base
+    Joint 1 has name Rproximal__palm
+    Joint 2 has name Rmiddle__Rproximal
+    Joint 3 has name Rtip__Rmiddle
+    Joint 4 has name Mproximal__palm
+    Joint 5 has name Mmiddle__Mproximal
+    Joint 6 has name Mtip__Mmiddle
+    Joint 7 has name Pproximal__palm
+    Joint 8 has name Pmiddle__Pproximal
+    Joint 9 has name Ptip__Pmiddle
+    Joint 10 has name palm__thumb_base
+    Joint 11 has name Tproximal__thumb_base
+    Joint 12 has name Tmiddle__Tproximal
+    Joint 13 has name Ttip__Tmiddle
+    Joint 14 has name Iproximal__palm
+    Joint 15 has name Imiddle__Iproximal
+    Joint 16 has name Itip__Imiddle
+
+    Link names in order:
+    base
+    palm
+    Rproximal
+    RmiRmiddle
+    Rtip
+    Mproximal
+    Mmiddle
+    Mtip
+    Pproximal
+    Pmiddle
+    Ptip
+    thumb base
+    Tproximal
+    TmiTmiddle
+    Ttip
+    Iproximal
+    ImiImiddle
+    Itip
+    """
+
+    def __init__(self, scale=1, start_pos=[0,0,0]):
+        super().__init__(vr_hand_path)
+        self.filename = vr_hand_path
+        self.scale = scale
+        self.start_pos = start_pos
+        # Hand needs to be rotated to visually align with VR controller
+        # TODO: Make this alignment better (will require some experimentation)
+        self.base_rot = p.getQuaternionFromEuler([0, 160, -80])
+        # Lists of joint indices for hand part
+        self.base_idxs = [0]
+        # Proximal indices for non-thumb fingers
+        self.proximal_idxs = [1, 4, 7, 14]
+        # Middle indices for non-thumb fingers
+        self.middle_idxs = [2, 5, 8, 15]
+        # Tip indices for non-thumb fingers
+        self.tip_idxs = [3, 6, 9, 16]
+        # Thumb base (rotates instead of contracting)
+        self.thumb_base_idxs = [10]
+        # Thumb indices (proximal, middle, tip)
+        self.thumb_idxs = [11, 12, 13]
+        # Open positions for all joints
+        self.open_pos = [0, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 1.0, 0.1, 0.1, 0.1, 0.2, 0.3, 0.4]
+        # Closed positions for all joints
+        self.close_pos = [0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 1.2, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8]
+    
+    def _load(self):
+        self.body_id = super()._load()
+        self.set_position(self.start_pos)
+        for jointIndex in range(p.getNumJoints(self.body_id)):
+            # Make masses larger for greater stability
+            # Mass is in kg, friction is coefficient
+            p.changeDynamics(self.body_id, jointIndex, mass=0.2, lateralFriction=1.2)
+            open_pos = self.open_pos[jointIndex]
+            p.resetJointState(self.body_id, jointIndex, open_pos)
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=open_pos, force=500)
+        # Keep base light for easier hand movement
+        p.changeDynamics(self.body_id, -1, mass=0.05, lateralFriction=0.8)
+        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.start_pos)
+
+        return self.body_id
+
+    def move_hand(self, trans, rot, maxForce=500):
+        final_rot = multQuatLists(rot, self.base_rot)
+        p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=maxForce)
+
+    # Close frac of 1 indicates fully closed joint, and close frac of 0 indicates fully open joint
+    # Joints move smoothly between their values in self.open_pos and self.close_pos
+    def toggle_finger_state(self, close_frac, maxForce=500):
+        for jointIndex in range(p.getNumJoints(self.body_id)):
+            open_pos = self.open_pos[jointIndex]
+            close_pos = self.close_pos[jointIndex]
+            interp_frac = (close_pos - open_pos) * close_frac
+            target_pos = open_pos + interp_frac
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos, force=maxForce)
+
 class GripperObj(InteractiveObj):
     """
     Represents the gripper used for VR controllers
     """
 
-    def __init__(self, filename, scale=1):
-        super().__init__(filename)
-        self.filename = filename
+    def __init__(self, scale=1):
+        super().__init__(gripper_path)
+        self.filename = gripper_path
         self.scale = scale
         self.max_joint = 0.550569
     
@@ -241,6 +356,8 @@ class GripperObj(InteractiveObj):
         self.body_id = super()._load()
         jointPositions = [0.550569, 0.000000, 0.549657, 0.000000]
         for jointIndex in range(p.getNumJoints(self.body_id)):
+            joint_info = p.getJointInfo(self.body_id, jointIndex)
+            print("Joint name %s and index %d" % (joint_info[1], joint_info[0]))
             p.resetJointState(self.body_id, jointIndex, jointPositions[jointIndex])
             p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=0, force=0)
         
@@ -263,77 +380,9 @@ class GripperObj(InteractiveObj):
                               controlMode=p.POSITION_CONTROL,
                               targetPosition=self.max_joint * (1 - close_fraction),
                               force=1.1)
-
-    def get_position(self):
-        pos, _ = p.getBasePositionAndOrientation(self.body_id)
-        return pos
-
-    def get_orientation(self):
-        _, orn = p.getBasePositionAndOrientation(self.body_id)
-        return orn
-
-    def set_position(self, pos):
-        org_pos, org_orn = p.getBasePositionAndOrientation(self.body_id)
-        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
-
-    def set_position_rotation(self, pos, orn):
-        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
-
-class BuildingObj(object):
-    """
-    Buildings Objects are a simple physics representation of a Gibson building
-    """
-    def __init__(self, filename, scale=1):
-        self.filename = filename
-        self.scale = scale
-        self.body_id = None
-
-    def load(self):
-        scaling = [self.scale, self.scale, self.scale]
-        collisionId = p.createCollisionShape(p.GEOM_MESH,
-                                        fileName=self.filename,
-                                        meshScale=scaling,
-                                        flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
-        visualId = -1
-        boundaryUid = p.createMultiBody(baseCollisionShapeIndex=collisionId,
-                                baseVisualShapeIndex=visualId)
-        p.changeDynamics(boundaryUid, -1, lateralFriction=1)
-
-        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-
-        ground_plane_mjcf = p.loadMJCF(planeName)
-
-        p.resetBasePositionAndOrientation(ground_plane_mjcf[0],
-                                    posObj=[0, 0, 0],
-                                    ornObj=[0, 0, 0, 1])
-
-        p.changeVisualShape(boundaryUid,
-                    -1,
-                    rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
-                    specularColor=[0.5, 0.5, 0.5])
-
-        p.changeVisualShape(ground_plane_mjcf[0],
-                    -1,
-                    rgbaColor=[168 / 255.0, 164 / 255.0, 92 / 255.0, 1.0],
-                    specularColor=[0.5, 0.5, 0.5])
-
-        self.body_id = boundaryUid
-        return self.body_id
-
-    def get_position(self):
-        pos, _ = p.getBasePositionAndOrientation(self.body_id)
-        return pos
-
-    def get_orientation(self):
-        _, orn = p.getBasePositionAndOrientation(self.body_id)
-        return orn
-
-    def set_position(self, pos):
-        org_pos, org_orn = p.getBasePositionAndOrientation(self.body_id)
-        p.resetBasePositionAndOrientation(self.body_id, pos, org_orn)
-
-    def set_position_rotation(self, pos, orn):
-        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+    
+    def move_gripper(self, trans, rot, maxForce=500):
+        p.changeConstraint(self.cid, trans, rot, maxForce=maxForce)
 
 class SoftObject(Object):
     def __init__(self, filename, basePosition=[0, 0, 0], baseOrientation=[0, 0, 0, 1], scale=-1, mass=-1,

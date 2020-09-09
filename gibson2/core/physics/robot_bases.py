@@ -118,6 +118,7 @@ class BaseRobot:
                                     force=0)
             _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, part_name, _, _, _, _ = \
                 p.getJointInfo(bodies[0], j)
+            print("Joint name and index: ", joint_name, j)
             logging.debug('Robot joint: {}'.format(p.getJointInfo(bodies[0], j)))
             joint_name = joint_name.decode("utf8")
             part_name = part_name.decode("utf8")
@@ -165,6 +166,7 @@ class BodyPart:
         self.body_part_index = body_part_index
         self.initialPosition = self.get_position()
         self.initialOrientation = self.get_orientation()
+        self.movement_cid = -1
 
     def get_name(self):
         return self.body_name
@@ -243,7 +245,6 @@ class BodyPart:
 
     def contact_list(self):
         return p.getContactPoints(self.bodies[self.body_index], -1, self.body_part_index, -1)
-
 
 class Joint:
     def __init__(self, joint_name, bodies, body_index, joint_index):

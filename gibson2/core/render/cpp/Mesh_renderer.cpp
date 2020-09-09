@@ -5,13 +5,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <iostream>
+#include <thread>
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 #include <glad/gl.h>
 
-#include  <glad/gl.h>
+#include <glad/gl.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
@@ -23,6 +24,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
+
+#include "SRanipal.h"
+#include "SRanipal_Eye.h"
+#include "SRanipal_Enums.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -37,19 +42,18 @@ namespace py = pybind11;
 
 class MeshRendererContext{
 public:
-	MeshRendererContext(int w, int h) :renderHeight(h), renderWidth(w) {};
+	MeshRendererContext(int w, int h) : renderHeight(h), renderWidth(w) {};
 
 	GLFWwindow* window;
 	int renderWidth;
 	int renderHeight;
-	int windowWidth;
-	int windowHeight;
+	bool usingCompanionWindow;
+	bool fullscreen;
 
 	// Index data
 	std::vector<void*> multidrawStartIndices;
 	std::vector<int> multidrawCounts;
 	int multidrawCount;
-	//std::vector<void*> startIndices;
 
 	// UBO data
 	GLuint uboTexColorData;
@@ -66,31 +70,38 @@ public:
 
 	GLuint cwVAO, cwVBO, cwIndexBuffer, cwIndexSize;
 
-	int init(bool shouldHideWindow) {
+	int init(bool usingCompanionWindow, bool fullscreen) {
+		this->usingCompanionWindow = usingCompanionWindow;
+		this->fullscreen = fullscreen;
+
 		// Initialize GLFW context and window
 		if (!glfwInit()) {
 			fprintf(stderr, "Failed to initialize GLFW.\n");
 			exit(EXIT_FAILURE);
 		}
 
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 		// Hide GLFW window if user requests
-		if (shouldHideWindow) {
+		if (!usingCompanionWindow) {
 			glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		}
 
-		// Decrease size but retain aspect ratio
-		windowWidth = renderWidth / 3;
-		windowHeight = renderHeight / 3;
+		if (fullscreen) {
+			this->window = glfwCreateWindow(renderWidth, renderHeight, "Gibson Renderer Output", glfwGetPrimaryMonitor(), NULL);
+		}
+		else {
+			this->window = glfwCreateWindow(renderWidth, renderHeight, "Gibson Renderer Output", NULL, NULL);
+		}
 
-		window = glfwCreateWindow(windowWidth, windowHeight, "Gibson VR - Left Eye Output", NULL, NULL);
 		if (window == NULL) {
 			fprintf(stderr, "Failed to create GLFW window.\n");
 			exit(EXIT_FAILURE);
 		}
+		// Move window to top-left corner of the screeen
+		glfwSetWindowPos(window, 0, 0);
 		glfwMakeContextCurrent(window);
 
 		// Turns Vsync off (1 to turn it on)
@@ -101,86 +112,23 @@ public:
 		return 0;
 	}
 
-	// Note: companion window only renders left eye so users can easily see what is going on
-	void setupCompanionWindow() {
-		std::vector<VertexDataWindow> windowVerts;
-
-		VertexDataWindow w1, w2, w3, w4;
-		w1.position = glm::vec2(-1, -1);
-		w1.texCoord = glm::vec2(0, 0);
-
-		w2.position = glm::vec2(-1, 1);
-		w2.texCoord = glm::vec2(0, 1);
-
-		w3.position = glm::vec2(1, 1);
-		w3.texCoord = glm::vec2(1, 1);
-
-		w4.position = glm::vec2(1, -1);
-		w4.texCoord = glm::vec2(1, 0);
-
-		// Left eye vertices and texture coordinates
-		windowVerts.push_back(w1);
-		windowVerts.push_back(w2);
-		windowVerts.push_back(w3);
-		windowVerts.push_back(w4);
-
-		GLushort windowIndices[] = {
-			0, 1, 2,
-			0, 2, 3
-		};
-
-		cwIndexSize = _countof(windowIndices);
-
-		glGenVertexArrays(1, &cwVAO);
-		glGenBuffers(1, &cwVBO);
-
-		glBindVertexArray(cwVAO);
-		glBindBuffer(GL_ARRAY_BUFFER, cwVBO);
-		glBufferData(GL_ARRAY_BUFFER, windowVerts.size() * sizeof(VertexDataWindow), &windowVerts[0], GL_STATIC_DRAW);
-
-		glGenBuffers(1, &cwIndexBuffer);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cwIndexBuffer);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, cwIndexSize * sizeof(GLushort), &windowIndices[0], GL_STATIC_DRAW);
-
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(VertexDataWindow), (void*)offsetof(VertexDataWindow, position));
-
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexDataWindow), (void*)offsetof(VertexDataWindow, texCoord));
-
-		glBindVertexArray(0);
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	}
-
-	void renderCompanionWindow(GLuint windowShaderProgram, GLuint leftEyeTexId) {
-		printf("Rendering companion window!\n");
-		printf("Window shader program %u and left eye tex id: %u\n", windowShaderProgram, leftEyeTexId);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glDisable(GL_DEPTH_TEST);
-		glViewport(0, 0, windowWidth, windowHeight);
-		glUseProgram(windowShaderProgram);
-		glBindVertexArray(cwVAO);
-
-		glBindTexture(GL_TEXTURE_2D, leftEyeTexId);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glDrawElements(GL_TRIANGLES, cwIndexSize, GL_UNSIGNED_SHORT, 0);
-
-		glBindVertexArray(0);
-		glUseProgram(0);
-		glfwSwapBuffers(window);
-		// Return to render viewport
-		glViewport(0, 0, renderWidth, renderHeight);
-	}
-
-	void post_render_glfw() {
+	void render_companion_window_from_buffer(GLuint readBuffer) {
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, readBuffer);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
+		glDrawBuffer(GL_BACK);
+		glBlitFramebuffer(0, 0, this->renderWidth, this->renderHeight, 0, 0, this->renderWidth, this->renderHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		// TODO: Do I need this?
 		glFlush();
+		glfwSwapBuffers(this->window);
 		glfwPollEvents();
+
+		// TODO: Add a more graceful exit?
+		if (this->usingCompanionWindow) {
+			if (glfwGetKey(this->window, GLFW_KEY_ESCAPE)) {
+				glfwTerminate();
+			}
+		}
 	}
 
 	void release() {
@@ -228,7 +176,7 @@ public:
 
         for (int i = 0; i < 4; i++) {
             glReadBuffer(GL_COLOR_ATTACHMENT0+i);
-        glDrawBuffer(GL_COLOR_ATTACHMENT0+i);
+			glDrawBuffer(GL_COLOR_ATTACHMENT0+i);
             glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         }
     }
@@ -282,13 +230,15 @@ public:
         GLuint *texture_ptr = (GLuint*)malloc(5 * sizeof(GLuint));
         glGenFramebuffers(1, fbo_ptr);
         glGenTextures(5, texture_ptr);
-        int fbo = fbo_ptr[0];
+		int fbo = fbo_ptr[0];
         int color_tex_rgb = texture_ptr[0];
         int color_tex_normal = texture_ptr[1];
         int color_tex_semantics = texture_ptr[2];
         int color_tex_3d = texture_ptr[3];
         int depth_tex = texture_ptr[4];
         glBindTexture(GL_TEXTURE_2D, color_tex_rgb);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindTexture(GL_TEXTURE_2D, color_tex_normal);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -572,7 +522,7 @@ public:
     }
 
 	// Generates large and small array textures and returns handles to the user (cutoff based on user variable), as well as index - tex num/layer mapping
-	py::list generateArrayTextures(std::vector<std::string> filenames, int texCutoff) {
+	py::list generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures, int smallTexBucketSize) {
 		int num_textures = filenames.size();
 		std::vector<unsigned char*> image_data;
 		std::vector<int> texHeights;
@@ -582,6 +532,7 @@ public:
 		printf("number of textures %d\n", num_textures);
 		for (int i = 0; i < num_textures; i++) {
 			std::string filename = filenames[i];
+			std::cout << "Filename is: " << filename << std::endl;
 			int w;
 			int h;
 			int comp;
@@ -630,6 +581,7 @@ public:
 
 			// Texture goes in larger bucket if larger than cutoff
 			if (score >= texCutoff) {
+				std::cout << "Appending texture with name: " << filenames[i] << " to large bucket" << std::endl;
 				texIndices[0].push_back(i);
 				tex_info_i.append(0);
 				tex_info_i.append(firstTexLayerNum);
@@ -638,6 +590,7 @@ public:
 				firstTexLayerNum++;
 			}
 			else {
+				std::cout << "Appending texture with name: " << filenames[i] << " to small bucket" << std::endl;
 				texIndices[1].push_back(i);
 				tex_info_i.append(1);
 				tex_info_i.append(secondTexLayerNum);
@@ -650,7 +603,12 @@ public:
 		}
 
 		printf("Texture 1 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[0], texLayerDims[1], firstTexLayerNum, texId1);
-		printf("Texture 2 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[2], texLayerDims[3], secondTexLayerNum, texId2);
+		if (shouldShrinkSmallTextures) {
+			printf("Texture 2 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", smallTexBucketSize, smallTexBucketSize, secondTexLayerNum, texId2);
+		}
+		else {
+			printf("Texture 2 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[2], texLayerDims[3], secondTexLayerNum, texId2);
+		}
 
 		for (int i = 0; i < 2; i++) {
 			GLuint currTexId = texId1;
@@ -658,11 +616,26 @@ public:
 
 			glBindTexture(GL_TEXTURE_2D_ARRAY, currTexId);
 
+			// Print texture array data
+			if (i == 0) {
+				GLint max_layers, max_size;
+				glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &max_layers);
+				glGetIntegerv(GL_MAX_3D_TEXTURE_SIZE, &max_size);
+				printf("Max layer number: %d\n", max_layers);
+				printf("Max texture size: %d\n", max_size);
+			}
+
 			int layerNum = firstTexLayerNum;
 			if (i == 1) layerNum = secondTexLayerNum;
 
-			int out_w = texLayerDims[2 * i];
-			int out_h = texLayerDims[2 * i + 1];
+			int out_w = texLayerDims[2 * static_cast<long long int>(i)];
+			int out_h = texLayerDims[2 * static_cast<long long int>(i + 1)];
+
+			// Gibson tends to have many more smaller textures, so we reduce their size to avoid memory overload
+			if (i == 1 && shouldShrinkSmallTextures) {
+				out_w = smallTexBucketSize;
+				out_h = smallTexBucketSize;
+			}
 
 			// Deal with empty texture - create placeholder
 			if (out_w == 0 || out_h == 0 || layerNum == 0) {
@@ -701,7 +674,6 @@ public:
 				int n_channels = texChannels[idx];
 				unsigned char* input_data = image_data[idx];
 				unsigned char* tex_bytes = input_data;
-				printf("%d %d %d %d\n", j, orig_w, orig_h, n_channels);
 				bool shouldResize = (orig_w != out_w || orig_h != out_h);
 				// Resize image to fit biggest texture in texture array
 				if (shouldResize) {
@@ -753,7 +725,7 @@ public:
 		// First set up VAO and corresponding attributes
 		GLuint VAO;
 		glGenVertexArrays(1, &VAO);
-		cglBindVertexArray(VAO);
+		glBindVertexArray(VAO);
 
 		GLuint EBO;
 		glGenBuffers(1, &EBO);
@@ -781,14 +753,14 @@ public:
 		glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 32, (void*)12);
 		glVertexAttribPointer(texcoordAttrib, 2, GL_FLOAT, GL_TRUE, 32, (void*)24);
 
+		glBindVertexArray(0);
+
 		multidrawCount = index_ptr_offsets.size();
 		int* indexOffsetPtr = (int*)index_ptr_offsets.request().ptr;
-
 
 		for (int i = 0; i < multidrawCount; i++) {
 			unsigned int offset = (unsigned int)indexOffsetPtr[i];
 			this->multidrawStartIndices.push_back(BUFFER_OFFSET((offset * sizeof(unsigned int))));
-			//this->multidrawStartIndices[i] = BUFFER_OFFSET((offset * sizeof(unsigned int)));
 			printf("multidraw start idx %d\n", offset);
 		}
 
@@ -801,6 +773,8 @@ public:
 		// Set up shaders
 		float* fragData = (float*)mergedFragData.request().ptr;
 		float* diffuseData = (float*)mergedDiffuseData.request().ptr;
+		int fragDataSize = mergedFragData.size();
+		int diffuseDataSize = mergedDiffuseData.size();
 
 		glUseProgram(shaderProgram);
 
@@ -822,8 +796,8 @@ public:
 		GLuint texColorDataIdx = glGetUniformBlockIndex(shaderProgram, "TexColorData");
 		glUniformBlockBinding(shaderProgram, texColorDataIdx, 0);
 		glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboTexColorData);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, texColorDataSize / 2, fragData);
-		glBufferSubData(GL_UNIFORM_BUFFER, texColorDataSize / 2, texColorDataSize / 2, diffuseData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, fragDataSize * sizeof(float), fragData);
+		glBufferSubData(GL_UNIFORM_BUFFER, texColorDataSize / 2, diffuseDataSize * sizeof(float), diffuseData);
 
 		glGenBuffers(1, &uboTransformData);
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
@@ -861,10 +835,12 @@ public:
 
 		float* transPtr = (float*)pose_trans_array.request().ptr;
 		float* rotPtr = (float*)pose_rot_array.request().ptr;
+		int transDataSize = pose_trans_array.size();
+		int rotDataSize = pose_rot_array.size();
 
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, transformDataSize / 2, transPtr);
-		glBufferSubData(GL_UNIFORM_BUFFER, transformDataSize / 2, transformDataSize / 2, rotPtr);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, transDataSize * sizeof(float), transPtr);
+		glBufferSubData(GL_UNIFORM_BUFFER, transformDataSize / 2, rotDataSize * sizeof(float), rotPtr);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		float* Vptr = (float*)V.request().ptr;
@@ -890,9 +866,8 @@ public:
 	float nearClip;
 	float farClip;
 
-	// Boolean indicating whether the user has request the VR camera to be at a specific location
-	bool hasSetCamera;
-	glm::vec3 currCameraPos;
+	// Vector indicating the user-defined offset for the VR system (may be used if implementing a teleportation movement scheme, for example)
+	glm::vec3 vrOffsetVec;
 
 	// Device data stored in VR coordinates
 	struct DeviceData {
@@ -906,13 +881,20 @@ public:
 		bool isValidData = false;
 		// index of current device in device array
 		int index = -1;
+		// trigger pressed fraction (0 min, 1 max) - controllers only!
+		float trig_frac;
+	    // analog touch vector - controllers only!
+		glm::vec2 touchpad_analog_vec;
+		// both indices are used to obtain analog data for trigger and touchpadd - controllers only!
+		int trigger_axis_index;
+		int touchpad_axis_index;
 	};
 
 	DeviceData hmdData;
 	DeviceData leftControllerData;
 	DeviceData rightControllerData;
 
-	// Indicates where the headset actually is in the room, irrespective of whether the VR camera has been set or not
+	// Indicates where the headset actually is in the room
 	glm::vec3 hmdActualPos;
 
 	// View matrices for both left and right eyes (only proj and view are actually returned to the user)
@@ -926,13 +908,33 @@ public:
 	glm::mat4 gibToVR;
 	glm::mat4 vrToGib;
 
+	// SRAnipal variables
+	bool useEyeTracking;
+	std::thread* eyeTrackingThread;
+	ViveSR::anipal::Eye::EyeData eyeData;
+	int result;
+	bool shouldShutDownEyeTracking;
+
+	// Struct storing eye data for SR anipal - we only return origin and direction in world space
+	// As most users will want to use this ray to query intersection or something similar
+	struct EyeTrackingData {
+		bool isValid;
+		glm::vec3 origin;
+		glm::vec3 dir;
+		// Both in mm
+		float leftPupilDiameter;
+		float rightPupilDiameter;
+	};
+
+	EyeTrackingData eyeTrackingData;
+
 	// Initialize VRSystem class
 	// TIMELINE: Call before any other method in this class
 	VRSystem() :m_pHMD(NULL), renderWidth(0), renderHeight(0), nearClip(0.1f), farClip(30.0f) {};
 
 	// Initialize the VR system and compositor and return recommended dimensions
 	// TIMELINE: Call during init of renderer, before height/width are set
-	py::list initVR() {
+	py::list initVR(bool useEyeTracking) {
 		// Initialize VR systems
 		if (!vr::VR_IsRuntimeInstalled()) {
 			fprintf(stderr, "VR runtime not installed.\n");
@@ -962,25 +964,128 @@ public:
 		renderDims.append((int)renderWidth);
 		renderDims.append((int)renderHeight);
 
-		hasSetCamera = false;
 		// Set gibToVR and vrToGib matrices
 		setCoordinateTransformMatrices();
+		// No VR system offset by default
+		vrOffsetVec = glm::vec3(0, 0, 0);
+
+		// Set eye tracking boolean
+		this->useEyeTracking = useEyeTracking;
+		if (useEyeTracking) {
+			initAnipal();
+			shouldShutDownEyeTracking = false;
+		}
 
 		return renderDims;
 	}
 
-	// Sets the position of the VR camera
-	// TIMELINE: Call before preRenderVR - takes one frame to update camera position
-	void setVRCamera(float x, float y, float z) {
-		currCameraPos = glm::vec3(x, y, z);
-		hasSetCamera = true;
+	// Queries eye tracking data and returns to user
+	// Returns in order is_data_valid, gaze origin, gaze direction, left pupil diameter (in mm), right pupil diameter (in mm)
+	// TIMELINE: Call after getDataForVRDevice, since this relies on knowing latest HMD transform
+	py::list getEyeTrackingData() {
+		py::list eyeData;
+
+		// Transform data into Gibson coordinate system before returning to user
+		glm::vec3 gibOrigin(vrToGib * glm::vec4(eyeTrackingData.origin, 1.0));
+		glm::vec3 gibDir(vrToGib * glm::vec4(eyeTrackingData.dir, 1.0));
+
+		py::list origin;
+		origin.append(gibOrigin.x);
+		origin.append(gibOrigin.y);
+		origin.append(gibOrigin.z);
+
+		py::list dir;
+		dir.append(gibDir.x);
+		dir.append(gibDir.y);
+		dir.append(gibDir.z);
+
+		eyeData.append(eyeTrackingData.isValid);
+		eyeData.append(origin);
+		eyeData.append(dir);
+		eyeData.append(eyeTrackingData.leftPupilDiameter);
+		eyeData.append(eyeTrackingData.rightPupilDiameter);
+
+		return eyeData;
 	}
 
-	// Resets the VR camera to use the position of the HMD as its location
-	// TIMELINE: Call before preRenderVR - takes one frame to update camera position
-	void resetVRCamera() {
-		hasSetCamera = false;
+	// Sets the offset of the VR headset
+	// TIMELINE: Can call any time
+	void setVROffset(float x, float y, float z) {
+		this->vrOffsetVec = glm::vec3(x, y, z);
 	}
+
+	// Gets the VR offset vector in form x, y, z
+	// TIMELINE: Can call any time
+	py::list getVROffset() {
+		glm::vec3 transformedOffsetVec(vrToGib * glm::vec4(this->vrOffsetVec, 1.0));
+
+		py::list offset;
+		offset.append(transformedOffsetVec.x);
+		offset.append(transformedOffsetVec.y);
+		offset.append(transformedOffsetVec.z);
+
+		return offset;
+	}
+
+	// Gets normalized vectors representing HMD coordinate system
+	// Returns transformed x, y and z
+	// Represent "right", "up" and "forward" relative to headset, in iGibson coordinates
+	// TIMELINE: Call any time after postRenderVR
+	py::list getDeviceCoordinateSystem(char* device) {
+		py::list vecList;
+		glm::mat4 deviceTransform;
+
+		if (!strcmp(device, "hmd")) {
+			deviceTransform = hmdData.deviceTransform;
+		}
+		else if (!strcmp(device, "left_controller")) {
+			deviceTransform = leftControllerData.deviceTransform;
+		}
+		else if (!strcmp(device, "right_controller")) {
+			deviceTransform = rightControllerData.deviceTransform;
+		}
+
+		for (int i = 0; i < 3; i++) {
+			glm::vec3 transformedVrDir = getVec3ColFromMat4(i, deviceTransform);
+			if (i == 2) {
+				transformedVrDir = transformedVrDir * -1.0f;
+			}
+			glm::vec3 transformedGibDir = glm::normalize(glm::vec3(vrToGib * glm::vec4(transformedVrDir, 1.0)));
+
+			py::list vec;
+			vec.append(transformedGibDir.x);
+			vec.append(transformedGibDir.y);
+			vec.append(transformedGibDir.z);
+			vecList.append(vec);
+		}
+
+		return vecList;
+	}
+
+	// Causes a haptic pulse in the specified controller, for a user-specified duration
+	// Note: Haptic pulses can only trigger every 5ms, regardless of duration
+	// TIMELINE: Call after physics/rendering have been stepped in the simulator
+	void triggerHapticPulseForDevice(char* device, unsigned short microSecondDuration) {
+		DeviceData ddata;
+		if (!strcmp(device, "hmd")) {
+			ddata = hmdData;
+		}
+		else if (!strcmp(device, "left_controller")) {
+			ddata = leftControllerData;
+		}
+		else if (!strcmp(device, "right_controller")) {
+			ddata = rightControllerData;
+		}
+
+		if (ddata.index == -1) {
+			std::cerr << "HAPTIC ERROR: Device " << device << " does not have a valid index." << std::endl;
+		}
+
+		// Currently haptics are only supported on one axis (touchpad axis)
+		uint32_t hapticAxis = 0;
+		m_pHMD->TriggerHapticPulse(ddata.index, hapticAxis, microSecondDuration);
+	}
+
 
 	// Returns the projection and view matrices for the left and right eyes, to be used in rendering
 	// Returns in order Left P, left V, right P, right V
@@ -1042,7 +1147,6 @@ public:
 
 	// Returns device data in order: isValidData, position, rotation, hmdActualPos (valid only if hmd)
 	// Device type can be either hmd, left_controller or right_controller
-	// Coordinates are kept in OpenGL coordinate system to synchronize with PyBullet
 	// TIMELINE: Call at any time after postRenderVR to poll the VR system for device data
 	py::list getDataForVRDevice(char* deviceType) {
 		bool isValid = false;
@@ -1082,6 +1186,34 @@ public:
 		return deviceData;
 	}
 
+	// Get button data for a specific controller - either left_controller or right_controller
+	// Returns in order: trigger fraction, analog touch position x, analog touch position y
+	// TIMELINE: Call directly after getDataForVRDevice (relies on isValid to determine data integrity)
+	py::list getButtonDataForController(char* controllerType) {
+		float trigger_fraction, touch_x, touch_y;
+		bool isValid;
+
+		if (!strcmp(controllerType, "left_controller")) {
+			trigger_fraction = leftControllerData.trig_frac;
+			touch_x = leftControllerData.touchpad_analog_vec.x;
+			touch_y = leftControllerData.touchpad_analog_vec.y;
+			isValid = leftControllerData.isValidData;
+		}
+		else if (!strcmp(controllerType, "right_controller")) {
+			trigger_fraction = rightControllerData.trig_frac;
+			touch_x = rightControllerData.touchpad_analog_vec.x;
+			touch_y = rightControllerData.touchpad_analog_vec.y;
+			isValid = rightControllerData.isValidData;
+		}
+
+		py::list buttonData;
+		buttonData.append(trigger_fraction);
+		buttonData.append(touch_x);
+		buttonData.append(touch_y);
+
+		return buttonData;
+	}
+
 	// Polls for VR events, such as button presses
 	// TIMELINE: Ideally call before rendering (eg. before simulator step function)
 	py::list pollVREvents() {
@@ -1111,14 +1243,98 @@ public:
 	void releaseVR() {
 		vr::VR_Shutdown();
 		m_pHMD = NULL;
+
+		if (this->useEyeTracking) {
+			this->shouldShutDownEyeTracking = true;
+			eyeTrackingThread->join();
+		}
 	}
 
 private:
+	// Initializes the SRAnipal runtime, if the user selects this option
+	void initAnipal() {
+		if (!ViveSR::anipal::Eye::IsViveProEye()) {
+			fprintf(stderr, "This HMD does not support eye-tracking!\n");
+		}
+
+		int anipalError = ViveSR::anipal::Initial(ViveSR::anipal::Eye::ANIPAL_TYPE_EYE, NULL);
+		switch (anipalError) {
+		case ViveSR::Error::WORK:
+			break;
+		case ViveSR::Error::RUNTIME_NOT_FOUND:
+			fprintf(stderr, "SRAnipal runtime not found!\n");
+		default:
+			fprintf(stderr, "Failed to initialize SRAnipal!\n");
+		}
+
+		// Launch a thread to poll data from the SRAnipal SDK
+		// We poll data asynchronously so as to not slow down the VR rendering loop
+		eyeTrackingThread = new std::thread(&VRSystem::pollAnipal, this);
+	}
+
+	// Polls SRAnipal to get updated eye tracking information
+	// See this forum discussion to learn how the coordinate systems of OpenVR and SRAnipal are related: 
+	// https://forum.vive.com/topic/5888-vive-pro-eye-finding-a-single-eye-origin-in-world-space/?ct=1593593815
+	// Uses right-handed coordinate system with +ve x left, +ve z forward and +ve y up
+	// We need to convert that to a +ve x right, +ve z backward and +ve y up system at the end of the function
+	void pollAnipal() {
+		while (!this->shouldShutDownEyeTracking) {
+			this->result = ViveSR::anipal::Eye::GetEyeData(&this->eyeData);
+			if (result == ViveSR::Error::WORK) {
+				int isOriginValid = ViveSR::anipal::Eye::DecodeBitMask(this->eyeData.verbose_data.combined.eye_data.eye_data_validata_bit_mask,
+					ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY);
+				int isDirValid = ViveSR::anipal::Eye::DecodeBitMask(this->eyeData.verbose_data.combined.eye_data.eye_data_validata_bit_mask,
+					ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_ORIGIN_VALIDITY);
+				if (!isOriginValid || !isDirValid) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
+
+				eyeTrackingData.isValid = true;
+
+				// Both origin and dir are relative to the HMD coordinate system, so we need to transform them into HMD coordinate system
+				if (!hmdData.isValidData) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
+
+				// Returns value in mm, so need to divide by 1000 to get meters (Gibson uses meters)
+				auto gazeOrigin = this->eyeData.verbose_data.combined.eye_data.gaze_origin_mm;
+				if (gazeOrigin.x == -1.0f && gazeOrigin.y == -1.0f && gazeOrigin.z == -1.0f) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
+				glm::vec3 eyeSpaceOrigin(-1 * gazeOrigin.x / 1000.0f, gazeOrigin.y / 1000.0f, -1 * gazeOrigin.z / 1000.0f);
+				eyeTrackingData.origin = glm::vec3(hmdData.deviceTransform * glm::vec4(eyeSpaceOrigin, 1.0));
+
+				auto gazeDirection = this->eyeData.verbose_data.combined.eye_data.gaze_direction_normalized;
+				if (gazeDirection.x == -1.0f && gazeDirection.y == -1.0f && gazeDirection.z == -1.0f) {
+					eyeTrackingData.isValid = false;
+					continue;
+				}
+				
+				// Convert to OpenVR coordinates
+				glm::vec3 eyeSpaceDir(-1 * gazeDirection.x, gazeDirection.y, -1 * gazeDirection.z);
+
+				// Only rotate, no translate - remove translation to preserve rotation
+				glm::vec3 hmdSpaceDir(hmdData.deviceTransform * glm::vec4(eyeSpaceDir, 1.0));
+				// Make sure to normalize (and also flip x and z, since anipal coordinate convention is different to OpenGL)
+				eyeTrackingData.dir = glm::normalize(glm::vec3(hmdSpaceDir.x - hmdData.devicePos.x, hmdSpaceDir.y - hmdData.devicePos.y, hmdSpaceDir.z - hmdData.devicePos.z));
+				
+				// Record pupil measurements
+				eyeTrackingData.leftPupilDiameter = this->eyeData.verbose_data.left.pupil_diameter_mm;
+				eyeTrackingData.rightPupilDiameter = this->eyeData.verbose_data.right.pupil_diameter_mm;
+			}
+		}
+	}
+
 	// Calls WaitGetPoses and updates all hmd and controller transformations
 	void updateVRData() {
 		hmdData.isValidData = false;
 		leftControllerData.isValidData = false;
 		rightControllerData.isValidData = false;
+		// Stores controller information - see github.com/ValveSoftware/openvr/wiki/IVRSystem::GetControllerState for more info
+		vr::VRControllerState_t controllerState;
 
 		vr::TrackedDevicePose_t trackedDevices[vr::k_unMaxTrackedDeviceCount];
 		vr::VRCompositor()->WaitGetPoses(trackedDevices, vr::k_unMaxTrackedDeviceCount, NULL, 0);
@@ -1133,9 +1349,9 @@ private:
 				hmdData.index = idx;
 				hmdData.isValidData = true;
 				hmdActualPos = getPositionFromSteamVRMatrix(transformMat);
-				if (hasSetCamera) {
-					SetSteamVRMatrixPos(currCameraPos, transformMat);
-				}
+
+				setSteamVRMatrixPos(hmdActualPos + vrOffsetVec, transformMat);
+
 				hmdData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 				hmdData.devicePos = getPositionFromSteamVRMatrix(transformMat);
 				hmdData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
@@ -1145,19 +1361,54 @@ private:
 				if (role == vr::TrackedControllerRole_Invalid) {
 					continue;
 				}
-				else if (role == vr::TrackedControllerRole_LeftHand) {
+
+				int trigger_index, touchpad_index;
+
+				// Figures out indices that correspond with trigger and trackpad axes. Index used to read into VRControllerState_t struct array of axes.
+				for (int i = 0; i < vr::k_unControllerStateAxisCount; i++) {
+					int axisType = m_pHMD->GetInt32TrackedDeviceProperty(idx, (vr::ETrackedDeviceProperty)(vr::Prop_Axis0Type_Int32 + i));
+					if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_Trigger) {
+						trigger_index = i;
+					}
+					else if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_TrackPad) {
+						touchpad_index = i;
+					}
+				}
+
+				// If false, sets the controller data validity to false, as data is not valid if we can't read analog touch coordinates and trigger close fraction
+				bool getControllerDataResult = m_pHMD->GetControllerState(idx, &controllerState, sizeof(controllerState));
+
+				if (role == vr::TrackedControllerRole_LeftHand) {
 					leftControllerData.index = idx;
-					leftControllerData.isValidData = true;
+					leftControllerData.trigger_axis_index = trigger_index;
+					leftControllerData.touchpad_axis_index = touchpad_index;
+					leftControllerData.isValidData = getControllerDataResult;
+
+					glm::vec3 leftControllerPos = getPositionFromSteamVRMatrix(transformMat);
+					setSteamVRMatrixPos(leftControllerPos + vrOffsetVec, transformMat);
+
 					leftControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 					leftControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
 					leftControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+
+					leftControllerData.trig_frac = controllerState.rAxis[leftControllerData.trigger_axis_index].x;
+					leftControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[leftControllerData.touchpad_axis_index].x, controllerState.rAxis[leftControllerData.touchpad_axis_index].y);
 				}
 				else if (role == vr::TrackedControllerRole_RightHand) {
 					rightControllerData.index = idx;
-					rightControllerData.isValidData = true;
+					rightControllerData.trigger_axis_index = trigger_index;
+					rightControllerData.touchpad_axis_index = touchpad_index;
+					rightControllerData.isValidData = getControllerDataResult;
+
+					glm::vec3 rightControllerPos = getPositionFromSteamVRMatrix(transformMat);
+					setSteamVRMatrixPos(rightControllerPos + vrOffsetVec, transformMat);
+
 					rightControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 					rightControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
 					rightControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+
+					rightControllerData.trig_frac = controllerState.rAxis[rightControllerData.trigger_axis_index].x;
+					rightControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[rightControllerData.touchpad_axis_index].x, controllerState.rAxis[rightControllerData.touchpad_axis_index].y);
 				}
 			}
 		}
@@ -1259,11 +1510,22 @@ private:
 		}
 	}
 
-	// Sets the position in a SteamVR Matrix
-	void SetSteamVRMatrixPos(glm::vec3& pos, vr::HmdMatrix34_t& mat) {
+	// Sets the position component of a SteamVR Matrix
+	void setSteamVRMatrixPos(glm::vec3& pos, vr::HmdMatrix34_t& mat) {
 		mat.m[0][3] = pos[0];
 		mat.m[1][3] = pos[1];
 		mat.m[2][3] = pos[2];
+	}
+
+	// Gets vector 3 representation of column from glm mat 4
+	// Useful for extracting rotation component from matrix
+	glm::vec3 getVec3ColFromMat4(int col_index, glm::mat4& mat) {
+		glm::vec3 v;
+		v.x = mat[col_index][0];
+		v.y = mat[col_index][1];
+		v.z = mat[col_index][2];
+
+		return v;
 	}
 
 	// Converts a SteamVR Matrix to a glm mat4
@@ -1332,6 +1594,12 @@ private:
 		printf("\n");
 	}
 
+	// Print string version of vec3 for debugging purposes
+	void printVec3(glm::vec3& v) {
+		printf(glm::to_string(v).c_str());
+		printf("\n");
+	}
+
 	// Sets coordinate transform matrices
 	void setCoordinateTransformMatrices() {
 		gibToVR[0] = glm::vec4(0.0, 0.0, -1.0, 0.0);
@@ -1350,11 +1618,9 @@ PYBIND11_MODULE(MeshRendererContext, m) {
         py::class_<MeshRendererContext> pymodule = py::class_<MeshRendererContext>(m, "MeshRendererContext");
         
         pymodule.def(py::init<int, int>());
-        pymodule.def("init", &MeshRendererContext::init);
-        pymodule.def("release", &MeshRendererContext::release);
-		pymodule.def("setupCompanionWindow", &MeshRendererContext::setupCompanionWindow);
-		pymodule.def("renderCompanionWindow", &MeshRendererContext::renderCompanionWindow);
-		pymodule.def("post_render_glfw", &MeshRendererContext::post_render_glfw);
+        pymodule.def("init", &MeshRendererContext::init, "initialize glfw window and context");
+		pymodule.def("render_companion_window_from_buffer", &MeshRendererContext::render_companion_window_from_buffer, "blit color texture to default framebuffer and show companion window");
+		pymodule.def("release", &MeshRendererContext::release, "release glfw context");
 
         // class MeshRenderer
         pymodule.def("render_meshrenderer_pre", &MeshRendererContext::render_meshrenderer_pre, "pre-executed functions in MeshRenderer.render");
@@ -1401,12 +1667,16 @@ PYBIND11_MODULE(MeshRendererContext, m) {
 
 		pymoduleVR.def(py::init());
 		pymoduleVR.def("initVR", &VRSystem::initVR);
-		pymoduleVR.def("setVRCamera", &VRSystem::setVRCamera);
-		pymoduleVR.def("resetVRCamera", &VRSystem::resetVRCamera);
+		pymoduleVR.def("getEyeTrackingData", &VRSystem::getEyeTrackingData);
+		pymoduleVR.def("setVROffset", &VRSystem::setVROffset);
+		pymoduleVR.def("getVROffset", &VRSystem::getVROffset);
+		pymoduleVR.def("getDeviceCoordinateSystem", &VRSystem::getDeviceCoordinateSystem);
+		pymoduleVR.def("triggerHapticPulseForDevice", &VRSystem::triggerHapticPulseForDevice);
 		pymoduleVR.def("preRenderVR", &VRSystem::preRenderVR);
 		pymoduleVR.def("postRenderVRForEye", &VRSystem::postRenderVRForEye);
 		pymoduleVR.def("postRenderVRUpdate", &VRSystem::postRenderVRUpdate);
 		pymoduleVR.def("getDataForVRDevice", &VRSystem::getDataForVRDevice);
+		pymoduleVR.def("getButtonDataForController", &VRSystem::getButtonDataForController);
 		pymoduleVR.def("pollVREvents", &VRSystem::pollVREvents);
 		pymoduleVR.def("releaseVR", &VRSystem::releaseVR);
 
