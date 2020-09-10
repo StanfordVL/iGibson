@@ -642,6 +642,7 @@ class MeshRenderer(object):
             uv0 = shape_texcoord[0::3, :]
             uv1 = shape_texcoord[1::3, :]
             uv2 = shape_texcoord[2::3, :]
+
             delta_pos1 = v1 - v0
             delta_pos2 = v2 - v0
             delta_uv1 = uv1 - uv0
