@@ -8,7 +8,7 @@ from gibson2.utils.utils import parse_config
 import os
 import gibson2
 
-from gibson2.utils.assets_utils import download_assets, download_demo_data, get_ig_scene_path
+from gibson2.utils.assets_utils import download_assets, download_demo_data, get_ig_scene_path, get_ig_category_path
 
 import argparse
 import xml.etree.ElementTree as ET
@@ -28,7 +28,8 @@ missing_models = set([
     'water_hearter',
 ])
 
-def convert_scene(scene_name):
+
+def convert_scene(scene_name, select_best=False):
 
     scene_file = get_ig_scene_path(
         scene_name) + "/" + scene_name + "_orig.urdf"
@@ -57,18 +58,51 @@ def convert_scene(scene_name):
             if obj_category not in categories:
                 categories += [obj_category]
 
-            link_el = ET.SubElement(scene_tree.getroot(), 'link', dict(
-                [("name", link_name), ("category", obj_category), ("model", "random")]))
-            if obj['instance'] is not None:
-                link_el.set("random_group", str(obj['instance']))
-
             edge_x = obj['edge_x']
             bbox_x = np.linalg.norm(edge_x)
             edge_y = obj['edge_y']
             bbox_y = np.linalg.norm(edge_y)
-            # print(bbox_x, bbox_y)
             z_bbox_coords = obj['z']
             bbox_z = (z_bbox_coords[1] - z_bbox_coords[0]) * 0.99
+            print(bbox_x, bbox_y, bbox_z)
+
+            # select the best object model that matches the aspect ratio
+            # of each bounding box
+            if select_best:
+                cat_dir = get_ig_category_path(obj_category)
+                objs = os.listdir(cat_dir)
+                obj_id_to_scale_rsd = []
+                for obj_id in objs:
+                    obj_dir = os.path.join(cat_dir, obj_id)
+                    bbox_json = os.path.join(obj_dir, 'misc', 'bbox.json')
+                    with open(bbox_json, 'r') as fp:
+                        bbox_data = json.load(fp)
+                    min_x, min_y, min_z = bbox_data['min']
+                    max_x, max_y, max_z = bbox_data['max']
+
+                    obj_lenx, obj_leny, obj_lenz = \
+                        max_x - min_x, max_y - min_y, max_z - min_z
+
+                    # all_objs.json and bbox.json have xy axis flipped
+                    scale_x, scale_y, scale_z = \
+                        bbox_y / obj_lenx, bbox_x / obj_leny, bbox_z / obj_lenz
+                    scale_vector = np.asarray([scale_x, scale_y, scale_z])
+                    scale_rsd = np.std(scale_vector) / np.mean(scale_vector)
+                    obj_id_to_scale_rsd.append((scale_rsd, obj_id))
+
+                obj_id_to_scale_rsd.sort(key=lambda x: x[0])
+                _, obj_id = obj_id_to_scale_rsd[0]
+                link_el = ET.SubElement(scene_tree.getroot(), 'link',
+                                        dict([("name", link_name),
+                                              ("category", obj_category),
+                                              ("model", obj_id)]))
+            else:
+                link_el = ET.SubElement(scene_tree.getroot(), 'link',
+                                        dict([("name", link_name),
+                                              ("category", obj_category),
+                                              ("model", "random")]))
+                if obj['instance'] is not None:
+                    link_el.set("random_group", str(obj['instance']))
 
             # Ugly hack: Apparently the image had x-y swapped so we need to swap them also here
             link_el.set("bounding_box", "{0:f} {1:f} {2:f}".format(
@@ -79,7 +113,6 @@ def convert_scene(scene_name):
             joint_el = ET.SubElement(
                 scene_tree.getroot(), 'joint', dict([("name", joint_name)]))
 
-            # print('is_fixed:', obj['is_fixed'])
             if obj['is_fixed'] == True:
                 joint_el.set("type", "fixed")
             else:
@@ -92,12 +125,11 @@ def convert_scene(scene_name):
             yaw = -obj['theta'] + math.pi / 2.
 
             bbox_file = os.path.join(bbox_dir, "{}.obj".format(c))
-            center = obj['center']
             # edge_x= np.asarray(obj['edge_x'])
             # edge_y= np.asarray(obj['edge_y'])
             # z= obj['z']
             # gen_cube_obj(center, edge_x, edge_y, z, bbox_file, is_color=True)
-            write_obj(*gen_rotated_obj(center, bbox_x, bbox_y,
+            write_obj(*gen_rotated_obj(obj['center'], bbox_x, bbox_y,
                                        z_bbox_coords, obj['theta']), bbox_file)
 
             # Ugly hack: Apparently the image had x-y swapped so we need to swap them also here
@@ -186,10 +218,12 @@ def main():
         description='Convert from old json annotation into new urdf models.')
     parser.add_argument('scene_names', metavar='s', type=str,
                         nargs='+', help='The name of the scene to process')
+    parser.add_argument('--select_best', dest='select_best',
+                        action='store_true')
 
     args = parser.parse_args()
     for scene_name in args.scene_names:
-        convert_scene(scene_name)
+        convert_scene(scene_name, select_best=args.select_best)
 
 
 if __name__ == "__main__":

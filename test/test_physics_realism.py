@@ -115,6 +115,7 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
         total_volume += volume
 
     # Scale the mass based on bounding box size
+    # TODO: how to scale moment of inertia?
     total_mass = avg_size_mass['density'] * \
         bounding_box[0] * bounding_box[1] * bounding_box[2]
     print('total_mass', total_mass)
