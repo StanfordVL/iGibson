@@ -1,25 +1,27 @@
+import time
+import math
+import gibson2
+import xml.etree.ElementTree as ET
+import logging
+import pickle
+import networkx as nx
+import cv2
+from PIL import Image
+import numpy as np
+from gibson2.core.physics.interactive_objects import InteractiveObj, URDFObject
+from gibson2.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZWFromRotMat, get_rpy_from_transform
+from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path
+import pybullet_data
 import pybullet as p
-import os, inspect
+import os
+import inspect
+from IPython import embed
 
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+
+currentdir = os.path.dirname(os.path.abspath(
+    inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 os.sys.path.insert(0, parentdir)
-import pybullet_data
-from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path
-from gibson2.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZWFromRotMat, get_rpy_from_transform
-from gibson2.core.physics.interactive_objects import InteractiveObj, URDFObject
-
-import numpy as np
-from PIL import Image
-import cv2
-import networkx as nx
-import pickle
-import logging
-import xml.etree.ElementTree as ET
-
-import gibson2
-import math
-import time
 
 
 class Scene:
@@ -29,36 +31,47 @@ class Scene:
     def load(self):
         raise NotImplementedError()
 
+
 class EmptyScene(Scene):
     """
     A empty scene for debugging
     """
+
     def __init__(self):
         super().__init__()
+
     def load(self):
         self.build_graph = False
         self.is_interactive = False
-        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+        planeName = os.path.join(
+            pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
         self.ground = p.loadMJCF(planeName)[0]
         p.changeDynamics(self.ground, -1, lateralFriction=1)
+        # white floor plane for visualization purpose if needed
+        p.changeVisualShape(self.ground, -1, rgbaColor=[1, 1, 1, 1])
         return [self.ground]
+
 
 class StadiumScene(Scene):
     """
     A simple stadium scene for debugging
     """
+
     def __init__(self):
         super().__init__()
 
     def load(self):
         self.build_graph = False
         self.is_interactive = False
-        filename = os.path.join(pybullet_data.getDataPath(), "stadium_no_collision.sdf")
+        filename = os.path.join(
+            pybullet_data.getDataPath(), "stadium_no_collision.sdf")
         self.stadium = p.loadSDF(filename)
-        planeName = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+        planeName = os.path.join(
+            pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
         self.ground = p.loadMJCF(planeName)[0]
         pos, orn = p.getBasePositionAndOrientation(self.ground)
-        p.resetBasePositionAndOrientation(self.ground, [pos[0], pos[1], pos[2] - 0.005], orn)
+        p.resetBasePositionAndOrientation(
+            self.ground, [pos[0], pos[1], pos[2] - 0.005], orn)
         p.changeVisualShape(self.ground, -1, rgbaColor=[1, 1, 1, 0.5])
         return list(self.stadium) + [self.ground]
 
@@ -81,7 +94,8 @@ class StadiumScene(Scene):
         return 0.0
 
     def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
-        logging.warning('WARNING: trying to compute the shortest path in StadiumScene (assuming empty space)')
+        logging.warning(
+            'WARNING: trying to compute the shortest path in StadiumScene (assuming empty space)')
         shortest_path = np.stack((source_world, target_world))
         geodesic_distance = l2_distance(source_world, target_world)
         return shortest_path, geodesic_distance
@@ -90,11 +104,11 @@ class StadiumScene(Scene):
         return
 
 
-
 class BuildingScene(Scene):
     """
     Gibson Environment building scenes
     """
+
     def __init__(self,
                  model_id,
                  trav_map_resolution=0.1,
@@ -137,9 +151,11 @@ class BuildingScene(Scene):
         """
         Load floor metadata
         """
-        floor_height_path = os.path.join(get_model_path(self.model_id), 'floors.txt')
+        floor_height_path = os.path.join(
+            get_model_path(self.model_id), 'floors.txt')
         if not os.path.isfile(floor_height_path):
-            raise Exception('floors.txt cannot be found in model: {}'.format(self.model_id))
+            raise Exception(
+                'floors.txt cannot be found in model: {}'.format(self.model_id))
         with open(floor_height_path, 'r') as f:
             self.floors = sorted(list(map(float, f.readlines())))
             logging.debug('Floors {}'.format(self.floors))
@@ -149,11 +165,14 @@ class BuildingScene(Scene):
         Load scene mesh
         """
         if self.is_interactive:
-            filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_cleaned.obj")
+            filename = os.path.join(get_model_path(
+                self.model_id), "mesh_z_up_cleaned.obj")
         else:
-            filename = os.path.join(get_model_path(self.model_id), "mesh_z_up_downsampled.obj")
+            filename = os.path.join(get_model_path(
+                self.model_id), "mesh_z_up_downsampled.obj")
             if not os.path.isfile(filename):
-                filename = os.path.join(get_model_path(self.model_id), "mesh_z_up.obj")
+                filename = os.path.join(get_model_path(
+                    self.model_id), "mesh_z_up.obj")
 
         collision_id = p.createCollisionShape(p.GEOM_MESH,
                                               fileName=filename,
@@ -177,14 +196,15 @@ class BuildingScene(Scene):
         if self.pybullet_load_texture:
             if texture_id != -1:
                 p.changeVisualShape(self.mesh_body_id,
-                                -1,
-                                textureUniqueId=texture_id)
+                                    -1,
+                                    textureUniqueId=texture_id)
 
     def load_floor_planes(self):
         if self.is_interactive:
             for f in range(len(self.floors)):
                 # load the floor plane with the original floor texture for each floor
-                plane_name = os.path.join(get_model_path(self.model_id), "plane_z_up_{}.obj".format(f))
+                plane_name = os.path.join(get_model_path(
+                    self.model_id), "plane_z_up_{}.obj".format(f))
                 collision_id = p.createCollisionShape(p.GEOM_MESH,
                                                       fileName=plane_name)
                 visual_id = p.createVisualShape(p.GEOM_MESH,
@@ -198,8 +218,8 @@ class BuildingScene(Scene):
                                                   baseVisualShapeIndex=visual_id)
                 if texture_id != -1:
                     p.changeVisualShape(floor_body_id,
-                                    -1,
-                                    textureUniqueId=texture_id)
+                                        -1,
+                                        textureUniqueId=texture_id)
                 floor_height = self.floors[f]
                 p.resetBasePositionAndOrientation(floor_body_id,
                                                   posObj=[0, 0, floor_height],
@@ -208,17 +228,20 @@ class BuildingScene(Scene):
                 # Since both the floor plane and the scene mesh have mass 0 (static),
                 # PyBullet seems to have already disabled collision between them.
                 # Just to be safe, explicit disable collision between them.
-                p.setCollisionFilterPair(self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
+                p.setCollisionFilterPair(
+                    self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
 
                 self.floor_body_ids.append(floor_body_id)
         else:
             # load the default floor plane (only once) and later reset it to different floor heiights
-            plane_name = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+            plane_name = os.path.join(
+                pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
             floor_body_id = p.loadMJCF(plane_name)[0]
             p.resetBasePositionAndOrientation(floor_body_id,
                                               posObj=[0, 0, 0],
                                               ornObj=[0, 0, 0, 1])
-            p.setCollisionFilterPair(self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
+            p.setCollisionFilterPair(
+                self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
             self.floor_body_ids.append(floor_body_id)
 
     def load_trav_map(self):
@@ -226,10 +249,12 @@ class BuildingScene(Scene):
         self.floor_graph = []
         for f in range(len(self.floors)):
             trav_map = np.array(Image.open(
-                os.path.join(get_model_path(self.model_id), 'floor_trav_{}.png'.format(f))
+                os.path.join(get_model_path(self.model_id),
+                             'floor_trav_{}.png'.format(f))
             ))
             obstacle_map = np.array(Image.open(
-                os.path.join(get_model_path(self.model_id), 'floor_{}.png'.format(f))
+                os.path.join(get_model_path(self.model_id),
+                             'floor_{}.png'.format(f))
             ))
             if self.trav_map_original_size is None:
                 height, width = trav_map.shape
@@ -239,12 +264,15 @@ class BuildingScene(Scene):
                                          self.trav_map_default_resolution /
                                          self.trav_map_resolution)
             trav_map[obstacle_map == 0] = 0
-            trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
-            trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
+            trav_map = cv2.resize(
+                trav_map, (self.trav_map_size, self.trav_map_size))
+            trav_map = cv2.erode(trav_map, np.ones(
+                (self.trav_map_erosion, self.trav_map_erosion)))
             trav_map[trav_map < 255] = 0
 
             if self.build_graph:
-                graph_file = os.path.join(get_model_path(self.model_id), 'floor_trav_{}.p'.format(f))
+                graph_file = os.path.join(get_model_path(
+                    self.model_id), 'floor_trav_{}.p'.format(f))
                 if os.path.isfile(graph_file):
                     logging.info("Loading traversable graph")
                     with open(graph_file, 'rb') as pfile:
@@ -257,10 +285,12 @@ class BuildingScene(Scene):
                             if trav_map[i, j] > 0:
                                 g.add_node((i, j))
                                 # 8-connected graph
-                                neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
+                                neighbors = [
+                                    (i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
                                 for n in neighbors:
                                     if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and trav_map[n[0], n[1]] > 0:
-                                        g.add_edge(n, (i, j), weight=l2_distance(n, (i, j)))
+                                        g.add_edge(
+                                            n, (i, j), weight=l2_distance(n, (i, j)))
 
                     # only take the largest connected component
                     largest_cc = max(nx.connected_components(g), key=len)
@@ -283,19 +313,23 @@ class BuildingScene(Scene):
         self.scene_objects = []
         self.scene_objects_pos = []
         scene_path = get_model_path(self.model_id)
-        urdf_files = [item for item in os.listdir(scene_path) if item[-4:] == 'urdf' and item != 'scene.urdf']
-        position_files = [item[:-4].replace('alignment_centered', 'pos') + 'txt' for item in urdf_files]
+        urdf_files = [item for item in os.listdir(
+            scene_path) if item[-4:] == 'urdf' and item != 'scene.urdf']
+        position_files = [
+            item[:-4].replace('alignment_centered', 'pos') + 'txt' for item in urdf_files]
         for urdf_file, position_file in zip(urdf_files, position_files):
             logging.info('Loading urdf file {}'.format(urdf_file))
             with open(os.path.join(scene_path, position_file)) as f:
-                pos = np.array([float(item) for item in f.readlines()[0].strip().split()])
+                pos = np.array([float(item)
+                                for item in f.readlines()[0].strip().split()])
                 obj = InteractiveObj(os.path.join(scene_path, urdf_file))
                 obj.load()
                 self.scene_objects.append(obj)
                 self.scene_objects_pos.append(pos)
 
     def load_scene_urdf(self):
-        self.mesh_body_id = p.loadURDF(os.path.join(get_model_path(self.model_id), 'scene.urdf'))
+        self.mesh_body_id = p.loadURDF(os.path.join(
+            get_model_path(self.model_id), 'scene.urdf'))
 
     def has_scene_urdf(self):
         return os.path.exists(os.path.join(get_model_path(self.model_id), 'scene.urdf'))
@@ -356,26 +390,34 @@ class BuildingScene(Scene):
 
         if not g.has_node(target_map):
             nodes = np.array(g.nodes)
-            closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - target_map, axis=1))])
-            g.add_edge(closest_node, target_map, weight=l2_distance(closest_node, target_map))
+            closest_node = tuple(
+                nodes[np.argmin(np.linalg.norm(nodes - target_map, axis=1))])
+            g.add_edge(closest_node, target_map,
+                       weight=l2_distance(closest_node, target_map))
 
         if not g.has_node(source_map):
             nodes = np.array(g.nodes)
-            closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - source_map, axis=1))])
-            g.add_edge(closest_node, source_map, weight=l2_distance(closest_node, source_map))
+            closest_node = tuple(
+                nodes[np.argmin(np.linalg.norm(nodes - source_map, axis=1))])
+            g.add_edge(closest_node, source_map,
+                       weight=l2_distance(closest_node, source_map))
 
-        path_map = np.array(nx.astar_path(g, source_map, target_map, heuristic=l2_distance))
+        path_map = np.array(nx.astar_path(
+            g, source_map, target_map, heuristic=l2_distance))
 
         path_world = self.map_to_world(path_map)
-        geodesic_distance = np.sum(np.linalg.norm(path_world[1:] - path_world[:-1], axis=1))
+        geodesic_distance = np.sum(np.linalg.norm(
+            path_world[1:] - path_world[:-1], axis=1))
         path_world = path_world[::self.waypoint_interval]
 
         if not entire_path:
             path_world = path_world[:self.num_waypoints]
             num_remaining_waypoints = self.num_waypoints - path_world.shape[0]
             if num_remaining_waypoints > 0:
-                remaining_waypoints = np.tile(target_world, (num_remaining_waypoints, 1))
-                path_world = np.concatenate((path_world, remaining_waypoints), axis=0)
+                remaining_waypoints = np.tile(
+                    target_world, (num_remaining_waypoints, 1))
+                path_world = np.concatenate(
+                    (path_world, remaining_waypoints), axis=0)
 
         return path_world, geodesic_distance
 
@@ -384,7 +426,8 @@ class BuildingScene(Scene):
             # loads the floor plane with the original floor texture for each floor, no need to reset_floor
             return
 
-        height = height if height is not None else self.floors[floor] + additional_elevation
+        height = height if height is not None else self.floors[floor] + \
+            additional_elevation
         p.resetBasePositionAndOrientation(self.floor_body_ids[0],
                                           posObj=[0, 0, height],
                                           ornObj=[0, 0, 0, 1])
@@ -401,40 +444,46 @@ class BuildingScene(Scene):
     def get_floor_height(self, floor):
         return self.floors[floor]
 
+
 def parse_urdf(tree):
-    parent_map = {} # map from name of child to name of its parent, joint name and type of connection
-    child_map = {} # map from name of parent to list of names of children, joint names and types of connection
-    joint_map = {} # map from name of joint to names of parent and child and type
+    # map from name of child to name of its parent, joint name and type of connection
+    parent_map = {}
+    child_map = {}  # map from name of parent to list of names of children, joint names and types of connection
+    joint_map = {}  # map from name of joint to names of parent and child and type
     single_link = []
 
     single_link_urdf = True
-    for joint in tree.iter("joint"): # We iterate over joints to build maps
+    for joint in tree.iter("joint"):  # We iterate over joints to build maps
         single_link_urdf = False
         parent_name = joint.find("parent").attrib["link"]
         child_name = joint.find("child").attrib["link"]
         joint_name = joint.attrib["name"]
         joint_type = joint.attrib["type"]
-        
+
         parent_map[child_name] = (parent_name, joint_name, joint_type)
         if parent_name in child_map:
             child_map[parent_name].append((child_name, joint_name, joint_type))
         else:
             child_map[parent_name] = [(child_name, joint_name, joint_type)]
 
-        joint_xyz = np.array([float(val) for val in joint.find("origin").attrib["xyz"].split(" ")])
+        joint_xyz = np.array(
+            [float(val) for val in joint.find("origin").attrib["xyz"].split(" ")])
 
         if 'rpy' in joint.find("origin").attrib:
-            joint_rpy = np.array([float(val) for val in joint.find("origin").attrib["rpy"].split(" ")])
+            joint_rpy = np.array(
+                [float(val) for val in joint.find("origin").attrib["rpy"].split(" ")])
         else:
-            joint_rpy = np.array([0.,0.,0.])
+            joint_rpy = np.array([0., 0., 0.])
 
         joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
-        joint_map[joint_name] = (parent_name, child_name, joint_type, joint_frame)
+        joint_map[joint_name] = (
+            parent_name, child_name, joint_type, joint_frame)
 
     if single_link_urdf:
         single_link = [tree.find("link").attrib["name"]]
 
     return (parent_map, child_map, joint_map, single_link)
+
 
 def splitter(parent_map, child_map, joint_map, single_child_link):
     new_single_child_link = []
@@ -450,17 +499,17 @@ def splitter(parent_map, child_map, joint_map, single_child_link):
             # If the children of float is not parent of any link, we add it to the sengle_child_link
             if child_of_floating not in child_map.keys():
                 new_single_child_link += [child_of_floating]
-            
+
             parent_map1 = {}
             child_map1 = {}
             joint_map1 = {}
             parent_map2 = {}
             child_map2 = {}
             joint_map2 = {}
-            
+
             # Find all links "down" the floating joint
             logging.debug("Finding children")
-            logging.info("Child of floating: " + child_of_floating )
+            logging.info("Child of floating: " + child_of_floating)
             all_children = [child_of_floating]
             children_rec = [child_of_floating]
             while len(children_rec) != 0:
@@ -468,11 +517,13 @@ def splitter(parent_map, child_map, joint_map, single_child_link):
                 for child in children_rec:
                     if child in child_map:
                         new_children_rec += child_map[child]
-                        
-                all_children += [new_child[0] for new_child in new_children_rec]
+
+                all_children += [new_child[0]
+                                 for new_child in new_children_rec]
                 children_rec = [new_child[0] for new_child in new_children_rec]
 
-            logging.info("All children of the floating joint: " + " ".join(all_children))
+            logging.info("All children of the floating joint: " +
+                         " ".join(all_children))
 
             # Separate joints in map1 and map2
             # The ones in map2 are the ones with the child pointing to one of the links "down" the floating joint
@@ -482,17 +533,21 @@ def splitter(parent_map, child_map, joint_map, single_child_link):
                     if joint_tuple2[1] in all_children:
                         joint_map2[joint_name2] = joint_tuple2
                     else:
-                        joint_map1[joint_name2] = joint_tuple2                 
+                        joint_map1[joint_name2] = joint_tuple2
 
             # Separate children into map1 and map2
             # Careful with the child_map because every key of the dict (name of parent) points to a list of children
             logging.debug("Splitting children")
-            for parent in child_map: # iterate all links that are parent of 1 or more joints
-                child_list = child_map[parent]  # for each parent, get the list of children
+            for parent in child_map:  # iterate all links that are parent of 1 or more joints
+                # for each parent, get the list of children
+                child_list = child_map[parent]
                 if parent in all_children:  # if the parent link was in the list of all children of the floating joint
-                    child_map2[parent] = child_list # save the list as list of children of the parent link in the children floating suburdf
-                else: #otherwise, it is one of the links parents of the floating joint
-                    child_map1[parent] = [item for item in child_list if item[0] != child_of_floating] # save the list as the list of
+                    # save the list as list of children of the parent link in the children floating suburdf
+                    child_map2[parent] = child_list
+                else:  # otherwise, it is one of the links parents of the floating joint
+                    # save the list as the list of
+                    child_map1[parent] = [
+                        item for item in child_list if item[0] != child_of_floating]
                     # children of the parent in the parent floating suburdf, except the children connected by the floating joint
 
             # Separate parents into map1 and map2
@@ -501,84 +556,99 @@ def splitter(parent_map, child_map, joint_map, single_child_link):
                     if child in all_children:
                         parent_map2[child] = parent_map[child]
                     else:
-                        parent_map1[child] = parent_map[child]              
+                        parent_map1[child] = parent_map[child]
 
             ret1 = splitter(parent_map1, child_map1, joint_map1, [])
-            ret2 = splitter(parent_map2, child_map2, joint_map2, new_single_child_link)
+            ret2 = splitter(parent_map2, child_map2,
+                            joint_map2, new_single_child_link)
             ret = ret1 + ret2
             return ret
     return [(parent_map, child_map, joint_map, single_child_link)]
 
-def round_up(n, decimals=0): 
-    multiplier = 10 ** decimals 
+
+def round_up(n, decimals=0):
+    multiplier = 10 ** decimals
     return math.ceil(n * multiplier) / multiplier
 
+
 def transform_element_xyzrpy(element, transformation):
-    element_xyz = np.array([float(val) for val in element.find("origin").attrib["xyz"].split(" ")])
+    element_xyz = np.array(
+        [float(val) for val in element.find("origin").attrib["xyz"].split(" ")])
     if 'rpy' in element.find("origin").attrib:
-        element_rpy = np.array([float(val) for val in element.find("origin").attrib["rpy"].split(" ")])
+        element_rpy = np.array(
+            [float(val) for val in element.find("origin").attrib["rpy"].split(" ")])
     else:
-        element_rpy = np.array([0.,0.,0.])
+        element_rpy = np.array([0., 0., 0.])
     element_transform = get_transform_from_xyz_rpy(element_xyz, element_rpy)
     total_transform = np.dot(transformation, element_transform)
-    element.find("origin").attrib["xyz"] = "{0:f} {1:f} {2:f}".format(*total_transform[0:3,3])
+    element.find("origin").attrib["xyz"] = "{0:f} {1:f} {2:f}".format(
+        *total_transform[0:3, 3])
     transform_rpy = get_rpy_from_transform(total_transform)
-    element.find("origin").attrib["rpy"] = "{0:f} {1:f} {2:f}".format(*transform_rpy)
+    element.find("origin").attrib["rpy"] = "{0:f} {1:f} {2:f}".format(
+        *transform_rpy)
+
 
 def merge_fixed_joints(tree):
     while True:
-        fixed_joints = [joint for joint in tree.findall("joint") if joint.attrib["type"] == "fixed"]
+        fixed_joints = [joint for joint in tree.findall(
+            "joint") if joint.attrib["type"] == "fixed"]
         if len(fixed_joints) == 0:
             break
         else:
             fixed_joint = fixed_joints[0]
 
-            joint_xyz = np.array([float(val) for val in fixed_joint.find("origin").attrib["xyz"].split(" ")])
+            joint_xyz = np.array(
+                [float(val) for val in fixed_joint.find("origin").attrib["xyz"].split(" ")])
 
             if 'rpy' in fixed_joint.find("origin").attrib:
-                joint_rpy = np.array([float(val) for val in fixed_joint.find("origin").attrib["rpy"].split(" ")])
+                joint_rpy = np.array(
+                    [float(val) for val in fixed_joint.find("origin").attrib["rpy"].split(" ")])
             else:
-                joint_rpy = np.array([0.,0.,0.])
+                joint_rpy = np.array([0., 0., 0.])
 
             joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
 
             # The transformation needs to be applied to all positional elements defined with respect to the fixed_joint frame
-            # This includes: 
+            # This includes:
             #   - link elements (visual and geom, we ignore inertia)
             #   - next joint elements
             child_link_name = fixed_joint.find("child").attrib["link"]
-            child_link = [link for link in tree.findall("link") if link.attrib["name"] == child_link_name][0]
+            child_link = [link for link in tree.findall(
+                "link") if link.attrib["name"] == child_link_name][0]
             parent_link_name = fixed_joint.find("parent").attrib["link"]
-            parent_link = [link for link in tree.findall("link") if link.attrib["name"] == parent_link_name][0]
+            parent_link = [link for link in tree.findall(
+                "link") if link.attrib["name"] == parent_link_name][0]
             for visual_elem in child_link.iter("visual"):
                 transform_element_xyzrpy(visual_elem, joint_frame)
-                parent_link.append(visual_elem)                
+                parent_link.append(visual_elem)
 
             for collision_elem in child_link.iter("collision"):
                 transform_element_xyzrpy(collision_elem, joint_frame)
                 parent_link.append(collision_elem)
 
-            for joint2 in tree.iter("joint"): 
+            for joint2 in tree.iter("joint"):
                 parent_name = joint2.find("parent").attrib["link"]
                 # Search for a joint where the child of the "fixed" joint is the parent
-                if parent_name == child_link_name: 
+                if parent_name == child_link_name:
                     transform_element_xyzrpy(joint2, joint_frame)
                     joint2.find("parent").attrib["link"] = parent_link_name
 
             tree.getroot().remove(child_link)
             tree.getroot().remove(fixed_joint)
 
+
 def save_urdfs_without_floating_joints(tree, file_prefix, merge_fj):
 
     if merge_fj:
         merge_fixed_joints(tree)
 
-    #Pybullet doesn't read floating joints
-    #Find them and separate into different objects
+    # Pybullet doesn't read floating joints
+    # Find them and separate into different objects
     (parent_map, child_map, joint_map, single_floating_links) = parse_urdf(tree)
 
     # Call recursively to split the tree into connected parts without floating joints
-    splitted_maps = splitter(parent_map, child_map, joint_map, single_floating_links)
+    splitted_maps = splitter(parent_map, child_map,
+                             joint_map, single_floating_links)
 
     extended_splitted_dict = {}
     world_idx = 0
@@ -593,7 +663,8 @@ def save_urdfs_without_floating_joints(tree, file_prefix, merge_fj):
         for link in split[3]:
             if link not in all_links:
                 all_links.append(link)
-        extended_splitted_dict[count] = ((split[0], split[1], split[2], all_links, np.eye(4)))
+        extended_splitted_dict[count] = (
+            (split[0], split[1], split[2], all_links, np.eye(4)))
         if "world" in all_links:
             world_idx = count
             logging.debug("World idx: ", world_idx)
@@ -606,9 +677,11 @@ def save_urdfs_without_floating_joints(tree, file_prefix, merge_fj):
             parent_name = joint_tuple[0]
             transformation = joint_tuple[3]
 
-            while parent_name in parent_map.keys(): #!= "world": #When the parent_name link is not child of any other joint, we stop
+            # != "world": #When the parent_name link is not child of any other joint, we stop
+            while parent_name in parent_map.keys():
                 # Find the joint where the link with name "parent_name" is child
-                joint_up = [joint for joint in tree.findall("joint") if joint.find("child").attrib["link"] == parent_name][0]
+                joint_up = [joint for joint in tree.findall("joint") if joint.find(
+                    "child").attrib["link"] == parent_name][0]
                 joint_transform = joint_map[joint_up.attrib["name"]][3]
                 transformation = np.dot(joint_transform, transformation)
                 parent_name = joint_map[joint_up.attrib["name"]][0]
@@ -617,30 +690,35 @@ def save_urdfs_without_floating_joints(tree, file_prefix, merge_fj):
             for esd in extended_splitted_dict:
                 if child_name in extended_splitted_dict[esd][3]:
                     extended_splitted_dict[esd] = (extended_splitted_dict[esd][0], extended_splitted_dict[esd][1], extended_splitted_dict[esd][2],
-                        extended_splitted_dict[esd][3], transformation)
+                                                   extended_splitted_dict[esd][3], transformation)
 
     logging.info("Number of splits: " + str(len(extended_splitted_dict)))
     logging.info("Instantiating scene into the following urdfs:")
     urdfs_no_floating = {}
-    for esd_key in extended_splitted_dict:            
-        xml_tree_parent = ET.ElementTree(ET.fromstring('<robot name="split_' + str(esd_key) + '"></robot>'))
-        logging.debug("links " + " ".join(extended_splitted_dict[esd_key][3]))        
+    for esd_key in extended_splitted_dict:
+        xml_tree_parent = ET.ElementTree(ET.fromstring(
+            '<robot name="split_' + str(esd_key) + '"></robot>'))
+        logging.debug("links " + " ".join(extended_splitted_dict[esd_key][3]))
 
         for link_name in extended_splitted_dict[esd_key][3]:
-            link_to_add = [link for link in tree.findall("link") if link.attrib["name"] == link_name][0]
+            link_to_add = [link for link in tree.findall(
+                "link") if link.attrib["name"] == link_name][0]
             xml_tree_parent.getroot().append(link_to_add)
 
         for joint_name in extended_splitted_dict[esd_key][2]:
-            joint_to_add = [joint for joint in tree.findall("joint") if joint.attrib["name"] == joint_name][0]
+            joint_to_add = [joint for joint in tree.findall(
+                "joint") if joint.attrib["name"] == joint_name][0]
             xml_tree_parent.getroot().append(joint_to_add)
 
         # Copy the elements that are not joint or link (e.g. material)
         for item in list(tree.getroot()):
-            if item.tag not in ['link', 'joint']:                    
+            if item.tag not in ['link', 'joint']:
                 xml_tree_parent.getroot().append(item)
-        
-        urdf_file_name = file_prefix + "_" + str(esd_key)+ ".urdf"
-        urdfs_no_floating[esd_key] = (urdf_file_name, extended_splitted_dict[esd_key][4]) # Change 0 by the pose of this branch
+
+        urdf_file_name = file_prefix + "_" + str(esd_key) + ".urdf"
+        # Change 0 by the pose of this branch
+        urdfs_no_floating[esd_key] = (
+            urdf_file_name, extended_splitted_dict[esd_key][4])
         xml_tree_parent.write(urdf_file_name)
         logging.info(urdf_file_name)
     return urdfs_no_floating
@@ -654,9 +732,11 @@ class iGSDFScene(Scene):
     URDF nesting and randomization.
 
     """
+
     def __init__(self, scene_name):
         super().__init__()
-        self.scene_file = get_ig_scene_path(scene_name) + "/" + scene_name + ".urdf"
+        self.scene_file = get_ig_scene_path(
+            scene_name) + "/" + scene_name + ".urdf"
         self.scene_tree = ET.parse(self.scene_file)
         self.links = []
         self.joints = []
@@ -669,15 +749,16 @@ class iGSDFScene(Scene):
         # Even if we merge the floats, the appended URDFs could have many links. There is a pybullet limitation
         # to maximum 128 joints in a single object. We will separate the URDFs fixed connected to the "world"
         # 2) have one urdf per object
-        self.compose_urdf = False 
+        self.compose_urdf = False
 
         # If this flag is true, we merge fixed joints into unique bodies
         self.merge_fj = False
 
         self.random_groups = {}
 
-        timestr = time.strftime("%Y%m%d-%H%M%S") #Current time string to use to save the temporal urdfs
-        #Create the subfolder
+        # Current time string to use to save the temporal urdfs
+        timestr = time.strftime("%Y%m%d-%H%M%S")
+        # Create the subfolder
         os.mkdir(gibson2.ig_dataset_path + "/scene_instances/" + timestr)
 
         # Parse all the special link entries in the root URDF that defines the scene
@@ -689,16 +770,18 @@ class iGSDFScene(Scene):
 
                 # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
                 joint_connecting_embedded_link = \
-                    [joint for joint in self.scene_tree.findall("joint") 
-                            if joint.find("child").attrib["link"] 
-                                == base_link_name][0]
+                    [joint for joint in self.scene_tree.findall("joint")
+                     if joint.find("child").attrib["link"]
+                     == base_link_name][0]
 
-                joint_xyz = np.array([float(val) for val in joint_connecting_embedded_link.find("origin").attrib["xyz"].split(" ")])
+                joint_xyz = np.array([float(val) for val in joint_connecting_embedded_link.find(
+                    "origin").attrib["xyz"].split(" ")])
                 joint_new_xyz = joint_xyz - embedded_urdf.scaled_bbxc_in_blf
-                joint_connecting_embedded_link.find("origin").attrib["xyz"] = "{0:f} {1:f} {2:f}".format(*joint_new_xyz)
+                joint_connecting_embedded_link.find(
+                    "origin").attrib["xyz"] = "{0:f} {1:f} {2:f}".format(*joint_new_xyz)
 
                 for link_emb in embedded_urdf.object_tree.iter('link'):
-                    if link_emb.attrib['name'] == "base_link": 
+                    if link_emb.attrib['name'] == "base_link":
                         # The base_link get renamed as the link tag indicates
                         if self.compose_urdf:
                             # First extending the link tag in the fused urdf, then renaming back
@@ -711,25 +794,29 @@ class iGSDFScene(Scene):
                     else:
                         # The other links get also renamed to add the name of the link tag as prefix
                         # This allows us to load several instances of the same object
-                        link_emb.attrib['name'] = base_link_name + "_" + link_emb.attrib['name']
+                        link_emb.attrib['name'] = base_link_name + \
+                            "_" + link_emb.attrib['name']
                         if self.compose_urdf:
                             self.scene_tree.getroot().append(link_emb)
 
                 for joint_emb in embedded_urdf.object_tree.iter('joint'):
                     # We change the joint name
-                    joint_emb.attrib["name"] = base_link_name + "_" + joint_emb.attrib["name"]
+                    joint_emb.attrib["name"] = base_link_name + \
+                        "_" + joint_emb.attrib["name"]
                     # We change the child link names
                     for child_emb in joint_emb.findall('child'):
                         if child_emb.attrib['link'] == "base_link":
                             child_emb.attrib['link'] = base_link_name
                         else:
-                            child_emb.attrib['link'] = base_link_name + "_" + child_emb.attrib['link']
+                            child_emb.attrib['link'] = base_link_name + \
+                                "_" + child_emb.attrib['link']
                     # and the parent link names
                     for parent_emb in joint_emb.findall('parent'):
                         if parent_emb.attrib['link'] == "base_link":
                             parent_emb.attrib['link'] = base_link_name
                         else:
-                            parent_emb.attrib['link'] = base_link_name + "_" + parent_emb.attrib['link']
+                            parent_emb.attrib['link'] = base_link_name + \
+                                "_" + parent_emb.attrib['link']
 
                     # and add the joint
                     if self.compose_urdf:
@@ -737,11 +824,12 @@ class iGSDFScene(Scene):
 
                 if self.compose_urdf:
                     for item in list(embedded_urdf.object_tree.getroot()):
-                        if item.tag not in ['link', 'joint']:                     
+                        if item.tag not in ['link', 'joint']:
                             self.scene_tree.getroot().append(item)
                 else:
                     # Deal with the joint connecting the embedded urdf to the main link (world or building)
-                    urdf_file_name_prefix = gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/" + base_link_name # + ".urdf"
+                    urdf_file_name_prefix = gibson2.ig_dataset_path + \
+                        "/scene_instances/" + timestr + "/" + base_link_name  # + ".urdf"
 
                     # Find the joint in the main urdf that defines the connection to the embedded urdf
                     for joint in self.scene_tree.iter('joint'):
@@ -749,69 +837,77 @@ class iGSDFScene(Scene):
                             joint_frame = np.eye(4)
 
                             # if the joint is not floating, we add the joint and a link to the embedded urdf
-                            if joint.attrib['type'] != "floating": 
+                            if joint.attrib['type'] != "floating":
                                 embedded_urdf.object_tree.getroot().append(joint)
-                                parent_link = ET.SubElement(embedded_urdf.object_tree.getroot(), "link", 
-                                    dict([("name", joint.find('parent').attrib['link'])]))#"world")]))   
+                                parent_link = ET.SubElement(embedded_urdf.object_tree.getroot(), "link",
+                                                            dict([("name", joint.find('parent').attrib['link'])]))  # "world")]))
 
-                            # if the joint is floating, we save the transformation in the floating joint to be used when we load the 
-                            # embedded urdf                            
+                            # if the joint is floating, we save the transformation in the floating joint to be used when we load the
+                            # embedded urdf
                             else:
-                                joint_xyz = np.array([float(val) for val in joint.find("origin").attrib["xyz"].split(" ")])
+                                joint_xyz = np.array(
+                                    [float(val) for val in joint.find("origin").attrib["xyz"].split(" ")])
 
                                 if 'rpy' in joint.find("origin").attrib:
-                                    joint_rpy = np.array([float(val) for val in joint.find("origin").attrib["rpy"].split(" ")])
+                                    joint_rpy = np.array(
+                                        [float(val) for val in joint.find("origin").attrib["rpy"].split(" ")])
                                 else:
-                                    joint_rpy = np.array([0.,0.,0.])
-                                joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
+                                    joint_rpy = np.array([0., 0., 0.])
+                                joint_frame = get_transform_from_xyz_rpy(
+                                    joint_xyz, joint_rpy)
 
                             # Deal with floating joints inside the embedded urdf
-                            urdfs_no_floating = save_urdfs_without_floating_joints(embedded_urdf.object_tree, 
-                                gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/" + base_link_name, self.merge_fj)  
+                            urdfs_no_floating = save_urdfs_without_floating_joints(embedded_urdf.object_tree,
+                                                                                   gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/" + base_link_name, self.merge_fj)
 
-                            # append a new tuple of file name of the instantiated embedded urdf 
+                            # append a new tuple of file name of the instantiated embedded urdf
                             # and the transformation (!= None if its connection was floating)
                             for urdf in urdfs_no_floating:
-                                transformation = np.dot(joint_frame, urdfs_no_floating[urdf][1])
-                                self.nested_urdfs += [(urdfs_no_floating[urdf][0], transformation)]
+                                transformation = np.dot(
+                                    joint_frame, urdfs_no_floating[urdf][1])
+                                self.nested_urdfs += [
+                                    (urdfs_no_floating[urdf][0], transformation)]
 
         if self.compose_urdf:
-            self.file_ctr = 0            
-            urdf_file_name = gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/scene_instance_full.urdf"
+            self.file_ctr = 0
+            urdf_file_name = gibson2.ig_dataset_path + \
+                "/scene_instances/" + timestr + "/scene_instance_full.urdf"
             self.scene_tree.write(urdf_file_name)
-            self.urdfs_no_floating = save_urdfs_without_floating_joints(self.scene_tree, 
-                gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/scene_instance", self.merge_fj)  
-
+            self.urdfs_no_floating = save_urdfs_without_floating_joints(self.scene_tree,
+                                                                        gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/scene_instance", self.merge_fj)
 
     def load(self):
         body_ids = []
         if self.compose_urdf:
             for urdf in self.urdfs_no_floating:
                 logging.info("Loading " + self.urdfs_no_floating[urdf][0])
-                body_id = p.loadURDF(self.urdfs_no_floating[urdf][0]) 
-                                 #flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-                logging.info("Moving URDF to " + np.array_str(self.urdfs_no_floating[urdf][1]))
+                body_id = p.loadURDF(self.urdfs_no_floating[urdf][0])
+                # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+                logging.info("Moving URDF to " +
+                             np.array_str(self.urdfs_no_floating[urdf][1]))
                 transformation = self.urdfs_no_floating[urdf][1]
-                oriii = np.array(quatXYZWFromRotMat(transformation[0:3,0:3]))
-                transl = transformation[0:3,3]
+                oriii = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+                transl = transformation[0:3, 3]
                 p.resetBasePositionAndOrientation(body_id, transl, oriii)
                 self.mass = p.getDynamicsInfo(body_id, -1)[0]
-                activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING+p.ACTIVATION_STATE_SLEEP
-                p.changeDynamics(body_id, -1, activationState=activationState)
+                p.changeDynamics(
+                    body_id, -1,
+                    activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
                 body_ids += [body_id]
         else:
             for urdf in self.nested_urdfs:
                 logging.info("Loading " + urdf[0])
-                body_id = p.loadURDF(urdf[0]) 
-                                 #flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+                body_id = p.loadURDF(urdf[0])
+                # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
                 logging.info("Moving URDF to " + np.array_str(urdf[1]))
                 transformation = urdf[1]
-                oriii = np.array(quatXYZWFromRotMat(transformation[0:3,0:3]))
-                transl = transformation[0:3,3]
+                oriii = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+                transl = transformation[0:3, 3]
                 p.resetBasePositionAndOrientation(body_id, transl, oriii)
 
                 self.mass = p.getDynamicsInfo(body_id, -1)[0]
-                activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING+p.ACTIVATION_STATE_SLEEP
-                p.changeDynamics(body_id, -1, activationState=activationState)
+                p.changeDynamics(
+                    body_id, -1,
+                    activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
                 body_ids += [body_id]
         return body_ids
