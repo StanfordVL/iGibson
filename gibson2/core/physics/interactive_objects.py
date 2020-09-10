@@ -11,6 +11,8 @@ from gibson2.utils.utils import rotate_vector_3d
 
 import logging
 import math
+from IPython import embed
+
 
 class Object(object):
     def __init__(self):
@@ -85,7 +87,8 @@ class ShapeNetObject(Object):
             'orientation_quat': [1. / np.sqrt(2), 0, 0, 1. / np.sqrt(2)],
         }
         pose = p.multiplyTransforms(positionA=self.position,
-                                    orientationA=p.getQuaternionFromEuler(self.orientation),
+                                    orientationA=p.getQuaternionFromEuler(
+                                        self.orientation),
                                     positionB=self._default_transform['position'],
                                     orientationB=self._default_transform['orientation_quat'])
         self.pose = {
@@ -108,22 +111,25 @@ class ShapeNetObject(Object):
 class Pedestrian(Object):
     def __init__(self, style='standing', pos=[0, 0, 0]):
         super(Pedestrian, self).__init__()
-        self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
-                                               'person_{}'.format(style), 'meshes',
-                                               'person_vhacd.obj')
+        self.collision_filename = os.path.join(
+            gibson2.assets_path, 'models', 'person_meshes',
+            'person_{}'.format(style), 'meshes', 'person_vhacd.obj')
         self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'person_meshes',
                                             'person_{}'.format(style), 'meshes', 'person.obj')
         self.cid = None
         self.pos = pos
 
     def _load(self):
-        collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename)
-        visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename)
+        collision_id = p.createCollisionShape(
+            p.GEOM_MESH, fileName=self.collision_filename)
+        visual_id = p.createVisualShape(
+            p.GEOM_MESH, fileName=self.visual_filename)
         body_id = p.createMultiBody(basePosition=[0, 0, 0],
                                     baseMass=60,
                                     baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=visual_id)
-        p.resetBasePositionAndOrientation(body_id, self.pos, [-0.5, -0.5, -0.5, 0.5])
+        p.resetBasePositionAndOrientation(
+            body_id, self.pos, [-0.5, -0.5, -0.5, 0.5])
         self.cid = p.createConstraint(body_id,
                                       -1,
                                       -1,
@@ -181,7 +187,8 @@ class VisualMarker(Object):
                                         rgbaColor=self.rgba_color,
                                         radius=self.radius,
                                         visualFramePosition=self.initial_offset)
-        body_id = p.createMultiBody(baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1)
+        body_id = p.createMultiBody(
+            baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1)
 
         return body_id
 
@@ -200,8 +207,10 @@ class BoxShape(Object):
 
     def _load(self):
         baseOrientation = [0, 0, 0, 1]
-        colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
-        visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
+        colBoxId = p.createCollisionShape(
+            p.GEOM_BOX, halfExtents=self.dimension)
+        visualShapeId = p.createVisualShape(
+            p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
         if self.visual_only:
             body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
                                         baseVisualShapeIndex=visualShapeId)
@@ -210,13 +219,16 @@ class BoxShape(Object):
                                         baseCollisionShapeIndex=colBoxId,
                                         baseVisualShapeIndex=visualShapeId)
 
-        p.resetBasePositionAndOrientation(body_id, self.basePos, baseOrientation)
+        p.resetBasePositionAndOrientation(
+            body_id, self.basePos, baseOrientation)
 
         return body_id
 
-def round_up(n, decimals=0): 
-    multiplier = 10 ** decimals 
+
+def round_up(n, decimals=0):
+    multiplier = 10 ** decimals
     return math.ceil(n * multiplier) / multiplier
+
 
 class URDFObject(Object):
     """
@@ -233,24 +245,35 @@ class URDFObject(Object):
 
         print("Category", category)
         print("Model", model)
-                
+
         # Find the urdf file that defines this object
         if category == "building":
             model_path = get_ig_scene_path(model)
             filename = model_path + "/" + model + "_building.urdf"
         else:
             category_path = get_ig_category_path(category)
-            assert len(os.listdir(category_path)) != 0, "There are no models in category folder {}".format(category_path)
+            assert len(os.listdir(category_path)) != 0, \
+                "There are no models in category folder {}".format(
+                    category_path)
+
             if model == 'random':
                 # Using random group to assign the same model to a group of objects
+                # E.g. we want to use the same model for a group of chairs around the same dining table
                 if "random_group" in xml_element.attrib:
+                    # random_group is a unique integer within the category
                     random_group = xml_element.attrib["random_group"]
-                    if (category, xml_element.attrib["random_group"]) in random_groups:
-                        model = random_groups[(category, xml_element.attrib["random_group"])]
+                    random_group_key = (category, random_group)
+
+                    # if the model of this random group has already been selected
+                    # use that model.
+                    if random_group_key in random_groups:
+                        model = random_groups[random_group_key]
+
+                    # otherwise, this is the first instance of this random group
+                    # select a random model and cache it
                     else:
-                        # The first instance of the group we chose a random model and we save it
                         model = random.choice(os.listdir(category_path))
-                        random_groups[(category, xml_element.attrib["random_group"])] = model
+                        random_groups[random_group_key] = model
                 else:
                     # Using a random instance
                     model = random.choice(os.listdir(category_path))
@@ -258,20 +281,22 @@ class URDFObject(Object):
                 model = xml_element.attrib['model']
 
             model_path = get_ig_model_path(category, model)
-            filename = model_path + "/" + model + ".urdf"            
- 
+            filename = model_path + "/" + model + ".urdf"
+
         self.filename = filename
         logging.info("Loading " + filename)
-        self.object_tree = ET.parse(filename) #Parse the URDF
+        self.object_tree = ET.parse(filename)  # Parse the URDF
 
         # Change the mesh filenames to include the entire path
         for mesh in self.object_tree.iter("mesh"):
-            mesh.attrib['filename'] = model_path + "/" + mesh.attrib['filename']
+            mesh.attrib['filename'] = model_path + \
+                "/" + mesh.attrib['filename']
 
         # Apply the desired bounding box size / scale
         # First obtain the scaling factor
         if "bounding_box" in xml_element.keys() and "scale" in xml_element.keys():
-            logging.error("You cannot define both scale and bounding box size defined to embed a URDF")
+            logging.error(
+                "You cannot define both scale and bounding box size defined to embed a URDF")
             exit(-1)
 
         if os.path.exists(model_path + '/misc/bbox.json'):
@@ -284,13 +309,14 @@ class URDFObject(Object):
             bbox_min = np.zeros(3)
 
         if "bounding_box" in xml_element.keys():
-            # Obtain the scale as the ratio between the desired bounding box size and the normal bounding box size of the object at scale (1,1,1)
-            bounding_box = np.array([float(val) for val in xml_element.attrib["bounding_box"].split(" ")])            
+            # Obtain the scale as the ratio between the desired bounding box size and the normal bounding box size of the object at scale (1, 1, 1)
+            bounding_box = np.array(
+                [float(val) for val in xml_element.attrib["bounding_box"].split(" ")])
             original_bbox = bbox_max - bbox_min
-            print(original_bbox)
-            scale = np.divide(bounding_box, original_bbox) 
+            scale = bounding_box / original_bbox
         elif "scale" in xml_element.keys():
-            scale = np.array([float(val) for val in xml_element.attrib["scale"].split(" ")])            
+            scale = np.array([float(val)
+                              for val in xml_element.attrib["scale"].split(" ")])
         else:
             scale = np.array([1., 1., 1.])
         logging.info("Scale: " + np.array2string(scale))
@@ -311,68 +337,86 @@ class URDFObject(Object):
                 child_link_name = joint.find("child").attrib["link"]
                 if parent_link_name in scales_in_lf and child_link_name not in scales_in_lf:
                     scale_in_parent_lf = scales_in_lf[parent_link_name]
-
-                    # The location of the joint frame is scaled in using the scale in the parent frame
+                    # The location of the joint frame is scaled using the scale in the parent frame
                     for origin in joint.iter("origin"):
-                        current_origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
-                        new_origin_xyz = np.multiply(current_origin_xyz, scale_in_parent_lf)
-                        new_origin_xyz = np.array([round_up(val, 4) for val in new_origin_xyz])
-                        origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
+                        current_origin_xyz = np.array(
+                            [float(val) for val in origin.attrib["xyz"].split(" ")])
+                        new_origin_xyz = np.multiply(
+                            current_origin_xyz, scale_in_parent_lf)
+                        new_origin_xyz = np.array(
+                            [round_up(val, 4) for val in new_origin_xyz])
+                        origin.attrib['xyz'] = ' '.join(
+                            map(str, new_origin_xyz))
 
                     # Get the rotation of the joint frame and apply it to the scale
                     if "rpy" in joint.keys():
-                        joint_frame_rot = np.array([float(val) for val in joint.attrib['rpy'].split(" ")])
+                        joint_frame_rot = np.array(
+                            [float(val) for val in joint.attrib['rpy'].split(" ")])
                         # Rotate the scale
-                        scale_in_child_lf = rotate_vector_3d(scale_in_parent_lf, *joint_frame_rot, cck=True)
-                        scale_in_child_lf = np.absolute(scale_in_child_lf)                        
+                        scale_in_child_lf = rotate_vector_3d(
+                            scale_in_parent_lf, *joint_frame_rot, cck=True)
+                        scale_in_child_lf = np.absolute(scale_in_child_lf)
                     else:
                         scale_in_child_lf = scale_in_parent_lf
 
                     #print("Adding: ", joint.find("child").attrib["link"])
 
-                    scales_in_lf[joint.find("child").attrib["link"]] = scale_in_child_lf
+                    scales_in_lf[joint.find("child").attrib["link"]] = \
+                        scale_in_child_lf
 
                     # The axis of the joint is defined in the joint frame, we scale it after applying the rotation
                     for axis in joint.iter("axis"):
-                        current_axis_xyz = np.array([float(val) for val in axis.attrib["xyz"].split(" ")])
-                        new_axis_xyz = np.multiply(current_axis_xyz, scale_in_child_lf)
+                        current_axis_xyz = np.array(
+                            [float(val) for val in axis.attrib["xyz"].split(" ")])
+                        new_axis_xyz = np.multiply(
+                            current_axis_xyz, scale_in_child_lf)
                         new_axis_xyz /= np.linalg.norm(new_axis_xyz)
-                        new_axis_xyz = np.array([round_up(val, 4) for val in new_axis_xyz])
+                        new_axis_xyz = np.array(
+                            [round_up(val, 4) for val in new_axis_xyz])
                         axis.attrib['xyz'] = ' '.join(map(str, new_axis_xyz))
 
-                    all_processed = False # Iterate again the for loop since we added new elements to the dictionary
+                    # Iterate again the for loop since we added new elements to the dictionary
+                    all_processed = False
 
         # Now iterate over all links and scale the meshes and positions
         for link in self.object_tree.iter("link"):
             scale_in_lf = scales_in_lf[link.attrib["name"]]
-            #Apply the scale to all mesh elements within the link (original scale and origin)
+            # Apply the scale to all mesh elements within the link (original scale and origin)
             for mesh in link.iter("mesh"):
                 if "scale" in mesh.attrib:
-                    mesh_scale = np.array([float(val) for val in mesh.attrib["scale"].split(" ")])
+                    mesh_scale = np.array(
+                        [float(val) for val in mesh.attrib["scale"].split(" ")])
                     new_scale = np.multiply(mesh_scale, scale_in_lf)
-                    new_scale = np.array([round_up(val, 4) for val in new_scale])
+                    new_scale = np.array([round_up(val, 4)
+                                          for val in new_scale])
                     mesh.attrib['scale'] = ' '.join(map(str, new_scale))
                 else:
-                    new_scale = np.array([round_up(val, 4) for val in scale_in_lf])
-                    mesh.set('scale',' '.join(map(str, new_scale)))
+                    new_scale = np.array([round_up(val, 4)
+                                          for val in scale_in_lf])
+                    mesh.set('scale', ' '.join(map(str, new_scale)))
             for origin in link.iter("origin"):
-                origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
+                origin_xyz = np.array(
+                    [float(val) for val in origin.attrib["xyz"].split(" ")])
                 new_origin_xyz = np.multiply(origin_xyz, scale_in_lf)
-                new_origin_xyz = np.array([round_up(val, 4) for val in new_origin_xyz])
+                new_origin_xyz = np.array(
+                    [round_up(val, 4) for val in new_origin_xyz])
                 origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
 
         # Finally, we need to know where is the base_link origin wrt. the bounding box center. That allows us to place the model
         # correctly since the joint transformations given in the scene urdf are for the bounding box center
         scale = scales_in_lf["base_link"]
-        bbox_center_in_blf = (bbox_max + bbox_min)/2.0 # Coordinates of the bounding box center in the base_link frame
-        self.scaled_bbxc_in_blf = -scale*bbox_center_in_blf # We scale the location. We will subtract this to the joint location
+        # Coordinates of the bounding box center in the base_link frame
+        bbox_center_in_blf = (bbox_max + bbox_min) / 2.0
+        # We scale the location. We will subtract this to the joint location
+        self.scaled_bbxc_in_blf = -scale * bbox_center_in_blf
 
     def _load(self):
-        body_id = p.loadURDF(self.filename, 
+        body_id = p.loadURDF(self.filename,
                              flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
 
         return body_id
+
 
 class InteractiveObj(Object):
     """
@@ -435,7 +479,8 @@ class SoftObject(Object):
         return body_id
 
     def addAnchor(self, nodeIndex=-1, bodyUniqueId=-1, linkIndex=-1, bodyFramePosition=[0, 0, 0], physicsClientId=0):
-        p.createSoftBodyAnchor(self.body_id, nodeIndex, bodyUniqueId, linkIndex, bodyFramePosition, physicsClientId)
+        p.createSoftBodyAnchor(self.body_id, nodeIndex, bodyUniqueId,
+                               linkIndex, bodyFramePosition, physicsClientId)
 
 
 class RBOObject(InteractiveObj):
