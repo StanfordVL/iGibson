@@ -13,14 +13,18 @@ class ObjectBank(object):
     """A thin wrapper for managing objects"""
     def __init__(self, objects=None):
         self._objects = OrderedDict()
+        self._categories = OrderedDict()
         if objects is not None:
             self._objects = deepcopy(objects)
 
-    def add_object(self, name, o):
+    def add_object(self, name, o, category=None):
         assert isinstance(name, str)
-        assert name not in self._objects
+        assert name not in self.names
+        if category is None:
+            category = name
         assert isinstance(o, Object)
         self._objects[name] = o
+        self._categories[name] = category
 
     @property
     def object_list(self):
@@ -37,12 +41,21 @@ class ObjectBank(object):
     def body_id_to_name(self, body_id):
         return self.names[self.body_ids.index(body_id)]
 
+    def body_id_to_object(self, body_id):
+        return self.objects[self.body_ids.index(body_id)]
+
     def name_to_body_id(self, name):
         return self.body_ids[self.names.index(name)]
 
     def object_index_to_array(self, object_index):
         arr = np.zeros(len(self))
         arr[object_index] = 1
+        return arr
+
+    def object_index_to_category_array(self, object_index):
+        cat_unique = self.categories_unique
+        arr = np.zeros(len(cat_unique))
+        arr[cat_unique.index(self.categories[object_index])] = 1
         return arr
 
     def __getitem__(self, name):
@@ -56,22 +69,39 @@ class ObjectBank(object):
         return [k for k in self.objects]
 
     @property
+    def categories(self):
+        return [self._categories[k] for k in self.objects]
+
+    @property
+    def categories_unique(self):
+        cat = self.categories
+        ucat = []
+        # make sure the unique categories are in-order
+        for c in cat:
+            if c not in ucat:
+                ucat.append(c)
+        return ucat
+
+    @property
     def all_body_ids_and_links(self):
         body_ids = []
         links = []
         for bid in self.body_ids:
-            for link in PBU.get_all_links(bid):
+            for link in sorted(PBU.get_all_links(bid)):
                 body_ids.append(bid)
                 links.append(link)
         return body_ids, links
 
     def serialize(self):
+        """Serialize object info to numpy arrays"""
         body_ids = []
         links = []
         poses = []
         joint_positions = []
+        categories = []
         for bid, link in zip(*self.all_body_ids_and_links):
             body_ids.append(bid)
+            categories.append(self.object_index_to_category_array(self.body_ids.index(bid)))
             links.append(link)
             if link == -1:
                 joint_positions.append(0.)
@@ -82,7 +112,8 @@ class ObjectBank(object):
             "body_ids": np.array(body_ids, dtype=np.int32),
             "links": np.array(links, dtype=np.int32),
             "link_poses": np.array(poses, dtype=np.float32),
-            "joint_positions": np.array(joint_positions, dtype=np.float32)
+            "joint_positions": np.array(joint_positions, dtype=np.float32),
+            "categories": np.array(categories, dtype=np.int32)
         }
 
     def deserialize(self, states):

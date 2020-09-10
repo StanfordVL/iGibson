@@ -143,8 +143,6 @@ class BaseEnv(object):
 
     def _create_env_extras(self):
         pass
-        # for _ in range(10):
-        #     self.object_visuals.append(self.objects.create_virtual_copy(scale=1., rgba_alpha=0.3))
 
     def _create_sensors(self):
         PBU.set_camera(45, -45, 2, (0, 0, 0))
@@ -250,7 +248,8 @@ class BaseEnv(object):
             "link_poses": object_states["link_poses"],
             "link_relative_poses": rel_link_poses,
             "link_positions": object_states["link_poses"][:, :3],
-            "link_relative_positions": rel_link_poses[:, :3]
+            "link_relative_positions": rel_link_poses[:, :3],
+            "categories": object_states["categories"]
         }
 
     def _get_proprio_observation(self):
