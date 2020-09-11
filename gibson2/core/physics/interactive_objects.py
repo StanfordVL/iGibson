@@ -7,7 +7,8 @@ from gibson2 import assets_path
 from gibson2.utils.utils import multQuatLists
 
 gripper_path = assets_path + '\\models\\gripper\\gripper.urdf'
-vr_hand_path = assets_path + '\\models\\vr_hand\\vr_hand.urdf'
+vr_hand_left_path = assets_path + '\\models\\vr_hand\\vr_hand_left.urdf'
+vr_hand_right_path = assets_path + '\\models\\vr_hand\\vr_hand_right.urdf'
 
 class Object(object):
     def __init__(self):
@@ -286,9 +287,10 @@ class VrHand(InteractiveObj):
     Itip
     """
 
-    def __init__(self, scale=1, start_pos=[0,0,0]):
-        super().__init__(vr_hand_path)
-        self.filename = vr_hand_path
+    def __init__(self, scale=1, start_pos=[0,0,0], leftHand=True):
+        self.leftHand = leftHand
+        self.filename = vr_hand_left_path if leftHand else vr_hand_right_path
+        super().__init__(self.filename)
         self.scale = scale
         self.start_pos = start_pos
         # Hand needs to be rotated to visually align with VR controller

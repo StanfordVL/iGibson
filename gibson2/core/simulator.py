@@ -553,6 +553,9 @@ class Simulator:
     # Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
     # Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
     def getEyeTrackingData(self):
+        if not self.use_vr_renderer or not self.vrEyeTracking:
+            return [None, None, None, None, None]
+            
         is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
         return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
 

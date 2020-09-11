@@ -138,6 +138,10 @@ class MeshRendererVR():
     def get_visual_objects(self):
         return self.renderer.get_visual_objects()
 
+    # Get view and projection matrices from renderer
+    def get_view_proj(self):
+        return [self.renderer.V, self.renderer.P]
+
     # Releases VR system and renderer
     def release(self):
         self.renderer.release()
