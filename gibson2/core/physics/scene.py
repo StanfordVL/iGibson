@@ -467,13 +467,6 @@ class iGSDFScene(Scene):
         self.joints_by_name = {}
         self.nested_urdfs = []
 
-        # We have two ways of processing:
-        # 1) merge all urdfs into a composed urdf, then separate the floating parts
-        # Even if we merge the floats, the appended URDFs could have many links. There is a pybullet limitation
-        # to maximum 128 joints in a single object. We will separate the URDFs fixed connected to the "world"
-        # 2) have one urdf per object
-        self.compose_urdf = False
-
         # If this flag is true, we merge fixed joints into unique bodies
         self.merge_fj = False
 
@@ -506,21 +499,13 @@ class iGSDFScene(Scene):
                 for link_emb in embedded_urdf.object_tree.iter('link'):
                     if link_emb.attrib['name'] == "base_link":
                         # The base_link get renamed as the link tag indicates
-                        if self.compose_urdf:
-                            # First extending the link tag in the fused urdf, then renaming back
-                            link.attrib.update(link_emb.attrib)
-                            link.attrib['name'] = base_link_name
-                            link.extend(list(link_emb))
-                        else:
-                            # Just change the name of the base link in the embedded urdf
-                            link_emb.attrib['name'] = base_link_name
+                        # Just change the name of the base link in the embedded urdf
+                        link_emb.attrib['name'] = base_link_name
                     else:
                         # The other links get also renamed to add the name of the link tag as prefix
                         # This allows us to load several instances of the same object
                         link_emb.attrib['name'] = base_link_name + \
                             "_" + link_emb.attrib['name']
-                        if self.compose_urdf:
-                            self.scene_tree.getroot().append(link_emb)
 
                 for joint_emb in embedded_urdf.object_tree.iter('joint'):
                     # We change the joint name
@@ -541,96 +526,63 @@ class iGSDFScene(Scene):
                             parent_emb.attrib['link'] = base_link_name + \
                                 "_" + parent_emb.attrib['link']
 
-                    # and add the joint
-                    if self.compose_urdf:
-                        self.scene_tree.getroot().append(joint_emb)
+                # Deal with the joint connecting the embedded urdf to the main link (world or building)
+                urdf_file_name_prefix = gibson2.ig_dataset_path + \
+                    "/scene_instances/" + timestr + "/" + base_link_name  # + ".urdf"
 
-                if self.compose_urdf:
-                    for item in list(embedded_urdf.object_tree.getroot()):
-                        if item.tag not in ['link', 'joint']:
-                            self.scene_tree.getroot().append(item)
-                else:
-                    # Deal with the joint connecting the embedded urdf to the main link (world or building)
-                    urdf_file_name_prefix = gibson2.ig_dataset_path + \
-                        "/scene_instances/" + timestr + "/" + base_link_name  # + ".urdf"
+                # Find the joint in the main urdf that defines the connection to the embedded urdf
+                for joint in self.scene_tree.iter('joint'):
+                    if joint.find('child').attrib['link'] == base_link_name:
+                        joint_frame = np.eye(4)
 
-                    # Find the joint in the main urdf that defines the connection to the embedded urdf
-                    for joint in self.scene_tree.iter('joint'):
-                        if joint.find('child').attrib['link'] == base_link_name:
-                            joint_frame = np.eye(4)
+                        # if the joint is not floating, we add the joint and a link to the embedded urdf
+                        if joint.attrib['type'] != "floating":
+                            embedded_urdf.object_tree.getroot().append(joint)
+                            parent_link = ET.SubElement(embedded_urdf.object_tree.getroot(), "link",
+                                                        dict([("name", joint.find('parent').attrib['link'])]))  # "world")]))
 
-                            # if the joint is not floating, we add the joint and a link to the embedded urdf
-                            if joint.attrib['type'] != "floating":
-                                embedded_urdf.object_tree.getroot().append(joint)
-                                parent_link = ET.SubElement(embedded_urdf.object_tree.getroot(), "link",
-                                                            dict([("name", joint.find('parent').attrib['link'])]))  # "world")]))
+                        # if the joint is floating, we save the transformation in the floating joint to be used when we load the
+                        # embedded urdf
+                        else:
+                            joint_xyz = np.array(
+                                [float(val) for val in joint.find("origin").attrib["xyz"].split(" ")])
 
-                            # if the joint is floating, we save the transformation in the floating joint to be used when we load the
-                            # embedded urdf
+                            if 'rpy' in joint.find("origin").attrib:
+                                joint_rpy = np.array(
+                                    [float(val) for val in joint.find("origin").attrib["rpy"].split(" ")])
                             else:
-                                joint_xyz = np.array(
-                                    [float(val) for val in joint.find("origin").attrib["xyz"].split(" ")])
+                                joint_rpy = np.array([0., 0., 0.])
+                            joint_frame = get_transform_from_xyz_rpy(
+                                joint_xyz, joint_rpy)
 
-                                if 'rpy' in joint.find("origin").attrib:
-                                    joint_rpy = np.array(
-                                        [float(val) for val in joint.find("origin").attrib["rpy"].split(" ")])
-                                else:
-                                    joint_rpy = np.array([0., 0., 0.])
-                                joint_frame = get_transform_from_xyz_rpy(
-                                    joint_xyz, joint_rpy)
+                        # Deal with floating joints inside the embedded urdf
+                        urdfs_no_floating = save_urdfs_without_floating_joints(embedded_urdf.object_tree,
+                                                                               gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/" + base_link_name, self.merge_fj)
 
-                            # Deal with floating joints inside the embedded urdf
-                            urdfs_no_floating = save_urdfs_without_floating_joints(embedded_urdf.object_tree,
-                                                                                   gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/" + base_link_name, self.merge_fj)
+                        # append a new tuple of file name of the instantiated embedded urdf
+                        # and the transformation (!= None if its connection was floating)
+                        for urdf in urdfs_no_floating:
+                            transformation = np.dot(
+                                joint_frame, urdfs_no_floating[urdf][1])
+                            self.nested_urdfs += [
+                                (urdfs_no_floating[urdf][0], transformation)]
 
-                            # append a new tuple of file name of the instantiated embedded urdf
-                            # and the transformation (!= None if its connection was floating)
-                            for urdf in urdfs_no_floating:
-                                transformation = np.dot(
-                                    joint_frame, urdfs_no_floating[urdf][1])
-                                self.nested_urdfs += [
-                                    (urdfs_no_floating[urdf][0], transformation)]
-
-        if self.compose_urdf:
-            self.file_ctr = 0
-            urdf_file_name = gibson2.ig_dataset_path + \
-                "/scene_instances/" + timestr + "/scene_instance_full.urdf"
-            self.scene_tree.write(urdf_file_name)
-            self.urdfs_no_floating = save_urdfs_without_floating_joints(self.scene_tree,
-                                                                        gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/scene_instance", self.merge_fj)
 
     def load(self):
         body_ids = []
-        if self.compose_urdf:
-            for urdf in self.urdfs_no_floating:
-                logging.info("Loading " + self.urdfs_no_floating[urdf][0])
-                body_id = p.loadURDF(self.urdfs_no_floating[urdf][0])
-                # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-                logging.info("Moving URDF to " +
-                             np.array_str(self.urdfs_no_floating[urdf][1]))
-                transformation = self.urdfs_no_floating[urdf][1]
-                oriii = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
-                transl = transformation[0:3, 3]
-                p.resetBasePositionAndOrientation(body_id, transl, oriii)
-                self.mass = p.getDynamicsInfo(body_id, -1)[0]
-                p.changeDynamics(
-                    body_id, -1,
-                    activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
-                body_ids += [body_id]
-        else:
-            for urdf in self.nested_urdfs:
-                logging.info("Loading " + urdf[0])
-                body_id = p.loadURDF(urdf[0])
-                # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-                logging.info("Moving URDF to " + np.array_str(urdf[1]))
-                transformation = urdf[1]
-                oriii = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
-                transl = transformation[0:3, 3]
-                p.resetBasePositionAndOrientation(body_id, transl, oriii)
+        for urdf in self.nested_urdfs:
+            logging.info("Loading " + urdf[0])
+            body_id = p.loadURDF(urdf[0])
+            # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+            logging.info("Moving URDF to " + np.array_str(urdf[1]))
+            transformation = urdf[1]
+            oriii = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+            transl = transformation[0:3, 3]
+            p.resetBasePositionAndOrientation(body_id, transl, oriii)
 
-                self.mass = p.getDynamicsInfo(body_id, -1)[0]
-                p.changeDynamics(
-                    body_id, -1,
-                    activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
-                body_ids += [body_id]
+            self.mass = p.getDynamicsInfo(body_id, -1)[0]
+            p.changeDynamics(
+                body_id, -1,
+                activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
+            body_ids += [body_id]
         return body_ids
