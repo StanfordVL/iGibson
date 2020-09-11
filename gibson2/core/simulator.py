@@ -71,7 +71,13 @@ class Simulator:
         if self.mode in ['vr']:
             self.use_vr_renderer = True
         
+        # This will only be set once (to 20, 45 or 90) after initial measurements
         self.use_dynamic_timestep = use_dynamic_timestep
+        # Number of frames to average over to figure out fps value
+        self.frame_measurement_num = 45
+        self.current_frame_count = 0
+        self.frame_time_sum = 0.0
+        self.should_set_timestep = True
         # Low pass-filtered average frame time, set to 0 to start
         self.avg_frame_time = 0
                    
@@ -466,12 +472,22 @@ class Simulator:
 
         render_time = time.time() - curr_time
         curr_frame_time = physics_time + render_time
-        if self.use_dynamic_timestep:
-            # Run through low pass filter so spikes/drops in fps don't affect physics
-            self.avg_frame_time = self.avg_frame_time * 0.9 + curr_frame_time * 0.1 if self.avg_frame_time > 0 else curr_frame_time
-            if shouldPrintTime:
-                print("New physics fps: %f" % float(1/self.avg_frame_time))
-            self.set_timestep(self.avg_frame_time)
+        self.frame_time_sum += curr_frame_time
+        self.current_frame_count += 1
+        if self.current_frame_count >= self.frame_measurement_num and self.should_set_timestep and self.use_dynamic_timestep:
+            unrounded_timestep = self.frame_time_sum / float(self.frame_measurement_num)
+            rounded_timestep = 0
+            if unrounded_timestep > 1.0 / 32.5:
+                rounded_timestep = 1.0 / 20.0
+            elif unrounded_timestep > 1.0 / 67.5:
+                rounded_timestep = 1.0 / 45.0
+            else:
+                rounded_timestep = 1.0 / 90.0
+
+            print("Final rounded timestep is: ", rounded_timestep)
+            print("Final fps is: ", int(1 / rounded_timestep))
+            self.set_timestep(rounded_timestep)
+            self.should_set_timestep = False
 
         if shouldPrintTime:
             print("Physics time: %f" % float(physics_time/0.001))

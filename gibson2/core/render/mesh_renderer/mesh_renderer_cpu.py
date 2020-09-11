@@ -455,24 +455,29 @@ class MeshRenderer(object):
                 obj_dir = os.path.dirname(obj_path)
                 if self.optimize:
                     tex_filename = os.path.join(obj_dir, item.diffuse_texname)
-                    texture = self.texture_load_counter
                     # Avoid duplicating textures
                     if tex_filename not in self.texture_files:
                         self.texture_files.append(tex_filename)
+                        texture = self.texture_load_counter
                         self.texture_load_counter += 1
+                    else:
+                        texture = self.texture_files.index(tex_filename)
                 else:
                     texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
                     self.textures.append(texture)
                 
+                # If renderer is optimized, texture refers to the index in the tex_files array
                 material = Material('texture', texture_id=texture)
             else:
                 material = Material('color', kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
 
+        # TODO: The default texture might be messing things up here! Investigate :)
+        # Material counts skip integers because of this, and this could be messing up the optimized renderer!
         if input_kd is not None:  # append the default material in the end, in case material loading fails
-            self.materials_mapping[len(materials) + material_count] = Material('color', kd=input_kd)
+            self.materials_mapping[len(materials) + material_count] = Material('color', kd=input_kd, texture_id=-1)
         else:
-            self.materials_mapping[len(materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5])
+            self.materials_mapping[len(materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5], texture_id=-1)
 
         VAO_ids = []
 
@@ -525,8 +530,13 @@ class MeshRenderer(object):
             self.vertex_data.append(vertexData)
             self.shapes.append(shape)
             if material_id == -1:  # if material loading fails, use the default material
+                mapping_idx = len(materials) + material_count
+                mat = self.materials_mapping[mapping_idx]
                 self.mesh_materials.append(len(materials) + material_count)
             else:
+                mapping_idx = material_id + material_count
+                mat = self.materials_mapping[mapping_idx]
+                tex_id = mat.texture_id
                 self.mesh_materials.append(material_id + material_count)
 
             logging.debug('mesh_materials: {}'.format(self.mesh_materials))
@@ -540,7 +550,9 @@ class MeshRenderer(object):
     def optimize_vertex_and_texture(self):
         for tex_file in self.texture_files:
             print("Texture: ", tex_file)
-        cutoff = 4000 * 4000
+        # We often encounter 4k textures on small objects - these can easily be shrunk without
+        # a perceptible difference to the user
+        cutoff = 5000 * 5000
         shouldShrinkSmallTextures = True
         smallTexSize = 512
         self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(self.texture_files, cutoff, shouldShrinkSmallTextures, smallTexSize)
@@ -592,6 +604,8 @@ class MeshRenderer(object):
             index_offset += index_count
 
             # Generate other rendering data, including diffuse color and texture layer
+            # NOTE: This assumes that every shape has only one material. This assumption
+            # may be re-evaluated later when we add multiple texture support to iGibson.
             id_material = self.materials_mapping[self.mesh_materials[id]]
             texture_id = id_material.texture_id
             if texture_id == -1 or texture_id is None:
