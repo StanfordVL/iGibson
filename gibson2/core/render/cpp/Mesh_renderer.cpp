@@ -578,22 +578,25 @@ public:
 			int score = w * h;
 
 			py::list tex_info_i;
+			std::cout << "3D TEX GENERATION LOOP: Considering filename: " << filenames[i] << std::endl;
 
 			// Texture goes in larger bucket if larger than cutoff
 			if (score >= texCutoff) {
-				std::cout << "Appending texture with name: " << filenames[i] << " to large bucket" << std::endl;
+				//std::cout << "Appending texture with name: " << filenames[i] << " to large bucket" << std::endl;
 				texIndices[0].push_back(i);
 				tex_info_i.append(0);
 				tex_info_i.append(firstTexLayerNum);
+				std::cout << "Tex num: 0" << " and layer num: " << firstTexLayerNum << std::endl;
 				if (w > texLayerDims[0]) texLayerDims[0] = w;
 				if (h > texLayerDims[1]) texLayerDims[1] = h;
 				firstTexLayerNum++;
 			}
 			else {
-				std::cout << "Appending texture with name: " << filenames[i] << " to small bucket" << std::endl;
+				//std::cout << "Appending texture with name: " << filenames[i] << " to small bucket" << std::endl;
 				texIndices[1].push_back(i);
 				tex_info_i.append(1);
 				tex_info_i.append(secondTexLayerNum);
+				std::cout << "Tex num: 0" << " and layer num: " << secondTexLayerNum << std::endl;
 				if (w > texLayerDims[2]) texLayerDims[2] = w;
 				if (h > texLayerDims[3]) texLayerDims[3] = h;
 				secondTexLayerNum++;
@@ -629,7 +632,7 @@ public:
 			if (i == 1) layerNum = secondTexLayerNum;
 
 			int out_w = texLayerDims[2 * static_cast<long long int>(i)];
-			int out_h = texLayerDims[2 * static_cast<long long int>(i + 1)];
+			int out_h = texLayerDims[2 * static_cast<long long int>(i) + 1];
 
 			// Gibson tends to have many more smaller textures, so we reduce their size to avoid memory overload
 			if (i == 1 && shouldShrinkSmallTextures) {
@@ -651,23 +654,25 @@ public:
 					NULL
 				);
 			}
- 
-			glTexImage3D(GL_TEXTURE_2D_ARRAY,
-				0,
-				GL_RGB,
-				out_w,
-				out_h,
-				layerNum,
-				0,
-				GL_RGB,
-				GL_UNSIGNED_BYTE,
-				NULL
-			);
+			else {	
+				glTexImage3D(GL_TEXTURE_2D_ARRAY,
+					0,
+					GL_RGB,
+					out_w,
+					out_h,
+					layerNum,
+					0,
+					GL_RGB,
+					GL_UNSIGNED_BYTE,
+					NULL
+				);
+			}
 
 			// Add all textures in texture array i to that array texture
 			for (int j = 0; j < layerNum; j++) {
-
 				int idx = texIndices[i][j];
+				std::cout << "In texture number " << i << " considering texture index " << idx << std::endl;
+				std::cout << "This corresponds to file: " << filenames[idx] << std::endl;
 
 				int orig_w = texWidths[idx];
 				int orig_h = texHeights[idx];
@@ -705,8 +710,8 @@ public:
 			glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		}
 
 		texInfo.append(texId1);
