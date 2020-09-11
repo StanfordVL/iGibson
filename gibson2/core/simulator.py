@@ -26,7 +26,8 @@ class Simulator:
                  vertical_fov=90,
                  device_idx=0,
                  render_to_tensor=False,
-                 auto_sync=True):
+                 auto_sync=True,
+                 optimized_renderer=False):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -42,6 +43,7 @@ class Simulator:
         :param render_to_tensor: Render to GPU tensors
         :param auto_sync: automatically sync object poses to gibson renderer, by default true,
         disable it when you want to run multiple physics step but don't need to visualize each frame
+        :param optimized_renderer: whether to optimize renderer (combine vertices)
         """
         # physics simulator
         self.gravity = gravity
@@ -73,6 +75,7 @@ class Simulator:
         self.auto_sync = auto_sync
         self.enable_shadow = enable_shadow
         self.enable_msaa = enable_msaa
+        self.optimized_renderer = optimized_renderer
         self.load()
 
     def set_timestep(self, timestep):
@@ -116,7 +119,8 @@ class Simulator:
                                          device_idx=self.device_idx,
                                          use_fisheye=self.use_fisheye,
                                          enable_shadow=self.enable_shadow,
-                                         msaa=self.enable_msaa)
+                                         msaa=self.enable_msaa,
+                                         optimized=self.optimized_renderer)
 
         print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:

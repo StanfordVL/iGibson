@@ -280,6 +280,12 @@ PYBIND11_MODULE(EGLRendererContext, m) {
     pymodule.def("cglBindVertexArray", &EGLRendererContext::cglBindVertexArray, "binding function");
     pymodule.def("cglUseProgram", &EGLRendererContext::cglUseProgram, "binding function");
 
+    // for optimized renderer
+    pymodule.def("generateArrayTextures", &EGLRendererContext::generateArrayTextures, "TBA");
+    pymodule.def("renderSetup", &EGLRendererContext::renderSetup, "TBA");
+    pymodule.def("updateDynamicData", &EGLRendererContext::updateDynamicData, "TBA");
+    pymodule.def("renderOptimized", &EGLRendererContext::renderOptimized, "TBA");
+    pymodule.def("clean_meshrenderer_optimized", &EGLRendererContext::clean_meshrenderer_optimized, "TBA");
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
