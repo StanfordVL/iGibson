@@ -628,9 +628,11 @@ int MeshRendererContext::loadTexture(std::string filename) {
 
 void MeshRendererContext::setup_pbr(std::string shader_path, std::string env_texture_filename) {
 
-    glEnable(GL_CULL_FACE);
+    //glEnable(GL_CULL_FACE);
+    glDisable(GL_CULL_FACE);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-    glFrontFace(GL_CCW);
+
+    //glFrontFace(GL_CCW);
 
 
     envTextureUnfiltered = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
