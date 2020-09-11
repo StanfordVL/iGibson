@@ -460,6 +460,8 @@ class MeshRenderer(object):
                     if tex_filename not in self.texture_files:
                         self.texture_files.append(tex_filename)
                         self.texture_load_counter += 1
+                    else:
+                        texture = self.texture_files.index(texture_filename)
                 else:
                     texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
                     self.textures.append(texture)
