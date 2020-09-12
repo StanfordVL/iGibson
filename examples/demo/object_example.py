@@ -1,4 +1,4 @@
-from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject
+from gibson2.objects.interactive_objects import InteractiveObj, YCBObject
 import gibson2
 import os
 import pybullet as p
