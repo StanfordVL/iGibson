@@ -1,6 +1,6 @@
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import StadiumScene
-from gibson2.objects.interactive_objects import BoxShape, YCBObject, RBOObject, InteractiveObj
+from gibson2.objects.base_object import BoxShape, YCBObject, RBOObject, InteractiveObj
 from gibson2.core.physics.robot_locomotors import Turtlebot
 import gibson2
 import os
