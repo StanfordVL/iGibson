@@ -5,7 +5,7 @@ import copy
 import math
 import numpy as np
 from gibson2.core.physics.drivers import motor
-from gibson2.core.physics.robot_locomotors import LocomotorRobot
+from gibson2.robots.robot_locomotors import LocomotorRobot
 import pybullet as p
 import gym
 
