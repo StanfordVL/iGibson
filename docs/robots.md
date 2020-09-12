@@ -44,7 +44,7 @@ Most of the code can be found here: [gibson2/core/physics/robot_locomotors.py](h
 In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: [examples/demo/robot_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/robot_example.py).
 
 ```python
-from gibson2.core.physics.robot_locomotors import Locobot, Turtlebot, JR2_Kinova, Fetch
+from gibson2.robots.robot_locomotors import Locobot, Turtlebot, JR2_Kinova, Fetch
 from gibson2.utils.utils import parse_config
 import os
 import time

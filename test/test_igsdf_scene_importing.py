@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 
 from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import BuildingScene, StadiumScene, iGSDFScene
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
-import yaml
+from gibson2.core.physics.scene import iGSDFScene
 from gibson2.utils.utils import parse_config
 import os
 import gibson2
-
-from gibson2.utils.assets_utils import download_assets, download_demo_data
 
 import time
 

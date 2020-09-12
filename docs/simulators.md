@@ -18,7 +18,7 @@ Most of the code can be found here: [gibson2/core/simulator.py](https://github.c
 In this example, we import a `BuildingScene`, a `Turtlebot`, and ten `YCBObject` into the simulator. The code can be found here: [examples/demo/simulator_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/simulator_example.py)
 
 ```python
-from gibson2.core.physics.robot_locomotors import Turtlebot
+from gibson2.robots.robot_locomotors import Turtlebot
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import BuildingScene
 from gibson2.objects.base_object import YCBObject

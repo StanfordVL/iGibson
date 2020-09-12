@@ -1,12 +1,5 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import BuildingScene, StadiumScene
 import gibson2
-from gibson2.utils.utils import parse_config
-from gibson2.envs.base_env import BaseEnv
-from gibson2.envs.locomotor_env import NavigateRandomEnv, NavigateEnv
-from time import time
-import numpy as np
+from gibson2.envs.locomotor_env import NavigateEnv
 from time import time
 import os
 from gibson2.utils.assets_utils import download_assets, download_demo_data

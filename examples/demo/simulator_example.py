@@ -1,4 +1,4 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot
+from gibson2.robots.robot_locomotors import Turtlebot
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import BuildingScene
 from gibson2.objects.base_object import YCBObject
