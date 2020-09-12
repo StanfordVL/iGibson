@@ -6,11 +6,8 @@ import math
 import numpy as np
 from gibson2.core.physics.drivers import motor
 from gibson2.core.physics.robot_locomotors import LocomotorRobot
-from gibson2.core.physics.robot_bases import Joint, BodyPart
-import os, sys
 import pybullet as p
 import gym
-from transforms3d.euler import euler2quat
 
 tracking_camera = {'yaw': 20, 'z_offset': 0.3, 'distance': 2, 'pitch': -20}
 
