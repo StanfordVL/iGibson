@@ -21,7 +21,7 @@ In this example, we import a `BuildingScene`, a `Turtlebot`, and ten `YCBObject`
 from gibson2.core.physics.robot_locomotors import Turtlebot
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import BuildingScene
-from gibson2.objects.interactive_objects import YCBObject
+from gibson2.objects.base_object import YCBObject
 from gibson2.utils.utils import parse_config
 import pybullet as p
 import numpy as np

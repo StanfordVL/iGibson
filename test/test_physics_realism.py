@@ -7,8 +7,8 @@ from gibson2.external.pybullet_tools.utils import get_center_extent
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import EmptyScene
 from gibson2.core.physics.scene import save_urdfs_without_floating_joints, round_up
-from gibson2.objects.interactive_objects import InteractiveObj
-from gibson2.objects.interactive_objects import VisualMarker
+from gibson2.objects.base_object import InteractiveObj
+from gibson2.objects.base_object import VisualMarker
 from gibson2.utils.utils import rotate_vector_3d
 from IPython import embed
 from PIL import Image

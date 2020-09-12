@@ -1,5 +1,5 @@
 from gibson2.core.physics.scene import StadiumScene
-from gibson2.objects.interactive_objects import YCBObject
+from gibson2.objects.base_object import YCBObject
 from gibson2.core.simulator import Simulator
 
 from gibson2.utils.assets_utils import download_assets
