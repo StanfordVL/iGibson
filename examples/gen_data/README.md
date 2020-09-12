@@ -39,3 +39,4 @@ python generate_floor_map.py <matterport folder>
 python generate_traversable_map.py <matterport folder>
 
 ```
+5. Move `<matterport folder>` to iGibson `dataset`, and you should be able to use it in iGibson.
