@@ -1,18 +1,13 @@
-from gibson2.core.physics.robot_bases import BaseRobot
+from gibson2.robots.robot_bases import BaseRobot
 from gibson2.utils.utils import rotate_vector_3d
 import numpy as np
 import pybullet as p
 import os
 import gym, gym.spaces
-from transforms3d.euler import euler2quat, euler2mat
+from transforms3d.euler import euler2quat
 from transforms3d.quaternions import quat2mat, qmult
-import transforms3d.quaternions as quat
-import sys
-from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_name, set_joint_position, \
-    set_joint_positions, add_data_path, connect, plan_base_motion, plan_joint_motion, enable_gravity, \
-    joint_controller, dump_body, load_model, joints_from_names, user_input, disconnect, get_joint_positions, \
-    get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, \
-    set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_base_values
+from gibson2.external.pybullet_tools.utils import set_joint_positions, joints_from_names
+
 
 class LocomotorRobot(BaseRobot):
     """ Built on top of BaseRobot
