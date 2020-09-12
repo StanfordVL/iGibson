@@ -4,7 +4,7 @@ This document contains steps to convert a matterport scan (it might work with ot
 triangular mesh) to iGibson format.
 
 A typical matterport scan in "matterpak" format has the following file format:
-
+```
 ├── <UUID>_000.jpg
 ├── <UUID>_001.jpg
 ├── <UUID>_002.jpg
@@ -22,7 +22,7 @@ A typical matterport scan in "matterpak" format has the following file format:
 ├── cloud.xyz
 ├── colorplan_000.jpg
 ├── colorplan.pdf
-
+```
 There are a few steps involved in converting this format to iGibson format:
 1. Make sure it is actually in z-up convention. Usually, matterport meshes are already
 following this convention. 
