@@ -1,20 +1,17 @@
 import gibson2
-from gibson2.core.physics.interactive_objects import VisualMarker, InteractiveObj, BoxShape
+from gibson2.objects.interactive_objects import VisualMarker, InteractiveObj
 from gibson2.core.physics.robot_locomotors import Turtlebot
-from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW, cartesian_to_polar
+from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, cartesian_to_polar
 from gibson2.envs.base_env import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
 import argparse
-from transforms3d.quaternions import quat2mat, qmult
+from transforms3d.quaternions import quat2mat
 import gym
 import numpy as np
 import os
 import pybullet as p
-from IPython import embed
-import cv2
 import time
-import collections
 import logging
 
 

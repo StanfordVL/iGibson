@@ -1,8 +1,7 @@
 #!/usr/bin/python
-import argparse
 import os
 import rospy
-from std_msgs.msg import Float32, Int64, Header
+from std_msgs.msg import Header
 from geometry_msgs.msg import PoseStamped, Twist
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import CameraInfo, PointCloud2
@@ -12,8 +11,7 @@ import rospkg
 import numpy as np
 from cv_bridge import CvBridge
 import tf
-from gibson2.envs.locomotor_env import NavigateEnv, NavigateRandomEnv
-import matplotlib.pyplot as plt
+from gibson2.envs.locomotor_env import NavigateEnv
 
 
 class SimNode:
@@ -57,7 +55,7 @@ class SimNode:
 
     @staticmethod
     def add_objects(env):
-        from gibson2.core.physics.interactive_objects import ShapeNetObject
+        from gibson2.objects.interactive_objects import ShapeNetObject
         # obj_path = '/cvgl/group/ShapeNetCore.v2/03001627/1b05971a4373c7d2463600025db2266/models/model_normalized.obj'
         obj_path = '/cvgl/group/ShapeNetCore.v2/03001627/60b3d70238246b3e408442c6701ebe92/models/model_normalized.obj'
         cur_obj = ShapeNetObject(obj_path,

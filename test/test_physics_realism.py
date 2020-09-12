@@ -1,21 +1,15 @@
-import gibson2
 import os
 import pybullet as p
-import pybullet_data
 import numpy as np
-import time
 
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
 from gibson2.external.pybullet_tools.utils import get_center_extent
-from gibson2.core.physics.robot_locomotors import Turtlebot
 from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import EmptyScene, StadiumScene
+from gibson2.core.physics.scene import EmptyScene
 from gibson2.core.physics.scene import save_urdfs_without_floating_joints, round_up
-from gibson2.core.physics.interactive_objects import YCBObject
-from gibson2.core.physics.interactive_objects import InteractiveObj
-from gibson2.core.physics.interactive_objects import VisualMarker
+from gibson2.objects.interactive_objects import InteractiveObj
+from gibson2.objects.interactive_objects import VisualMarker
 from gibson2.utils.utils import rotate_vector_3d
-from gibson2.utils.utils import parse_config
 from IPython import embed
 from PIL import Image
 import json
