@@ -658,7 +658,7 @@ void MeshRendererContext::setup_pbr(std::string shader_path, std::string env_tex
 
     {
         GLuint spmapProgram = linkProgram({
-                                                  compileShader(shader_path + "/spmap_cs.glsl", GL_COMPUTE_SHADER)
+                                                  compileShader(shader_path + "/450/spmap_cs.glsl", GL_COMPUTE_SHADER)
                                           });
 
         m_envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
@@ -687,7 +687,7 @@ void MeshRendererContext::setup_pbr(std::string shader_path, std::string env_tex
     // Compute diffuse irradiance cubemap.
     {
         GLuint irmapProgram = linkProgram({
-                                                  compileShader(shader_path + "/irmap_cs.glsl", GL_COMPUTE_SHADER)
+                                                  compileShader(shader_path + "/450/irmap_cs.glsl", GL_COMPUTE_SHADER)
                                           });
 
         m_irmapTexture = createTexture(GL_TEXTURE_CUBE_MAP, kIrradianceMapSize, kIrradianceMapSize, GL_RGBA16F, 1);
@@ -702,7 +702,7 @@ void MeshRendererContext::setup_pbr(std::string shader_path, std::string env_tex
     // Compute Cook-Torrance BRDF 2D LUT for split-sum approximation.
     {
         GLuint spBRDFProgram = linkProgram({
-                                                   compileShader(shader_path + "spbrdf_cs.glsl", GL_COMPUTE_SHADER)
+                                                   compileShader(shader_path + "/450/spbrdf_cs.glsl", GL_COMPUTE_SHADER)
                                            });
 
         m_spBRDF_LUT = createTexture(GL_TEXTURE_2D, kBRDF_LUT_Size, kBRDF_LUT_Size, GL_RG16F, 1);
