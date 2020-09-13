@@ -429,7 +429,11 @@ class MeshRenderer(object):
         self.device_idx = device_idx
         self.device_minor = device
         self.msaa = msaa
-        if platform.system() == 'Darwin':
+        self.platform = platform.system()
+        if self.platform == 'Darwin' and self.optimized:
+            logging.error('Optimized renderer is not supported on Mac')
+            exit()
+        if self.platform == 'Darwin':
             from gibson2.core.render.mesh_renderer import GLFWRendererContext
             self.r = GLFWRendererContext.GLFWRendererContext(width, height)
         else:
@@ -452,22 +456,31 @@ class MeshRenderer(object):
             exit(1)
         else:
 
-            if self.optimized:
+            if self.platform == 'Darwin':
                 self.shaderProgram = self.r.compile_shader_meshrenderer(
                     "".join(open(
                         os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders/optimized_vert.shader')).readlines()),
+                                     'shaders/410/vert.shader')).readlines()),
                     "".join(open(
                         os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders/optimized_frag.shader')).readlines()))
+                                     'shaders/410/frag.shader')).readlines()))
             else:
-                self.shaderProgram = self.r.compile_shader_meshrenderer(
+                if self.optimized:
+                    self.shaderProgram = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                        'shaders/vert.shader')).readlines()),
+                                         'shaders/450/optimized_vert.shader')).readlines()),
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                        'shaders/frag.shader')).readlines()))
+                                         'shaders/450/optimized_frag.shader')).readlines()))
+                else:
+                    self.shaderProgram = self.r.compile_shader_meshrenderer(
+                            "".join(open(
+                                os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                            'shaders/450/vert.shader')).readlines()),
+                            "".join(open(
+                                os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                            'shaders/450/frag.shader')).readlines()))
 
         # default light looking down and tilted
         self.set_light_position_direction([0, 0, 2], [0, 0.5, 0])
@@ -487,7 +500,8 @@ class MeshRenderer(object):
         self.mesh_materials = []
 
         self.env_texture_filename = env_texture_filename
-        self.setup_pbr()
+        if not self.platform == 'Darwin':
+            self.setup_pbr()
 
     def setup_pbr(self):
         if os.path.exists(self.env_texture_filename):
