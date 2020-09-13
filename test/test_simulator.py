@@ -1,6 +1,6 @@
 from gibson2.scenes.scene import StadiumScene
 from gibson2.objects.base_object import YCBObject
-from gibson2.core.simulator import Simulator
+from gibson2.simulator import Simulator
 
 from gibson2.utils.assets_utils import download_assets
 
