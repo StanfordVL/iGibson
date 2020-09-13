@@ -1,4 +1,4 @@
-from gibson2.robots.robot_bases import BaseRobot
+from gibson2.robots.robot_base import BaseRobot
 from gibson2.utils.utils import rotate_vector_3d
 import numpy as np
 import pybullet as p
