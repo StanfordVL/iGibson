@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 
 
 class Viewer:

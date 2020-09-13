@@ -2,8 +2,8 @@ import cv2
 import sys
 import os
 import numpy as np
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
-from gibson2.core.render.profiler import Profiler
+from gibson2.render.mesh_renderer import MeshRenderer
+from gibson2.render import Profiler
 from gibson2.utils.assets_utils import get_model_path
 
 

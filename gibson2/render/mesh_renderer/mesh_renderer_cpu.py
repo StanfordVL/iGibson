@@ -1,20 +1,16 @@
 import logging
 import platform
-from gibson2.core.render.mesh_renderer import tinyobjloader
+from gibson2.render.mesh_renderer import tinyobjloader
 import gibson2
 import pybullet as p
-import gibson2.core.render.mesh_renderer as mesh_renderer
-from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
-from gibson2.core.render.mesh_renderer import EGLRendererContext
-from transforms3d.euler import quat2euler, mat2euler
-from transforms3d.quaternions import axangle2quat, mat2quat
-from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
+import gibson2.render.mesh_renderer as mesh_renderer
+from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
+from gibson2.render.mesh_renderer import EGLRendererContext
+from gibson2.render.mesh_renderer import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz
 import numpy as np
-import cv2
 import os
 import sys
-import ctypes
 
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
@@ -430,7 +426,7 @@ class MeshRenderer(object):
         self.device_minor = device
         self.msaa = msaa
         if platform.system() == 'Darwin':
-            from gibson2.core.render.mesh_renderer import GLFWRendererContext
+            from gibson2.render.mesh_renderer import GLFWRendererContext
             self.r = GLFWRendererContext.GLFWRendererContext(width, height)
         else:
             self.r = EGLRendererContext.EGLRendererContext(
@@ -464,10 +460,10 @@ class MeshRenderer(object):
                 self.shaderProgram = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                        'shaders/vert.shader')).readlines()),
+                                         'shaders/vert.shader')).readlines()),
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                        'shaders/frag.shader')).readlines()))
+                                         'shaders/frag.shader')).readlines()))
 
         # default light looking down and tilted
         self.set_light_position_direction([0, 0, 2], [0, 0.5, 0])

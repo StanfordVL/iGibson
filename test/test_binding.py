@@ -1,5 +1,5 @@
-from gibson2.core.render.mesh_renderer import MeshRendererContext
-from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
+from gibson2.render.mesh_renderer import MeshRendererContext
+from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
 
 
 def test_device():

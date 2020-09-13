@@ -2,7 +2,7 @@ from gibson2.robots.robot_locomotors import Fetch
 from gibson2.simulator import Simulator
 from gibson2.scenes.scene import EmptyScene
 from gibson2.utils.utils import parse_config
-from gibson2.core.render.profiler import Profiler
+from gibson2.render import Profiler
 
 import pybullet as p
 from gibson2.external.pybullet_tools.utils import set_joint_positions, joints_from_names, get_joint_positions, \

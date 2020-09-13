@@ -1,9 +1,8 @@
-import cv2
 import sys
 import os
 import numpy as np
-from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
-from gibson2.core.render.profiler import Profiler
+from gibson2.render.mesh_renderer import MeshRendererG2G
+from gibson2.render import Profiler
 from gibson2.utils.assets_utils import get_model_path
 import matplotlib.pyplot as plt
 

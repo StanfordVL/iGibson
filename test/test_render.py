@@ -1,7 +1,6 @@
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.render.mesh_renderer import MeshRenderer
 import numpy as np
 import os
-import matplotlib.pyplot as plt
 import gibson2
 import GPUtil
 
