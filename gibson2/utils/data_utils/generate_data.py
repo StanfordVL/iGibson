@@ -1,26 +1,13 @@
 import numpy as np
 import ctypes as ct
-import cv2
-import sys
 import argparse
-from gibson2.data_utils.datasets import ViewDataSet3D
-import torch
-from torchvision import datasets, transforms
-from torch.autograd import Variable
-import time
-from numpy import cos, sin
-import matplotlib.pyplot as plt
+from gibson2.utils.data_utils.datasets import ViewDataSet3D
 from PIL import Image
 import os
 import time
-from multiprocessing import Pool, cpu_count
-from scipy.signal import convolve2d
-from scipy.interpolate import griddata
-import scipy
-import torch.nn.functional as F
-from torchvision import transforms
+from multiprocessing import Pool
 
-dll = np.ctypeslib.load_library('../core/render/render_cuda_f', '.')
+dll = np.ctypeslib.load_library('../core/render/render_cuda_f', '')
 
 # In[6]:
 
