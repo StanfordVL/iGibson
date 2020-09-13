@@ -2,7 +2,7 @@
 
 ### Overview
 
-We developed our own MeshRenderer that supports customizable camera configuration and various image modalities, and renders at a lightening speed. Specifically, you can specify image width, height and vertical field of view in the constructor of `class MeshRenderer`. Then you can call `renderer.render(modes=('rgb', 'normal', 'seg', '3d'))` to retrieve the images. Currently we support four different image modalities: RGB, surface normal, semantic segmentation and 3D point cloud (z-channel can be extracted as depth map). Most of the code can be found in [gibson2/core/render](https://github.com/StanfordVL/iGibson/tree/master/gibson2/core/render).
+We developed our own MeshRenderer that supports customizable camera configuration and various image modalities, and renders at a lightening speed. Specifically, you can specify image width, height and vertical field of view in the constructor of `class MeshRenderer`. Then you can call `renderer.render(modes=('rgb', 'normal', 'seg', '3d'))` to retrieve the images. Currently we support four different image modalities: RGB, surface normal, semantic segmentation and 3D point cloud (z-channel can be extracted as depth map). Most of the code can be found in [gibson2/render](https://github.com/StanfordVL/iGibson/tree/master/gibson2/render).
 
 ### Examples
 

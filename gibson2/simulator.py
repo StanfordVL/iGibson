@@ -1,14 +1,12 @@
-from gibson2.render.mesh_renderer import MeshRenderer, InstanceGroup, Instance, quat2rotmat,\
-    xyz2mat, xyzw2wxyz
-from gibson2.render.mesh_renderer import MeshRendererG2G
-from gibson2.render import Viewer
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance
+from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
+from gibson2.render.viewer import Viewer
 import pybullet as p
 import gibson2
 import os
 import numpy as np
 import platform
 import logging
-
 
 class Simulator:
     def __init__(self,

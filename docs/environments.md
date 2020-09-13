@@ -142,7 +142,7 @@ It's also fairly straighforward to cusutomize your own environment.
 - Want to change reward function? Modify `get_reward`.
 - Want to change termination condition? Modify `get_termination`.
 - Want to modify episode reset logic? Modify `reset` and `reset_agent`.
-- Want to add additional objects or robots into the scene? Check out `load_interactive_objects` and `load_dynamic_objects` in `NavigateRandomEnvSim2Real`. If these are brand-new objects and robots that are not in iGibson yet, you might also need to change [gibson2/core/physics/robot_locomotors.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/physics/robot_locomotors.py) and [gibson2/core/physics/interactive_objects.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/physics/interactive_objects.py).
+- Want to add additional objects or robots into the scene? Check out `load_interactive_objects` and `load_dynamic_objects` in `NavigateRandomEnvSim2Real`. If these are brand-new objects and robots that are not in iGibson yet, you might also need to change [gibson2/physics/robot_locomotors.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/robot_locomotors.py) and [gibson2/physics/interactive_objects.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/interactive_objects.py).
 
 ### Examples
 
@@ -191,7 +191,7 @@ In this example, we show how to instantiate `NavigateRandomEnv` with an interact
 In this example, we show a customized environment `NavigateRandomEnvSim2Real` that builds on top of `NavigateRandomEnv`. We created this environment for [our CVPR2020 Sim2Real Challenge with iGibson](http://svl.stanford.edu/igibson/challenge.html). You should consider participating. :)
 
 Here are the custimizations that we did:
-- We added a new robot `Locobot` to [gibson2/core/physics/robot_locomotors.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/physics/robot_locomotors.py)
+- We added a new robot `Locobot` to [gibson2/physics/robot_locomotors.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/robot_locomotors.py)
 - We added additional objects into the scene: `load_interactive_objects` in `NavigateRandomEnvSim2Real`
 - We added dynamic objects (another Turtlebot) into the scene: `reset_dynamic_objects` and `step_dynamic_objects` in `NavigateRandomEnvSim2Real`
 

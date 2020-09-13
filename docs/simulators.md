@@ -10,9 +10,9 @@ Some key functions are the following:
 - `import_{object, articulated_object, robot}`: import the object, articulated object and robot into the simulator in a similar manner
 - `sync`: synchronize the poses of the dynamic objects (including the robots) between PyBullet and MeshRenderer. Specifically, it calls `update_position` for each object, in which it retrieve the object's pose in PyBullet, and then update its pose accordingly in MeshRenderer.
 
-If `Simulator` uses `gui` mode, by default it will also maintain a `Viewer`, which essentially is a virtual camera in the scene that can render images. More info about the `Viewer` can be found here: [gibson2/core/render/viewer.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/render/viewer.py).
+If `Simulator` uses `gui` mode, by default it will also maintain a `Viewer`, which essentially is a virtual camera in the scene that can render images. More info about the `Viewer` can be found here: [gibson2/render/viewer.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/render/viewer.py).
 
-Most of the code can be found here: [gibson2/core/simulator.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/simulator.py).
+Most of the code can be found here: [gibson2/simulator.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/simulator.py).
 
 ### Examples
 In this example, we import a `BuildingScene`, a `Turtlebot`, and ten `YCBObject` into the simulator. The code can be found here: [examples/demo/simulator_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/simulator_example.py)

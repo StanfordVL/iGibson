@@ -1,5 +1,5 @@
 import numpy as np
-from gibson2.render.mesh_renderer import MeshRenderer
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from gibson2.render.mesh_renderer.get_available_devices import get_cuda_device
 import logging
 

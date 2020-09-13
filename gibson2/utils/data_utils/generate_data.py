@@ -7,7 +7,7 @@ import os
 import time
 from multiprocessing import Pool
 
-dll = np.ctypeslib.load_library('../core/render/render_cuda_f', '')
+dll = np.ctypeslib.load_library('../render/render_cuda_f', '')
 
 # In[6]:
 
