@@ -19,7 +19,7 @@ Most of the code can be found here: [gibson2/physics/interactive_objects.py](htt
 In this example, we import three objects into PyBullet, two of which are articulated objects. The code can be found here: [examples/demo/object_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/object_example.py).
 
 ```python
-from gibson2.objects.base_object import InteractiveObj, YCBObject
+from gibson2.objects.object_base import InteractiveObj, YCBObject
 import gibson2
 import os
 import pybullet as p

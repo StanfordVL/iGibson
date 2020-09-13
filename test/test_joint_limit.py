@@ -7,7 +7,7 @@ from gibson2.utils.utils import quatToXYZW
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
 from gibson2.external.pybullet_tools.utils import get_center_extent
 from gibson2.simulator import Simulator
-from gibson2.objects.base_object import InteractiveObj
+from gibson2.objects.object_base import InteractiveObj
 from PIL import Image
 import json
 
