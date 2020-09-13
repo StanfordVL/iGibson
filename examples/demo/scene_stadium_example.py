@@ -1,4 +1,4 @@
-from gibson2.scenes.scene import StadiumScene
+from gibson2.scenes.scene_base import StadiumScene
 import pybullet as p
 import time
 

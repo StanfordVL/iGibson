@@ -1,6 +1,6 @@
 from gibson2.robots.robot_locomotors import Turtlebot
 from gibson2.simulator import Simulator
-from gibson2.scenes.scene import BuildingScene
+from gibson2.scenes.scene_base import BuildingScene
 from gibson2.utils.utils import parse_config
 import os
 import gibson2
