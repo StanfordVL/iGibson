@@ -1,6 +1,6 @@
 from gibson2.robots.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Quadrotor, Fetch
 from gibson2.simulator import Simulator
-from gibson2.scenes.scene import StadiumScene
+from gibson2.scenes.scene_base import StadiumScene
 from gibson2.utils.utils import parse_config
 import pybullet as p
 import numpy as np
