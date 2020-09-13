@@ -1,19 +1,14 @@
 from __future__ import print_function
 import torch.utils.data as data
 from PIL import Image
-import os, time
+import os
 import os.path
 from multiprocessing import Pool
 from functools import partial
-from gibson2.core.render.profiler import Profiler
-import errno
 import torch
-import json
-import codecs
 import cv2
 import numpy as np
 import ctypes as ct
-import sys
 from tqdm import tqdm
 import torchvision.transforms as transforms
 import argparse

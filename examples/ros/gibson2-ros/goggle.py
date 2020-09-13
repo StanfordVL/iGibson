@@ -2,26 +2,20 @@
 import argparse
 import os
 import rospy
-from std_msgs.msg import Float32, Int64
-from geometry_msgs.msg import Twist
-from sensor_msgs.msg import Image, CameraInfo
+from sensor_msgs.msg import Image
 from nav_msgs.msg import Odometry
 import rospkg
 import numpy as np
 from cv_bridge import CvBridge
-from torchvision import datasets, transforms
+from torchvision import transforms
 
 import tf
 
 import gym
 #import pygame
-import sys
-import time
-import matplotlib
 import time
 import pygame
-import pybullet as p
-from gibson2.core.render.profiler import Profiler
+from gibson2.render import Profiler
 from gibson2.learn.completion import CompletionNet
 import cv2
 import torch.nn as nn

@@ -25,7 +25,7 @@ from gibson2.objects.base_object import YCBObject
 from gibson2.utils.utils import parse_config
 import pybullet as p
 import numpy as np
-from gibson2.core.render.profiler import Profiler
+from gibson2.render import Profiler
 
 
 def main():

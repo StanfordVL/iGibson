@@ -1,12 +1,8 @@
 import gym
 #import pygame
-import sys
-import time
-import matplotlib
 import time
 import pygame
-import pybullet as p
-from gibson2.core.render.profiler import Profiler
+from gibson2.render import Profiler
 '''
 try:
     matplotlib.use('GTK3Agg')
@@ -19,7 +15,6 @@ except Exception:
 
 from collections import deque
 #from pygame.locals import HWSURFACE, DOUBLEBUF, RESIZABLE, VIDEORESIZE
-from threading import Thread
 
 
 def display_arr(screen, arr, video_size, transpose):

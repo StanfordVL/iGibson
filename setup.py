@@ -60,9 +60,9 @@ class CMakeBuild(build_ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
         cmake_args = [
             '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/core/render/mesh_renderer'),
+            os.path.join(extdir, 'gibson2/render/mesh_renderer'),
             '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/core/render/mesh_renderer', 'build'),
+            os.path.join(extdir, 'gibson2/render/mesh_renderer', 'build'),
             '-DPYTHON_EXECUTABLE=' + sys.executable
         ]
 
