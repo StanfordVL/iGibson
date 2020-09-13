@@ -19,7 +19,7 @@ In this example, we import a `BuildingScene`, a `Turtlebot`, and ten `YCBObject`
 
 ```python
 from gibson2.robots.robot_locomotors import Turtlebot
-from gibson2.core.simulator import Simulator
+from gibson2.simulator import Simulator
 from gibson2.scenes.scene import BuildingScene
 from gibson2.objects.base_object import YCBObject
 from gibson2.utils.utils import parse_config

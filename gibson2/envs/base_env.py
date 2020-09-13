@@ -1,6 +1,6 @@
 from gibson2.robots.robot_locomotors \
     import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot
-from gibson2.core.simulator import Simulator
+from gibson2.simulator import Simulator
 from gibson2.scenes.scene import EmptyScene, StadiumScene, BuildingScene
 from gibson2.utils.utils import parse_config
 import gym
