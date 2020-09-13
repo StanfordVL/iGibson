@@ -233,7 +233,7 @@ class ViewDataSet3D(data.Dataset):
         self.dll = None
 
         if not self.off_pc_render:
-            self.dll = np.ctypeslib.load_library('render', '.')
+            self.dll = np.ctypeslib.load_library('render', '')
 
         if overwrite_fofn or not os.path.isfile(self.fofn):
 
