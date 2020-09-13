@@ -15,7 +15,7 @@ import gym
 #import pygame
 import time
 import pygame
-from gibson2.render import Profiler
+from gibson2.render.profiler import Profiler
 from gibson2.learn.completion import CompletionNet
 import cv2
 import torch.nn as nn

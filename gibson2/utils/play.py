@@ -2,7 +2,7 @@ import gym
 #import pygame
 import time
 import pygame
-from gibson2.render import Profiler
+from gibson2.render.profiler import Profiler
 '''
 try:
     matplotlib.use('GTK3Agg')
