@@ -136,12 +136,12 @@ setup(
             'pytest',
             'future',
     ],
-    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/core/render')],
+    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/render')],
     cmdclass=dict(build_ext=CMakeBuild),
     tests_require=[],
     package_data={'': [
     'gibson2/global_config.yaml',
-    'gibson2/core/render/mesh_renderer/shaders/*'
+    'gibson2/render/mesh_renderer/shaders/*'
     ]},
     include_package_data=True,
 )   #yapf: disable

@@ -8,6 +8,7 @@ download_assets()
 download_demo_data()
 
 def test_env():
+    print("Test env")
     config_filename = os.path.join(gibson2.root_path, '../test/test_house.yaml')
     nav_env = NavigateEnv(config_file=config_filename, mode='headless')
     try:

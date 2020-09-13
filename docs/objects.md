@@ -13,7 +13,7 @@ We provide a wide variety of **Objects** that can be imported into the **Simulat
 
 Typically, they take in the name or the path of an object (in `gibson2.assets_path`) and provide a `load` function that be invoked externally (usually by `import_object` and `import_articulated_object` of `Simulator`). The `load` function imports the object into PyBullet. Some **Objects** (e.g. `InteractiveObj`) also provide APIs to get and set the object pose.
 
-Most of the code can be found here: [gibson2/core/physics/interactive_objects.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/physics/interactive_objects.py).
+Most of the code can be found here: [gibson2/physics/interactive_objects.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/interactive_objects.py).
 
 ### Examples
 In this example, we import three objects into PyBullet, two of which are articulated objects. The code can be found here: [examples/demo/object_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/object_example.py).

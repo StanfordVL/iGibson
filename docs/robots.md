@@ -38,7 +38,7 @@ def apply_robot_action(action):
 ```
 Note that `robot_action` is a normalized joint velocity, i.e. `robot_action[n] == 1.0` means executing the maximum joint velocity for the nth joint. The limits of joint position, velocity and torque are extracted from the URDF file of the robot.
 
-Most of the code can be found here: [gibson2/core/physics/robot_locomotors.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/physics/robot_locomotors.py).
+Most of the code can be found here: [gibson2/physics/robot_locomotors.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/robot_locomotors.py).
 
 ### Examples
 In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: [examples/demo/robot_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/robot_example.py).

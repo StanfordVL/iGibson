@@ -14,7 +14,7 @@ To be more specific, the `load` function of `BuildingScene`
 - loads the scene objects and places them in their original locations if the scene is interactive
 - provides APIs for sampling a random location in the scene, and for computing the shortest path between two locations in the scene.
 
-Most of the code can be found here: [gibson2/core/physics/scene.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/physics/scene.py).
+Most of the code can be found here: [gibson2/physics/scene.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/scene.py).
 
 ### Examples
 

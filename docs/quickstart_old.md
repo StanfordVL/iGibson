@@ -61,7 +61,7 @@ Coding Your RL Agent
 ====
 You can code your RL agent following our convention. The interface with our environment is very simple (see some examples in the end of this section).
 
-First, you can create an environment by creating an instance of classes in `gibson/core/envs` folder. 
+First, you can create an environment by creating an instance of classes in `gibson/envs` folder. 
 
 
 ```python
@@ -105,7 +105,7 @@ Each environment is configured with a `yaml` file. Examples of `yaml` files can 
 |fast_lq_render| true/false| if there is fast_lq_render in yaml file, Gibson will use a smaller filler network, this will render faster but generate slightly lower quality camera output. This option is useful for training RL agents fast. |
 
 #### Making Your Customized Environment
-Gibson provides a set of methods for you to define your own environments. You can follow the existing environments inside `gibson/core/envs`.
+Gibson provides a set of methods for you to define your own environments. You can follow the existing environments inside `gibson/envs`.
 
 | Method name        | Usage           |
 |:------------------:|:---------------------------|
