@@ -1,4 +1,4 @@
-from gibson2.core.physics.scene import BuildingScene
+from gibson2.scenes.scene import BuildingScene
 import pybullet as p
 import numpy as np
 import time
