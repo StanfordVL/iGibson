@@ -4,7 +4,7 @@ import numpy as np
 from time import time
 import gibson2
 import os
-from gibson2.render import Profiler
+from gibson2.render.profiler import Profiler
 import logging
 
 #logging.getLogger().setLevel(logging.DEBUG) #To increase the level of logging

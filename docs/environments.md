@@ -161,7 +161,7 @@ import numpy as np
 from time import time
 import gibson2
 import os
-from gibson2.render import Profiler
+from gibson2.render.profiler import Profiler
 
 
 def main():
