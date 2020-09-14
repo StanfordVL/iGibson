@@ -287,8 +287,10 @@ class VrHand(InteractiveObj):
     Itip
     """
 
-    def __init__(self, scale=1, start_pos=[0,0,0], leftHand=False):
+    def __init__(self, scale=1, start_pos=[0,0,0], leftHand=False, replayMode=False):
         self.leftHand = leftHand
+        # Indicates whether this is data replay or not
+        self.replayMode = replayMode
         self.filename = vr_hand_left_path if leftHand else vr_hand_right_path
         super().__init__(self.filename)
         self.scale = scale
@@ -325,7 +327,9 @@ class VrHand(InteractiveObj):
             p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=open_pos, force=500)
         # Keep base light for easier hand movement
         p.changeDynamics(self.body_id, -1, mass=0.05, lateralFriction=0.8)
-        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.start_pos)
+        # Only add constraints when we aren't replaying data (otherwise the constraints interfere with data replay)
+        if not self.replayMode:
+            self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.start_pos)
 
         return self.body_id
 
