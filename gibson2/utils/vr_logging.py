@@ -48,8 +48,6 @@ import numpy as np
 import pybullet as p
 import time
 
-# TODO: Add a profiling mode to see how long saving takes?
-# TODO: Does it only save new bits? Does time to save increase as the demos increase in length? TEST THIS!
 class VRLogWriter():
     # TIMELINE: Initialize the VRLogger just before simulation starts, once all bodies have been loaded
     def __init__(self, frames_before_write, log_filepath, profiling_mode=False):

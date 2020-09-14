@@ -20,7 +20,7 @@ scene = BuildingScene('Placida', is_interactive=False)
 scene.sleep = optimize
 s.import_scene(scene)
 
-rHand = VrHand(start_pos=[0.0, 0.5, 1.5], leftHand=False)
+rHand = VrHand(start_pos=[0.0, 0.5, 1.5], leftHand=False, replayMode=True)
 s.import_articulated_object(rHand)
 
 # Heavy mustard

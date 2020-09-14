@@ -46,15 +46,11 @@ vr_log_path = 'vr_logs/vr_demo_save.h5'
 # Saves every 2 seconds or so
 vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=True)
 
-# 2000 frames is approximately 20-30 seconds of data collection
+# 2000 frames corresponds to approximately 20-30 seconds of data collection
 for i in range(2000):
     s.step(shouldPrintTime=False)
 
-    hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')
-    lIsValid, lTrans, lRot = s.getDataForVRDevice('left_controller')
     rIsValid, rTrans, rRot = s.getDataForVRDevice('right_controller')
-
-    lTrig, lTouchX, lTouchY = s.getButtonDataForController('left_controller')
     rTrig, rTouchX, rTouchY = s.getButtonDataForController('right_controller')
 
     if rIsValid:
