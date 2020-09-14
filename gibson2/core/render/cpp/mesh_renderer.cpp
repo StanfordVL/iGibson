@@ -635,7 +635,7 @@ void MeshRendererContext::setup_pbr(std::string shader_path, std::string env_tex
     // Load & convert equirectangular environment map to a cubemap texture.
     {
         GLuint equirectToCubeProgram = linkProgram({
-                                                           compileShader(shader_path + "equirect2cube_cs.glsl",
+                                                           compileShader(shader_path + "/450/equirect2cube_cs.glsl",
                                                                          GL_COMPUTE_SHADER)
                                                    });
 
