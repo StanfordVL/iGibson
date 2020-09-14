@@ -142,6 +142,11 @@ class MeshRendererVR():
     def get_view_proj(self):
         return [self.renderer.V, self.renderer.P]
 
+    # Set view and projection matrices in renderer
+    def set_view_proj(self, v_to_set, p_to_set):
+        self.renderer.V = v_to_set
+        self.renderer.P = p_to_set
+
     # Releases VR system and renderer
     def release(self):
         self.renderer.release()

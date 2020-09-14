@@ -287,7 +287,7 @@ class VrHand(InteractiveObj):
     Itip
     """
 
-    def __init__(self, scale=1, start_pos=[0,0,0], leftHand=True):
+    def __init__(self, scale=1, start_pos=[0,0,0], leftHand=False):
         self.leftHand = leftHand
         self.filename = vr_hand_left_path if leftHand else vr_hand_right_path
         super().__init__(self.filename)
