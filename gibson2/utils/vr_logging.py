@@ -292,7 +292,6 @@ class VRLogReader():
         s.renderer.set_view_proj(cam_view, cam_proj)
 
         # Then we update the physics
-        # TODO: Some kind of bug here!
         for pb_id in self.pb_ids:
             id_name = 'body_id_{0}'.format(pb_id)
             id_data = self.hf['physics_data/' + id_name][self.frame_counter]
