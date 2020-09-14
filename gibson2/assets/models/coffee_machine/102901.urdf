@@ -1,0 +1,101 @@
+<?xml version="1.0" ?>
+<robot name="102901" version="1.0">
+  <link name="link_0">
+    <visual name="link_0___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0"/>
+      <geometry>
+        <mesh filename="shape/visual/link_0_m1_vm.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0"/>
+      <geometry>
+        <mesh filename="shape/collision/link_0_cm.obj"/>
+      </geometry>
+    </collision>
+    <visual name="link_1___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0"/>
+      <geometry>
+        <mesh filename="shape/visual/link_1_m1_vm.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0"/>
+      <geometry>
+        <mesh filename="shape/collision/link_1_cm.obj"/>
+      </geometry>
+    </collision>
+    <visual name="link_2___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0"/>
+      <geometry>
+        <mesh filename="shape/visual/link_2_m1_vm.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0"/>
+      <geometry>
+        <mesh filename="shape/collision/link_2_cm.obj"/>
+      </geometry>
+    </collision>
+    <visual name="link_3___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0"/>
+      <geometry>
+        <mesh filename="shape/visual/link_3_m1_vm.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0"/>
+      <geometry>
+        <mesh filename="shape/collision/link_3_cm.obj"/>
+      </geometry>
+    </collision>
+    <visual name="link_6___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.00905675667094396 0.47 -0.34"/>
+      <geometry>
+        <mesh filename="shape/visual/link_6_m1_vm.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.00905675667094396 0.47 -0.34"/>
+      <geometry>
+        <mesh filename="shape/collision/link_6_cm.obj"/>
+      </geometry>
+    </collision>
+    <visual name="link_7___1">
+      <origin rpy="0.0 0.0 0.0" xyz="-0.12755126271929823 -0.0 -0.36910473728070176"/>
+      <geometry>
+        <mesh filename="shape/visual/link_7_m1_vm.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="-0.12755126271929823 -0.0 -0.36910473728070176"/>
+      <geometry>
+        <mesh filename="shape/collision/link_7_cm.obj"/>
+      </geometry>
+    </collision>
+    <visual name="link_8___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.14566473728070178 -0.0 -0.36910473728070176"/>
+      <geometry>
+        <mesh filename="shape/visual/link_8_m1_vm.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.14566473728070178 -0.0 -0.36910473728070176"/>
+      <geometry>
+        <mesh filename="shape/collision/link_8_cm.obj"/>
+      </geometry>
+    </collision>
+    <visual name="link_9___2">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0"/>
+      <geometry>
+        <mesh filename="shape/visual/link_9_m2_vm.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0"/>
+      <geometry>
+        <mesh filename="shape/collision/link_9_cm.obj"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>

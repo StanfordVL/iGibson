@@ -82,7 +82,9 @@ class KitchenCoffee(TableTop):
         set_friction(o.body_id)
         self.objects.add_object("mug", o)
 
-        o = Faucet(num_beads=10, dispense_freq=1, beads_color=(111 / 255, 78 / 255, 55 / 255, 1))
+        o = Faucet(num_beads=10, dispense_freq=1,
+                   beads_color=(111 / 255, 78 / 255, 55 / 255, 1),
+                   base_color=(150 / 255, 100 / 255, 75 / 255, 1))
         o.load()
         self.objects.add_object("faucet_coffee", o)
         self.interactive_objects.add_object("faucet_coffee", o)
@@ -220,7 +222,8 @@ class KitchenCoffeeAP(KitchenCoffee):
         for _ in range(horizon):
             object_name = np.random.choice(self.objects.names)
             skill_name = np.random.choice(list(param_set.keys()))
-            skeleton.append((skeleton[skill_name], object_name))
+            skeleton.append((param_set[skill_name], object_name))
+        return skeleton
 
     def get_task_skeleton(self):
         param_seq = []
@@ -251,6 +254,31 @@ class KitchenCoffeeAP(KitchenCoffee):
             self._task_object_name
         ))
         return param_seq
+
+
+class KitchenCoffeeTwoBowlAP(KitchenCoffeeAP):
+    def _create_objects(self):
+        super(KitchenCoffeeTwoBowlAP, self)._create_objects()
+        o = YCBObject('024_bowl')
+        o.load()
+        p.changeDynamics(o.body_id, -1, mass=10.0)
+        self.objects.add_object("bowl/1", o, category="bowl")
+
+    def _reset_objects(self):
+        z = PBU.stable_z(self.objects["mug"].body_id, self.fixtures["table"].body_id)
+        self.objects["mug"].set_position_orientation(
+            PU.sample_positions_in_box([0.2, 0.3], [-0.2, -0.1], [z, z]), PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["faucet_coffee"].body_id, self.fixtures["table"].body_id)
+        pos = PU.sample_positions_in_box([0.2, 0.3], [0.1, 0.2], [z, z])
+        coffee_pos = pos + np.array([0, 0.075, 0])
+        milk_pos = pos + np.array([0, -0.075, 0])
+        self.objects["faucet_coffee"].set_position_orientation(coffee_pos, PBU.unit_quat())
+        self.objects["faucet_milk"].set_position_orientation(milk_pos, PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["bowl"].body_id, self.fixtures["table"].body_id)
+        self.objects["bowl"].set_position_orientation(
+            PU.sample_positions_in_box([-0.3, -0.2], [-0.05, 0.05], [z, z]), PBU.unit_quat())
 
 
 class SimpleCoffeeAP(KitchenCoffee):
@@ -318,7 +346,8 @@ class SimpleCoffeeAP(KitchenCoffee):
         for _ in range(horizon):
             object_name = np.random.choice(self.objects.names)
             skill_name = np.random.choice(list(param_set.keys()))
-            skeleton.append((skeleton[skill_name], object_name))
+            skeleton.append((param_set[skill_name], object_name))
+        return skeleton
 
     def get_task_skeleton(self):
         param_seq = [(
@@ -378,6 +407,10 @@ class Kitchen(BaseEnv):
         set_friction(can.body_id)
         self.objects.add_object("can", can)
 
+        cm = InteractiveObj(filename=os.path.join(gibson2.assets_path, "models/coffee_machine/102901.urdf"), scale=0.1)
+        cm.load()
+        self.objects.add_object("coffee_machine", cm)
+
     def _reset_objects(self):
         z = PBU.stable_z(self.objects["stove"].body_id, self.fixtures["platform1"].body_id)
         self.objects["stove"].set_position_orientation(
@@ -385,6 +418,10 @@ class Kitchen(BaseEnv):
 
         z = PBU.stable_z(self.objects["can"].body_id, self.objects["drawer"].body_id, surface_link=2) - 0.15
         self.objects["can"].set_position_orientation(
+            PU.sample_positions_in_box([0.2, 0.2], [0.0, 0.0], [z, z]), PBU.unit_quat())
+
+        z = PBU.stable_z(self.objects["coffee_machine"].body_id, self.objects["drawer"].body_id)
+        self.objects["coffee_machine"].set_position_orientation(
             PU.sample_positions_in_box([0.2, 0.2], [0.0, 0.0], [z, z]), PBU.unit_quat())
 
 

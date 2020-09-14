@@ -52,7 +52,7 @@ def record_demos(args):
         env.reset()
         try:
             # buffer, plan_exception = env.get_demo_suboptimal(noise=ACTION_NOISE if args.perturb_demo else None)
-            skeleton = env.get_task_skeleton()
+            skeleton = env.get_random_skeleton(10)
             buffer, plan_exception = env.execute_skeleton(skeleton)
             if plan_exception is not None:
                 if not args.keep_interrupted_demos:
@@ -311,6 +311,7 @@ def view_scene(args):
         use_skills=True,
         use_gui=args.gui
     )
+    env.reset()
 
     while True:
         p.stepSimulation()
