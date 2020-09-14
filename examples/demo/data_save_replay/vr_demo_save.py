@@ -1,15 +1,14 @@
+# Stores PyBullet and VR data using the hdf5 file format
 import pybullet as p
 import numpy as np
-import h5py
 
 from gibson2.core.physics.scene import BuildingScene
-from gibson2.core.physics.interactive_objects import InteractiveObj, VrHand
+from gibson2.core.physics.interactive_objects import InteractiveObj, VrHand, YCBObject
 from gibson2.core.simulator import Simulator
 from gibson2 import assets_path
-from vr_logger import VRLogWriter
+from gibson2.utils.vr_logging import VRLogWriter
 
 model_path = assets_path + '\\models'
-sample_urdf_folder = model_path + '\\sample_urdfs\\'
 
 optimize = True
 
@@ -18,31 +17,24 @@ scene = BuildingScene('Placida', is_interactive=False)
 scene.sleep = optimize
 s.import_scene(scene)
 
-rHand = VrHand(start_pos=[0.0, 0.5, 1.5])
+rHand = VrHand(start_pos=[0.0, 0.5, 1.5], leftHand=False)
 s.import_articulated_object(rHand)
 
-model = InteractiveObj(sample_urdf_folder + 'object_H3ygj6efM8V.urdf')
-s.import_object(model)
-model.set_position([1,0,2])
+# Heavy mustard
+heavy_bottle = YCBObject('006_mustard_bottle')
+s.import_object(heavy_bottle)
+heavy_bottle.set_position([1, -0.4, 1])
+p.changeDynamics(heavy_bottle.body_id, -1, mass=500)
+
+# Light mustard
+light_bottle = YCBObject('006_mustard_bottle')
+s.import_object(light_bottle)
+light_bottle.set_position([1, -0.6, 1])
 
 if optimize:
     s.optimize_data()
 
 s.setVROffset([1.0, 0, -0.4])
-
-# HDF5 test:
-d1 = np.random.random(size = (1000,20))
-hf = h5py.File('data/data.h5', 'w')
-hf.create_dataset('dataset_1', data=d1)
-
-# Write file to disk
-hf.close()
-
-hf = h5py.File('data/data.h5', 'r')
-n1 = hf.get('dataset_1')
-n1 = np.array(n1)
-print(n1)
-hf.close()
 
 # The VRLogWriter has a simple interface:
 # all we have to do is initialize it
@@ -50,10 +42,12 @@ hf.close()
 # each frame to record data.
 # Data is automatically flushed every
 # frames_before_write frames to hdf5.
-vr_writer = VRLogWriter(frames_before_write=5)
+vr_log_path = 'vr_logs/vr_demo_save.h5'
+# Saves every 2 seconds or so
+vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=True)
 
-# Small number of frames to test log writer class!
-for i in range(8):
+# 2000 frames is approximately 20-30 seconds of data collection
+for i in range(2000):
     s.step(shouldPrintTime=False)
 
     hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')
@@ -68,5 +62,9 @@ for i in range(8):
         rHand.toggle_finger_state(rTrig)
 
     vr_writer.process_frame(s)
+
+# Note: always call this after the simulation is over to close the log file
+# and clean up resources used.
+vr_writer.end_log_session()
 
 s.disconnect()
