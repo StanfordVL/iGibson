@@ -5,8 +5,8 @@ import numpy as np
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
 from gibson2.external.pybullet_tools.utils import get_center_extent
 from gibson2.simulator import Simulator
-from gibson2.scenes.scene_base import EmptyScene
-from gibson2.scenes.scene_base import save_urdfs_without_floating_joints
+from gibson2.scenes.empty_scene import EmptyScene
+from gibson2.scenes.igsdf_scene import save_urdfs_without_floating_joints
 from gibson2.objects.object_base import InteractiveObj
 from gibson2.objects.object_base import VisualMarker
 from gibson2.utils.utils import rotate_vector_3d

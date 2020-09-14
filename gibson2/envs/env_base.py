@@ -1,7 +1,9 @@
 from gibson2.robots.robot_locomotors \
     import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot
 from gibson2.simulator import Simulator
-from gibson2.scenes.scene_base import EmptyScene, StadiumScene, BuildingScene
+from gibson2.scenes.empty_scene import EmptyScene
+from gibson2.scenes.stadium_scene import StadiumScene
+from gibson2.scenes.indoor_scene import IndoorScene
 from gibson2.utils.utils import parse_config
 import gym
 
@@ -74,7 +76,7 @@ class BaseEnv(gym.Env):
         elif self.config['scene'] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
-            scene = BuildingScene(
+            scene = IndoorScene(
                 self.config['model_id'],
                 waypoint_resolution=self.config.get('waypoint_resolution', 0.2),
                 num_waypoints=self.config.get('num_waypoints', 10),
