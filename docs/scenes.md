@@ -23,7 +23,7 @@ Most of the code can be found here: [gibson2/physics/scene.py](https://github.co
 In this example, we import a simple stadium scene that is good for debugging. The code can be found here: [examples/demo/scene_stadium_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/scene_stadium_example.py).
 
 ```python
-from gibson2.scenes.scene_base import StadiumScene
+from gibson2.scenes.stadium_scene import StadiumScene
 import pybullet as p
 import numpy as np
 import time
@@ -55,7 +55,7 @@ The stadium scene looks like this:
 In this example, we import a static scene, and then randomly sample a pair of locations in the scene and compuete the shortest path between them. The code can be found here: [examples/demo/scene_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/scene_example.py).
 
 ```python
-from gibson2.scenes.scene_base import BuildingScene
+from gibson2.scenes.indoor_scene import IndoorScene
 import pybullet as p
 import numpy as np
 import time

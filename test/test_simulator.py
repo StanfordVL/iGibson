@@ -1,4 +1,4 @@
-from gibson2.scenes.scene_base import StadiumScene
+from gibson2.scenes.stadium_scene import StadiumScene
 from gibson2.objects.object_base import YCBObject
 from gibson2.simulator import Simulator
 

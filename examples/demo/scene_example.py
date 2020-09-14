@@ -1,4 +1,4 @@
-from gibson2.scenes.scene_base import BuildingScene
+from gibson2.scenes.indoor_scene import IndoorScene
 import pybullet as p
 import numpy as np
 import time
@@ -8,9 +8,9 @@ def main():
     p.setGravity(0,0,-9.8)
     p.setTimeStep(1./240.)
 
-    scene = BuildingScene('Rs',
-                          build_graph=True,
-                          pybullet_load_texture=True)
+    scene = IndoorScene('Rs',
+                        build_graph=True,
+                        pybullet_load_texture=True)
     scene.load()
 
     np.random.seed(0)

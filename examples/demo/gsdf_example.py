@@ -1,5 +1,5 @@
 from gibson2.simulator import Simulator
-from gibson2.scenes.scene_base import GSDFScene
+from gibson2.scenes.igsdf_scene import GSDFScene
 from gibson2.utils.utils import parse_config
 from gibson2.render.profiler import Profiler
 import argparse
