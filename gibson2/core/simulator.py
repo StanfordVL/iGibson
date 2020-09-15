@@ -219,6 +219,7 @@ class Simulator:
         ids = scene.load()
         for id in ids:
             self.import_articulated_object_by_id(id, class_id=id)
+        self.scene = scene
         return ids
 
     @load_without_pybullet_vis
@@ -498,8 +499,22 @@ class Simulator:
         :param instance: Instance in the renderer
         """
         if isinstance(instance, Instance):
+            # pos and orn of the inertial frame of the base link,
+            # instead of the base link frame
             pos, orn = p.getBasePositionAndOrientation(
-                instance.pybullet_uuid)  # orn is in x,y,z,w
+                instance.pybullet_uuid)
+
+            # Need to convert to the base link frame because that is
+            # what our own renderer keeps track of
+            # Based on pyullet docuementation:
+            # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
+            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
+                p.getDynamicsInfo(instance.pybullet_uuid, link_id)
+            inv_inertial_pos, inv_inertial_orn =\
+                p.invertTransform(inertial_pos, inertial_orn)
+            # Now pos and orn are converted to the base link frame
+            pos, orn = p.multiplyTransforms(
+                pos, orn, inv_inertial_pos, inv_inertial_orn)
             instance.set_position(pos)
             instance.set_rotation(xyzw2wxyz(orn))
         elif isinstance(instance, InstanceGroup):
@@ -507,21 +522,14 @@ class Simulator:
             poses_trans = []
             for link_id in instance.link_ids:
                 if link_id == -1:
-                    # pos and orn of the inertial frame of the base link,
-                    # instead of the base link frame
+                    # same conversion is needed as above
                     pos, orn = p.getBasePositionAndOrientation(
                         instance.pybullet_uuid)
-
-                    # Need to convert to the base link frame because that is
-                    # what our own renderer keeps track of
-                    # Based on pyullet docuementation:
-                    # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
                     _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
                         p.getDynamicsInfo(instance.pybullet_uuid, link_id)
                     inv_inertial_pos, inv_inertial_orn =\
                         p.invertTransform(inertial_pos, inertial_orn)
-
-                    # Now pos and orn are converted to the base link frame
+                    print('inertial', inertial_pos, inertial_orn)
                     pos, orn = p.multiplyTransforms(
                         pos, orn, inv_inertial_pos, inv_inertial_orn)
                 else:

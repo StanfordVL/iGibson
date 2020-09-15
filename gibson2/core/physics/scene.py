@@ -15,10 +15,11 @@ import pybullet_data
 import pybullet as p
 import os
 import inspect
-import json
 from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints
+from gibson2.utils.utils import rotate_vector_2d
+from gibson2.external.pybullet_tools.utils import get_center_extent
 from IPython import embed
-
+import json
 
 currentdir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -478,7 +479,6 @@ class iGSDFScene(Scene):
         os.mkdir(gibson2.ig_dataset_path + "/scene_instances/" + timestr)
 
         self.avg_obj_dims = self.load_avg_obj_dims()
-
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):
 
@@ -496,7 +496,13 @@ class iGSDFScene(Scene):
 
                 joint_xyz = np.array([float(val) for val in joint_connecting_embedded_link.find(
                     "origin").attrib["xyz"].split(" ")])
-                joint_new_xyz = joint_xyz - embedded_urdf.scaled_bbxc_in_blf
+                # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
+                x, y, z = embedded_urdf.scaled_bbxc_in_blf
+                yaw = np.array([float(val) for val in joint_connecting_embedded_link.find(
+                    "origin").attrib["rpy"].split(" ")])[2]
+                x, y = rotate_vector_2d(np.array([x, y]), -yaw)
+
+                joint_new_xyz = joint_xyz + np.array([x, y, z])
                 joint_connecting_embedded_link.find(
                     "origin").attrib["xyz"] = "{0:f} {1:f} {2:f}".format(*joint_new_xyz)
 
@@ -588,11 +594,14 @@ class iGSDFScene(Scene):
             # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
             logging.info("Moving URDF to " + np.array_str(urdf[1]))
             transformation = urdf[1]
-            oriii = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
-            transl = transformation[0:3, 3]
-            p.resetBasePositionAndOrientation(body_id, transl, oriii)
+            pos = transformation[0:3, 3]
+            orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
 
-            self.mass = p.getDynamicsInfo(body_id, -1)[0]
+            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
+                p.getDynamicsInfo(body_id, -1)
+            pos, orn = p.multiplyTransforms(
+                pos, orn, inertial_pos, inertial_orn)
+            p.resetBasePositionAndOrientation(body_id, pos, orn)
             p.changeDynamics(
                 body_id, -1,
                 activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
