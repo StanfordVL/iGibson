@@ -479,9 +479,9 @@ class Skill(object):
     def plan(self, params, **kwargs):
         raise NotImplementedError
 
-    def precondition_satisfied(self):
+    def precondition_satisfied(self, target_object_id):
         if self.precondition_fn is not None:
-            return self.precondition_fn()
+            return self.precondition_fn(target_object_id)
         else:
             return True
 
@@ -990,7 +990,7 @@ class TouchPosition(Skill):
             self.planner,
             obstacles=self.obstacles,
             target_pose=target_pose,
-            reach_distance=0.05,
+            reach_distance=0.1,
             joint_resolutions=self.joint_resolutions,
         )
         traj.append_pause(self.num_pause_steps)
@@ -1249,7 +1249,7 @@ class SkillLibrary(object):
         else:
             skill_index, skill_params = self._parse_serialized_skill_params(params)
         skill = self.skills[skill_index]
-        if not skill.precondition_satisfied():
+        if not skill.precondition_satisfied(target_object_id=target_object_id):
             raise PreconditionNotSatisfied("Precondition for skill '{}' is not satisfied".format(skill.name))
 
         if skill.requires_holding:

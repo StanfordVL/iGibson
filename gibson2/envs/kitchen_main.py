@@ -51,9 +51,12 @@ def record_demos(args):
         t = time.time()
         env.reset()
         try:
-            # buffer, plan_exception = env.get_demo_suboptimal(noise=ACTION_NOISE if args.perturb_demo else None)
             skeleton = env.get_task_skeleton()
-            buffer, plan_exception = env.execute_skeleton(skeleton)
+            buffer, plan_exception = env.execute_skeleton(skeleton, stop_on_exception=True)
+
+            # skeleton = env.get_random_skeleton()
+            # buffer, plan_exception = env.execute_skeleton(skeleton, stop_on_exception=False)
+
             if plan_exception is not None:
                 if not args.keep_interrupted_demos:
                     continue

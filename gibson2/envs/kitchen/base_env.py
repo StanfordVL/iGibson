@@ -304,7 +304,7 @@ class BaseEnv(object):
         """Environment name"""
         return self.__class__.__name__
 
-    def execute_skeleton(self, skeleton, noise=None):
+    def execute_skeleton(self, skeleton, stop_on_exception=False, noise=None):
         buffer = PU.Buffer()
         exception = None
         for skill_step, (param_func, object_name) in enumerate(skeleton):
@@ -320,9 +320,11 @@ class BaseEnv(object):
             if exec_info["exception"] is not None:
                 exception = exec_info["exception"]
                 print(exception)
+                if stop_on_exception:
+                    return buffer.aggregate(), exception
 
-        # if exception is None:  # goal skill is run
-        #     assert self.is_success()
+        if exception is None:  # goal skill is run
+            assert self.is_success()
         return buffer.aggregate(), exception
 
 
