@@ -10,7 +10,7 @@ from gibson2.envs.kitchen.robots import GRIPPER_CLOSE, GRIPPER_OPEN
 import gibson2.external.pybullet_tools.utils as PBU
 
 
-ORIENTATIONS = OrderedDict(
+SKILL_ORIENTATIONS = OrderedDict(
     front=T.quaternion_from_euler(0, 0, 0),
     left=T.quaternion_from_euler(0, 0, np.pi / 2),
     right=T.quaternion_from_euler(0, 0, -np.pi / 2),
@@ -18,7 +18,11 @@ ORIENTATIONS = OrderedDict(
     top=T.quaternion_from_euler(0, np.pi / 2, 0),
 )
 
-ORIENTATION_NAMES = list(ORIENTATIONS.keys())
+SKILL_ORIENTATION_NAMES = list(SKILL_ORIENTATIONS.keys())
+
+ALL_ORIENTATIONS = OrderedDict(SKILL_ORIENTATIONS)
+
+ALL_ORIENTATIONS["backward"] = T.quaternion_from_euler(np.pi / 2, 0, 0)
 
 DRAWER_GRASP_ORN = T.quaternion_from_euler(-np.pi / 2, 0, np.pi)
 
@@ -37,6 +41,39 @@ def plan_move_to(
     conf_path.append_segment(confs, gripper_state=GRIPPER_OPEN)
     path = configuration_path_to_cartesian_path(planner, conf_path)
     return path.interpolate(pos_resolution=0.05, orn_resolution=np.pi / 8)
+
+
+def plan_skill_touch(
+        planner,
+        obstacles,
+        target_pose,
+        reach_distance=0.,
+        joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
+):
+    """
+    plan skill for touching an object
+    Args:
+        planner (PlannerRobot): planner
+        obstacles (list, tuple): a list obstacle ids
+        target_pose (tuple): pose for grasping the handle
+        reach_distance (float): distance for reaching to touch
+        joint_resolutions (list, tuple): motion planning joint-space resolution
+
+    Returns:
+        path (CartesianPath)
+    """
+    # approach handle
+    approach_pose = PBU.multiply(target_pose, ([-reach_distance, 0, 0], PBU.unit_quat()))
+    approach_confs = planner.plan_joint_path(
+        target_pose=approach_pose, obstacles=obstacles, resolutions=joint_resolutions)
+    conf_path = ConfigurationPath()
+    conf_path.append_segment(approach_confs, gripper_state=GRIPPER_CLOSE)
+    touch_path = configuration_path_to_cartesian_path(planner, conf_path)
+    touch_path.append(target_pose, gripper_state=GRIPPER_CLOSE)
+    touch_path.append_pause(5)
+    touch_path.append(approach_pose, gripper_state=GRIPPER_OPEN)
+    touch_path.append_pause(5)
+    return touch_path.interpolate(pos_resolution=0.05, orn_resolution=np.pi/8)
 
 
 def plan_skill_open_prismatic(
@@ -537,7 +574,7 @@ class GraspDistDiscreteOrn(GraspDistOrn):
     def get_default_params(self):
         return OrderedDict(
             grasp_distance=SkillParamsContinuous(size=1),
-            grasp_orn=SkillParamsDiscrete(size=len(ORIENTATIONS))
+            grasp_orn=SkillParamsDiscrete(size=len(SKILL_ORIENTATIONS))
         )
 
     def skill_params_to_string(self, params, target_object_id):
@@ -545,14 +582,14 @@ class GraspDistDiscreteOrn(GraspDistOrn):
         params = self.deserialize_skill_param_array(params)
         pose_idx = int(np.argmax(params["grasp_orn"]))
         with np.printoptions(precision=4, suppress=True):
-            param_str = "dist={}, orn={}".format(params["grasp_distance"], ORIENTATION_NAMES[pose_idx])
+            param_str = "dist={}, orn={}".format(params["grasp_distance"], SKILL_ORIENTATION_NAMES[pose_idx])
         return msg + " " + param_str
 
     def plan(self, params, target_object_id=None):
         assert len(params) == self.action_dimension
         params = self.deserialize_skill_param_array(params)
         pose_idx = int(np.argmax(params["grasp_orn"]))
-        orn = ORIENTATIONS[ORIENTATION_NAMES[pose_idx]]
+        orn = SKILL_ORIENTATIONS[SKILL_ORIENTATION_NAMES[pose_idx]]
         grasp_pose = compute_grasp_pose(
             PBU.get_pose(target_object_id), grasp_orientation=orn, grasp_distance=params["grasp_distance"])
 
@@ -567,8 +604,8 @@ class GraspDistDiscreteOrn(GraspDistOrn):
         return traj
 
     def get_skill_params(self, grasp_orn_name, grasp_distance):
-        orn_index = ORIENTATION_NAMES.index(grasp_orn_name)
-        orn = np.zeros(len(ORIENTATION_NAMES))
+        orn_index = SKILL_ORIENTATION_NAMES.index(grasp_orn_name)
+        orn = np.zeros(len(SKILL_ORIENTATION_NAMES))
         orn[orn_index] = 1
         params = dict(
             grasp_distance=grasp_distance,
@@ -647,7 +684,7 @@ class PlacePosDiscreteOrn(PlacePosOrn):
     def get_default_params(self):
         return OrderedDict(
             place_pos=SkillParamsContinuous(size=3),
-            place_orn=SkillParamsDiscrete(size=len(ORIENTATIONS))
+            place_orn=SkillParamsDiscrete(size=len(SKILL_ORIENTATIONS))
         )
 
     def skill_params_to_string(self, params, target_object_id):
@@ -655,7 +692,7 @@ class PlacePosDiscreteOrn(PlacePosOrn):
         params = self.deserialize_skill_param_array(params)
         orn_idx = int(np.argmax(params["place_orn"]))
         with np.printoptions(precision=4, suppress=True):
-            param_str = "pos={}, orn={}".format(params["place_pos"], ORIENTATION_NAMES[orn_idx])
+            param_str = "pos={}, orn={}".format(params["place_pos"], SKILL_ORIENTATION_NAMES[orn_idx])
         return msg + " " + param_str
 
     def plan(self, params, target_object_id=None, holding_id=None):
@@ -668,7 +705,7 @@ class PlacePosDiscreteOrn(PlacePosOrn):
         target_pos += params["place_pos"]
 
         orn_idx = int(np.argmax(params["place_orn"]))
-        orn = ORIENTATIONS[ORIENTATION_NAMES[orn_idx]]
+        orn = SKILL_ORIENTATIONS[SKILL_ORIENTATION_NAMES[orn_idx]]
         place_pose = (target_pos, orn)
 
         traj = plan_skill_place(
@@ -683,8 +720,8 @@ class PlacePosDiscreteOrn(PlacePosOrn):
         return traj
 
     def get_skill_params(self, place_pos, place_orn_name):
-        orn_index = ORIENTATION_NAMES.index(place_orn_name)
-        orn = np.zeros(len(ORIENTATION_NAMES))
+        orn_index = SKILL_ORIENTATION_NAMES.index(place_orn_name)
+        orn = np.zeros(len(SKILL_ORIENTATION_NAMES))
         orn[orn_index] = 1
         params = dict(
             place_pos=place_pos,
@@ -903,6 +940,65 @@ class OperatePrismaticPosDistance(Skill):
         params = OrderedDict(
             grasp_pos=grasp_pos,
             prismatic_move_distance=prismatic_move_distance
+        )
+        return params
+
+
+class TouchPosition(Skill):
+    def __init__(
+            self,
+            params=None,
+            name="touch_position",
+            joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
+            num_pause_steps=0,
+            verbose=False,
+            precondition_fn=None
+    ):
+        super(TouchPosition, self).__init__(
+            params=params,
+            name=name,
+            requires_holding=False,
+            acquires_holding=False,
+            releases_holding=False,
+            joint_resolutions=joint_resolutions,
+            verbose=verbose,
+            precondition_fn=precondition_fn
+        )
+        self.num_pause_steps = num_pause_steps
+
+    def skill_params_to_string(self, params, target_object_id):
+        msg = Skill.skill_params_to_string(self, params, target_object_id)
+        params = self.deserialize_skill_param_array(params)
+        with np.printoptions(precision=4, suppress=True):
+            param_str = "pos={}".format(params["touch_pos"])
+        return msg + " " + param_str
+
+    def get_default_params(self):
+        return OrderedDict(
+            touch_pos=SkillParamsContinuous(size=3)
+        )
+
+    def plan(self, params, target_object_id=None, holding_id=None):
+        assert len(params) == self.action_dimension
+        params = self.deserialize_skill_param_array(params)
+        delta_pos = params["touch_pos"]
+
+        target_pose = PBU.get_pose(target_object_id)
+        target_pose = PBU.multiply(target_pose, (delta_pos, ALL_ORIENTATIONS["top"]))
+
+        traj = plan_skill_touch(
+            self.planner,
+            obstacles=self.obstacles,
+            target_pose=target_pose,
+            reach_distance=0.05,
+            joint_resolutions=self.joint_resolutions,
+        )
+        traj.append_pause(self.num_pause_steps)
+        return traj
+
+    def get_skill_params(self, touch_pos):
+        params = OrderedDict(
+            touch_pos=touch_pos,
         )
         return params
 
@@ -1170,5 +1266,7 @@ class SkillLibrary(object):
             traj = skill.plan(skill_params, target_object_id=target_object_id)
             self._holding = target_object_id
         else:
+            if self._holding is not None:
+                raise NoPlanException("Robot is holding something but is trying to run {}".format(skill.name))
             traj = skill.plan(skill_params, target_object_id=target_object_id)
         return traj

@@ -14,10 +14,11 @@ class ObjectBank(object):
     def __init__(self, objects=None):
         self._objects = OrderedDict()
         self._categories = OrderedDict()
+        self._links = OrderedDict()
         if objects is not None:
             self._objects = deepcopy(objects)
 
-    def add_object(self, name, o, category=None):
+    def add_object(self, name, o, category=None, links=(PBU.BASE_LINK,)):
         assert isinstance(name, str)
         assert name not in self.names
         if category is None:
@@ -25,6 +26,7 @@ class ObjectBank(object):
         assert isinstance(o, Object)
         self._objects[name] = o
         self._categories[name] = category
+        self._links[name] = sorted(links)
 
     @property
     def object_list(self):
@@ -86,9 +88,9 @@ class ObjectBank(object):
     def all_body_ids_and_links(self):
         body_ids = []
         links = []
-        for bid in self.body_ids:
-            for link in sorted(PBU.get_all_links(bid)):
-                body_ids.append(bid)
+        for name in self.names:
+            for link in self._links[name]:
+                body_ids.append(self.name_to_body_id(name))
                 links.append(link)
         return body_ids, links
 
@@ -103,7 +105,7 @@ class ObjectBank(object):
             body_ids.append(bid)
             categories.append(self.object_index_to_category_array(self.body_ids.index(bid)))
             links.append(link)
-            if link == -1:
+            if link == PBU.BASE_LINK:
                 joint_positions.append(0.)
             else:
                 joint_positions.append(PBU.get_joint_position(bid, link))

@@ -100,6 +100,8 @@ class BaseEnv(object):
         robot = ConstraintActuatedRobot(
             eef_link_name="eef_link", init_base_pose=self._robot_base_pose, gripper=gripper)
 
+        for l in PBU.get_all_links(body=robot.body_id):
+            p.changeDynamics(robot.body_id, l, mass=0.1)
         self.robot = robot
 
     def _create_planner(self):
@@ -166,7 +168,6 @@ class BaseEnv(object):
             self.skill_lib.reset()
         for o in self.interactive_objects.object_list:
             o.reset()
-        return self.get_observation()
 
     def reset_to(self, serialized_world_state, return_obs=True):
         exclude = []
@@ -185,7 +186,7 @@ class BaseEnv(object):
             exclude.append(self.planner.body_id)
         return PBU.WorldSaver(exclude_body_ids=exclude).serialize()
 
-    def step(self, action, sleep_per_sim_step=0.0, return_obs=True):
+    def step(self, action, sleep_per_sim_step=0.0, return_obs=False):
         assert len(action) == self.action_dimension
         action = action.copy()
         gri = action[-1]
@@ -199,15 +200,13 @@ class BaseEnv(object):
             self.robot.gripper.ungrasp()
 
         for o in self.interactive_objects.object_list:
-            o.step(self.objects.object_list)
+            o.step(self.objects.object_list, self.robot.gripper)
 
         for _ in range(self._num_sim_per_step):
             p.stepSimulation()
             time.sleep(sleep_per_sim_step)
 
-        if not return_obs:
-            return None, self.get_reward(), self.is_done(), {}
-        else:
+        if return_obs:
             return self.get_observation(), self.get_reward(), self.is_done(), {}
 
     def get_reward(self):
@@ -320,9 +319,10 @@ class BaseEnv(object):
             buffer.append(**traj)
             if exec_info["exception"] is not None:
                 exception = exec_info["exception"]
+                print(exception)
 
-        if exception is None:  # goal skill is run
-            assert self.is_success()
+        # if exception is None:  # goal skill is run
+        #     assert self.is_success()
         return buffer.aggregate(), exception
 
 
