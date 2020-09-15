@@ -15,6 +15,7 @@ import pybullet_data
 import pybullet as p
 import os
 import inspect
+import json
 from IPython import embed
 
 
@@ -761,11 +762,15 @@ class iGSDFScene(Scene):
         # Create the subfolder
         os.mkdir(gibson2.ig_dataset_path + "/scene_instances/" + timestr)
 
+        self.avg_obj_dims = self.load_avg_obj_dims()
+
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):
 
             if 'category' in link.attrib:
-                embedded_urdf = URDFObject(link, self.random_groups)
+                embedded_urdf = URDFObject(
+                    link, self.random_groups,
+                    self.avg_obj_dims.get(link.attrib['category']))
                 base_link_name = link.attrib['name']
 
                 # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
@@ -875,6 +880,15 @@ class iGSDFScene(Scene):
             self.scene_tree.write(urdf_file_name)
             self.urdfs_no_floating = save_urdfs_without_floating_joints(self.scene_tree,
                                                                         gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/scene_instance", self.merge_fj)
+
+    def load_avg_obj_dims(self):
+        avg_obj_dim_file = os.path.join(
+            gibson2.ig_dataset_path, 'metadata/avg_obj_dims.json')
+        if os.path.isfile(avg_obj_dim_file):
+            with open(avg_obj_dim_file) as f:
+                return json.load(f)
+        else:
+            return {}
 
     def load(self):
         body_ids = []
