@@ -87,7 +87,7 @@ def main():
 
     v = []
     for fn in os.listdir(model_path):
-        if fn.endswith('obj') and 'processed' in fn:
+        if fn.endswith('obj'):
             vertices, faces = load_obj_np(os.path.join(model_path, fn))
             v.append(vertices)
 
@@ -98,11 +98,10 @@ def main():
     scale = 1.0/(max(xlen, ylen))
 
     for fn in os.listdir(model_path):
-        if fn.endswith('obj') and 'processed' in fn:
+        if fn.endswith('obj'):
             renderer.load_object(os.path.join(model_path, fn), scale=[scale, scale, scale])
             renderer.add_instance(i)
             i += 1
-            renderer.set_pose([0,0,0,0.7071067690849304, 0.7071067690849304, 0.0, 0.0], -1)
             renderer.instances[-1].use_pbr = True
             renderer.instances[-1].use_pbr_mapping = True
             renderer.instances[-1].metalness = 1
@@ -152,7 +151,7 @@ def main():
         renderer.set_pose([0,0,-1.5,np.cos(-theta/2), 0, 0.0, np.sin(-theta/2)], 0)
         with Profiler('Render'):
             frame = renderer.render(modes=('rgb'))
-        #cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
+        cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
 
         imgs.append(Image.fromarray((255*np.concatenate(frame, axis=1)[:,:,:3]).astype(np.uint8)))
 
