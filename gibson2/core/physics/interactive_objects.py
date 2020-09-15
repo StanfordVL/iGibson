@@ -345,7 +345,7 @@ class URDFObject(Object):
                         new_origin_xyz = np.multiply(
                             current_origin_xyz, scale_in_parent_lf)
                         new_origin_xyz = np.array(
-                            [round_up(val, 4) for val in new_origin_xyz])
+                            [round_up(val, 10) for val in new_origin_xyz])
                         origin.attrib['xyz'] = ' '.join(
                             map(str, new_origin_xyz))
 
@@ -373,7 +373,7 @@ class URDFObject(Object):
                             current_axis_xyz, scale_in_child_lf)
                         new_axis_xyz /= np.linalg.norm(new_axis_xyz)
                         new_axis_xyz = np.array(
-                            [round_up(val, 4) for val in new_axis_xyz])
+                            [round_up(val, 10) for val in new_axis_xyz])
                         axis.attrib['xyz'] = ' '.join(map(str, new_axis_xyz))
 
                     # Iterate again the for loop since we added new elements to the dictionary
@@ -473,7 +473,7 @@ class URDFObject(Object):
                     origin.attrib['xyz'] = ' '.join(map(str, center))
                     origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
 
-                    mass.attrib['value'] = str(round_up(link_trimesh.mass, 4))
+                    mass.attrib['value'] = str(round_up(link_trimesh.mass, 10))
                     moment_of_inertia = link_trimesh.moment_inertia
                     inertia.attrib['ixx'] = str(moment_of_inertia[0][0])
                     inertia.attrib['ixy'] = str(moment_of_inertia[0][1])
@@ -489,11 +489,11 @@ class URDFObject(Object):
                     mesh_scale = np.array(
                         [float(val) for val in mesh.attrib["scale"].split(" ")])
                     new_scale = np.multiply(mesh_scale, scale_in_lf)
-                    new_scale = np.array([round_up(val, 4)
+                    new_scale = np.array([round_up(val, 10)
                                           for val in new_scale])
                     mesh.attrib['scale'] = ' '.join(map(str, new_scale))
                 else:
-                    new_scale = np.array([round_up(val, 4)
+                    new_scale = np.array([round_up(val, 10)
                                           for val in scale_in_lf])
                     mesh.set('scale', ' '.join(map(str, new_scale)))
             for origin in link.iter("origin"):
@@ -501,7 +501,7 @@ class URDFObject(Object):
                     [float(val) for val in origin.attrib["xyz"].split(" ")])
                 new_origin_xyz = np.multiply(origin_xyz, scale_in_lf)
                 new_origin_xyz = np.array(
-                    [round_up(val, 4) for val in new_origin_xyz])
+                    [round_up(val, 10) for val in new_origin_xyz])
                 origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
 
         # Finally, we need to know where is the base_link origin wrt. the bounding box center. That allows us to place the model
