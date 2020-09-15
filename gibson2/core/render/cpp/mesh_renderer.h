@@ -43,6 +43,17 @@ public:
     Texture envTextureEquirect;
     Texture envTextureUnfiltered;
 
+    // Index data
+	std::vector<void*> multidrawStartIndices;
+	std::vector<int> multidrawCounts;
+	int multidrawCount;
+
+	// UBO data
+	GLuint uboTexColorData;
+	GLuint uboTransformData;
+	int texColorDataSize;
+	int transformDataSize;
+
 
 #ifdef USE_CUDA
     cudaGraphicsResource* cuda_res[MAX_NUM_RESOURCES];
@@ -70,6 +81,9 @@ public:
 
     void clean_meshrenderer(std::vector<GLuint> texture1, std::vector<GLuint> texture2, std::vector<GLuint> fbo,
                             std::vector<GLuint> vaos, std::vector<GLuint> vbos);
+
+    void clean_meshrenderer_optimized(std::vector<GLuint> color_attachments, std::vector<GLuint> textures,
+    std::vector<GLuint> fbo, std::vector<GLuint> vaos, std::vector<GLuint> vbos, std::vector<GLuint> ebos);
 
     py::list setup_framebuffer_meshrenderer(int width, int height);
 
@@ -129,6 +143,22 @@ public:
 
     py::array_t<float> readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id);
 
+    // Generates large and small array textures and returns handles to the user (cutoff based on user variable), as well as index - tex num/layer mapping
+	py::list generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures,
+	int smallTexBucketSize);
+
+	py::list renderSetup(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor,
+		py::array_t<float> mergedVertexData, py::array_t<int> index_ptr_offsets, py::array_t<int> index_counts,
+		py::array_t<int> indices, py::array_t<float> mergedFragData, py::array_t<float> mergedFragRMData,
+		py::array_t<float> mergedFragNData,
+		py::array_t<float> mergedDiffuseData,
+		int tex_id_1, int tex_id_2, GLuint fb,
+		float use_pbr);
+
+	void updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array, py::array_t<float> pose_rot_array,
+	py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos) ;
+
+	void renderOptimized(GLuint VAO);
 };
 
 

@@ -43,7 +43,7 @@ int GLFWRendererContext::init() {
     }
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     glfwWindowHint(GLFW_DEPTH_BITS, 0);
@@ -130,6 +130,13 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
     // misc
     pymodule.def("cglBindVertexArray", &GLFWRendererContext::cglBindVertexArray, "binding function");
     pymodule.def("cglUseProgram", &GLFWRendererContext::cglUseProgram, "binding function");
+
+    // for optimized renderer
+    pymodule.def("generateArrayTextures", &GLFWRendererContext::generateArrayTextures, "TBA");
+    pymodule.def("renderSetup", &GLFWRendererContext::renderSetup, "TBA");
+    pymodule.def("updateDynamicData", &GLFWRendererContext::updateDynamicData, "TBA");
+    pymodule.def("renderOptimized", &GLFWRendererContext::renderOptimized, "TBA");
+    pymodule.def("clean_meshrenderer_optimized", &GLFWRendererContext::clean_meshrenderer_optimized, "TBA");
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

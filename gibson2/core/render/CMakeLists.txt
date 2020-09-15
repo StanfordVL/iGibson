@@ -27,6 +27,8 @@ if (USE_CUDA)
 endif ()
 
 add_subdirectory(pybind11)
+# Add GLM include directory
+include_directories("glm")
 
 if (USE_GLFW)
     # Find GLFW and OpenVR
