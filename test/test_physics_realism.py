@@ -102,6 +102,7 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
     for link in all_links:
         meshes = link.findall('collision/geometry/mesh')
         if len(meshes) == 0:
+            all_links_trimesh.append(None)
             continue
         assert len(meshes) == 1, (filename, link.attrib['name'])
         collision_mesh_path = os.path.join(model_path,
@@ -125,58 +126,61 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
     for trimesh_obj in all_links_trimesh:
         trimesh_obj.density = density
 
+    assert len(all_links) == len(all_links_trimesh)
+
     # Now iterate over all links and scale the meshes and positions
     for link, link_trimesh in zip(all_links, all_links_trimesh):
-        inertials = link.findall('inertial')
-        if len(inertials) == 0:
-            inertial = ET.SubElement(link, 'inertial')
-        else:
-            assert len(inertials) == 1
-            inertial = inertials[0]
+        if link_trimesh is not None:
+            inertials = link.findall('inertial')
+            if len(inertials) == 0:
+                inertial = ET.SubElement(link, 'inertial')
+            else:
+                assert len(inertials) == 1
+                inertial = inertials[0]
 
-        masses = inertial.findall('mass')
-        if len(masses) == 0:
-            mass = ET.SubElement(inertial, 'mass')
-        else:
-            assert len(masses) == 1
-            mass = masses[0]
+            masses = inertial.findall('mass')
+            if len(masses) == 0:
+                mass = ET.SubElement(inertial, 'mass')
+            else:
+                assert len(masses) == 1
+                mass = masses[0]
 
-        inertias = inertial.findall('inertia')
-        if len(inertias) == 0:
-            inertia = ET.SubElement(inertial, 'inertia')
-        else:
-            assert len(inertias) == 1
-            inertia = inertias[0]
+            inertias = inertial.findall('inertia')
+            if len(inertias) == 0:
+                inertia = ET.SubElement(inertial, 'inertia')
+            else:
+                assert len(inertias) == 1
+                inertia = inertias[0]
 
-        origins = inertial.findall('origin')
-        if len(origins) == 0:
-            origin = ET.SubElement(inertial, 'origin')
-        else:
-            assert len(origins) == 1
-            origin = origins[0]
+            origins = inertial.findall('origin')
+            if len(origins) == 0:
+                origin = ET.SubElement(inertial, 'origin')
+            else:
+                assert len(origins) == 1
+                origin = origins[0]
 
-        if link.attrib['name'] == 'base_link':
-            if obj_class in ['lamp']:
-                link_trimesh.density *= 10.0
+            if link.attrib['name'] == 'base_link':
+                if obj_class in ['lamp']:
+                    link_trimesh.density *= 10.0
 
-        if link_trimesh.is_watertight:
-            center = link_trimesh.center_mass
-        else:
-            center = link_trimesh.centroid
+            if link_trimesh.is_watertight:
+                center = link_trimesh.center_mass
+            else:
+                center = link_trimesh.centroid
 
-        # The inertial frame origin will be scaled down below.
-        # Here, it has the value BEFORE scaling
-        origin.attrib['xyz'] = ' '.join(map(str, center))
-        origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
+            # The inertial frame origin will be scaled down below.
+            # Here, it has the value BEFORE scaling
+            origin.attrib['xyz'] = ' '.join(map(str, center))
+            origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
 
-        mass.attrib['value'] = str(round_up(link_trimesh.mass, 4))
-        moment_of_inertia = link_trimesh.moment_inertia
-        inertia.attrib['ixx'] = str(moment_of_inertia[0][0])
-        inertia.attrib['ixy'] = str(moment_of_inertia[0][1])
-        inertia.attrib['ixz'] = str(moment_of_inertia[0][2])
-        inertia.attrib['iyy'] = str(moment_of_inertia[1][1])
-        inertia.attrib['iyz'] = str(moment_of_inertia[1][2])
-        inertia.attrib['izz'] = str(moment_of_inertia[2][2])
+            mass.attrib['value'] = str(round_up(link_trimesh.mass, 4))
+            moment_of_inertia = link_trimesh.moment_inertia
+            inertia.attrib['ixx'] = str(moment_of_inertia[0][0])
+            inertia.attrib['ixy'] = str(moment_of_inertia[0][1])
+            inertia.attrib['ixz'] = str(moment_of_inertia[0][2])
+            inertia.attrib['iyy'] = str(moment_of_inertia[1][1])
+            inertia.attrib['iyz'] = str(moment_of_inertia[1][2])
+            inertia.attrib['izz'] = str(moment_of_inertia[2][2])
 
         scale_in_lf = scales_in_lf[link.attrib["name"]]
         # Apply the scale to all mesh elements within the link (original scale and origin)

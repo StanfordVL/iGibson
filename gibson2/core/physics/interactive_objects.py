@@ -12,6 +12,7 @@ from gibson2.utils.utils import rotate_vector_3d
 import logging
 import math
 from IPython import embed
+import trimesh
 
 
 class Object(object):
@@ -236,7 +237,7 @@ class URDFObject(Object):
     We use this class to deparse our modified link tag for URDFs that embed objects into scenes
     """
 
-    def __init__(self, xml_element, random_groups):
+    def __init__(self, xml_element, random_groups, avg_obj_dims=None):
         super(URDFObject, self).__init__()
 
         category = xml_element.attrib["category"]
@@ -378,8 +379,109 @@ class URDFObject(Object):
                     # Iterate again the for loop since we added new elements to the dictionary
                     all_processed = False
 
+        all_links = self.object_tree.findall('link')
+        # compute dynamics properties
+        if category != "building":
+            all_links_trimesh = []
+            total_volume = 0.0
+            for link in all_links:
+                meshes = link.findall('collision/geometry/mesh')
+                if len(meshes) == 0:
+                    all_links_trimesh.append(None)
+                    continue
+                # assume one collision mesh per link
+                assert len(meshes) == 1, (filename, link.attrib['name'])
+                collision_mesh_path = os.path.join(model_path,
+                                                   meshes[0].attrib['filename'])
+                trimesh_obj = trimesh.load(file_obj=collision_mesh_path)
+                all_links_trimesh.append(trimesh_obj)
+                volume = trimesh_obj.volume
+                # a hack to artificially increase the density of the lamp base
+                if link.attrib['name'] == 'base_link':
+                    if category in ['lamp']:
+                        volume *= 10.0
+                total_volume += volume
+
+            # avg L x W x H and Weight is given for this object category
+            if avg_obj_dims is not None:
+                avg_density = avg_obj_dims['density']
+
+            # otherwise, use the median density across all existing object categories
+            else:
+                avg_density = 67.0
+
+            # Scale the mass based on bounding box size
+            # TODO: how to scale moment of inertia?
+            total_mass = avg_density * \
+                bounding_box[0] * bounding_box[1] * bounding_box[2]
+            # print('total_mass', total_mass)
+
+            density = total_mass / total_volume
+            # print('avg density', density)
+            for trimesh_obj in all_links_trimesh:
+                if trimesh_obj is not None:
+                    trimesh_obj.density = density
+
+            assert len(all_links_trimesh) == len(all_links)
+
         # Now iterate over all links and scale the meshes and positions
-        for link in self.object_tree.iter("link"):
+        for i, link in enumerate(all_links):
+            if category != "building":
+                link_trimesh = all_links_trimesh[i]
+                # assign dynamics properties
+                if link_trimesh is not None:
+                    inertials = link.findall('inertial')
+                    if len(inertials) == 0:
+                        inertial = ET.SubElement(link, 'inertial')
+                    else:
+                        assert len(inertials) == 1
+                        inertial = inertials[0]
+
+                    masses = inertial.findall('mass')
+                    if len(masses) == 0:
+                        mass = ET.SubElement(inertial, 'mass')
+                    else:
+                        assert len(masses) == 1
+                        mass = masses[0]
+
+                    inertias = inertial.findall('inertia')
+                    if len(inertias) == 0:
+                        inertia = ET.SubElement(inertial, 'inertia')
+                    else:
+                        assert len(inertias) == 1
+                        inertia = inertias[0]
+
+                    origins = inertial.findall('origin')
+                    if len(origins) == 0:
+                        origin = ET.SubElement(inertial, 'origin')
+                    else:
+                        assert len(origins) == 1
+                        origin = origins[0]
+
+                    # a hack to artificially increase the density of the lamp base
+                    if link.attrib['name'] == 'base_link':
+                        if category in ['lamp']:
+                            link_trimesh.density *= 10.0
+
+                    if link_trimesh.is_watertight:
+                        center = link_trimesh.center_mass
+                    else:
+                        center = link_trimesh.centroid
+
+                    # The inertial frame origin will be scaled down below.
+                    # Here, it has the value BEFORE scaling
+                    origin.attrib['xyz'] = ' '.join(map(str, center))
+                    origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
+
+                    mass.attrib['value'] = str(round_up(link_trimesh.mass, 4))
+                    moment_of_inertia = link_trimesh.moment_inertia
+                    inertia.attrib['ixx'] = str(moment_of_inertia[0][0])
+                    inertia.attrib['ixy'] = str(moment_of_inertia[0][1])
+                    inertia.attrib['ixz'] = str(moment_of_inertia[0][2])
+                    inertia.attrib['iyy'] = str(moment_of_inertia[1][1])
+                    inertia.attrib['iyz'] = str(moment_of_inertia[1][2])
+                    inertia.attrib['izz'] = str(moment_of_inertia[2][2])
+
             scale_in_lf = scales_in_lf[link.attrib["name"]]
             # Apply the scale to all mesh elements within the link (original scale and origin)
             for mesh in link.iter("mesh"):
