@@ -300,21 +300,29 @@ class URDFObject(Object):
                 "You cannot define both scale and bounding box size defined to embed a URDF")
             exit(-1)
 
-        if os.path.exists(model_path + '/misc/bbox.json'):
-            with open(model_path + '/misc/bbox.json', 'r') as bbox_file:
-                bbox_data = json.load(bbox_file)
+        meta_json = os.path.join(model_path, 'misc/metadata.json')
+        bbox_json = os.path.join(model_path, 'misc/bbox.json')
+        if os.path.isfile(meta_json):
+            with open(meta_json, 'r') as f:
+                meta_data = json.load(f)
+                bbox_size = np.array(meta_data['bbox_size'])
+                base_link_offset = np.array(meta_data['base_link_offset'])
+        elif os.path.isfile(bbox_json):
+            with open(bbox_json, 'r') as f:
+                bbox_data = json.load(f)
                 bbox_max = np.array(bbox_data['max'])
                 bbox_min = np.array(bbox_data['min'])
+                bbox_size = bbox_max - bbox_min
+                base_link_offset = (bbox_min + bbox_max) / 2.0
         else:
-            bbox_max = np.zeros(3)
-            bbox_min = np.zeros(3)
+            bbox_size = np.zeros(3)
+            base_link_offset = np.zeros(3)
 
         if "bounding_box" in xml_element.keys():
             # Obtain the scale as the ratio between the desired bounding box size and the normal bounding box size of the object at scale (1, 1, 1)
             bounding_box = np.array(
                 [float(val) for val in xml_element.attrib["bounding_box"].split(" ")])
-            original_bbox = bbox_max - bbox_min
-            scale = bounding_box / original_bbox
+            scale = bounding_box / bbox_size
         elif "scale" in xml_element.keys():
             scale = np.array([float(val)
                               for val in xml_element.attrib["scale"].split(" ")])
@@ -506,11 +514,10 @@ class URDFObject(Object):
 
         # Finally, we need to know where is the base_link origin wrt. the bounding box center. That allows us to place the model
         # correctly since the joint transformations given in the scene urdf are for the bounding box center
-        scale = scales_in_lf["base_link"]
         # Coordinates of the bounding box center in the base_link frame
-        bbox_center_in_blf = (bbox_max + bbox_min) / 2.0
         # We scale the location. We will subtract this to the joint location
-        self.scaled_bbxc_in_blf = -scale * bbox_center_in_blf
+        scale = scales_in_lf["base_link"]
+        self.scaled_bbxc_in_blf = -scale * base_link_offset
 
     def _load(self):
         body_id = p.loadURDF(self.filename,
