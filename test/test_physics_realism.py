@@ -28,14 +28,23 @@ import xml.etree.ElementTree as ET
 
 def save_scaled_urdf(filename, avg_size_mass, obj_class):
     model_path = os.path.dirname(filename)
-    with open(os.path.join(model_path, 'misc/bbox.json'), 'r') as bbox_file:
-        bbox_data = json.load(bbox_file)
-        bbox_max = np.array(bbox_data['max'])
-        bbox_min = np.array(bbox_data['min'])
+    meta_json = os.path.join(model_path, 'misc/metadata.json')
+    if os.path.isfile(meta_json):
+        with open(meta_json, 'r') as f:
+            meta_data = json.load(f)
+            bbox_size = np.array(meta_data['bbox_size'])
+            base_link_offset = np.array(meta_data['base_link_offset'])
+    else:
+        bbox_json = os.path.join(model_path, 'misc/bbox.json')
+        with open(bbox_json, 'r') as bbox_file:
+            bbox_data = json.load(bbox_file)
+            bbox_max = np.array(bbox_data['max'])
+            bbox_min = np.array(bbox_data['min'])
+            bbox_size = bbox_max - bbox_min
+            base_link_offset = (bbox_min + bbox_max) / 2.0
 
     bounding_box = np.array(avg_size_mass['size'])
-    original_bbox = bbox_max - bbox_min
-    scale = bounding_box / original_bbox
+    scale = bounding_box / bbox_size
     # scale = np.array([1.0, 1.0, 1.0])
 
     object_tree = ET.parse(filename)
@@ -227,9 +236,8 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
     # Finally, we need to know where is the base_link origin wrt. the bounding box center. That allows us to place the model
     # correctly since the joint transformations given in the scene urdf are for the bounding box center
     # Coordinates of the bounding box center in the base_link frame
-    bbox_center_in_blf = (bbox_max + bbox_min)/2.0
     # We scale the location. We will subtract this to the joint location
-    scaled_bbxc_in_blf = -scale * bbox_center_in_blf
+    scaled_bbxc_in_blf = -scale * base_link_offset
 
     return main_urdf_file, scaled_bbxc_in_blf
 
