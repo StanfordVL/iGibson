@@ -1,6 +1,6 @@
 from random import random
 from time import time
-
+import numpy as np
 from .utils import INF, argmin
 
 
@@ -77,7 +77,7 @@ def safe_path(sequence, collision):
     return path
 
 
-def rrt_star(start, goal, distance, sample, extend, collision, radius, max_time=INF, max_iterations=INF, goal_probability=.2, informed=True):
+def rrt_star(start, goal, distance, sample, extend, collision, radius=0.5, max_time=INF, max_iterations=INF, goal_probability=.2, informed=True):
     if collision(start) or collision(goal):
         return None
     nodes = [OptimalNode(start)]
@@ -91,8 +91,9 @@ def rrt_star(start, goal, distance, sample, extend, collision, radius, max_time=
         if informed and goal_n is not None and distance(start, s) + distance(s, goal) >= goal_n.cost:
             continue
         if it % 100 == 0:
-            print it, time() - t0, goal_n is not None, do_goal, (goal_n.cost if goal_n is not None else INF)
+            print(it, time() - t0, goal_n is not None, do_goal, (goal_n.cost if goal_n is not None else INF))
         it += 1
+        print(it, len(nodes))
 
         nearest = argmin(lambda n: distance(n.config, s), nodes)
         path = safe_path(extend(nearest.config, s), collision)
@@ -104,9 +105,17 @@ def rrt_star(start, goal, distance, sample, extend, collision, radius, max_time=
         if do_goal and distance(new.config, goal) < 1e-6:
             goal_n = new
             goal_n.set_solution(True)
+            break
         # TODO - k-nearest neighbor version
-        neighbors = filter(lambda n: distance(
-            n.config, new.config) < radius, nodes)
+        # neighbors = filter(lambda n: distance(
+        #    n.config, new.config) < radius, nodes)
+        # print('num neighbors', len(list(neighbors)))
+        k = 10
+        k = np.min([k, len(nodes)])
+        dists = [distance(n.config, new.config) for n in nodes]
+        neighbors = [nodes[i] for i in np.argsort(dists)[:k]]
+        #print(neighbors)
+
         nodes.append(new)
 
         for n in neighbors:
