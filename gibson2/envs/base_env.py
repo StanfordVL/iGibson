@@ -1,5 +1,5 @@
 from gibson2.core.physics.robot_locomotors \
-    import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot
+    import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, FetchGripper, Locobot
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import EmptyScene, StadiumScene, BuildingScene
 import gibson2
@@ -104,6 +104,8 @@ class BaseEnv(gym.Env):
             robot = Freight(self.config)
         elif self.config['robot'] == 'Fetch':
             robot = Fetch(self.config)
+        elif self.config['robot'] == 'FetchGripper':
+            robot = FetchGripper(self.config)
         elif self.config['robot'] == 'Locobot':
             robot = Locobot(self.config)
         else:
