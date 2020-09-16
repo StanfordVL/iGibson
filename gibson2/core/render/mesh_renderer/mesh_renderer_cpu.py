@@ -898,7 +898,8 @@ class MeshRenderer(object):
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
-                for item in self.render(modes=modes, hidden=[instance]):
+                # for item in self.render(modes=modes, hidden=[instance]):
+                for item in self.render(modes=modes):
                     frames.append(item)
         return frames
 
