@@ -7,7 +7,7 @@ from gibson2.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZ
 from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path
 import numpy as np
 import logging
-
+import math
 
 
 def parse_urdf(tree):

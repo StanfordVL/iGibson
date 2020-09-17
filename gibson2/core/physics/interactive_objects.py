@@ -6,6 +6,7 @@ import random
 import json
 
 from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path, get_ig_model_path, get_ig_category_path
+from gibson2.utils.urdf_utils import round_up
 import xml.etree.ElementTree as ET
 from gibson2.utils.utils import rotate_vector_3d
 
@@ -226,11 +227,6 @@ class BoxShape(Object):
         return body_id
 
 
-def round_up(n, decimals=0):
-    multiplier = 10 ** decimals
-    return math.ceil(n * multiplier) / multiplier
-
-
 class URDFObject(Object):
     """
     URDFObjects are instantiated from a URDF file. They can be composed of one or more links and joints. They should be passive
@@ -356,6 +352,15 @@ class URDFObject(Object):
                             [round_up(val, 10) for val in new_origin_xyz])
                         origin.attrib['xyz'] = ' '.join(
                             map(str, new_origin_xyz))
+
+                    # scale the prismatic joint
+                    if joint.attrib['type'] == 'prismatic':
+                        limits = joint.findall('limit')
+                        assert len(limits) == 1
+                        limit = limits[0]
+                        assert float(limit.attrib['lower']) == 0.0
+                        limit.attrib['upper'] = str(
+                            float(limit.attrib['upper']) * scale_in_parent_lf[1])
 
                     # Get the rotation of the joint frame and apply it to the scale
                     if "rpy" in joint.keys():

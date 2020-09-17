@@ -10,12 +10,14 @@ from gibson2.external.pybullet_tools.utils import get_center_extent
 from gibson2.core.physics.robot_locomotors import Turtlebot
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import EmptyScene, StadiumScene
-from gibson2.core.physics.scene import save_urdfs_without_floating_joints, round_up
+from gibson2.core.physics.scene import save_urdfs_without_floating_joints
 from gibson2.core.physics.interactive_objects import YCBObject
 from gibson2.core.physics.interactive_objects import InteractiveObj
 from gibson2.core.physics.interactive_objects import VisualMarker
 from gibson2.utils.utils import rotate_vector_3d
 from gibson2.utils.utils import parse_config
+from gibson2.utils.urdf_utils import round_up
+
 from IPython import embed
 from PIL import Image
 import json
@@ -23,7 +25,7 @@ import trimesh
 
 import xml.etree.ElementTree as ET
 
-# SELECTED_CLASSES = ['sofa_chair']
+SELECTED_CLASSES = ['cabinet']
 
 
 def save_scaled_urdf(filename, avg_size_mass, obj_class):
@@ -74,6 +76,15 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
                         [round_up(val, 4) for val in new_origin_xyz])
                     origin.attrib['xyz'] = ' '.join(
                         map(str, new_origin_xyz))
+
+                # scale the prismatic joint
+                if joint.attrib['type'] == 'prismatic':
+                    limits = joint.findall('limit')
+                    assert len(limits) == 1
+                    limit = limits[0]
+                    assert float(limit.attrib['lower']) == 0.0
+                    limit.attrib['upper'] = str(
+                        float(limit.attrib['upper']) * scale_in_parent_lf[1])
 
                 # Get the rotation of the joint frame and apply it to the scale
                 if "rpy" in joint.keys():
@@ -133,7 +144,8 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
     density = total_mass / total_volume
     print('avg density', density)
     for trimesh_obj in all_links_trimesh:
-        trimesh_obj.density = density
+        if trimesh_obj is not None:
+            trimesh_obj.density = density
 
     assert len(all_links) == len(all_links_trimesh)
 
@@ -268,7 +280,7 @@ def save_scale_urdfs():
         obj_class_dir = os.path.join(root_dir, obj_class_dir)
         for obj_inst_dir in os.listdir(obj_class_dir):
             obj_inst_name = obj_inst_dir
-            # if obj_inst_name != '14402':
+            # if obj_inst_name != '40147':
             #     continue
             urdf_path = obj_inst_name + '.urdf'
             obj_inst_dir = os.path.join(obj_class_dir, obj_inst_dir)
@@ -428,7 +440,7 @@ def debug_renderer_scaling():
                   timestep=1 / float(100))
     scene = EmptyScene()
     s.import_scene(scene, render_floor_plane=True)
-    urdf_path = '/cvgl2/u/chengshu/ig_dataset_v5/objects/lamp/lamp_0059/lamp_0059_avg_size_0.urdf'
+    urdf_path = '/cvgl2/u/chengshu/ig_dataset_v5/objects/cabinet/40147/40147_avg_size_0.urdf'
 
     obj = InteractiveObj(urdf_path)
     s.import_articulated_object(obj)
