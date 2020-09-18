@@ -393,6 +393,7 @@ class Skill(object):
             requires_holding=False,
             acquires_holding=False,
             releases_holding=False,
+            requires_not_holding=False,
             joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
             verbose=False,
             precondition_fn=None,
@@ -408,6 +409,10 @@ class Skill(object):
         self.requires_holding = requires_holding
         self.acquires_holding = acquires_holding
         self.releases_holding = releases_holding
+        self.requires_not_holding = requires_not_holding
+        if acquires_holding:
+            assert self.requires_not_holding
+        assert not (self.requires_holding and self.requires_not_holding)
         self.verbose = verbose
         self.precondition_fn = precondition_fn
         self._name = name
@@ -533,6 +538,7 @@ class GraspDistOrn(Skill):
             acquires_holding=True,
             requires_holding=False,
             releases_holding=False,
+            requires_not_holding=True,
             joint_resolutions=joint_resolutions,
             verbose=verbose,
             precondition_fn=precondition_fn
@@ -631,6 +637,7 @@ class PlacePosOrn(Skill):
             requires_holding=True,
             releases_holding=True,
             acquires_holding=False,
+            requires_not_holding=False,
             joint_resolutions=joint_resolutions,
             verbose=verbose,
             precondition_fn=precondition_fn
@@ -787,6 +794,7 @@ class PourPosOrn(Skill):
             requires_holding=True,
             acquires_holding=False,
             releases_holding=False,
+            requires_not_holding=False,
             joint_resolutions=joint_resolutions,
             verbose=verbose,
             precondition_fn=precondition_fn
@@ -895,6 +903,7 @@ class OperatePrismaticPosDistance(Skill):
             requires_holding=False,
             acquires_holding=False,
             releases_holding=False,
+            requires_not_holding=True,
             joint_resolutions=joint_resolutions,
             verbose=verbose,
             precondition_fn=precondition_fn
@@ -960,6 +969,7 @@ class TouchPosition(Skill):
             requires_holding=False,
             acquires_holding=False,
             releases_holding=False,
+            requires_not_holding=True,
             joint_resolutions=joint_resolutions,
             verbose=verbose,
             precondition_fn=precondition_fn
@@ -1016,6 +1026,7 @@ class ConditionSkill(Skill):
             requires_holding=False,
             acquires_holding=False,
             releases_holding=False,
+            requires_not_holding=False,
             joint_resolutions=joint_resolutions,
             verbose=verbose,
             precondition_fn=precondition_fn
@@ -1064,7 +1075,7 @@ class SkillLibrary(object):
 
     def skill_index_to_array(self, skill_index):
         arr = np.zeros(len(self))
-        arr[skill_index]= 1
+        arr[skill_index] = 1
         return arr
 
     @property
@@ -1266,7 +1277,7 @@ class SkillLibrary(object):
             traj = skill.plan(skill_params, target_object_id=target_object_id)
             self._holding = target_object_id
         else:
-            if self._holding is not None:
+            if skill.requires_not_holding and self._holding is not None:
                 raise NoPlanException("Robot is holding something but is trying to run {}".format(skill.name))
             traj = skill.plan(skill_params, target_object_id=target_object_id)
         return traj

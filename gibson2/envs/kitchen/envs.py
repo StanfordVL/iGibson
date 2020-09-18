@@ -163,10 +163,8 @@ class KitchenCoffeeAP(KitchenCoffee):
         self._task_object_name = "bowl"
 
     def _create_skill_lib(self):
-        def fill_bowl(objects, pl):
-            num_beads_in_bowl = len(objects_center_in_container(
-                objects["faucet_" + pl].beads, objects["bowl"].body_id))
-            return num_beads_in_bowl >= 3
+        def fill_bowl(objects, pl, oid):
+            return len(objects_center_in_container(objects["faucet_" + pl].beads, oid)) >= 3
 
         lib_skills = (
             skills.GraspDistDiscreteOrn(
@@ -178,7 +176,7 @@ class KitchenCoffeeAP(KitchenCoffee):
             ),
             skills.GraspDistDiscreteOrn(
                 name="grasp_fill_mug_any", lift_height=0.1, lift_speed=0.01,
-                precondition_fn=lambda: self.is_success_all_tasks()["fill_mug_any"],
+                precondition_fn=lambda oid: self.is_success_all_tasks()["fill_mug_any"],
                 params=OrderedDict(
                     grasp_distance=skills.SkillParamsContinuous(low=[0.05], high=[0.05]),
                     grasp_orn=skills.SkillParamsDiscrete(size=len(skills.SKILL_ORIENTATIONS)),
@@ -199,13 +197,13 @@ class KitchenCoffeeAP(KitchenCoffee):
                 )
             ),
             skills.ConditionSkill(
-                name="fill_bowl_milk", precondition_fn=lambda objs=self.objects: fill_bowl(self.objects, "milk"),
+                name="fill_bowl_milk", precondition_fn=lambda oid: fill_bowl(self.objects, "milk", oid),
             ),
             skills.ConditionSkill(
-                name="fill_bowl_coffee", precondition_fn=lambda objs=self.objects: fill_bowl(self.objects, "coffee")
+                name="fill_bowl_coffee", precondition_fn=lambda oid: fill_bowl(self.objects, "coffee", oid)
             )
         )
-        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills, verbose=True)
+        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
 
     def get_random_skeleton(self, horizon):
         param_set = OrderedDict()
@@ -256,31 +254,6 @@ class KitchenCoffeeAP(KitchenCoffee):
         return param_seq
 
 
-class KitchenCoffeeTwoBowlAP(KitchenCoffeeAP):
-    def _create_objects(self):
-        super(KitchenCoffeeTwoBowlAP, self)._create_objects()
-        o = YCBObject('024_bowl')
-        o.load()
-        p.changeDynamics(o.body_id, -1, mass=10.0)
-        self.objects.add_object("bowl/1", o, category="bowl")
-
-    def _reset_objects(self):
-        z = PBU.stable_z(self.objects["mug"].body_id, self.fixtures["table"].body_id)
-        self.objects["mug"].set_position_orientation(
-            PU.sample_positions_in_box([0.2, 0.3], [-0.2, -0.1], [z, z]), PBU.unit_quat())
-
-        z = PBU.stable_z(self.objects["faucet_coffee"].body_id, self.fixtures["table"].body_id)
-        pos = PU.sample_positions_in_box([0.2, 0.3], [0.1, 0.2], [z, z])
-        coffee_pos = pos + np.array([0, 0.075, 0])
-        milk_pos = pos + np.array([0, -0.075, 0])
-        self.objects["faucet_coffee"].set_position_orientation(coffee_pos, PBU.unit_quat())
-        self.objects["faucet_milk"].set_position_orientation(milk_pos, PBU.unit_quat())
-
-        z = PBU.stable_z(self.objects["bowl"].body_id, self.fixtures["table"].body_id)
-        self.objects["bowl"].set_position_orientation(
-            PU.sample_positions_in_box([-0.3, -0.2], [-0.05, 0.05], [z, z]), PBU.unit_quat())
-
-
 class SimpleCoffeeAP(KitchenCoffee):
     def _sample_task(self):
         skill_name = np.random.choice(["fill_mug_milk", "fill_mug_coffee"])
@@ -303,10 +276,8 @@ class SimpleCoffeeAP(KitchenCoffee):
         return successes
 
     def _create_skill_lib(self):
-        def fill_mug(objects, pl):
-            num_beads_in_bowl = len(objects_center_in_container(
-                objects["faucet_" + pl].beads, objects["mug"].body_id))
-            return num_beads_in_bowl >= 3
+        def fill_mug(objects, pl, oid):
+            return len(objects_center_in_container(objects["faucet_" + pl].beads, oid)) >= 3
 
         lib_skills = (
             skills.GraspDistDiscreteOrn(
@@ -324,10 +295,10 @@ class SimpleCoffeeAP(KitchenCoffee):
                 )
             ),
             skills.ConditionSkill(
-                name="fill_mug_milk", precondition_fn=lambda objs=self.objects: fill_mug(self.objects, "milk"),
+                name="fill_mug_milk", precondition_fn=lambda oid: fill_mug(self.objects, "milk", oid),
             ),
             skills.ConditionSkill(
-                name="fill_mug_coffee", precondition_fn=lambda objs=self.objects: fill_mug(self.objects, "coffee"),
+                name="fill_mug_coffee", precondition_fn=lambda oid: fill_mug(self.objects, "coffee", oid),
             )
         )
         self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)

@@ -8,7 +8,7 @@ import gibson2
 
 from gibson2.envs.kitchen.transform_utils import quat2col
 
-from gibson2.envs.kitchen.camera import Camera, crop_pad_resize, get_bbox2d_from_segmentation
+from gibson2.envs.kitchen.camera import Camera, crop_pad_resize, get_bbox2d_from_segmentation, get_masks_from_segmentation
 from gibson2.envs.kitchen.robots import Arm, ConstraintActuatedRobot, PlannerRobot, Robot, Gripper
 import gibson2.envs.kitchen.env_utils as EU
 import gibson2.external.pybullet_tools.utils as PBU
@@ -220,20 +220,19 @@ class BaseEnv(object):
     def _get_pixel_observation(self, camera):
         obs = {}
         rgb, depth, seg_obj, seg_link = camera.capture_frame()
-        bbox = None
-        if self._obs_crop:
-            bbox = get_bbox2d_from_segmentation(seg_obj, self.objects.body_ids)
         if self._obs_image:
-            obs["images"] = rgb
+            obs["image_" + camera.name] = rgb
             if self._obs_crop:
-                obs["image_crops"] = crop_pad_resize(
+                bbox = get_bbox2d_from_segmentation(seg_obj, self.objects.body_ids)
+                obs["image_crops_" + camera.name] = crop_pad_resize(
                     rgb, bbox=bbox[:, 1:], target_size=self.obs_crop_size, expand_ratio=1.1)
-                obs["image_crops_flat"] = obs["image_crops"].reshape((-1, self.obs_crop_size, 3))
+                obs["image_crops_flat_" + camera.name] = obs["image_crops"].reshape((-1, self.obs_crop_size, 3))
         if self._obs_depth:
-            obs["depth"] = depth
+            obs["depth_" + camera.name] = depth[:, :, None]
         if self._obs_segmentation:
-            obs["segmentation_objects"] = seg_obj
-            obs["segmentation_links"] = seg_link
+            obs["segmentation_objects_" + camera.name] = \
+                get_masks_from_segmentation(seg_obj, self.objects.body_ids)[:, :, :, None]
+            # obs["segmentation_links_" + camera.name] = seg_link[:, :, :, None]
         return obs
 
     def _get_state_observation(self):
@@ -356,9 +355,20 @@ class EnvSkillWrapper(object):
         """generate random valid actions"""
         step_i = 0
         while horizon is None or step_i < horizon:
+            step_i += 1
             skill_index, object_index = self.sample_skill()
             skill_index_param = self.sample_skill_param(skill_index_arr=skill_index)
             yield np.concatenate([skill_index_param, object_index])
+
+    def random_action_dict_generator(self, horizon=None):
+        step_i = 0
+        while horizon is None or step_i < horizon:
+            step_i += 1
+            skill_index, object_index = self.sample_skill()
+            skill_index_param = self.sample_skill_param(skill_index_arr=skill_index)
+            yield dict(skill_index=skill_index_param[:len(self.skill_lib)],
+                       skill_param=skill_index_param[len(self.skill_lib):],
+                       skill_object_index=object_index)
 
     def skeleton_action_generator(self):
         """generate actions with ground truth skill skeleton and sampled parameters."""
@@ -367,6 +377,15 @@ class EnvSkillWrapper(object):
             object_index = self.env.objects.names.index(object_name)
             object_index = self.env.objects.object_index_to_array(object_index)
             yield np.concatenate([skill_param, object_index])
+
+    def skeleton_action_dict_generator(self):
+        for param_func, object_name in self.env.get_task_skeleton():
+            skill_index_param = param_func()
+            object_index = self.env.objects.names.index(object_name)
+            object_index = self.env.objects.object_index_to_array(object_index)
+            yield dict(skill_index=skill_index_param[:len(self.skill_lib)],
+                       skill_param=skill_index_param[len(self.skill_lib):],
+                       skill_object_index=object_index)
 
     def sample_skill(self):
         """Sample skill_index, object_index pairs"""

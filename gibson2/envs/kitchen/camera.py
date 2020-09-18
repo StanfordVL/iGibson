@@ -54,8 +54,7 @@ def get_images(height, width, flags, **kwargs):
 
 
 class Camera(object):
-    def __init__(self, height, width, fov=60, near=0.01, far=100., renderer=p.ER_TINY_RENDERER):
-
+    def __init__(self, height, width, fov=60, near=0.01, far=100., renderer=p.ER_TINY_RENDERER, name="default"):
         aspect = float(width) / float(height)
         self._height = height
         self._width = width
@@ -64,6 +63,11 @@ class Camera(object):
         self._view_matrix = p.computeViewMatrix([0, 0, 1], [0, 0, 0], [1, 0, 0])
         self._projection_matrix = p.computeProjectionMatrixFOV(fov=fov, aspect=aspect, nearVal=near, farVal=far)
         self._renderer = renderer
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
 
     def set_pose(self, camera_pos, target_pos, up_vector):
         assert(len(camera_pos) == 3)
@@ -159,6 +163,13 @@ def get_bbox2d_from_segmentation(seg_map, object_ids):
         all_bboxes[i, 0] = object_ids[i]
         all_bboxes[i, 1:] = get_bbox2d_from_mask(seg_map == object_ids[i])
     return all_bboxes
+
+
+def get_masks_from_segmentation(seg_map, ids):
+    masks = np.zeros((len(ids), seg_map.shape[0], seg_map.shape[1]), dtype=np.bool)
+    for i, oid in enumerate(ids):
+        masks[i] = seg_map == oid
+    return masks
 
 
 def box_rc_to_xy(box):
