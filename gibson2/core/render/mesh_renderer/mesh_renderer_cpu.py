@@ -1,4 +1,3 @@
-import os
 import sys
 import ctypes
 
@@ -12,7 +11,7 @@ from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, look
     safemat2quat, xyzw2wxyz
 from transforms3d.quaternions import axangle2quat, mat2quat
 from transforms3d.euler import quat2euler, mat2euler
-from gibson2.core.render.mesh_renderer import EGLRendererContext
+from gibson2.core.render.mesh_renderer import MeshRendererContext
 from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
 import gibson2.core.render.mesh_renderer as mesh_renderer
 import pybullet as p
@@ -89,12 +88,8 @@ class InstanceGroup(object):
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.tf_tree = None
-        self.use_pbr = False
-        self.use_pbr_mapping = False
-        self.roughness = 1
-        self.metalness = 0
 
-    def render(self, shadow_pass=0):
+    def render(self):
         """
         Render this instance group
         """
@@ -103,10 +98,7 @@ class InstanceGroup(object):
 
         self.renderer.r.initvar_instance_group(self.renderer.shaderProgram,
                                                self.renderer.V,
-                                               self.renderer.lightV,
-                                               shadow_pass,
                                                self.renderer.P,
-                                               self.renderer.camera,
                                                self.renderer.lightpos,
                                                self.renderer.lightcolor)
 
@@ -117,27 +109,11 @@ class InstanceGroup(object):
                                                            self.poses_rot[i],
                                                            float(self.class_id) / 255.0,
                                                            self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd[:3],
-                                                           float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()),
-                                                           float(self.use_pbr),
-                                                           float(self.use_pbr_mapping),
-                                                           float(self.metalness),
-                                                           float(self.roughness))
-
+                                                           float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
                 try:
-                    current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
-                    texture_id = current_material.texture_id
-                    metallic_texture_id = current_material.metallic_texture_id
-                    roughness_texture_id = current_material.roughness_texture_id
-                    normal_texture_id = current_material.normal_texture_id
-
+                    texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
                     if texture_id is None:
                         texture_id = -1
-                    if metallic_texture_id is None:
-                        metallic_texture_id = -1
-                    if roughness_texture_id is None:
-                        roughness_texture_id = -1
-                    if normal_texture_id is None:
-                        normal_texture_id = -1
 
                     if self.renderer.msaa:
                         buffer = self.renderer.fbo_ms
@@ -146,10 +122,7 @@ class InstanceGroup(object):
 
                     self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                            texture_id,
-                                                           metallic_texture_id,
-                                                           roughness_texture_id,
-                                                           normal_texture_id,
-                                                           self.renderer.depth_tex_shadow,
+                                                           self.renderer.texUnitUniform,
                                                            self.renderer.VAOs[object_idx],
                                                            self.renderer.faces[object_idx].size,
                                                            self.renderer.faces[object_idx],
@@ -157,7 +130,6 @@ class InstanceGroup(object):
                 finally:
                     self.renderer.r.cglBindVertexArray(0)
         self.renderer.r.cglUseProgram(0)
-
 
     def get_pose_in_camera(self):
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
@@ -213,18 +185,10 @@ class Instance(object):
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.softbody = softbody
-        self.use_pbr = False
-        self.use_pbr_mapping = False
-        self.roughness = 1
-        self.metalness = 0
 
-
-    def render(self, shadow_pass=0):
+    def render(self):
         """
         Render this instance
-        shadow_pass = 0: normal rendering mode, disable shadow
-        shadow_pass = 1: enable_shadow, rendering depth map from light space
-        shadow_pass = 2: use rendered depth map to calculate shadow
         """
         if self.renderer is None:
             return
@@ -256,10 +220,7 @@ class Instance(object):
 
         self.renderer.r.initvar_instance(self.renderer.shaderProgram,
                                          self.renderer.V,
-                                         self.renderer.lightV,
-                                         shadow_pass,
                                          self.renderer.P,
-                                         self.renderer.camera,
                                          self.pose_trans,
                                          self.pose_rot,
                                          self.renderer.lightpos,
@@ -269,26 +230,11 @@ class Instance(object):
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
                                                    float(self.class_id) / 255.0,
                                                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].kd,
-                                                   float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()),
-                                                   float(self.use_pbr),
-                                                   float(self.use_pbr_mapping),
-                                                   float(self.metalness),
-                                                   float(self.roughness))
+                                                   float(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()))
             try:
-                current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
-                texture_id = current_material.texture_id
-                metallic_texture_id = current_material.metallic_texture_id
-                roughness_texture_id = current_material.roughness_texture_id
-                normal_texture_id = current_material.normal_texture_id
-
+                texture_id = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].texture_id
                 if texture_id is None:
                     texture_id = -1
-                if metallic_texture_id is None:
-                    metallic_texture_id = -1
-                if roughness_texture_id is None:
-                    roughness_texture_id = -1
-                if normal_texture_id is None:
-                    normal_texture_id = -1
 
                 if self.renderer.msaa:
                     buffer = self.renderer.fbo_ms
@@ -297,10 +243,7 @@ class Instance(object):
 
                 self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                        texture_id,
-                                                       metallic_texture_id,
-                                                       roughness_texture_id,
-                                                       normal_texture_id,
-                                                       self.renderer.depth_tex_shadow,
+                                                       self.renderer.texUnitUniform,
                                                        self.renderer.VAOs[object_idx],
                                                        self.renderer.faces[object_idx].size,
                                                        self.renderer.faces[object_idx],
@@ -332,22 +275,13 @@ class Instance(object):
 
 
 class Material(object):
-    def __init__(self, type='color', kd=[0.5, 0.5, 0.5],
-                 texture_id=None, metallic_texture_id=None,
-                 roughness_texture_id=None, normal_texture_id=None):
+    def __init__(self, type='color', kd=[0.5, 0.5, 0.5], texture_id=None):
         self.type = type
         self.kd = kd
         self.texture_id = texture_id
-        self.metallic_texture_id = metallic_texture_id
-        self.roughness_texture_id = roughness_texture_id
-        self.normal_texture_id = normal_texture_id
 
     def is_texture(self):
         return self.type == 'texture'
-
-    def is_pbr_texture(self):
-        return self.type == 'texture' and self.metallic_texture_id is not None \
-            and self.roughness_texture_id is not None and self.normal_texture_id is not None
 
     def __str__(self):
         return "Material(type: {}, texture_id: {}, color: {})".format(self.type, self.texture_id,
@@ -362,16 +296,13 @@ class MeshRenderer(object):
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False,
-                 enable_shadow=False, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr')):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
         :param vertical_fov: vertical field of view for the renderer
         :param device_idx: which GPU to run the renderer on
         :param use_fisheye: use fisheye shader or not
-        :param enable_shadow: enable shadow in the rgb rendering
-        :param env_texture_filename: texture filename for PBR lighting
         """
         self.shaderProgram = None
         self.fbo = None
@@ -384,26 +315,22 @@ class MeshRenderer(object):
         self.visual_objects = []
         self.vertex_data = []
         self.shapes = []
+
+        self.texUnitUniform = None
         self.width = width
         self.height = height
         self.faces = []
         self.instances = []
         self.fisheye = use_fisheye
-
-        self.enable_shadow = enable_shadow
-  
-        if os.environ.get('GIBSON_DEVICE_ID', None):
-            device = int(os.environ.get('GIBSON_DEVICE_ID'))
-            logging.info("GIBSON_DEVICE_ID environment variable has been manually set. "
-                         "Using device {} for rendering".format(device))
+        # self.context = glcontext.Context()
+        # self.context.create_opengl_context((self.width, self.height))
+        available_devices = get_available_devices()
+        if device_idx < len(available_devices):
+            device = available_devices[device_idx]
+            logging.info("Using device {} for rendering".format(device))
         else:
-            available_devices = get_available_devices()
-            if device_idx < len(available_devices):
-                device = available_devices[device_idx]
-                logging.info("Using device {} for rendering".format(device))
-            else:
-                logging.info("Device index is larger than number of devices, falling back to use 0")
-                device = 0
+            logging.info("Device index is larger than number of devices, falling back to use 0")
+            device = 0
 
         self.device_idx = device_idx
         self.device_minor = device
@@ -412,7 +339,7 @@ class MeshRenderer(object):
             from gibson2.core.render.mesh_renderer import GLFWRendererContext
             self.r = GLFWRendererContext.GLFWRendererContext(width, height)
         else:
-            self.r = EGLRendererContext.EGLRendererContext(width, height, device)
+            self.r = MeshRendererContext.MeshRendererContext(width, height, device)
         self.r.init()
 
         self.glstring = self.r.getstring_meshrenderer()
@@ -421,15 +348,23 @@ class MeshRenderer(object):
         logging.debug(self.glstring)
 
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
         self.lightcolor = [1, 1, 1]
 
         logging.debug('Is using fisheye camera: {}'.format(self.fisheye))
 
         if self.fisheye:
-            logging.error('Fisheye is currently not supported.')
-            exit(1)
+            [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
+                        "".join(open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                        'shaders/fisheye_vert.shader')).readlines()).replace(
+                                            "FISHEYE_SIZE", str(self.width / 2)),
+                        "".join(open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                        'shaders/fisheye_frag.shader')).readlines()).replace(
+                                            "FISHEYE_SIZE", str(self.width / 2)))
         else:
-            self.shaderProgram = self.r.compile_shader_meshrenderer(
+            [self.shaderProgram, self.texUnitUniform] = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/vert.shader')).readlines()),
@@ -437,33 +372,19 @@ class MeshRenderer(object):
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                         'shaders/frag.shader')).readlines()))
 
-        self.set_light_position_direction([0,0,2], [0,0.5,0]) #default light looking down and tilted
-
+        self.lightpos = [0, 0, 0]
         self.setup_framebuffer()
         self.vertical_fov = vertical_fov
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
-        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.1, 100)
+        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.01, 100)
         V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
         self.mesh_materials = []
-
-        self.env_texture_filename = env_texture_filename
-        self.setup_pbr()
-
-    def setup_pbr(self):
-        if os.path.exists(self.env_texture_filename):
-            self.r.setup_pbr(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/'), self.env_texture_filename)
-        else:
-            logging.warning("Environment texture not available, cannot use PBR.")
-
-    def set_light_position_direction(self, position, target):
-        self.lightpos = position
-        self.lightV = lookat(self.lightpos, target, [0,1,0])
 
     def setup_framebuffer(self):
         """
@@ -475,8 +396,6 @@ class MeshRenderer(object):
         if self.msaa:
             [self.fbo_ms, self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
              self.depth_tex_ms] = self.r.setup_framebuffer_meshrenderer_ms(self.width, self.height)
-
-        self.depth_tex_shadow = self.r.allocateTexture(self.width,self.height)
 
     def load_object(self,
                     obj_path,
@@ -528,32 +447,16 @@ class MeshRenderer(object):
         logging.debug("Num shapes: {}".format(len(shapes)))
 
         material_count = len(self.materials_mapping)
+        materials_fn = {}
 
         for i, item in enumerate(materials):
             if item.diffuse_texname != '' and load_texture:
+                materials_fn[i + material_count] = item.diffuse_texname
                 obj_dir = os.path.dirname(obj_path)
+                #texture = loadTexture(os.path.join(dir, item.diffuse_texname), scale=texture_scale)
                 texture = self.r.loadTexture(os.path.join(obj_dir, item.diffuse_texname))
                 self.textures.append(texture)
-
-                texture_metallic = None
-                texture_roughness = None
-                texture_normal = None
-
-                if item.metallic_texname != '' and load_texture: # map_Pm
-                    texture_metallic = self.r.loadTexture(os.path.join(obj_dir, item.metallic_texname))
-                    self.textures.append(texture_metallic)
-
-                if item.roughness_texname != '' and load_texture: # map_Pr
-                    texture_roughness = self.r.loadTexture(os.path.join(obj_dir, item.roughness_texname))
-                    self.textures.append(texture_roughness)
-
-                if item.bump_texname != '' and load_texture: # map_bump, use bump map for normal
-                    # because for some reason norm. key does not work
-                    texture_normal = self.r.loadTexture(os.path.join(obj_dir, item.bump_texname))
-                    self.textures.append(texture_normal)
-
-                material = Material('texture', texture_id=texture, metallic_texture_id=texture_metallic,
-                                    roughness_texture_id=texture_roughness, normal_texture_id=texture_normal)
+                material = Material('texture', texture_id=texture)
             else:
                 material = Material('color', kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
@@ -580,6 +483,7 @@ class MeshRenderer(object):
             shape_vertex_index = np_indices[:,0]
             shape_normal_index = np_indices[:,1]
             shape_texcoord_index = np_indices[:,2]
+
             shape_vertex = vertex_position[shape_vertex_index]
 
             if len(vertex_normal) == 0:
@@ -592,32 +496,20 @@ class MeshRenderer(object):
             else:
                 shape_texcoord = vertex_texcoord[shape_texcoord_index]
 
+            vertices = np.concatenate(
+                [shape_vertex * scale, shape_normal, shape_texcoord], axis=-1)
+
+            faces = np.array(range(len(vertices))).reshape((len(vertices)//3, 3))
             if not transform_orn is None:
                 orn = quat2rotmat(xyzw2wxyz(transform_orn))
-                shape_vertex = shape_vertex.dot(orn[:3, :3].T)
+                vertices[:, :3] = vertices[:, :3].dot(orn[:3, :3].T)
             if not transform_pos is None:
-                shape_vertex += np.array(transform_pos)
+                vertices[:, :3] += np.array(transform_pos)
 
-            v0 = shape_vertex[0::3,:]
-            v1 = shape_vertex[1::3,:]
-            v2 = shape_vertex[2::3,:]
-            uv0 = shape_texcoord[0::3,:]
-            uv1 = shape_texcoord[1::3,:]
-            uv2 = shape_texcoord[2::3,:]
-            delta_pos1 = v1 - v0
-            delta_pos2 = v2 - v0
-            delta_uv1 = uv1 - uv0
-            delta_uv2 = uv2 - uv0
-            r = 1.0 / (delta_uv1[:,0] * delta_uv2[:,1] - delta_uv1[:,1] * delta_uv2[:,0])
-            tangent = (delta_pos1 * delta_uv2[:,1][:,None] - delta_pos2 * delta_uv1[:,1][:,None]) * r[:,None]
-            bitangent = (delta_pos2 * delta_uv1[:,0][:,None] - delta_pos1 * delta_uv2[:,0][:,None]) * r[:,None]
-            bitangent = bitangent.repeat(3, axis=0)
-            tangent = tangent.repeat(3, axis=0)
-            vertices = np.concatenate(
-                [shape_vertex * scale, shape_normal, shape_texcoord, tangent, bitangent], axis=-1)
-            faces = np.array(range(len(vertices))).reshape((len(vertices)//3, 3))
             vertexData = vertices.astype(np.float32)
+
             [VAO, VBO] = self.r.load_object_meshrenderer(self.shaderProgram, vertexData)
+
             self.VAOs.append(VAO)
             self.VBOs.append(VBO)
             self.faces.append(faces)
@@ -632,6 +524,7 @@ class MeshRenderer(object):
             logging.debug('mesh_materials: {}'.format(self.mesh_materials))
             VAO_ids.append(self.get_num_objects() - 1)
 
+        #release(scene)
         new_obj = VisualObject(obj_path, VAO_ids, len(self.visual_objects), self)
         self.visual_objects.append(new_obj)
         return VAO_ids
@@ -712,7 +605,7 @@ class MeshRenderer(object):
 
     def set_fov(self, fov):
         self.vertical_fov = fov
-        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.1, 100)
+        P = perspective(self.vertical_fov, float(self.width) / float(self.height), 0.01, 100)
         self.P = np.ascontiguousarray(P, np.float32)
 
     def set_light_color(self, color):
@@ -767,32 +660,6 @@ class MeshRenderer(object):
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-
-        if self.enable_shadow:
-            # shadow pass
-
-            V = np.copy(self.V)
-            self.V = np.copy(self.lightV)
-            if self.msaa:
-                self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
-            else:
-                self.r.render_meshrenderer_pre(0, 0, self.fbo)
-
-            for instance in self.instances:
-                if not instance in hidden:
-                    instance.render(shadow_pass=1)
-
-            self.r.render_meshrenderer_post()
-
-            if self.msaa:
-                self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
-
-            self.r.readbuffer_meshrenderer_shadow_depth(self.width, self.height, self.fbo, self.depth_tex_shadow)
-            self.V = np.copy(V)
-
-
-        # main pass
-
         if self.msaa:
             self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
         else:
@@ -800,10 +667,7 @@ class MeshRenderer(object):
 
         for instance in self.instances:
             if not instance in hidden:
-                if self.enable_shadow:
-                    instance.render(shadow_pass=2)
-                else:
-                    instance.render(shadow_pass=0)
+                instance.render()
 
         self.r.render_meshrenderer_post()
         if self.msaa:
@@ -898,7 +762,8 @@ class MeshRenderer(object):
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
-                for item in self.render(modes=modes, hidden=[instance]):
+                # for item in self.render(modes=modes, hidden=[instance]):
+                for item in self.render(modes=modes):
                     frames.append(item)
         return frames
 
