@@ -19,15 +19,20 @@ class Gripper(object):
             joint_names=(),
             finger_link_names=(),
             joint_min=(0.00, 0.00),
-            joint_max=(1., 1.)
+            joint_max=(1., 1.),
+            env=None
     ):
         self.joint_min = joint_min
         self.joint_max = joint_max
         self.joint_names = joint_names
         self.finger_link_names = finger_link_names
+        self.grasp_cid = None
+        self.magic_ungrasp_delay = 0
+        self.magic_ungrasp_delay_counter = 0
 
         self.body_id = None
         self.filename = None
+        self.env = env
 
     def load(self, filename=None, body_id=None, scale=1.):
         self.filename = filename
@@ -38,7 +43,7 @@ class Gripper(object):
             self.body_id = body_id
         # change friction to simulate rubber
         for l in self.finger_links:
-            p.changeDynamics(self.body_id, l, lateralFriction=10)
+            p.changeDynamics(self.body_id, l, lateralFriction=10.)
 
         # set to open
         for i, jointIndex in enumerate(self.joints):
@@ -52,16 +57,33 @@ class Gripper(object):
     def finger_links(self):
         return [PBU.link_from_name(self.body_id, n) for n in self.finger_link_names]
 
+    def get_grasped_id(self, candidate_ids):
+        """Try to figure out which object the gripper is grasping"""
+        for oid in candidate_ids:
+            for l in PBU.get_all_links(oid):
+                fn_contact = []
+                for fn in self.finger_link_names:
+                    # if PBU.pairwise_link_collision(self.body_id, PBU.link_from_name(self.body_id, fn), oid, l):
+                    if len(p.getContactPoints(self.body_id, oid, PBU.link_from_name(self.body_id, fn), l)) > 0:
+                        fn_contact.append(fn)
+                num_left = len([fn for fn in fn_contact if fn.startswith("left")])
+                num_right = len([fn for fn in fn_contact if fn.startswith("right")])
+                if num_left > 0 and num_right > 0:
+                    return oid, l
+        else:
+            return None
+
     def get_joint_positions(self):
         return np.array([p.getJointState(self.body_id, j)[0] for j in self.joints])
 
-    def grasp(self, force=100.):
-        self.set_joint_positions(self.joint_min, force=force)
-        # self._magic_grasp(target_id, target_link=-1, joint_type=p.JOINT_FIXED)
+    def grasp(self):
+        self.set_joint_positions(self.joint_min, force=100.)
+        self._magic_grasp(joint_type=p.JOINT_FIXED)
 
     def ungrasp(self):
-        self.set_joint_positions(self.joint_max)
-        # self._magic_ungrasp()
+        self.set_joint_positions(self.joint_max, force=100.)
+        self.reset_joint_positions(self.joint_max)
+        self._magic_ungrasp()
 
     def set_joint_forces(self, forces):
         assert len(forces) == len(self.joints)
@@ -81,7 +103,17 @@ class Gripper(object):
         for i, j in enumerate(self.joints):
             p.resetJointState(self.body_id, j, targetValue=positions[i])
 
-    def _magic_grasp(self, target_id, target_link=-1, joint_type=p.JOINT_FIXED):
+    def _magic_grasp(self, joint_type=p.JOINT_FIXED):
+        if self.grasp_cid is not None:
+            return
+
+        ret = self.get_grasped_id(self.env.objects.body_ids)
+        if ret is None:
+            return
+
+        target_id, target_link = ret
+        # return
+
         obj_pos, obj_orn = p.getBasePositionAndOrientation(target_id)
         gripper_pos, gripper_orn = p.getBasePositionAndOrientation(self.body_id)
         grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
@@ -99,10 +131,16 @@ class Gripper(object):
             childFrameOrientation=(0, 0, 0, 1),
         )
 
+        # print("grasped {}, link {}".format(self.env.objects.body_id_to_name(target_id), target_link))
+
     def _magic_ungrasp(self):
-        if self.grasp_cid is not None:
+        if self.grasp_cid is not None and self.magic_ungrasp_delay_counter >= self.magic_ungrasp_delay:
             p.removeConstraint(self.grasp_cid)
+            # print("ungrasp")
             self.grasp_cid = None
+            self.magic_ungrasp_delay_counter = 0
+        else:
+            self.magic_ungrasp_delay_counter += 1
 
 
 class Arm(object):
@@ -344,7 +382,7 @@ class ConstraintActuatedRobot(Robot):
             parentFramePosition=(0, 0, 0),
             childFramePosition=gripper_base_pose[0],  # gripper base position
         )
-        p.changeConstraint(self.cid, maxForce=500)
+        p.changeConstraint(self.cid, maxForce=10000)
         self.set_eef_position_orientation(*self.get_eef_position_orientation())
 
     def reset_base_position_orientation(self, pos, orn):
@@ -354,7 +392,7 @@ class ConstraintActuatedRobot(Robot):
         self._create_eef_constraint()
 
     def set_eef_position_orientation(self, pos, orn):
-        p.changeConstraint(self.cid, pos, orn)
+        p.changeConstraint(self.cid, pos, orn, maxForce=10000)
         # for _ in range(20):
         #     if np.allclose(pos, self.get_eef_position(), atol=1e-3):
         #         break
