@@ -27,9 +27,11 @@ def world_saved():
 
 
 class Path(object):
-    def __init__(self, arm_path=None, gripper_path=None):
+    def __init__(self, arm_path=None, gripper_path=None, gripper_collision=None, holding_collision=None):
         self._arm_path = arm_path
         self._gripper_path = gripper_path
+        self._gripper_collision = gripper_collision
+        self._holding_collision = holding_collision
 
     @property
     def arm_path(self):
@@ -37,20 +39,15 @@ class Path(object):
 
     @property
     def gripper_path(self):
-        if self._gripper_path is not None:
-            assert len(self._gripper_path) == len(self._arm_path)
         return self._gripper_path
 
-    def append(self, arm_state, gripper_state=None):
+    def append(self, arm_state, gripper_state):
         if self._arm_path is None:
             self._arm_path = []
         self._arm_path.append(arm_state)
-        if gripper_state is not None:
-            if self._gripper_path is None:
-                self._gripper_path = []
-            self._gripper_path.append(gripper_state)
-        else:
-            assert self._gripper_path is None
+        if self._gripper_path is None:
+            self._gripper_path = []
+        self._gripper_path.append(gripper_state)
 
     def append_segment(self, arm_states, gripper_state=None):
         for state in arm_states:
@@ -59,8 +56,7 @@ class Path(object):
     def append_pause(self, num_steps):
         for _ in range(num_steps):
             self._arm_path.append(deepcopy(self._arm_path[-1]))
-            if self._gripper_path is not None:
-                self._gripper_path.append(deepcopy(self._gripper_path[-1]))
+            self._gripper_path.append(deepcopy(self._gripper_path[-1]))
 
     def __len__(self):
         return len(self.arm_path)
@@ -71,8 +67,6 @@ class Path(object):
 
     @property
     def gripper_path_arr(self):
-        if self._gripper_path is None:
-            return None
         assert len(self._gripper_path) == len(self._arm_path)
         return np.stack(self._gripper_path)
 
@@ -94,10 +88,7 @@ class Path(object):
 
         # otherwise concatenate the copied paths
         new_arm_path = deepcopy(self._arm_path) + deepcopy(other.arm_path)
-        new_gripper_path = None
-        if self._gripper_path is not None:
-            assert other.gripper_path is not None
-            new_gripper_path = deepcopy(self._gripper_path) + deepcopy(other.gripper_path)
+        new_gripper_path = deepcopy(self._gripper_path) + deepcopy(other.gripper_path)
 
         return self.__class__(arm_path=new_arm_path, gripper_path=new_gripper_path)
 
@@ -123,7 +114,7 @@ class ConfigurationPath(Path):
             conf1 = self.arm_path[i]
             conf2 = self.arm_path[i + 1]
             confs = interpolate_joint_positions(conf1, conf2, resolutions)
-            gri = None if self.gripper_path is None else self.gripper_path[i + 1]
+            gri = self.gripper_path[i + 1]
             new_path.append_segment(confs, gri)
         return new_path
 
@@ -138,7 +129,7 @@ class CartesianPath(Path):
 
             orn_diff = T.quaternion_multiply(pose2[1], T.quaternion_inverse(pose1[1]))
             orn_diff = tuple(orn_diff.tolist())
-            gri = None if self.gripper_path is None else self.gripper_path[i + 1]
+            gri = self.gripper_path[i + 1]
             new_path.append((pos_diff, orn_diff), gripper_state=gri)
 
         return new_path
@@ -158,7 +149,7 @@ class CartesianPath(Path):
             pose1 = self.arm_path[i]
             pose2 = self.arm_path[i + 1]
             poses = list(PBU.interpolate_poses(pose1, pose2, pos_resolution, orn_resolution))
-            gri = None if self.gripper_path is None else self.gripper_path[i + 1]
+            gri = self.gripper_path[i + 1]
             new_path.append_segment(poses, gri)
         return new_path
 
@@ -249,7 +240,7 @@ def plan_joint_path(
             restarts=10,
             iterations=50,
             smooth=30,
-            max_distance=1e-3
+            max_distance=8e-3
         )
     if path is None:
         raise NoPlanException("No Motion Plan Found")

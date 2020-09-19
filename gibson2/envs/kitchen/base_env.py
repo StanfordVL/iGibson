@@ -96,6 +96,7 @@ class BaseEnv(object):
             joint_names=("left_gripper_joint", "right_gripper_joint"),
             finger_link_names=("left_gripper", "left_tip", "right_gripper", "right_tip")
         )
+        gripper.env = self
         gripper.load(os.path.join(gibson2.assets_path, 'models/grippers/basic_gripper/gripper.urdf'))
         robot = ConstraintActuatedRobot(
             eef_link_name="eef_link", init_base_pose=self._robot_base_pose, gripper=gripper)
@@ -429,7 +430,6 @@ class EnvSkillWrapper(object):
             sleep_per_sim_step=sleep_per_sim_step,
             store_full_trajectory=False,
             step_callback=step_callback
-
         )
         if return_obs:
             return self.get_observation(), self.get_reward(), self.is_done(), {}

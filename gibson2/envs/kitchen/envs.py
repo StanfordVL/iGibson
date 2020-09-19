@@ -1,6 +1,7 @@
 import numpy as np
 import os
 from collections import OrderedDict
+from contextlib import contextmanager
 
 import pybullet as p
 import pybullet_data
@@ -10,8 +11,7 @@ from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject, 
 import gibson2.external.pybullet_tools.transformations as T
 
 from gibson2.envs.kitchen.camera import Camera
-from gibson2.envs.kitchen.env_utils import ObjectBank, set_friction, set_articulated_object_dynamics, pose_to_array, \
-    change_object_rgba, action_to_delta_pose_axis_vector, action_to_delta_pose_euler, objects_center_in_container
+import gibson2.envs.kitchen.env_utils as EU
 import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.envs.kitchen.plan_utils as PU
 import gibson2.envs.kitchen.skills as skills
@@ -79,7 +79,7 @@ class KitchenCoffee(TableTop):
         o = YCBObject('025_mug')
         o.load()
         p.changeDynamics(o.body_id, -1, mass=1.0)
-        set_friction(o.body_id)
+        EU.set_friction(o.body_id)
         self.objects.add_object("mug", o)
 
         o = Faucet(num_beads=10, dispense_freq=1,
@@ -124,10 +124,10 @@ class KitchenCoffee(TableTop):
         num_beads = np.zeros((len(self.objects), 2))
         for i, o in enumerate(self.objects.object_list):
             num_beads[i, 0] = len(
-                objects_center_in_container(self.objects["faucet_coffee"].beads, container_id=o.body_id)
+                EU.objects_center_in_container(self.objects["faucet_coffee"].beads, container_id=o.body_id)
             )
             num_beads[i, 1] = len(
-                objects_center_in_container(self.objects["faucet_milk"].beads, container_id=o.body_id)
+                EU.objects_center_in_container(self.objects["faucet_milk"].beads, container_id=o.body_id)
             )
         obs = dict(
             num_beads=num_beads
@@ -137,13 +137,13 @@ class KitchenCoffee(TableTop):
 
 class KitchenCoffeeAP(KitchenCoffee):
     def is_success_all_tasks(self):
-        num_beads_in_mug_milk = len(objects_center_in_container(
+        num_beads_in_mug_milk = len(EU.objects_center_in_container(
             self.objects["faucet_milk"].beads, self.objects["mug"].body_id))
-        num_beads_in_bowl_milk = len(objects_center_in_container(
+        num_beads_in_bowl_milk = len(EU.objects_center_in_container(
             self.objects["faucet_milk"].beads, self.objects["bowl"].body_id))
-        num_beads_in_mug_coffee = len(objects_center_in_container(
+        num_beads_in_mug_coffee = len(EU.objects_center_in_container(
             self.objects["faucet_coffee"].beads, self.objects["mug"].body_id))
-        num_beads_in_bowl_coffee = len(objects_center_in_container(
+        num_beads_in_bowl_coffee = len(EU.objects_center_in_container(
             self.objects["faucet_coffee"].beads, self.objects["bowl"].body_id))
 
         successes = {
@@ -164,7 +164,7 @@ class KitchenCoffeeAP(KitchenCoffee):
 
     def _create_skill_lib(self):
         def fill_bowl(objects, pl, oid):
-            return len(objects_center_in_container(objects["faucet_" + pl].beads, oid)) >= 3
+            return len(EU.objects_center_in_container(objects["faucet_" + pl].beads, oid)) >= 3
 
         lib_skills = (
             skills.GraspDistDiscreteOrn(
@@ -263,9 +263,9 @@ class SimpleCoffeeAP(KitchenCoffee):
         self._task_object_name = "mug"
 
     def is_success_all_tasks(self):
-        num_beads_in_mug_milk = len(objects_center_in_container(
+        num_beads_in_mug_milk = len(EU.objects_center_in_container(
             self.objects["faucet_milk"].beads, self.objects["mug"].body_id))
-        num_beads_in_mug_coffee = len(objects_center_in_container(
+        num_beads_in_mug_coffee = len(EU.objects_center_in_container(
             self.objects["faucet_coffee"].beads, self.objects["mug"].body_id))
 
         successes = {
@@ -277,7 +277,7 @@ class SimpleCoffeeAP(KitchenCoffee):
 
     def _create_skill_lib(self):
         def fill_mug(objects, pl, oid):
-            return len(objects_center_in_container(objects["faucet_" + pl].beads, oid)) >= 3
+            return len(EU.objects_center_in_container(objects["faucet_" + pl].beads, oid)) >= 3
 
         lib_skills = (
             skills.GraspDistDiscreteOrn(
@@ -336,11 +336,11 @@ class SimpleCoffeeAP(KitchenCoffee):
 
 class Kitchen(BaseEnv):
     def __init__(self, **kwargs):
-        kwargs["robot_base_pose"] = ([0.5, 0.3, 1.2], [0, 0, 1, 0])
+        kwargs["robot_base_pose"] = ([0.8, 0.3, 1.2], [0, 0, 1, 0])
         super(Kitchen, self).__init__(**kwargs)
 
     def _create_sensors(self):
-        PBU.set_camera(45, -45, 2.0, (0, 0, 0.7))
+        PBU.set_camera(45, -45, 1.5, (0, 0, 0.7))
         self.camera = Camera(
             height=self._camera_width,
             width=self._camera_height,
@@ -349,16 +349,16 @@ class Kitchen(BaseEnv):
             far=10.,
             renderer=p.ER_TINY_RENDERER
         )
-        self.camera.set_pose_ypr((0, 0, 0.7), distance=2.0, yaw=45, pitch=-45)
+        self.camera.set_pose_ypr((0, 0, 0.7), distance=1.5, yaw=45, pitch=-45)
 
     def _get_feature_observation(self):
         num_beads = np.zeros((len(self.objects), 2))
         for i, o in enumerate(self.objects.object_list):
             num_beads[i, 0] = len(
-                objects_center_in_container(self.objects["faucet_coffee"].beads, container_id=o.body_id)
+                EU.objects_center_in_container(self.objects["faucet_coffee"].beads, container_id=o.body_id)
             )
             num_beads[i, 1] = len(
-                objects_center_in_container(self.objects["coffee_machine"].beads, container_id=o.body_id)
+                EU.objects_center_in_container(self.objects["coffee_machine"].beads, container_id=o.body_id)
             )
         obs = dict(
             num_beads=num_beads
@@ -367,17 +367,12 @@ class Kitchen(BaseEnv):
 
     def _create_fixtures(self):
         p.loadMJCF(os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml"))
-        # box = Box(color=(0.5, 0.5, 0.5, 1.0), size=(0.6, 1.0, 1.0))
-        # box.load()
-        # box.set_position((0.0, 1.0, 0.5))
-        # p.changeDynamics(box.body_id, -1, mass=1000.0)
-        # self.fixtures.add_object("platform1", box)
 
     def _create_objects(self):
         drawer = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf'))
         drawer.load()
         drawer.set_position([0, 0, 0.5])
-        set_articulated_object_dynamics(drawer.body_id)
+        EU.set_articulated_object_dynamics(drawer.body_id)
         self.objects.add_object("drawer", drawer)
 
         o = Box(color=(0.9, 0.9, 0.9, 1))
@@ -388,21 +383,16 @@ class Kitchen(BaseEnv):
         o.load()
         self.objects.add_object("platform2", o, category="platform")
 
-        # stove = InteractiveObj(filename=os.path.join(gibson2.assets_path, 'models/cooktop/textured.urdf'), scale=0.7)
-        # stove.load()
-        # p.changeDynamics(stove.body_id, -1, mass=1000.0)
-        # self.objects.add_object("stove", stove)
-
         o = YCBObject('025_mug')
         o.load()
-        p.changeDynamics(o.body_id, -1, mass=1.0)
-        set_friction(o.body_id)
+        p.changeDynamics(o.body_id, -1, mass=1.5)
+        EU.set_friction(o.body_id)
         self.objects.add_object("mug1", o, category="mug")
 
         o = YCBObject('025_mug')
         o.load()
-        p.changeDynamics(o.body_id, -1, mass=1.0)
-        set_friction(o.body_id)
+        p.changeDynamics(o.body_id, -1, mass=1.5)
+        EU.set_friction(o.body_id)
         self.objects.add_object("mug2", o, category="mug")
 
         o = Faucet(num_beads=10, dispense_freq=1,
@@ -429,56 +419,34 @@ class Kitchen(BaseEnv):
         self.objects.add_object("coffee_machine_button", o.button)
 
     def _reset_objects(self):
-        # z = PBU.stable_z(self.objects["stove"].body_id, self.fixtures["platform1"].body_id)
-        # self.objects["stove"].set_position_orientation(
-        #     PU.sample_positions_in_box([0.0, 0.0], [1.0, 1.0], [z, z]), PBU.unit_quat())
-
         z = PBU.stable_z(self.objects["coffee_machine"].body_id, self.objects["drawer"].body_id)
         self.objects["coffee_machine"].set_position_orientation(
-            PU.sample_positions_in_box([-0.2, -0.2], [0.0, 0.0], [z, z]), skills.SKILL_ORIENTATIONS["left"])
+            PU.sample_positions_in_box([-0.25, -0.15], [-0.05, 0.05], [z, z]), skills.ALL_ORIENTATIONS["left"])
 
         z = PBU.stable_z(self.objects["platform1"].body_id, self.objects["drawer"].body_id)
         self.objects["platform1"].set_position_orientation(
-            PU.sample_positions_in_box([0.2, 0.2], [0.0, 0.0], [z, z]), skills.SKILL_ORIENTATIONS["left"])
+            PU.sample_positions_in_box([0.2, 0.2], [0.0, 0.0], [z, z]), PBU.unit_quat())
 
         self.objects["platform2"].set_position_orientation(
-            PU.sample_positions_in_box([0.2, 0.2], [-0.3, -0.3], [z, z]), skills.SKILL_ORIENTATIONS["left"])
+            PU.sample_positions_in_box([0.2, 0.2], [-0.3, -0.3], [z, z]), PBU.unit_quat())
 
         z = PBU.stable_z(self.objects["mug1"].body_id, self.objects["platform1"].body_id)
         self.objects["mug1"].set_position_orientation(
-            PU.sample_positions_in_box([0.2, 0.2], [0.0, 0.0], [z, z]), PBU.unit_quat())
+            PU.sample_positions_in_box([0.175, 0.225], [-0.025, 0.025], [z, z]), PBU.unit_quat())
 
         z = PBU.stable_z(self.objects["mug2"].body_id, self.objects["platform2"].body_id)
         self.objects["mug2"].set_position_orientation(
-            PU.sample_positions_in_box([0.2, 0.2], [-0.3, -0.3], [z, z]), PBU.unit_quat())
+            PU.sample_positions_in_box([0.175, 0.225], [-0.325, -0.275], [z, z]), PBU.unit_quat())
 
         z = PBU.stable_z(self.objects["faucet_coffee"].body_id, self.objects["drawer"].body_id)
         pos = PU.sample_positions_in_box([0.2, 0.2], [0.2, 0.2], [z, z])
         coffee_pos = pos + np.array([0, 0.075, 0])
         self.objects["faucet_coffee"].set_position_orientation(coffee_pos, PBU.unit_quat())
 
-
-class KitchenAP(Kitchen):
-    def is_success_all_tasks(self):
-        num_beans_in_mug2 = len(objects_center_in_container(
-            self.objects["faucet_coffee"].beads, self.objects["mug2"].body_id))
-        num_coffee_in_mug1 = len(objects_center_in_container(
-            self.objects["coffee_machine"].beads, self.objects["mug1"].body_id))
-
-        successes = {
-            "fill_mug2_beans": num_beans_in_mug2 >= 3,
-            "fill_mug1_coffee": num_coffee_in_mug1 >= 3
-        }
-        successes["task"] = successes["fill_mug1_coffee"]
-        return successes
-
-    def _sample_task(self):
-        self._task_spec = np.array([self.skill_lib.name_to_skill_index("mug_coffee"), self.objects.names.index("mug1")])
-
     def _create_skill_lib(self):
         lib_skills = (
             skills.GraspDistDiscreteOrn(
-                name="grasp", lift_height=0.05, lift_speed=0.01,
+                name="grasp", lift_height=0.05, lift_speed=0.01, reach_distance=0.1,
                 params=OrderedDict(
                     grasp_distance=skills.SkillParamsContinuous(low=[0.05], high=[0.05]),
                     grasp_orn=skills.SkillParamsDiscrete(size=len(skills.SKILL_ORIENTATIONS))
@@ -491,7 +459,7 @@ class KitchenAP(Kitchen):
                     place_pos=skills.SkillParamsContinuous(low=[-0.05, -0.05, 0.01], high=[0.05, 0.05, 0.01]),
                     place_orn=skills.SkillParamsContinuous(low=[-np.pi / 6], high=[np.pi / 6])
                 ),
-                joint_resolutions=(0.025, 0.025, 0.025, np.pi / 32, np.pi / 32, np.pi / 32)
+                joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
             ),
             skills.PourPosAngle(
                 name="pour", pour_angle_speed=np.pi / 32, num_pause_steps=30,
@@ -504,8 +472,8 @@ class KitchenAP(Kitchen):
             skills.OperatePrismaticPosDistance(
                 name="open_prismatic",
                 params=OrderedDict(
-                    grasp_pos=skills.SkillParamsContinuous(low=[0.35, -0.03, 0.15], high=[0.4, 0.03, 0.25]),
-                    prismatic_move_distance=skills.SkillParamsContinuous(low=[-0.3], high=[-0.2])
+                    grasp_pos=skills.SkillParamsContinuous(low=[0.35, -0.05, 0.15], high=[0.45, 0.05, 0.25]),
+                    prismatic_move_distance=skills.SkillParamsContinuous(low=[-0.3], high=[-0.1])
                 ),
                 joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
             ),
@@ -517,11 +485,38 @@ class KitchenAP(Kitchen):
                 # joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
             ),
             skills.ConditionSkill(
-                name="mug_coffee", precondition_fn=lambda oid: len(objects_center_in_container(
+                name="mug_coffee", precondition_fn=lambda oid: len(EU.objects_center_in_container(
                     self.objects["coffee_machine"].beads, oid)) >= 3
             ),
+            skills.ConditionSkill(
+                name="on_platform1", precondition_fn=lambda oid: PBU.is_center_placed_on(
+                    oid, self.objects["platform1"].body_id)
+            )
         )
+        PBU.draw_aabb(aabb=[[0.35, -0.05, 0.15 + 0.5], [0.45, 0.05, 0.25 + 0.5]])
         self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
+
+
+class KitchenAP(Kitchen):
+    def _create_skill_lib(self):
+        super(KitchenAP, self)._create_skill_lib()
+        self.skill_lib = self.skill_lib.sub_library(names=("grasp", "place", "pour", "touch", "mug_coffee"))
+
+    def is_success_all_tasks(self):
+        num_beans_in_mug2 = len(EU.objects_center_in_container(
+            self.objects["faucet_coffee"].beads, self.objects["mug2"].body_id))
+        num_coffee_in_mug1 = len(EU.objects_center_in_container(
+            self.objects["coffee_machine"].beads, self.objects["mug1"].body_id))
+
+        successes = {
+            "fill_mug2_beans": num_beans_in_mug2 >= 3,
+            "fill_mug1_coffee": num_coffee_in_mug1 >= 3
+        }
+        successes["task"] = successes["fill_mug1_coffee"]
+        return successes
+
+    def _sample_task(self):
+        self._task_spec = np.array([self.skill_lib.name_to_skill_index("mug_coffee"), self.objects.names.index("mug1")])
 
     # def get_task_skeleton(self):
     #     skeleton = [(
@@ -588,6 +583,61 @@ class KitchenAP(Kitchen):
         )]
         return skeleton
 
+
+class KitchenDrawerAP(Kitchen):
+    def _sample_task(self):
+        self._task_spec = np.array([self.skill_lib.name_to_skill_index("on_platform1"), self.objects.names.index("mug1")])
+
+    def is_success_all_tasks(self):
+        successes = {
+            "mug1_on_platform1": PBU.is_center_placed_on(self.objects["mug1"].body_id, self.objects["platform1"].body_id)
+        }
+        successes["task"] = successes["mug1_on_platform1"]
+        return successes
+
+    def _reset_objects(self):
+        super(KitchenDrawerAP, self)._reset_objects()
+        z = PBU.stable_z(self.objects["mug1"].body_id, self.objects["drawer"].body_id, surface_link=2)
+        z -= 0.15
+        self.objects["mug1"].set_position_orientation(
+            PU.sample_positions_in_box([0.2, 0.2], [-0.05, 0.05], [z, z]), PBU.unit_quat())
+
+    def _create_skill_lib(self):
+        super(KitchenDrawerAP, self)._create_skill_lib()
+        self.skill_lib = self.skill_lib.sub_library(names=("grasp", "place", "open_prismatic", "on_platform1"))
+
+    def get_task_skeleton(self):
+        skeleton = [(
+            lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic", grasp_pos=dict(low=[0.4, 0, 0.2], high=[0.4, 0, 0.2]), prismatic_move_distance=dict(low=[-0.3], high=[-0.3])),
+            # lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic"),
+            "drawer"
+        ),  (
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[4])),
+            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
+            "mug1"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("place"),
+            "platform1"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("on_platform1"),
+            "mug1"
+        )]
+        return skeleton
+
+    def get_random_skeleton(self, horizon):
+        param_set = OrderedDict()
+        param_set["grasp"] = lambda: self.skill_lib.sample_serialized_skill_params(
+            "grasp", grasp_orn=dict(choices=[4]),
+        )
+        param_set["place"] = lambda: self.skill_lib.sample_serialized_skill_params("place")
+        param_set["on_platform1"] = lambda: self.skill_lib.sample_serialized_skill_params("on_platform1")
+        param_set["open_prismatic"] = lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic")
+        skeleton = []
+        for _ in range(horizon):
+            object_name = np.random.choice(self.objects.names)
+            skill_name = np.random.choice(list(param_set.keys()))
+            skeleton.append((param_set[skill_name], object_name))
+        return skeleton
 
     # def _create_robot(self):
     #     from gibson2.envs.kitchen.robots import Gripper, JointActuatedRobot, Arm

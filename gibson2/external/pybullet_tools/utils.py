@@ -2234,7 +2234,7 @@ def approximate_as_cylinder(body, **kwargs):
 
 # Collision
 
-#MAX_DISTANCE = 1e-3
+# MAX_DISTANCE = 1e-2
 MAX_DISTANCE = 0.
 
 def contact_collision():
@@ -2863,6 +2863,12 @@ def is_placed_on_aabb(body, bottom_aabb, above_epsilon=1e-2, below_epsilon=0.0):
     bottom_z_max = bottom_aabb[1][2]
     return ((bottom_z_max - below_epsilon) <= top_z_min <= (bottom_z_max + above_epsilon)) and \
            (aabb_contains_aabb(aabb2d_from_aabb(top_aabb), aabb2d_from_aabb(bottom_aabb)))
+
+def is_center_placed_on(body, surface_body):
+    top_center = get_aabb_center(get_aabb(body))
+    bottom_aabb = get_aabb(surface_body)
+    bottom_z_max = bottom_aabb[1][2]
+    return top_center[2] > bottom_z_max and aabb_contains_point(top_center[:2], aabb2d_from_aabb(bottom_aabb))
 
 def is_placement(body, surface, **kwargs):
     return is_placed_on_aabb(body, get_aabb(surface), **kwargs)

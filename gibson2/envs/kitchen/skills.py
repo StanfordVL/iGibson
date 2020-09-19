@@ -241,6 +241,7 @@ def plan_skill_place(
     """
     grasp_pose = PBU.multiply(PBU.invert(planner.ref_robot.get_eef_position_orientation()), PBU.get_pose(holding))
     target_place_pose = PBU.end_effector_from_body(object_target_pose, grasp_pose)
+    # reach_place_pose = PBU.multiply(target_place_pose, ([-0.03, 0, 0], PBU.unit_quat()))
 
     confs = planner.plan_joint_path(
         target_pose=target_place_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=(holding,))
@@ -249,6 +250,11 @@ def plan_skill_place(
 
     place_path = configuration_path_to_cartesian_path(planner, conf_path)
     place_path.append_pause(3)
+    place_path.append(target_place_pose, GRIPPER_OPEN)
+    place_path.append_pause(3)
+    # place_path.append(target_place_pose, GRIPPER_OPEN)
+    # place_path.append_pause(2)
+
     if retract_distance > 0:
         retract_pose = PBU.multiply(target_place_pose, ([-retract_distance, 0, 0], PBU.unit_quat()))
         place_path.append(target_place_pose, GRIPPER_OPEN)
@@ -526,6 +532,7 @@ class GraspDistOrn(Skill):
             self,
             params=None,
             name="grasp_dist_orn",
+            reach_distance=0.05,
             lift_height=0.1,
             lift_speed=0.05,
             joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
@@ -545,6 +552,7 @@ class GraspDistOrn(Skill):
         )
         self.lift_height = lift_height
         self.lift_speed = lift_speed
+        self.reach_distance = reach_distance
 
     def get_default_params(self):
         return OrderedDict(
@@ -564,7 +572,8 @@ class GraspDistOrn(Skill):
             grasp_pose=grasp_pose,
             joint_resolutions=self.joint_resolutions,
             lift_height=self.lift_height,
-            lift_speed=self.lift_speed
+            lift_speed=self.lift_speed,
+            reach_distance=self.reach_distance
         )
         return traj
 
@@ -605,7 +614,8 @@ class GraspDistDiscreteOrn(GraspDistOrn):
             grasp_pose=grasp_pose,
             joint_resolutions=self.joint_resolutions,
             lift_height=self.lift_height,
-            lift_speed=self.lift_speed
+            lift_speed=self.lift_speed,
+            reach_distance=self.reach_distance
         )
         return traj
 
@@ -1056,6 +1066,10 @@ class SkillLibrary(object):
             s.verbose = verbose
         self._holding = None
 
+    def sub_library(self, names):
+        skills = [s for s in self.skills if s.name in names]
+        return self.__class__(env=self.env, planner=self.planner, obstacles=self.obstacles, skills=skills)
+
     @property
     def skills(self):
         return self._skills
@@ -1077,6 +1091,10 @@ class SkillLibrary(object):
         arr = np.zeros(len(self))
         arr[skill_index] = 1
         return arr
+
+    @property
+    def holding(self):
+        return self._holding
 
     @property
     def action_dimension(self):
