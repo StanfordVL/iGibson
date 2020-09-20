@@ -294,6 +294,65 @@ class NavigateEnv(BaseEnv):
 
         return depth
 
+    def get_depth_cube(self, fixed_orientation=False):
+        """
+        :param fixed_orientation: Whether to use a fixed orientation when rendering
+        :return: List of RGB sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
+        """
+        orig_fov = self.simulator.renderer.vertical_fov
+        self.simulator.renderer.set_fov(90)
+        frames = []
+        for instance in self.simulator.renderer.instances:
+            if isinstance(instance, Robot):
+                camera_pos = instance.robot.eyes.get_position()
+                if fixed_orientation:
+                    view_direction = np.array([1, 0, 0])
+                else:
+                    orn = instance.robot.eyes.get_orientation()
+                    mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+                    view_direction = mat.dot(np.array([1, 0, 0]))
+                orig_view_direction = view_direction
+                self.simulator.renderer.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                r2 = np.array([[np.cos(-np.pi/2), -np.sin(-np.pi/2), 0], [np.sin(-np.pi/2), np.cos(-np.pi/2), 0], [0, 0, 1]])
+
+                for i in range(4):
+                    self.simulator.renderer.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                    for item in self.simulator.renderer.render(modes=('3d'), hidden=[instance]):
+                        frames.append(item)
+                    view_direction = r2.dot(view_direction)
+
+                # Up
+                view_direction = [0, 0, 1]  # Up
+                self.simulator.renderer.set_camera(camera_pos, camera_pos + view_direction, -orig_view_direction)
+                for item in self.simulator.renderer.render(modes=('3d'), hidden=[instance]):
+                    frames.append(item)
+
+                # Down
+                view_direction = [0, 0, -1]  # Down
+                self.simulator.renderer.set_camera(camera_pos, camera_pos + view_direction, orig_view_direction)
+                for item in self.simulator.renderer.render(modes=('3d'), hidden=[instance]):
+                    frames.append(item)
+        
+        for i in range(len(frames)):
+            depth = -frames[i][:, :, 2:3]
+            depth = self.add_naive_noise_to_sensor(depth, self.depth_noise_rate, noise_value=0.0)
+
+            depth[depth < self.depth_low] = self.depth_low
+            depth[depth > self.depth_high] = self.depth_high
+            depth /= self.depth_high  # normalize
+            frames[i] = depth
+
+        # Reorder frames so adjacent views are consecutively ordered
+        n_cameras = int(len(frames) / 6)
+        depth_cube_frames = []
+        for i in range(n_cameras):
+            for j in range(6):
+                depth_cube_frames.append(frames[i * n_cameras + j])
+
+        # Reset fov
+        self.simulator.renderer.set_fov(orig_fov)
+        return depth_cube_frames
+
     def get_rgb(self):
         """
         :return: RGB sensor reading, normalized to [0.0, 1.0]
@@ -410,6 +469,8 @@ class NavigateEnv(BaseEnv):
             state['rgb_cube'] = self.get_rgb_cube()
         if 'rgb_cube_fixed_orn' in self.output:
             state['rgb_cube_fixed_orn'] = self.get_rgb_cube(fixed_orientation=True)
+        if 'depth_cube_fixed_orn' in self.output:
+            state['depth_cube_fixed_orn'] = self.get_depth_cube(fixed_orientation=True)
         if 'depth' in self.output:
             state['depth'] = self.get_depth()
         if 'pc' in self.output:
