@@ -296,8 +296,8 @@ class NavigateEnv(BaseEnv):
 
     def get_cube(self, mode, fixed_orientation):
         """
-        :param fixed_orientation: Whether to use a fixed orientation when rendering
         :param mode: simulator rendering mode, 'rgb' or '3d'
+        :param fixed_orientation: Whether to use a fixed orientation when rendering
         :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
         """
         orig_fov = self.simulator.renderer.vertical_fov
