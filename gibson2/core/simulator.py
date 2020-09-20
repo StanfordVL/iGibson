@@ -10,7 +10,8 @@ import os
 import numpy as np
 import platform
 import logging
-        
+from IPython import embed
+
 
 class Simulator:
     def __init__(self,
@@ -25,7 +26,8 @@ class Simulator:
                  vertical_fov=90,
                  device_idx=0,
                  render_to_tensor=False,
-                 auto_sync=True):
+                 auto_sync=True,
+                 optimized_renderer=False):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -41,27 +43,28 @@ class Simulator:
         :param render_to_tensor: Render to GPU tensors
         :param auto_sync: automatically sync object poses to gibson renderer, by default true,
         disable it when you want to run multiple physics step but don't need to visualize each frame
+        :param optimized_renderer: whether to optimize renderer (combine vertices)
         """
         # physics simulator
         self.gravity = gravity
         self.timestep = timestep
         self.mode = mode
-        
+
         plt = platform.system()
         if plt == 'Darwin' and self.mode == 'gui':
-            self.mode = 'iggui' # for mac os disable pybullet rendering
+            self.mode = 'iggui'  # for mac os disable pybullet rendering
             logging.warn('Rendering both iggui and pbgui is not supported on mac, choose either pbgui or '
-                      'iggui. Default to iggui.')
-        
+                         'iggui. Default to iggui.')
+
         self.use_pb_renderer = False
         self.use_ig_renderer = False
-        
+
         if self.mode in ['gui', 'iggui']:
             self.use_ig_renderer = True
-     
+
         if self.mode in ['gui', 'pbgui']:
             self.use_pb_renderer = True
-                   
+
         # renderer
         self.image_width = image_width
         self.image_height = image_height
@@ -72,6 +75,7 @@ class Simulator:
         self.auto_sync = auto_sync
         self.enable_shadow = enable_shadow
         self.enable_msaa = enable_msaa
+        self.optimized_renderer = optimized_renderer
         self.load()
 
     def set_timestep(self, timestep):
@@ -97,7 +101,6 @@ class Simulator:
         self.load()
 
     def load(self):
-
         """
         Set up MeshRenderer and physics simulation client. Initialize the list of objects.
         """
@@ -116,7 +119,8 @@ class Simulator:
                                          device_idx=self.device_idx,
                                          use_fisheye=self.use_fisheye,
                                          enable_shadow=self.enable_shadow,
-                                         msaa=self.enable_msaa)
+                                         msaa=self.enable_msaa,
+                                         optimized=self.optimized_renderer)
 
         print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:
@@ -146,7 +150,8 @@ class Simulator:
         return wrapped_load_func
 
     @load_without_pybullet_vis
-    def import_scene(self, scene, texture_scale=1.0, load_texture=True, class_id=None):
+    def import_scene(self, scene, texture_scale=1.0, load_texture=True,
+                     render_floor_plane=False, class_id=None):
         """
         Import a scene into the simulator. A scene could be a synthetic one or a realistic Gibson Environment.
 
@@ -170,25 +175,28 @@ class Simulator:
                 visual_object = None
                 if type == p.GEOM_MESH:
                     filename = filename.decode('utf-8')
-                    if filename not in self.visual_objects.keys():
+                    if (filename, (*dimensions)) not in self.visual_objects.keys():
                         self.renderer.load_object(filename,
                                                   texture_scale=texture_scale,
                                                   load_texture=load_texture)
-                        self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                    visual_object = self.visual_objects[filename]
+                        self.visual_objects[(
+                            filename, (*dimensions))] = len(self.renderer.visual_objects) - 1
+                    visual_object = self.visual_objects[(
+                        filename, (*dimensions))]
                 elif type == p.GEOM_PLANE:
-                    pass
                     # By default, we add an additional floor surface to "smooth out" that of the original mesh.
                     # Normally you don't need to render this additionally added floor surface.
-                    # However, if you do want to render it for some reason, you can uncomment the block below.
-
-                    # filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
-                    # self.renderer.load_object(filename,
-                    #                           transform_orn=rel_orn,
-                    #                           transform_pos=rel_pos,
-                    #                           input_kd=color[:3],
-                    #                           scale=[100, 100, 0.01])
-                    # visual_object = len(self.renderer.visual_objects) - 1
+                    # However, if you do want to render it for some reason, you can set render_floor_plane to be True.
+                    if render_floor_plane:
+                        filename = os.path.join(
+                            gibson2.assets_path,
+                            'models/mjcf_primitives/cube.obj')
+                        self.renderer.load_object(filename,
+                                                  transform_orn=rel_orn,
+                                                  transform_pos=rel_pos,
+                                                  input_kd=color[:3],
+                                                  scale=[100, 100, 0.01])
+                        visual_object = len(self.renderer.visual_objects) - 1
 
                 if visual_object is not None:
                     self.renderer.add_instance(visual_object,
@@ -200,6 +208,19 @@ class Simulator:
 
         self.scene = scene
         return new_objects
+
+    @load_without_pybullet_vis
+    def import_ig_scene(self, scene):
+        """
+        Import scene from iGSDF class
+        :param scene: iGSDFScene instance
+        :return: ids from scene.load function
+        """
+        ids = scene.load()
+        for id in ids:
+            self.import_articulated_object_by_id(id, class_id=id)
+        self.scene = scene
+        return ids
 
     @load_without_pybullet_vis
     def import_object(self, obj, class_id=None):
@@ -226,16 +247,18 @@ class Simulator:
             visual_object = None
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if filename not in self.visual_objects.keys():
+                if (filename, (*dimensions)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                visual_object = self.visual_objects[filename]
+                    self.visual_objects[(filename, (*dimensions))
+                                        ] = len(self.renderer.visual_objects) - 1
+                visual_object = self.visual_objects[(filename, (*dimensions))]
             elif type == p.GEOM_SPHERE:
-                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
+                filename = os.path.join(
+                    gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -244,7 +267,8 @@ class Simulator:
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
                 visual_object = len(self.renderer.visual_objects) - 1
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
-                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                filename = os.path.join(
+                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -253,7 +277,8 @@ class Simulator:
                     scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
                 visual_object = len(self.renderer.visual_objects) - 1
             elif type == p.GEOM_BOX:
-                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                filename = os.path.join(
+                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(filename,
                                           transform_orn=rel_orn,
                                           transform_pos=rel_pos,
@@ -294,17 +319,20 @@ class Simulator:
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if filename not in self.visual_objects.keys():
+                if (filename, (*dimensions)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                visual_objects.append(self.visual_objects[filename])
+                    self.visual_objects[(filename, (*dimensions))
+                                        ] = len(self.renderer.visual_objects) - 1
+                visual_objects.append(
+                    self.visual_objects[(filename, (*dimensions))])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
-                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
+                filename = os.path.join(
+                    gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -314,7 +342,8 @@ class Simulator:
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
-                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                filename = os.path.join(
+                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -324,7 +353,8 @@ class Simulator:
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
-                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                filename = os.path.join(
+                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(filename,
                                           transform_orn=rel_orn,
                                           transform_pos=rel_pos,
@@ -365,27 +395,35 @@ class Simulator:
             class_id = self.next_class_id
         self.next_class_id += 1
 
-        ids = obj.load()
+        id = obj.load()
+        return self.import_articulated_object_by_id(id, class_id=class_id)
+
+    @load_without_pybullet_vis
+    def import_articulated_object_by_id(self, id, class_id=None):
+
         visual_objects = []
         link_ids = []
         poses_rot = []
         poses_trans = []
 
-        for shape in p.getVisualShapeData(ids):
+        for shape in p.getVisualShapeData(id):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if filename not in self.visual_objects.keys():
+                if (filename, (*dimensions)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
-                visual_objects.append(self.visual_objects[filename])
+                    self.visual_objects[(filename, (*dimensions))
+                                        ] = len(self.renderer.visual_objects) - 1
+                visual_objects.append(
+                    self.visual_objects[(filename, (*dimensions))])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
-                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
+                filename = os.path.join(
+                    gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -395,7 +433,8 @@ class Simulator:
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
-                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                filename = os.path.join(
+                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -405,7 +444,8 @@ class Simulator:
                 visual_objects.append(len(self.renderer.visual_objects) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
-                filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                filename = os.path.join(
+                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(filename,
                                           transform_orn=rel_orn,
                                           transform_pos=rel_pos,
@@ -423,14 +463,14 @@ class Simulator:
 
         self.renderer.add_instance_group(object_ids=visual_objects,
                                          link_ids=link_ids,
-                                         pybullet_uuid=ids,
+                                         pybullet_uuid=id,
                                          class_id=class_id,
                                          poses_rot=poses_rot,
                                          poses_trans=poses_trans,
                                          dynamic=True,
                                          robot=None)
 
-        return ids
+        return id
 
     def step(self):
         """
@@ -459,19 +499,44 @@ class Simulator:
         :param instance: Instance in the renderer
         """
         if isinstance(instance, Instance):
-            pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid) # orn is in x,y,z,w
+            # pos and orn of the inertial frame of the base link,
+            # instead of the base link frame
+            pos, orn = p.getBasePositionAndOrientation(
+                instance.pybullet_uuid)
+
+            # Need to convert to the base link frame because that is
+            # what our own renderer keeps track of
+            # Based on pyullet docuementation:
+            # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
+            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
+                p.getDynamicsInfo(instance.pybullet_uuid, link_id)
+            inv_inertial_pos, inv_inertial_orn =\
+                p.invertTransform(inertial_pos, inertial_orn)
+            # Now pos and orn are converted to the base link frame
+            pos, orn = p.multiplyTransforms(
+                pos, orn, inv_inertial_pos, inv_inertial_orn)
             instance.set_position(pos)
             instance.set_rotation(xyzw2wxyz(orn))
         elif isinstance(instance, InstanceGroup):
             poses_rot = []
             poses_trans = []
-
             for link_id in instance.link_ids:
                 if link_id == -1:
-                    pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
+                    # same conversion is needed as above
+                    pos, orn = p.getBasePositionAndOrientation(
+                        instance.pybullet_uuid)
+                    _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
+                        p.getDynamicsInfo(instance.pybullet_uuid, link_id)
+                    inv_inertial_pos, inv_inertial_orn =\
+                        p.invertTransform(inertial_pos, inertial_orn)
+                    print('inertial', inertial_pos, inertial_orn)
+                    pos, orn = p.multiplyTransforms(
+                        pos, orn, inv_inertial_pos, inv_inertial_orn)
                 else:
-                    _, _, _, _, pos, orn = p.getLinkState(instance.pybullet_uuid, link_id)
-                poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
+                    _, _, _, _, pos, orn = p.getLinkState(
+                        instance.pybullet_uuid, link_id)
+                poses_rot.append(np.ascontiguousarray(
+                    quat2rotmat(xyzw2wxyz(orn))))
                 poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
             instance.poses_rot = poses_rot

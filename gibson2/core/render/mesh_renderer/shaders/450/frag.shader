@@ -133,7 +133,12 @@ void main() {
     // use pbr and mapping
     if ((use_pbr == 1) && (use_pbr_mapping == 1)) {
             vec3 normal_map = 2 * texture(normalTexture, theCoords).rgb - 1;
-            vec3 N = normalize(TBN * normal_map);
+            mat3 TBN2 = TBN;
+            if (!gl_FrontFacing) {
+                TBN2 = mat3(TBN[0], TBN[1], -TBN[2]);
+            }
+            vec3 N = normalize(TBN2 * normal_map);
+
             vec3 Lo = normalize(eyePosition - FragPos);
             float cosLo = max(0.0, dot(N, Lo));
             vec3 Lr = 2.0 * cosLo * N - Lo;
@@ -170,4 +175,5 @@ void main() {
         PCColour = vec4(Pos_cam, 1);
     }
     outputColour = outputColour *  (1 - shadow * 0.5);
+
 }
