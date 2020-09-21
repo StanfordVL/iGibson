@@ -161,7 +161,7 @@ class Simulator:
             class_id = self.next_class_id
         self.next_class_id += 1
 
-        new_objects = scene.load()
+        new_objects = scene.load
         for item in new_objects:
             self.objects.append(item)
 
@@ -212,7 +212,7 @@ class Simulator:
         :param scene: iGSDFScene instance
         :return: ids from scene.load function
         """
-        ids = scene.load()
+        ids = scene.load
         for id in ids:
             self.import_articulated_object_by_id(id, class_id=id)
         return ids
@@ -230,7 +230,7 @@ class Simulator:
             class_id = self.next_class_id
         self.next_class_id += 1
 
-        new_object = obj.load()
+        new_object = obj.load
         softbody = False
         if obj.__class__.__name__ == 'SoftObject':
             softbody = True
@@ -303,7 +303,7 @@ class Simulator:
             class_id = self.next_class_id
         self.next_class_id += 1
 
-        ids = robot.load()
+        ids = robot.load
         visual_objects = []
         link_ids = []
         poses_rot = []
@@ -390,7 +390,7 @@ class Simulator:
             class_id = self.next_class_id
         self.next_class_id += 1
 
-        id = obj.load()
+        id = obj.load
         return self.import_articulated_object_by_id(id, class_id=class_id)
 
     @load_without_pybullet_vis

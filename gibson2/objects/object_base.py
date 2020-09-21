@@ -2,16 +2,13 @@ import pybullet as p
 import os
 import gibson2
 import numpy as np
-import random
 import json
-
-from gibson2.utils.assets_utils import get_scene_path, get_texture_file, get_ig_scene_path, get_ig_model_path, get_ig_category_path
 import xml.etree.ElementTree as ET
-from gibson2.utils.utils import rotate_vector_3d
 
+from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints
+from gibson2.utils.utils import rotate_vector_3d, quatXYZWFromRotMat
 import logging
 import math
-from IPython import embed
 
 
 class Object(object):
@@ -232,75 +229,61 @@ def round_up(n, decimals=0):
 
 class URDFObject(Object):
     """
-    URDFObjects are instantiated from a URDF file. They can be composed of one or more links and joints. They should be passive
-    We use this class to deparse our modified link tag for URDFs that embed objects into scenes
+    URDFObjects are instantiated from a URDF file. They can be composed of one or more links and joints. They should
+    be passive. We use this class to parse our modified link tag for URDFs that embed objects into scenes
     """
 
-    def __init__(self, xml_element, random_groups):
+    def __init__(self,
+                 name,
+                 category,
+                 model="random",
+                 model_path=None,
+                 filename=None,
+                 bounding_box=None,
+                 scale=None,
+                 ):
+        """
+
+        :param name:
+        :param category:
+        :param model:
+
+        :param filename:
+        :param bounding_box:
+        :param scale:
+        """
         super(URDFObject, self).__init__()
 
-        category = xml_element.attrib["category"]
-        model = xml_element.attrib['model']
-        model_path = ""
+        self.name = name
+        self.category = category
+        self.model = model
 
-        print("Category", category)
-        print("Model", model)
+        self.merge_fj = False  # If we merge the fixed joints into single link to improve performance
+        self.sub_urdfs = []
 
-        # Find the urdf file that defines this object
-        if category == "building":
-            model_path = get_ig_scene_path(model)
-            filename = model_path + "/" + model + "_building.urdf"
-        else:
-            category_path = get_ig_category_path(category)
-            assert len(os.listdir(category_path)) != 0, \
-                "There are no models in category folder {}".format(
-                    category_path)
+        self.model_path = model_path
 
-            if model == 'random':
-                # Using random group to assign the same model to a group of objects
-                # E.g. we want to use the same model for a group of chairs around the same dining table
-                if "random_group" in xml_element.attrib:
-                    # random_group is a unique integer within the category
-                    random_group = xml_element.attrib["random_group"]
-                    random_group_key = (category, random_group)
-
-                    # if the model of this random group has already been selected
-                    # use that model.
-                    if random_group_key in random_groups:
-                        model = random_groups[random_group_key]
-
-                    # otherwise, this is the first instance of this random group
-                    # select a random model and cache it
-                    else:
-                        model = random.choice(os.listdir(category_path))
-                        random_groups[random_group_key] = model
-                else:
-                    # Using a random instance
-                    model = random.choice(os.listdir(category_path))
-            else:
-                model = xml_element.attrib['model']
-
-            model_path = get_ig_model_path(category, model)
-            filename = model_path + "/" + model + ".urdf"
+        logging.info("Category " + self.category)
+        logging.info("Model " + self.model)
 
         self.filename = filename
-        logging.info("Loading " + filename)
+        logging.info("Loading the following URDF template " + filename)
         self.object_tree = ET.parse(filename)  # Parse the URDF
 
         # Change the mesh filenames to include the entire path
         for mesh in self.object_tree.iter("mesh"):
-            mesh.attrib['filename'] = model_path + \
-                "/" + mesh.attrib['filename']
+            mesh.attrib['filename'] = self.model_path + \
+                                      "/" + mesh.attrib['filename']
 
         # Apply the desired bounding box size / scale
         # First obtain the scaling factor
-        if "bounding_box" in xml_element.keys() and "scale" in xml_element.keys():
+        if bounding_box is not None and scale is not None:
             logging.error(
-                "You cannot define both scale and bounding box size defined to embed a URDF")
+                "You cannot define both scale and bounding box size when creating a URDF Objects")
             exit(-1)
 
-        if os.path.exists(model_path + '/misc/bbox.json'):
-            with open(model_path + '/misc/bbox.json', 'r') as bbox_file:
+        if os.path.exists(self.model_path + '/misc/bbox.json'):
+            with open(self.model_path + '/misc/bbox.json', 'r') as bbox_file:
                 bbox_data = json.load(bbox_file)
                 bbox_max = np.array(bbox_data['max'])
                 bbox_min = np.array(bbox_data['min'])
@@ -308,27 +291,61 @@ class URDFObject(Object):
             bbox_max = np.zeros(3)
             bbox_min = np.zeros(3)
 
-        if "bounding_box" in xml_element.keys():
-            # Obtain the scale as the ratio between the desired bounding box size and the normal bounding box size of the object at scale (1, 1, 1)
-            bounding_box = np.array(
-                [float(val) for val in xml_element.attrib["bounding_box"].split(" ")])
+        if bounding_box is not None:
+            # Obtain the scale as the ratio between the desired bounding box size and the normal bounding box size of
+            # the object at scale (1, 1, 1)
             original_bbox = bbox_max - bbox_min
             scale = bounding_box / original_bbox
-        elif "scale" in xml_element.keys():
-            scale = np.array([float(val)
-                              for val in xml_element.attrib["scale"].split(" ")])
-        else:
-            scale = np.array([1., 1., 1.])
-        logging.info("Scale: " + np.array2string(scale))
 
-        # We need to scale 1) the meshes, 2) the position of meshes, 3) the position of joints, 4) the orientation axis of joints
-        # The problem is that those quantities are given wrt. its parent link frame, and this can be rotated wrt. the frame the scale was given in
-        # Solution: parse the kin tree joint by joint, extract the rotation, rotate the scale, apply rotated scale to 1, 2, 3, 4 in the child link frame
+        logging.info("Scale: " + np.array2string(scale))
+        # Coordinates of the bounding box center in the base_link frame
+        bbox_center_in_blf = (bbox_max + bbox_min) / 2.0
+
+        self.scale_object(scale, bbox_center_in_blf)
+        self.rename_urdf(self.name)
+
+    def rename_urdf(self, new_name):
+        # Change the links of the added object to adapt the to the given name
+        for link_emb in self.object_tree.iter('link'):
+            if link_emb.attrib['name'] == "base_link":
+                # The base_link get renamed as the link tag indicates
+                # Just change the name of the base link in the embedded urdf
+                link_emb.attrib['name'] = new_name
+            else:
+                # The other links get also renamed to add the name of the link tag as prefix
+                # This allows us to load several instances of the same object
+                link_emb.attrib['name'] = new_name + \
+                                          "_" + link_emb.attrib['name']
+
+        # Change the joints of the added object to adapt them to the given name
+        for joint_emb in self.object_tree.iter('joint'):
+            # We change the joint name
+            joint_emb.attrib["name"] = new_name + \
+                                       "_" + joint_emb.attrib["name"]
+            # We change the child link names
+            for child_emb in joint_emb.findall('child'):
+                if child_emb.attrib['link'] == "base_link":
+                    child_emb.attrib['link'] = new_name
+                else:
+                    child_emb.attrib['link'] = new_name + \
+                                               "_" + child_emb.attrib['link']
+            # and the parent link names
+            for parent_emb in joint_emb.findall('parent'):
+                if parent_emb.attrib['link'] == "base_link":
+                    parent_emb.attrib['link'] = new_name
+                else:
+                    parent_emb.attrib['link'] = new_name + \
+                                                "_" + parent_emb.attrib['link']
+
+    def scale_object(self, scale, bbox_center_in_blf):
+        # We need to scale 1) the meshes, 2) the position of meshes, 3) the position of joints, 4) the orientation
+        # axis of joints. The problem is that those quantities are given wrt. its parent link frame, and this can be
+        # rotated wrt. the frame the scale was given in Solution: parse the kin tree joint by joint, extract the
+        # rotation, rotate the scale, apply rotated scale to 1, 2, 3, 4 in the child link frame
 
         # First, define the scale in each link reference frame
         # and apply it to the joint values
-        scales_in_lf = {}
-        scales_in_lf["base_link"] = scale
+        scales_in_lf = {"base_link": scale}
         all_processed = False
         while not all_processed:
             all_processed = True
@@ -359,7 +376,7 @@ class URDFObject(Object):
                     else:
                         scale_in_child_lf = scale_in_parent_lf
 
-                    #print("Adding: ", joint.find("child").attrib["link"])
+                    # print("Adding: ", joint.find("child").attrib["link"])
 
                     scales_in_lf[joint.find("child").attrib["link"]] = \
                         scale_in_child_lf
@@ -402,20 +419,51 @@ class URDFObject(Object):
                     [round_up(val, 4) for val in new_origin_xyz])
                 origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
 
-        # Finally, we need to know where is the base_link origin wrt. the bounding box center. That allows us to place the model
-        # correctly since the joint transformations given in the scene urdf are for the bounding box center
+        # Finally, we need to know where is the base_link origin wrt. the bounding box center. That allows us to
+        # place the model correctly since the joint transformations given in the scene urdf are for the bounding box
+        # center
         scale = scales_in_lf["base_link"]
-        # Coordinates of the bounding box center in the base_link frame
-        bbox_center_in_blf = (bbox_max + bbox_min) / 2.0
+
         # We scale the location. We will subtract this to the joint location
         self.scaled_bbxc_in_blf = -scale * bbox_center_in_blf
 
     def _load(self):
-        body_id = p.loadURDF(self.filename,
-                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-        self.mass = p.getDynamicsInfo(body_id, -1)[0]
 
-        return body_id
+        body_ids = []
+
+        for idx in range(len(self.sub_urdfs)):
+            logging.info("Loading " + self.sub_urdfs[idx][0])
+            body_id = p.loadURDF(self.sub_urdfs[idx][0])
+            # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+            self.sub_urdfs[idx][3] = body_id
+            logging.info("Moving URDF to " + np.array_str(self.sub_urdfs[idx][1]))
+            transformation = self.sub_urdfs[idx][1]
+            oriii = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+            transl = transformation[0:3, 3]
+            p.resetBasePositionAndOrientation(body_id, transl, oriii)
+            mass = p.getDynamicsInfo(body_id, -1)[0]
+            self.sub_urdfs[idx][2] = mass
+            p.changeDynamics(
+                body_id, -1,
+                activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
+            body_ids += [body_id]
+
+        return body_ids
+
+    def remove_floating_joints(self, folder=""):
+        # Deal with floating joints inside the embedded urdf
+        folder_name = os.path.join(folder, self.name)
+        urdfs_no_floating = \
+            save_urdfs_without_floating_joints(self.object_tree,
+                                               folder_name,
+                                               self.merge_fj)
+
+        # append a new tuple of file name of the instantiated embedded urdf
+        # and the transformation (!= None if its connection was floating)
+        for urdf in urdfs_no_floating:
+            transformation = np.dot(self.joint_frame, urdfs_no_floating[urdf][1])
+            self.sub_urdfs += [[urdfs_no_floating[urdf][0], transformation, 0, 0]]
+            # The third element is the mass and the fourth element is the body id, they will be set later
 
 
 class InteractiveObj(Object):
