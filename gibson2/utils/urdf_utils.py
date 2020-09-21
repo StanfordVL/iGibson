@@ -4,7 +4,7 @@ import argparse
 import random
 import xml.etree.ElementTree as ET
 from gibson2.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZWFromRotMat, get_rpy_from_transform
-from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path
+from gibson2.utils.assets_utils import get_scene_path, get_texture_file, get_ig_scene_path
 import numpy as np
 import logging
 

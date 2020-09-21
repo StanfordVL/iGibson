@@ -4,27 +4,44 @@ import logging
 import numpy as np
 from gibson2.objects.object_base import InteractiveObj, URDFObject
 from gibson2.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZWFromRotMat
-from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path
+from gibson2.utils.assets_utils import get_scene_path, get_texture_file, get_ig_scene_path
 import pybullet as p
 import os
 import xml.etree.ElementTree as ET
-from gibson2.scenes.scene_base import Scene
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints
 
 
-class iGSDFScene(Scene):
+class InteractiveIndoorScene(StaticIndoorScene):
     """
-    Create a scene defined with iGibson Scene Description Format (igsdf).
-
+    Create an interactive scene defined with iGibson Scene Description Format (iGSDF).
     iGSDF is an extension of URDF that we use to define an interactive scene. It has support for URDF scaling,
     URDF nesting and randomization.
-
+    InteractiveIndoorScene inherits from StaticIndoorScene the functionalities to compute shortest path and other
+    navigation functionalities.
     """
 
-    def __init__(self, scene_name):
-        super().__init__()
-        self.scene_file = get_ig_scene_path(
-            scene_name) + "/" + scene_name + ".urdf"
+    def __init__(self,
+                 scene_id,
+                 trav_map_resolution=0.1,
+                 trav_map_erosion=2,
+                 build_graph=True,
+                 num_waypoints=10,
+                 waypoint_resolution=0.2,
+                 pybullet_load_texture=False,
+                 ):
+
+        super().__init__(
+            scene_id,
+            trav_map_resolution,
+            trav_map_erosion,
+            build_graph,
+            num_waypoints,
+            waypoint_resolution,
+            pybullet_load_texture,
+        )
+        self.is_interactive = True
+        self.scene_file = get_ig_scene_path(scene_id) + "/" + scene_id + ".urdf"
         self.scene_tree = ET.parse(self.scene_file)
         self.links = []
         self.joints = []
@@ -40,7 +57,7 @@ class iGSDFScene(Scene):
         # Current time string to use to save the temporal urdfs
         timestr = time.strftime("%Y%m%d-%H%M%S")
         # Create the subfolder
-        os.mkdir(gibson2.ig_dataset_path + "/scene_instances/" + timestr)
+        os.makedirs(os.path.join(gibson2.ig_dataset_path, "scene_instances/" + timestr), exist_ok=True)
 
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):
@@ -70,30 +87,30 @@ class iGSDFScene(Scene):
                         # The other links get also renamed to add the name of the link tag as prefix
                         # This allows us to load several instances of the same object
                         link_emb.attrib['name'] = base_link_name + \
-                            "_" + link_emb.attrib['name']
+                                                  "_" + link_emb.attrib['name']
 
                 for joint_emb in embedded_urdf.object_tree.iter('joint'):
                     # We change the joint name
                     joint_emb.attrib["name"] = base_link_name + \
-                        "_" + joint_emb.attrib["name"]
+                                               "_" + joint_emb.attrib["name"]
                     # We change the child link names
                     for child_emb in joint_emb.findall('child'):
                         if child_emb.attrib['link'] == "base_link":
                             child_emb.attrib['link'] = base_link_name
                         else:
                             child_emb.attrib['link'] = base_link_name + \
-                                "_" + child_emb.attrib['link']
+                                                       "_" + child_emb.attrib['link']
                     # and the parent link names
                     for parent_emb in joint_emb.findall('parent'):
                         if parent_emb.attrib['link'] == "base_link":
                             parent_emb.attrib['link'] = base_link_name
                         else:
                             parent_emb.attrib['link'] = base_link_name + \
-                                "_" + parent_emb.attrib['link']
+                                                        "_" + parent_emb.attrib['link']
 
                 # Deal with the joint connecting the embedded urdf to the main link (world or building)
                 urdf_file_name_prefix = gibson2.ig_dataset_path + \
-                    "/scene_instances/" + timestr + "/" + base_link_name  # + ".urdf"
+                                        "/scene_instances/" + timestr + "/" + base_link_name  # + ".urdf"
 
                 # Find the joint in the main urdf that defines the connection to the embedded urdf
                 for joint in self.scene_tree.iter('joint'):
@@ -104,7 +121,8 @@ class iGSDFScene(Scene):
                         if joint.attrib['type'] != "floating":
                             embedded_urdf.object_tree.getroot().append(joint)
                             parent_link = ET.SubElement(embedded_urdf.object_tree.getroot(), "link",
-                                                        dict([("name", joint.find('parent').attrib['link'])]))  # "world")]))
+                                                        dict([("name",
+                                                               joint.find('parent').attrib['link'])]))  # "world")]))
 
                         # if the joint is floating, we save the transformation in the floating joint to be used when we load the
                         # embedded urdf
@@ -122,7 +140,8 @@ class iGSDFScene(Scene):
 
                         # Deal with floating joints inside the embedded urdf
                         urdfs_no_floating = save_urdfs_without_floating_joints(embedded_urdf.object_tree,
-                                                                               gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/" + base_link_name, self.merge_fj)
+                                                                               gibson2.ig_dataset_path + "/scene_instances/" + timestr + "/" + base_link_name,
+                                                                               self.merge_fj)
 
                         # append a new tuple of file name of the instantiated embedded urdf
                         # and the transformation (!= None if its connection was floating)
@@ -131,7 +150,6 @@ class iGSDFScene(Scene):
                                 joint_frame, urdfs_no_floating[urdf][1])
                             self.nested_urdfs += [
                                 (urdfs_no_floating[urdf][0], transformation)]
-
 
     def load(self):
         body_ids = []
@@ -150,4 +168,9 @@ class iGSDFScene(Scene):
                 body_id, -1,
                 activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
             body_ids += [body_id]
+
+        # Load the traversability map
+        maps_path = os.path.join(get_ig_scene_path(self.scene_id), "layout")
+        self.load_trav_map(maps_path)
+
         return body_ids

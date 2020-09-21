@@ -5,7 +5,7 @@ import numpy as np
 import random
 import json
 
-from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path, get_ig_model_path, get_ig_category_path
+from gibson2.utils.assets_utils import get_scene_path, get_texture_file, get_ig_scene_path, get_ig_model_path, get_ig_category_path
 import xml.etree.ElementTree as ET
 from gibson2.utils.utils import rotate_vector_3d
 

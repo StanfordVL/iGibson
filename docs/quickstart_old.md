@@ -89,7 +89,7 @@ Each environment is configured with a `yaml` file. Examples of `yaml` files can 
 | Argument name        | Example value           | Explanation  |
 |:-------------:|:-------------:| :-----|
 | envname      | AntClimbEnv | Environment name, make sure it is the same as the class name of the environment |
-| model_id      | space1-space8      |   Scene id, in beta release, choose from space1-space8 |
+| scene_id      | space1-space8      |   Scene id, in beta release, choose from space1-space8 |
 | target_orn | [0, 0, 3.14]      |   Eulerian angle (in radian) target orientation for navigating, the reference frame is world frame. For non-navigation tasks, this parameter is ignored. |
 |target_pos | [-7, 2.6, -1.5] | target position (in meter) for navigating, the reference frame is world frame. For non-navigation tasks, this parameter is ignored. |
 |initial_orn | [0, 0, 3.14] | initial orientation (in radian) for navigating, the reference frame is world frame |
