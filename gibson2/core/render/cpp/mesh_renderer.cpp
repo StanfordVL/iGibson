@@ -805,7 +805,6 @@ MeshRendererContext::createTexture(GLenum target, int width, int height, GLenum 
     texture.width = width;
     texture.height = height;
     texture.levels = (levels > 0) ? levels : numMipmapLevels(width, height);
-    printf("levels %d", texture.levels);
 
     glCreateTextures(target, 1, &texture.id);
     glTextureStorage2D(texture.id, texture.levels, internalformat, width, height);
@@ -1246,3 +1245,63 @@ void MeshRendererContext::clean_meshrenderer_optimized(std::vector<GLuint> color
 		glDeleteBuffers(1, &uboTexColorData);
 		glDeleteBuffers(1, &uboTransformData);
 	}
+
+
+void MeshRendererContext::loadSkyBox(int shaderProgram){
+    GLint vertex = glGetAttribLocation(shaderProgram, "position");
+
+    GLfloat cube_vertices[] = {
+	  -10.0,  10.0,  10.0,
+	  -10.0, -10.0,  10.0,
+	   10.0, -10.0,  10.0,
+	   10.0,  10.0,  10.0,
+	  -10.0,  10.0, -10.0,
+	  -10.0, -10.0, -10.0,
+	   10.0, -10.0, -10.0,
+	   10.0,  10.0, -10.0,
+	};
+	GLuint vbo_cube_vertices;
+	glGenBuffers(1, &vbo_cube_vertices);
+	m_skybox_vbo = vbo_cube_vertices;
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(vertex);
+    glVertexAttribPointer(vertex, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	// cube indices for index buffer object
+	GLushort cube_indices[] = {
+	  0, 1, 2, 3,
+	  3, 2, 6, 7,
+	  7, 6, 5, 4,
+	  4, 5, 1, 0,
+	  0, 3, 7, 4,
+	  1, 2, 6, 5,
+	};
+	GLuint ibo_cube_indices;
+	glGenBuffers(1, &ibo_cube_indices);
+	m_skybox_ibo = ibo_cube_indices;
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_cube_indices);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_indices), cube_indices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+}
+void MeshRendererContext::renderSkyBox(int shaderProgram, py::array_t<float> V, py::array_t<float> P){
+    glUseProgram(shaderProgram);
+    float* Vptr = (float*)V.request().ptr;
+    float* Pptr = (float*)P.request().ptr;
+
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture.id);
+    glUniform1i(glGetUniformLocation(shaderProgram, "envTexture"), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, m_skybox_vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_skybox_ibo);
+
+    glDrawElements(GL_QUADS, 24, GL_UNSIGNED_SHORT, 0);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+}
