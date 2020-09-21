@@ -68,7 +68,7 @@ def main():
     scene = BuildingScene('Rs',
                           build_graph=True,
                           pybullet_load_texture=True)
-    scene.load()
+    scene.load
 
     np.random.seed(0)
     for _ in range(10):
