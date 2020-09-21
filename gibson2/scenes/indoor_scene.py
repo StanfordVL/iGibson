@@ -127,7 +127,7 @@ class IndoorScene(Scene):
         idx = np.random.randint(0, high=trav_space[0].shape[0])
         xy_map = np.array([trav_space[0][idx], trav_space[1][idx]])
         x, y = self.map_to_world(xy_map)
-        z = self.floors[floor]
+        z = self.floor_heights[floor]
         if random_height:
             z += np.random.uniform(0.4, 0.8)
         return floor, np.array([x, y, z])

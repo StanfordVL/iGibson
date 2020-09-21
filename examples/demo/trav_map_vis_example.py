@@ -16,7 +16,7 @@ def main():
     floor_map = []
     floor_graph = []
 
-    with open(os.path.join(get_scene_path(scene_id), 'floor_heights.txt'), 'r') as f:
+    with open(os.path.join(get_scene_path(scene_id), 'floors.txt'), 'r') as f:
         floors = sorted(list(map(float, f.readlines())))
         print('floor_heights', floors)
 

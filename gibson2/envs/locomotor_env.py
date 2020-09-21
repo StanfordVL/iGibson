@@ -746,11 +746,11 @@ class NavigateRandomEnv(NavigateEnv):
         The geodesic distance (or L2 distance if traversable map graph is not built)
         between initial_pos and target_pos has to be between [self.target_dist_min, self.target_dist_max]
         """
-        _, self.initial_pos = self.scene.get_random_point_in_floor(self.floor_num, self.random_height)
+        _, self.initial_pos = self.scene.get_random_point(floor=self.floor_num, random_height=self.random_height)
         max_trials = 100
         dist = 0.0
         for _ in range(max_trials):
-            _, self.target_pos = self.scene.get_random_point_in_floor(self.floor_num, self.random_height)
+            _, self.target_pos = self.scene.get_random_point(floor=self.floor_num, random_height=self.random_height)
             if self.scene.build_graph:
                 _, dist = self.get_shortest_path(from_initial_pos=True)
             else:
@@ -852,7 +852,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         for obj in self.interactive_objects:
             reset_success = False
             for _ in range(max_trials):
-                _, pos = self.scene.get_random_point_in_floor(self.floor_num, self.random_height)
+                _, pos = self.scene.get_random_point(floor=self.floor_num, random_height=self.random_height)
                 orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
                 if self.test_valid_position('obj', obj, pos, orn):
                     reset_success = True
