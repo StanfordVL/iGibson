@@ -29,6 +29,23 @@ def frustum(left, right, bottom, top, znear, zfar):
     M[2, 3] = -1.0
     return M
 
+def ortho(left, right, bottom, top, znear, zfar):
+    """Create orthonormal projection matrix."""
+    assert right != left
+    assert bottom != top
+    assert znear != zfar
+
+    M = np.zeros((4, 4), dtype=np.float32)
+    M[0, 0] = 2.0 / (right - left)
+    M[1, 1] = 2.0 / (top - bottom)
+    M[2, 2] = -2.0 / (zfar - znear)
+    M[3, 0] = - (right + left) / (right - left)
+    M[3, 1] = - (top + bottom) / (top - bottom)
+    M[3, 2] = - (zfar + znear) / (zfar - znear)
+    M[3, 3] = 1.0
+    return M
+
+
 
 def perspective(fovy, aspect, znear, zfar):
     """Create perspective projection matrix."""
@@ -36,6 +53,7 @@ def perspective(fovy, aspect, znear, zfar):
     h = np.tan(fovy / 360.0 * np.pi) * znear
     w = h * aspect
     return frustum(-w, w, -h, h, znear, zfar)
+
 
 
 def anorm(x, axis=None, keepdims=False):

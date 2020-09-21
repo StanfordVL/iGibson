@@ -63,6 +63,9 @@ public:
 
     void release() {};
 
+    static int numMipmapLevels(int width, int height);
+
+
 #ifdef USE_CUDA
     void map_tensor(GLuint tid, int width, int height, std::size_t data);
 
@@ -96,7 +99,7 @@ public:
     void render_softbody_instance(int vao, int vbo, py::array_t<float> vertexData);
 
     void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int shadow_pass,
-                          py::array_t<float> P,
+                          py::array_t<float> P, py::array_t<float> lightP,
                           py::array_t<float> eye_pos, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
                           py::array_t<float> lightpos, py::array_t<float> lightcolor);
 
@@ -109,7 +112,8 @@ public:
                                 py::array_t<unsigned int> faces, GLuint fb);
 
     void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int shadow_pass,
-                                py::array_t<float> P, py::array_t<float> eye_pos, py::array_t<float> lightpos,
+                                py::array_t<float> P, py::array_t<float> lightP, py::array_t<float> eye_pos,
+                                py::array_t<float> lightpos,
                                 py::array_t<float> lightcolor);
 
     void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot,

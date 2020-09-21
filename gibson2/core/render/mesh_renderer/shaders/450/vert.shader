@@ -2,6 +2,7 @@
 uniform mat4 V;
 uniform mat4 lightV;
 uniform mat4 P;
+uniform mat4 lightP;
 uniform mat4 pose_rot;
 uniform mat4 pose_trans;
 uniform vec3 instance_color;
@@ -41,5 +42,5 @@ void main() {
     vec3 B = normalize(vec3(pose_trans * pose_rot * vec4(bitangent, 0.0)));
     vec3 N = normalize(vec3(pose_trans * pose_rot * vec4(normal,    0.0)));
     TBN = mat3(T, B, N);
-    FragPosLightSpace = P * lightV * pose_trans * pose_rot * vec4(position, 1);
+    FragPosLightSpace = lightP * lightV * pose_trans * pose_rot * vec4(position, 1);
 }

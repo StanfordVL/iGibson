@@ -8,7 +8,8 @@ from gibson2.core.render.mesh_renderer.get_available_devices import get_availabl
 from gibson2.core.render.mesh_renderer import EGLRendererContext
 from transforms3d.euler import quat2euler, mat2euler
 from transforms3d.quaternions import axangle2quat, mat2quat
-from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
+from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, ortho, lookat, xyz2mat, quat2rotmat, \
+    mat2xyz, \
     safemat2quat, xyzw2wxyz
 import numpy as np
 import cv2
@@ -108,6 +109,7 @@ class InstanceGroup(object):
                                                self.renderer.lightV,
                                                shadow_pass,
                                                self.renderer.P,
+                                               self.renderer.lightP,
                                                self.renderer.camera,
                                                self.renderer.lightpos,
                                                self.renderer.lightcolor)
@@ -269,6 +271,7 @@ class Instance(object):
                                          self.renderer.lightV,
                                          shadow_pass,
                                          self.renderer.P,
+                                         self.renderer.lightP,
                                          self.renderer.camera,
                                          self.pose_trans,
                                          self.pose_rot,
@@ -514,6 +517,7 @@ class MeshRenderer(object):
     def set_light_position_direction(self, position, target):
         self.lightpos = position
         self.lightV = lookat(self.lightpos, target, [0, 1, 0])
+        self.lightP = ortho(-5, 5, -5, 5, -10, 20.0)
 
     def setup_framebuffer(self):
         """
@@ -824,10 +828,11 @@ class MeshRenderer(object):
         self.V = np.ascontiguousarray(V, np.float32)
 
     def set_fov(self, fov):
-        self.vertical_fov = fov
-        P = perspective(self.vertical_fov, float(
-            self.width) / float(self.height), 0.1, 100)
-        self.P = np.ascontiguousarray(P, np.float32)
+        # self.vertical_fov = fov
+        # P = perspective(self.vertical_fov, float(
+        #     self.width) / float(self.height), 0.1, 100)
+        # self.P = np.ascontiguousarray(P, np.float32)
+        pass
 
     def set_light_color(self, color):
         self.lightcolor = color
@@ -887,7 +892,9 @@ class MeshRenderer(object):
             # shadow pass
 
             V = np.copy(self.V)
+            P = np.copy(self.P)
             self.V = np.copy(self.lightV)
+            self.P = np.copy(self.lightP)
             if self.msaa:
                 self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
             else:
@@ -906,7 +913,7 @@ class MeshRenderer(object):
             self.r.readbuffer_meshrenderer_shadow_depth(
                 self.width, self.height, self.fbo, self.depth_tex_shadow)
             self.V = np.copy(V)
-
+            self.P = np.copy(P)
         # main pass
 
         if self.msaa:
