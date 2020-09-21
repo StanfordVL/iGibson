@@ -1,6 +1,6 @@
 from gibson2.robots.robot_locomotors import Turtlebot
 from gibson2.simulator import Simulator
-from gibson2.scenes.indoor_scene import IndoorScene
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.utils.utils import parse_config
 import os
 import gibson2
@@ -14,7 +14,7 @@ class DemoInteractive(object):
     def run_demo(self):
         config = parse_config(os.path.join(gibson2.assets_path, 'example_configs/turtlebot_demo.yaml'))
         s = Simulator(mode='gui', image_width=700, image_height=700)
-        scene = IndoorScene('Rs_interactive', is_interactive=True)
+        scene = StaticIndoorScene('Rs_interactive')
         s.import_scene(scene)
         turtlebot = Turtlebot(config)
         s.import_robot(turtlebot)

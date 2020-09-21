@@ -5,7 +5,7 @@ We provide three types of scenes.
 - `EmptyScene` and `StadiumScene`: they are simple scenes with flat grounds and no obstacles, very good for debugging.
 - `BuildingScene`: it loads realistic 3D scenes from `gibson2.dataset_path`.
 
-Typically, they take in the `model_id` of a scene and provide a `load` function that be invoked externally (usually by `import_scene` of the `Simulator`).
+Typically, they take in the `scene_id` of a scene and provide a `load` function that be invoked externally (usually by `import_scene` of the `Simulator`).
 
 To be more specific, the `load` function of `BuildingScene`
 - stores the floor information (we have many multistory houses in our dataset)
@@ -55,7 +55,7 @@ The stadium scene looks like this:
 In this example, we import a static scene, and then randomly sample a pair of locations in the scene and compuete the shortest path between them. The code can be found here: [examples/demo/scene_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/scene_example.py).
 
 ```python
-from gibson2.scenes.indoor_scene import IndoorScene
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 import pybullet as p
 import numpy as np
 import time
@@ -73,8 +73,8 @@ def main():
     np.random.seed(0)
     for _ in range(10):
         random_floor = scene.get_random_floor()
-        p1 = scene.get_random_point_floor(random_floor)[1]
-        p2 = scene.get_random_point_floor(random_floor)[1]
+        p1 = scene.get_random_point_in_floor(random_floor)[1]
+        p2 = scene.get_random_point_in_floor(random_floor)[1]
         shortest_path, geodesic_distance = scene.get_shortest_path(random_floor, p1[:2], p2[:2], entire_path=True)
         print('random point 1:', p1)
         print('random point 2:', p2)

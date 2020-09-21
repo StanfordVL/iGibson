@@ -53,7 +53,7 @@ class Challenge:
 
             episode_info = {}
             episode_info['episode_id'] = str(i)
-            episode_info['scene_id'] = self.nav_env.config['model_id']
+            episode_info['scene_id'] = self.nav_env.config['scene_id']
             episode_info['start_pos'] = list(self.nav_env.initial_pos.astype(np.float32))
             episode_info['end_pos'] = list(self.nav_env.target_pos.astype(np.float32))
             episode_info['start_rotation'] = list(self.nav_env.initial_orn.astype(np.float32))

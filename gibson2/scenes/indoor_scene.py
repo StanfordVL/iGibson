@@ -6,7 +6,7 @@ from PIL import Image
 import numpy as np
 from gibson2.objects.object_base import InteractiveObj, URDFObject
 from gibson2.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZWFromRotMat
-from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path
+from gibson2.utils.assets_utils import get_scene_path, get_texture_file, get_ig_scene_path
 import pybullet_data
 import pybullet as p
 import os
@@ -15,154 +15,61 @@ from gibson2.scenes.scene_base import Scene
 
 class IndoorScene(Scene):
     """
-    Gibson Environment building scenes
+    Indoor scene class for Gibson and iGibson.
+    Contains the functionalities for navigation such as shortest path computation
     """
 
     def __init__(self,
-                 model_id,
+                 scene_id,
                  trav_map_resolution=0.1,
                  trav_map_erosion=2,
                  build_graph=True,
-                 is_interactive=False,
                  num_waypoints=10,
                  waypoint_resolution=0.2,
                  pybullet_load_texture=False,
                  ):
         """
-        Load a building scene and compute traversability
+        Load an indoor scene and compute traversability
 
-        :param model_id: Scene id
+        :param scene_id: Scene id
         :param trav_map_resolution: traversability map resolution
         :param trav_map_erosion: erosion radius of traversability areas, should be robot footprint radius
         :param build_graph: build connectivity graph
-        :param is_interactive: whether the scene is interactive. If so, we will replace the annotated objects with the corresponding CAD models and add floor planes with the original floor texture.
         :param num_waypoints: number of way points returned
         :param waypoint_resolution: resolution of adjacent way points
-        :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect what the robots see
+        :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and
+        does not affect robot's observations
         """
         super().__init__()
-        logging.info("Building scene: {}".format(model_id))
-        self.model_id = model_id
+        logging.info("IndoorScene model: {}".format(scene_id))
+        self.scene_id = scene_id
         self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
         self.trav_map_resolution = trav_map_resolution
         self.trav_map_original_size = None
         self.trav_map_size = None
         self.trav_map_erosion = trav_map_erosion
         self.build_graph = build_graph
-        self.is_interactive = is_interactive
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
         self.mesh_body_id = None
-        self.floor_body_ids = []
         self.pybullet_load_texture = pybullet_load_texture
+        self.floor_heights = [0.0]
 
-    def load_floor_metadata(self):
+    def load_trav_map(self, maps_path):
         """
-        Load floor metadata
+        Loads the traversability maps for all floors
+        :param maps_path: String with the path to the folder containing the traversability maps
+        :return: None
         """
-        floor_height_path = os.path.join(
-            get_model_path(self.model_id), 'floors.txt')
-        if not os.path.isfile(floor_height_path):
-            raise Exception(
-                'floors.txt cannot be found in model: {}'.format(self.model_id))
-        with open(floor_height_path, 'r') as f:
-            self.floors = sorted(list(map(float, f.readlines())))
-            logging.debug('Floors {}'.format(self.floors))
-
-    def load_scene_mesh(self):
-        """
-        Load scene mesh
-        """
-        if self.is_interactive:
-            filename = os.path.join(get_model_path(
-                self.model_id), "mesh_z_up_cleaned.obj")
-        else:
-            filename = os.path.join(get_model_path(
-                self.model_id), "mesh_z_up_downsampled.obj")
-            if not os.path.isfile(filename):
-                filename = os.path.join(get_model_path(
-                    self.model_id), "mesh_z_up.obj")
-
-        collision_id = p.createCollisionShape(p.GEOM_MESH,
-                                              fileName=filename,
-                                              flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
-        if self.pybullet_load_texture:
-            visual_id = p.createVisualShape(p.GEOM_MESH,
-                                            fileName=filename)
-            texture_filename = get_texture_file(filename)
-            if texture_filename is not None:
-                texture_id = p.loadTexture(texture_filename)
-            else:
-                texture_id = -1
-        else:
-            visual_id = -1
-            texture_id = -1
-
-        self.mesh_body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
-                                              baseVisualShapeIndex=visual_id)
-        p.changeDynamics(self.mesh_body_id, -1, lateralFriction=1)
-
-        if self.pybullet_load_texture:
-            if texture_id != -1:
-                p.changeVisualShape(self.mesh_body_id,
-                                    -1,
-                                    textureUniqueId=texture_id)
-
-    def load_floor_planes(self):
-        if self.is_interactive:
-            for f in range(len(self.floors)):
-                # load the floor plane with the original floor texture for each floor
-                plane_name = os.path.join(get_model_path(
-                    self.model_id), "plane_z_up_{}.obj".format(f))
-                collision_id = p.createCollisionShape(p.GEOM_MESH,
-                                                      fileName=plane_name)
-                visual_id = p.createVisualShape(p.GEOM_MESH,
-                                                fileName=plane_name)
-                texture_filename = get_texture_file(plane_name)
-                if texture_filename is not None:
-                    texture_id = p.loadTexture(texture_filename)
-                else:
-                    texture_id = -1
-                floor_body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
-                                                  baseVisualShapeIndex=visual_id)
-                if texture_id != -1:
-                    p.changeVisualShape(floor_body_id,
-                                        -1,
-                                        textureUniqueId=texture_id)
-                floor_height = self.floors[f]
-                p.resetBasePositionAndOrientation(floor_body_id,
-                                                  posObj=[0, 0, floor_height],
-                                                  ornObj=[0, 0, 0, 1])
-
-                # Since both the floor plane and the scene mesh have mass 0 (static),
-                # PyBullet seems to have already disabled collision between them.
-                # Just to be safe, explicit disable collision between them.
-                p.setCollisionFilterPair(
-                    self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
-
-                self.floor_body_ids.append(floor_body_id)
-        else:
-            # load the default floor plane (only once) and later reset it to different floor heiights
-            plane_name = os.path.join(
-                pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-            floor_body_id = p.loadMJCF(plane_name)[0]
-            p.resetBasePositionAndOrientation(floor_body_id,
-                                              posObj=[0, 0, 0],
-                                              ornObj=[0, 0, 0, 1])
-            p.setCollisionFilterPair(
-                self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
-            self.floor_body_ids.append(floor_body_id)
-
-    def load_trav_map(self):
         self.floor_map = []
         self.floor_graph = []
-        for f in range(len(self.floors)):
+        for f in range(len(self.floor_heights)):
             trav_map = np.array(Image.open(
-                os.path.join(get_model_path(self.model_id),
+                os.path.join(maps_path,
                              'floor_trav_{}.png'.format(f))
             ))
             obstacle_map = np.array(Image.open(
-                os.path.join(get_model_path(self.model_id),
+                os.path.join(maps_path,
                              'floor_{}.png'.format(f))
             ))
             if self.trav_map_original_size is None:
@@ -173,15 +80,12 @@ class IndoorScene(Scene):
                                          self.trav_map_default_resolution /
                                          self.trav_map_resolution)
             trav_map[obstacle_map == 0] = 0
-            trav_map = cv2.resize(
-                trav_map, (self.trav_map_size, self.trav_map_size))
-            trav_map = cv2.erode(trav_map, np.ones(
-                (self.trav_map_erosion, self.trav_map_erosion)))
+            trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
+            trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
             trav_map[trav_map < 255] = 0
 
             if self.build_graph:
-                graph_file = os.path.join(get_model_path(
-                    self.model_id), 'floor_trav_{}.p'.format(f))
+                graph_file = os.path.join(maps_path, 'floor_trav_{}.p'.format(f))
                 if os.path.isfile(graph_file):
                     logging.info("Loading traversable graph")
                     with open(graph_file, 'rb') as pfile:
@@ -215,59 +119,9 @@ class IndoorScene(Scene):
 
             self.floor_map.append(trav_map)
 
-    def load_scene_objects(self):
-        if not self.is_interactive:
-            return
-
-        self.scene_objects = []
-        self.scene_objects_pos = []
-        scene_path = get_model_path(self.model_id)
-        urdf_files = [item for item in os.listdir(
-            scene_path) if item[-4:] == 'urdf' and item != 'scene.urdf']
-        position_files = [
-            item[:-4].replace('alignment_centered', 'pos') + 'txt' for item in urdf_files]
-        for urdf_file, position_file in zip(urdf_files, position_files):
-            logging.info('Loading urdf file {}'.format(urdf_file))
-            with open(os.path.join(scene_path, position_file)) as f:
-                pos = np.array([float(item)
-                                for item in f.readlines()[0].strip().split()])
-                obj = InteractiveObj(os.path.join(scene_path, urdf_file))
-                obj.load()
-                self.scene_objects.append(obj)
-                self.scene_objects_pos.append(pos)
-
-    def load_scene_urdf(self):
-        self.mesh_body_id = p.loadURDF(os.path.join(
-            get_model_path(self.model_id), 'scene.urdf'))
-
-    def has_scene_urdf(self):
-        return os.path.exists(os.path.join(get_model_path(self.model_id), 'scene.urdf'))
-
-    def load(self):
-        """
-        Initialize scene
-        """
-        self.load_floor_metadata()
-        if self.has_scene_urdf():
-            self.load_scene_urdf()
-        else:
-            self.load_scene_mesh()
-            self.load_floor_planes()
-
-        self.load_trav_map()
-        self.load_scene_objects()
-        self.reset_scene_objects()
-
-        return [self.mesh_body_id] + self.floor_body_ids
-
-    def get_random_floor(self):
-        return np.random.randint(0, high=len(self.floors))
-
-    def get_random_point(self, random_height=False):
-        floor = self.get_random_floor()
-        return self.get_random_point_floor(floor, random_height)
-
-    def get_random_point_floor(self, floor, random_height=False):
+    def get_random_point(self, floor=None, random_height=False):
+        if floor is None:
+            floor = self.get_random_floor()
         trav = self.floor_map[floor]
         trav_space = np.where(trav == 255)
         idx = np.random.randint(0, high=trav_space[0].shape[0])
@@ -279,10 +133,20 @@ class IndoorScene(Scene):
         return floor, np.array([x, y, z])
 
     def map_to_world(self, xy):
+        """
+        Transforms a 2D point in map reference frame into world (simulator) reference frame
+        :param xy: 2D location in map reference frame (image)
+        :return: 2D location in world reference frame (metric)
+        """
         axis = 0 if len(xy.shape) == 1 else 1
         return np.flip((xy - self.trav_map_size / 2.0) * self.trav_map_resolution, axis=axis)
 
     def world_to_map(self, xy):
+        """
+        Transforms a 2D point in world (simulator) reference frame into map reference frame
+        :param xy: 2D location in world reference frame (metric)
+        :return: 2D location in map reference frame (image)
+        """
         return np.flip((xy / self.trav_map_resolution + self.trav_map_size / 2.0)).astype(np.int)
 
     def has_node(self, floor, world_xy):
@@ -329,26 +193,3 @@ class IndoorScene(Scene):
                     (path_world, remaining_waypoints), axis=0)
 
         return path_world, geodesic_distance
-
-    def reset_floor(self, floor=0, additional_elevation=0.02, height=None):
-        if self.is_interactive:
-            # loads the floor plane with the original floor texture for each floor, no need to reset_floor
-            return
-
-        height = height if height is not None else self.floors[floor] + \
-            additional_elevation
-        p.resetBasePositionAndOrientation(self.floor_body_ids[0],
-                                          posObj=[0, 0, height],
-                                          ornObj=[0, 0, 0, 1])
-
-    def reset_scene_objects(self):
-        if not self.is_interactive:
-            # does not have objects in the scene
-            return
-
-        for obj, pos in zip(self.scene_objects, self.scene_objects_pos):
-            obj.set_position_orientation(pos,
-                                         [0, 0, 0, 1])
-
-    def get_floor_height(self, floor):
-        return self.floors[floor]

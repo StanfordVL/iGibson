@@ -3,7 +3,7 @@ from gibson2.robots.robot_locomotors \
 from gibson2.simulator import Simulator
 from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.scenes.stadium_scene import StadiumScene
-from gibson2.scenes.indoor_scene import IndoorScene
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.utils.utils import parse_config
 import gym
 
@@ -15,7 +15,7 @@ class BaseEnv(gym.Env):
 
     def __init__(self,
                  config_file,
-                 model_id=None,
+                 scene_id=None,
                  mode='headless',
                  action_timestep=1 / 10.0,
                  physics_timestep=1 / 240.0,
@@ -23,15 +23,15 @@ class BaseEnv(gym.Env):
                  device_idx=0):
         """
         :param config_file: config_file path
-        :param model_id: override model_id in config file
+        :param scene_id: override scene_id in config file
         :param mode: headless or gui mode
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
         :param device_idx: device_idx: which GPU to run the simulation and rendering on
         """
         self.config = parse_config(config_file)
-        if model_id is not None:
-            self.config['model_id'] = model_id
+        if scene_id is not None:
+            self.config['scene_id'] = scene_id
 
         self.mode = mode
         self.action_timestep = action_timestep
@@ -58,12 +58,12 @@ class BaseEnv(gym.Env):
         self.simulator.reload()
         self.load()
 
-    def reload_model(self, model_id):
+    def reload_model(self, scene_id):
         """
         Reload another model, this allows one to change the envrionment on the fly
-        :param model_id: new model_id
+        :param scene_id: new scene_id
         """
-        self.config['model_id'] = model_id
+        self.config['scene_id'] = scene_id
         self.simulator.reload()
         self.load()
 
@@ -76,14 +76,13 @@ class BaseEnv(gym.Env):
         elif self.config['scene'] == 'stadium':
             scene = StadiumScene()
         elif self.config['scene'] == 'building':
-            scene = IndoorScene(
-                self.config['model_id'],
+            scene = StaticIndoorScene(
+                self.config['scene_id'],
                 waypoint_resolution=self.config.get('waypoint_resolution', 0.2),
                 num_waypoints=self.config.get('num_waypoints', 10),
                 build_graph=self.config.get('build_graph', False),
                 trav_map_resolution=self.config.get('trav_map_resolution', 0.1),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
-                is_interactive=self.config.get('is_interactive', False),
                 pybullet_load_texture=self.config.get('pybullet_load_texture', False),
             )
         self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))

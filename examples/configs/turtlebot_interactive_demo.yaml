@@ -1,7 +1,6 @@
 # scene
 scene: building
-model_id: Placida
-is_interactive: true
+scene_id: Placida
 build_graph: true
 load_texture: true
 pybullet_load_texture: true

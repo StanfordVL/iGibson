@@ -1,15 +1,15 @@
 from gibson2.robots.robot_locomotors import Turtlebot
 from gibson2.simulator import Simulator
-from gibson2.scenes.indoor_scene import IndoorScene
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.utils.utils import parse_config
 import time
 
 def benchmark(render_to_tensor=False, resolution=512):
     config = parse_config('../configs/turtlebot_demo.yaml')
     s = Simulator(mode='headless', image_width=resolution, image_height=resolution, render_to_tensor=render_to_tensor)
-    scene = IndoorScene('Rs',
-                        build_graph=True,
-                        pybullet_load_texture=True)
+    scene = StaticIndoorScene('Rs',
+                              build_graph=True,
+                              pybullet_load_texture=True)
     s.import_scene(scene)
     turtlebot = Turtlebot(config)
     s.import_robot(turtlebot)

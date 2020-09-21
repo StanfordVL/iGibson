@@ -188,7 +188,7 @@ def deleteCube():
             bpy.data.objects.remove(obj, True)
 
 
-def capture_top(dst_dir, model_id, obj_model, focus_center, path, idx, distance):
+def capture_top(dst_dir, scene_id, obj_model, focus_center, path, idx, distance):
     def set_render_resolution(x=2560, y=2560):
         bpy.context.scene.render.resolution_x = x
         bpy.context.scene.render.resolution_y = y
@@ -217,7 +217,7 @@ def capture_top(dst_dir, model_id, obj_model, focus_center, path, idx, distance)
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action='DESELECT')
     bpy.data.scenes['Scene'].render.filepath = os.path.join(dst_dir,
-                                                            '{}_c{}.jpg'.format(model_id, idx))
+                                                            '{}_c{}.jpg'.format(scene_id, idx))
     bpy.ops.render.render(write_still=True)
     deleteObject(slicename)
 

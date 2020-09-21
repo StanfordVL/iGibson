@@ -1,7 +1,7 @@
 # scene
 scene: building
-model_id: Rs
-is_interactive: false
+scene_id: Rs
+
 build_graph: true
 load_texture: true
 trav_map_resolution: 0.1

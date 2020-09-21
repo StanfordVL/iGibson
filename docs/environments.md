@@ -13,8 +13,7 @@ Here is one example: [examples/configs/turtlebot_p2p_nav.yaml](https://github.co
 ```yaml
 # scene
 scene: building
-model_id: Rs
-is_interactive: false
+scene_id: Rs
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
@@ -87,8 +86,7 @@ Parameters of this config file is explained below:
 | Attribute | Example Value | Expalanation |
 | ----------| ------------- | ------------ |
 | scene | building | which type of scene: [empty, stadium, building] |
-| model_id | Rs | model_id for the building scene |
-| is_interactive | false | whether the scene is interactive, only model_id in `dataset/gibson_list` supports interactivity |
+| scene_id | Rs | scene_id for the building scene |
 | build_graph | true | whether to build traversability graph for the building scene |
 | load_texture | true | whether to load texture into MeshRenderer. Can be set to false if RGB is not needed |
 | pybullet_load_texture | true | whether to load texture into PyBullet, for debugging purpose only |
