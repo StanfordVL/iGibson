@@ -73,8 +73,8 @@ def main():
     np.random.seed(0)
     for _ in range(10):
         random_floor = scene.get_random_floor()
-        p1 = scene.get_random_point_in_floor(random_floor)[1]
-        p2 = scene.get_random_point_in_floor(random_floor)[1]
+        p1 = scene.get_random_point(floor=random_floor)[1]
+        p2 = scene.get_random_point(floor=random_floor)[1]
         shortest_path, geodesic_distance = scene.get_shortest_path(random_floor, p1[:2], p2[:2], entire_path=True)
         print('random point 1:', p1)
         print('random point 2:', p2)
