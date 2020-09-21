@@ -485,6 +485,14 @@ class MeshRenderer(object):
                                 os.path.join(os.path.dirname(mesh_renderer.__file__),
                                             'shaders/450/frag.shader')).readlines()))
 
+            self.skyboxShaderProgram = self.r.compile_shader_meshrenderer(
+                            "".join(open(
+                                os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                            'shaders/410/skybox_vs.glsl')).readlines()),
+                            "".join(open(
+                                os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                            'shaders/410/skybox_fs.glsl')).readlines()))
+
         # default light looking down and tilted
         self.set_light_position_direction([0, 0, 2], [0, 0.5, 0])
 
@@ -513,6 +521,7 @@ class MeshRenderer(object):
         else:
             logging.warning(
                 "Environment texture not available, cannot use PBR.")
+        self.r.loadSkyBox(self.skyboxShaderProgram)
 
     def set_light_position_direction(self, position, target):
         self.lightpos = position
@@ -878,6 +887,8 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
+
+
     def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
@@ -887,6 +898,7 @@ class MeshRenderer(object):
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
+
 
         if self.enable_shadow:
             # shadow pass
@@ -920,6 +932,8 @@ class MeshRenderer(object):
             self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
         else:
             self.r.render_meshrenderer_pre(0, 0, self.fbo)
+
+        self.r.renderSkyBox(self.skyboxShaderProgram, self.V, self.P)
 
         if self.optimized:
             self.update_dynamic_positions()
