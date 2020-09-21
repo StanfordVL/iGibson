@@ -77,7 +77,7 @@ def main():
         model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
 
     renderer = MeshRenderer(width=512, height=512, msaa=True, enable_shadow=True, vertical_fov=90)
-    renderer.set_light_position_direction([0,0,1.5], [0,0,0])
+    renderer.set_light_position_direction([0,0,10], [0,0,0])
 
     renderer.load_object('plane/plane_z_up_0.obj', scale=[3,3,3])
     renderer.add_instance(0)

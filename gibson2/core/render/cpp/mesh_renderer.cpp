@@ -415,7 +415,8 @@ void MeshRendererContext::render_softbody_instance(int vao, int vbo, py::array_t
 }
 
 void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
-                                           int shadow_pass, py::array_t<float> P, py::array_t<float> eye_pos,
+                                           int shadow_pass, py::array_t<float> P, py::array_t<float> lightP,
+                                           py::array_t<float> eye_pos,
                                            py::array_t<float> pose_trans,
                                            py::array_t<float> pose_rot, py::array_t<float> lightpos,
                                            py::array_t<float> lightcolor) {
@@ -423,6 +424,7 @@ void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float>
     float *Vptr = (float *) V.request().ptr;
     float *lightVptr = (float *) lightV.request().ptr;
     float *Pptr = (float *) P.request().ptr;
+    float *lightPptr = (float *) lightP.request().ptr;
     float *transptr = (float *) pose_trans.request().ptr;
     float *rotptr = (float *) pose_rot.request().ptr;
     float *lightposptr = (float *) lightpos.request().ptr;
@@ -432,6 +434,7 @@ void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float>
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, lightVptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightP"), 1, GL_FALSE, lightPptr);
     glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
@@ -513,18 +516,21 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
 }
 
 void MeshRendererContext::initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
-                                                 int shadow_pass, py::array_t<float> P, py::array_t<float> eye_pos,
+                                                 int shadow_pass, py::array_t<float> P, py::array_t<float> lightP,
+                                                 py::array_t<float> eye_pos,
                                                  py::array_t<float> lightpos, py::array_t<float> lightcolor) {
     glUseProgram(shaderProgram);
     float *Vptr = (float *) V.request().ptr;
     float *lightVptr = (float *) lightV.request().ptr;
     float *Pptr = (float *) P.request().ptr;
+    float *lightPptr = (float *) lightP.request().ptr;
     float *lightposptr = (float *) lightpos.request().ptr;
     float *lightcolorptr = (float *) lightcolor.request().ptr;
     float *eye_pos_ptr = (float *) eye_pos.request().ptr;
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, lightVptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightP"), 1, GL_FALSE, lightPptr);
     glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
     glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
     glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1],
@@ -784,13 +790,22 @@ GLuint MeshRendererContext::compileShader(const std::string &filename, GLenum ty
     return shader;
 }
 
+int MeshRendererContext::numMipmapLevels(int width, int height)
+	{
+		int levels = 1;
+		while((width|height) >> levels) {
+			++levels;
+		}
+		return levels;
+	}
 
 Texture
 MeshRendererContext::createTexture(GLenum target, int width, int height, GLenum internalformat, int levels) const {
     Texture texture;
     texture.width = width;
     texture.height = height;
-    texture.levels = (levels > 0) ? levels : 6;
+    texture.levels = (levels > 0) ? levels : numMipmapLevels(width, height);
+    printf("levels %d", texture.levels);
 
     glCreateTextures(target, 1, &texture.id);
     glTextureStorage2D(texture.id, texture.levels, internalformat, width, height);

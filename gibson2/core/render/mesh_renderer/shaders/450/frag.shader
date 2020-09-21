@@ -69,7 +69,7 @@ vec3 fresnelSchlick(vec3 F0, float cosTheta)
 }
 
 void main() {
-    vec3 lightDir = normalize(light_position - FragPos);
+    vec3 lightDir = normalize(light_position);
     float diff = 0.5 + 0.5 * max(dot(Normal_world, lightDir), 0.0);
     vec3 diffuse = diff * light_color;
 
@@ -79,12 +79,15 @@ void main() {
             projCoords = projCoords * 0.5 + 0.5;
             float closestDepth = texture(depthMap, projCoords.xy).b * 0.5 + 0.5;
             float currentDepth = projCoords.z;
-            float bias = max(0.02 * (1.0 - dot(Normal_world, lightDir)), 0.002);
+            float cosTheta = dot(Normal_world, lightDir);
+            cosTheta = clamp(cosTheta, 0.0, 1.0);
+            float bias = 0.005*tan(acos(cosTheta));
+            bias = clamp(bias, 0.001 ,0.1);
+
             shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
 
             if ((projCoords.z > 1.0) || (projCoords.x > 1.0) || (projCoords.y > 1.0) || (projCoords.x < 0) || (projCoords.y <
-             0))
-                shadow = 0.0;
+             0)) shadow = 0.0;
         }
         else {
             shadow = 0.0;
