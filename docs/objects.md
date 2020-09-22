@@ -6,12 +6,12 @@ We provide a wide variety of **Objects** that can be imported into the **Simulat
 - `RBOObject`
 - `ShapeNetObject`
 - `Pedestrian`
-- `InteractiveObj`
+- `ArticulatedObject`
 - `SoftObject`
-- `BoxShape`
+- `Cube`
 - `VisualMarker`
 
-Typically, they take in the name or the path of an object (in `gibson2.assets_path`) and provide a `load` function that be invoked externally (usually by `import_object` and `import_articulated_object` of `Simulator`). The `load` function imports the object into PyBullet. Some **Objects** (e.g. `InteractiveObj`) also provide APIs to get and set the object pose.
+Typically, they take in the name or the path of an object (in `gibson2.assets_path`) and provide a `load` function that be invoked externally (usually by `import_object` and `import_articulated_object` of `Simulator`). The `load` function imports the object into PyBullet. Some **Objects** (e.g. `ArticulatedObject`) also provide APIs to get and set the object pose.
 
 Most of the code can be found here: [gibson2/physics/interactive_objects.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/interactive_objects.py).
 
@@ -19,7 +19,8 @@ Most of the code can be found here: [gibson2/physics/interactive_objects.py](htt
 In this example, we import three objects into PyBullet, two of which are articulated objects. The code can be found here: [examples/demo/object_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/object_example.py).
 
 ```python
-from gibson2.objects.object_base import InteractiveObj, YCBObject
+from gibson2.objects.ycb_object import YCBObject
+from gibson2.objects.articulated_object import ArticulatedObject
 import gibson2
 import os
 import pybullet as p
@@ -36,11 +37,11 @@ def main():
     cabinet_0007 = os.path.join(gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf')
     cabinet_0004 = os.path.join(gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf')
 
-    obj1 = InteractiveObj(filename=cabinet_0007)
+    obj1 = ArticulatedObject(filename=cabinet_0007)
     obj1.load()
     obj1.set_position([0,0,0.5])
 
-    obj2 = InteractiveObj(filename=cabinet_0004)
+    obj2 = ArticulatedObject(filename=cabinet_0004)
     obj2.load()
     obj2.set_position([0,0,2])
 

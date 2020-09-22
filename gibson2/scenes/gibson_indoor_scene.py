@@ -4,7 +4,7 @@ import networkx as nx
 import cv2
 from PIL import Image
 import numpy as np
-from gibson2.objects.object_base import InteractiveObj, URDFObject
+from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
 from gibson2.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZWFromRotMat
 from gibson2.utils.assets_utils import get_scene_path, get_texture_file, get_ig_scene_path
 import pybullet_data

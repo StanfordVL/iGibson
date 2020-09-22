@@ -2,7 +2,7 @@ import time
 import gibson2
 import logging
 import numpy as np
-from gibson2.objects.object_base import URDFObject
+from gibson2.objects.articulated_object import URDFObject
 from gibson2.utils.utils import get_transform_from_xyz_rpy, quatXYZWFromRotMat
 import pybullet as p
 import os
@@ -212,7 +212,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         added_object.joint_frame = joint_frame  # Save the transformation internally to be used when loading
         added_object.remove_floating_joints(self.scene_instance_folder)
 
-    @property
     def load(self):
 
         # Load all the objects

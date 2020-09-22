@@ -1,5 +1,6 @@
 import gibson2
-from gibson2.objects.object_base import VisualMarker, InteractiveObj
+from gibson2.objects.visual_marker import VisualMarker
+from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.robots.robot_locomotors import Turtlebot
 from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, cartesian_to_polar
 from gibson2.envs.env_base import BaseEnv
@@ -839,7 +840,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
 
         for _ in range(self.interactive_objects_num_dups):
             for urdf_model in interactive_objects_path:
-                obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
+                obj = ArticulatedObject(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
                 self.simulator.import_object(obj)
                 interactive_objects.append(obj)
         return interactive_objects
