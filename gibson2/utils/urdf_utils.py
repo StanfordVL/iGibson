@@ -1,3 +1,5 @@
+import math
+
 import gibson2
 import os
 import argparse

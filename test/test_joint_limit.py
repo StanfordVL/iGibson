@@ -7,7 +7,7 @@ from gibson2.utils.utils import quatToXYZW
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
 from gibson2.external.pybullet_tools.utils import get_center_extent
 from gibson2.simulator import Simulator
-from gibson2.objects.object_base import InteractiveObj
+from gibson2.objects.articulated_object import ArticulatedObject
 from PIL import Image
 import json
 
@@ -32,7 +32,7 @@ def main():
             obj_inst_dir = os.path.join(obj_class_dir, obj_inst_dir)
             urdf_path = os.path.join(obj_inst_dir, urdf_path)
 
-            obj = InteractiveObj(urdf_path)
+            obj = ArticulatedObject(urdf_path)
             s.import_articulated_object(obj)
 
             with open(os.path.join(obj_inst_dir, 'misc/bbox.json'), 'r') as bbox_file:

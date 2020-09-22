@@ -55,7 +55,7 @@ class SimNode:
 
     @staticmethod
     def add_objects(env):
-        from gibson2.objects.object_base import ShapeNetObject
+        from gibson2.objects.shapenet_object import ShapeNetObject
         # obj_path = '/cvgl/group/ShapeNetCore.v2/03001627/1b05971a4373c7d2463600025db2266/models/model_normalized.obj'
         obj_path = '/cvgl/group/ShapeNetCore.v2/03001627/60b3d70238246b3e408442c6701ebe92/models/model_normalized.obj'
         cur_obj = ShapeNetObject(obj_path,

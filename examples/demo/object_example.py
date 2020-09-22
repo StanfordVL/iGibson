@@ -1,4 +1,5 @@
-from gibson2.objects.object_base import InteractiveObj, YCBObject
+from gibson2.objects.ycb_object import YCBObject
+from gibson2.objects.articulated_object import ArticulatedObject
 import gibson2
 import os
 import pybullet as p
@@ -16,11 +17,11 @@ def main():
     cabinet_0007 = os.path.join(gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf')
     cabinet_0004 = os.path.join(gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf')
 
-    obj1 = InteractiveObj(filename=cabinet_0007)
+    obj1 = ArticulatedObject(filename=cabinet_0007)
     obj1.load()
     obj1.set_position([0,0,0.5])
 
-    obj2 = InteractiveObj(filename=cabinet_0004)
+    obj2 = ArticulatedObject(filename=cabinet_0004)
     obj2.load()
     obj2.set_position([0,0,2])
 
