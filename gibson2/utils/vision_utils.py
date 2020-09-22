@@ -1,16 +1,10 @@
-import torch
-import math
 import random
-from PIL import Image, ImageOps
+from PIL import Image
 
 try:
     import accimage
 except ImportError:
     accimage = None
-import numpy as np
-import numbers
-import types
-import collections
 
 
 class RandomScale(object):
