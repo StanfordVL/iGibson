@@ -63,6 +63,7 @@ class Challenge:
         #with open('eval_episodes.json', 'w') as f:
         #    json.dump(str(episodes), f)
 
+
 if __name__ == "__main__":
     challenge = Challenge()
     challenge.gen_episode()

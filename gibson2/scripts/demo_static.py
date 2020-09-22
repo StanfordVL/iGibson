@@ -6,7 +6,8 @@ import os
 import gibson2
 from gibson2.utils.assets_utils import download_assets, download_demo_data
 
-class Demo(object):
+
+class DemoStatic(object):
     def __init__(self):
         download_assets()
         download_demo_data()
@@ -21,11 +22,11 @@ class Demo(object):
         s.import_robot(turtlebot)
 
         for i in range(1000):
-            turtlebot.apply_action([0.1,0.5])
+            turtlebot.apply_action([0.1, 0.5])
             s.step()
 
         s.disconnect()
 
 
 if __name__ == "__main__":
-    Demo().run_demo()
+    DemoStatic().run_demo()
