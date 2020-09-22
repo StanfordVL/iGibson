@@ -3,7 +3,7 @@ from gibson2.scenes.stadium_scene import StadiumScene
 from gibson2.objects.cube import Cube
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.objects.articulated_object import RBOObject, ArticulatedObject
-from gibson2.robots.robot_locomotor import Turtlebot
+from gibson2.robots.turtlebot_robot import Turtlebot
 import gibson2
 import os
 from gibson2.utils.utils import parse_config
