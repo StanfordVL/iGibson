@@ -529,7 +529,6 @@ class Simulator:
                         p.getDynamicsInfo(instance.pybullet_uuid, link_id)
                     inv_inertial_pos, inv_inertial_orn =\
                         p.invertTransform(inertial_pos, inertial_orn)
-                    print('inertial', inertial_pos, inertial_orn)
                     pos, orn = p.multiplyTransforms(
                         pos, orn, inv_inertial_pos, inv_inertial_orn)
                 else:
