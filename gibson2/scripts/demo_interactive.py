@@ -6,6 +6,7 @@ import os
 import gibson2
 from gibson2.utils.assets_utils import download_assets, download_demo_data
 
+
 class DemoInteractive(object):
     def __init__(self):
         download_assets()
