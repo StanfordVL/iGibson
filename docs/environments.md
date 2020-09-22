@@ -153,7 +153,7 @@ In this example, we show how to instantiate `NavigateRandomEnv` and how to step 
 The code can be found here: [examples/demo/env_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/env_example.py).
 
 ```python
-from gibson2.envs.locomotor_env import NavigateEnv, NavigateRandomEnv
+from gibson2.envs.locomotor_env import NavigationEnv, NavigationRandomEnv
 from time import time
 import numpy as np
 from time import time

@@ -1,6 +1,6 @@
 # scene
-scene: building
-scene_id: Placida
+scene: igibson
+scene_id: Rs
 build_graph: true
 load_texture: true
 pybullet_load_texture: true

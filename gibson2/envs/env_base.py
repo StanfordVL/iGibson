@@ -11,6 +11,7 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.scenes.stadium_scene import StadiumScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.utils.utils import parse_config
 import gym
 
@@ -57,7 +58,7 @@ class BaseEnv(gym.Env):
 
     def reload(self, config_file):
         """
-        Reload another config file, this allows one to change the envrionment on the fly
+        Reload another config file, this allows one to change the environment on the fly
 
         :param config_file: new config file path
         """
@@ -67,7 +68,7 @@ class BaseEnv(gym.Env):
 
     def reload_model(self, scene_id):
         """
-        Reload another model, this allows one to change the envrionment on the fly
+        Reload another model, this allows one to change the environment on the fly
         :param scene_id: new scene_id
         """
         self.config['scene_id'] = scene_id
@@ -82,8 +83,18 @@ class BaseEnv(gym.Env):
             scene = EmptyScene()
         elif self.config['scene'] == 'stadium':
             scene = StadiumScene()
-        elif self.config['scene'] == 'building':
+        elif self.config['scene'] == 'gibson':
             scene = StaticIndoorScene(
+                self.config['scene_id'],
+                waypoint_resolution=self.config.get('waypoint_resolution', 0.2),
+                num_waypoints=self.config.get('num_waypoints', 10),
+                build_graph=self.config.get('build_graph', False),
+                trav_map_resolution=self.config.get('trav_map_resolution', 0.1),
+                trav_map_erosion=self.config.get('trav_map_erosion', 2),
+                pybullet_load_texture=self.config.get('pybullet_load_texture', False),
+            )
+        elif self.config['scene'] == 'igibson':
+            scene = InteractiveIndoorScene(
                 self.config['scene_id'],
                 waypoint_resolution=self.config.get('waypoint_resolution', 0.2),
                 num_waypoints=self.config.get('num_waypoints', 10),

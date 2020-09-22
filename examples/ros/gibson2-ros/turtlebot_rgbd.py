@@ -11,7 +11,7 @@ import rospkg
 import numpy as np
 from cv_bridge import CvBridge
 import tf
-from gibson2.envs.locomotor_env import NavigateEnv
+from gibson2.envs.locomotor_env import NavigationEnv
 
 
 class SimNode:
@@ -40,9 +40,9 @@ class SimNode:
         self.bridge = CvBridge()
         self.br = tf.TransformBroadcaster()
 
-        self.env = NavigateEnv(config_file=config_filename,
-                               mode='headless',
-                               action_timestep=1 / 30.0)    # assume a 30Hz simulation
+        self.env = NavigationEnv(config_file=config_filename,
+                                 mode='headless',
+                                 action_timestep=1 / 30.0)    # assume a 30Hz simulation
         print(self.env.config)
 
         obs = self.env.reset()

@@ -1,4 +1,4 @@
-from gibson2.envs.locomotor_env import NavigateRandomEnv
+from gibson2.envs.locomotor_env import NavigationRandomEnv
 from time import time
 import numpy as np
 from time import time
@@ -12,7 +12,7 @@ import logging
 def main():
     config_filename = os.path.join(os.path.dirname(gibson2.__file__),
                                    '../examples/configs/turtlebot_demo.yaml')
-    nav_env = NavigateRandomEnv(config_file=config_filename, mode='gui')
+    nav_env = NavigationRandomEnv(config_file=config_filename, mode='gui')
     for j in range(10):
         nav_env.reset()
         for i in range(100):

@@ -1,5 +1,5 @@
 import gibson2
-from gibson2.envs.locomotor_env import NavigateEnv
+from gibson2.envs.locomotor_env import NavigationEnv
 import atexit
 import multiprocessing
 import sys
@@ -8,7 +8,7 @@ import numpy as np
 import os
 
 
-class ParallelNavEnv(NavigateEnv):
+class ParallelNavEnv(NavigationEnv):
     """Batch together environments and simulate them in external processes.
 
   The environments are created in external processes by calling the provided
@@ -366,7 +366,7 @@ if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
 
     def load_env():
-        return NavigateEnv(config_file=config_filename, mode='headless')
+        return NavigationEnv(config_file=config_filename, mode='headless')
 
     parallel_env = ParallelNavEnv([load_env] * 2, blocking=False)
 
