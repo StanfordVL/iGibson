@@ -5,7 +5,7 @@ import copy
 import math
 import numpy as np
 from gibson2.physics import motor
-from gibson2.robots.robot_locomotors import LocomotorRobot
+from gibson2.robots.robot_locomotor import LocomotorRobot
 import pybullet as p
 import gym
 
@@ -68,7 +68,7 @@ class MinitaurBase(LocomotorRobot):
             False, pose control will be used.
         motor_overheat_protection: Whether to shutdown the motor that has exerted
             large torque (OVERHEAT_SHUTDOWN_TORQUE) for an extended amount of time
-            (OVERHEAT_SHUTDOWN_TIME). See apply_action() in minitaur.py for more
+            (OVERHEAT_SHUTDOWN_TIME). See apply_action() in minitaur_robot.py for more
             details.
         on_rack: Whether to place the minitaur on rack. This is only used to debug
             the walking gait. In this mode, the minitaur's base is hanged midair so

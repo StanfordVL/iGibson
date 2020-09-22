@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 
-from gibson2.robots.robot_locomotors import LocomotorRobot
+from gibson2.robots.robot_locomotor import LocomotorRobot
 
 
 class JR2(LocomotorRobot):

@@ -1,4 +1,4 @@
-from gibson2.robots.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Quadrotor, Fetch
+from gibson2.robots.robot_locomotor import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Quadrotor, Fetch
 from gibson2.simulator import Simulator
 from gibson2.scenes.stadium_scene import StadiumScene
 from gibson2.utils.utils import parse_config

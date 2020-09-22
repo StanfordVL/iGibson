@@ -1,4 +1,4 @@
-from gibson2.robots.robot_locomotors \
+from gibson2.robots.robot_locomotor \
     import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot
 from gibson2.simulator import Simulator
 from gibson2.scenes.empty_scene import EmptyScene

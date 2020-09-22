@@ -1,7 +1,7 @@
 import gibson2
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.robots.robot_locomotors import Turtlebot
+from gibson2.robots.robot_locomotor import Turtlebot
 from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, cartesian_to_polar
 from gibson2.envs.env_base import BaseEnv
 from transforms3d.euler import euler2quat

@@ -1,7 +1,7 @@
 from gibson2.simulator import Simulator
 from gibson2.scenes.stadium_scene import StadiumScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.robots.robot_locomotors import Turtlebot
+from gibson2.robots.robot_locomotor import Turtlebot
 from gibson2.utils.utils import parse_config
 import os
 import gibson2

@@ -4,7 +4,7 @@ import gym
 import numpy as np
 import pybullet as p
 
-from gibson2.robots.robot_locomotors import LocomotorRobot
+from gibson2.robots.robot_locomotor import LocomotorRobot
 
 
 class Humanoid(LocomotorRobot):
