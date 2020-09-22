@@ -1,4 +1,7 @@
-from gibson2.robots.robot_locomotor import Locobot, Turtlebot, JR2_Kinova, Fetch
+from gibson2.robots.locobot_robot import Locobot
+from gibson2.robots.turtlebot_robot import Turtlebot
+from gibson2.robots.jr2_kinova_robot import JR2_Kinova
+from gibson2.robots.fetch_robot import Fetch
 from gibson2.utils.utils import parse_config
 import os
 import time

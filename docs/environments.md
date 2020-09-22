@@ -140,7 +140,7 @@ It's also fairly straighforward to cusutomize your own environment.
 - Want to change reward function? Modify `get_reward`.
 - Want to change termination condition? Modify `get_termination`.
 - Want to modify episode reset logic? Modify `reset` and `reset_agent`.
-- Want to add additional objects or robots into the scene? Check out `load_interactive_objects` and `load_dynamic_objects` in `NavigateRandomEnvSim2Real`. If these are brand-new objects and robots that are not in iGibson yet, you might also need to change [gibson2/physics/robot_locomotors.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/robot_locomotors.py) and [gibson2/physics/interactive_objects.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/interactive_objects.py).
+- Want to add additional objects or robots into the scene? Check out `load_interactive_objects` and `load_dynamic_objects` in `NavigateRandomEnvSim2Real`. If these are brand-new objects and robots that are not in iGibson yet, you might also need to change [gibson2/robots/robot_locomotor.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/robots/robot_locomotor.py) and [gibson2/physics/interactive_objects.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/interactive_objects.py).
 
 ### Examples
 
