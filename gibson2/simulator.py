@@ -1,4 +1,4 @@
-from gibson2.utils.meshutil import quat2rotmat, xyzw2wxyz, xyz2mat
+from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer
