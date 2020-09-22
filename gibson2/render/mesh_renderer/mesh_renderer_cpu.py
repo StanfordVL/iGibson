@@ -6,7 +6,7 @@ import pybullet as p
 import gibson2.render.mesh_renderer as mesh_renderer
 from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
 from gibson2.render.mesh_renderer import EGLRendererContext
-from gibson2.utils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
+from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz
 import numpy as np
 import os
