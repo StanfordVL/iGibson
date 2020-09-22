@@ -1,4 +1,4 @@
-from gibson2.envs.locomotor_env import NavigateRandomEnvSim2Real
+from gibson2.envs.locomotor_env import NavigationRandomEnvSim2Real
 import os
 import json
 import numpy as np
@@ -8,11 +8,11 @@ class Challenge:
     def __init__(self):
         self.config_file = os.environ['CONFIG_FILE']
         self.sim2real_track = os.environ['SIM2REAL_TRACK']
-        self.nav_env = NavigateRandomEnvSim2Real(config_file=self.config_file,
-                                            mode='headless',
-                                            action_timestep=1.0 / 10.0,
-                                            physics_timestep=1.0 / 40.0,
-                                            track=self.sim2real_track)
+        self.nav_env = NavigationRandomEnvSim2Real(config_file=self.config_file,
+                                                   mode='headless',
+                                                   action_timestep=1.0 / 10.0,
+                                                   physics_timestep=1.0 / 40.0,
+                                                   track=self.sim2real_track)
 
     def submit(self, agent):
         total_reward = 0.0

@@ -1,5 +1,5 @@
 # scene
-scene: building
+scene: gibson
 scene_id: Rs
 build_graph: true
 load_texture: true
