@@ -8,7 +8,7 @@ import numpy as np
 import os
 
 
-class ParallelNavEnvironment(NavigateEnv):
+class ParallelNavEnv(NavigateEnv):
     """Batch together environments and simulate them in external processes.
 
   The environments are created in external processes by calling the provided
@@ -368,9 +368,7 @@ if __name__ == "__main__":
     def load_env():
         return NavigateEnv(config_file=config_filename, mode='headless')
 
-    parallel_env = ParallelNavEnvironment([load_env] * 2, blocking=False)
-    #from IPython import embed; embed()
-    #parallel_env.close()
+    parallel_env = ParallelNavEnv([load_env] * 2, blocking=False)
 
     from time import time
     for episode in range(10):
