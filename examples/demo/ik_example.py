@@ -1,4 +1,4 @@
-from gibson2.robots.robot_locomotors import Fetch
+from gibson2.robots.robot_locomotor import Fetch
 from gibson2.simulator import Simulator
 from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.utils.utils import parse_config

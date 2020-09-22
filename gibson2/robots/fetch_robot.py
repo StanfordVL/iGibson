@@ -3,7 +3,7 @@ import numpy as np
 import pybullet as p
 
 from gibson2.external.pybullet_tools.utils import joints_from_names, set_joint_positions
-from gibson2.robots.robot_locomotors import LocomotorRobot
+from gibson2.robots.robot_locomotor import LocomotorRobot
 
 
 class Fetch(LocomotorRobot):
