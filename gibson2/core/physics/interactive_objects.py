@@ -358,9 +358,17 @@ class URDFObject(Object):
                         limits = joint.findall('limit')
                         assert len(limits) == 1
                         limit = limits[0]
-                        assert float(limit.attrib['lower']) == 0.0
-                        limit.attrib['upper'] = str(
-                            float(limit.attrib['upper']) * scale_in_parent_lf[1])
+                        axes = joint.findall('axis')
+                        assert len(axes) == 1
+                        axis = axes[0]
+                        axis_np = np.array([
+                            float(elem) for elem in axis.attrib['xyz'].split()])
+                        major_axis = np.argmax(np.abs(axis_np))
+                        # assume the prismatic joint is roughly axis-aligned
+                        limit.attrib['upper'] = str(float(limit.attrib['upper']) *
+                                                    scale_in_parent_lf[major_axis])
+                        limit.attrib['lower'] = str(float(limit.attrib['lower']) *
+                                                    scale_in_parent_lf[major_axis])
 
                     # Get the rotation of the joint frame and apply it to the scale
                     if "rpy" in joint.keys():

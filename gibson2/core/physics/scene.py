@@ -588,6 +588,7 @@ class iGSDFScene(Scene):
 
     def load(self):
         body_ids = []
+        fixed_objs_body_id = []
         for urdf in self.nested_urdfs:
             logging.info("Loading " + urdf[0])
             body_id = p.loadURDF(urdf[0])
@@ -606,4 +607,21 @@ class iGSDFScene(Scene):
                 body_id, -1,
                 activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
             body_ids += [body_id]
+
+            # fixed objects have identity transformation
+            # their transformations are hard-coded in the URDFs
+            is_fixed = np.all(transformation == np.identity(4))
+            if is_fixed:
+                fixed_objs_body_id.append(body_id)
+
+        # disable collision between the fixed links of the fixed objects
+        for i in range(len(fixed_objs_body_id)):
+            for j in range(i + 1, len(fixed_objs_body_id)):
+                # link_id = 0 is the base link that is connected to the world
+                # by a fixed link
+                p.setCollisionFilterPair(
+                    fixed_objs_body_id[i],
+                    fixed_objs_body_id[j],
+                    0, 0, enableCollision=0)
+
         return body_ids

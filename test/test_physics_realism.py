@@ -25,12 +25,14 @@ import trimesh
 
 import xml.etree.ElementTree as ET
 
-SELECTED_CLASSES = ['cabinet']
+SELECTED_CLASSES = ['window']
+SELECTED_INSTANCES = '103070'
 
 
 def save_scaled_urdf(filename, avg_size_mass, obj_class):
     model_path = os.path.dirname(filename)
     meta_json = os.path.join(model_path, 'misc/metadata.json')
+
     if os.path.isfile(meta_json):
         with open(meta_json, 'r') as f:
             meta_data = json.load(f)
@@ -82,9 +84,17 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
                     limits = joint.findall('limit')
                     assert len(limits) == 1
                     limit = limits[0]
-                    assert float(limit.attrib['lower']) == 0.0
-                    limit.attrib['upper'] = str(
-                        float(limit.attrib['upper']) * scale_in_parent_lf[1])
+                    axes = joint.findall('axis')
+                    assert len(axes) == 1
+                    axis = axes[0]
+                    axis_np = np.array([
+                        float(elem) for elem in axis.attrib['xyz'].split()])
+                    major_axis = np.argmax(np.abs(axis_np))
+                    # assume the prismatic joint is roughly axis-aligned
+                    limit.attrib['upper'] = str(float(limit.attrib['upper']) *
+                                                scale_in_parent_lf[major_axis])
+                    limit.attrib['lower'] = str(float(limit.attrib['lower']) *
+                                                scale_in_parent_lf[major_axis])
 
                 # Get the rotation of the joint frame and apply it to the scale
                 if "rpy" in joint.keys():
@@ -272,6 +282,7 @@ def get_avg_size_mass():
 def save_scale_urdfs():
     main_urdf_file_and_offset = {}
     avg_size_mass = get_avg_size_mass()
+    # all_materials = set()
     root_dir = '/cvgl2/u/chengshu/ig_dataset_v5/objects'
     for obj_class_dir in os.listdir(root_dir):
         obj_class = obj_class_dir
@@ -280,8 +291,8 @@ def save_scale_urdfs():
         obj_class_dir = os.path.join(root_dir, obj_class_dir)
         for obj_inst_dir in os.listdir(obj_class_dir):
             obj_inst_name = obj_inst_dir
-            # if obj_inst_name != '40147':
-            #     continue
+            if obj_inst_name not in SELECTED_INSTANCES:
+                continue
             urdf_path = obj_inst_name + '.urdf'
             obj_inst_dir = os.path.join(obj_class_dir, obj_inst_dir)
             urdf_path = os.path.join(obj_inst_dir, urdf_path)
@@ -440,7 +451,7 @@ def debug_renderer_scaling():
                   timestep=1 / float(100))
     scene = EmptyScene()
     s.import_scene(scene, render_floor_plane=True)
-    urdf_path = '/cvgl2/u/chengshu/ig_dataset_v5/objects/cabinet/40147/40147_avg_size_0.urdf'
+    urdf_path = '/cvgl2/u/chengshu/ig_dataset_v5/objects/window/103070/103070_avg_size_0.urdf'
 
     obj = InteractiveObj(urdf_path)
     s.import_articulated_object(obj)
