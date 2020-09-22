@@ -10,6 +10,8 @@ from gibson2.scenes.igibson_indoor_scene import save_urdfs_without_floating_join
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.utils import rotate_vector_3d
+from gibson2.utils.urdf_utils import round_up
+
 from IPython import embed
 from PIL import Image
 import json
@@ -17,19 +19,30 @@ import trimesh
 
 import xml.etree.ElementTree as ET
 
-# SELECTED_CLASSES = ['sofa_chair']
+SELECTED_CLASSES = ['window']
+SELECTED_INSTANCES = '103070'
 
 
 def save_scaled_urdf(filename, avg_size_mass, obj_class):
     model_path = os.path.dirname(filename)
-    with open(os.path.join(model_path, 'misc/bbox.json'), 'r') as bbox_file:
-        bbox_data = json.load(bbox_file)
-        bbox_max = np.array(bbox_data['max'])
-        bbox_min = np.array(bbox_data['min'])
+    meta_json = os.path.join(model_path, 'misc/metadata.json')
+
+    if os.path.isfile(meta_json):
+        with open(meta_json, 'r') as f:
+            meta_data = json.load(f)
+            bbox_size = np.array(meta_data['bbox_size'])
+            base_link_offset = np.array(meta_data['base_link_offset'])
+    else:
+        bbox_json = os.path.join(model_path, 'misc/bbox.json')
+        with open(bbox_json, 'r') as bbox_file:
+            bbox_data = json.load(bbox_file)
+            bbox_max = np.array(bbox_data['max'])
+            bbox_min = np.array(bbox_data['min'])
+            bbox_size = bbox_max - bbox_min
+            base_link_offset = (bbox_min + bbox_max) / 2.0
 
     bounding_box = np.array(avg_size_mass['size'])
-    original_bbox = bbox_max - bbox_min
-    scale = bounding_box / original_bbox
+    scale = bounding_box / bbox_size
     # scale = np.array([1.0, 1.0, 1.0])
 
     object_tree = ET.parse(filename)
@@ -59,6 +72,23 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
                         [round_up(val, 4) for val in new_origin_xyz])
                     origin.attrib['xyz'] = ' '.join(
                         map(str, new_origin_xyz))
+
+                # scale the prismatic joint
+                if joint.attrib['type'] == 'prismatic':
+                    limits = joint.findall('limit')
+                    assert len(limits) == 1
+                    limit = limits[0]
+                    axes = joint.findall('axis')
+                    assert len(axes) == 1
+                    axis = axes[0]
+                    axis_np = np.array([
+                        float(elem) for elem in axis.attrib['xyz'].split()])
+                    major_axis = np.argmax(np.abs(axis_np))
+                    # assume the prismatic joint is roughly axis-aligned
+                    limit.attrib['upper'] = str(float(limit.attrib['upper']) *
+                                                scale_in_parent_lf[major_axis])
+                    limit.attrib['lower'] = str(float(limit.attrib['lower']) *
+                                                scale_in_parent_lf[major_axis])
 
                 # Get the rotation of the joint frame and apply it to the scale
                 if "rpy" in joint.keys():
@@ -96,6 +126,7 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
     for link in all_links:
         meshes = link.findall('collision/geometry/mesh')
         if len(meshes) == 0:
+            all_links_trimesh.append(None)
             continue
         assert len(meshes) == 1, (filename, link.attrib['name'])
         collision_mesh_path = os.path.join(model_path,
@@ -117,60 +148,64 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
     density = total_mass / total_volume
     print('avg density', density)
     for trimesh_obj in all_links_trimesh:
-        trimesh_obj.density = density
+        if trimesh_obj is not None:
+            trimesh_obj.density = density
+
+    assert len(all_links) == len(all_links_trimesh)
 
     # Now iterate over all links and scale the meshes and positions
     for link, link_trimesh in zip(all_links, all_links_trimesh):
-        inertials = link.findall('inertial')
-        if len(inertials) == 0:
-            inertial = ET.SubElement(link, 'inertial')
-        else:
-            assert len(inertials) == 1
-            inertial = inertials[0]
+        if link_trimesh is not None:
+            inertials = link.findall('inertial')
+            if len(inertials) == 0:
+                inertial = ET.SubElement(link, 'inertial')
+            else:
+                assert len(inertials) == 1
+                inertial = inertials[0]
 
-        masses = inertial.findall('mass')
-        if len(masses) == 0:
-            mass = ET.SubElement(inertial, 'mass')
-        else:
-            assert len(masses) == 1
-            mass = masses[0]
+            masses = inertial.findall('mass')
+            if len(masses) == 0:
+                mass = ET.SubElement(inertial, 'mass')
+            else:
+                assert len(masses) == 1
+                mass = masses[0]
 
-        inertias = inertial.findall('inertia')
-        if len(inertias) == 0:
-            inertia = ET.SubElement(inertial, 'inertia')
-        else:
-            assert len(inertias) == 1
-            inertia = inertias[0]
+            inertias = inertial.findall('inertia')
+            if len(inertias) == 0:
+                inertia = ET.SubElement(inertial, 'inertia')
+            else:
+                assert len(inertias) == 1
+                inertia = inertias[0]
 
-        origins = inertial.findall('origin')
-        if len(origins) == 0:
-            origin = ET.SubElement(inertial, 'origin')
-        else:
-            assert len(origins) == 1
-            origin = origins[0]
+            origins = inertial.findall('origin')
+            if len(origins) == 0:
+                origin = ET.SubElement(inertial, 'origin')
+            else:
+                assert len(origins) == 1
+                origin = origins[0]
 
-        if link.attrib['name'] == 'base_link':
-            if obj_class in ['lamp']:
-                link_trimesh.density *= 10.0
+            if link.attrib['name'] == 'base_link':
+                if obj_class in ['lamp']:
+                    link_trimesh.density *= 10.0
 
-        if link_trimesh.is_watertight:
-            center = link_trimesh.center_mass
-        else:
-            center = link_trimesh.centroid
+            if link_trimesh.is_watertight:
+                center = link_trimesh.center_mass
+            else:
+                center = link_trimesh.centroid
 
-        # The inertial frame origin will be scaled down below.
-        # Here, it has the value BEFORE scaling
-        origin.attrib['xyz'] = ' '.join(map(str, center))
-        origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
+            # The inertial frame origin will be scaled down below.
+            # Here, it has the value BEFORE scaling
+            origin.attrib['xyz'] = ' '.join(map(str, center))
+            origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
 
-        mass.attrib['value'] = str(round_up(link_trimesh.mass, 4))
-        moment_of_inertia = link_trimesh.moment_inertia
-        inertia.attrib['ixx'] = str(moment_of_inertia[0][0])
-        inertia.attrib['ixy'] = str(moment_of_inertia[0][1])
-        inertia.attrib['ixz'] = str(moment_of_inertia[0][2])
-        inertia.attrib['iyy'] = str(moment_of_inertia[1][1])
-        inertia.attrib['iyz'] = str(moment_of_inertia[1][2])
-        inertia.attrib['izz'] = str(moment_of_inertia[2][2])
+            mass.attrib['value'] = str(round_up(link_trimesh.mass, 4))
+            moment_of_inertia = link_trimesh.moment_inertia
+            inertia.attrib['ixx'] = str(moment_of_inertia[0][0])
+            inertia.attrib['ixy'] = str(moment_of_inertia[0][1])
+            inertia.attrib['ixz'] = str(moment_of_inertia[0][2])
+            inertia.attrib['iyy'] = str(moment_of_inertia[1][1])
+            inertia.attrib['iyz'] = str(moment_of_inertia[1][2])
+            inertia.attrib['izz'] = str(moment_of_inertia[2][2])
 
         scale_in_lf = scales_in_lf[link.attrib["name"]]
         # Apply the scale to all mesh elements within the link (original scale and origin)
@@ -217,9 +252,8 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
     # Finally, we need to know where is the base_link origin wrt. the bounding box center. That allows us to place the model
     # correctly since the joint transformations given in the scene urdf are for the bounding box center
     # Coordinates of the bounding box center in the base_link frame
-    bbox_center_in_blf = (bbox_max + bbox_min)/2.0
     # We scale the location. We will subtract this to the joint location
-    scaled_bbxc_in_blf = -scale * bbox_center_in_blf
+    scaled_bbxc_in_blf = -scale * base_link_offset
 
     return main_urdf_file, scaled_bbxc_in_blf
 
@@ -242,6 +276,7 @@ def get_avg_size_mass():
 def save_scale_urdfs():
     main_urdf_file_and_offset = {}
     avg_size_mass = get_avg_size_mass()
+    # all_materials = set()
     root_dir = '/cvgl2/u/chengshu/ig_dataset_v5/objects'
     for obj_class_dir in os.listdir(root_dir):
         obj_class = obj_class_dir
@@ -250,8 +285,8 @@ def save_scale_urdfs():
         obj_class_dir = os.path.join(root_dir, obj_class_dir)
         for obj_inst_dir in os.listdir(obj_class_dir):
             obj_inst_name = obj_inst_dir
-            # if obj_inst_name != '14402':
-            #     continue
+            if obj_inst_name not in SELECTED_INSTANCES:
+                continue
             urdf_path = obj_inst_name + '.urdf'
             obj_inst_dir = os.path.join(obj_class_dir, obj_inst_dir)
             urdf_path = os.path.join(obj_inst_dir, urdf_path)
@@ -410,7 +445,7 @@ def debug_renderer_scaling():
                   timestep=1 / float(100))
     scene = EmptyScene()
     s.import_scene(scene, render_floor_plane=True)
-    urdf_path = '/cvgl2/u/chengshu/ig_dataset_v5/objects/lamp/lamp_0059/lamp_0059_avg_size_0.urdf'
+    urdf_path = '/cvgl2/u/chengshu/ig_dataset_v5/objects/window/103070/103070_avg_size_0.urdf'
 
     obj = ArticulatedObject(urdf_path)
     s.import_articulated_object(obj)
