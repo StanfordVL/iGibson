@@ -1,5 +1,12 @@
-from gibson2.robots.robot_locomotor \
-    import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot
+from gibson2.robots.turtlebot_robot import Turtlebot
+from gibson2.robots.husky_robot import Husky
+from gibson2.robots.ant_robot import Ant
+from gibson2.robots.humanoid_robot import Humanoid
+from gibson2.robots.jr2_robot import JR2
+from gibson2.robots.jr2_kinova_robot import JR2_Kinova
+from gibson2.robots.freight_robot import Freight
+from gibson2.robots.fetch_robot import Fetch
+from gibson2.robots.locobot_robot import Locobot
 from gibson2.simulator import Simulator
 from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.scenes.stadium_scene import StadiumScene
