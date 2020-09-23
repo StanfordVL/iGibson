@@ -1,3 +1,6 @@
 *.tar.gz
 assets
 dataset
+scoreboard/0_VRDemoSettings.txt
+render/coord.npy
+render/model.pth
