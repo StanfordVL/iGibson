@@ -61,6 +61,10 @@ class IndoorScene(Scene):
         :param maps_path: String with the path to the folder containing the traversability maps
         :return: None
         """
+        if not os.path.isfile(maps_path):
+            logging.warning('trav map does not exist: {}'.format(maps_path))
+            return
+
         self.floor_map = []
         self.floor_graph = []
         for f in range(len(self.floor_heights)):
@@ -80,12 +84,15 @@ class IndoorScene(Scene):
                                          self.trav_map_default_resolution /
                                          self.trav_map_resolution)
             trav_map[obstacle_map == 0] = 0
-            trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
-            trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
+            trav_map = cv2.resize(
+                trav_map, (self.trav_map_size, self.trav_map_size))
+            trav_map = cv2.erode(trav_map, np.ones(
+                (self.trav_map_erosion, self.trav_map_erosion)))
             trav_map[trav_map < 255] = 0
 
             if self.build_graph:
-                graph_file = os.path.join(maps_path, 'floor_trav_{}.p'.format(f))
+                graph_file = os.path.join(
+                    maps_path, 'floor_trav_{}.p'.format(f))
                 if os.path.isfile(graph_file):
                     logging.info("Loading traversable graph")
                     with open(graph_file, 'rb') as pfile:

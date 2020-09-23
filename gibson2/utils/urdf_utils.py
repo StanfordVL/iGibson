@@ -284,8 +284,13 @@ def save_urdfs_without_floating_joints(tree, file_prefix, merge_fj):
 
         urdf_file_name = file_prefix + "_" + str(esd_key) + ".urdf"
         # Change 0 by the pose of this branch
+
+        # check if this object is fixed: look for "world" link
+        is_fixed = xml_tree_parent.find("link[@name='world']") is not None
+        transformation = extended_splitted_dict[esd_key][4]
         urdfs_no_floating[esd_key] = (
-            urdf_file_name, extended_splitted_dict[esd_key][4])
+            urdf_file_name, transformation, is_fixed)
         xml_tree_parent.write(urdf_file_name)
         logging.info(urdf_file_name)
+
     return urdfs_no_floating
