@@ -8,21 +8,20 @@ test_dir = os.path.join(gibson2.assets_path, 'test')
 
 
 def test_render_loading_cleaning():
-    print('Test1')
     renderer = MeshRenderer(width=800, height=600)
     renderer.release()
 
 
 def test_render_rendering():
-    print('Test2')
     renderer = MeshRenderer(width=800, height=600)
-    renderer.load_object(os.path.join(test_dir, 'mesh/bed1a77d92d64f5cbbaaae4feed64ec1_new.obj'))
+    renderer.load_object(os.path.join(
+        test_dir, 'mesh/bed1a77d92d64f5cbbaaae4feed64ec1_new.obj'))
     renderer.add_instance(0)
     renderer.set_camera([0, 0, 1.2], [0, 1, 1.2], [0, 1, 0])
     renderer.set_fov(90)
     rgb, _, seg, _ = renderer.render()
-    #plt.imshow(np.concatenate([rgb, seg], axis=1)) # uncomment these two lines to show the rendering results
-    #plt.show()
+    # plt.imshow(np.concatenate([rgb, seg], axis=1)) # uncomment these two lines to show the rendering results
+    # plt.show()
     assert (np.allclose(np.mean(rgb, axis=(0, 1)),
                         np.array([0.51661223, 0.5035339, 0.4777793, 1.]),
                         rtol=1e-3))
@@ -30,10 +29,10 @@ def test_render_rendering():
 
 
 def test_render_rendering_cleaning():
-    print('Test3')
     for i in range(5):
         renderer = MeshRenderer(width=800, height=600)
-        renderer.load_object(os.path.join(test_dir, 'mesh/bed1a77d92d64f5cbbaaae4feed64ec1_new.obj'))
+        renderer.load_object(os.path.join(
+            test_dir, 'mesh/bed1a77d92d64f5cbbaaae4feed64ec1_new.obj'))
         renderer.add_instance(0)
         renderer.set_camera([0, 0, 1.2], [0, 1, 1.2], [0, 1, 0])
         renderer.set_fov(90)
@@ -44,6 +43,7 @@ def test_render_rendering_cleaning():
         GPUtil.showUtilization()
         renderer.release()
         GPUtil.showUtilization()
+
 
 '''
 def test_tensor_render_rendering():
