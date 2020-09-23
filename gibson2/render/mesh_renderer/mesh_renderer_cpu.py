@@ -1049,7 +1049,9 @@ class MeshRenderer(object):
         else:
             self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
-        self.r.renderSkyBox(self.skyboxShaderProgram, self.V, self.P)
+        if not self.optimized:
+            self.r.renderSkyBox(self.skyboxShaderProgram, self.V, self.P)
+            # TODO: skybox is not supported in optimized renderer, need fix
 
         if self.optimized:
             self.update_dynamic_positions()
