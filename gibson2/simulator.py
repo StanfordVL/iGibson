@@ -24,7 +24,8 @@ class Simulator:
                  device_idx=0,
                  render_to_tensor=False,
                  auto_sync=True,
-                 optimized_renderer=False):
+                 optimized_renderer=False,
+                 env_texture_filename=None):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -73,6 +74,7 @@ class Simulator:
         self.enable_shadow = enable_shadow
         self.enable_msaa = enable_msaa
         self.optimized_renderer = optimized_renderer
+        self.env_texture_filename = env_texture_filename
         self.load()
 
     def set_timestep(self, timestep):
@@ -110,7 +112,18 @@ class Simulator:
                                             enable_shadow=self.enable_shadow,
                                             msaa=self.enable_msaa)
         else:
-            self.renderer = MeshRenderer(width=self.image_width,
+            if self.env_texture_filename is not None:
+                self.renderer = MeshRenderer(width=self.image_width,
+                                         height=self.image_height,
+                                         vertical_fov=self.vertical_fov,
+                                         device_idx=self.device_idx,
+                                         use_fisheye=self.use_fisheye,
+                                         enable_shadow=self.enable_shadow,
+                                         msaa=self.enable_msaa,
+                                         optimized=self.optimized_renderer,
+                                         env_texture_filename=self.env_texture_filename)
+            else:
+                self.renderer = MeshRenderer(width=self.image_width,
                                          height=self.image_height,
                                          vertical_fov=self.vertical_fov,
                                          device_idx=self.device_idx,
