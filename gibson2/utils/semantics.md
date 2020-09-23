@@ -40,7 +40,7 @@ Configuration Argument
 | semantic_color       | 2 | Semantic label color coding scheme |
 
 ## Semantic Color Coding
-There are two ways for rendering rgb semantic maps in semantic mode, defined inside `gibson/core/channels/common/semantic_color.hpp`. Each is defined below:
+There are two ways for rendering rgb semantic maps in semantic mode, defined inside `gibson/channels/common/semantic_color.hpp`. Each is defined below:
 
 ###  Instance-by-Instance Color Coding
 

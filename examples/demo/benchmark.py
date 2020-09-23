@@ -1,19 +1,15 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import BuildingScene
-from gibson2.core.physics.interactive_objects import YCBObject
+from gibson2.robots.turtlebot_robot import Turtlebot
+from gibson2.simulator import Simulator
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.utils.utils import parse_config
-import pybullet as p
-import numpy as np
-from gibson2.core.render.profiler import Profiler
 import time
 
 def benchmark(render_to_tensor=False, resolution=512):
     config = parse_config('../configs/turtlebot_demo.yaml')
     s = Simulator(mode='headless', image_width=resolution, image_height=resolution, render_to_tensor=render_to_tensor)
-    scene = BuildingScene('Rs',
-                          build_graph=True,
-                          pybullet_load_texture=True)
+    scene = StaticIndoorScene('Rs',
+                              build_graph=True,
+                              pybullet_load_texture=True)
     s.import_scene(scene)
     turtlebot = Turtlebot(config)
     s.import_robot(turtlebot)

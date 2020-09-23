@@ -2,7 +2,7 @@
 
 ### Overview
 
-We developed our own MeshRenderer that supports customizable camera configuration and various image modalities, and renders at a lightening speed. Specifically, you can specify image width, height and vertical field of view in the constructor of `class MeshRenderer`. Then you can call `renderer.render(modes=('rgb', 'normal', 'seg', '3d'))` to retrieve the images. Currently we support four different image modalities: RGB, surface normal, semantic segmentation and 3D point cloud (z-channel can be extracted as depth map). Most of the code can be found in [gibson2/core/render](https://github.com/StanfordVL/iGibson/tree/master/gibson2/core/render).
+We developed our own MeshRenderer that supports customizable camera configuration and various image modalities, and renders at a lightening speed. Specifically, you can specify image width, height and vertical field of view in the constructor of `class MeshRenderer`. Then you can call `renderer.render(modes=('rgb', 'normal', 'seg', '3d'))` to retrieve the images. Currently we support four different image modalities: RGB, surface normal, semantic segmentation and 3D point cloud (z-channel can be extracted as depth map). Most of the code can be found in [gibson2/render](https://github.com/StanfordVL/iGibson/tree/master/gibson2/render).
 
 ### Examples
 
@@ -16,13 +16,13 @@ import sys
 import os
 import numpy as np
 from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
-from gibson2.utils.assets_utils import get_model_path
+from gibson2.utils.assets_utils import get_scene_path
 
 def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:
-        model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
+        model_path = os.path.join(get_scene_path('Rs'), 'mesh_z_up.obj')
 
     renderer = MeshRenderer(width=512, height=512)
     renderer.load_object(model_path)

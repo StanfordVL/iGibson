@@ -12,7 +12,7 @@ In this example, we show an environment wrapper of [TF-Agents](https://github.co
 
 ```python
 def load(config_file,
-         model_id=None,
+         scene_id=None,
          env_type='gibson',
          sim2real_track='static',
          env_mode='headless',

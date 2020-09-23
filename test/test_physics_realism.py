@@ -1,21 +1,17 @@
-import gibson2
 import os
 import pybullet as p
-import pybullet_data
 import numpy as np
-import time
 
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
 from gibson2.external.pybullet_tools.utils import get_center_extent
-from gibson2.core.physics.robot_locomotors import Turtlebot
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import EmptyScene, StadiumScene
-from gibson2.core.physics.scene import save_urdfs_without_floating_joints, round_up
-from gibson2.core.physics.interactive_objects import YCBObject
-from gibson2.core.physics.interactive_objects import InteractiveObj
-from gibson2.core.physics.interactive_objects import VisualMarker
+from gibson2.simulator import Simulator
+from gibson2.scenes.empty_scene import EmptyScene
+from gibson2.scenes.igibson_indoor_scene import save_urdfs_without_floating_joints
+from gibson2.objects.articulated_object import ArticulatedObject
+from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.utils import rotate_vector_3d
-from gibson2.utils.utils import parse_config
+from gibson2.utils.urdf_utils import round_up
+
 from IPython import embed
 from PIL import Image
 import json
@@ -23,12 +19,14 @@ import trimesh
 
 import xml.etree.ElementTree as ET
 
-# SELECTED_CLASSES = ['sofa_chair']
+SELECTED_CLASSES = ['window']
+SELECTED_INSTANCES = '103070'
 
 
 def save_scaled_urdf(filename, avg_size_mass, obj_class):
     model_path = os.path.dirname(filename)
     meta_json = os.path.join(model_path, 'misc/metadata.json')
+
     if os.path.isfile(meta_json):
         with open(meta_json, 'r') as f:
             meta_data = json.load(f)
@@ -74,6 +72,23 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
                         [round_up(val, 4) for val in new_origin_xyz])
                     origin.attrib['xyz'] = ' '.join(
                         map(str, new_origin_xyz))
+
+                # scale the prismatic joint
+                if joint.attrib['type'] == 'prismatic':
+                    limits = joint.findall('limit')
+                    assert len(limits) == 1
+                    limit = limits[0]
+                    axes = joint.findall('axis')
+                    assert len(axes) == 1
+                    axis = axes[0]
+                    axis_np = np.array([
+                        float(elem) for elem in axis.attrib['xyz'].split()])
+                    major_axis = np.argmax(np.abs(axis_np))
+                    # assume the prismatic joint is roughly axis-aligned
+                    limit.attrib['upper'] = str(float(limit.attrib['upper']) *
+                                                scale_in_parent_lf[major_axis])
+                    limit.attrib['lower'] = str(float(limit.attrib['lower']) *
+                                                scale_in_parent_lf[major_axis])
 
                 # Get the rotation of the joint frame and apply it to the scale
                 if "rpy" in joint.keys():
@@ -133,7 +148,8 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
     density = total_mass / total_volume
     print('avg density', density)
     for trimesh_obj in all_links_trimesh:
-        trimesh_obj.density = density
+        if trimesh_obj is not None:
+            trimesh_obj.density = density
 
     assert len(all_links) == len(all_links_trimesh)
 
@@ -260,6 +276,7 @@ def get_avg_size_mass():
 def save_scale_urdfs():
     main_urdf_file_and_offset = {}
     avg_size_mass = get_avg_size_mass()
+    # all_materials = set()
     root_dir = '/cvgl2/u/chengshu/ig_dataset_v5/objects'
     for obj_class_dir in os.listdir(root_dir):
         obj_class = obj_class_dir
@@ -268,8 +285,8 @@ def save_scale_urdfs():
         obj_class_dir = os.path.join(root_dir, obj_class_dir)
         for obj_inst_dir in os.listdir(obj_class_dir):
             obj_inst_name = obj_inst_dir
-            # if obj_inst_name != '14402':
-            #     continue
+            if obj_inst_name not in SELECTED_INSTANCES:
+                continue
             urdf_path = obj_inst_name + '.urdf'
             obj_inst_dir = os.path.join(obj_class_dir, obj_inst_dir)
             urdf_path = os.path.join(obj_inst_dir, urdf_path)
@@ -311,7 +328,7 @@ def render_physics_gifs(main_urdf_file_and_offset):
             # urdf_path = os.path.join(obj_inst_dir, urdf_path)
             # print('urdf_path', urdf_path)
 
-            obj = InteractiveObj(urdf_path)
+            obj = ArticulatedObject(urdf_path)
             s.import_articulated_object(obj)
 
             push_visual_marker = VisualMarker(radius=0.1)
@@ -428,9 +445,9 @@ def debug_renderer_scaling():
                   timestep=1 / float(100))
     scene = EmptyScene()
     s.import_scene(scene, render_floor_plane=True)
-    urdf_path = '/cvgl2/u/chengshu/ig_dataset_v5/objects/lamp/lamp_0059/lamp_0059_avg_size_0.urdf'
+    urdf_path = '/cvgl2/u/chengshu/ig_dataset_v5/objects/window/103070/103070_avg_size_0.urdf'
 
-    obj = InteractiveObj(urdf_path)
+    obj = ArticulatedObject(urdf_path)
     s.import_articulated_object(obj)
     obj.set_position([0, 0, 0])
     embed()

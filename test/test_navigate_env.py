@@ -1,12 +1,5 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import BuildingScene, StadiumScene
 import gibson2
-from gibson2.utils.utils import parse_config
-from gibson2.envs.base_env import BaseEnv
-from gibson2.envs.locomotor_env import NavigateRandomEnv, NavigateEnv
-from time import time
-import numpy as np
+from gibson2.envs.locomotor_env import NavigationEnv
 from time import time
 import os
 from gibson2.utils.assets_utils import download_assets, download_demo_data
@@ -15,8 +8,9 @@ download_assets()
 download_demo_data()
 
 def test_env():
+    print("Test env")
     config_filename = os.path.join(gibson2.root_path, '../test/test_house.yaml')
-    nav_env = NavigateEnv(config_file=config_filename, mode='headless')
+    nav_env = NavigationEnv(config_file=config_filename, mode='headless')
     try:
         for j in range(2):
             nav_env.reset()
@@ -34,7 +28,7 @@ def test_env():
 
 def test_env_reload():
     config_filename = os.path.join(gibson2.root_path, '../test/test_house.yaml')
-    nav_env = NavigateEnv(config_file=config_filename, mode='headless')
+    nav_env = NavigationEnv(config_file=config_filename, mode='headless')
     try:
         for i in range(3):
             nav_env.reload(config_filename)
