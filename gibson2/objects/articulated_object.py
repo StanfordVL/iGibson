@@ -12,6 +12,9 @@ import trimesh
 
 from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import RandomizedMaterial
+
+from IPython import embed
 
 
 class ArticulatedObject(Object):
@@ -74,14 +77,34 @@ class URDFObject(Object):
         # If we merge the fixed joints into single link to improve performance
         self.merge_fj = False
 
-        # urdf_paths
+        # These following fields have exactly the same length (i.e. the number
+        # of sub URDFs in this object)
+        # urdf_paths, string
         self.urdf_paths = []
-        # object poses
+        # object poses, 4 x 4 numpy array
         self.poses = []
-        # pybullet body ids
+        # pybullet body ids, int
         self.body_ids = []
-        # whether this object is fixed or not
+        # whether this object is fixed or not, boolean
         self.is_fixed = []
+        # mapping between visual objects and possible textures
+        # multiple visual objects can share the same material
+        # if some sub URDF does not have visual object or it is building,
+        # it will have an empty dict
+        # [
+        #     {                                             # 1st sub URDF
+        #         'visual_1.obj': randomized_material_1
+        #         'visual_2.obj': randomized_material_1
+        #     },
+        #     {},                                            # 2nd sub URDF
+        #     {                                              # 3rd sub URDF
+        #         'visual_3.obj': randomized_material_2
+        #     }
+        # ]
+        self.visual_mesh_to_material = []
+
+        # a list of all materials used, RandomizedMaterial
+        self.materials = []
 
         self.model_path = model_path
 
@@ -401,6 +424,49 @@ class URDFObject(Object):
                 self.joint_frame, urdfs_no_floating[urdf][1])
             self.poses.append(transformation)
             self.is_fixed.append(urdfs_no_floating[urdf][2])
+
+    def randomize_texture(self):
+        for material in self.materials:
+            material.randomize()
+
+    def prepare_texture(self):
+        for _ in range(len(self.urdf_paths)):
+            self.visual_mesh_to_material.append({})
+
+        if self.category == 'building':
+            return
+
+        material_groups_file = os.path.join(
+            self.model_path, 'misc/material_groups.json')
+        assert os.path.isfile(material_groups_file), \
+            'cannot find material group: {}'.format(material_groups_file)
+        with open(material_groups_file) as f:
+            material_groups = json.load(f)
+
+        # create randomized material for each material group
+        all_material_categories = material_groups[0]
+        all_materials = {}
+        for key in all_material_categories:
+            all_materials[int(key)] = \
+                RandomizedMaterial(all_material_categories[key])
+
+        # make visual mesh file path absolute
+        visual_mesh_to_idx = material_groups[1]
+        for old_path in list(visual_mesh_to_idx.keys()):
+            new_path = os.path.join(self.model_path, 'shape/visual', old_path)
+            visual_mesh_to_idx[new_path] = visual_mesh_to_idx[old_path]
+            del visual_mesh_to_idx[old_path]
+
+        # check each visual object belongs to which sub URDF in case of splitting
+        for i, urdf_path in enumerate(self.urdf_paths):
+            sub_urdf_tree = ET.parse(urdf_path)
+            for visual_mesh_path in visual_mesh_to_idx:
+                # check if this visual object belongs to this URDF
+                if sub_urdf_tree.find(".//mesh[@filename='{}']".format(visual_mesh_path)) is not None:
+                    self.visual_mesh_to_material[i][visual_mesh_path] = \
+                        all_materials[visual_mesh_to_idx[visual_mesh_path]]
+
+        self.materials = list(all_materials.values())
 
     def _load(self):
         for idx in range(len(self.urdf_paths)):
