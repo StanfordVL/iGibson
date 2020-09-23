@@ -1,22 +1,14 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import BuildingScene, StadiumScene
 import gibson2
-from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW
-from gibson2.envs.base_env import BaseEnv
-from transforms3d.euler import euler2quat
-from collections import OrderedDict
-from gibson2.envs.locomotor_env import NavigateEnv, NavigateRandomEnv
+from gibson2.envs.locomotor_env import NavigationEnv
 import atexit
 import multiprocessing
 import sys
 import traceback
-from tqdm import tqdm
 import numpy as np
 import os
 
 
-class ParallelNavEnvironment(NavigateEnv):
+class ParallelNavEnv(NavigationEnv):
     """Batch together environments and simulate them in external processes.
 
   The environments are created in external processes by calling the provided
@@ -374,11 +366,9 @@ if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(gibson2.__file__), '../test/test.yaml')
 
     def load_env():
-        return NavigateEnv(config_file=config_filename, mode='headless')
+        return NavigationEnv(config_file=config_filename, mode='headless')
 
-    parallel_env = ParallelNavEnvironment([load_env] * 2, blocking=False)
-    #from IPython import embed; embed()
-    #parallel_env.close()
+    parallel_env = ParallelNavEnv([load_env] * 2, blocking=False)
 
     from time import time
     for episode in range(10):

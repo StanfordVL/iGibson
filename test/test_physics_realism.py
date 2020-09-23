@@ -1,21 +1,15 @@
-import gibson2
 import os
 import pybullet as p
-import pybullet_data
 import numpy as np
-import time
 
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
 from gibson2.external.pybullet_tools.utils import get_center_extent
-from gibson2.core.physics.robot_locomotors import Turtlebot
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import EmptyScene, StadiumScene
-from gibson2.core.physics.scene import save_urdfs_without_floating_joints
-from gibson2.core.physics.interactive_objects import YCBObject
-from gibson2.core.physics.interactive_objects import InteractiveObj
-from gibson2.core.physics.interactive_objects import VisualMarker
+from gibson2.simulator import Simulator
+from gibson2.scenes.empty_scene import EmptyScene
+from gibson2.scenes.igibson_indoor_scene import save_urdfs_without_floating_joints
+from gibson2.objects.articulated_object import ArticulatedObject
+from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.utils import rotate_vector_3d
-from gibson2.utils.utils import parse_config
 from gibson2.utils.urdf_utils import round_up
 
 from IPython import embed
@@ -334,7 +328,7 @@ def render_physics_gifs(main_urdf_file_and_offset):
             # urdf_path = os.path.join(obj_inst_dir, urdf_path)
             # print('urdf_path', urdf_path)
 
-            obj = InteractiveObj(urdf_path)
+            obj = ArticulatedObject(urdf_path)
             s.import_articulated_object(obj)
 
             push_visual_marker = VisualMarker(radius=0.1)
@@ -453,7 +447,7 @@ def debug_renderer_scaling():
     s.import_scene(scene, render_floor_plane=True)
     urdf_path = '/cvgl2/u/chengshu/ig_dataset_v5/objects/window/103070/103070_avg_size_0.urdf'
 
-    obj = InteractiveObj(urdf_path)
+    obj = ArticulatedObject(urdf_path)
     s.import_articulated_object(obj)
     obj.set_position([0, 0, 0])
     embed()

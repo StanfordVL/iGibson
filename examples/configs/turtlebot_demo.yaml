@@ -1,7 +1,6 @@
 # scene
-scene: building
-model_id: Rs
-is_interactive: false
+scene: gibson
+scene_id: Rs
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
