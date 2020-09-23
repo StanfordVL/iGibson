@@ -3,13 +3,13 @@ import gibson2
 import logging
 import numpy as np
 from gibson2.objects.articulated_object import URDFObject
-from gibson2.utils.utils import get_transform_from_xyz_rpy, quatXYZWFromRotMat
+from gibson2.utils.utils import get_transform_from_xyz_rpy, quatXYZWFromRotMat, rotate_vector_2d
 import pybullet as p
 import os
 import xml.etree.ElementTree as ET
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints
 import random
+import json
 from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path
 
 
@@ -42,7 +42,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
             pybullet_load_texture,
         )
         self.is_interactive = True
-        self.scene_file = get_ig_scene_path(scene_id) + "/" + scene_id + ".urdf"
+        self.scene_file = get_ig_scene_path(
+            scene_id) + "/" + scene_id + ".urdf"
         self.scene_tree = ET.parse(self.scene_file)
 
         self.random_groups = {}
@@ -52,8 +53,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # Current time string to use to save the temporal urdfs
         timestr = time.strftime("%Y%m%d-%H%M%S")
         # Create the subfolder
-        self.scene_instance_folder = os.path.join(gibson2.ig_dataset_path, "scene_instances/" + timestr)
+        self.scene_instance_folder = os.path.join(
+            gibson2.ig_dataset_path, "scene_instances/" + timestr)
         os.makedirs(self.scene_instance_folder, exist_ok=True)
+
+        # Load average object density if exists
+        self.avg_obj_dims = self.load_avg_obj_dims()
 
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):
@@ -66,7 +71,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 # Find the urdf file that defines this object
                 if category == "building":  # For the building
                     model_path = get_ig_scene_path(model)
-                    filename = os.path.join(model_path, model + "_building.urdf")
+                    filename = os.path.join(
+                        model_path, model + "_building.urdf")
                 else:  # For other objects
                     category_path = get_ig_category_path(category)
                     assert len(os.listdir(category_path)) != 0, \
@@ -89,7 +95,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                             # otherwise, this is the first instance of this random group
                             # select a random model and cache it
                             else:
-                                model = random.choice(os.listdir(category_path))
+                                model = random.choice(
+                                    os.listdir(category_path))
                                 self.random_groups[random_group_key] = model
                         else:
                             # Using a random instance
@@ -101,15 +108,18 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     filename = os.path.join(model_path, model + ".urdf")
 
                 if "bounding_box" in link.keys() and "scale" in link.keys():
-                    logging.error("You cannot define both scale and bounding box size defined to embed a URDF")
+                    logging.error(
+                        "You cannot define both scale and bounding box size defined to embed a URDF")
                     exit(-1)
 
                 bounding_box = None
                 scale = None
                 if "bounding_box" in link.keys():
-                    bounding_box = np.array([float(val) for val in link.attrib["bounding_box"].split(" ")])
+                    bounding_box = np.array(
+                        [float(val) for val in link.attrib["bounding_box"].split(" ")])
                 elif "scale" in link.keys():
-                    scale = np.array([float(val) for val in link.attrib["scale"].split(" ")])
+                    scale = np.array([float(val)
+                                      for val in link.attrib["scale"].split(" ")])
                 else:
                     scale = np.array([1., 1., 1.])
 
@@ -132,14 +142,33 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     joint_rpy = np.array([0., 0., 0.])
 
                 joint_name = joint_connecting_embedded_link.attrib['name']
-                joint_parent = joint_connecting_embedded_link.find("parent").attrib["link"]
+                joint_parent = joint_connecting_embedded_link.find(
+                    "parent").attrib["link"]
 
-                self.add_object(category, model=model, model_path=model_path, filename=filename, bounding_box=bounding_box,
-                                scale=scale, object_name=object_name, joint_type=joint_type,
-                                position=joint_xyz, orientation_rpy=joint_rpy, joint_name=joint_name,
+                self.add_object(category,
+                                model=model,
+                                model_path=model_path,
+                                filename=filename,
+                                bounding_box=bounding_box,
+                                scale=scale,
+                                object_name=object_name,
+                                joint_type=joint_type,
+                                position=joint_xyz,
+                                orientation_rpy=joint_rpy,
+                                joint_name=joint_name,
                                 joint_parent=joint_parent)
             elif link.attrib["name"] != "world":
-                logging.error("iGSDF should only contain links that represent embedded URDF objects")
+                logging.error(
+                    "iGSDF should only contain links that represent embedded URDF objects")
+
+    def load_avg_obj_dims(self):
+        avg_obj_dim_file = os.path.join(
+            gibson2.ig_dataset_path, 'metadata/avg_obj_dims.json')
+        if os.path.isfile(avg_obj_dim_file):
+            with open(avg_obj_dim_file) as f:
+                return json.load(f)
+        else:
+            return {}
 
     def add_object(self,
                    category,
@@ -172,22 +201,34 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
 
         if object_name in self.objects_by_name.keys():
-            logging.error("Object names need to be unique! Existing name " + object_name)
+            logging.error(
+                "Object names need to be unique! Existing name " + object_name)
             exit(-1)
 
-        added_object = URDFObject(object_name, category, model=model, model_path=model_path, filename=filename,
-                                  bounding_box=bounding_box, scale=scale)
+        added_object = URDFObject(object_name,
+                                  category,
+                                  model=model,
+                                  model_path=model_path,
+                                  filename=filename,
+                                  bounding_box=bounding_box,
+                                  scale=scale,
+                                  avg_obj_dims=self.avg_obj_dims.get(category))
 
         # Add object to database
         self.objects_by_name[object_name] = added_object
-        if category in self.objects_by_category.keys():  # If there are previous objects in the category, we add it
-            self.objects_by_category[category] += [added_object]
-        else:  # If it is the first object of this category, we create a new list with it
-            self.objects_by_category[category] = [added_object]
+        if category not in self.objects_by_category.keys():
+            self.objects_by_category[category] = []
+        self.objects_by_category[category].append(added_object)
 
         # Deal with the joint connecting the embedded urdf to the main link (world or building)
-        # Find the joint in the main urdf that defines the connection to the embedded urdf
         joint_frame = np.eye(4)
+
+        # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
+        # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
+        x, y, z = added_object.scaled_bbxc_in_blf
+        yaw = orientation_rpy[2]
+        x, y = rotate_vector_2d(np.array([x, y]), -yaw)
+        position += np.array([x, y, z])
 
         # if the joint is not floating, we add the joint and a link to the embedded urdf
         if joint_type != "floating":
@@ -196,7 +237,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             ET.SubElement(new_joint, "origin",
                           dict([("rpy", "{0:f} {1:f} {2:f}".format(
                               *orientation_rpy)), ("xyz", "{0:f} {1:f} {2:f}".format(
-                              *position))]))
+                                  *position))]))
             ET.SubElement(new_joint, "parent",
                           dict([("link", joint_parent)]))
             ET.SubElement(new_joint, "child",
@@ -209,15 +250,30 @@ class InteractiveIndoorScene(StaticIndoorScene):
         else:
             joint_frame = get_transform_from_xyz_rpy(position, orientation_rpy)
 
-        added_object.joint_frame = joint_frame  # Save the transformation internally to be used when loading
+        # Save the transformation internally to be used when loading
+        added_object.joint_frame = joint_frame
         added_object.remove_floating_joints(self.scene_instance_folder)
 
     def load(self):
-
         # Load all the objects
         body_ids = []
+        fixed_body_ids = []
         for int_object in self.objects_by_name:
-            body_ids += self.objects_by_name[int_object].load()
+            obj = self.objects_by_name[int_object]
+            body_ids += obj.load()
+            fixed_body_ids += [body_id for body_id, is_fixed
+                               in zip(obj.body_ids, obj.is_fixed)
+                               if is_fixed]
+
+        # disable collision between the fixed links of the fixed objects
+        for i in range(len(fixed_body_ids)):
+            for j in range(i + 1, len(fixed_body_ids)):
+                # link_id = 0 is the base link that is connected to the world
+                # by a fixed link
+                p.setCollisionFilterPair(
+                    fixed_body_ids[i],
+                    fixed_body_ids[j],
+                    0, 0, enableCollision=0)
 
         # Load the traversability map
         maps_path = os.path.join(get_ig_scene_path(self.scene_id), "layout")

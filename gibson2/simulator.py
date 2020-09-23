@@ -9,6 +9,7 @@ import numpy as np
 import platform
 import logging
 
+
 class Simulator:
     def __init__(self,
                  gravity=9.8,
@@ -505,7 +506,7 @@ class Simulator:
             # Based on pyullet docuementation:
             # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
             _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
-                p.getDynamicsInfo(instance.pybullet_uuid, link_id)
+                p.getDynamicsInfo(instance.pybullet_uuid, -1)
             inv_inertial_pos, inv_inertial_orn =\
                 p.invertTransform(inertial_pos, inertial_orn)
             # Now pos and orn are converted to the base link frame
@@ -522,7 +523,7 @@ class Simulator:
                     pos, orn = p.getBasePositionAndOrientation(
                         instance.pybullet_uuid)
                     _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
-                        p.getDynamicsInfo(instance.pybullet_uuid, link_id)
+                        p.getDynamicsInfo(instance.pybullet_uuid, -1)
                     inv_inertial_pos, inv_inertial_orn =\
                         p.invertTransform(inertial_pos, inertial_orn)
                     pos, orn = p.multiplyTransforms(
