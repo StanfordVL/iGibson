@@ -8,6 +8,7 @@ import os
 import numpy as np
 import platform
 import logging
+from IPython import embed
 
 
 class Simulator:
@@ -214,8 +215,17 @@ class Simulator:
         :return: ids from scene.load function
         """
         ids = scene.load()
-        for id in ids:
-            self.import_articulated_object_by_id(id, class_id=id)
+        if scene.randomize_texture:
+            # use randomized texture
+            for body_id, visual_mesh_to_material in \
+                    zip(ids, scene.visual_mesh_to_material):
+                self.import_articulated_object_by_id(
+                    body_id, class_id=body_id,
+                    visual_mesh_to_material=visual_mesh_to_material)
+        else:
+            # use default texture
+            for body_id in ids:
+                self.import_articulated_object_by_id(body_id, class_id=body_id)
         self.scene = scene
         return ids
 
@@ -396,7 +406,8 @@ class Simulator:
         return self.import_articulated_object_by_id(id, class_id=class_id)
 
     @load_without_pybullet_vis
-    def import_articulated_object_by_id(self, id, class_id=None):
+    def import_articulated_object_by_id(self, id, class_id=None,
+                                        visual_mesh_to_material=None):
 
         visual_objects = []
         link_ids = []
@@ -408,11 +419,16 @@ class Simulator:
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 if (filename, (*dimensions)) not in self.visual_objects.keys():
-                    self.renderer.load_object(filename,
-                                              transform_orn=rel_orn,
-                                              transform_pos=rel_pos,
-                                              input_kd=color[:3],
-                                              scale=np.array(dimensions))
+                    overwrite_material = None
+                    if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
+                        overwrite_material = visual_mesh_to_material[filename]
+                    self.renderer.load_object(
+                        filename,
+                        transform_orn=rel_orn,
+                        transform_pos=rel_pos,
+                        input_kd=color[:3],
+                        scale=np.array(dimensions),
+                        overwrite_material=overwrite_material)
                     self.visual_objects[(filename, (*dimensions))
                                         ] = len(self.renderer.visual_objects) - 1
                 visual_objects.append(
