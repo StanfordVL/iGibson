@@ -11,6 +11,7 @@ from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 import random
 import json
 from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path
+from IPython import embed
 
 
 class InteractiveIndoorScene(StaticIndoorScene):
@@ -30,6 +31,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  num_waypoints=10,
                  waypoint_resolution=0.2,
                  pybullet_load_texture=False,
+                 texture_randomization=False,
                  ):
 
         super().__init__(
@@ -41,6 +43,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             waypoint_resolution,
             pybullet_load_texture,
         )
+        self.texture_randomization = texture_randomization
         self.is_interactive = True
         self.scene_file = get_ig_scene_path(
             scene_id) + "/" + scene_id + ".urdf"
@@ -213,7 +216,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                   bounding_box=bounding_box,
                                   scale=scale,
                                   avg_obj_dims=self.avg_obj_dims.get(category))
-
         # Add object to database
         self.objects_by_name[object_name] = added_object
         if category not in self.objects_by_category.keys():
@@ -253,14 +255,27 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # Save the transformation internally to be used when loading
         added_object.joint_frame = joint_frame
         added_object.remove_floating_joints(self.scene_instance_folder)
+        if self.texture_randomization:
+            added_object.prepare_texture()
+
+    def randomize_texture(self):
+        if not self.texture_randomization:
+            logging.warning(
+                'calling randomize_texture while texture_randomization is False during initialization.')
+            return
+        for int_object in self.objects_by_name:
+            obj = self.objects_by_name[int_object]
+            obj.randomize_texture()
 
     def load(self):
         # Load all the objects
         body_ids = []
         fixed_body_ids = []
+        visual_mesh_to_material = []
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
             body_ids += obj.load()
+            visual_mesh_to_material += obj.visual_mesh_to_material
             fixed_body_ids += [body_id for body_id, is_fixed
                                in zip(obj.body_ids, obj.is_fixed)
                                if is_fixed]
@@ -278,5 +293,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # Load the traversability map
         maps_path = os.path.join(get_ig_scene_path(self.scene_id), "layout")
         self.load_trav_map(maps_path)
+
+        self.visual_mesh_to_material = visual_mesh_to_material
 
         return body_ids
