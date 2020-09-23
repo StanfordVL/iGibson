@@ -479,12 +479,13 @@ class RandomizedMaterial(Material):
     def randomize(self):
         if self.material_ids is None:
             return
-        random_class = random.choice(list(self.material_ids.keys()))
-        random_instance = random.choice(self.material_ids[random_class])
-        self.texture_id = random_instance['diffuse']
-        self.metallic_texture_id = random_instance['metallic']
-        self.roughness_texture_id = random_instance['roughness']
-        self.normal_texture_id = random_instance['normal']
+        self.random_class = random.choice(list(self.material_ids.keys()))
+        self.random_instance = random.choice(
+            self.material_ids[self.random_class])
+        self.texture_id = self.random_instance['diffuse']
+        self.metallic_texture_id = self.random_instance['metallic']
+        self.roughness_texture_id = self.random_instance['roughness']
+        self.normal_texture_id = self.random_instance['normal']
 
     def __str__(self):
         return (
@@ -654,8 +655,6 @@ class MeshRenderer(object):
     def load_texture_file(self, tex_filename):
         # if texture is None or does not exist, return None
         if tex_filename is None or (not os.path.isfile(tex_filename)):
-            logging.warning(
-                'texture file does not exist: {}'.format(tex_filename))
             return None
 
         # if texture already exists, return texture id
