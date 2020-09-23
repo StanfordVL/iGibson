@@ -138,6 +138,10 @@ class CoffeeMachine(Faucet):
     def step(self, task_objs, gripper=None):
         self._sync_parts()
         beans = EU.objects_center_in_container(self._beans_set, self.body_id)
+
+        # needs to be in the funnel
+        # beans = [bid for bid in beans if PBU.get_pose(bid)[0][2] > self.get_position()[2] - 0.05]
+
         # start dispensing when button is pressed
         self._should_dispense = self._should_dispense or PBU.body_collision(gripper.body_id, self.button.body_id)
         # stop when no more beans in the machine

@@ -340,7 +340,7 @@ class Kitchen(BaseEnv):
         super(Kitchen, self).__init__(**kwargs)
 
     def _create_sensors(self):
-        PBU.set_camera(45, -45, 1.5, (0, 0, 0.7))
+        PBU.set_camera(45, -60, 1.5, (0, 0, 0.7))
         self.camera = Camera(
             height=self._camera_width,
             width=self._camera_height,
@@ -349,7 +349,7 @@ class Kitchen(BaseEnv):
             far=10.,
             renderer=p.ER_TINY_RENDERER
         )
-        self.camera.set_pose_ypr((0, 0, 0.7), distance=1.5, yaw=45, pitch=-45)
+        self.camera.set_pose_ypr((0, 0, 0.7), distance=1.5, yaw=45, pitch=-60)
 
     def _get_feature_observation(self):
         num_beads = np.zeros((len(self.objects), 2))
@@ -446,7 +446,7 @@ class Kitchen(BaseEnv):
     def _create_skill_lib(self):
         lib_skills = (
             skills.GraspDistDiscreteOrn(
-                name="grasp", lift_height=0.05, lift_speed=0.01, reach_distance=0.1,
+                name="grasp", lift_height=0.05, lift_speed=0.01, reach_distance=0.02,
                 params=OrderedDict(
                     grasp_distance=skills.SkillParamsContinuous(low=[0.05], high=[0.05]),
                     grasp_orn=skills.SkillParamsDiscrete(size=len(skills.SKILL_ORIENTATIONS))
@@ -457,9 +457,9 @@ class Kitchen(BaseEnv):
                 name="place", retract_distance=0.1, num_pause_steps=30,
                 params=OrderedDict(
                     place_pos=skills.SkillParamsContinuous(low=[-0.05, -0.05, 0.01], high=[0.05, 0.05, 0.01]),
-                    place_orn=skills.SkillParamsContinuous(low=[-np.pi / 6], high=[np.pi / 6])
+                    place_orn=skills.SkillParamsContinuous(low=[-np.pi / 12], high=[np.pi / 12])
                 ),
-                joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
+                # joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
             ),
             skills.PourPosAngle(
                 name="pour", pour_angle_speed=np.pi / 32, num_pause_steps=30,
@@ -467,7 +467,7 @@ class Kitchen(BaseEnv):
                     pour_pos=skills.SkillParamsContinuous(low=(-0.1, -0.1, 0.5), high=(0.1, 0.1, 0.5)),
                     pour_angle=skills.SkillParamsContinuous(low=(np.pi * 0.25,), high=(np.pi,))
                 ),
-                joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
+                # joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
             ),
             skills.OperatePrismaticPosDistance(
                 name="open_prismatic",
@@ -475,7 +475,7 @@ class Kitchen(BaseEnv):
                     grasp_pos=skills.SkillParamsContinuous(low=[0.35, -0.05, 0.15], high=[0.45, 0.05, 0.25]),
                     prismatic_move_distance=skills.SkillParamsContinuous(low=[-0.3], high=[-0.1])
                 ),
-                joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
+                # joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
             ),
             skills.TouchPosition(
                 name="touch", num_pause_steps=30,
@@ -493,14 +493,21 @@ class Kitchen(BaseEnv):
                     oid, self.objects["platform1"].body_id)
             )
         )
-        PBU.draw_aabb(aabb=[[0.35, -0.05, 0.15 + 0.5], [0.45, 0.05, 0.25 + 0.5]])
+        PBU.draw_aabb(aabb=[[0.35, -0.15, 0.15 + 0.5], [0.45, 0.15, 0.25 + 0.5]])
         self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
 
 
 class KitchenAP(Kitchen):
     def _create_skill_lib(self):
         super(KitchenAP, self)._create_skill_lib()
-        self.skill_lib = self.skill_lib.sub_library(names=("grasp", "place", "pour", "touch", "mug_coffee"))
+        self.skill_lib = self.skill_lib.sub_library(names=("grasp", "place", "pour", "touch", "mug_coffee", "open_prismatic"))
+
+    def _reset_objects(self):
+        super(KitchenAP, self)._reset_objects()
+        z = PBU.stable_z(self.objects["mug1"].body_id, self.objects["drawer"].body_id, surface_link=2)
+        z -= 0.15
+        self.objects["mug1"].set_position_orientation(
+            PU.sample_positions_in_box([0.2, 0.2], [-0.05, 0.05], [z, z]), PBU.unit_quat())
 
     def is_success_all_tasks(self):
         num_beans_in_mug2 = len(EU.objects_center_in_container(
@@ -537,30 +544,47 @@ class KitchenAP(Kitchen):
     #     ), (
     #         lambda: self.skill_lib.sample_serialized_skill_params("touch"),
     #         "coffee_machine_button"
+    #     # ), (
+    #     #     lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+    #     #     "mug1"
+    #     # ), (
+    #     #     lambda: self.skill_lib.sample_serialized_skill_params("place"),
+    #     #     "platform1"
     #     ), (
-    #         lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+    #         lambda: self.skill_lib.sample_serialized_skill_params("mug_coffee"),
     #         "mug1"
-    #     ), (
-    #         lambda: self.skill_lib.sample_serialized_skill_params("place"),
-    #         "platform1"
-    #     ), ]
+    #     )]
     #     return skeleton
 
     def get_task_skeleton(self):
         skeleton = [(
-            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            # lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic", grasp_pos=dict(low=[0.4, 0, 0.2], high=[0.4, 0, 0.2]), prismatic_move_distance=dict(low=[-0.3], high=[-0.3])),
+            lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic"),
+            "drawer"
+        ),  (
+            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[4])),
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
+            "mug1"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("place"),
+            "platform1"
+        ), (
+            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
             "mug1"
         ),  (
             lambda: self.skill_lib.sample_serialized_skill_params("place", place_pos=dict(low=[-0.02, -0.02, 0.01], high=[0.02, 0.02, 0.01])),
             "coffee_machine_platform"
         ), (
-            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
             "mug2"
         ),  (
             lambda: self.skill_lib.sample_serialized_skill_params("place"),
             "faucet_coffee"
         ),  (
-            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
             "mug2"
         ),  (
             lambda: self.skill_lib.sample_serialized_skill_params("pour"),
@@ -608,12 +632,12 @@ class KitchenDrawerAP(Kitchen):
 
     def get_task_skeleton(self):
         skeleton = [(
-            lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic", grasp_pos=dict(low=[0.4, 0, 0.2], high=[0.4, 0, 0.2]), prismatic_move_distance=dict(low=[-0.3], high=[-0.3])),
-            # lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic"),
+            # lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic", grasp_pos=dict(low=[0.4, 0, 0.2], high=[0.4, 0, 0.2]), prismatic_move_distance=dict(low=[-0.3], high=[-0.3])),
+            lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic"),
             "drawer"
         ),  (
-            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[4])),
-            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
+            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[4])),
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
             "mug1"
         ), (
             lambda: self.skill_lib.sample_serialized_skill_params("place"),

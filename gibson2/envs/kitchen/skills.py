@@ -1228,7 +1228,7 @@ class SkillLibrary(object):
 
     def get_skill_param_dict_metadata(self, param_dict):
         """
-        Get masks for skill param dict
+        Get metadata for skill param dict
 
         Args:
             param_dict (dict): an OrderedDict that maps "skill_name | param_name" to params
@@ -1261,13 +1261,16 @@ class SkillLibrary(object):
 
         """
         assert all_params.shape[0] == self.action_dimension
-        masks = np.zeros(self.action_dimension - len(self.skills))
-        skill_index = int(np.argmax(all_params[:len(self.skills)]))
-        assert skill_index < len(self.skills)
+        skill_index = int(np.argmax(all_params[:len(self)]))
+        return self.all_skill_param_masks[skill_index]
+
+    @property
+    def all_skill_param_masks(self):
+        """Get all skill param mask in an numpy array [num_skills, action_dimension - len(self.skills)]."""
+        masks = np.zeros((len(self), self.action_dimension - len(self)), dtype=np.bool)
         ind = 0
         for i, s in enumerate(self.skills):
-            if i == skill_index:
-                masks[ind: ind + s.action_dimension] = 1
+            masks[i, ind: ind + s.action_dimension] = True
             ind += s.action_dimension
         return masks
 
