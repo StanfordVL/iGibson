@@ -1176,7 +1176,10 @@ class MeshRenderer(object):
         cutoff = 4000 * 4000
         shouldShrinkSmallTextures = True
         smallTexSize = 512
-        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(self.texture_files,
+        texture_files = sorted(self.texture_files.items(), key=lambda x:x[1])
+        texture_files = [item[0] for item in texture_files]
+
+        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(texture_files,
                                                                                                cutoff,
                                                                                                shouldShrinkSmallTextures,
                                                                                                smallTexSize)
