@@ -1,4 +1,4 @@
-from gibson2.core.render.viewer import Viewer
+from gibson2.render.viewer import Viewer
 
 
 def test_viewer():
