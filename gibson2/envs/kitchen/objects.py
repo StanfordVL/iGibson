@@ -1,6 +1,7 @@
 from copy import deepcopy
 import numpy as np
 
+import gibson2.external.pybullet_tools.transformations as T
 import pybullet as p
 from gibson2.core.physics.interactive_objects import InteractiveObj, YCBObject, Object, VisualMarker
 import gibson2.external.pybullet_tools.utils as PBU
@@ -180,3 +181,117 @@ class Cylinder(Object):
     def load(self):
         self.body_id = PBU.create_cylinder(radius=self._radius, height=self._height, mass=self._mass, color=self._color)
         self.loaded = True
+
+
+class MessyPlate(Box):
+    def __init__(self, color=(0, 1, 0, 1), size=(0.15, 0.15, 0.01), mass=100, num_stuff=5, stuff_size=(0.01, 0.01, 0.01)):
+        super(MessyPlate, self).__init__(color=color, size=size, mass=mass)
+        self.num_stuff = num_stuff
+        self.stuff_size = stuff_size
+        self._stuff = []
+
+    @property
+    def stuff(self):
+        return deepcopy(self._stuff)
+
+    def load(self):
+        super(MessyPlate, self).load()
+        for i in range(self.num_stuff):
+            color = np.random.random(4)
+            color[3] = 1
+            self._stuff.append(PBU.create_box(*self.stuff_size, mass=0.01, color=color))
+
+    def reset(self):
+        for bid in self._stuff:
+            PBU.sample_placement(top_body=bid, bottom_body=self.body_id)
+
+
+class Tube(Object):
+    def __init__(self, color=(0, 1, 0, 1), size=(0.5, 0.1, 0.1), width=0.01, mass=1.):
+        super(Tube, self).__init__()
+        self._color = color
+        self._size = size
+        self._width = width
+        self._mass = mass
+
+    def load(self):
+        self.loaded = True
+        l, w, h = self._size
+
+        bottom_col, bottom_vir = PBU.create_shape(
+            PBU.get_box_geometry(l, w, self._width), color=self._color)
+
+        left_col, left_vir = PBU.create_shape(
+            PBU.get_box_geometry(l, self._width, h), color=self._color)
+
+        right_col, right_vir = PBU.create_shape(
+            PBU.get_box_geometry(l, self._width, h), color=self._color)
+
+        top_col, top_vir = PBU.create_shape(
+            PBU.get_box_geometry(l, w, self._width), color=self._color)
+
+        masses = [self._mass / 4] * 3
+        col_indices = (left_col, right_col, top_col)
+        vir_indices = (left_vir, right_vir, top_vir)
+        positions = [
+            (0, -w / 2, h / 2),
+            (0, w / 2, h / 2),
+            (0, 0, h),
+        ]
+        orns = [PBU.unit_quat()] * 3
+
+        self.body_id = p.createMultiBody(
+            baseMass=self._mass / 4,
+            baseCollisionShapeIndex=bottom_col,
+            baseVisualShapeIndex=bottom_vir,
+            basePosition=PBU.unit_point(),
+            baseOrientation=PBU.unit_quat(),
+            baseInertialFramePosition=PBU.unit_point(),
+            baseInertialFrameOrientation=PBU.unit_quat(),
+            linkMasses=masses,
+            linkCollisionShapeIndices=col_indices,
+            linkVisualShapeIndices=vir_indices,
+            linkPositions=positions,
+            linkOrientations=orns,
+            linkInertialFramePositions=[PBU.unit_point()] * 3,
+            linkInertialFrameOrientations=orns,
+            linkParentIndices=[0, 0, 0],
+            linkJointTypes=[p.JOINT_FIXED, p.JOINT_FIXED, p.JOINT_FIXED],
+            linkJointAxis=[PBU.unit_point()] * 3
+        )
+
+
+class Hook(Object):
+    def __init__(self, width, length1, length2, color=(0, 1, 0, 1)):
+        super(Hook, self).__init__()
+        self._width = width
+        self._length1 = length1
+        self._length2 = length2
+        self._color = color
+
+    def load(self):
+        self.loaded = True
+
+        collision_id1, visual_id1 = PBU.create_shape(
+            PBU.get_box_geometry(self._length1, self._width, self._width), color=self._color)
+        collision_id2, visual_id2 = PBU.create_shape(
+            PBU.get_box_geometry(self._length2, self._width, self._width), color=self._color)
+        self.body_id = p.createMultiBody(
+            baseMass=1.0,
+            baseCollisionShapeIndex=collision_id1,
+            baseVisualShapeIndex=visual_id1,
+            basePosition=PBU.unit_point(),
+            baseOrientation=PBU.unit_quat(),
+            baseInertialFramePosition=PBU.unit_point(),
+            baseInertialFrameOrientation=PBU.unit_quat(),
+            linkMasses=(0.5,),
+            linkCollisionShapeIndices=[collision_id2],
+            linkVisualShapeIndices=[visual_id2],
+            linkPositions=[(-self._length1 / 2 + self._width / 2, self._length2 / 2 - self._width / 2, 0)],
+            linkOrientations=[T.quaternion_from_euler(0, 0, np.pi / 2)],
+            linkInertialFramePositions=[(0, 0, 0)],
+            linkInertialFrameOrientations=[PBU.unit_quat()],
+            linkParentIndices=[0],
+            linkJointTypes=[p.JOINT_FIXED],
+            linkJointAxis=[[0, 0, 0]]
+        )

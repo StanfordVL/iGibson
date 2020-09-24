@@ -35,6 +35,9 @@ class BaseEnv(object):
             obs_crop=False,
             obs_crop_size=24,
             use_skills=False,
+            gripper_use_magic_grasp=True,
+            gripper_joint_max=(1.0, 1.0)
+
     ):
         self._hide_planner = hide_planner
         self._robot_base_pose = robot_base_pose
@@ -48,6 +51,8 @@ class BaseEnv(object):
         self._obs_segmentation = obs_segmentation
         self._obs_crop = obs_crop
         self.obs_crop_size = obs_crop_size
+        self._gripper_use_magic_grasp = gripper_use_magic_grasp
+        self._gripper_joint_max = gripper_joint_max
 
         self.objects = EU.ObjectBank()
         self.interactive_objects = EU.ObjectBank()
@@ -94,7 +99,9 @@ class BaseEnv(object):
     def _create_robot(self):
         gripper = Gripper(
             joint_names=("left_gripper_joint", "right_gripper_joint"),
-            finger_link_names=("left_gripper", "left_tip", "right_gripper", "right_tip")
+            finger_link_names=("left_gripper", "left_tip", "right_gripper", "right_tip"),
+            use_magic_grasp=self._gripper_use_magic_grasp,
+            joint_max=self._gripper_joint_max
         )
         gripper.env = self
         gripper.load(os.path.join(gibson2.assets_path, 'models/grippers/basic_gripper/gripper.urdf'))

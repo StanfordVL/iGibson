@@ -179,7 +179,7 @@ def plan_skill_grasp(
         grasp_pose,
         reach_distance=0.,
         lift_height=0.,
-        grasp_speed=0.05,
+        grasp_speed=0.1,
         lift_speed=0.05,
         joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
 ):
@@ -260,7 +260,7 @@ def plan_skill_place(
         place_path.append(target_place_pose, GRIPPER_OPEN)
         place_path.append(retract_pose, GRIPPER_OPEN)
 
-    return place_path.interpolate(pos_resolution=0.05, orn_resolution=np.pi / 8)
+    return place_path.interpolate(pos_resolution=0.1, orn_resolution=np.pi / 4)
 
 
 def plan_skill_pour(

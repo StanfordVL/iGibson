@@ -20,6 +20,7 @@ class Gripper(object):
             finger_link_names=(),
             joint_min=(0.00, 0.00),
             joint_max=(1., 1.),
+            use_magic_grasp=True,
             env=None
     ):
         self.joint_min = joint_min
@@ -27,6 +28,7 @@ class Gripper(object):
         self.joint_names = joint_names
         self.finger_link_names = finger_link_names
         self.grasp_cid = None
+        self.use_magic_grasp = use_magic_grasp
         self.magic_ungrasp_delay = 0
         self.magic_ungrasp_delay_counter = 0
 
@@ -78,12 +80,14 @@ class Gripper(object):
 
     def grasp(self):
         self.set_joint_positions(self.joint_min, force=100.)
-        self._magic_grasp(joint_type=p.JOINT_FIXED)
+        if self.use_magic_grasp:
+            self._magic_grasp(joint_type=p.JOINT_FIXED)
 
     def ungrasp(self):
         self.set_joint_positions(self.joint_max, force=100.)
         self.reset_joint_positions(self.joint_max)
-        self._magic_ungrasp()
+        if self.use_magic_grasp:
+            self._magic_ungrasp()
 
     def set_joint_forces(self, forces):
         assert len(forces) == len(self.joints)
@@ -104,9 +108,11 @@ class Gripper(object):
             p.resetJointState(self.body_id, j, targetValue=positions[i])
 
     def _magic_grasp(self, joint_type=p.JOINT_FIXED):
+        """Perform magic grasp by creating a constraint between the gripper and object."""
         if self.grasp_cid is not None:
             return
 
+        # check if the gripper has grasped anything
         ret = self.get_grasped_id(self.env.objects.body_ids)
         if ret is None:
             return

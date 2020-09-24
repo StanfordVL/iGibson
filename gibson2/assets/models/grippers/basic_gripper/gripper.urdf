@@ -155,13 +155,5 @@
     <axis xyz="0 0 1"/>
   </joint>
   <link name="eef_link">
-    <visual>
-      <geometry>
-        <sphere radius="0.03" />
-      </geometry>
-       <material name="blue">
-        <color rgba="0 0 0.8 0.3" />
-      </material>
-    </visual>
   </link>
 </robot>
