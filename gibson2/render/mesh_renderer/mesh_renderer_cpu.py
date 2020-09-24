@@ -432,6 +432,9 @@ class RandomizedMaterial(Material):
         # WILL be populated when the texture is actually loaded
         self.material_ids = None
 
+        self.random_class = None
+        self.random_instance = None
+
     # We currently do not have all the annotated materials, so we will need
     # to convert the materials that we don't have to their closest neighbors
     # that we do have.
@@ -481,12 +484,13 @@ class RandomizedMaterial(Material):
     def randomize(self):
         if self.material_ids is None:
             return
-        random_class = random.choice(list(self.material_ids.keys()))
-        random_instance = random.choice(self.material_ids[random_class])
-        self.texture_id = random_instance['diffuse']
-        self.metallic_texture_id = random_instance['metallic']
-        self.roughness_texture_id = random_instance['roughness']
-        self.normal_texture_id = random_instance['normal']
+        self.random_class = random.choice(list(self.material_ids.keys()))
+        self.random_instance = random.choice(
+            self.material_ids[self.random_class])
+        self.texture_id = self.random_instance['diffuse']
+        self.metallic_texture_id = self.random_instance['metallic']
+        self.roughness_texture_id = self.random_instance['roughness']
+        self.normal_texture_id = self.random_instance['normal']
 
     def __str__(self):
         return (
@@ -666,8 +670,6 @@ class MeshRenderer(object):
     def load_texture_file(self, tex_filename):
         # if texture is None or does not exist, return None
         if tex_filename is None or (not os.path.isfile(tex_filename)):
-            logging.warning(
-                'texture file does not exist: {}'.format(tex_filename))
             return None
 
         # if texture already exists, return texture id
@@ -1049,7 +1051,9 @@ class MeshRenderer(object):
         else:
             self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
-        self.r.renderSkyBox(self.skyboxShaderProgram, self.V, self.P)
+        if not self.optimized:
+            self.r.renderSkyBox(self.skyboxShaderProgram, self.V, self.P)
+            # TODO: skybox is not supported in optimized renderer, need fix
 
         if self.optimized:
             self.update_dynamic_positions()
