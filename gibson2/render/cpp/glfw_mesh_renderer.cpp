@@ -138,6 +138,10 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
     pymodule.def("renderOptimized", &GLFWRendererContext::renderOptimized, "TBA");
     pymodule.def("clean_meshrenderer_optimized", &GLFWRendererContext::clean_meshrenderer_optimized, "TBA");
 
+    //for skybox
+    pymodule.def("loadSkyBox", &GLFWRendererContext::loadSkyBox, "TBA");
+    pymodule.def("renderSkyBox", &GLFWRendererContext::renderSkyBox, "TBA");
+
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
 #else
