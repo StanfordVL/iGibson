@@ -432,6 +432,9 @@ class RandomizedMaterial(Material):
         # WILL be populated when the texture is actually loaded
         self.material_ids = None
 
+        self.random_class = None
+        self.random_instance = None
+
     # We currently do not have all the annotated materials, so we will need
     # to convert the materials that we don't have to their closest neighbors
     # that we do have.

@@ -456,8 +456,14 @@ class URDFObject(Object):
                         self.visual_mesh_to_material[i][visual_mesh.attrib['filename']])
                 link_frictions = []
                 for link_material in link_materials:
-                    link_frictions.append(self.material_to_friction.get(
-                        link_material.random_class, 0.5))
+                    if link_material.random_class is None:
+                        friction = 0.5
+                    elif link_material.random_class not in self.material_to_friction:
+                        friction = 0.5
+                    else:
+                        friction = self.material_to_friction.get(
+                            link_material.random_class, 0.5)
+                    link_frictions.append(friction)
                 link_friction = np.mean(link_frictions)
                 p.changeDynamics(body_id, j, lateralFriction=link_friction)
 
