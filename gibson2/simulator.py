@@ -228,7 +228,7 @@ class Simulator:
         :return: ids from scene.load function
         """
         ids = scene.load()
-        if scene.randomize_texture:
+        if scene.texture_randomization:
             # use randomized texture
             for body_id, visual_mesh_to_material in \
                     zip(ids, scene.visual_mesh_to_material):

@@ -106,6 +106,8 @@ class URDFObject(Object):
         # a list of all materials used, RandomizedMaterial
         self.materials = []
 
+        self.material_to_friction = None
+
         self.model_path = model_path
 
         logging.info("Category " + self.category)
@@ -428,6 +430,42 @@ class URDFObject(Object):
     def randomize_texture(self):
         for material in self.materials:
             material.randomize()
+        self.update_friction()
+
+    def update_friction(self):
+        if self.material_to_friction is None:
+            return
+        for i in range(len(self.urdf_paths)):
+            # if the sub URDF does not have visual meshes
+            if len(self.visual_mesh_to_material[i]) == 0:
+                continue
+            body_id = self.body_ids[i]
+            sub_urdf_tree = ET.parse(self.urdf_paths[i])
+
+            for j in np.arange(-1, p.getNumJoints(body_id)):
+                # base_link
+                if j == -1:
+                    link_name = p.getBodyInfo(body_id)[0].decode('UTF-8')
+                else:
+                    link_name = p.getJointInfo(body_id, j)[12].decode('UTF-8')
+                link = sub_urdf_tree.find(
+                    ".//link[@name='{}']".format(link_name))
+                link_materials = []
+                for visual_mesh in link.findall('visual/geometry/mesh'):
+                    link_materials.append(
+                        self.visual_mesh_to_material[i][visual_mesh.attrib['filename']])
+                link_frictions = []
+                for link_material in link_materials:
+                    if link_material.random_class is None:
+                        friction = 0.5
+                    elif link_material.random_class not in self.material_to_friction:
+                        friction = 0.5
+                    else:
+                        friction = self.material_to_friction.get(
+                            link_material.random_class, 0.5)
+                    link_frictions.append(friction)
+                link_friction = np.mean(link_frictions)
+                p.changeDynamics(body_id, j, lateralFriction=link_friction)
 
     def prepare_texture(self):
         for _ in range(len(self.urdf_paths)):
@@ -467,6 +505,12 @@ class URDFObject(Object):
                         all_materials[visual_mesh_to_idx[visual_mesh_path]]
 
         self.materials = list(all_materials.values())
+
+        friction_json = os.path.join(
+            gibson2.ig_dataset_path, 'materials/material_friction.json')
+        if os.path.isfile(friction_json):
+            with open(friction_json) as f:
+                self.material_to_friction = json.load(f)
 
     def _load(self):
         for idx in range(len(self.urdf_paths)):
