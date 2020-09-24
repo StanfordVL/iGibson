@@ -287,6 +287,9 @@ PYBIND11_MODULE(EGLRendererContext, m) {
     pymodule.def("renderOptimized", &EGLRendererContext::renderOptimized, "TBA");
     pymodule.def("clean_meshrenderer_optimized", &EGLRendererContext::clean_meshrenderer_optimized, "TBA");
 
+    //for skybox
+    pymodule.def("loadSkyBox", &EGLRendererContext::loadSkyBox, "TBA");
+    pymodule.def("renderSkyBox", &EGLRendererContext::renderSkyBox, "TBA");
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
 #else

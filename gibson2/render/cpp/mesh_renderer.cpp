@@ -415,7 +415,8 @@ void MeshRendererContext::render_softbody_instance(int vao, int vbo, py::array_t
 }
 
 void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
-                                           int shadow_pass, py::array_t<float> P, py::array_t<float> eye_pos,
+                                           int shadow_pass, py::array_t<float> P, py::array_t<float> lightP,
+                                           py::array_t<float> eye_pos,
                                            py::array_t<float> pose_trans,
                                            py::array_t<float> pose_rot, py::array_t<float> lightpos,
                                            py::array_t<float> lightcolor) {
@@ -423,6 +424,7 @@ void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float>
     float *Vptr = (float *) V.request().ptr;
     float *lightVptr = (float *) lightV.request().ptr;
     float *Pptr = (float *) P.request().ptr;
+    float *lightPptr = (float *) lightP.request().ptr;
     float *transptr = (float *) pose_trans.request().ptr;
     float *rotptr = (float *) pose_rot.request().ptr;
     float *lightposptr = (float *) lightpos.request().ptr;
@@ -432,6 +434,7 @@ void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float>
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, lightVptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightP"), 1, GL_FALSE, lightPptr);
     glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
@@ -513,18 +516,21 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
 }
 
 void MeshRendererContext::initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
-                                                 int shadow_pass, py::array_t<float> P, py::array_t<float> eye_pos,
+                                                 int shadow_pass, py::array_t<float> P, py::array_t<float> lightP,
+                                                 py::array_t<float> eye_pos,
                                                  py::array_t<float> lightpos, py::array_t<float> lightcolor) {
     glUseProgram(shaderProgram);
     float *Vptr = (float *) V.request().ptr;
     float *lightVptr = (float *) lightV.request().ptr;
     float *Pptr = (float *) P.request().ptr;
+    float *lightPptr = (float *) lightP.request().ptr;
     float *lightposptr = (float *) lightpos.request().ptr;
     float *lightcolorptr = (float *) lightcolor.request().ptr;
     float *eye_pos_ptr = (float *) eye_pos.request().ptr;
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, lightVptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightP"), 1, GL_FALSE, lightPptr);
     glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
     glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
     glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1],
@@ -784,13 +790,21 @@ GLuint MeshRendererContext::compileShader(const std::string &filename, GLenum ty
     return shader;
 }
 
+int MeshRendererContext::numMipmapLevels(int width, int height)
+	{
+		int levels = 1;
+		while((width|height) >> levels) {
+			++levels;
+		}
+		return levels;
+	}
 
 Texture
 MeshRendererContext::createTexture(GLenum target, int width, int height, GLenum internalformat, int levels) const {
     Texture texture;
     texture.width = width;
     texture.height = height;
-    texture.levels = (levels > 0) ? levels : 6;
+    texture.levels = (levels > 0) ? levels : numMipmapLevels(width, height);
 
     glCreateTextures(target, 1, &texture.id);
     glTextureStorage2D(texture.id, texture.levels, internalformat, width, height);
@@ -1231,3 +1245,63 @@ void MeshRendererContext::clean_meshrenderer_optimized(std::vector<GLuint> color
 		glDeleteBuffers(1, &uboTexColorData);
 		glDeleteBuffers(1, &uboTransformData);
 	}
+
+
+void MeshRendererContext::loadSkyBox(int shaderProgram){
+    GLint vertex = glGetAttribLocation(shaderProgram, "position");
+
+    GLfloat cube_vertices[] = {
+	  -10.0,  10.0,  10.0,
+	  -10.0, -10.0,  10.0,
+	   10.0, -10.0,  10.0,
+	   10.0,  10.0,  10.0,
+	  -10.0,  10.0, -10.0,
+	  -10.0, -10.0, -10.0,
+	   10.0, -10.0, -10.0,
+	   10.0,  10.0, -10.0,
+	};
+	GLuint vbo_cube_vertices;
+	glGenBuffers(1, &vbo_cube_vertices);
+	m_skybox_vbo = vbo_cube_vertices;
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(vertex);
+    glVertexAttribPointer(vertex, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	// cube indices for index buffer object
+	GLushort cube_indices[] = {
+	  0, 1, 2, 3,
+	  3, 2, 6, 7,
+	  7, 6, 5, 4,
+	  4, 5, 1, 0,
+	  0, 3, 7, 4,
+	  1, 2, 6, 5,
+	};
+	GLuint ibo_cube_indices;
+	glGenBuffers(1, &ibo_cube_indices);
+	m_skybox_ibo = ibo_cube_indices;
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_cube_indices);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_indices), cube_indices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+}
+void MeshRendererContext::renderSkyBox(int shaderProgram, py::array_t<float> V, py::array_t<float> P){
+    glUseProgram(shaderProgram);
+    float* Vptr = (float*)V.request().ptr;
+    float* Pptr = (float*)P.request().ptr;
+
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture.id);
+    glUniform1i(glGetUniformLocation(shaderProgram, "envTexture"), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, m_skybox_vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_skybox_ibo);
+
+    glDrawElements(GL_QUADS, 24, GL_UNSIGNED_SHORT, 0);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+}

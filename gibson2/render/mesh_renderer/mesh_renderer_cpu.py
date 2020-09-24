@@ -7,7 +7,7 @@ import gibson2.render.mesh_renderer as mesh_renderer
 from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
 from gibson2.render.mesh_renderer import EGLRendererContext
 from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
-    safemat2quat, xyzw2wxyz
+    safemat2quat, xyzw2wxyz, ortho
 import numpy as np
 import os
 import sys
@@ -107,6 +107,7 @@ class InstanceGroup(object):
                                                self.renderer.lightV,
                                                shadow_pass,
                                                self.renderer.P,
+                                               self.renderer.lightP,
                                                self.renderer.camera,
                                                self.renderer.lightpos,
                                                self.renderer.lightcolor)
@@ -268,6 +269,7 @@ class Instance(object):
                                          self.renderer.lightV,
                                          shadow_pass,
                                          self.renderer.P,
+                                         self.renderer.lightP,
                                          self.renderer.camera,
                                          self.pose_trans,
                                          self.pose_rot,
@@ -606,6 +608,14 @@ class MeshRenderer(object):
                                 os.path.join(os.path.dirname(mesh_renderer.__file__),
                                              'shaders/450/frag.shader')).readlines()))
 
+            self.skyboxShaderProgram = self.r.compile_shader_meshrenderer(
+                            "".join(open(
+                                os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                            'shaders/410/skybox_vs.glsl')).readlines()),
+                            "".join(open(
+                                os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                            'shaders/410/skybox_fs.glsl')).readlines()))
+
         # default light looking down and tilted
         self.set_light_position_direction([0, 0, 2], [0, 0.5, 0])
 
@@ -634,10 +644,12 @@ class MeshRenderer(object):
         else:
             logging.warning(
                 "Environment texture not available, cannot use PBR.")
+        self.r.loadSkyBox(self.skyboxShaderProgram)
 
     def set_light_position_direction(self, position, target):
         self.lightpos = position
         self.lightV = lookat(self.lightpos, target, [0, 1, 0])
+        self.lightP = ortho(-5, 5, -5, 5, -10, 20.0)
 
     def setup_framebuffer(self):
         """
@@ -940,10 +952,11 @@ class MeshRenderer(object):
         self.V = np.ascontiguousarray(V, np.float32)
 
     def set_fov(self, fov):
-        self.vertical_fov = fov
-        P = perspective(self.vertical_fov, float(
-            self.width) / float(self.height), 0.1, 100)
-        self.P = np.ascontiguousarray(P, np.float32)
+        # self.vertical_fov = fov
+        # P = perspective(self.vertical_fov, float(
+        #     self.width) / float(self.height), 0.1, 100)
+        # self.P = np.ascontiguousarray(P, np.float32)
+        pass
 
     def set_light_color(self, color):
         self.lightcolor = color
@@ -989,6 +1002,8 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
+
+
     def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
@@ -999,11 +1014,14 @@ class MeshRenderer(object):
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
 
+
         if self.enable_shadow:
             # shadow pass
 
             V = np.copy(self.V)
+            P = np.copy(self.P)
             self.V = np.copy(self.lightV)
+            self.P = np.copy(self.lightP)
             if self.msaa:
                 self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
             else:
@@ -1022,13 +1040,17 @@ class MeshRenderer(object):
             self.r.readbuffer_meshrenderer_shadow_depth(
                 self.width, self.height, self.fbo, self.depth_tex_shadow)
             self.V = np.copy(V)
-
+            self.P = np.copy(P)
         # main pass
 
         if self.msaa:
             self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
         else:
             self.r.render_meshrenderer_pre(0, 0, self.fbo)
+
+        if not self.optimized:
+            self.r.renderSkyBox(self.skyboxShaderProgram, self.V, self.P)
+            # TODO: skybox is not supported in optimized renderer, need fix
 
         if self.optimized:
             self.update_dynamic_positions()
@@ -1155,7 +1177,10 @@ class MeshRenderer(object):
         cutoff = 4000 * 4000
         shouldShrinkSmallTextures = True
         smallTexSize = 512
-        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(self.texture_files,
+        texture_files = sorted(self.texture_files.items(), key=lambda x:x[1])
+        texture_files = [item[0] for item in texture_files]
+
+        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(texture_files,
                                                                                                cutoff,
                                                                                                shouldShrinkSmallTextures,
                                                                                                smallTexSize)
