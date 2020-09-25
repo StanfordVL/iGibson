@@ -213,11 +213,35 @@ def plan_joint_path(
         target_pose,
         obstacles=(),
         attachment_ids=(),
-        resolutions=None
+        resolutions=None,
+        joint_limits=None,
 ):
+    """
+    Plan joint path to a target eef pose.
 
+    Args:
+        robot_bid (int): pybullet body id for the robot
+        eef_link_name (str): name of the end effector link
+        plannable_joint_names (list): a list of plannable joint names
+        target_pose (tuple): (pos, orn) for the target eef pose
+        obstacles (list, tuple): a list of obstacle body ids
+        attachment_ids (list, tuple): a list of attachment body ids (for moving objects around)
+        resolutions (tuple): planning resolution for each joint
+        joint_limits (dict): joint name (str) -> limit (tuple), a custom-set joint limit for each joint
+
+    Returns:
+        path: a list of joint configurations. Throws an NoPlanException if no plan is found
+    """
     if resolutions is not None:
         assert len(plannable_joint_names) == len(resolutions)
+
+    if joint_limits is None:
+        joint_limits = dict()
+
+    joint_index_limits = dict()
+    for jname, jlimit in joint_limits.items():
+        assert jname in plannable_joint_names
+        joint_index_limits[PBU.joint_from_name(robot_bid, jname)] = jlimit
 
     eef_link = PBU.link_from_name(robot_bid, eef_link_name)
     plannable_joints = PBU.joints_from_names(robot_bid, plannable_joint_names)
@@ -240,6 +264,7 @@ def plan_joint_path(
             restarts=10,
             iterations=50,
             smooth=30,
+            custom_limits=joint_index_limits,
             max_distance=8e-3
         )
     if path is None:

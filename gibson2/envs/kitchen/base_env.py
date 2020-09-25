@@ -36,8 +36,9 @@ class BaseEnv(object):
             obs_crop_size=24,
             use_skills=False,
             gripper_use_magic_grasp=True,
-            gripper_joint_max=(1.0, 1.0)
-
+            gripper_joint_max=(1.0, 1.0),
+            plan_joint_limits=None,
+            eef_position_limits=None
     ):
         self._hide_planner = hide_planner
         self._robot_base_pose = robot_base_pose
@@ -53,6 +54,8 @@ class BaseEnv(object):
         self.obs_crop_size = obs_crop_size
         self._gripper_use_magic_grasp = gripper_use_magic_grasp
         self._gripper_joint_max = gripper_joint_max
+        self._plan_joint_limits = plan_joint_limits
+        self._eef_position_limits = eef_position_limits
 
         self.objects = EU.ObjectBank()
         self.interactive_objects = EU.ObjectBank()
@@ -129,6 +132,8 @@ class BaseEnv(object):
             gripper=shadow_gripper,
             arm=arm,
             plannable_joint_names=arm.joint_names,
+            joint_limits=self._plan_joint_limits,
+            eef_position_limit=self._eef_position_limits
             # plan_objects=PlannerObjectBank.create_from(
             #     self.objects, scale=1.2, rgba_alpha=0. if self._hide_planner else 0.7)
         )
@@ -168,6 +173,7 @@ class BaseEnv(object):
 
     def reset(self):
         self.initial_world.restore()
+        p.stepSimulation()
         self.robot.reset_base_position_orientation(*self._robot_base_pose)
         self.robot.reset()
         self._reset_objects()
@@ -176,6 +182,7 @@ class BaseEnv(object):
             self.skill_lib.reset()
         for o in self.interactive_objects.object_list:
             o.reset()
+        # p.stepSimulation()
 
     def reset_to(self, serialized_world_state, return_obs=True):
         exclude = []
@@ -184,6 +191,7 @@ class BaseEnv(object):
         state = PBU.WorldSaver(exclude_body_ids=exclude)
         state.deserialize(serialized_world_state)
         state.restore()
+        p.stepSimulation()
         if return_obs:
             return self.get_observation()
 

@@ -59,6 +59,13 @@ class Gripper(object):
     def finger_links(self):
         return [PBU.link_from_name(self.body_id, n) for n in self.finger_link_names]
 
+    @property
+    def grasped_body_id(self):
+        ret = self.get_grasped_id(self.env.objects.body_ids)
+        if ret is not None:
+            return ret[0]
+        return None
+
     def get_grasped_id(self, candidate_ids):
         """Try to figure out which object the gripper is grasping"""
         for oid in candidate_ids:
@@ -239,7 +246,26 @@ class Robot(object):
 
 
 class PlannableRobot(Robot):
-    def __init__(self, eef_link_name, init_base_pose, arm, gripper=None, plannable_joint_names=None):
+    def __init__(
+            self,
+            eef_link_name,
+            init_base_pose,
+            arm,
+            gripper=None,
+            plannable_joint_names=None,
+            joint_limits=None,
+            eef_position_limit=None,
+    ):
+        """
+
+        Args:
+            eef_link_name (str):
+            init_base_pose (tuple):
+            arm (Arm):
+            gripper (Gripper):
+            plannable_joint_names (list):
+            joint_limits (dict):
+        """
         super(PlannableRobot, self).__init__(
             eef_link_name=eef_link_name,
             init_base_pose=init_base_pose,
@@ -249,6 +275,8 @@ class PlannableRobot(Robot):
 
         assert arm is not None
         self.plannable_joint_names = plannable_joint_names
+        self.joint_limits = joint_limits
+        self.eef_position_limit = eef_position_limit
         if plannable_joint_names is None:
             self.plannable_joint_names = arm.joint_names
 
@@ -279,13 +307,18 @@ class PlannableRobot(Robot):
         self.set_plannable_joint_positions(conf)
 
     def plan_joint_path(self, target_pose, obstacles, resolutions=None):
+        if self.eef_position_limit is not None:
+            tpos = np.array(target_pose[0])
+            if not np.all(np.logical_and(self.eef_position_limit[0] <= tpos, self.eef_position_limit[1] >= tpos)):
+                raise PU.NoPlanException("EEF out of bound")
         return PU.plan_joint_path(
             self.body_id,
             self.eef_link_name,
             self.plannable_joint_names,
             target_pose,
             obstacles=obstacles,
-            resolutions=resolutions
+            resolutions=resolutions,
+            joint_limits=self.joint_limits
         )
 
     def inverse_kinematics(self, target_pose):
@@ -293,13 +326,16 @@ class PlannableRobot(Robot):
 
 
 class PlannerRobot(PlannableRobot):
-    def __init__(self, eef_link_name, init_base_pose, arm, gripper=None, plannable_joint_names=None, plan_objects=None):
+    def __init__(self, eef_link_name, init_base_pose, arm, gripper=None, plannable_joint_names=None, plan_objects=None,
+                 joint_limits=None, eef_position_limit=None):
         super(PlannerRobot, self).__init__(
             eef_link_name=eef_link_name,
             init_base_pose=init_base_pose,
             arm=arm,
             gripper=gripper,
-            plannable_joint_names=plannable_joint_names
+            plannable_joint_names=plannable_joint_names,
+            joint_limits=joint_limits,
+            eef_position_limit=eef_position_limit
         )
         self.ref_robot = None
         self.plan_objects = plan_objects
@@ -348,6 +384,11 @@ class PlannerRobot(PlannableRobot):
         if synchronize:
             self.synchronize()  # synchronize planner with the robot
 
+        if self.eef_position_limit is not None:
+            tpos = np.array(target_pose[0])
+            if not np.all(np.logical_and(self.eef_position_limit[0] <= tpos, self.eef_position_limit[1] >= tpos)):
+                raise PU.NoPlanException("EEF out of bound")
+
         if self.plan_objects is not None:
             attachment_ids = tuple([self.plan_objects.get_visual_copy_of(bid).body_id for bid in attachment_ids])
 
@@ -362,7 +403,8 @@ class PlannerRobot(PlannableRobot):
                 target_pose,
                 obstacles=obstacles,
                 resolutions=resolutions,
-                attachment_ids=attachment_ids
+                attachment_ids=attachment_ids,
+                joint_limits=self.joint_limits
             )
         return path
 

@@ -1480,6 +1480,10 @@ class SkillLibrary(object):
         return masks
 
     def plan(self, params, target_object_id):
+        self._holding = self.env.robot.gripper.grasped_body_id
+        if self._holding is not None:
+            print(self.env.objects.body_id_to_name(self._holding))
+
         if isinstance(params, dict):
             skill_index, skill_params = self._parse_skill_param_dict(params)
             skill_params = self.skills[skill_index].serialize_skill_param_dict(skill_params)
@@ -1499,13 +1503,12 @@ class SkillLibrary(object):
             if self._holding is not None:
                 raise NoPlanException("Robot is holding something but is trying to run {}".format(skill.name))
             traj = skill.plan(skill_params, target_object_id=target_object_id)
-            self._holding = target_object_id
         else:
             if skill.requires_not_holding and self._holding is not None:
                 raise NoPlanException("Robot is holding something but is trying to run {}".format(skill.name))
             traj = skill.plan(skill_params, target_object_id=target_object_id)
 
-        if skill.releases_holding:
-            self._holding = None
+        # if skill.releases_holding:
+        #     self._holding = None
 
         return traj
