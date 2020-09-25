@@ -66,9 +66,6 @@ class SimpleTool(TableTop):
 
     def _create_fixtures(self):
         super(SimpleTool, self)._create_fixtures()
-        vm = VisualMarker(visual_shape=p.GEOM_BOX, rgba_color=(0.5, 0.5, 0.5, 0.3), half_extents=(0.02, 1, 1))
-        vm.load()
-        vm.set_position((-0.3, 0, 0.3))
 
     def _create_objects(self):
         o = Hook(width=0.025, length1=0.5, length2=0.2, color=(0.7, 0.7, 0.7, 1))
@@ -78,8 +75,8 @@ class SimpleTool(TableTop):
 
         o = Box(color=(0.7, 0.1, 0.1, 1), size=(0.05, 0.05, 0.05))
         o.load()
-        p.changeDynamics(o.body_id, -1, mass=1.0)
-        EU.set_friction(o.body_id, friction=0.5)
+        p.changeDynamics(o.body_id, -1, mass=0.5)
+        EU.set_friction(o.body_id, friction=0.2)
         self.objects.add_object("cube1", o)
 
         o = Box(color=(0.1, 0.1, 0.7, 1), size=(0.06, 0.06, 0.04))
@@ -97,6 +94,14 @@ class SimpleTool(TableTop):
         o.load()
         p.changeDynamics(o.body_id, -1, mass=1000.)
         self.objects.add_object("target", o)
+
+        # setup virtual divider
+        vm = Box(color=(0.5, 0.5, 0.5, 0.3), size=(0.02, 10, 10), mass=0)
+        vm.load()
+        vm.set_position((-0.3, 0, 0.3))
+        # self.fixtures.add_object("divider", vm)
+        for o in self.objects.body_ids + self.fixtures.body_ids:
+            EU.set_collision_between(vm.body_id, o, collision=0)
 
     def _reset_objects(self):
         z = PBU.stable_z(self.objects["tool"].body_id, self.fixtures["table"].body_id)
@@ -137,8 +142,12 @@ class SimpleToolAP(SimpleTool):
                 ),
             ),
             skills.MoveWithPosDiscreteOrn(
-                name="move_with", num_pause_steps=30, move_speed=0.02,
-                orientations=OrderedDict([(k, skills.ALL_ORIENTATIONS[k]) for k in ["front", "back"]])
+                name="hook", num_pause_steps=30, move_speed=0.02,
+                orientations=OrderedDict([(k, skills.ALL_ORIENTATIONS[k]) for k in ["front"]])
+            ),
+            skills.MoveWithPosDiscreteOrn(
+                name="poke", num_pause_steps=30, move_speed=0.02,
+                orientations=OrderedDict([(k, skills.ALL_ORIENTATIONS[k]) for k in ["back"]])
             ),
             skills.ConditionSkill(
                 name="on_target",
@@ -148,7 +157,8 @@ class SimpleToolAP(SimpleTool):
         self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
 
     def _sample_task(self):
-        self.target_object = np.random.choice(["cube1", "cube2"])
+        # self.target_object = np.random.choice(["cube1", "cube2"])
+        self.target_object = "cube1"
         self._task_spec = np.array([self.skill_lib.name_to_skill_index("on_target"),
                                     self.objects.names.index(self.target_object)])
 
@@ -165,8 +175,8 @@ class SimpleToolAP(SimpleTool):
                 "tool"
             ),  (
                 lambda: self.skill_lib.sample_serialized_skill_params(
-                    "move_with",
-                    start_pos=dict(low=[-0.1, 0.1, 0.02], high=[-0.1, 0.1, 0.02]),
+                    "hook",
+                    start_pos=dict(low=[-0.05, 0.1, 0.02], high=[-0.05, 0.1, 0.02]),
                     move_pos=dict(low=[0.4, 0, 0], high=[0.4, 0, 0]),
                     start_orn=dict(choices=[0])
                 ),
@@ -188,7 +198,7 @@ class SimpleToolAP(SimpleTool):
                 "tool"
             ), (
                 lambda: self.skill_lib.sample_serialized_skill_params(
-                    "move_with",
+                    "poke",
                     start_pos=dict(low=[0.5, 0.0, 0.04], high=[0.5, 0.0, 0.04]),
                     move_pos=dict(low=[-0.4, 0, 0], high=[-0.4, 0, 0]),
                     start_orn=dict(choices=[1])
