@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-
+import pybullet as p
 
 class Viewer:
     def __init__(self,
@@ -28,38 +28,62 @@ class Viewer:
         cv2.namedWindow('RobotView')
         cv2.setMouseCallback('ExternalView', self.change_dir)
 
+    def apply_push_force(self, x, y, force):
+        camera_pose = np.array([self.px, self.py, self.pz])
+        self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, self.up)
+        #pos = self.renderer.get_3d_point(x,y)
+        frames = self.renderer.render(modes=('3d'))
+        position_cam = frames[0][y, x]
+        print(position_cam)
+        position_world = np.linalg.inv(self.renderer.V).dot(position_cam)
+        position_eye = camera_pose
+        res = p.rayTest(position_eye, position_world[:3])
+        #print(res)
+        #debug_line_id = p.addUserDebugLine(position_eye, position_world[:3], lineWidth=3)
+        object_id, link_id, _, hit_pos, hit_normal = res[0]
+        p.changeDynamics(object_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
+        p.applyExternalForce(object_id, link_id, -np.array(hit_normal) * force, hit_pos, p.WORLD_FRAME)
+
     def change_dir(self, event, x, y, flags, param):
         if flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_CTRLKEY and not self.right_down: 
             # Only once, when pressing left mouse while cntrl key is pressed
             self._mouse_ix, self._mouse_iy = x, y
             self.right_down = True
         elif (event == cv2.EVENT_MBUTTONDOWN) or (flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down): 
-            #middle mouse button press or only once, when pressing left mouse while shift key is pressed (Mac compatibility)
+            # Middle mouse button press or only once, when pressing left mouse while shift key is pressed (Mac
+            # compatibility)
             self._mouse_ix, self._mouse_iy = x, y
             self.middle_down = True
-        elif event == cv2.EVENT_LBUTTONDOWN: #left mouse button press
+        elif event == cv2.EVENT_LBUTTONDOWN: # left mouse button press
             self._mouse_ix, self._mouse_iy = x, y
             self.left_down = True
-        elif event == cv2.EVENT_LBUTTONUP: #left mouse button released
+        elif event == cv2.EVENT_LBUTTONUP: # left mouse button released
             self.left_down = False
             self.right_down = False
             self.middle_down = False
-        elif event == cv2.EVENT_MBUTTONUP: #middle mouse button released
+            if flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY:
+                # if ctrl+shift key is done, apply push force
+                self.apply_push_force(x, y, 1000)
+        elif event == cv2.EVENT_MBUTTONUP: # middle mouse button released
             self.middle_down = False
+            if flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY:
+                # if ctrl+shift key is done, apply pull force
+                self.apply_push_force(x, y, -1000)
 
-        if event == cv2.EVENT_MOUSEMOVE: #moving mouse location on the window
-            if self.left_down: #if left button was pressed we change orientation of camera
+        if event == cv2.EVENT_MOUSEMOVE: # moving mouse location on the window
+            if self.left_down: # if left button was pressed we change orientation of camera
                 dx = (x - self._mouse_ix) / 100.0
                 dy = (y - self._mouse_iy) / 100.0
                 self._mouse_ix = x
                 self._mouse_iy = y
 
-                self.phi += dy
-                self.phi = np.clip(self.phi, -np.pi/2 + 1e-5, np.pi/2 - 1e-5)
-                self.theta += dx
+                if not (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY):
+                    self.phi += dy
+                    self.phi = np.clip(self.phi, -np.pi/2 + 1e-5, np.pi/2 - 1e-5)
+                    self.theta += dx
+                    self.view_direction = np.array([np.cos(self.theta)* np.cos(self.phi), np.sin(self.theta) * np.cos(
+                        self.phi), np.sin(self.phi)])
 
-                self.view_direction = np.array([np.cos(self.theta)* np.cos(self.phi), np.sin(self.theta) * np.cos(
-                    self.phi), np.sin(self.phi)])
             elif self.middle_down: #if middle button was pressed we get closer/further away in the viewing direction
                 d_vd = (y - self._mouse_iy) / 100.0
                 self._mouse_iy = y
