@@ -258,19 +258,20 @@ def sample_positions_in_box(x_range, y_range, z_range):
     return rand_pos
 
 
-def compute_grasp_pose(object_frame, grasp_orientation, grasp_distance, grasp_frame=EEF_GRASP_FRAME):
+def compute_grasp_pose(object_frame, grasp_orientation, grasp_distance, grasp_position=PBU.unit_point(), grasp_frame=EEF_GRASP_FRAME):
     """
     Compute grasping pose within an @object_frame wrt to the world frame.
     Args:
         object_frame (tuple): object frame to compute grasp in
         grasp_orientation (tuple, list): quaternion of the grasping orientation
         grasp_distance (float): grasp distance relative to the object frame center
+        grasp_position (list, np.ndarray): relative grasp positions
         grasp_frame (tuple): end effector grasping frame
 
     Returns: grasp pose in the world frame
 
     """
-    pose = (PBU.unit_point(), grasp_orientation)
+    pose = (grasp_position, grasp_orientation)
     transform = ((-grasp_distance * np.array(grasp_frame[0])).tolist(), grasp_frame[1])
     grasp_pose = PBU.multiply(object_frame, pose, transform)
     return grasp_pose

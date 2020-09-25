@@ -292,6 +292,67 @@ def plan_skill_pour(
     return approach_path + pour_path
 
 
+def plan_skill_move_with(
+        planner,
+        obstacles,
+        object_start_pose,
+        object_target_pose,
+        holding,
+        move_speed=0.05,
+        joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
+):
+    grasp_pose = PBU.multiply(PBU.invert(planner.ref_robot.get_eef_position_orientation()), PBU.get_pose(holding))
+    start_gripper_pose = PBU.end_effector_from_body(object_start_pose, grasp_pose)
+    target_gripper_pose = PBU.end_effector_from_body(object_target_pose, grasp_pose)
+    lift_gripper_pose = (
+        (target_gripper_pose[0][0], target_gripper_pose[0][1], target_gripper_pose[0][2] + 0.1), target_gripper_pose[1])
+
+    confs = planner.plan_joint_path(
+        target_pose=start_gripper_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=(holding,))
+
+    conf_path = ConfigurationPath()
+    conf_path.append_segment(confs, gripper_state=GRIPPER_CLOSE)
+
+    approach_path = configuration_path_to_cartesian_path(planner, conf_path)
+    approach_path = approach_path.interpolate(pos_resolution=0.025, orn_resolution=np.pi / 8)
+
+    move_path = CartesianPath()
+    move_path.append(start_gripper_pose, gripper_state=GRIPPER_CLOSE)
+    move_path.append(target_gripper_pose, gripper_state=GRIPPER_CLOSE)
+    move_path.append_pause(10)
+    move_path.append(lift_gripper_pose, gripper_state=GRIPPER_OPEN)
+    move_path = move_path.interpolate(pos_resolution=move_speed, orn_resolution=np.pi / 8)
+    return approach_path + move_path
+
+
+def plan_skill_move_path(
+        planner,
+        obstacles,
+        gripper_start_pose,
+        gripper_end_pose,
+        move_speed=0.05,
+        holding_id=None,
+        joint_resolutions=DEFAULT_JOINT_RESOLUTIONS
+):
+    attachments = () if holding_id is None else (holding_id,)
+    confs = planner.plan_joint_path(
+        target_pose=gripper_start_pose, obstacles=obstacles, resolutions=joint_resolutions, attachment_ids=attachments)
+
+    conf_path = ConfigurationPath()
+    conf_path.append_segment(confs, gripper_state=GRIPPER_CLOSE)
+
+    approach_path = configuration_path_to_cartesian_path(planner, conf_path)
+    approach_path = approach_path.interpolate(pos_resolution=0.05, orn_resolution=np.pi / 4)
+
+    move_path = CartesianPath()
+    move_path.append(gripper_start_pose, gripper_state=GRIPPER_CLOSE)
+    move_path.append(gripper_end_pose, gripper_state=GRIPPER_CLOSE)
+    move_path = move_path.interpolate(pos_resolution=move_speed, orn_resolution=np.pi / 4)
+    move_path.append_pause(10)
+    move_path.append(gripper_end_pose, gripper_state=GRIPPER_OPEN)
+    return approach_path + move_path
+
+
 class SkillParams(object):
     def __init__(self, low=None, high=None, size=None):
         self._low = None
@@ -628,6 +689,43 @@ class GraspDistDiscreteOrn(GraspDistOrn):
             grasp_orn=orn
         )
         return params
+
+
+class GraspTopPos(GraspDistOrn):
+    """Top-down grasp with parameterized relative positions"""
+    def get_default_params(self):
+        return OrderedDict(
+            grasp_pos=SkillParamsContinuous(size=3)
+        )
+
+    def skill_params_to_string(self, params, target_object_id):
+        msg = Skill.skill_params_to_string(self, params, target_object_id)
+        params = self.deserialize_skill_param_array(params)
+        with np.printoptions(precision=4, suppress=True):
+            param_str = "pos={}".format(params["grasp_pos"])
+        return msg + " " + param_str
+
+    def plan(self, params, target_object_id=None):
+        assert len(params) == self.action_dimension
+        params = self.deserialize_skill_param_array(params)
+        orn = SKILL_ORIENTATIONS["top"]
+        grasp_pose = compute_grasp_pose(
+            object_frame=PBU.get_pose(target_object_id),
+            grasp_orientation=orn,
+            grasp_distance=0,
+            grasp_position=params["grasp_pos"]
+        )
+
+        traj = plan_skill_grasp(
+            planner=self.planner,
+            obstacles=self.obstacles,
+            grasp_pose=grasp_pose,
+            joint_resolutions=self.joint_resolutions,
+            lift_height=self.lift_height,
+            lift_speed=self.lift_speed,
+            reach_distance=self.reach_distance
+        )
+        return traj
 
 
 class PlacePosOrn(Skill):
@@ -1023,6 +1121,113 @@ class TouchPosition(Skill):
         return params
 
 
+class MoveWithPosDiscreteOrn(Skill):
+    def __init__(
+            self,
+            params=None,
+            name="move_with",
+            joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
+            move_speed=0.05,
+            num_pause_steps=0,
+            verbose=False,
+            precondition_fn=None,
+            orientations=None,
+    ):
+        self.orientations = orientations
+        if self.orientations is None:
+            self.orientations = SKILL_ORIENTATIONS
+        assert isinstance(self.orientations, OrderedDict)
+        self.num_pause_steps = num_pause_steps
+        self.move_speed = move_speed
+        super(MoveWithPosDiscreteOrn, self).__init__(
+            params=params,
+            name=name,
+            requires_holding=True,
+            acquires_holding=False,
+            releases_holding=True,
+            requires_not_holding=False,
+            joint_resolutions=joint_resolutions,
+            verbose=verbose,
+            precondition_fn=precondition_fn
+        )
+
+    def skill_params_to_string(self, params, target_object_id):
+        msg = Skill.skill_params_to_string(self, params, target_object_id)
+        params = self.deserialize_skill_param_array(params)
+        with np.printoptions(precision=4, suppress=True):
+            orn_name = list(self.orientations.keys())[int(params["start_orn"].argmax())]
+            param_str = "start={}, move={}, orn={}".format(params["start_pos"], params["move_pos"], orn_name)
+        return msg + " " + param_str
+
+    def get_default_params(self):
+        return OrderedDict(
+            start_pos=SkillParamsContinuous(size=3),
+            start_orn=SkillParamsDiscrete(size=len(self.orientations)),
+            move_pos=SkillParamsContinuous(size=3)
+        )
+
+    def plan(self, params, target_object_id=None, holding_id=None):
+        assert len(params) == self.action_dimension
+        params = self.deserialize_skill_param_array(params)
+
+        object_pose = PBU.get_pose(target_object_id)
+
+        target_holding_orn = list(self.orientations.values())[int(params["start_orn"].argmax())]
+        start_pose = (np.array(object_pose[0]) + params["start_pos"], target_holding_orn)
+        end_pose = (np.array(object_pose[0]) + params["start_pos"] + params["move_pos"], target_holding_orn)
+
+        traj = plan_skill_move_with(
+            self.planner,
+            obstacles=self.obstacles,
+            object_start_pose=start_pose,
+            object_target_pose=end_pose,
+            holding=holding_id,
+            move_speed=self.move_speed,
+            joint_resolutions=self.joint_resolutions,
+        )
+        traj.append_pause(self.num_pause_steps)
+        return traj
+
+
+class MovePathPosDiscreteOrn(MoveWithPosDiscreteOrn):
+    def plan(self, params, target_object_id=None, holding_id=None):
+        assert len(params) == self.action_dimension
+        params = self.deserialize_skill_param_array(params)
+
+        object_pos = np.array(PBU.get_pose(target_object_id)[0])
+
+        # desired orientation for the object being held
+        target_holding_orn = list(self.orientations.values())[int(params["start_orn"].argmax())]
+
+        start_pos = np.array(object_pos) + params["start_pos"]
+        end_pos = np.array(object_pos) + params["start_pos"] + params["move_pos"]
+
+        # compute target gripper orientation from desired orientation for the holding object
+        grasp_pose = PBU.multiply(
+            PBU.invert(self.planner.ref_robot.get_eef_position_orientation()), PBU.get_pose(holding_id))
+        gripper_start_pose = PBU.end_effector_from_body((start_pos, target_holding_orn), grasp_pose)
+        gripper_end_pose = PBU.end_effector_from_body((end_pos, target_holding_orn), grasp_pose)
+
+        # only z of the holding object target position
+        start_pos[2] = gripper_start_pose[0][2]
+        end_pos[2] = gripper_end_pose[0][2]
+
+        gripper_start_pose = (start_pos, gripper_start_pose[1])
+        gripper_end_pose = (end_pos, gripper_end_pose[1])
+
+        traj = plan_skill_move_path(
+            self.planner,
+            obstacles=self.obstacles,
+            gripper_start_pose=gripper_start_pose,
+            gripper_end_pose=gripper_end_pose,
+            move_speed=self.move_speed,
+            holding_id=holding_id,
+            joint_resolutions=self.joint_resolutions,
+        )
+        traj.append_pause(self.num_pause_steps)
+        return traj
+
+
 class ConditionSkill(Skill):
     def __init__(
             self,
@@ -1290,8 +1495,6 @@ class SkillLibrary(object):
             if self._holding == target_object_id:
                 raise NoPlanException("Applying skill {} to the object that is being held".format(skill.name))
             traj = skill.plan(skill_params, target_object_id=target_object_id, holding_id=self._holding)
-            if skill.releases_holding:
-                self._holding = None
         elif skill.acquires_holding:
             if self._holding is not None:
                 raise NoPlanException("Robot is holding something but is trying to run {}".format(skill.name))
@@ -1301,4 +1504,8 @@ class SkillLibrary(object):
             if skill.requires_not_holding and self._holding is not None:
                 raise NoPlanException("Robot is holding something but is trying to run {}".format(skill.name))
             traj = skill.plan(skill_params, target_object_id=target_object_id)
+
+        if skill.releases_holding:
+            self._holding = None
+
         return traj

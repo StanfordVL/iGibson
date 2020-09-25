@@ -287,7 +287,7 @@ class Hook(Object):
             linkMasses=(0.5,),
             linkCollisionShapeIndices=[collision_id2],
             linkVisualShapeIndices=[visual_id2],
-            linkPositions=[(-self._length1 / 2 + self._width / 2, self._length2 / 2 - self._width / 2, 0)],
+            linkPositions=[(-self._length1 / 2 + self._width / 2, -self._length2 / 2 + self._width / 2, 0)],
             linkOrientations=[T.quaternion_from_euler(0, 0, np.pi / 2)],
             linkInertialFramePositions=[(0, 0, 0)],
             linkInertialFrameOrientations=[PBU.unit_quat()],

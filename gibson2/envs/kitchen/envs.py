@@ -61,57 +61,51 @@ class TableTop(BaseEnv):
 class SimpleTool(TableTop):
     def __init__(self, **kwargs):
         kwargs["robot_base_pose"] = ([0.5, 0.3, 1.2], [0, 0, 1, 0])
+        kwargs["gripper_joint_max"] = (0.6, 0.6)
         super(TableTop, self).__init__(**kwargs)
 
     def _create_fixtures(self):
         super(SimpleTool, self)._create_fixtures()
         vm = VisualMarker(visual_shape=p.GEOM_BOX, rgba_color=(0.5, 0.5, 0.5, 0.3), half_extents=(0.02, 1, 1))
         vm.load()
-        vm.set_position((-0.1, 0, 0.3))
+        vm.set_position((-0.3, 0, 0.3))
 
     def _create_objects(self):
-        # o = Box(color=(0.8, 0.8, 0.8, 1), size=(0.6, 0.2, 0.2))
-        # o.load()
-        # p.changeDynamics(o.body_id, -1, mass=1000.)
-        # self.objects.add_object("box", o)
-
-        o = Hook(width=0.025, length1=0.5, length2=0.2, color=(0.1, 0.7, 0.1, 1))
+        o = Hook(width=0.025, length1=0.5, length2=0.2, color=(0.7, 0.7, 0.7, 1))
         o.load()
         p.changeDynamics(o.body_id, -1, mass=1.)
         self.objects.add_object("tool", o)
 
         o = Box(color=(0.7, 0.1, 0.1, 1), size=(0.05, 0.05, 0.05))
         o.load()
-        p.changeDynamics(o.body_id, -1, mass=1000.)
+        p.changeDynamics(o.body_id, -1, mass=1.0)
+        EU.set_friction(o.body_id, friction=0.5)
         self.objects.add_object("cube1", o)
 
-        o = Box(color=(0.1, 0.1, 0.7, 1), size=(0.05, 0.05, 0.05))
+        o = Box(color=(0.1, 0.1, 0.7, 1), size=(0.06, 0.06, 0.04))
         o.load()
-        p.changeDynamics(o.body_id, -1, mass=1000.)
+        p.changeDynamics(o.body_id, -1, mass=2.0)
+        EU.set_friction(o.body_id, friction=1.0)
         self.objects.add_object("cube2", o)
 
-        o = Tube(color=(0.5, 0.5, 0.5, 0.5), size=(0.4, 0.08, 0.08), width=0.005, mass=1.)
+        o = Tube(color=(0.5, 0.5, 0.5, 0.7), size=(0.3, 0.07, 0.1), width=0.005, mass=1.)
         o.load()
-        p.changeDynamics(o.body_id, -1, mass=1000.)
+        p.changeDynamics(o.body_id, -1, mass=10000.)
         self.objects.add_object("tube", o)
 
-        # o = MessyPlate(color=(0.9, 0.9, 0.9, 1), size=(0.2, 0.2, 0.005), num_stuff=8, stuff_size=(0.02, 0.02, 0.02))
-        # o.load()
-        # p.changeDynamics(o.body_id, -1, mass=1000.)
-        # self.objects.add_object("messy_plate", o)
+        o = Box(color=(0.1, 0.8, 0.1, 0.7), size=(0.1, 0.1, 0.05))
+        o.load()
+        p.changeDynamics(o.body_id, -1, mass=1000.)
+        self.objects.add_object("target", o)
 
     def _reset_objects(self):
-        # z = PBU.stable_z(self.objects["box"].body_id, self.fixtures["table"].body_id)
-        # self.objects["box"].set_position_orientation(
-        #     PU.sample_positions_in_box([0.0, 0.0], [0.3, 0.3], [z, z]), PBU.unit_quat())
-
         z = PBU.stable_z(self.objects["tool"].body_id, self.fixtures["table"].body_id)
         self.objects["tool"].set_position_orientation(
             PU.sample_positions_in_box([0.0, 0.0], [0.3, 0.3], [z, z]), PBU.unit_quat())
 
         z = PBU.stable_z(self.objects["cube1"].body_id, self.fixtures["table"].body_id)
         self.objects["cube1"].set_position_orientation(
-            PU.sample_positions_in_box([-0.4, -0.4], [-0.2, -0.2], [z, z]), PBU.unit_quat())
+            PU.sample_positions_in_box([-0.5, -0.5], [0.2, 0.2], [z, z]), PBU.unit_quat())
 
         z = PBU.stable_z(self.objects["tube"].body_id, self.fixtures["table"].body_id)
         self.objects["tube"].set_position_orientation(
@@ -119,60 +113,98 @@ class SimpleTool(TableTop):
 
         z = PBU.stable_z(self.objects["cube2"].body_id, self.objects["tube"].body_id, surface_link=-1)
         self.objects["cube2"].set_position_orientation(
-            PU.sample_positions_in_box([0.2, 0.2], [-0.3, -0.3], [z, z]), PBU.unit_quat())
+            PU.sample_positions_in_box([0.1, 0.1], [-0.3, -0.3], [z, z]), skills.ALL_ORIENTATIONS["back"])
 
-        # z = PBU.stable_z(self.objects["messy_plate"].body_id, self.fixtures["table"].body_id)
-        # self.objects["messy_plate"].set_position_orientation(
-        #     PU.sample_positions_in_box([-0.3, -0.3], [-0.2, -0.2], [z, z]), PBU.unit_quat())
-        # self.objects["messy_plate"].reset()
-
-    def _get_feature_observation(self):
-        obs = dict()
-        # stuff_pos = np.zeros((len(self.objects["messy_plate"].stuff), 3))
-        # for i, o in enumerate(self.objects["messy_plate"].stuff):
-        #     stuff_pos[i] = PBU.get_pose(o)[0]
-        # obs["stuff_pos"] = stuff_pos
-        return obs
+        z = PBU.stable_z(self.objects["target"].body_id, self.fixtures["table"].body_id)
+        self.objects["target"].set_position_orientation(
+            PU.sample_positions_in_box([0.4, 0.4], [0.0, 0.0], [z, z]), PBU.unit_quat())
 
 
 class SimpleToolAP(SimpleTool):
     def _create_skill_lib(self):
         lib_skills = (
-            skills.GraspDistDiscreteOrn(
-                name="grasp", lift_height=0.1, lift_speed=0.01,
+            skills.GraspTopPos(
+                name="grasp", lift_height=0.1, lift_speed=0.01, reach_distance=0.0,
                 params=OrderedDict(
-                    grasp_distance=skills.SkillParamsContinuous(low=[0.03], high=[0.03]),
-                    grasp_orn=skills.SkillParamsDiscrete(size=len(skills.SKILL_ORIENTATIONS))
+                    grasp_pos=skills.SkillParamsContinuous(low=[-0.2, 0, 0.03], high=[0.3, 0, 0.05]),
                 )
             ),
             skills.PlacePosYawOrn(
-                name="place", retract_distance=0.1, num_pause_steps=30,
+                name="place", retract_distance=0.1,
                 params=OrderedDict(
-                    place_pos=skills.SkillParamsContinuous(low=[-0.05, -0.05, 0.03], high=[0.05, 0.05, 0.03]),
-                    place_orn=skills.SkillParamsContinuous(low=[-np.pi / 12], high=[np.pi / 12])
+                    place_pos=skills.SkillParamsContinuous(low=[-0.01, -0.01, 0.01], high=[0.01, 0.01, 0.01]),
+                    place_orn=skills.SkillParamsContinuous(low=[np.pi / 2], high=[np.pi / 2])
                 ),
             ),
+            skills.MoveWithPosDiscreteOrn(
+                name="move_with", num_pause_steps=30, move_speed=0.02,
+                orientations=OrderedDict([(k, skills.ALL_ORIENTATIONS[k]) for k in ["front", "back"]])
+            ),
+            skills.ConditionSkill(
+                name="on_target",
+                precondition_fn=lambda oid: PBU.is_center_placed_on(oid, self.objects["target"].body_id),
+            )
         )
         self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
 
     def _sample_task(self):
-        self._task_spec = np.zeros(1)
+        self.target_object = np.random.choice(["cube1", "cube2"])
+        self._task_spec = np.array([self.skill_lib.name_to_skill_index("on_target"),
+                                    self.objects.names.index(self.target_object)])
 
     def is_success_all_tasks(self):
         success = dict(
-            task=True
+            task=PBU.is_center_placed_on(self.objects[self.target_object].body_id, self.objects["target"].body_id)
         )
         return success
 
     def get_task_skeleton(self):
-        skeleton = [(
-            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[4])),
-            "tool"
-        ),  (
-            lambda: self.skill_lib.sample_serialized_skill_params("place"),
-            "cube1"
-        )]
-
+        if self.target_object == "cube1":
+            skeleton = [(
+                lambda: self.skill_lib.sample_serialized_skill_params("grasp"),
+                "tool"
+            ),  (
+                lambda: self.skill_lib.sample_serialized_skill_params(
+                    "move_with",
+                    start_pos=dict(low=[-0.1, 0.1, 0.02], high=[-0.1, 0.1, 0.02]),
+                    move_pos=dict(low=[0.4, 0, 0], high=[0.4, 0, 0]),
+                    start_orn=dict(choices=[0])
+                ),
+                "cube1"
+            ), (
+                lambda: self.skill_lib.sample_serialized_skill_params(
+                    "grasp", grasp_pos=dict(low=[0, 0, 0.05], high=[0, 0, 0.05])),
+                "cube1"
+            ), (
+                lambda: self.skill_lib.sample_serialized_skill_params("place"),
+                "target"
+            ), (
+                lambda: self.skill_lib.sample_serialized_skill_params("on_target"),
+                "cube1"
+            )]
+        else:
+            skeleton = [(
+                lambda: self.skill_lib.sample_serialized_skill_params("grasp"),
+                "tool"
+            ), (
+                lambda: self.skill_lib.sample_serialized_skill_params(
+                    "move_with",
+                    start_pos=dict(low=[0.5, 0.0, 0.04], high=[0.5, 0.0, 0.04]),
+                    move_pos=dict(low=[-0.4, 0, 0], high=[-0.4, 0, 0]),
+                    start_orn=dict(choices=[1])
+                ),
+                "tube"
+            ), (
+                lambda: self.skill_lib.sample_serialized_skill_params(
+                    "grasp", grasp_pos=dict(low=[0, 0, 0.03], high=[0, 0, 0.03])),
+                "cube2"
+            ), (
+                lambda: self.skill_lib.sample_serialized_skill_params("place"),
+                "target"
+            ), (
+                lambda: self.skill_lib.sample_serialized_skill_params("on_target"),
+                "cube2"
+            )]
         return skeleton
 
 
