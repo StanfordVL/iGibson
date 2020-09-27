@@ -62,11 +62,17 @@ class SimpleTool(TableTop):
     def __init__(self, **kwargs):
         kwargs["robot_base_pose"] = ([0.3, 0.3, 1.2], [0, 0, 1, 0])
         kwargs["gripper_joint_max"] = (0.6, 0.6)
-        kwargs["eef_position_limits"] = (np.array([-0.4, -10, -10]), np.array([10, 10, 10]))
+        self.eef_x_limit = -0.4
+        kwargs["eef_position_limits"] = (np.array([self.eef_x_limit, -10, -10]), np.array([10, 10, 10]))
         super(TableTop, self).__init__(**kwargs)
 
     def _create_fixtures(self):
         super(SimpleTool, self)._create_fixtures()
+
+        o = Tube(color=(0.5, 0.5, 0.5, 0.5), size=(0.3, 0.08, 0.1), width=0.01, mass=1.)
+        o.load()
+        p.changeDynamics(o.body_id, -1, mass=10000.)
+        self.fixtures.add_object("tube", o)
 
     def _create_objects(self):
         o = Hook(width=0.025, length1=0.5, length2=0.2, color=(0.7, 0.7, 0.7, 1))
@@ -86,12 +92,7 @@ class SimpleTool(TableTop):
         EU.set_friction(o.body_id, friction=0.5)
         self.objects.add_object("cube2", o)
 
-        o = Tube(color=(0.5, 0.5, 0.5, 0.5), size=(0.3, 0.08, 0.1), width=0.01, mass=1.)
-        o.load()
-        p.changeDynamics(o.body_id, -1, mass=10000.)
-        self.objects.add_object("tube", o)
-
-        o = Box(color=(0.1, 0.8, 0.1, 0.7), size=(0.1, 0.1, 0.05))
+        o = Box(color=(0.1, 0.8, 0.1, 0.7), size=(0.1, 0.1, 0.02))
         o.load()
         p.changeDynamics(o.body_id, -1, mass=1000.)
         self.objects.add_object("target", o)
@@ -102,6 +103,12 @@ class SimpleTool(TableTop):
         # vm.set_position((-0.9, 0, 0.3))
         # for o in self.objects.body_ids + self.fixtures.body_ids:
         #     EU.set_collision_between(vm.body_id, o, collision=0)
+        vm = VisualMarker(visual_shape=p.GEOM_BOX,
+                          rgba_color=(0.5, 0.5, 0.5, 0.3),
+                          half_extents=(0.01, 0.6, 0.1),
+                          initial_offset=(self.eef_x_limit, 0, 0.6)
+                          )
+        vm.load()
 
     def _reset_objects(self):
         z = PBU.stable_z(self.objects["tool"].body_id, self.fixtures["table"].body_id)
@@ -110,15 +117,15 @@ class SimpleTool(TableTop):
 
         z = PBU.stable_z(self.objects["cube1"].body_id, self.fixtures["table"].body_id)
         self.objects["cube1"].set_position_orientation(
-            PU.sample_positions_in_box([-0.5, -0.5], [0.2, 0.2], [z, z]), PBU.unit_quat())
+            PU.sample_positions_in_box([-0.6, -0.4], [0.1, 0.3], [z, z]), PBU.unit_quat())
 
-        z = PBU.stable_z(self.objects["tube"].body_id, self.fixtures["table"].body_id)
-        self.objects["tube"].set_position_orientation(
+        z = PBU.stable_z(self.fixtures["tube"].body_id, self.fixtures["table"].body_id)
+        self.fixtures["tube"].set_position_orientation(
             PU.sample_positions_in_box([0.2, 0.2], [-0.3, -0.3], [z, z]), PBU.unit_quat())
 
-        z = PBU.stable_z(self.objects["cube2"].body_id, self.objects["tube"].body_id, surface_link=-1)
+        z = PBU.stable_z(self.objects["cube2"].body_id, self.fixtures["tube"].body_id, surface_link=-1)
         self.objects["cube2"].set_position_orientation(
-            PU.sample_positions_in_box([0.1, 0.1], [-0.3, -0.3], [z, z]), skills.ALL_ORIENTATIONS["back"])
+            PU.sample_positions_in_box([0.1, 0.15], [-0.3, -0.3], [z, z]), skills.ALL_ORIENTATIONS["back"])
 
         z = PBU.stable_z(self.objects["target"].body_id, self.fixtures["table"].body_id)
         self.objects["target"].set_position_orientation(
@@ -134,13 +141,7 @@ class SimpleToolAP(SimpleTool):
                     grasp_pos=skills.SkillParamsContinuous(low=[-0.2, 0, 0.03], high=[0.3, 0, 0.05]),
                 )
             ),
-            skills.PlacePosYawOrn(
-                name="place", retract_distance=0.1,
-                params=OrderedDict(
-                    place_pos=skills.SkillParamsContinuous(low=[-0.01, -0.01, 0.01], high=[0.01, 0.01, 0.01]),
-                    place_orn=skills.SkillParamsContinuous(low=[np.pi / 2], high=[np.pi / 2])
-                ),
-            ),
+            skills.PlaceFixed(name="place", retract_distance=0.1),
             skills.MoveWithPosDiscreteOrn(
                 name="hook", num_pause_steps=30, move_speed=0.02,
                 orientations=OrderedDict([(k, skills.ALL_ORIENTATIONS[k]) for k in ["front"]]),
@@ -154,7 +155,7 @@ class SimpleToolAP(SimpleTool):
                 name="poke", num_pause_steps=30, move_speed=0.02,
                 orientations=OrderedDict([(k, skills.ALL_ORIENTATIONS[k]) for k in ["back"]]),
                 params=OrderedDict(
-                    start_pos=skills.SkillParamsContinuous(low=[0.5, 0.0, 0.03], high=[0.5, 0.0, 0.05]),
+                    start_pos=skills.SkillParamsContinuous(low=[0.6, 0.0, -0.01], high=[0.6, 0.0, 0.01]),
                     move_pos=skills.SkillParamsContinuous(low=[-0.45, 0, 0], high=[-0.35, 0, 0]),
                     start_orn=skills.SkillParamsDiscrete(size=1)
                 )
@@ -168,15 +169,18 @@ class SimpleToolAP(SimpleTool):
 
     def _sample_task(self):
         self.target_object = np.random.choice(["cube1", "cube2"])
-        # self.target_object = "cube2"
+        # self.target_object = "cube1"
         self._task_spec = np.array([self.skill_lib.name_to_skill_index("on_target"),
                                     self.objects.names.index(self.target_object)])
 
     def is_success_all_tasks(self):
-        success = dict(
+        conds = dict(
             cube1=PBU.is_center_placed_on(self.objects["cube1"].body_id, self.objects["target"].body_id),
-            cube2=PBU.is_center_placed_on(self.objects["cube2"].body_id, self.objects["target"].body_id)
+            cube2=PBU.is_center_placed_on(self.objects["cube2"].body_id, self.objects["target"].body_id),
+            cube1_graspable=self.objects["cube1"].get_position()[0] > self.eef_x_limit,
+            cube2_graspable=not PBU.is_center_placed_on(self.objects["cube2"].body_id, self.fixtures["tube"].body_id, -1),
         )
+        success = {k: conds[k] for k in conds if k.startswith(self.target_object)}
         success["task"] = success[self.target_object]
         return success
 
@@ -205,7 +209,7 @@ class SimpleToolAP(SimpleTool):
                 "tool"
             ), (
                 lambda: self.skill_lib.sample_serialized_skill_params("poke"),
-                "tube"
+                "cube2"
             ), (
                 lambda: self.skill_lib.sample_serialized_skill_params(
                     "grasp", grasp_pos=dict(low=[0, 0, 0.03], high=[0, 0, 0.03])),

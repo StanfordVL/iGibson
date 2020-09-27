@@ -896,6 +896,37 @@ class PlacePosYawOrn(PlacePosOrn):
         return traj
 
 
+class PlaceFixed(PlacePosOrn):
+    def get_default_params(self):
+        return OrderedDict(
+            dummy=SkillParamsContinuous(low=[0], high=[0])
+        )
+
+    def skill_params_to_string(self, params, target_object_id):
+        return Skill.skill_params_to_string(self, params, target_object_id)
+
+    def plan(self, params, target_object_id=None, holding_id=None):
+        assert len(params) == self.action_dimension
+
+        target_pos = np.array(PBU.get_pose(target_object_id)[0])
+        target_pos[2] = PBU.stable_z(holding_id, target_object_id) + 0.01
+        orn = PBU.get_pose(holding_id)[1]
+
+        place_pose = (target_pos, orn)
+
+        traj = plan_skill_place(
+            self.planner,
+            obstacles=self.obstacles,
+            object_target_pose=place_pose,
+            holding=holding_id,
+            retract_distance=self.retract_distance,
+            joint_resolutions=self.joint_resolutions
+        )
+        traj.append_pause(self.num_pause_steps)
+        return traj
+
+
+
 class PourPosOrn(Skill):
     def __init__(
             self,

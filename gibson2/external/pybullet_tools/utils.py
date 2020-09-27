@@ -2864,9 +2864,9 @@ def is_placed_on_aabb(body, bottom_aabb, above_epsilon=1e-2, below_epsilon=0.0):
     return ((bottom_z_max - below_epsilon) <= top_z_min <= (bottom_z_max + above_epsilon)) and \
            (aabb_contains_aabb(aabb2d_from_aabb(top_aabb), aabb2d_from_aabb(bottom_aabb)))
 
-def is_center_placed_on(body, surface_body):
+def is_center_placed_on(body, surface_body, surface_link=None):
     top_center = get_aabb_center(get_aabb(body))
-    bottom_aabb = get_aabb(surface_body)
+    bottom_aabb = get_aabb(surface_body, link=surface_link)
     bottom_z_max = bottom_aabb[1][2]
     return top_center[2] > bottom_z_max and aabb_contains_point(top_center[:2], aabb2d_from_aabb(bottom_aabb))
 
