@@ -491,6 +491,10 @@ class Skill(object):
     def action_dimension(self):
         return int(np.sum(p.sample_shape[0] for p in self.params.values()))
 
+    def skill_params_to_pose(self, params, target_object_id):
+        """Skill params to end effector pose for visualization"""
+        return None
+
     @property
     def name(self):
         return self._name
@@ -704,6 +708,13 @@ class GraspTopPos(GraspDistOrn):
         with np.printoptions(precision=4, suppress=True):
             param_str = "pos={}".format(params["grasp_pos"])
         return msg + " " + param_str
+
+    def skill_params_to_pose(self, params, target_object_id):
+        params = self.deserialize_skill_param_array(params)
+        rel_pos = params["grasp_pos"]
+        obj_pos = PBU.get_pose(target_object_id)[0]
+        eef_pose = (rel_pos + np.array(obj_pos), SKILL_ORIENTATIONS["top"])
+        return eef_pose
 
     def plan(self, params, target_object_id=None):
         assert len(params) == self.action_dimension
@@ -1308,6 +1319,10 @@ class SkillLibrary(object):
     def skill_params_to_string(self, params, target_object_id):
         skill_index, skill_params = self._parse_serialized_skill_params(params)
         return self.skills[skill_index].skill_params_to_string(skill_params, target_object_id=target_object_id)
+
+    def skill_params_to_pose(self, params, target_object_id):
+        skill_index, skill_params = self._parse_serialized_skill_params(params)
+        return self.skills[skill_index].skill_params_to_pose(skill_params, target_object_id=target_object_id)
 
     def _parse_serialized_skill_params(self, all_params):
         assert len(all_params) == self.action_dimension

@@ -347,6 +347,7 @@ class EnvSkillWrapper(object):
     def __init__(self, env):
         self.env = env
         self.skill_lib = env.skill_lib
+        self.debug_viz_handles = []
 
     @property
     def action_dimension(self):
@@ -366,6 +367,14 @@ class EnvSkillWrapper(object):
         skill_param_dict.update(self.skill_lib.get_skill_param_dict_metadata(skill_param_dict))
         skill_dict["skill_param_dict"] = skill_param_dict
         return skill_dict
+
+    def _clear_viz(self):
+        PBU.remove_handles(self.debug_viz_handles)
+        self.debug_viz_handles = []
+
+    def reset(self):
+        self._clear_viz()
+        self.env.reset()
 
     def random_action_generator(self, horizon=None):
         """generate random valid actions"""
@@ -425,6 +434,14 @@ class EnvSkillWrapper(object):
         object_id = self.env.objects.body_ids[object_index]
         return self.skill_lib.skill_params_to_string(skill_params, object_id)
 
+    def visualize_action(self, actions):
+        skill_params = actions[:self.skill_lib.action_dimension]
+        object_index = int(np.argmax(actions[self.skill_lib.action_dimension:]))
+        object_id = self.env.objects.body_ids[object_index]
+        eef_pose = self.skill_lib.skill_params_to_pose(skill_params, object_id)
+        if eef_pose is not None:
+            self.debug_viz_handles.extend(PBU.draw_pose(eef_pose, length=0.1))
+
     def step(self, actions, sleep_per_sim_step=0.0, return_obs=True, step_callback=None):
         assert actions.shape[0] == self.action_dimension
         if isinstance(actions, np.ndarray):
@@ -446,6 +463,7 @@ class EnvSkillWrapper(object):
             store_full_trajectory=False,
             step_callback=step_callback
         )
+        self._clear_viz()
         if return_obs:
             return self.get_observation(), self.get_reward(), self.is_done(), {}
         else:
