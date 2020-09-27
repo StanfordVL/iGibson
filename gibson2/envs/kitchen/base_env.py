@@ -434,13 +434,13 @@ class EnvSkillWrapper(object):
         object_id = self.env.objects.body_ids[object_index]
         return self.skill_lib.skill_params_to_string(skill_params, object_id)
 
-    def visualize_action(self, actions):
+    def visualize_action(self, actions, color=(1, 0, 0, 1), length=0.1):
         skill_params = actions[:self.skill_lib.action_dimension]
         object_index = int(np.argmax(actions[self.skill_lib.action_dimension:]))
         object_id = self.env.objects.body_ids[object_index]
         eef_pose = self.skill_lib.skill_params_to_pose(skill_params, object_id)
         if eef_pose is not None:
-            self.debug_viz_handles.extend(PBU.draw_pose(eef_pose, length=0.1))
+            self.debug_viz_handles.extend(PBU.draw_pose_axis(eef_pose, axis=(-1, 0, 0), length=length, color=color))
 
     def step(self, actions, sleep_per_sim_step=0.0, return_obs=True, step_callback=None):
         assert actions.shape[0] == self.action_dimension

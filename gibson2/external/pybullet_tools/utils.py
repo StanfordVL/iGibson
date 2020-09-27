@@ -3462,6 +3462,16 @@ def draw_pose(pose, length=0.1, **kwargs):
         handles.append(add_line(origin_world, axis_world, color=axis, **kwargs))
     return handles
 
+
+def draw_pose_axis(pose, axis=(0, 1, 0), length=0.1, color=(1, 0, 0, 1), **kwargs):
+    origin_world = tform_point(pose, np.zeros(3))
+    handles = []
+    axis = np.array(axis)
+    axis_world = tform_point(pose, length*axis)
+    handles.append(add_line(origin_world, axis_world, color=color, **kwargs))
+    return handles
+
+
 def draw_base_limits(limits, z=1e-2, **kwargs):
     lower, upper = limits
     vertices = [(lower[0], lower[1], z), (lower[0], upper[1], z),

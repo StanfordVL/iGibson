@@ -1280,7 +1280,6 @@ class SkillLibrary(object):
             s.obstacles = obstacles
             s.env = env
             s.verbose = verbose
-        self._holding = None
 
     def sub_library(self, names):
         skills = [s for s in self.skills if s.name in names]
@@ -1291,7 +1290,7 @@ class SkillLibrary(object):
         return self._skills
 
     def reset(self):
-        self._holding = None
+        pass
 
     @property
     def skill_names(self):
@@ -1307,10 +1306,6 @@ class SkillLibrary(object):
         arr = np.zeros(len(self))
         arr[skill_index] = 1
         return arr
-
-    @property
-    def holding(self):
-        return self._holding
 
     @property
     def action_dimension(self):
@@ -1495,9 +1490,9 @@ class SkillLibrary(object):
         return masks
 
     def plan(self, params, target_object_id):
-        self._holding = self.env.robot.gripper.grasped_body_id
-        if self._holding is not None:
-            print(self.env.objects.body_id_to_name(self._holding))
+        holding = self.env.robot.gripper.grasped_body_id
+        if holding is not None:
+            print(self.env.objects.body_id_to_name(holding))
 
         if isinstance(params, dict):
             skill_index, skill_params = self._parse_skill_param_dict(params)
@@ -1509,21 +1504,19 @@ class SkillLibrary(object):
             raise PreconditionNotSatisfied("Precondition for skill '{}' is not satisfied".format(skill.name))
 
         if skill.requires_holding:
-            if self._holding is None:
+            if holding is None:
                 raise NoPlanException("Robot is not holding anything but is trying to run {}".format(skill.name))
-            if self._holding == target_object_id:
+            if holding == target_object_id:
                 raise NoPlanException("Applying skill {} to the object that is being held".format(skill.name))
-            traj = skill.plan(skill_params, target_object_id=target_object_id, holding_id=self._holding)
+            traj = skill.plan(skill_params, target_object_id=target_object_id, holding_id=holding)
         elif skill.acquires_holding:
-            if self._holding is not None:
+            # self.env.robot.gripper.ungrasp()
+            if holding is not None:
                 raise NoPlanException("Robot is holding something but is trying to run {}".format(skill.name))
             traj = skill.plan(skill_params, target_object_id=target_object_id)
         else:
-            if skill.requires_not_holding and self._holding is not None:
+            if skill.requires_not_holding and holding is not None:
                 raise NoPlanException("Robot is holding something but is trying to run {}".format(skill.name))
             traj = skill.plan(skill_params, target_object_id=target_object_id)
-
-        # if skill.releases_holding:
-        #     self._holding = None
 
         return traj
