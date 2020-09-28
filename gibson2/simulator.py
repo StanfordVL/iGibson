@@ -90,8 +90,7 @@ class Simulator:
         Attach a debugging viewer to the renderer. This will make the step much slower so should be avoided when
         training agents
         """
-        self.viewer = Viewer()
-        self.viewer.renderer = self.renderer
+        self.viewer = Viewer(simulator=self, renderer=self.renderer)
 
     def reload(self):
         """
@@ -143,14 +142,14 @@ class Simulator:
         p.setPhysicsEngineParameter(enableFileCaching=0)
         print("PyBullet Logging Information******************")
 
-        if self.use_ig_renderer and not self.render_to_tensor:
-            self.add_viewer()
-
         self.visual_objects = {}
         self.robots = []
         self.scene = None
         self.objects = []
         self.next_class_id = 0
+
+        if self.use_ig_renderer and not self.render_to_tensor:
+            self.add_viewer()
 
     def load_without_pybullet_vis(load_func):
         def wrapped_load_func(*args, **kwargs):
