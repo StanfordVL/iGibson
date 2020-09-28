@@ -102,7 +102,7 @@ class Viewer:
                 parentLinkIndex=-1,
                 childBodyUniqueId=object_id,
                 childLinkIndex=link_id,
-                jointType=p.JOINT_POINT2POINT,
+                jointType=p.JOINT_FIXED,
                 jointAxis=(0, 0, 0),
                 parentFramePosition=(0, 0, 0),
                 childFramePosition=child_frame_pos,
@@ -135,6 +135,7 @@ class Viewer:
         position_world = np.linalg.inv(self.renderer.V).dot(position_cam)
         position_world /= position_world[3]
         self.constraint_marker.set_position(position_world[:3])
+        self.interaction_x, self.interaction_y = x, y
 
     def move_constraint_z(self, dy):
         x, y = self.interaction_x, self.interaction_y
