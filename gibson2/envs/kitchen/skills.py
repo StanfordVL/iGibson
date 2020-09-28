@@ -358,7 +358,7 @@ class SkillParams(object):
         self._low = None
         self._high = None
 
-    def sample(self, mode=None, low=None, high=None, choices=None, sampler_fn=None):
+    def sample(self, mode=None, low=None, high=None, choices=None, sampler_fn=None, num_samples=None):
         raise NotImplementedError
 
     @property
@@ -392,7 +392,13 @@ class SkillParamsContinuous(SkillParams):
         assert self._low.shape == self._high.shape
         assert np.all(self._high >= self._low)
 
-    def sample(self, mode='uniform', low=None, high=None, choices=None, sampler_fn=None):
+    def sample(self, mode='uniform', low=None, high=None, choices=None, sampler_fn=None, num_samples=None):
+        batched_sample = num_samples is not None
+        if num_samples is not None:
+            assert isinstance(num_samples, int) and num_samples >= 1
+        else:
+            num_samples = 1
+
         assert mode in ['uniform', 'normal']
         if low is not None:
             low = np.array(low)
@@ -406,20 +412,24 @@ class SkillParamsContinuous(SkillParams):
             high = self.high
         sample = None
         if sampler_fn is not None:
-            sample = sampler_fn()
-            assert sample.shape == self.sample_shape
-            assert np.all(np.bitwise_and(sample >= self._low, sample <= self._high))
+            sample = np.stack([sampler_fn() for _ in range(num_samples)])
         elif choices is not None:
             for c in choices:
                 assert np.array(c).shape == self.sample_shape
-            sample = np.array(choices[np.random.randint(low=0, high=len(choices))])
+            sample = np.stack(choices[np.random.randint(low=0, high=len(choices), size=(num_samples,))])
         elif mode == 'uniform':
-            sample = np.random.rand(*self.sample_shape) * (high - low) + low
+            sample = np.random.rand(*((num_samples,) + self.sample_shape)) * (high - low) + low
         elif mode == 'normal':
             mu = (high - low) / 2 + low
             sigma = (high - low) / 2
-            sample = np.random.randn(*self.sample_shape) * sigma + mu
+            sample = np.random.randn(*((num_samples,) + self.sample_shape)) * sigma + mu
             sample = np.clip(sample, low, high)
+
+        assert sample[0].shape == self.sample_shape
+        assert np.all(np.bitwise_and(sample >= self._low[None, ...], sample <= self._high[None, ...]))
+
+        if not batched_sample:
+            sample = sample[0]
         return sample
 
 
@@ -436,19 +446,29 @@ class SkillParamsDiscrete(SkillParams):
     def default(self):
         return self.low
 
-    def sample(self, mode=None, low=None, high=None, choices=None, sampler_fn=None):
+    def sample(self, mode=None, low=None, high=None, choices=None, sampler_fn=None, num_samples=None):
+        batched_sample = num_samples is not None
+        if num_samples is not None:
+            assert isinstance(num_samples, int) and num_samples >= 1
+        else:
+            num_samples = 1
+
         if sampler_fn is not None:
-            sample_ind = sampler_fn()
-            assert 0 <= sample_ind < self.sample_shape[0]
+            sample_ind = np.array([sampler_fn() for _ in range(num_samples)])
         elif choices is not None:
             choices = np.array(choices)
             assert len(choices.shape) == 1
             assert np.all(np.bitwise_and(choices >= 0, choices < self.sample_shape[0]))  # ensure samples are in-range
-            sample_ind = np.random.choice(choices)
+            sample_ind = np.random.choice(choices, size=(num_samples,))
         else:
-            sample_ind = np.random.randint(low=0, high=self.sample_shape[0])
-        sample = np.zeros(self.sample_shape)
-        sample[sample_ind] = 1
+            sample_ind = np.random.randint(low=0, high=self.sample_shape[0], size=(num_samples,))
+
+        sample_ind = sample_ind.astype(np.int64)
+        sample = np.zeros((num_samples,) + self.sample_shape)
+        sample[np.arange(num_samples), sample_ind] = 1
+
+        if not batched_sample:
+            sample = sample[0]
         return sample
 
 
@@ -531,7 +551,7 @@ class Skill(object):
         Returns:
             params: np.ndarray
         """
-        return np.concatenate([param_dict[k] for k in self.params], axis=0)
+        return np.concatenate([param_dict[k] for k in self.params], axis=-1)
 
     def deserialize_skill_param_array(self, params):
         """
@@ -571,14 +591,14 @@ class Skill(object):
             assert self.params[p].sample_shape == param_dict[p].shape
         return self.serialize_skill_param_dict(param_dict)
 
-    def sample_skill_params(self, **kwargs):
+    def sample_skill_params(self, num_samples=None, **kwargs):
         param_dict = OrderedDict()
         for k in kwargs:
             assert k in list(self.params.keys()), \
                 "{} is not a valid skill param, choices are: {}".format(k, self.params.keys())
         for p in self.params:
             sample_kwargs = kwargs.get(p, dict())
-            param_dict[p] = self.params[p].sample(**sample_kwargs)
+            param_dict[p] = self.params[p].sample(num_samples=num_samples, **sample_kwargs)
         return param_dict
 
     def get_default_skill_params(self):
@@ -587,8 +607,8 @@ class Skill(object):
             param_dict[p] = self.params[p].default
         return param_dict
 
-    def sample_serialized_skill_params(self, **kwargs):
-        param_dict = self.sample_skill_params(**kwargs)
+    def sample_serialized_skill_params(self, num_samples=None, **kwargs):
+        param_dict = self.sample_skill_params(num_samples=num_samples, **kwargs)
         return self.serialize_skill_param_dict(param_dict)
 
 
@@ -1399,19 +1419,24 @@ class SkillLibrary(object):
 
         return params
 
-    def sample_serialized_skill_params(self, skill_name, **kwargs):
-        params = np.zeros(self.action_dimension)
+    def sample_serialized_skill_params(self, skill_name, num_samples=None, **kwargs):
+        batched_sample = num_samples is not None
+        if num_samples is None:
+            num_samples = 1
+        params = np.zeros((num_samples, self.action_dimension))
         skill_index = self.name_to_skill_index(skill_name)
-        skill_params = self.skills[skill_index].sample_serialized_skill_params(**kwargs)
-        params[skill_index] = 1
+        skill_params = self.skills[skill_index].sample_serialized_skill_params(num_samples=num_samples, **kwargs)
+        params[:, skill_index] = 1
 
         ind = 0
         for i, s in enumerate(self.skills):
             if i == skill_index:
-                params[len(self.skills) + ind: len(self.skills) + ind + s.action_dimension] = skill_params
+                params[:, len(self.skills) + ind: len(self.skills) + ind + s.action_dimension] = skill_params
             else:
                 ind += s.action_dimension
 
+        if not batched_sample:
+            params = params[0]
         return params
 
     def flatten_skill_param_key(self, skill_name, skill_params):

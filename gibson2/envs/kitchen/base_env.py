@@ -382,7 +382,7 @@ class EnvSkillWrapper(object):
         while horizon is None or step_i < horizon:
             step_i += 1
             skill_index, object_index = self.sample_skill()
-            skill_index_param = self.sample_skill_param(skill_index_arr=skill_index)
+            skill_index_param = self.sample_skill_params(skill_index_arr=skill_index)
             yield np.concatenate([skill_index_param, object_index])
 
     def random_action_dict_generator(self, horizon=None):
@@ -390,7 +390,7 @@ class EnvSkillWrapper(object):
         while horizon is None or step_i < horizon:
             step_i += 1
             skill_index, object_index = self.sample_skill()
-            skill_index_param = self.sample_skill_param(skill_index_arr=skill_index)
+            skill_index_param = self.sample_skill_params(skill_index_arr=skill_index)
             yield dict(skill_index=skill_index_param[:len(self.skill_lib)],
                        skill_param=skill_index_param[len(self.skill_lib):],
                        skill_object_index=object_index)
@@ -423,10 +423,17 @@ class EnvSkillWrapper(object):
         object_index_arr = self.env.objects.object_index_to_array(self.env.task_spec[1])
         return skill_index_arr, object_index_arr
 
-    def sample_skill_param(self, skill_index_arr):
+    def sample_skill_params(self, skill_index_arr):
         assert len(skill_index_arr) == len(self.skill_lib)
         skill_name = self.skill_lib.skill_names[int(np.argmax(skill_index_arr))]
         return self.skill_lib.sample_serialized_skill_params(skill_name)
+
+    def sample_constrained_skill_params(self, skill_index_arr, object_index_arr, num_samples=None):
+        assert len(skill_index_arr) == len(self.skill_lib)
+        assert len(object_index_arr) == len(self.env.objects)
+        skill_name = self.skill_lib.skill_names[int(np.argmax(skill_index_arr))]
+        object_name = self.env.objects.names[int(np.argmax(object_index_arr))]
+        return self.env.get_constrained_skill_param_sampler(skill_name, object_name, num_samples=num_samples)()
 
     def action_to_string(self, actions):
         skill_params = actions[:self.skill_lib.action_dimension]

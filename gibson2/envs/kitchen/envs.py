@@ -138,7 +138,7 @@ class SimpleToolAP(SimpleTool):
             skills.GraspTopPos(
                 name="grasp", lift_height=0.1, lift_speed=0.01, reach_distance=0.03,
                 params=OrderedDict(
-                    grasp_pos=skills.SkillParamsContinuous(low=[-0.2, 0, 0.03], high=[0.3, 0, 0.05]),
+                    grasp_pos=skills.SkillParamsContinuous(low=[-0.2, -0.03, 0.03], high=[0.3, 0.03, 0.05]),
                 )
             ),
             skills.PlaceFixed(name="place", retract_distance=0.1),
@@ -183,6 +183,13 @@ class SimpleToolAP(SimpleTool):
         success = {k: conds[k] for k in conds if k.startswith(self.target_object)}
         success["task"] = success[self.target_object]
         return success
+
+    def get_constrained_skill_param_sampler(self, skill_name, object_name, num_samples=None):
+        if skill_name == "grasp" and object_name in ["cube1", "cube2"]:
+            return lambda: self.skill_lib.sample_serialized_skill_params(
+                    "grasp", num_samples=num_samples, grasp_pos=dict(low=[-0.03, -0.03, 0.03], high=[0.03, 0.03, 0.05]))
+        else:
+            return lambda: self.skill_lib.sample_serialized_skill_params(skill_name, num_samples=num_samples)
 
     def get_task_skeleton(self):
         if self.target_object == "cube1":
