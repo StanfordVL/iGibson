@@ -26,6 +26,7 @@ class Viewer:
         self.up = initial_up
         self.renderer = renderer
         self.simulator = simulator
+        self.cid = []
 
         cv2.namedWindow('ExternalView')
         cv2.moveWindow("ExternalView", 0,0)
@@ -34,8 +35,6 @@ class Viewer:
         self.create_visual_object()
 
     def create_visual_object(self):
-        self.marker = VisualMarker(radius=0.04)
-        self.simulator.import_articulated_object(self.marker)
         self.constraint_marker = VisualMarker(radius=0.04, rgba_color=[0,0,1,1])
         self.simulator.import_articulated_object(self.constraint_marker)
 
@@ -62,8 +61,6 @@ class Viewer:
             # there is hit
             object_id, link_id, _, hit_pos, hit_normal = res[0]
             p.changeDynamics(object_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
-            self.marker.set_position(hit_pos)
-            self.simulator.sync()
             p.applyExternalForce(object_id, link_id, -np.array(hit_normal) * force, hit_pos, p.WORLD_FRAME)
 
     def create_constraint(self, x, y):
@@ -100,23 +97,26 @@ class Viewer:
             print(child_frame_pos)
             self.constraint_marker.set_position(hit_pos)
             self.dist = np.linalg.norm(np.array(hit_pos) - camera_pose)
-            self.cid = p.createConstraint(
+            cid = p.createConstraint(
                 parentBodyUniqueId=self.constraint_marker.body_id,
                 parentLinkIndex=-1,
                 childBodyUniqueId=object_id,
                 childLinkIndex=link_id,
-                jointType=p.JOINT_POINT2POINT,
+                jointType=p.JOINT_FIXED,
                 jointAxis=(0, 0, 0),
                 parentFramePosition=(0, 0, 0),
                 childFramePosition=child_frame_pos,
                 childFrameOrientation=child_frame_orn,
             )
-            p.changeConstraint(self.cid, maxForce=500)
+            p.changeConstraint(cid, maxForce=500)
+            self.cid.append(cid)
+            self.interaction_x, self.interaction_y = x,y
 
     def remove_constraint(self):
-        if self.cid is not None:
-            p.removeConstraint(self.cid)
-            self.cid = None
+        for cid in self.cid:
+            p.removeConstraint(cid)
+        self.cid = []
+        self.constraint_marker.set_position([0,0,100])
 
     def move_constraint(self, x, y):
         camera_pose = np.array([self.px, self.py, self.pz])
@@ -125,6 +125,28 @@ class Viewer:
         # frames = self.renderer.render(modes=('3d'))
         # position_cam_org = frames[0][y, x]
 
+        position_cam = np.array([(x - self.renderer.width / 2) / float(self.renderer.width / 2) * np.tan(
+            self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
+                                 -(y - self.renderer.height / 2) / float(self.renderer.height / 2) * np.tan(
+                                     self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
+                                 -1,
+                                 1])
+        position_cam[:3] = position_cam[:3] / np.linalg.norm(position_cam[:3]) * self.dist
+        position_world = np.linalg.inv(self.renderer.V).dot(position_cam)
+        position_world /= position_world[3]
+        self.constraint_marker.set_position(position_world[:3])
+        self.interaction_x, self.interaction_y = x, y
+
+    def move_constraint_z(self, dy):
+        x, y = self.interaction_x, self.interaction_y
+        camera_pose = np.array([self.px, self.py, self.pz])
+        self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, self.up)
+        # #pos = self.renderer.get_3d_point(x,y)
+        # frames = self.renderer.render(modes=('3d'))
+        # position_cam_org = frames[0][y, x]
+        self.dist *= (1 - dy)
+        if self.dist < 0.1:
+            self.dist = 0.1
         position_cam = np.array([(x - self.renderer.width / 2) / float(self.renderer.width / 2) * np.tan(
             self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
                                  -(y - self.renderer.height / 2) / float(self.renderer.height / 2) * np.tan(
@@ -152,20 +174,20 @@ class Viewer:
             self.left_down = True
             if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_ALTKEY):
                 self.create_constraint(x, y)
+            if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY):
+                self.create_constraint(x, y)
         elif event == cv2.EVENT_LBUTTONUP: # left mouse button released
             self.left_down = False
             self.right_down = False
             self.middle_down = False
-            if flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY:
-                # if ctrl+shift key is done, apply push force
-                self.apply_push_force(x, y, 1000)
+
             if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_ALTKEY):
                 self.remove_constraint()
+            if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY):
+                self.remove_constraint()
+
         elif event == cv2.EVENT_MBUTTONUP: # middle mouse button released
             self.middle_down = False
-            if flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY:
-                # if ctrl+shift key is done, apply pull force
-                self.apply_push_force(x, y, -1000)
 
         if event == cv2.EVENT_MOUSEMOVE: # moving mouse location on the window
             if self.left_down: # if left button was pressed we change orientation of camera
@@ -184,6 +206,9 @@ class Viewer:
 
                 if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_ALTKEY):
                     self.move_constraint(x, y)
+                if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY):
+                    self.move_constraint_z(dy)
+
 
             elif self.middle_down: #if middle button was pressed we get closer/further away in the viewing direction
                 d_vd = (y - self._mouse_iy) / 100.0

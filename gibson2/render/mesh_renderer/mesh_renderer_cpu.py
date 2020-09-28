@@ -647,7 +647,7 @@ class MeshRenderer(object):
         else:
             logging.warning(
                 "Environment texture not available, cannot use PBR.")
-        self.r.loadSkyBox(self.skyboxShaderProgram)
+        self.r.loadSkyBox(self.skyboxShaderProgram, 20.0)
 
     def set_light_position_direction(self, position, target):
         self.lightpos = position

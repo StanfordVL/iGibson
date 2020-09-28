@@ -1247,19 +1247,19 @@ void MeshRendererContext::clean_meshrenderer_optimized(std::vector<GLuint> color
 	}
 
 
-void MeshRendererContext::loadSkyBox(int shaderProgram){
+void MeshRendererContext::loadSkyBox(int shaderProgram, float skybox_size){
     GLint vertex = glGetAttribLocation(shaderProgram, "position");
-
     GLfloat cube_vertices[] = {
-	  -10.0,  10.0,  10.0,
-	  -10.0, -10.0,  10.0,
-	   10.0, -10.0,  10.0,
-	   10.0,  10.0,  10.0,
-	  -10.0,  10.0, -10.0,
-	  -10.0, -10.0, -10.0,
-	   10.0, -10.0, -10.0,
-	   10.0,  10.0, -10.0,
+	  -1.0,  1.0,  1.0,
+	  -1.0, -1.0,  1.0,
+	   1.0, -1.0,  1.0,
+	   1.0,  1.0,  1.0,
+	  -1.0,  1.0, -1.0,
+	  -1.0, -1.0, -1.0,
+	   1.0, -1.0, -1.0,
+	   1.0,  1.0, -1.0,
 	};
+	for (int i = 0; i < 24; i++) cube_vertices[i] *= skybox_size;
 	GLuint vbo_cube_vertices;
 	glGenBuffers(1, &vbo_cube_vertices);
 	m_skybox_vbo = vbo_cube_vertices;
