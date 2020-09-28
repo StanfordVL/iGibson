@@ -58,13 +58,11 @@ class Viewer:
         position_eye = camera_pose
         res = p.rayTest(position_eye, position_world[:3])
         # debug_line_id = p.addUserDebugLine(position_eye, position_world[:3], lineWidth=3)
-        if len(res) > 0:# and res[0][0] != -1 and res[0][0] != self.marker.body_id:
-            print("HIT", res[0])
+        if len(res) > 0 and res[0][0] != -1:# and res[0][0] != self.marker.body_id:
             # there is hit
             object_id, link_id, _, hit_pos, hit_normal = res[0]
             p.changeDynamics(object_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
             self.marker.set_position(hit_pos)
-            print(hit_pos)
             self.simulator.sync()
             p.applyExternalForce(object_id, link_id, -np.array(hit_normal) * force, hit_pos, p.WORLD_FRAME)
 
@@ -89,6 +87,7 @@ class Viewer:
         res = p.rayTest(position_eye, position_world[:3])
         if len(res) > 0 and res[0][0] != -1:
             object_id, link_id, _, hit_pos, hit_normal = res[0]
+            p.changeDynamics(object_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
             link_pos, link_orn = None, None
             if link_id == -1:
                 link_pos, link_orn = p.getBasePositionAndOrientation(object_id)
