@@ -70,14 +70,10 @@ def convert_scene(scene_name, select_best=False):
                 obj_id_to_scale_rsd = []
                 for obj_id in objs:
                     obj_dir = os.path.join(cat_dir, obj_id)
-                    bbox_json = os.path.join(obj_dir, 'misc', 'bbox.json')
+                    bbox_json = os.path.join(obj_dir, 'misc', 'metadata.json')
                     with open(bbox_json, 'r') as fp:
                         bbox_data = json.load(fp)
-                    min_x, min_y, min_z = bbox_data['min']
-                    max_x, max_y, max_z = bbox_data['max']
-
-                    obj_lenx, obj_leny, obj_lenz = \
-                        max_x - min_x, max_y - min_y, max_z - min_z
+                    obj_lenx, obj_leny, obj_lenz = bbox_data['bbox_size'] 
 
                     # all_objs.json and bbox.json have xy axis flipped
                     scale_x, scale_y, scale_z = \
