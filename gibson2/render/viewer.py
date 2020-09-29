@@ -37,6 +37,9 @@ class Viewer:
     def create_visual_object(self):
         self.constraint_marker = VisualMarker(radius=0.04, rgba_color=[0,0,1,1])
         self.simulator.import_articulated_object(self.constraint_marker)
+        self.constraint_marker2 = VisualMarker(visual_shape=p.GEOM_CAPSULE, radius=0.01, length=3,
+                                               initial_offset=[0,0,-1.5], rgba_color=[0,0,1,1])
+        self.simulator.import_articulated_object(self.constraint_marker2)
 
     def apply_push_force(self, x, y, force):
         camera_pose = np.array([self.px, self.py, self.pz])
@@ -96,6 +99,7 @@ class Viewer:
                                                                   [0,0,0,1])
             print(child_frame_pos)
             self.constraint_marker.set_position(hit_pos)
+            self.constraint_marker2.set_position(hit_pos)
             self.dist = np.linalg.norm(np.array(hit_pos) - camera_pose)
             cid = p.createConstraint(
                 parentBodyUniqueId=self.constraint_marker.body_id,
@@ -116,7 +120,8 @@ class Viewer:
         for cid in self.cid:
             p.removeConstraint(cid)
         self.cid = []
-        self.constraint_marker.set_position([0,0,100])
+        self.constraint_marker.set_position([0, 0, 100])
+        self.constraint_marker2.set_position([0, 0, 100])
 
     def move_constraint(self, x, y):
         camera_pose = np.array([self.px, self.py, self.pz])
@@ -135,6 +140,7 @@ class Viewer:
         position_world = np.linalg.inv(self.renderer.V).dot(position_cam)
         position_world /= position_world[3]
         self.constraint_marker.set_position(position_world[:3])
+        self.constraint_marker2.set_position(position_world[:3])
         self.interaction_x, self.interaction_y = x, y
 
     def move_constraint_z(self, dy):
@@ -157,6 +163,7 @@ class Viewer:
         position_world = np.linalg.inv(self.renderer.V).dot(position_cam)
         position_world /= position_world[3]
         self.constraint_marker.set_position(position_world[:3])
+        self.constraint_marker2.set_position(position_world[:3])
 
 
     def change_dir(self, event, x, y, flags, param):
