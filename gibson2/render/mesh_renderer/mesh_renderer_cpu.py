@@ -511,7 +511,7 @@ class MeshRenderer(object):
 
     def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False,
                  enable_shadow=False, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr'),
-                 optimized=False):
+                 optimized=False, skybox_size=20.):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -637,6 +637,7 @@ class MeshRenderer(object):
         self.mesh_materials = []
 
         self.env_texture_filename = env_texture_filename
+        self.skybox_size = skybox_size
         if not self.platform == 'Darwin':
             self.setup_pbr()
 
@@ -647,7 +648,7 @@ class MeshRenderer(object):
         else:
             logging.warning(
                 "Environment texture not available, cannot use PBR.")
-        self.r.loadSkyBox(self.skyboxShaderProgram, 20.0)
+        self.r.loadSkyBox(self.skyboxShaderProgram, self.skybox_size)
 
     def set_light_position_direction(self, position, target):
         self.lightpos = position
