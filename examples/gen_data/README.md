@@ -26,8 +26,8 @@ A typical matterport scan in "matterpak" format has the following file format:
 There are a few steps involved in converting this format to iGibson format:
 1. Make sure it is actually in z-up convention. Usually, matterport meshes are already
 following this convention. 
-2. Combine all the textures into one file, and modify the `mtl` file and `obj` file accordingly. It can be done with `combine_texture.ipynb`, please follow the steps there. 
-3. (optional) Add surface normals to `mesh_z_up.obj`, if you want normal to be correctly rendered in iGibson. This can be done with the following commands:
+2. Combine all the textures into one file, and modify the `mtl` file and `obj` file accordingly. It can be done with `combine_texture.py`, please follow the steps there. 
+3. (required) Add surface normals to `mesh_z_up.obj`, if you want normal to be correctly rendered in iGibson. This can be done with the following commands:
 ```
 meshlabserver -i mesh_z_up.obj -o mesh_z_up_with_normal.obj -om vn vc wt 
 mv mesh_z_up_with_normal.obj mesh_z_up.obj
