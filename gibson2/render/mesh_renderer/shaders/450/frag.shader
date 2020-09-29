@@ -69,7 +69,8 @@ vec3 fresnelSchlick(vec3 F0, float cosTheta)
 }
 
 void main() {
-    vec3 lightDir = normalize(light_position);
+    vec3 lightDir = vec3(0,0,1);//normalize(light_position);
+    //sunlight pointing to z direction
     float diff = 0.5 + 0.5 * max(dot(Normal_world, lightDir), 0.0);
     vec3 diffuse = diff * light_color;
 
