@@ -57,6 +57,7 @@ class URDFObject(Object):
                  bounding_box=None,
                  scale=None,
                  avg_obj_dims=None,
+                 joint_friction=10,
                  ):
         """
 
@@ -76,6 +77,9 @@ class URDFObject(Object):
 
         # If we merge the fixed joints into single link to improve performance
         self.merge_fj = False
+
+        # Friction for all prismatic and revolute joints
+        self.joint_friction=joint_friction
 
         # These following fields have exactly the same length (i.e. the number
         # of sub URDFs in this object)
@@ -530,5 +534,13 @@ class URDFObject(Object):
             p.changeDynamics(
                 body_id, -1,
                 activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
+
+            for j in range(p.getNumJoints(body_id)):
+                info = p.getJointInfo(body_id, j)
+                jointType = info[2]
+                if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
+                    p.setJointMotorControl2(body_id, j, p.VELOCITY_CONTROL, force=self.joint_friction, targetVelocity=0)
+
+
             self.body_ids.append(body_id)
         return self.body_ids
