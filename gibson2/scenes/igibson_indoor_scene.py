@@ -46,7 +46,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         )
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization 
-        fname = scene_id if not object_randomization else '{}_best'.format(scene_id)
+        fname = scene_id if object_randomization else '{}_best'.format(scene_id)
         self.is_interactive = True
         self.scene_file = os.path.join(get_ig_scene_path(scene_id), "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
