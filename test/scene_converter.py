@@ -36,7 +36,7 @@ def convert_scene(scene_name, select_best=False):
 
     print(scene_file)
 
-    with open(get_ig_scene_path(scene_name) + '/misc/all_objs.json', 'r') as all_objs_file:
+    with open(get_ig_scene_path(scene_name) + '/misc/all_objs_new.json', 'r') as all_objs_file:
         all_objs = json.load(all_objs_file)
 
         total = 0
@@ -137,8 +137,9 @@ def convert_scene(scene_name, select_best=False):
             parent = ET.SubElement(
                 joint_el, 'parent', dict([("link", "world")]))
             # print(total)
-
-    scene_file_out = get_ig_scene_path(scene_name) + "/" + scene_name + ".urdf"
+    
+    fname = scene_name if not args.select_best else "{}_best".format(scene_name)
+    scene_file_out = os.path.join(get_ig_scene_path(scene_name), "{}.urdf".format(fname))
     scene_tree.write(scene_file_out)
     print('all categories:', categories)
 
