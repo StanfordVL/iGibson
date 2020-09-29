@@ -34,7 +34,6 @@ def convert_scene(scene_name, select_best=False):
     bbox_dir = os.path.join(get_ig_scene_path(scene_name), "bbox")
     os.makedirs(bbox_dir, exist_ok=True)
 
-    print(scene_file)
 
     with open(get_ig_scene_path(scene_name) + '/misc/all_objs_new.json', 'r') as all_objs_file:
         all_objs = json.load(all_objs_file)
@@ -61,7 +60,6 @@ def convert_scene(scene_name, select_best=False):
             bbox_y = np.linalg.norm(edge_y)
             z_bbox_coords = obj['z']
             bbox_z = (z_bbox_coords[1] - z_bbox_coords[0]) * 0.99
-            print(bbox_x, bbox_y, bbox_z)
 
             # select the best object model that matches the aspect ratio
             # of each bounding box
@@ -138,7 +136,7 @@ def convert_scene(scene_name, select_best=False):
                 joint_el, 'parent', dict([("link", "world")]))
             # print(total)
     
-    fname = scene_name if not args.select_best else "{}_best".format(scene_name)
+    fname = scene_name if not select_best else "{}_best".format(scene_name)
     scene_file_out = os.path.join(get_ig_scene_path(scene_name), "{}.urdf".format(fname))
     scene_tree.write(scene_file_out)
     print('all categories:', categories)
