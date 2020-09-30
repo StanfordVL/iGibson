@@ -59,7 +59,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         timestr = time.strftime("%Y%m%d-%H%M%S")
         # Create the subfolder
         self.scene_instance_folder = os.path.join(
-            gibson2.ig_dataset_path, "scene_instances/" + timestr)
+            gibson2.ig_dataset_path, "scene_instances", '{}_{}'.format(timestr, random.getrandbits(64)))
         os.makedirs(self.scene_instance_folder, exist_ok=True)
 
         # Load average object density if exists
