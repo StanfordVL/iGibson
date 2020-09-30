@@ -183,6 +183,16 @@ def load_obj(fn):
         outputs['normal'] = _unify_rows(normal)[normal_idx]
     return outputs
 
+def save_obj(vertices_info, fn):
+    with open(fn, 'w') as f:
+        for v in vertices_info:
+            f.write('v {} {} {}\n'.format(v[0], v[1], v[2]))
+
+def transform_vertex(vertices, pose_rot, pose_trans):
+    v = vertices[:, :3]
+    v = np.concatenate([v, np.ones(shape=(v.shape[0], 1))], axis=1)
+    v = v.dot(pose_rot).dot(pose_trans)
+    return v[:, :3]
 
 def normalize_mesh(mesh):
     '''Scale mesh to fit into -1..1 cube'''
@@ -192,7 +202,6 @@ def normalize_mesh(mesh):
     pos /= np.abs(pos).max()
     mesh['position'] = pos
     return mesh
-
 
 def quat2rotmat(quat):
     """
