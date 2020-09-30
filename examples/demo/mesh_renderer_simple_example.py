@@ -2,14 +2,14 @@ import cv2
 import sys
 import os
 import numpy as np
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
-from gibson2.utils.assets_utils import get_model_path
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.utils.assets_utils import get_scene_path
 
 def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:
-        model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
+        model_path = os.path.join(get_scene_path('Rs'), 'mesh_z_up.obj')
 
     renderer = MeshRenderer(width=512, height=512)
     renderer.load_object(model_path)

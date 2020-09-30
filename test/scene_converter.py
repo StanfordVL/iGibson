@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import BuildingScene, StadiumScene, iGSDFScene
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
-import yaml
 from gibson2.utils.utils import parse_config
 import os
 import gibson2
 
-from gibson2.utils.assets_utils import download_assets, download_demo_data, get_ig_scene_path, get_ig_category_path
+from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_category_path
 
 import argparse
 import xml.etree.ElementTree as ET
@@ -26,6 +22,7 @@ missing_models = set([
     'closet',
     'ac_engine',
     'water_hearter',
+    'clutter'
 ])
 
 
@@ -37,9 +34,8 @@ def convert_scene(scene_name, select_best=False):
     bbox_dir = os.path.join(get_ig_scene_path(scene_name), "bbox")
     os.makedirs(bbox_dir, exist_ok=True)
 
-    print(scene_file)
 
-    with open(get_ig_scene_path(scene_name) + '/misc/all_objs.json', 'r') as all_objs_file:
+    with open(get_ig_scene_path(scene_name) + '/misc/all_objs_new.json', 'r') as all_objs_file:
         all_objs = json.load(all_objs_file)
 
         total = 0
@@ -64,7 +60,6 @@ def convert_scene(scene_name, select_best=False):
             bbox_y = np.linalg.norm(edge_y)
             z_bbox_coords = obj['z']
             bbox_z = (z_bbox_coords[1] - z_bbox_coords[0]) * 0.99
-            print(bbox_x, bbox_y, bbox_z)
 
             # select the best object model that matches the aspect ratio
             # of each bounding box
@@ -74,14 +69,10 @@ def convert_scene(scene_name, select_best=False):
                 obj_id_to_scale_rsd = []
                 for obj_id in objs:
                     obj_dir = os.path.join(cat_dir, obj_id)
-                    bbox_json = os.path.join(obj_dir, 'misc', 'bbox.json')
+                    bbox_json = os.path.join(obj_dir, 'misc', 'metadata.json')
                     with open(bbox_json, 'r') as fp:
                         bbox_data = json.load(fp)
-                    min_x, min_y, min_z = bbox_data['min']
-                    max_x, max_y, max_z = bbox_data['max']
-
-                    obj_lenx, obj_leny, obj_lenz = \
-                        max_x - min_x, max_y - min_y, max_z - min_z
+                    obj_lenx, obj_leny, obj_lenz = bbox_data['bbox_size'] 
 
                     # all_objs.json and bbox.json have xy axis flipped
                     scale_x, scale_y, scale_z = \
@@ -144,8 +135,9 @@ def convert_scene(scene_name, select_best=False):
             parent = ET.SubElement(
                 joint_el, 'parent', dict([("link", "world")]))
             # print(total)
-
-    scene_file_out = get_ig_scene_path(scene_name) + "/" + scene_name + ".urdf"
+    
+    fname = scene_name if not select_best else "{}_best".format(scene_name)
+    scene_file_out = os.path.join(get_ig_scene_path(scene_name), "{}.urdf".format(fname))
     scene_tree.write(scene_file_out)
     print('all categories:', categories)
 

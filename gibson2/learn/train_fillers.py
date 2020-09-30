@@ -1,19 +1,16 @@
 import argparse
 import os
-import re
 import torch
 import torch.nn as nn
 import numpy as np
-from torchvision import datasets, transforms
+from torchvision import transforms
 import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 import torchvision.utils as vutils
-from gibson2.data_utils.datasets import PairDataset
+from gibson2.utils.data_utils.datasets import PairDataset
 from gibson2.learn.completion import CompletionNet, identity_init, Perceptual
 from tensorboardX import SummaryWriter
 from datetime import datetime
-import gibson2.learn.vision_utils
-import torch.nn.functional as F
 import torchvision.models as models
 
 

@@ -1,7 +1,6 @@
-import pybullet as p
-from gibson2.core.physics.scene import StadiumScene, BuildingScene
-from gibson2.core.physics.interactive_objects import YCBObject
-from gibson2.core.simulator import Simulator
+from gibson2.scenes.stadium_scene import StadiumScene
+from gibson2.objects.ycb_object import YCBObject
+from gibson2.simulator import Simulator
 
 from gibson2.utils.assets_utils import download_assets
 

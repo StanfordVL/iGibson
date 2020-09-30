@@ -1,24 +1,22 @@
 import gibson2
-from gibson2.core.physics.interactive_objects import VisualMarker, InteractiveObj, BoxShape
-from gibson2.core.physics.robot_locomotors import Turtlebot
-from gibson2.utils.utils import parse_config, rotate_vector_3d, l2_distance, quatToXYZW, cartesian_to_polar
-from gibson2.envs.base_env import BaseEnv
+from gibson2.objects.visual_marker import VisualMarker
+from gibson2.objects.articulated_object import ArticulatedObject
+from gibson2.robots.turtlebot_robot import Turtlebot
+from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, cartesian_to_polar
+from gibson2.envs.env_base import BaseEnv
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
 import argparse
-from transforms3d.quaternions import quat2mat, qmult
+from transforms3d.quaternions import quat2mat
 import gym
 import numpy as np
 import os
 import pybullet as p
-from IPython import embed
-import cv2
 import time
-import collections
 import logging
 
 
-class NavigateEnv(BaseEnv):
+class NavigationEnv(BaseEnv):
     """
     We define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
     arXiv preprint arXiv:1807.06757 (2018). (https://arxiv.org/pdf/1807.06757.pdf)
@@ -27,7 +25,7 @@ class NavigateEnv(BaseEnv):
     def __init__(
             self,
             config_file,
-            model_id=None,
+            scene_id=None,
             mode='headless',
             action_timestep=1 / 10.0,
             physics_timestep=1 / 240.0,
@@ -37,20 +35,20 @@ class NavigateEnv(BaseEnv):
     ):
         """
         :param config_file: config_file path
-        :param model_id: override model_id in config file
+        :param scene_id: override scene_id in config file
         :param mode: headless or gui mode
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
         :param automatic_reset: whether to automatic reset after an episode finishes
         :param device_idx: device_idx: which GPU to run the simulation and rendering on
         """
-        super(NavigateEnv, self).__init__(config_file=config_file,
-                                          model_id=model_id,
-                                          mode=mode,
-                                          action_timestep=action_timestep,
-                                          physics_timestep=physics_timestep,
-                                          device_idx=device_idx,
-                                          render_to_tensor=render_to_tensor)
+        super(NavigationEnv, self).__init__(config_file=config_file,
+                                            scene_id=scene_id,
+                                            mode=mode,
+                                            action_timestep=action_timestep,
+                                            physics_timestep=physics_timestep,
+                                            device_idx=device_idx,
+                                            render_to_tensor=render_to_tensor)
         self.automatic_reset = automatic_reset
 
     def load_task_setup(self):
@@ -220,7 +218,7 @@ class NavigateEnv(BaseEnv):
         """
         Load navigation environment
         """
-        super(NavigateEnv, self).load()
+        super(NavigationEnv, self).load()
         self.load_task_setup()
         self.load_observation_space()
         self.load_action_space()
@@ -536,7 +534,7 @@ class NavigateEnv(BaseEnv):
 
         if self.scene.build_graph:
             shortest_path, _ = self.get_shortest_path(entire_path=True)
-            floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
+            floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height()
             num_nodes = min(self.num_waypoints_vis, shortest_path.shape[0])
             for i in range(num_nodes):
                 self.waypoints_vis[i].set_position(pos=np.array([shortest_path[i][0],
@@ -707,11 +705,11 @@ class NavigateEnv(BaseEnv):
         return state
 
 
-class NavigateRandomEnv(NavigateEnv):
+class NavigationRandomEnv(NavigationEnv):
     def __init__(
             self,
             config_file,
-            model_id=None,
+            scene_id=None,
             mode='headless',
             action_timestep=1 / 10.0,
             physics_timestep=1 / 240.0,
@@ -722,7 +720,7 @@ class NavigateRandomEnv(NavigateEnv):
     ):
         """
         :param config_file: config_file path
-        :param model_id: override model_id in config file
+        :param scene_id: override scene_id in config file
         :param mode: headless or gui mode
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
@@ -730,14 +728,14 @@ class NavigateRandomEnv(NavigateEnv):
         :param random_height: whether to randomize height for target position (for reaching task)
         :param device_idx: device_idx: which GPU to run the simulation and rendering on
         """
-        super(NavigateRandomEnv, self).__init__(config_file,
-                                                model_id=model_id,
-                                                mode=mode,
-                                                action_timestep=action_timestep,
-                                                physics_timestep=physics_timestep,
-                                                automatic_reset=automatic_reset,
-                                                device_idx=device_idx,
-                                                render_to_tensor=render_to_tensor)
+        super(NavigationRandomEnv, self).__init__(config_file,
+                                                  scene_id=scene_id,
+                                                  mode=mode,
+                                                  action_timestep=action_timestep,
+                                                  physics_timestep=physics_timestep,
+                                                  automatic_reset=automatic_reset,
+                                                  device_idx=device_idx,
+                                                  render_to_tensor=render_to_tensor)
         self.random_height = random_height
 
         self.target_dist_min = self.config.get('target_dist_min', 1.0)
@@ -749,11 +747,11 @@ class NavigateRandomEnv(NavigateEnv):
         The geodesic distance (or L2 distance if traversable map graph is not built)
         between initial_pos and target_pos has to be between [self.target_dist_min, self.target_dist_max]
         """
-        _, self.initial_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
+        _, self.initial_pos = self.scene.get_random_point(floor=self.floor_num, random_height=self.random_height)
         max_trials = 100
         dist = 0.0
         for _ in range(max_trials):
-            _, self.target_pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
+            _, self.target_pos = self.scene.get_random_point(floor=self.floor_num, random_height=self.random_height)
             if self.scene.build_graph:
                 _, dist = self.get_shortest_path(from_initial_pos=True)
             else:
@@ -777,14 +775,14 @@ class NavigateRandomEnv(NavigateEnv):
             # reset "virtual floor" to the correct height
             self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.02)
 
-        state = super(NavigateRandomEnv, self).reset()
+        state = super(NavigationRandomEnv, self).reset()
         return state
 
 
-class NavigateRandomEnvSim2Real(NavigateRandomEnv):
+class NavigationRandomEnvSim2Real(NavigationRandomEnv):
     def __init__(self,
                  config_file,
-                 model_id=None,
+                 scene_id=None,
                  mode='headless',
                  action_timestep=1 / 10.0,
                  physics_timestep=1 / 240.0,
@@ -794,15 +792,15 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
                  collision_reward_weight=0.0,
                  track='static'
                  ):
-        super(NavigateRandomEnvSim2Real, self).__init__(config_file,
-                                                        model_id=model_id,
-                                                        mode=mode,
-                                                        action_timestep=action_timestep,
-                                                        physics_timestep=physics_timestep,
-                                                        automatic_reset=automatic_reset,
-                                                        random_height=False,
-                                                        device_idx=device_idx,
-                                                        render_to_tensor=render_to_tensor)
+        super(NavigationRandomEnvSim2Real, self).__init__(config_file,
+                                                          scene_id=scene_id,
+                                                          mode=mode,
+                                                          action_timestep=action_timestep,
+                                                          physics_timestep=physics_timestep,
+                                                          automatic_reset=automatic_reset,
+                                                          random_height=False,
+                                                          device_idx=device_idx,
+                                                          render_to_tensor=render_to_tensor)
         self.collision_reward_weight = collision_reward_weight
 
         assert track in ['static', 'interactive', 'dynamic'], 'unknown track'
@@ -842,7 +840,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
 
         for _ in range(self.interactive_objects_num_dups):
             for urdf_model in interactive_objects_path:
-                obj = InteractiveObj(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
+                obj = ArticulatedObject(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
                 self.simulator.import_object(obj)
                 interactive_objects.append(obj)
         return interactive_objects
@@ -855,7 +853,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         for obj in self.interactive_objects:
             reset_success = False
             for _ in range(max_trials):
-                _, pos = self.scene.get_random_point_floor(self.floor_num, self.random_height)
+                _, pos = self.scene.get_random_point(floor=self.floor_num, random_height=self.random_height)
                 orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
                 if self.test_valid_position('obj', obj, pos, orn):
                     reset_success = True
@@ -872,7 +870,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         """
         max_trials = 100
         shortest_path, _ = self.get_shortest_path(entire_path=True)
-        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height(self.floor_num)
+        floor_height = 0.0 if self.floor_num is None else self.scene.get_floor_height()
         for robot in self.dynamic_objects:
             reset_success = False
             for _ in range(max_trials):
@@ -904,7 +902,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         if self.track == 'dynamic':
             self.step_dynamic_objects()
 
-        return super(NavigateRandomEnvSim2Real, self).step(action)
+        return super(NavigationRandomEnvSim2Real, self).step(action)
 
     def reset(self):
         """
@@ -922,7 +920,7 @@ class NavigateRandomEnvSim2Real(NavigateRandomEnv):
         if self.track == 'interactive':
             self.reset_interactive_objects()
 
-        state = NavigateEnv.reset(self)
+        state = NavigationEnv.reset(self)
 
         if self.track == 'dynamic':
             self.reset_dynamic_objects()
@@ -953,21 +951,21 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.env_type == 'deterministic':
-        nav_env = NavigateEnv(config_file=args.config,
-                              mode=args.mode,
-                              action_timestep=1.0 / 10.0,
-                              physics_timestep=1.0 / 40.0)
+        nav_env = NavigationEnv(config_file=args.config,
+                                mode=args.mode,
+                                action_timestep=1.0 / 10.0,
+                                physics_timestep=1.0 / 40.0)
     elif args.env_type == 'random':
-        nav_env = NavigateRandomEnv(config_file=args.config,
-                                    mode=args.mode,
-                                    action_timestep=1.0 / 10.0,
-                                    physics_timestep=1.0 / 40.0)
+        nav_env = NavigationRandomEnv(config_file=args.config,
+                                      mode=args.mode,
+                                      action_timestep=1.0 / 10.0,
+                                      physics_timestep=1.0 / 40.0)
     elif args.env_type == 'sim2real':
-        nav_env = NavigateRandomEnvSim2Real(config_file=args.config,
-                                            mode=args.mode,
-                                            action_timestep=1.0 / 10.0,
-                                            physics_timestep=1.0 / 40.0,
-                                            track=args.sim2real_track)
+        nav_env = NavigationRandomEnvSim2Real(config_file=args.config,
+                                              mode=args.mode,
+                                              action_timestep=1.0 / 10.0,
+                                              physics_timestep=1.0 / 40.0,
+                                              track=args.sim2real_track)
 
     step_time_list = []
     for episode in range(100):
