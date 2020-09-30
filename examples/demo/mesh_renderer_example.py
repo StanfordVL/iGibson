@@ -72,6 +72,14 @@ def main():
         camera_pose = np.array([px, py, 0.5])
         renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
 
+    # start = time.time()
+
+    # for i in range(100):
+    #     frame = renderer.render(modes=('rgb', 'normal', '3d'))
+
+    # elapsed = time.time() - start
+    # print("num objects {} fps {}".format(len(renderer.instances), 100/elapsed))
+
     renderer.release()
 
 

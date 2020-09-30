@@ -1,7 +1,8 @@
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
+from gibson2.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
-from gibson2.render.viewer import Viewer
+from gibson2.render.viewer import Viewer, ViewerVR
 import pybullet as p
 import gibson2
 import os
@@ -9,7 +10,7 @@ import numpy as np
 import platform
 import logging
 from IPython import embed
-
+import time
 
 class Simulator:
     def __init__(self,
@@ -27,7 +28,11 @@ class Simulator:
                  auto_sync=True,
                  optimized_renderer=False,
                  env_texture_filename=None,
-                 skybox_size=20.):
+                 skybox_size=20.,
+                 use_dynamic_timestep=False,
+                 vrFullscreen=True,
+		         vrEyeTracking=False,
+                 vrMode=True):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -58,14 +63,32 @@ class Simulator:
 
         self.use_pb_renderer = False
         self.use_ig_renderer = False
-
+        self.use_vr_renderer = False
+        
         if self.mode in ['gui', 'iggui']:
             self.use_ig_renderer = True
 
         if self.mode in ['gui', 'pbgui']:
             self.use_pb_renderer = True
 
+        if self.mode in ['vr']:
+            self.use_vr_renderer = True
+        
+        # This will only be set once (to 20, 45 or 90) after initial measurements
+        self.use_dynamic_timestep = use_dynamic_timestep
+        # Number of frames to average over to figure out fps value
+        self.frame_measurement_num = 45
+        self.current_frame_count = 0
+        self.frame_time_sum = 0.0
+        self.should_set_timestep = True
+        # Low pass-filtered average frame time, set to 0 to start
+        self.avg_frame_time = 0
+                   
         # renderer
+        self.vrFullscreen = vrFullscreen
+        self.vrEyeTracking = vrEyeTracking
+        self.vrMode = vrMode
+        self.max_haptic_duration = 4000
         self.image_width = image_width
         self.image_height = image_height
         self.vertical_fov = vertical_fov
@@ -92,7 +115,11 @@ class Simulator:
         Attach a debugging viewer to the renderer. This will make the step much slower so should be avoided when
         training agents
         """
-        self.viewer = Viewer(simulator=self, renderer=self.renderer)
+        if self.use_vr_renderer:
+            self.viewer = ViewerVR()
+        else:
+            self.viewer = Viewer()
+        self.viewer.renderer = self.renderer
 
     def reload(self):
         """
@@ -113,6 +140,18 @@ class Simulator:
                                             use_fisheye=self.use_fisheye,
                                             enable_shadow=self.enable_shadow,
                                             msaa=self.enable_msaa)
+        elif self.use_vr_renderer:
+            self.renderer = MeshRendererVR(width=self.image_width,
+                                           height=self.image_height,
+                                           vertical_fov=self.vertical_fov,
+                                           device_idx=self.device_idx,
+                                           use_fisheye=self.use_fisheye,
+                                           enable_shadow=self.enable_shadow,
+                                           msaa=self.enable_msaa,
+                                           optimized=self.optimized_renderer,
+                                           fullscreen=self.vrFullscreen,
+                                           useEyeTracking=self.vrEyeTracking,
+                                           vrMode=self.vrMode)
         else:
             if self.env_texture_filename is not None:
                 self.renderer = MeshRenderer(width=self.image_width,
@@ -144,6 +183,9 @@ class Simulator:
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
         print("PyBullet Logging Information******************")
+
+        if (self.use_ig_renderer or self.use_vr_renderer) and not self.render_to_tensor:
+            self.add_viewer()
 
         self.visual_objects = {}
         self.robots = []
@@ -287,7 +329,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
-                visual_object = len(self.renderer.visual_objects) - 1
+                visual_object = len(self.renderer.get_visual_objects()) - 1
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(
                     gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
@@ -297,7 +339,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
-                visual_object = len(self.renderer.visual_objects) - 1
+                visual_object = len(self.renderer.get_visual_objects()) - 1
             elif type == p.GEOM_BOX:
                 filename = os.path.join(
                     gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
@@ -306,7 +348,7 @@ class Simulator:
                                           transform_pos=rel_pos,
                                           input_kd=color[:3],
                                           scale=np.array(dimensions))
-                visual_object = len(self.renderer.visual_objects) - 1
+                visual_object = len(self.renderer.get_visual_objects()) - 1
 
             if visual_object is not None:
                 self.renderer.add_instance(visual_object,
@@ -361,7 +403,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(
@@ -372,7 +414,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
                 filename = os.path.join(
@@ -382,7 +424,7 @@ class Simulator:
                                           transform_pos=rel_pos,
                                           input_kd=color[:3],
                                           scale=np.array(dimensions))
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
 
             if link_id == -1:
@@ -458,7 +500,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(
@@ -469,7 +511,7 @@ class Simulator:
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
                 filename = os.path.join(
@@ -479,7 +521,7 @@ class Simulator:
                                           transform_pos=rel_pos,
                                           input_kd=color[:3],
                                           scale=np.array(dimensions))
-                visual_objects.append(len(self.renderer.visual_objects) - 1)
+                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
 
             if link_id == -1:
@@ -499,25 +541,158 @@ class Simulator:
                                          robot=None)
 
         return id
+    
+    def optimize_data(self):
+        """Optimizes data for optimized rendering.
+        This should be called once before starting/stepping the simulation.
+        """
+        self.renderer.optimize_vertex_and_texture()
 
-    def step(self):
+    def step(self, shouldPrintTime=False):
         """
         Step the simulation and update positions in renderer
         """
+        start_time = time.time()
 
         p.stepSimulation()
+
+        physics_time = time.time() - start_time
+        curr_time = time.time()
+
         if self.auto_sync:
             self.sync()
+
+        render_time = time.time() - curr_time
+        curr_frame_time = physics_time + render_time
+        self.frame_time_sum += curr_frame_time
+        self.current_frame_count += 1
+        if self.current_frame_count >= self.frame_measurement_num and self.should_set_timestep and self.use_dynamic_timestep:
+            unrounded_timestep = self.frame_time_sum / float(self.frame_measurement_num)
+            rounded_timestep = 0
+            if unrounded_timestep > 1.0 / 32.5:
+                rounded_timestep = 1.0 / 20.0
+            elif unrounded_timestep > 1.0 / 67.5:
+                rounded_timestep = 1.0 / 45.0
+            else:
+                rounded_timestep = 1.0 / 90.0
+
+            print("Final rounded timestep is: ", rounded_timestep)
+            print("Final fps is: ", int(1 / rounded_timestep))
+            self.set_timestep(rounded_timestep)
+            self.should_set_timestep = False
+
+        if shouldPrintTime:
+            print("Physics time: %f" % float(physics_time/0.001))
+            print("Render time: %f" % float(render_time/0.001))
+            print("Total frame time: %f" % float(curr_frame_time/0.001))
+            if curr_frame_time <= 0:
+                 print("Curr fps: 1000")
+            else:
+                print("Curr fps: %f" % float(1/curr_frame_time))
+            print("___________________________________")
 
     def sync(self):
         """
         Update positions in renderer without stepping the simulation. Usually used in the reset() function
         """
-        for instance in self.renderer.instances:
+        for instance in self.renderer.get_instances():
             if instance.dynamic:
                 self.update_position(instance)
-        if self.use_ig_renderer and self.viewer is not None:
+        if (self.use_ig_renderer or self.use_vr_renderer) and not self.viewer is None:
             self.viewer.update()
+    
+    # Returns event data as list of lists. Each sub-list contains deviceType and eventType. List is empty is all 
+    # events are invalid. 
+    # deviceType: left_controller, right_controller
+    # eventType: grip_press, grip_unpress, trigger_press, trigger_unpress, touchpad_press, touchpad_unpress,
+    # touchpad_touch, touchpad_untouch, menu_press, menu_unpress (menu is the application button)
+    def pollVREvents(self):
+        if not self.use_vr_renderer:
+            return []
+
+        eventData = self.renderer.vrsys.pollVREvents()
+        return eventData
+
+    # Call this after step - returns all VR device data for a specific device
+    # Device can be hmd, left_controller or right_controller
+    # Returns isValid (indicating validity of data), translation and rotation in Gibson world space
+    def getDataForVRDevice(self, deviceName):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+
+        # Use fourth variable in list to get actual hmd position in space
+        isValid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(deviceName)
+        return [isValid, translation, rotation]
+
+    # Get world position of HMD without offset
+    def getHmdWorldPos(self):
+        if not self.use_vr_renderer:
+            return None
+        
+        _, _, _, hmd_world_pos = self.renderer.vrsys.getDataForVRDevice('hmd')
+        return hmd_world_pos
+
+    # Call this after getDataForVRDevice - returns analog data for a specific controller
+    # Controller can be left_controller or right_controller
+    # Returns trigger_fraction, touchpad finger position x, touchpad finger position y
+    # Data is only valid if isValid is true from previous call to getDataForVRDevice
+    # Trigger data: 1 (closed) <------> 0 (open)
+    # Analog data: X: -1 (left) <-----> 1 (right) and Y: -1 (bottom) <------> 1 (top)
+    def getButtonDataForController(self, controllerName):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+        
+        trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(controllerName)
+        return [trigger_fraction, touch_x, touch_y]
+    
+    # Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
+    # Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
+    def getEyeTrackingData(self):
+        if not self.use_vr_renderer or not self.vrEyeTracking:
+            return [None, None, None, None, None]
+            
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
+        return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
+
+    # Sets the translational offset of the VR system (HMD, left controller, right controller)
+    # Can be used for many things, including adjusting height and teleportation-based movement
+    # Input must be a list of three floats, corresponding to x, y, z in Gibson coordinate space
+    def setVROffset(self, pos=None):
+        if not self.use_vr_renderer:
+            return
+
+        self.renderer.vrsys.setVROffset(-pos[1], pos[2], -pos[0])
+
+    # Gets the current VR offset vector in list form: x, y, z (in Gibson coordinates)
+    def getVROffset(self):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+
+        x, y, z = self.renderer.vrsys.getVROffset()
+        return [x, y, z]
+
+    # Gets the direction vectors representing the device's coordinate system in list form: x, y, z (in Gibson coordinates)
+    # List contains "right", "up" and "forward" vectors in that order
+    # Device can be one of "hmd", "left_controller" or "right_controller"
+    def getDeviceCoordinateSystem(self, device):
+        if not self.use_vr_renderer:
+            return [None, None, None]
+
+        vec_list = []
+
+        coordinate_sys = self.renderer.vrsys.getDeviceCoordinateSystem(device)
+        for dir_vec in coordinate_sys:
+            vec_list.append(dir_vec)
+
+        return vec_list
+
+    # Triggers a haptic pulse of the specified strength (0 is weakest, 1 is strongest)
+    # Device can be one of "hmd", "left_controller" or "right_controller"
+    def triggerHapticPulse(self, device, strength):
+        if not self.use_vr_renderer:
+            print("Error: can't use haptics without VR system!")
+        else:
+            self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
 
     @staticmethod
     def update_position(instance):

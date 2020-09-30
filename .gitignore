@@ -1,4 +1,5 @@
 *.pyc
+*.pyd
 *.pkl
 *.so
 *.egg-info/
@@ -34,6 +35,9 @@ physics/models
 0_VRDemoSettings.txt
 
 
+# VR
+# This is the folder where the pyd files get put after setup.py builds gibson
+Release
 
 cnn_policy*
 *ppo_policy*

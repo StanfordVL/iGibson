@@ -1,13 +1,15 @@
 import logging
 import platform
-from gibson2.render.mesh_renderer import tinyobjloader
+# TODO: Need to add a post-install command so we don't need to use the Release folder
+from gibson2.core.render.mesh_renderer.Release import tinyobjloader
 import gibson2
 import pybullet as p
-import gibson2.render.mesh_renderer as mesh_renderer
-from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
-from gibson2.render.mesh_renderer import EGLRendererContext
-from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
-    safemat2quat, xyzw2wxyz, ortho
+import gibson2.core.render.mesh_renderer as mesh_renderer
+from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
+from transforms3d.euler import quat2euler, mat2euler
+from transforms3d.quaternions import axangle2quat, mat2quat
+from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
+    safemat2quat, xyzw2wxyz
 import numpy as np
 import os
 import sys
@@ -19,7 +21,6 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
 # from pyassimp import load, release
-
 
 class VisualObject(object):
     """
@@ -152,7 +153,8 @@ class InstanceGroup(object):
                     else:
                         buffer = self.renderer.fbo
 
-                    self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                    self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
+                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                            texture_id,
                                                            metallic_texture_id,
                                                            roughness_texture_id,
@@ -310,7 +312,8 @@ class Instance(object):
                 else:
                     buffer = self.renderer.fbo
 
-                self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
+                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                        texture_id,
                                                        metallic_texture_id,
                                                        roughness_texture_id,
@@ -511,7 +514,7 @@ class MeshRenderer(object):
 
     def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False,
                  enable_shadow=False, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr'),
-                 optimized=False, skybox_size=20.):
+                 optimized=False, fullscreen=False, skybox_size=20.):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -522,6 +525,7 @@ class MeshRenderer(object):
         :param env_texture_filename: texture filename for PBR lighting
         """
         self.shaderProgram = None
+        self.windowShaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
         self.depth_tex = None
@@ -538,37 +542,50 @@ class MeshRenderer(object):
         self.instances = []
         self.fisheye = use_fisheye
         self.optimized = optimized
+        self.fullscreen = fullscreen
         self.texture_files = {}
+        self.texture_load_counter = 0
         self.enable_shadow = enable_shadow
+        self.platform = platform.system()
 
+        device_idx = None
+        device = None
         if os.environ.get('GIBSON_DEVICE_ID', None):
             device = int(os.environ.get('GIBSON_DEVICE_ID'))
             logging.info("GIBSON_DEVICE_ID environment variable has been manually set. "
                          "Using device {} for rendering".format(device))
         else:
-            available_devices = get_available_devices()
-            if device_idx < len(available_devices):
-                device = available_devices[device_idx]
-                logging.info("Using device {} for rendering".format(device))
-            else:
-                logging.info(
-                    "Device index is larger than number of devices, falling back to use 0")
-                device = 0
+            if self.platform != 'Windows':
+                available_devices = get_available_devices()
+                if device_idx < len(available_devices):
+                    device = available_devices[device_idx]
+                    logging.info("Using device {} for rendering".format(device))
+                else:
+                    logging.info(
+                        "Device index is larger than number of devices, falling back to use 0")
+                    device = 0
 
         self.device_idx = device_idx
         self.device_minor = device
         self.msaa = msaa
-        self.platform = platform.system()
         if self.platform == 'Darwin' and self.optimized:
             logging.error('Optimized renderer is not supported on Mac')
             exit()
         if self.platform == 'Darwin':
             from gibson2.core.render.mesh_renderer import GLFWRendererContext
             self.r = GLFWRendererContext.GLFWRendererContext(width, height)
+        elif self.platform == 'Windows':
+            from gibson2.core.render.mesh_renderer.Release import VRRendererContext
+            self.r = VRRendererContext.VRRendererContext(width, height)
         else:
+            from gibson2.core.render.mesh_renderer import EGLRendererContext
             self.r = EGLRendererContext.EGLRendererContext(
                 width, height, device)
-        self.r.init()
+
+        if self.platform == 'Windows':
+            self.r.init(True, self.fullscreen)
+        else:
+            self.r.init()
 
         self.glstring = self.r.getstring_meshrenderer()
 
@@ -635,6 +652,8 @@ class MeshRenderer(object):
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
         self.mesh_materials = []
+        self.texture_files = []
+        self.texture_load_counter = 0
 
         self.env_texture_filename = env_texture_filename
         self.skybox_size = skybox_size
@@ -785,10 +804,10 @@ class MeshRenderer(object):
 
         if input_kd is not None:  # append the default material in the end, in case material loading fails
             self.materials_mapping[len(
-                materials) + material_count] = Material('color', kd=input_kd)
+                materials) + material_count] = Material('color', kd=input_kd, texture_id=-1)
         else:
             self.materials_mapping[len(
-                materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5])
+                materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5], texture_id=-1)
 
         VAO_ids = []
 
@@ -869,8 +888,13 @@ class MeshRenderer(object):
             self.vertex_data.append(vertexData)
             self.shapes.append(shape)
             if material_id == -1:  # if material loading fails, use the default material
+                mapping_idx = len(materials) + material_count
+                mat = self.materials_mapping[mapping_idx]
                 self.mesh_materials.append(len(materials) + material_count)
             else:
+                mapping_idx = material_id + material_count
+                mat = self.materials_mapping[mapping_idx]
+                tex_id = mat.texture_id
                 self.mesh_materials.append(material_id + material_count)
 
             logging.debug('mesh_materials: {}'.format(self.mesh_materials))
@@ -880,6 +904,24 @@ class MeshRenderer(object):
             obj_path, VAO_ids, len(self.visual_objects), self)
         self.visual_objects.append(new_obj)
         return VAO_ids
+
+    def update_dynamic_positions(self):
+        """
+        A function to update all dynamic positions.
+        """
+        trans_data = []
+        rot_data = []
+
+        for instance in self.instances:
+            if isinstance(instance, Instance):
+                trans_data.append(instance.pose_trans)
+                rot_data.append(instance.pose_rot)
+            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
+                trans_data.extend(instance.poses_trans)
+                rot_data.extend(instance.poses_rot)
+
+        self.pose_trans_array = np.ascontiguousarray(np.concatenate(trans_data, axis=0))
+        self.pose_rot_array = np.ascontiguousarray(np.concatenate(rot_data, axis=0))
 
     def add_instance(self,
                      object_id,
@@ -1008,15 +1050,15 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-
-
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=()):
+    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), display_companion_window=False):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
         :param modes: it should be a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d').
         :param hidden: Hidden instances to skip. When rendering from a robot's perspective, it's own body can be
             hidden
+        :param display_companion_window: bool indicating whether we should render the companion window. If set to true,
+            render the window and don't return the frame buffers as numpy arrays (to increase speed)
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
 
@@ -1072,10 +1114,24 @@ class MeshRenderer(object):
                         instance.render(shadow_pass=0)
 
         self.r.render_meshrenderer_post()
+
         if self.msaa:
             self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
-        return self.readbuffer(modes)
+        if display_companion_window:
+            self.render_companion_window()
+        else:
+            return self.readbuffer(modes)
+    
+    # The viewer is responsible for calling this function to update the window, if cv2 is not being used for window display
+    def render_companion_window(self):
+        self.r.render_companion_window_from_buffer(self.fbo)
+
+    def get_visual_objects(self):
+        return self.visual_objects
+
+    def get_instances(self):
+        return self.instances
 
     def set_light_pos(self, light):
         self.lightpos = light
@@ -1116,7 +1172,6 @@ class MeshRenderer(object):
         if self.optimized:
             self.r.clean_meshrenderer_optimized(clean_list, [self.tex_id_1, self.tex_id_2], fbo_list,
                                                 [self.optimized_VAO], [self.optimized_VBO], [self.optimized_EBO])
-            # TODO: self.VAOs, self.VBOs might also need to be cleaned
         else:
             self.r.clean_meshrenderer(
                 clean_list, self.textures, fbo_list, self.VAOs, self.VBOs)
@@ -1180,7 +1235,8 @@ class MeshRenderer(object):
     def optimize_vertex_and_texture(self):
         for tex_file in self.texture_files:
             print("Texture: ", tex_file)
-        cutoff = 4000 * 4000
+        # Set cutoff about 4096, otherwise we end up filling VRAM very quickly
+        cutoff = 5000 * 5000
         shouldShrinkSmallTextures = True
         smallTexSize = 512
         texture_files = sorted(self.texture_files.items(), key=lambda x:x[1])
