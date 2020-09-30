@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 #include <fstream>
 
 #ifdef USE_GLAD

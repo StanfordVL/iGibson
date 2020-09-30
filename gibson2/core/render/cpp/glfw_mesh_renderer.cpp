@@ -33,7 +33,7 @@
 
 namespace py = pybind11;
 
-int GLFWRendererContext::init() {
+int GLFWRendererContext::init(bool render_window, bool fullscreen) {
     verbosity = 20;
 
     // Initialize GLFW context and window
@@ -49,16 +49,25 @@ int GLFWRendererContext::init() {
     glfwWindowHint(GLFW_DEPTH_BITS, 0);
     glfwWindowHint(GLFW_STENCIL_BITS, 0);
     glfwWindowHint(GLFW_SAMPLES, 0);
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    // Hide GLFW window by default
 
-    this->window = glfwCreateWindow(m_windowHeight, m_windowHeight, "Gibson GLFW Renderer", NULL, NULL);
+	// Hide GLFW window if user requests
+	if (!render_window) {
+		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+	}
+
+
+	if (fullscreen) {
+		this->window = glfwCreateWindow(m_windowWidth, m_windowHeight, "Gibson Renderer Output", glfwGetPrimaryMonitor(), NULL);
+	}
+	else {
+		this->window = glfwCreateWindow(m_windowWidth, m_windowHeight, "Gibson Renderer Output", NULL, NULL);
+	}
+
     if (this->window == NULL) {
         fprintf(stderr, "ERROR: Failed to create GLFW window.\n");
 
         exit(EXIT_FAILURE);
     }
-
 
     glfwMakeContextCurrent(this->window);
     glfwSwapInterval(0);
@@ -79,6 +88,21 @@ void GLFWRendererContext::release() {
     glfwTerminate();
 }
 
+void GLFWRendererContext::render_companion_window_from_buffer(GLuint readBuffer) {
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, readBuffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
+	glDrawBuffer(GL_BACK);
+	glBlitFramebuffer(0, 0, m_windowWidth, m_windowHeight, 0, 0, m_windowWidth, m_windowHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	glFlush();
+	glfwSwapBuffers(this->window);
+	glfwPollEvents();
+
+	if (glfwGetKey(this->window, GLFW_KEY_ESCAPE)) {
+		glfwTerminate();
+	}
+}
+
 PYBIND11_MODULE(GLFWRendererContext, m) {
 
     py::class_<GLFWRendererContext> pymodule = py::class_<GLFWRendererContext>(m, "GLFWRendererContext");
@@ -86,6 +110,7 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
     pymodule.def(py::init<int, int>());
     pymodule.def("init", &GLFWRendererContext::init);
     pymodule.def("release", &GLFWRendererContext::release);
+	pymodule.def("render_companion_window_from_buffer", &GLFWRendererContext::render_companion_window_from_buffer);
 
     // class MeshRenderer
     pymodule.def("render_meshrenderer_pre", &GLFWRendererContext::render_meshrenderer_pre,

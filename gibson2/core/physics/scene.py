@@ -149,6 +149,7 @@ class BuildingScene(Scene):
         self.mesh_body_id = None
         self.floor_body_ids = []
         self.pybullet_load_texture = pybullet_load_texture
+        self.sleep=False
 
     def load_floor_metadata(self):
         """
@@ -193,7 +194,8 @@ class BuildingScene(Scene):
             texture_id = -1
 
         self.mesh_body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
-                                              baseVisualShapeIndex=visual_id)
+                                              baseVisualShapeIndex=visual_id, 
+                                              useMaximalCoordinates=True)
         p.changeDynamics(self.mesh_body_id, -1, lateralFriction=1)
 
         if self.pybullet_load_texture:
@@ -218,7 +220,8 @@ class BuildingScene(Scene):
                 else:
                     texture_id = -1
                 floor_body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
-                                                  baseVisualShapeIndex=visual_id)
+                                                  baseVisualShapeIndex=visual_id,
+                                                  useMaximalCoordinates=True)
                 if texture_id != -1:
                     p.changeVisualShape(floor_body_id,
                                         -1,
@@ -327,6 +330,10 @@ class BuildingScene(Scene):
                                 for item in f.readlines()[0].strip().split()])
                 obj = InteractiveObj(os.path.join(scene_path, urdf_file))
                 obj.load()
+                if self.sleep:
+                    activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING#+p.ACTIVATION_STATE_SLEEP
+                    p.changeDynamics(obj.body_id, -1, activationState=activationState)
+
                 self.scene_objects.append(obj)
                 self.scene_objects_pos.append(pos)
 
@@ -346,7 +353,7 @@ class BuildingScene(Scene):
             self.load_scene_urdf()
         else:
             self.load_scene_mesh()
-            self.load_floor_planes()
+            #self.load_floor_planes()
 
         self.load_trav_map()
         self.load_scene_objects()
