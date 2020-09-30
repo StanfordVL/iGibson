@@ -758,6 +758,10 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("renderOptimized", &VRRendererContext::renderOptimized, "TBA");
 	pymodule.def("clean_meshrenderer_optimized", &VRRendererContext::clean_meshrenderer_optimized, "TBA");
 
+	//for skybox
+	pymodule.def("loadSkyBox", &VRRendererContext::loadSkyBox, "TBA");
+	pymodule.def("renderSkyBox", &VRRendererContext::renderSkyBox, "TBA");
+
 	// VR functions
 	pymodule.def("getButtonDataForController", &VRRendererContext::getButtonDataForController);
 	pymodule.def("getDataForVRDevice", &VRRendererContext::getDataForVRDevice);
