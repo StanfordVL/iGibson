@@ -308,7 +308,7 @@ class NavigateEnv(BaseEnv):
         """
         :return: surface normal reading
         """
-        return self.simulator.renderer.render_robot_cameras(modes='normal')
+        return self.simulator.renderer.render_robot_cameras(modes='normal')[0][:, :, :3]
 
     def get_seg(self):
         """
