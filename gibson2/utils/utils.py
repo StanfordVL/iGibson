@@ -13,7 +13,7 @@ def parse_config(config):
         assert isinstance(config, str)
 
     if not os.path.exists(config):
-        raise FileNotFoundError('config path {config} does not exist. Please either pass in a dict or a string that represents the file path to the config yaml.')
+        raise FileNotFoundError('config path {config} does not exist. Please either pass in a dict or a string that represents the file path to the config yaml.'.format(config=config))
     with open(config, 'r') as f:
         config_data = yaml.load(f, Loader=yaml.FullLoader)
     return config_data
