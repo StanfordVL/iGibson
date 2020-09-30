@@ -63,11 +63,6 @@ $ git checkout vr
 $ git submodule update --recursive
 ```
 
-After this you should have content at:
-core/render/glfw
-core/render/pybind11
-core/render/openvr
-
 Download Gibson assets and copy to iGibson/gibson2/assets/
 Download enviroments (scenes) and copy to iGibson/gibson2/assets/dataset
 
@@ -110,6 +105,7 @@ $ python vr_demo_rs.py (for the current state-of-the-art Gibson graphics)
 To see the features of the VR software.
 
 To use the gripper asset featured in the interaction demos, please download the 'gripper' folder at this link: https://drive.google.com/drive/folders/1-lHTtUuEgs9zzcievvvVdjHP0BdN7Du4?usp=sharing, and put it in assets/models (wherever your assets folder is).
+
 To use the VR hand asset, please download and unzip the asset and put it into assets/models under the folder name 'vr_hand'.
 Link to VR hand: https://drive.google.com/file/d/117qb1r_YHHVdQuwLD83N_nd0la57j9hZ/view?usp=sharing
 
