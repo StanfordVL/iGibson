@@ -1,15 +1,13 @@
 import logging
 import platform
 # TODO: Need to add a post-install command so we don't need to use the Release folder
-from gibson2.core.render.mesh_renderer.Release import tinyobjloader
+from gibson2.render.mesh_renderer.Release import tinyobjloader
 import gibson2
 import pybullet as p
-import gibson2.core.render.mesh_renderer as mesh_renderer
-from gibson2.core.render.mesh_renderer.get_available_devices import get_available_devices
-from transforms3d.euler import quat2euler, mat2euler
-from transforms3d.quaternions import axangle2quat, mat2quat
-from gibson2.core.render.mesh_renderer.glutils.meshutil import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
-    safemat2quat, xyzw2wxyz
+import gibson2.render.mesh_renderer as mesh_renderer
+from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
+from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
+    safemat2quat, xyzw2wxyz, ortho
 import numpy as np
 import os
 import sys
@@ -572,13 +570,13 @@ class MeshRenderer(object):
             logging.error('Optimized renderer is not supported on Mac')
             exit()
         if self.platform == 'Darwin':
-            from gibson2.core.render.mesh_renderer import GLFWRendererContext
+            from gibson2.render.mesh_renderer import GLFWRendererContext
             self.r = GLFWRendererContext.GLFWRendererContext(width, height)
         elif self.platform == 'Windows':
-            from gibson2.core.render.mesh_renderer.Release import VRRendererContext
+            from gibson2.render.mesh_renderer.Release import VRRendererContext
             self.r = VRRendererContext.VRRendererContext(width, height)
         else:
-            from gibson2.core.render.mesh_renderer import EGLRendererContext
+            from gibson2.render.mesh_renderer import EGLRendererContext
             self.r = EGLRendererContext.EGLRendererContext(
                 width, height, device)
 
@@ -652,7 +650,7 @@ class MeshRenderer(object):
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
         self.mesh_materials = []
-        self.texture_files = []
+
         self.texture_load_counter = 0
 
         self.env_texture_filename = env_texture_filename
@@ -1050,7 +1048,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), display_companion_window=False):
+    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), return_buffer=True, display_companion_window=False):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -1120,7 +1118,8 @@ class MeshRenderer(object):
 
         if display_companion_window:
             self.render_companion_window()
-        else:
+        
+        if return_buffer:
             return self.readbuffer(modes)
     
     # The viewer is responsible for calling this function to update the window, if cv2 is not being used for window display

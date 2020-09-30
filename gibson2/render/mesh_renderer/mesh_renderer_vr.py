@@ -1,7 +1,6 @@
 import os
-
 import gibson2
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 
 class MeshRendererVR(MeshRenderer):
     """
@@ -37,19 +36,19 @@ class MeshRendererVR(MeshRenderer):
             self.V = leftView
             self.P = leftProj
             
-            super().render(modes=('rgb'), display_companion_window=True)
+            # Only display companion window for the right eye
+            super().render(modes=('rgb'), return_buffer=False, display_companion_window=False)
             self.vrsys.postRenderVRForEye("left", self.color_tex_rgb)
             # Render and submit right eye
             self.V = rightView
             self.P = rightProj
             
-            super().render(modes=('rgb'), display_companion_window=True)
+            super().render(modes=('rgb'), return_buffer=False, display_companion_window=True)
             self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
 
-            # TODO: Experiment with this boolean for handoff
-            self.vrsys.postRenderVRUpdate(False)
+            self.vrsys.postRenderVRUpdate(True)
         else:
-            super().render(modes=('rgb'), display_companion_window=True)
+            super().render(modes=('rgb'), return_buffer=False, display_companion_window=True)
 
     # Get view and projection matrices from renderer
     def get_view_proj(self):
