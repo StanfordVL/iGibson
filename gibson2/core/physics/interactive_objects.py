@@ -1,5 +1,6 @@
 import pybullet as p
 import os
+import pybullet_data
 import gibson2
 import numpy as np
 import random
@@ -8,12 +9,17 @@ import json
 from gibson2.utils.assets_utils import get_model_path, get_texture_file, get_ig_scene_path, get_ig_model_path, get_ig_category_path
 import xml.etree.ElementTree as ET
 from gibson2.utils.utils import rotate_vector_3d
+from gibson2 import assets_path
+from gibson2.utils.utils import multQuatLists
 
 import logging
 import math
 from IPython import embed
 import trimesh
 
+gripper_path = assets_path + '\\models\\gripper\\gripper.urdf'
+vr_hand_left_path = assets_path + '\\models\\vr_hand\\vr_hand_left.urdf'
+vr_hand_right_path = assets_path + '\\models\\vr_hand\\vr_hand_right.urdf'
 
 class Object(object):
     def __init__(self):
@@ -70,7 +76,8 @@ class YCBObject(Object):
         body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=visual_id,
                                     basePosition=[0.2, 0.2, 1.5],
-                                    baseMass=0.1)
+                                    baseMass=0.1,
+                                    useMaximalCoordinates=True)
         return body_id
 
 
@@ -195,6 +202,17 @@ class VisualMarker(Object):
 
     def set_color(self, color):
         p.changeVisualShape(self.body_id, -1, rgbaColor=color)
+
+    def set_marker_pos(self, pos):
+        _, original_orn = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, original_orn)
+
+    def set_marker_orn(self, orn):
+        original_pos, _ = p.getBasePositionAndOrientation(self.body_id)
+        p.resetBasePositionAndOrientation(self.body_id, original_pos, orn)
+
+    def set_marker_state(self, pos, orn):
+        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
 
 
 class BoxShape(Object):
@@ -544,6 +562,153 @@ class InteractiveObj(Object):
 
         return body_id
 
+class VrHand(InteractiveObj):
+    """
+    Represents the human hand used for VR programs
+
+    Joint indices and names:
+
+    Joint 0 has name palm__base
+    Joint 1 has name Rproximal__palm
+    Joint 2 has name Rmiddle__Rproximal
+    Joint 3 has name Rtip__Rmiddle
+    Joint 4 has name Mproximal__palm
+    Joint 5 has name Mmiddle__Mproximal
+    Joint 6 has name Mtip__Mmiddle
+    Joint 7 has name Pproximal__palm
+    Joint 8 has name Pmiddle__Pproximal
+    Joint 9 has name Ptip__Pmiddle
+    Joint 10 has name palm__thumb_base
+    Joint 11 has name Tproximal__thumb_base
+    Joint 12 has name Tmiddle__Tproximal
+    Joint 13 has name Ttip__Tmiddle
+    Joint 14 has name Iproximal__palm
+    Joint 15 has name Imiddle__Iproximal
+    Joint 16 has name Itip__Imiddle
+
+    Link names in order:
+    base
+    palm
+    Rproximal
+    RmiRmiddle
+    Rtip
+    Mproximal
+    Mmiddle
+    Mtip
+    Pproximal
+    Pmiddle
+    Ptip
+    thumb base
+    Tproximal
+    TmiTmiddle
+    Ttip
+    Iproximal
+    ImiImiddle
+    Itip
+    """
+
+    def __init__(self, scale=1, start_pos=[0,0,0], leftHand=False, replayMode=False):
+        self.leftHand = leftHand
+        # Indicates whether this is data replay or not
+        self.replayMode = replayMode
+        self.filename = vr_hand_left_path if leftHand else vr_hand_right_path
+        super().__init__(self.filename)
+        self.scale = scale
+        self.start_pos = start_pos
+        # Hand needs to be rotated to visually align with VR controller
+        # TODO: Make this alignment better (will require some experimentation)
+        self.base_rot = p.getQuaternionFromEuler([0, 160, -80])
+        # Lists of joint indices for hand part
+        self.base_idxs = [0]
+        # Proximal indices for non-thumb fingers
+        self.proximal_idxs = [1, 4, 7, 14]
+        # Middle indices for non-thumb fingers
+        self.middle_idxs = [2, 5, 8, 15]
+        # Tip indices for non-thumb fingers
+        self.tip_idxs = [3, 6, 9, 16]
+        # Thumb base (rotates instead of contracting)
+        self.thumb_base_idxs = [10]
+        # Thumb indices (proximal, middle, tip)
+        self.thumb_idxs = [11, 12, 13]
+        # Open positions for all joints
+        self.open_pos = [0, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 1.0, 0.1, 0.1, 0.1, 0.2, 0.3, 0.4]
+        # Closed positions for all joints
+        self.close_pos = [0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 1.2, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8]
+    
+    def _load(self):
+        self.body_id = super()._load()
+        self.set_position(self.start_pos)
+        for jointIndex in range(p.getNumJoints(self.body_id)):
+            # Make masses larger for greater stability
+            # Mass is in kg, friction is coefficient
+            p.changeDynamics(self.body_id, jointIndex, mass=0.2, lateralFriction=1.2)
+            open_pos = self.open_pos[jointIndex]
+            p.resetJointState(self.body_id, jointIndex, open_pos)
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=open_pos, force=500)
+        # Keep base light for easier hand movement
+        p.changeDynamics(self.body_id, -1, mass=0.05, lateralFriction=0.8)
+        # Only add constraints when we aren't replaying data (otherwise the constraints interfere with data replay)
+        if not self.replayMode:
+            self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.start_pos)
+
+        return self.body_id
+
+    def move_hand(self, trans, rot, maxForce=500):
+        final_rot = multQuatLists(rot, self.base_rot)
+        p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=maxForce)
+
+    # Close frac of 1 indicates fully closed joint, and close frac of 0 indicates fully open joint
+    # Joints move smoothly between their values in self.open_pos and self.close_pos
+    def toggle_finger_state(self, close_frac, maxForce=500):
+        for jointIndex in range(p.getNumJoints(self.body_id)):
+            open_pos = self.open_pos[jointIndex]
+            close_pos = self.close_pos[jointIndex]
+            interp_frac = (close_pos - open_pos) * close_frac
+            target_pos = open_pos + interp_frac
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos, force=maxForce)
+
+class GripperObj(InteractiveObj):
+    """
+    Represents the gripper used for VR controllers
+    """
+
+    def __init__(self, scale=1):
+        super().__init__(gripper_path)
+        self.filename = gripper_path
+        self.scale = scale
+        self.max_joint = 0.550569
+    
+    def _load(self):
+        self.body_id = super()._load()
+        jointPositions = [0.550569, 0.000000, 0.549657, 0.000000]
+        for jointIndex in range(p.getNumJoints(self.body_id)):
+            joint_info = p.getJointInfo(self.body_id, jointIndex)
+            print("Joint name %s and index %d" % (joint_info[1], joint_info[0]))
+            p.resetJointState(self.body_id, jointIndex, jointPositions[jointIndex])
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=0, force=0)
+        
+        self.cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0.2, 0, 0], [0.500000, 0.300006, 0.700000])
+
+        return self.body_id
+    
+    def set_close_fraction(self, close_fraction):
+        if close_fraction < 0.0 or close_fraction > 1.0:
+            print("Can't set a close_fraction outside the range 0.0 to 1.0!")
+            return
+
+        p.setJointMotorControl2(self.body_id,
+                              0,
+                              controlMode=p.POSITION_CONTROL,
+                              targetPosition=self.max_joint * (1 - close_fraction),
+                              force=1.0)
+        p.setJointMotorControl2(self.body_id,
+                              2,
+                              controlMode=p.POSITION_CONTROL,
+                              targetPosition=self.max_joint * (1 - close_fraction),
+                              force=1.1)
+    
+    def move_gripper(self, trans, rot, maxForce=500):
+        p.changeConstraint(self.cid, trans, rot, maxForce=maxForce)
 
 class SoftObject(Object):
     def __init__(self, filename, basePosition=[0, 0, 0], baseOrientation=[0, 0, 0, 1], scale=-1, mass=-1,
