@@ -12,7 +12,7 @@ sample_urdf_folder = model_path + '\\sample_urdfs\\'
 
 optimize = True
 
-s = Simulator(mode='vr', timestep = 1/90.0, msaa=True, vrFullscreen=False, vrEyeTracking=False, optimize_render=optimize)
+s = Simulator(mode='vr', timestep = 1/90.0, vrFullscreen=False, vrEyeTracking=False, optimized_renderer=optimize, vrMode=True)
 scene = BuildingScene('Placida', is_interactive=False)
 scene.sleep = optimize
 s.import_scene(scene)

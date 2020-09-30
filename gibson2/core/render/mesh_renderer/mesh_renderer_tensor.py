@@ -14,8 +14,9 @@ try:
         pytorch installation is required.
         """
 
-        def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False):
-            super(MeshRendererG2G, self).__init__(width, height, vertical_fov, device_idx, use_fisheye, msaa)
+        def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False,
+                     enable_shadow=False):
+            super(MeshRendererG2G, self).__init__(width, height, vertical_fov, device_idx, use_fisheye, msaa, enable_shadow)
             self.cuda_idx = get_cuda_device(self.device_minor)
             logging.info("Using cuda device {} for pytorch".format(self.cuda_idx))
             with torch.cuda.device(self.cuda_idx):
@@ -62,6 +63,21 @@ try:
                 hidden
 
             """
+
+            if self.enable_shadow:
+                # shadow pass
+                V = np.copy(self.V)
+                self.V = np.copy(self.lightV)
+                self.r.render_tensor_pre(0, 0, self.fbo)
+
+                for instance in self.instances:
+                    if not instance in hidden:
+                        instance.render()
+
+                self.r.render_tensor_post()
+                self.r.readbuffer_meshrenderer_shadow_depth(self.width, self.height, self.fbo, self.depth_tex_shadow)
+                self.V = np.copy(V)
+
             if self.msaa:
                 self.r.render_tensor_pre(1, self.fbo_ms, self.fbo)
             else:
