@@ -1,5 +1,5 @@
 import pybullet as p
-from gibson2.utils.assets_utils import get_model_path, get_texture_file
+from gibson2.utils.assets_utils import get_scene_path, get_texture_file
 import gibson2
 
 import os
@@ -11,7 +11,7 @@ def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:
-        model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
+        model_path = os.path.join(get_scene_path('Rs'), 'mesh_z_up.obj')
 
     p.connect(p.GUI)
     p.setGravity(0,0,-9.8)

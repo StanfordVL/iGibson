@@ -31,23 +31,23 @@ VisualMarker
 
 
 
-BoxShape
+CubeObject
 --------------
-.. autoclass:: gibson2.core.physics.interactive_objects.BoxShape
+.. autoclass:: gibson2.objects.cube.CubeObject
 
 	.. automethod:: __init__
 
 
-InteractiveObj
+ArticulatedObject
 --------------
-.. autoclass:: gibson2.core.physics.interactive_objects.InteractiveObj
+.. autoclass:: gibson2.articulated_object.ArticulatedObject
 
 	.. automethod:: __init__
 
 
 RBOObject
 --------------
-.. autoclass:: gibson2.core.physics.interactive_objects.RBOObject
+.. autoclass:: gibson2.articulated_object.RBOObject
 
 	.. automethod:: __init__
 

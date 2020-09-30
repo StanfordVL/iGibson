@@ -1,8 +1,9 @@
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import StadiumScene
-from gibson2.core.physics.interactive_objects import BoxShape, YCBObject, RBOObject, InteractiveObj, Pedestrian
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
-import yaml
+from gibson2.simulator import Simulator
+from gibson2.scenes.stadium_scene import StadiumScene
+from gibson2.objects.cube import Cube
+from gibson2.objects.ycb_object import YCBObject
+from gibson2.objects.articulated_object import RBOObject, ArticulatedObject
+from gibson2.robots.turtlebot_robot import Turtlebot
 import gibson2
 import os
 from gibson2.utils.utils import parse_config
@@ -53,7 +54,7 @@ def test_import_rbo_object():
         obj.set_position([0, 0, 2])
         obj2.set_position([0, 1, 2])
 
-        obj3 = InteractiveObj(
+        obj3 = ArticulatedObject(
             os.path.join(gibson2.assets_path, 'models', 'scene_components', 'door.urdf'))
         s.import_articulated_object(obj3)
 
@@ -78,12 +79,12 @@ def test_import_box():
 
     for i in range(len(wall)):
         curr = wall[i]
-        obj = BoxShape(curr[0], curr[1])
+        obj = Cube(curr[0], curr[1])
         s.import_object(obj)
 
     for i in range(len(obstacles)):
         curr = obstacles[i]
-        obj = BoxShape(curr[0], curr[1])
+        obj = Cube(curr[0], curr[1])
         s.import_object(obj)
 
     config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))

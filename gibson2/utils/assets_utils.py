@@ -17,15 +17,14 @@ def get_ig_category_path(category_name):
     return os.path.join(ig_categories_path, category_name)  
 
 def get_ig_model_path(category_name, model_name):
-    ig_dataset_path = gibson2.ig_dataset_path
     ig_category_path = get_ig_category_path(category_name)
     assert model_name in os.listdir(ig_category_path), "Model {} from category {} does not exist".format(model_name, category_name)
     return os.path.join(ig_category_path, model_name)  
 
-def get_model_path(model_id):
+def get_scene_path(scene_id):
     data_path = gibson2.dataset_path
-    assert model_id in os.listdir(data_path) or model_id == 'stadium', "Model {} does not exist".format(model_id)
-    return os.path.join(data_path, model_id)
+    assert scene_id in os.listdir(data_path) or scene_id == 'stadium', "Scene {} does not exist".format(scene_id)
+    return os.path.join(data_path, scene_id)
 
 def get_texture_file(mesh_file):
     model_dir = os.path.dirname(mesh_file)

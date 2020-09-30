@@ -1,17 +1,9 @@
-from gibson2.core.physics.robot_locomotors import Turtlebot
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import BuildingScene
-from gibson2.core.physics.interactive_objects import YCBObject
-from gibson2.utils.utils import parse_config
-import pybullet as p
 import numpy as np
-from gibson2.core.render.profiler import Profiler
 import time
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 import sys
 import os
 import cv2
-import pickle as pkl
 
 
 def benchmark(render_to_tensor=False, resolution=512, obj_num = 100, optimized = True):

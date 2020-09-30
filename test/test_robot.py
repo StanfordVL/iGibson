@@ -1,9 +1,14 @@
-import yaml
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Quadrotor, Freight, Fetch
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import BuildingScene, StadiumScene
+from gibson2.robots.turtlebot_robot import Turtlebot
+from gibson2.robots.husky_robot import Husky
+from gibson2.robots.ant_robot import Ant
+from gibson2.robots.humanoid_robot import Humanoid
+from gibson2.robots.jr2_robot import JR2
+from gibson2.robots.jr2_kinova_robot import JR2_Kinova
+from gibson2.robots.quadrotor_robot import Quadrotor
+from gibson2.robots.fetch_robot import Fetch
+from gibson2.simulator import Simulator
+from gibson2.scenes.stadium_scene import StadiumScene
 from gibson2.utils.utils import parse_config
-import pytest
 import pybullet as p
 import numpy as np
 import gibson2
