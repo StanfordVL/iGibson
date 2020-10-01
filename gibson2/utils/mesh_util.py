@@ -183,10 +183,12 @@ def load_obj(fn):
         outputs['normal'] = _unify_rows(normal)[normal_idx]
     return outputs
 
-def save_obj(vertices_info, fn):
+def save_obj(vertices_info, faces_info, fn):
     with open(fn, 'w') as f:
         for v in vertices_info:
             f.write('v {} {} {}\n'.format(v[0], v[1], v[2]))
+        for face in faces_info:
+            f.write('f {} {} {}\n'.format(face[0] + 1, face[1] + 1, face[2] + 1))
 
 def transform_vertex(vertices, pose_rot, pose_trans):
     v = vertices[:, :3]

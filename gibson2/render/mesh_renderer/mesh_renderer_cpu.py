@@ -193,12 +193,14 @@ class InstanceGroup(object):
 
     def dump(self):
         vertices_info = []
+        faces_info = []
         for i, visual_obj in enumerate(self.objects):
-            for vertex_data_index in visual_obj.vertex_data_indices:
+            for vertex_data_index, face_data_index in zip(visual_obj.vertex_data_indices, visual_obj.face_indices):
                 vertices_info.append(transform_vertex(self.renderer.vertex_data[vertex_data_index],
                                                       pose_trans=self.poses_trans[i],
                                                       pose_rot=self.poses_rot[i]))
-        return vertices_info
+                faces_info.append(self.renderer.faces[face_data_index])
+        return vertices_info, faces_info
 
     def __str__(self):
         return "InstanceGroup({}) -> Objects({})".format(
@@ -352,11 +354,13 @@ class Instance(object):
 
     def dump(self):
         vertices_info = []
-        for vertex_data_index in self.object.vertex_data_indices:
+        faces_info = []
+        for vertex_data_index, face_index in zip(self.object.vertex_data_indices, self.object.face_indices):
             vertices_info.append(transform_vertex(self.renderer.vertex_data[vertex_data_index],
                                                   pose_rot=self.pose_rot,
                                                   pose_trans=self.pose_trans))
-        return vertices_info
+            faces_info.append(self.renderer.faces[face_index])
+        return vertices_info, faces_info
 
     def __str__(self):
         return "Instance({}) -> Object({})".format(self.id, self.object.id)
@@ -1099,12 +1103,19 @@ class MeshRenderer(object):
         return self.readbuffer(modes)
 
     def dump(self):
-        instances = []
+        instances_vertices = []
+        instances_faces = []
+        len_v = 0
         for instance in self.instances:
-            instances.extend(instance.dump())
-        instances = np.concatenate(instances, axis=0)
-        print(instances.shape)
-        return instances
+            vertex_info, face_info = instance.dump()
+            for v,f in zip(vertex_info, face_info):
+                instances_vertices.append(v)
+                instances_faces.append(f + len_v)
+                len_v += len(v)
+        instances_vertices = np.concatenate(instances_vertices, axis=0)
+        instances_faces = np.concatenate(instances_faces, axis=0)
+
+        return instances_vertices, instances_faces
 
     def set_light_pos(self, light):
         self.lightpos = light
