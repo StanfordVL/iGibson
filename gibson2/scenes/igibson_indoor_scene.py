@@ -13,7 +13,6 @@ import json
 from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path
 from IPython import embed
 
-
 class InteractiveIndoorScene(StaticIndoorScene):
     """
     Create an interactive scene defined with iGibson Scene Description Format (iGSDF).
@@ -59,7 +58,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
         timestr = time.strftime("%Y%m%d-%H%M%S")
         # Create the subfolder
         self.scene_instance_folder = os.path.join(
-            gibson2.ig_dataset_path, "scene_instances/" + timestr)
+            gibson2.ig_dataset_path, "scene_instances", 
+            '{}_{}_{}'.format(timestr, random.getrandbits(64), os.getpid() ))
         os.makedirs(self.scene_instance_folder, exist_ok=True)
 
         # Load average object density if exists

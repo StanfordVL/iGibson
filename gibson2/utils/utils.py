@@ -13,7 +13,7 @@ def parse_config(config):
         assert isinstance(config, str)
 
     if not os.path.exists(config):
-        raise FileNotFoundError(f'config path {config} does not exist. Please either pass in a dict or a string that represents the file path to the config yaml.')
+        raise FileNotFoundError('config path {config} does not exist. Please either pass in a dict or a string that represents the file path to the config yaml.'.format(config=config))
     with open(config, 'r') as f:
         config_data = yaml.load(f, Loader=yaml.FullLoader)
     return config_data
@@ -21,7 +21,7 @@ def parse_config(config):
 # Geometry related
 def rotate_vector_3d(v, r, p, y, cck = True):
     """Rotates 3d vector by roll, pitch and yaw counterclockwise"""
-    local_to_global = R.from_euler('xyz', [r, p, y]).as_dcm()
+    local_to_global = R.from_euler('xyz', [r, p, y]).as_matrix()
     if cck:
         global_to_local = local_to_global.T
         return np.dot(global_to_local, v)
@@ -35,7 +35,7 @@ def get_transform_from_xyz_rpy(xyz, rpy):
     xyz = Array of the translation
     rpy = Array with roll, pitch, yaw rotations
     """
-    rotation = R.from_euler('xyz', [rpy[0], rpy[1], rpy[2]]).as_dcm()
+    rotation = R.from_euler('xyz', [rpy[0], rpy[1], rpy[2]]).as_matrix()
     transformation = np.eye(4)
     transformation[0:3,0:3] = rotation
     transformation[0:3,3] = xyz
@@ -52,7 +52,7 @@ def get_rpy_from_transform(transform):
 
 def rotate_vector_2d(v, yaw):
     """Rotates 2d vector by yaw counterclockwise"""
-    local_to_global = R.from_euler('z', yaw).as_dcm()
+    local_to_global = R.from_euler('z', yaw).as_matrix()
     global_to_local = local_to_global.T
     global_to_local = global_to_local[:2, :2]
     if len(v.shape) == 1:
