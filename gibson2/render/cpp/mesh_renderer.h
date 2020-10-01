@@ -165,7 +165,7 @@ public:
 
 	void renderOptimized(GLuint VAO);
 
-	void loadSkyBox(int shaderProgram);
+	void loadSkyBox(int shaderProgram, float skybox_size);
 	void renderSkyBox(int shaderProgram, py::array_t<float> V, py::array_t<float> P);
 };
 

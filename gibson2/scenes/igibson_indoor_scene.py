@@ -13,7 +13,6 @@ import json
 from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path
 from IPython import embed
 
-
 class InteractiveIndoorScene(StaticIndoorScene):
     """
     Create an interactive scene defined with iGibson Scene Description Format (iGSDF).
@@ -32,6 +31,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  waypoint_resolution=0.2,
                  pybullet_load_texture=False,
                  texture_randomization=False,
+                 object_randomization=False,
                  ):
 
         super().__init__(
@@ -44,9 +44,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
             pybullet_load_texture,
         )
         self.texture_randomization = texture_randomization
+        self.object_randomization = object_randomization 
+        fname = scene_id if object_randomization else '{}_best'.format(scene_id)
         self.is_interactive = True
-        self.scene_file = get_ig_scene_path(
-            scene_id) + "/" + scene_id + ".urdf"
+        self.scene_file = os.path.join(get_ig_scene_path(scene_id), "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
 
         self.random_groups = {}
@@ -57,7 +58,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
         timestr = time.strftime("%Y%m%d-%H%M%S")
         # Create the subfolder
         self.scene_instance_folder = os.path.join(
-            gibson2.ig_dataset_path, "scene_instances/" + timestr)
+            gibson2.ig_dataset_path, "scene_instances", 
+            '{}_{}_{}'.format(timestr, random.getrandbits(64), os.getpid() ))
         os.makedirs(self.scene_instance_folder, exist_ok=True)
 
         # Load average object density if exists
