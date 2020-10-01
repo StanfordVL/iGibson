@@ -21,6 +21,7 @@ pipeline {
                 sh 'pytest test/test_binding.py --junitxml=test_result/test_binding.py.xml'
                 sh 'pytest test/test_render.py --junitxml=test_result/test_render.py.xml'
                 sh 'pytest test/test_simulator.py --junitxml=test_result/test_simulator.py.xml'
+                sh 'pytest test/test_navigate_env.py --junitxml=test_result/test_navigate_env.py.xml'
             }
         }
     
