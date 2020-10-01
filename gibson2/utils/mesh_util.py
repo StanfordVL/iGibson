@@ -193,7 +193,7 @@ def save_obj(vertices_info, faces_info, fn):
 def transform_vertex(vertices, pose_rot, pose_trans):
     v = vertices[:, :3]
     v = np.concatenate([v, np.ones(shape=(v.shape[0], 1))], axis=1)
-    v = v.dot(pose_rot).dot(pose_trans)
+    v = v.dot(pose_rot.T).dot(pose_trans)
     return v[:, :3]
 
 def normalize_mesh(mesh):
