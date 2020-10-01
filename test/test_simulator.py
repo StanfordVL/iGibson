@@ -4,9 +4,9 @@ from gibson2.simulator import Simulator
 
 from gibson2.utils.assets_utils import download_assets
 
-download_assets()
 
 def test_simulator():
+    download_assets()
     s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
