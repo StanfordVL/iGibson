@@ -27,12 +27,19 @@ pipeline {
                 sh 'pytest test/test_robot.py --junitxml=test_result/test_robot.py.xml'
             }
         }
+
+        stage('Benchmark') {
+            steps {
+                sh 'python test/benchmark/benchmark.py'
+            }
+        }
     
     }
     post { 
         always { 
             junit 'test_result/*.xml'
             archiveArtifacts artifacts: 'test_result/*.xml', fingerprint: true
+            archiveArtifacts artifacts: '*.pdf'
             cleanWs()
         }
     }
