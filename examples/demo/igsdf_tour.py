@@ -40,7 +40,7 @@ def main():
     s.renderer.set_light_position_direction([0,0,10], [0,0,0])
 
     traj_path = os.path.join(get_ig_scene_path(args.scene), 'misc', 'traj.txt')
-    save_dir = args.save_dir
+    save_dir = os.path.join(get_ig_scene_path(args.scene), args.save_dir)
     os.makedirs(save_dir, exist_ok=True)
     with open(traj_path, 'r') as fp:
         points = [l.rstrip().split(',') for l in fp.readlines()]
