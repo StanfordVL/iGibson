@@ -1,10 +1,12 @@
 pipeline {
+
     agent {
         docker {
             image 'gibsonchallenge/gibsonv2:jenkins'
-            args '--runtime=nvidia -u root:root'
+            args '--runtime=nvidia -u root:root -v /data2/ig_dataset:${WORKSPACE}/gibson2/ig_dataset'
         }
     }
+
     stages {
         stage('Build') {
             steps {
@@ -12,6 +14,7 @@ pipeline {
                 sh 'pwd'
                 sh 'printenv'
                 sh 'pip install -e .'
+                sh 'ls gibson2/ig_dataset'
             }
         }
 
