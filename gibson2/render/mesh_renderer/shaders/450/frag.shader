@@ -69,25 +69,39 @@ vec3 fresnelSchlick(vec3 F0, float cosTheta)
 }
 
 void main() {
-    vec3 lightDir = normalize(light_position);
+    vec3 lightDir = vec3(0,0,1);//normalize(light_position);
+    //sunlight pointing to z direction
     float diff = 0.5 + 0.5 * max(dot(Normal_world, lightDir), 0.0);
     vec3 diffuse = diff * light_color;
+    vec2 texelSize = 1.0 / textureSize(depthMap, 0);
 
     float shadow;
         if (shadow_pass == 2) {
             vec3 projCoords = FragPosLightSpace.xyz / FragPosLightSpace.w;
             projCoords = projCoords * 0.5 + 0.5;
-            float closestDepth = texture(depthMap, projCoords.xy).b * 0.5 + 0.5;
-            float currentDepth = projCoords.z;
+
             float cosTheta = dot(Normal_world, lightDir);
             cosTheta = clamp(cosTheta, 0.0, 1.0);
             float bias = 0.005*tan(acos(cosTheta));
             bias = clamp(bias, 0.001 ,0.1);
+            float currentDepth = projCoords.z;
+            float closestDepth = 0;
 
-            shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+            shadow = 0.0;
+            float current_shadow = 0;
 
-            if ((projCoords.z > 1.0) || (projCoords.x > 1.0) || (projCoords.y > 1.0) || (projCoords.x < 0) || (projCoords.y <
-             0)) shadow = 0.0;
+            for(int x = -2; x <= 2; ++x)
+            {
+                for (int y = -2; y <= 2; ++y)
+                {
+                    closestDepth = texture(depthMap, projCoords.xy + vec2(x, y) * texelSize).b * 0.5 + 0.5;
+                    current_shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+                    if ((projCoords.z > 1.0) || (projCoords.x > 1.0) || (projCoords.y > 1.0)
+                    || (projCoords.x < 0) || (projCoords.y < 0)) current_shadow = 0.0;
+                    shadow += current_shadow;
+                }
+            }
+            shadow /= 25.0;
         }
         else {
             shadow = 0.0;
