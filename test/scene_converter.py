@@ -22,6 +22,7 @@ missing_models = set([
     'closet',
     'ac_engine',
     'water_hearter',
+    'clutter',
 ])
 
 
