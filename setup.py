@@ -135,6 +135,7 @@ setup(
             'ipython',
             'pytest',
             'future',
+            'trimesh',
     ],
     ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/render')],
     cmdclass=dict(build_ext=CMakeBuild),
