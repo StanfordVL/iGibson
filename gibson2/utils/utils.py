@@ -4,11 +4,12 @@ import yaml
 import collections.abc
 from scipy.spatial.transform import Rotation as R
 from transforms3d import quaternions
+from packaging import version
 
 # The function to retrieve the rotation matrix changed from as_dcm to as_matrix in version 1.4
 # We will use the version number for backcompatibility
 import scipy
-scipy_version = scipy.version.version
+scipy_version = version.parse(scipy.version.version)
 
 # File I/O related
 def parse_config(config):
@@ -26,7 +27,7 @@ def parse_config(config):
 # Geometry related
 def rotate_vector_3d(v, r, p, y, cck = True):
     """Rotates 3d vector by roll, pitch and yaw counterclockwise"""
-    if int(scipy_version.split(".")[1]) >= 4:
+    if scipy_version >= version.parse("1.4"):
         local_to_global = R.from_euler('xyz', [r, p, y]).as_matrix()
     else:
         local_to_global = R.from_euler('xyz', [r, p, y]).as_dcm()
@@ -43,7 +44,7 @@ def get_transform_from_xyz_rpy(xyz, rpy):
     xyz = Array of the translation
     rpy = Array with roll, pitch, yaw rotations
     """
-    if int(scipy_version.split(".")[1]) >= 4:
+    if scipy_version >= version.parse("1.4"):
         rotation = R.from_euler('xyz', [rpy[0], rpy[1], rpy[2]]).as_matrix()
     else:
         rotation = R.from_euler('xyz', [rpy[0], rpy[1], rpy[2]]).as_dcm()
@@ -63,7 +64,7 @@ def get_rpy_from_transform(transform):
 
 def rotate_vector_2d(v, yaw):
     """Rotates 2d vector by yaw counterclockwise"""
-    if int(scipy_version.split(".")[1]) >= 4:
+    if scipy_version >= version.parse("1.4"):
         local_to_global = R.from_euler('z', yaw).as_matrix()
     else:
         local_to_global = R.from_euler('z', yaw).as_dcm()
