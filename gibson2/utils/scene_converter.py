@@ -72,7 +72,7 @@ def convert_scene(scene_name, select_best=False):
                     bbox_json = os.path.join(obj_dir, 'misc', 'metadata.json')
                     with open(bbox_json, 'r') as fp:
                         bbox_data = json.load(fp)
-                    obj_lenx, obj_leny, obj_lenz = bbox_data['bbox_size'] 
+                    obj_lenx, obj_leny, obj_lenz = bbox_data['bbox_size']
 
                     # all_objs.json and bbox.json have xy axis flipped
                     scale_x, scale_y, scale_z = \
@@ -135,7 +135,7 @@ def convert_scene(scene_name, select_best=False):
             parent = ET.SubElement(
                 joint_el, 'parent', dict([("link", "world")]))
             # print(total)
-    
+
     fname = scene_name if not select_best else "{}_best".format(scene_name)
     scene_file_out = os.path.join(get_ig_scene_path(scene_name), "{}.urdf".format(fname))
     scene_tree.write(scene_file_out)
