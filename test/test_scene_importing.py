@@ -8,11 +8,11 @@ import gibson2
 
 from gibson2.utils.assets_utils import download_assets, download_demo_data
 
-download_assets()
-download_demo_data()
-config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 
 def test_import_building():
+    download_assets()
+    download_demo_data()
+
     s = Simulator(mode='headless')
     scene = StaticIndoorScene('Rs')
     s.import_scene(scene, texture_scale=0.4)
@@ -23,6 +23,9 @@ def test_import_building():
 
 
 def test_import_building_big():
+    download_assets()
+    download_demo_data()
+
     s = Simulator(mode='headless')
     scene = StaticIndoorScene('Rs')
     s.import_scene(scene, texture_scale=1)
@@ -31,6 +34,9 @@ def test_import_building_big():
 
 
 def test_import_stadium():
+    download_assets()
+    download_demo_data()
+
     s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
@@ -40,6 +46,11 @@ def test_import_stadium():
 
 
 def test_import_building_viewing():
+    download_assets()
+    download_demo_data()
+    config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
+
+
     s = Simulator(mode='headless')
     scene = StaticIndoorScene('Rs')
     s.import_scene(scene)
