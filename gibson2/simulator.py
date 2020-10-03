@@ -25,7 +25,9 @@ class Simulator:
                  device_idx=0,
                  render_to_tensor=False,
                  auto_sync=True,
-                 optimized_renderer=False):
+                 optimized_renderer=False,
+                 env_texture_filename=None,
+                 skybox_size=20.):
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -74,6 +76,8 @@ class Simulator:
         self.enable_shadow = enable_shadow
         self.enable_msaa = enable_msaa
         self.optimized_renderer = optimized_renderer
+        self.env_texture_filename = env_texture_filename
+        self.skybox_size = skybox_size  
         self.load()
 
     def set_timestep(self, timestep):
@@ -88,8 +92,7 @@ class Simulator:
         Attach a debugging viewer to the renderer. This will make the step much slower so should be avoided when
         training agents
         """
-        self.viewer = Viewer()
-        self.viewer.renderer = self.renderer
+        self.viewer = Viewer(simulator=self, renderer=self.renderer)
 
     def reload(self):
         """
@@ -111,7 +114,19 @@ class Simulator:
                                             enable_shadow=self.enable_shadow,
                                             msaa=self.enable_msaa)
         else:
-            self.renderer = MeshRenderer(width=self.image_width,
+            if self.env_texture_filename is not None:
+                self.renderer = MeshRenderer(width=self.image_width,
+                                         height=self.image_height,
+                                         vertical_fov=self.vertical_fov,
+                                         device_idx=self.device_idx,
+                                         use_fisheye=self.use_fisheye,
+                                         enable_shadow=self.enable_shadow,
+                                         msaa=self.enable_msaa,
+                                         optimized=self.optimized_renderer,
+                                         skybox_size=self.skybox_size,
+                                         env_texture_filename=self.env_texture_filename)
+            else:
+                self.renderer = MeshRenderer(width=self.image_width,
                                          height=self.image_height,
                                          vertical_fov=self.vertical_fov,
                                          device_idx=self.device_idx,
@@ -130,14 +145,14 @@ class Simulator:
         p.setPhysicsEngineParameter(enableFileCaching=0)
         print("PyBullet Logging Information******************")
 
-        if self.use_ig_renderer and not self.render_to_tensor:
-            self.add_viewer()
-
         self.visual_objects = {}
         self.robots = []
         self.scene = None
         self.objects = []
         self.next_class_id = 0
+
+        if self.use_ig_renderer and not self.render_to_tensor:
+            self.add_viewer()
 
     def load_without_pybullet_vis(load_func):
         def wrapped_load_func(*args, **kwargs):
