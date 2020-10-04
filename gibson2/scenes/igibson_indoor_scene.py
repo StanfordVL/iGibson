@@ -299,3 +299,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.visual_mesh_to_material = visual_mesh_to_material
 
         return body_ids
+
+    def reset_scene_objects(self):
+        for obj_name in self.objects_by_name:
+            self.objects_by_name[obj_name].reset()
+
