@@ -19,7 +19,7 @@ def get_xy_floors(vertices, faces, dist_threshold=-0.98):
     return np.array(z_faces), vertices, faces_selected
 
 
-def gen_trav_map(vertices, faces, add_clutter=False):
+def gen_trav_map(vertices, faces, output_folder, add_clutter=False, filename_format = 'floor_trav_{}.png'):
     """Generate traversability maps.
 
     Args:
@@ -39,7 +39,7 @@ def gen_trav_map(vertices, faces, add_clutter=False):
     max_length = np.max([np.abs(xmin), np.abs(ymin), np.abs(xmax), np.abs(ymax)])
     max_length = np.ceil(max_length).astype(np.int)
 
-    wall_maps = gen_map(vertices, faces)
+    wall_maps = gen_map(vertices, faces, output_folder)
 
     for i_floor in range(len(floors)):
         floor = floors[i_floor]
@@ -72,14 +72,11 @@ def gen_trav_map(vertices, faces, add_clutter=False):
         wall_map = cv2.erode(wall_map, kernel, iterations=1)
         erosion[wall_map == 0] = 0
 
-        if add_clutter is True:
-            filename_format = 'floor_trav_{}.png'
-        else:
-            filename_format = 'floor_trav_{}_v1.png'
+
 
         cur_img = Image.fromarray((erosion * 255).astype(np.uint8))
         #cur_img = Image.fromarray(np.flipud(cur_img))
-        cur_img.save(os.path.join('/tmp', filename_format.format(i_floor)))
+        cur_img.save(os.path.join(output_folder, filename_format.format(i_floor)))
 
 INTERSECT_EDGE = 0
 INTERSECT_VERTEX = 1
@@ -157,7 +154,7 @@ def compute_triangle_plane_intersections(vertices, faces, tid, plane, dists, dis
     return intersections
 
 
-def gen_map(vertices, faces, img_filename_format='floor_{}.png'):
+def gen_map(vertices, faces, output_folder, img_filename_format='floor_{}.png'):
     xmin, ymin, _ = vertices.min(axis=0)
     xmax, ymax, _ = vertices.max(axis=0)
 
@@ -196,6 +193,6 @@ def gen_map(vertices, faces, img_filename_format='floor_{}.png'):
         cur_img = Image.fromarray((floor_map * 255).astype(np.uint8))
         #cur_img = Image.fromarray(np.flipud(cur_img))
         img_filename = img_filename_format.format(i_floor)
-        cur_img.save(os.path.join('/tmp', img_filename))
+        cur_img.save(os.path.join(output_folder, img_filename))
 
     return floor_maps
