@@ -58,9 +58,9 @@ def download_demo_data():
         os.system('wget https://storage.googleapis.com/gibson_scenes/Rs.tar.gz -O /tmp/Rs.tar.gz')
         os.system('tar -zxf /tmp/Rs.tar.gz --directory {}'.format(gibson2.dataset_path))
 
-    if not os.path.exists(os.path.join(gibson2.dataset_path, 'Rs_interactive')):
-        os.system('wget https://storage.googleapis.com/gibson_scenes/Rs_interactive.tar.gz -O /tmp/Rs_interactive.tar.gz')
-        os.system('tar -zxf /tmp/Rs_interactive.tar.gz --directory {}'.format(gibson2.dataset_path))
+    # if not os.path.exists(os.path.join(gibson2.dataset_path, 'Rs_interactive')):
+    #     os.system('wget https://storage.googleapis.com/gibson_scenes/Rs_interactive.tar.gz -O /tmp/Rs_interactive.tar.gz')
+    #     os.system('tar -zxf /tmp/Rs_interactive.tar.gz --directory {}'.format(gibson2.dataset_path))
 
 def download_dataset(url):
     if not os.path.exists(gibson2.dataset_path):
