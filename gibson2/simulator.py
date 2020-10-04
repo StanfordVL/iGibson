@@ -148,7 +148,6 @@ class Simulator:
         self.visual_objects = {}
         self.robots = []
         self.scene = None
-        self.objects = []
         self.next_class_id = 0
 
         if self.use_ig_renderer and not self.render_to_tensor:
@@ -178,11 +177,9 @@ class Simulator:
             class_id = self.next_class_id
         self.next_class_id += 1
 
-        new_objects = scene.load()
-        for item in new_objects:
-            self.objects.append(item)
+        new_object_ids = scene.load()
 
-        for new_object in new_objects:
+        for new_object in new_object_ids:
             for shape in p.getVisualShapeData(new_object):
                 id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
                 visual_object = None
@@ -215,12 +212,8 @@ class Simulator:
                     self.renderer.add_instance(visual_object,
                                                pybullet_uuid=new_object,
                                                class_id=class_id)
-        if scene.is_interactive:
-            for obj in scene.scene_objects:
-                self.import_articulated_object(obj)
-
         self.scene = scene
-        return new_objects
+        return new_object_ids
 
     @load_without_pybullet_vis
     def import_ig_scene(self, scene):
@@ -229,20 +222,20 @@ class Simulator:
         :param scene: iGSDFScene instance
         :return: ids from scene.load function
         """
-        ids = scene.load()
+        new_object_ids = scene.load()
         if scene.texture_randomization:
             # use randomized texture
             for body_id, visual_mesh_to_material in \
-                    zip(ids, scene.visual_mesh_to_material):
+                    zip(new_object_ids, scene.visual_mesh_to_material):
                 self.import_articulated_object_by_id(
                     body_id, class_id=body_id,
                     visual_mesh_to_material=visual_mesh_to_material)
         else:
             # use default texture
-            for body_id in ids:
+            for body_id in new_object_ids:
                 self.import_articulated_object_by_id(body_id, class_id=body_id)
         self.scene = scene
-        return ids
+        return new_object_ids
 
     @load_without_pybullet_vis
     def import_object(self, obj, class_id=None):
@@ -261,8 +254,6 @@ class Simulator:
         softbody = False
         if obj.__class__.__name__ == 'SoftObject':
             softbody = True
-
-        self.objects.append(new_object)
 
         for shape in p.getVisualShapeData(new_object):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
