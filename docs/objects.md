@@ -11,7 +11,7 @@ We provide a wide variety of **Objects** that can be imported into the **Simulat
 - `Cube`
 - `VisualMarker`
 
-Typically, they take in the name or the path of an object (in `gibson2.assets_path`) and provide a `load` function that be invoked externally (usually by `import_object` and `import_articulated_object` of `Simulator`). The `load` function imports the object into PyBullet. Some **Objects** (e.g. `ArticulatedObject`) also provide APIs to get and set the object pose.
+Typically, they take in the name or the path of an object (in `gibson2.assets_path`) and provide a `load` function that be invoked externally (usually by `import_object` and `import_object` of `Simulator`). The `load` function imports the object into PyBullet. Some **Objects** (e.g. `ArticulatedObject`) also provide APIs to get and set the object pose.
 
 Most of the code can be found here: [gibson2/physics/interactive_objects.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/interactive_objects.py).
 
