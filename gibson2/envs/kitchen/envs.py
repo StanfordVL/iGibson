@@ -136,7 +136,7 @@ class SimpleToolAP(SimpleTool):
     def _create_skill_lib(self):
         lib_skills = (
             skills.GraspTopPos(
-                name="grasp", lift_height=0.1, lift_speed=0.01, reach_distance=0.03,
+                name="grasp", lift_height=0.1, lift_speed=0.01, reach_distance=0.03, grasp_speed=0.1,
                 params=OrderedDict(
                     grasp_pos=skills.SkillParamsContinuous(low=[-0.2, -0.03, 0.03], high=[0.3, 0.03, 0.05]),
                 )
@@ -163,6 +163,16 @@ class SimpleToolAP(SimpleTool):
             skills.ConditionSkill(
                 name="on_target",
                 precondition_fn=lambda oid: PBU.is_center_placed_on(oid, self.objects["target"].body_id),
+            ),
+            skills.ConditionSkill(
+                name="on_cube1",
+                precondition_fn=lambda oid: PBU.is_center_placed_on(oid, self.objects["cube1"].body_id),
+            ),
+            skills.ConditionSkill(
+                name="on_cube1_on_target",
+                precondition_fn=lambda oid: PBU.is_center_placed_on(oid, self.objects["cube1"].body_id) and
+                                            PBU.is_center_placed_on(self.objects["cube1"].body_id,
+                                                                    self.objects["target"].body_id),
             )
         )
         self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
@@ -201,7 +211,7 @@ class SimpleToolAP(SimpleTool):
                 "cube1"
             ), (
                 lambda: self.skill_lib.sample_serialized_skill_params(
-                    "grasp", grasp_pos=dict(low=[0, 0, 0.03], high=[0, 0, 0.03])),
+                    "grasp", grasp_pos=dict(low=[-0.03, -0.03, 0.03], high=[0.03, 0.03, 0.05])),
                 "cube1"
             ), (
                 lambda: self.skill_lib.sample_serialized_skill_params("place"),
@@ -219,7 +229,7 @@ class SimpleToolAP(SimpleTool):
                 "cube2"
             ), (
                 lambda: self.skill_lib.sample_serialized_skill_params(
-                    "grasp", grasp_pos=dict(low=[0, 0, 0.03], high=[0, 0, 0.03])),
+                    "grasp", grasp_pos=dict(low=[-0.03, -0.03, 0.03], high=[0.03, 0.03, 0.05])),
                 "cube2"
             ), (
                 lambda: self.skill_lib.sample_serialized_skill_params("place"),
@@ -228,6 +238,57 @@ class SimpleToolAP(SimpleTool):
                 lambda: self.skill_lib.sample_serialized_skill_params("on_target"),
                 "cube2"
             )]
+        return skeleton
+
+
+class SimpleToolStackAP(SimpleToolAP):
+    def _sample_task(self):
+        self.target_object = "cube2"
+        self._task_spec = np.array([self.skill_lib.name_to_skill_index("on_cube1_on_target"),
+                                    self.objects.names.index(self.target_object)])
+
+    def is_success_all_tasks(self):
+        conds = dict(
+            cube2_on_cube1=PBU.is_center_placed_on(self.objects["cube2"].body_id, self.objects["cube1"].body_id),
+            cube1_on_target=PBU.is_center_placed_on(self.objects["cube1"].body_id, self.objects["target"].body_id),
+            cube1_graspable=self.objects["cube1"].get_position()[0] > self.eef_x_limit,
+            cube2_graspable=not PBU.is_center_placed_on(self.objects["cube2"].body_id, self.fixtures["tube"].body_id, -1),
+        )
+        success = conds
+        success["task"] = success["cube2_on_cube1"] and success["cube1_on_target"]
+        return success
+
+    def get_task_skeleton(self):
+        skeleton = [(
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp"),
+            "tool"
+        ), (
+           lambda: self.skill_lib.sample_serialized_skill_params("hook"),
+           "cube1"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params(
+                "grasp", grasp_pos=dict(low=[-0.03, -0.03, 0.03], high=[0.03, 0.03, 0.05])),
+            "cube1"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("place"),
+            "target"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp"),
+            "tool"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("poke"),
+            "cube2"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params(
+                "grasp", grasp_pos=dict(low=[-0.03, -0.03, 0.03], high=[0.03, 0.03, 0.05])),
+            "cube2"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("place"),
+            "cube1"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("on_cube1_on_target"),
+            "cube2"
+        )]
         return skeleton
 
 
@@ -730,33 +791,33 @@ class KitchenAP(Kitchen):
 
     def get_task_skeleton(self):
         skeleton = [(
-            lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic", grasp_pos=dict(low=[0.4, 0, 0.2], high=[0.4, 0, 0.2]), prismatic_move_distance=dict(low=[-0.3], high=[-0.3])),
-            # lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic"),
+            # lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic", grasp_pos=dict(low=[0.4, 0, 0.2], high=[0.4, 0, 0.2]), prismatic_move_distance=dict(low=[-0.3], high=[-0.3])),
+            lambda: self.skill_lib.sample_serialized_skill_params("open_prismatic"),
             "drawer"
         ),  (
-            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[4])),
-            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
+            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[4])),
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
             "mug1"
         ), (
             lambda: self.skill_lib.sample_serialized_skill_params("place"),
             "platform1"
         ), (
-            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
-            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
+            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
             "mug1"
         ),  (
             lambda: self.skill_lib.sample_serialized_skill_params("place", place_pos=dict(low=[-0.02, -0.02, 0.01], high=[0.02, 0.02, 0.01])),
             "coffee_machine_platform"
         ), (
-            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
-            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
+            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
             "mug2"
         ),  (
             lambda: self.skill_lib.sample_serialized_skill_params("place"),
             "faucet_coffee"
         ),  (
-            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
-            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
+            # lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3])),
+            lambda: self.skill_lib.sample_serialized_skill_params("grasp", grasp_orn=dict(choices=[3, 4])),
             "mug2"
         ),  (
             lambda: self.skill_lib.sample_serialized_skill_params("pour"),

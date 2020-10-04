@@ -620,6 +620,7 @@ class GraspDistOrn(Skill):
             reach_distance=0.05,
             lift_height=0.1,
             lift_speed=0.05,
+            grasp_speed=0.05,
             joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
             verbose=False,
             precondition_fn=None
@@ -637,6 +638,7 @@ class GraspDistOrn(Skill):
         )
         self.lift_height = lift_height
         self.lift_speed = lift_speed
+        self.grasp_speed = grasp_speed
         self.reach_distance = reach_distance
 
     def get_default_params(self):
@@ -658,6 +660,7 @@ class GraspDistOrn(Skill):
             joint_resolutions=self.joint_resolutions,
             lift_height=self.lift_height,
             lift_speed=self.lift_speed,
+            grasp_speed=self.grasp_speed,
             reach_distance=self.reach_distance
         )
         return traj
@@ -700,6 +703,7 @@ class GraspDistDiscreteOrn(GraspDistOrn):
             joint_resolutions=self.joint_resolutions,
             lift_height=self.lift_height,
             lift_speed=self.lift_speed,
+            grasp_speed=self.grasp_speed,
             reach_distance=self.reach_distance
         )
         return traj
@@ -754,6 +758,7 @@ class GraspTopPos(GraspDistOrn):
             joint_resolutions=self.joint_resolutions,
             lift_height=self.lift_height,
             lift_speed=self.lift_speed,
+            grasp_speed=self.grasp_speed,
             reach_distance=self.reach_distance
         )
         return traj
@@ -944,7 +949,6 @@ class PlaceFixed(PlacePosOrn):
         )
         traj.append_pause(self.num_pause_steps)
         return traj
-
 
 
 class PourPosOrn(Skill):
