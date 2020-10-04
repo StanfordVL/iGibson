@@ -2,6 +2,7 @@ import gibson2
 import os
 import argparse
 import random
+import subprocess
 
 
 def get_ig_scene_path(scene_name):
@@ -20,6 +21,12 @@ def get_ig_model_path(category_name, model_name):
     ig_category_path = get_ig_category_path(category_name)
     assert model_name in os.listdir(ig_category_path), "Model {} from category {} does not exist".format(model_name, category_name)
     return os.path.join(ig_category_path, model_name)  
+
+def get_ig_assets_version():
+    process = subprocess.Popen(['git',  '-C', gibson2.ig_dataset_path, 'rev-parse', 'HEAD'],
+                               shell=False, stdout=subprocess.PIPE)
+    git_head_hash = str(process.communicate()[0].strip())
+    return "{}".format(git_head_hash)
 
 def get_scene_path(scene_id):
     data_path = gibson2.dataset_path
