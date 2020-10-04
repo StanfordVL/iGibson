@@ -981,7 +981,9 @@ class MeshRenderer(object):
         self.up = up
         V = lookat(self.camera, self.target, up=self.up)
         self.V = np.ascontiguousarray(V, np.float32)
-
+        # change shadow mapping camera to be above the real camera
+        self.set_light_position_direction([self.camera[0], self.camera[1], 10],
+                                          [self.camera[0], self.camera[1], 0])
     def set_fov(self, fov):
         # self.vertical_fov = fov
         # P = perspective(self.vertical_fov, float(
