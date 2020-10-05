@@ -141,17 +141,15 @@ class Simulator:
                                             enable_shadow=self.enable_shadow,
                                             msaa=self.enable_msaa)
         elif self.use_vr_renderer:
-            self.renderer = MeshRendererVR(width=self.image_width,
-                                           height=self.image_height,
-                                           vertical_fov=self.vertical_fov,
-                                           device_idx=self.device_idx,
-                                           use_fisheye=self.use_fisheye,
-                                           enable_shadow=self.enable_shadow,
-                                           msaa=self.enable_msaa,
-                                           optimized=self.optimized_renderer,
-                                           fullscreen=self.vrFullscreen,
-                                           useEyeTracking=self.vrEyeTracking,
-                                           vrMode=self.vrMode)
+            if self.env_texture_filename is not None:
+                self.renderer = MeshRendererVR(fullscreen=self.vrFullscreen,
+                                            useEyeTracking=self.vrEyeTracking,
+                                            vrMode=self.vrMode,
+                                            env_texture_filename=self.env_texture_filename)
+            else:
+                self.renderer = MeshRendererVR(fullscreen=self.vrFullscreen,
+                                            useEyeTracking=self.vrEyeTracking,
+                                            vrMode=self.vrMode)
         else:
             if self.env_texture_filename is not None:
                 self.renderer = MeshRenderer(width=self.image_width,

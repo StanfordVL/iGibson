@@ -14,7 +14,6 @@ optimize = True
 vrMode = True
 s = Simulator(mode='vr', timestep = 1/90.0, vrFullscreen=False, optimized_renderer=optimize, vrMode=vrMode)
 scene = StaticIndoorScene('Placida')
-scene.sleep = optimize
 s.import_scene(scene)
 
 if not vrMode:
