@@ -12,6 +12,12 @@ import json
 import numpy as np
 import math
 
+"""
+Script to update all urdfs
+
+for file in ../../gibson2/ig_dataset/scenes/*
+  python scene_converter.py $(basename $file)
+"""
 
 config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 missing_models = set([
@@ -24,6 +30,7 @@ missing_models = set([
     'water_hearter',
     'clutter'
 ])
+
 
 
 def convert_scene(scene_name, select_best=False):
