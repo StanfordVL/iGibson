@@ -17,7 +17,7 @@ def test_env():
                 s = time()
                 action = nav_env.action_space.sample()
                 ts = nav_env.step(action)
-                print(ts, 1 / (time() - s))
+                print('ts', 1 / (time() - s))
                 if ts[2]:
                     print("Episode finished after {} timesteps".format(i + 1))
                     break
@@ -38,7 +38,7 @@ def test_env_reload():
                 s = time()
                 action = nav_env.action_space.sample()
                 ts = nav_env.step(action)
-                print(ts, 1 / (time() - s))
+                print('ts', 1 / (time() - s))
                 if ts[2]:
                     print("Episode finished after {} timesteps".format(i + 1))
                     break
