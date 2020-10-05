@@ -29,6 +29,7 @@ pipeline {
                 sh 'mkdir result'
                 sh 'pytest test/test_binding.py --junitxml=test_result/test_binding.py.xml'
                 sh 'pytest test/test_render.py --junitxml=test_result/test_render.py.xml'
+                sh 'pytest test/test_pbr.py --junitxml=test_result/test_pbr.py.xml'
                 sh 'pytest test/test_object.py --junitxml=test_result/test_object.py.xml'
                 sh 'pytest test/test_simulator.py --junitxml=test_result/test_simulator.py.xml'
                 sh 'pytest test/test_navigate_env.py --junitxml=test_result/test_navigate_env.py.xml'
@@ -51,6 +52,7 @@ pipeline {
             junit 'test_result/*.xml'
             archiveArtifacts artifacts: 'test_result/*.xml', fingerprint: true
             archiveArtifacts artifacts: '*.pdf'
+            archiveArtifacts artifacts: '*.png'
 
             publishHTML (target: [
               allowMissing: true,
