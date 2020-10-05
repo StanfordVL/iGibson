@@ -129,6 +129,18 @@ extern "C" {
                 */
                 SR_ANIPAL int UnregisterEyeDataCallback_v2(VivesrEyeDataCallback_v2 callback);
 
+                /* Synchronization the clock on the device and the clock on the system.
+                * @param[in] Trigger for Synchronization function.
+                * @return error code. please refer Error in ViveSR_Enums.h
+                */
+                SR_ANIPAL Error SRanipal_UpdateTimeSync();
+
+                /* Get the system timestamp.
+                * @param[out] the value of system timestamp.
+                * @return error code. please refer Error in ViveSR_Enums.h
+                */
+                SR_ANIPAL Error SRanipal_GetSystemTime(int64_t *time);
+
                 /**
                 One of return code of API LaunchEyeCalibration()
                 */

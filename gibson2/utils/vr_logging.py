@@ -7,6 +7,14 @@ Can easily save velocity for joints, but might have to use link states for norma
 HDF5 hierarchy:
 / (root)
 
+--- frame_data (group)
+
+------ frame_number (dataset)
+--------- DATA: int
+
+------ last_frame_time (dataset) - the time the last frame took to simulate and render
+--------- DATA: float
+
 --- physics_data (group)
 
 ------ body_id_n (dataset, n is positive integer)
@@ -70,6 +78,8 @@ class VRLogWriter():
         self.frame_counter = 0
         # Counts number of frames and does not reset
         self.persistent_frame_count = 0
+        # Time when last frame ended (not valid for first frame, so set to 0)
+        self.last_frame_end_time = 0
 
         # Refresh the data map after initialization
         self.refresh_data_map()
@@ -86,6 +96,11 @@ class VRLogWriter():
     def generate_name_path_data(self):
         """Generates lists of name paths for resolution in hd5 saving.
         Eg. ['vr', 'vr_camera', 'right_eye_view']."""
+        self.name_path_data.extend([
+                ['frame_data', 'frame_number'],
+                ['frame_data', 'last_frame_duration'],
+        ])
+
         for n in self.pb_ids:
             self.name_path_data.append(['physics_data', 'body_id_{0}'.format(n)])
         
@@ -108,6 +123,10 @@ class VRLogWriter():
             pb_ids: list of pybullet body ids
         """
         self.data_map = dict()
+        self.data_map['frame_data'] = dict()
+        self.data_map['frame_data']['frame_number'] = np.full((self.frames_before_write, 1), self.default_fill_sentinel)
+        self.data_map['frame_data']['last_frame_duration'] = np.full((self.frames_before_write, 1), self.default_fill_sentinel)
+
         self.data_map['physics_data'] = dict()
         for pb_id in self.pb_ids:
             # pos + orn + number of joints
@@ -157,6 +176,12 @@ class VRLogWriter():
         # Now open in r+ mode to append to the file
         self.hf = h5py.File(self.log_filepath, 'r+')
 
+    def write_frame_data_to_map(self):
+        """Writes frame data to the data map."""
+        self.data_map['frame_data']['frame_number'] = self.persistent_frame_count
+        self.data_map['frame_data']['last_frame_duration'] = time.time() - self.last_frame_end_time
+        self.last_frame_end_time = time.time()
+
     def write_vr_data_to_map(self, s):
         """Writes all VR data to map. This will write data
         that the user has not even processed in their demos.
@@ -170,9 +195,8 @@ class VRLogWriter():
             s (simulator): used to extract information about VR system
         """
         # At end of each frame, renderer has camera information for VR right eye
-        right_eye_view, right_eye_proj = s.renderer.get_view_proj()
-        self.data_map['vr']['vr_camera']['right_eye_view'][self.frame_counter, ...] = right_eye_view
-        self.data_map['vr']['vr_camera']['right_eye_proj'][self.frame_counter, ...] = right_eye_proj
+        self.data_map['vr']['vr_camera']['right_eye_view'][self.frame_counter, ...] = s.renderer.V
+        self.data_map['vr']['vr_camera']['right_eye_proj'][self.frame_counter, ...] = s.renderer.P
 
         for device in ['hmd', 'left_controller', 'right_controller']:
             is_valid, trans, rot = s.getDataForVRDevice(device)
@@ -215,6 +239,7 @@ class VRLogWriter():
         Args:
             s (simulator): used to extract information about VR system
         """
+        self.write_frame_data_to_map()
         self.write_vr_data_to_map(s)
         self.write_pybullet_data_to_map()
         self.frame_counter += 1
@@ -222,7 +247,6 @@ class VRLogWriter():
         if (self.frame_counter >= self.frames_before_write):
             self.frame_counter = 0
             # We have accumulated enough data, which we will write to hd5
-            # TODO: Make this multi-threaded to increase speed?
             self.write_to_hd5()
 
     def write_to_hd5(self):
@@ -249,11 +273,8 @@ class VRLogWriter():
 
 class VRLogReader():
     # TIMELINE: Initialize the VRLogReader before reading any frames
-    def __init__(self, log_filepath, playback_fps):
+    def __init__(self, log_filepath):
         self.log_filepath = log_filepath
-        # The fps to playback data (approximately)
-        self.playback_fps = playback_fps
-        self.playback_sleep_time = 1.0/float(self.playback_fps)
         # Frame counter keeping track of how many frames have been reproduced
         self.frame_counter = 0
         self.hf = h5py.File(self.log_filepath, 'r')
@@ -281,15 +302,17 @@ class VRLogReader():
             s (simulator): used to set camera view and projection matrices
         """
         # Note: Currently returns hmd position, as a test
-        # TODO: Add more functionality - eg. return part of the dataset?
         # Catch error where the user tries to keep reading a frame when all frames have been read
         if self.frame_counter >= self.total_frame_num:
             return
 
+        # Get recorded frame duration for this frame
+        frame_duration = self.hf['frame_data']['last_frame_duration'][self.frame_counter]
+
+        read_start_time = time.time()
         # Each frame we first set the camera data
-        cam_view = self.hf['vr/vr_camera/right_eye_view'][self.frame_counter]
-        cam_proj = self.hf['vr/vr_camera/right_eye_proj'][self.frame_counter]
-        s.renderer.set_view_proj(cam_view, cam_proj)
+        s.renderer.V = self.hf['vr/vr_camera/right_eye_view'][self.frame_counter]
+        s.renderer.P = self.hf['vr/vr_camera/right_eye_proj'][self.frame_counter]
 
         # Then we update the physics
         for pb_id in self.pb_ids:
@@ -302,17 +325,18 @@ class VRLogReader():
             for i in range(len(joint_data)):
                 p.resetJointState(pb_id, i, joint_data[i])
 
-        # TODO: Change this to return something else/potentially all data in a map?
+        # An example of how to extract VR data
         ret_data = self.hf['vr/vr_device_data/hmd'][self.frame_counter, 1:4]
-        print(ret_data)
-        print(self.frame_counter)
 
         self.frame_counter += 1
         if self.frame_counter >= self.total_frame_num:
             self.data_left_to_read = False
             self.end_log_session()
         
-        time.sleep(self.playback_sleep_time)
+        read_duration = time.time() - read_start_time
+        # Sleep to match duration of this frame, to create an accurate replay
+        if read_duration < frame_duration:
+            time.sleep(frame_duration - read_duration)
     
     # TIMELINE: Use this as the while loop condition to keep reading frames!
     def get_data_left_to_read(self):
