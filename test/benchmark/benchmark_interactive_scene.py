@@ -20,7 +20,7 @@ def benchmark_scene(scene_name, optimized=False):
     print('assets_version', assets_version)
     seeds = get_ig_scene_non_colliding_seeds(scene_name)
     random.seed(seeds[0])
-    scene = InteractiveIndoorScene(scene_name, texture_randomization=False)
+    scene = InteractiveIndoorScene(scene_name, texture_randomization=False, object_randomization=True)
     s = Simulator(mode='headless',
                   image_width=512,
                   image_height=512,
@@ -73,8 +73,8 @@ def benchmark_scene(scene_name, optimized=False):
 def main():
     benchmark_scene('Rs', True)
     benchmark_scene('Rs', False)
-    #benchmark_scene('Wainscott_0', True)
-    #benchmark_scene('Wainscott_0', False)
+    benchmark_scene('Wainscott_0', True)
+    benchmark_scene('Wainscott_0', False)
 
 
 if __name__ == "__main__":
