@@ -985,11 +985,10 @@ class MeshRenderer(object):
         self.set_light_position_direction([self.camera[0], self.camera[1], 10],
                                           [self.camera[0], self.camera[1], 0])
     def set_fov(self, fov):
-        # self.vertical_fov = fov
-        # P = perspective(self.vertical_fov, float(
-        #     self.width) / float(self.height), 0.1, 100)
-        # self.P = np.ascontiguousarray(P, np.float32)
-        pass
+        self.vertical_fov = fov
+        P = perspective(self.vertical_fov, float(
+            self.width) / float(self.height), 0.1, 100)
+        self.P = np.ascontiguousarray(P, np.float32)
 
     def set_light_color(self, color):
         self.lightcolor = color
