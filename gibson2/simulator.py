@@ -154,6 +154,9 @@ class Simulator:
         if self.use_ig_renderer and not self.render_to_tensor:
             self.add_viewer()
 
+    def optimize_vertex_and_texture(self):
+        self.renderer.optimize_vertex_and_texture()
+
     def load_without_pybullet_vis(load_func):
         def wrapped_load_func(*args, **kwargs):
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
