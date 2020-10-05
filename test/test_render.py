@@ -3,7 +3,7 @@ import numpy as np
 import os
 import gibson2
 import GPUtil
-
+import time
 from gibson2.utils.assets_utils import download_assets
 
 
@@ -12,17 +12,21 @@ def test_render_loading_cleaning():
     renderer.release()
 
 
-def test_render_rendering():
+def test_render_rendering(record_property):
     download_assets()
     test_dir = os.path.join(gibson2.assets_path, 'test')
 
     renderer = MeshRenderer(width=800, height=600)
+    start = time.time()
     renderer.load_object(os.path.join(
         test_dir, 'mesh/bed1a77d92d64f5cbbaaae4feed64ec1_new.obj'))
+    elapsed = time.time() - start
     renderer.add_instance(0)
     renderer.set_camera([0, 0, 1.2], [0, 1, 1.2], [0, 1, 0])
     renderer.set_fov(90)
     rgb, _, seg, _ = renderer.render()
+    record_property("object_loading_time", elapsed)
+
     assert (np.sum(rgb, axis=(0, 1, 2)) > 0)
     renderer.release()
 
