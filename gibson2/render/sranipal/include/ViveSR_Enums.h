@@ -55,6 +55,9 @@ namespace ViveSR
 		SERVICE_NOT_FOUND	= 1033,
         DISABLED_BY_USER    = 1034,
         EULA_NOT_ACCEPT     = 1035,
+        RUNTIME_NO_RESPONSE = 1036,
+        OPENCL_NOT_SUPPORT  = 1037,
+        NOT_SUPPORT_EYE_TRACKING = 1038,
         // 1036 - 1050 reserved
 		LIP_NOT_SUPPORT		= 1051, // VIVE Lip Sync is not supported by VIVE Wireless Adapter
 	};

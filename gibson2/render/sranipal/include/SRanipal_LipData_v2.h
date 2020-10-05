@@ -87,7 +87,15 @@ namespace ViveSR {
                     Tongue_LongStep1 = 26,
                     Tongue_LongStep2 = 32,
                     Tongue_Down = 30,
-                    Max = 33,
+					Tongue_Up = 29,
+					Tongue_Right = 28,
+					Tongue_Left = 27,
+					Tongue_Roll = 31,
+					Tongue_UpLeft_Morph = 34,
+					Tongue_UpRight_Morph = 33,
+					Tongue_DownLeft_Morph = 36,
+					Tongue_DownRight_Morph = 35,
+                    Max = 37,
                 };
             }
 
