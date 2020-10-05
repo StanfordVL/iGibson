@@ -3,7 +3,7 @@ pipeline {
     agent {
         docker {
             image 'gibsonchallenge/gibsonv2:jenkins'
-            args '--runtime=nvidia -u root:root -v /data2/ig_dataset:${WORKSPACE}/gibson2/ig_dataset'
+            args '--runtime=nvidia -u root:root -v ${WORKSPACE}/../ig_dataset:${WORKSPACE}/gibson2/ig_dataset'
         }
     }
 
@@ -18,11 +18,18 @@ pipeline {
             }
         }
 
+        stage('Build Docs') {
+            steps {
+                sh 'sphinx-build -b html docs _sites'
+            }
+        }
+
         stage('Test') {
             steps {
                 sh 'mkdir result'
                 sh 'pytest test/test_binding.py --junitxml=test_result/test_binding.py.xml'
                 sh 'pytest test/test_render.py --junitxml=test_result/test_render.py.xml'
+                sh 'pytest test/test_pbr.py --junitxml=test_result/test_pbr.py.xml'
                 sh 'pytest test/test_object.py --junitxml=test_result/test_object.py.xml'
                 sh 'pytest test/test_simulator.py --junitxml=test_result/test_simulator.py.xml'
                 sh 'pytest test/test_navigate_env.py --junitxml=test_result/test_navigate_env.py.xml'
@@ -45,6 +52,18 @@ pipeline {
             junit 'test_result/*.xml'
             archiveArtifacts artifacts: 'test_result/*.xml', fingerprint: true
             archiveArtifacts artifacts: '*.pdf'
+            archiveArtifacts artifacts: '*.png'
+
+            publishHTML (target: [
+              allowMissing: true,
+              alwaysLinkToLastBuild: false,
+              keepAll: true,
+              reportDir: '_sites',
+              reportFiles: 'index.html',
+              includes: '**/*',
+              reportName: "iGibson docs"
+            ])
+
             cleanWs()
         }
         failure {

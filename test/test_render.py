@@ -5,7 +5,8 @@ import gibson2
 import GPUtil
 import time
 from gibson2.utils.assets_utils import download_assets
-
+from gibson2.utils.assets_utils import get_ig_model_path
+from PIL import Image
 
 def test_render_loading_cleaning():
     renderer = MeshRenderer(width=800, height=600)
