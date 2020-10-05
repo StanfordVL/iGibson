@@ -3,15 +3,17 @@
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.utils.utils import parse_config
+from gibson2.utils.assets_utils import get_ig_scene_non_colliding_seeds
 import os
 import gibson2
 import time
 import random
 
 def test_import_igsdf():
-    random.seed(0)
+    seeds = get_ig_scene_non_colliding_seeds('Rs')
+    random.seed(seeds[0])
     config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
-    scene = InteractiveIndoorScene('Rs', texture_randomization=False)
+    scene = InteractiveIndoorScene('Rs', texture_randomization=False, object_randomization=True)
     s = Simulator(mode='headless', image_width=512,
                   image_height=512, device_idx=0)
     s.import_ig_scene(scene)
