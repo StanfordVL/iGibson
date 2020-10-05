@@ -35,7 +35,7 @@ def convert_scene(scene_name, select_best=False):
     os.makedirs(bbox_dir, exist_ok=True)
 
 
-    with open(get_ig_scene_path(scene_name) + '/misc/all_objs_new.json', 'r') as all_objs_file:
+    with open(get_ig_scene_path(scene_name) + '/misc/all_objs.json', 'r') as all_objs_file:
         all_objs = json.load(all_objs_file)
 
         total = 0
