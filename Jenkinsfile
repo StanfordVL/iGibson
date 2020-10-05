@@ -3,7 +3,7 @@ pipeline {
     agent {
         docker {
             image 'gibsonchallenge/gibsonv2:jenkins'
-            args '--runtime=nvidia -u root:root -v /data2/ig_dataset:${WORKSPACE}/gibson2/ig_dataset'
+            args '--runtime=nvidia -u root:root -v ${WORKSPACE}/../ig_dataset:${WORKSPACE}/gibson2/ig_dataset'
         }
     }
 
@@ -15,6 +15,12 @@ pipeline {
                 sh 'printenv'
                 sh 'pip install -e .'
                 sh 'ls gibson2/ig_dataset'
+            }
+        }
+
+        stage('Build Docs') {
+            steps {
+                sh 'sphinx-build -b html docs _sites'
             }
         }
 
@@ -45,6 +51,17 @@ pipeline {
             junit 'test_result/*.xml'
             archiveArtifacts artifacts: 'test_result/*.xml', fingerprint: true
             archiveArtifacts artifacts: '*.pdf'
+
+            publishHTML (target: [
+              allowMissing: true,
+              alwaysLinkToLastBuild: false,
+              keepAll: true,
+              reportDir: '_sites',
+              reportFiles: 'index.html',
+              includes: '**/*',
+              reportName: "iGibson docs"
+            ])
+
             cleanWs()
         }
         failure {
