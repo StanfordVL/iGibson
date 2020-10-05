@@ -34,7 +34,8 @@ pipeline {
 
         stage('Benchmark') {
             steps {
-                sh 'python test/benchmark/benchmark.py'
+                sh 'python test/benchmark/benchmark_static_scene.py'
+                sh 'python test/benchmark/benchmark_interactive_scene.py'
             }
         }
     

@@ -17,7 +17,7 @@ def test_import_igsdf():
     s.import_ig_scene(scene)
 
     s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
-    for i in range(100):
+    for i in range(10):
         # if i % 100 == 0:
         #     scene.randomize_texture()
         start = time.time()
