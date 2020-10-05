@@ -259,6 +259,9 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int heig
     int color_tex_3d = texture_ptr[3];
     int depth_tex = texture_ptr[4];
     glBindTexture(GL_TEXTURE_2D, color_tex_rgb);
+    // Note: VR textures need these settings, otherwise they won't display on the HMD
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, color_tex_normal);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);

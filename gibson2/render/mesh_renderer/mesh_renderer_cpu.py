@@ -1048,7 +1048,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), return_buffer=True, display_companion_window=False):
+    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), return_buffer=True):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -1115,9 +1115,6 @@ class MeshRenderer(object):
 
         if self.msaa:
             self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
-
-        if display_companion_window:
-            self.render_companion_window()
         
         if return_buffer:
             return self.readbuffer(modes)
