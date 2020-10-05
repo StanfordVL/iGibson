@@ -12,12 +12,14 @@ import random
 import matplotlib.pyplot as plt
 from gibson2.utils.assets_utils import get_ig_assets_version
 from gibson2.utils.assets_utils import get_scene_path
+from gibson2.utils.assets_utils import get_ig_scene_non_colliding_seeds
 
 def benchmark_scene(scene_name, optimized=False):
     config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
     assets_version = get_ig_assets_version()
     print('assets_version', assets_version)
-    random.seed(0)
+    seeds = get_ig_scene_non_colliding_seeds(scene_name)
+    random.seed(seeds[0])
     scene = InteractiveIndoorScene(scene_name, texture_randomization=False)
     s = Simulator(mode='headless',
                   image_width=512,
@@ -35,7 +37,7 @@ def benchmark_scene(scene_name, optimized=False):
     fps = []
     physics_fps = []
     render_fps = []
-    for i in range(500):
+    for i in range(5000):
         # if i % 100 == 0:
         #     scene.randomize_texture()
         start = time.time()
@@ -71,8 +73,8 @@ def benchmark_scene(scene_name, optimized=False):
 def main():
     benchmark_scene('Rs', True)
     benchmark_scene('Rs', False)
-    benchmark_scene('Wainscott_0', True)
-    benchmark_scene('Wainscott_0', False)
+    #benchmark_scene('Wainscott_0', True)
+    #benchmark_scene('Wainscott_0', False)
 
 
 if __name__ == "__main__":
