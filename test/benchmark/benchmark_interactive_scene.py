@@ -31,6 +31,7 @@ def benchmark_scene(scene_name):
         fps.append(1 / (end - start))
     s.disconnect()
 
+    plt.figure()
     plt.hist(fps)
     plt.xlabel('fps')
     plt.title('Scene {} version {}'.format(scene_name, assets_version))
