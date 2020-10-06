@@ -1,7 +1,14 @@
+import os
+import random
+import subprocess
+from threading import Thread
+import logging
+
 import cv2
 import numpy as np
 import pybullet as p
 from gibson2.objects.visual_marker import VisualMarker
+import time
 
 class Viewer:
     def __init__(self,
@@ -27,6 +34,13 @@ class Viewer:
         self.renderer = renderer
         self.simulator = simulator
         self.cid = []
+
+        self.manipulation_mode = False #Flag to control if the mouse interface is in navigation or manipulation mode
+
+        #Video recording
+        self.recording = False  #Boolean if we are recording frames from the viewer
+        self.pause_recording = False    #Flag to pause/resume recording
+        self.video_folder = ""
 
         cv2.namedWindow('ExternalView')
         cv2.moveWindow("ExternalView", 0,0)
@@ -68,7 +82,7 @@ class Viewer:
             p.changeDynamics(object_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
             p.applyExternalForce(object_id, link_id, -np.array(hit_normal) * force, hit_pos, p.WORLD_FRAME)
 
-    def create_constraint(self, x, y):
+    def create_constraint(self, x, y, fixed=False):
         camera_pose = np.array([self.px, self.py, self.pz])
         self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, self.up)
         # #pos = self.renderer.get_3d_point(x,y)
@@ -108,13 +122,13 @@ class Viewer:
                 parentLinkIndex=-1,
                 childBodyUniqueId=object_id,
                 childLinkIndex=link_id,
-                jointType=p.JOINT_FIXED,
+                jointType=[p.JOINT_POINT2POINT, p.JOINT_FIXED][fixed],
                 jointAxis=(0, 0, 0),
                 parentFramePosition=(0, 0, 0),
                 childFramePosition=child_frame_pos,
                 childFrameOrientation=child_frame_orn,
             )
-            p.changeConstraint(cid, maxForce=500)
+            p.changeConstraint(cid, maxForce=150)
             self.cid.append(cid)
             self.interaction_x, self.interaction_y = x,y
 
@@ -169,78 +183,92 @@ class Viewer:
 
 
     def change_dir(self, event, x, y, flags, param):
-        if flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_CTRLKEY and not self.right_down:
-            # Only once, when pressing left mouse while cntrl key is pressed
-            self._mouse_ix, self._mouse_iy = x, y
-            self.right_down = True
-        elif (event == cv2.EVENT_MBUTTONDOWN) or (flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down): 
-            # Middle mouse button press or only once, when pressing left mouse while shift key is pressed (Mac
-            # compatibility)
-            self._mouse_ix, self._mouse_iy = x, y
-            self.middle_down = True
-        elif event == cv2.EVENT_LBUTTONDOWN: # left mouse button press
-            self._mouse_ix, self._mouse_iy = x, y
-            self.left_down = True
-            if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_ALTKEY):
-                self.create_constraint(x, y)
-            if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY):
-                self.create_constraint(x, y)
-        elif event == cv2.EVENT_LBUTTONUP: # left mouse button released
-            self.left_down = False
-            self.right_down = False
-            self.middle_down = False
+        if not self.manipulation_mode:
+            if flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_CTRLKEY and not self.right_down:
+                # Only once, when pressing left mouse while cntrl key is pressed
+                self._mouse_ix, self._mouse_iy = x, y
+                self.right_down = True
+            elif (event == cv2.EVENT_MBUTTONDOWN) or (flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down):
+                # Middle mouse button press or only once, when pressing left mouse while shift key is pressed (Mac
+                # compatibility)
+                self._mouse_ix, self._mouse_iy = x, y
+                self.middle_down = True
+            elif event == cv2.EVENT_LBUTTONDOWN: # left mouse button press
+                self._mouse_ix, self._mouse_iy = x, y
+                self.left_down = True
+            elif event == cv2.EVENT_LBUTTONUP: # left mouse button released
+                self.left_down = False
+                self.right_down = False
+                self.middle_down = False
+            elif event == cv2.EVENT_MBUTTONUP: # middle mouse button released
+                self.middle_down = False
 
-            if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_ALTKEY):
+            if event == cv2.EVENT_MOUSEMOVE: # moving mouse location on the window
+                if self.left_down: # if left button was pressed we change orientation of camera
+                    dx = (x - self._mouse_ix) / 100.0
+                    dy = (y - self._mouse_iy) / 100.0
+                    self._mouse_ix = x
+                    self._mouse_iy = y
+
+                    if not ((flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY) or
+                            (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_ALTKEY)):
+                        self.phi += dy
+                        self.phi = np.clip(self.phi, -np.pi/2 + 1e-5, np.pi/2 - 1e-5)
+                        self.theta += dx
+                        self.view_direction = np.array([np.cos(self.theta)* np.cos(self.phi), np.sin(self.theta) * np.cos(
+                            self.phi), np.sin(self.phi)])
+
+                elif self.middle_down: #if middle button was pressed we get closer/further away in the viewing direction
+                    d_vd = (y - self._mouse_iy) / 100.0
+                    self._mouse_iy = y
+
+                    motion_along_vd = d_vd*self.view_direction
+                    self.px += motion_along_vd[0]
+                    self.py += motion_along_vd[1]
+                    self.pz += motion_along_vd[2]
+                elif self.right_down: #if right button was pressed we change translation of camera
+
+                    zz = self.view_direction/np.linalg.norm(self.view_direction)
+                    xx = np.cross(zz, np.array([0,0,1]))
+                    xx = xx/np.linalg.norm(xx)
+                    yy = np.cross(xx, zz)
+                    motion_along_vx = -((x - self._mouse_ix) / 100.0)*xx
+                    motion_along_vy = ((y - self._mouse_iy) / 100.0)*yy
+                    self._mouse_ix = x
+                    self._mouse_iy = y
+
+                    self.px += (motion_along_vx[0] + motion_along_vy[0])
+                    self.py += (motion_along_vx[1] + motion_along_vy[1])
+                    self.pz += (motion_along_vx[2] + motion_along_vy[2])
+        else:
+            if (event == cv2.EVENT_MBUTTONDOWN) or (flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down):
+                # Middle mouse button press or only once, when pressing left mouse while shift key is pressed (Mac
+                # compatibility)
+                self._mouse_ix, self._mouse_iy = x, y
+                self.middle_down = True
+                self.create_constraint(x, y, fixed=True)
+            elif event == cv2.EVENT_LBUTTONDOWN: # left mouse button press
+                self._mouse_ix, self._mouse_iy = x, y
+                self.left_down = True
+                self.create_constraint(x, y, fixed=False)
+            elif event == cv2.EVENT_LBUTTONUP: # left mouse button released
+                self.left_down = False
+                self.right_down = False
+                self.middle_down = False
                 self.remove_constraint()
-            if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY):
+            elif event == cv2.EVENT_MBUTTONUP: # middle mouse button released
+                self.left_down = False
+                self.right_down = False
+                self.middle_down = False
                 self.remove_constraint()
-
-        elif event == cv2.EVENT_MBUTTONUP: # middle mouse button released
-            self.middle_down = False
-
-        if event == cv2.EVENT_MOUSEMOVE: # moving mouse location on the window
-            if self.left_down: # if left button was pressed we change orientation of camera
-                dx = (x - self._mouse_ix) / 100.0
-                dy = (y - self._mouse_iy) / 100.0
-                self._mouse_ix = x
-                self._mouse_iy = y
-
-                if not ((flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY) or
-                        (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_ALTKEY)):
-                    self.phi += dy
-                    self.phi = np.clip(self.phi, -np.pi/2 + 1e-5, np.pi/2 - 1e-5)
-                    self.theta += dx
-                    self.view_direction = np.array([np.cos(self.theta)* np.cos(self.phi), np.sin(self.theta) * np.cos(
-                        self.phi), np.sin(self.phi)])
-
-                if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_ALTKEY):
+            if event == cv2.EVENT_MOUSEMOVE: # moving mouse location on the window
+                if (self.left_down or self.middle_down) and not flags & cv2.EVENT_FLAG_CTRLKEY:
+                    self._mouse_ix = x
+                    self._mouse_iy = y
                     self.move_constraint(x, y)
-                if (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY):
+                elif (self.left_down or self.middle_down) and flags & cv2.EVENT_FLAG_CTRLKEY:
+                    dy = (y - self._mouse_iy) / 300.0
                     self.move_constraint_z(dy)
-
-
-            elif self.middle_down: #if middle button was pressed we get closer/further away in the viewing direction
-                d_vd = (y - self._mouse_iy) / 100.0
-                self._mouse_iy = y
-
-                motion_along_vd = d_vd*self.view_direction
-                self.px += motion_along_vd[0]
-                self.py += motion_along_vd[1]
-                self.pz += motion_along_vd[2]
-            elif self.right_down: #if right button was pressed we change translation of camera
-
-                zz = self.view_direction/np.linalg.norm(self.view_direction)
-                xx = np.cross(zz, np.array([0,0,1]))
-                xx = xx/np.linalg.norm(xx)
-                yy = np.cross(xx, zz)
-                motion_along_vx = -((x - self._mouse_ix) / 100.0)*xx
-                motion_along_vy = ((y - self._mouse_iy) / 100.0)*yy
-                self._mouse_ix = x
-                self._mouse_iy = y
-
-                self.px += (motion_along_vx[0] + motion_along_vy[0])
-                self.py += (motion_along_vx[1] + motion_along_vy[1])
-                self.pz += (motion_along_vx[2] + motion_along_vy[2])
 
     def update(self):
         camera_pose = np.array([self.px, self.py, self.pz])
@@ -258,6 +286,8 @@ class Viewer:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
         cv2.putText(frame, "[{:1.1f} {:1.1f} {:1.1f}]".format(*self.view_direction), (10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(frame, ["nav mode", "manip mode"][self.manipulation_mode], (10, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
         cv2.imshow('ExternalView', frame)
 
         # We keep some double functinality for "backcompatibility"
@@ -271,7 +301,48 @@ class Viewer:
         elif q == ord('d'):
             self.py -= 0.05
         elif q == ord('q'):
+            if self.video_folder is not "":
+                logging.info("You recorded a video. To compile the frames into a mp4 go to the corresponding subfolder"+
+                             " in /tmp and execute: ")
+                logging.info(
+                    "ffmpeg -i %5d.png -y -c:a copy -c:v libx264 -crf 18 -preset veryslow -r 30 video.mp4")
+                logging.info("The last folder you collected images for a video was: " + self.video_folder)
             exit()
+        elif q== ord('r'):  #Start/Stop recording. Stopping saves frames to files
+            if self.recording:
+                self.recording = False
+                self.pause_recording = False
+            else:
+                logging.info("Start recording*****************************")
+                # Current time string to use to save the temporal urdfs
+                timestr = time.strftime("%Y%m%d-%H%M%S")
+                # Create the subfolder
+                self.video_folder = os.path.join("/tmp",
+                                            '{}_{}_{}'.format(timestr, random.getrandbits(64), os.getpid()))
+                os.makedirs(self.video_folder, exist_ok=True)
+                self.recording = True
+                self.frame_idx = 0
+        elif q == ord('p'): #Pause/Resume recording
+            if self.pause_recording:
+                self.pause_recording = False
+            else:
+                self.pause_recording = True
+        elif q == ord('m'): #Switch between Manipulation and Navigation modes
+            if self.manipulation_mode:
+                self.left_down = False
+                self.middle_down = False
+                self.right_down = False
+                self.manipulation_mode = False
+            else:
+                self.left_down = False
+                self.middle_down = False
+                self.right_down = False
+                self.manipulation_mode = True
+
+        if self.recording and not self.pause_recording:
+            cv2.imwrite(os.path.join(self.video_folder, '{:05d}.png'.format(self.frame_idx)),
+                        (frame * 255).astype(np.uint8))
+            self.frame_idx += 1
 
         if not self.renderer is None:
             frames = self.renderer.render_robot_cameras(modes=('rgb'))
