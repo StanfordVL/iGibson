@@ -15,7 +15,8 @@ from IPython import embed
 class Simulator:
     def __init__(self,
                  gravity=9.8,
-                 timestep=1 / 240.0,
+                 physics_timestep=1 / 120.0,
+                 render_timestep=1 / 30.0,
                  use_fisheye=False,
                  mode='gui',
                  enable_shadow=False,
@@ -34,7 +35,8 @@ class Simulator:
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
 
         :param gravity: gravity on z direction.
-        :param timestep: timestep of physical simulation
+        :param physics_timestep: timestep of physical simulation, p.stepSimulation()
+        :param render_timestep: timestep of rendering, and Simulator.step() function
         :param use_fisheye: use fisheye
         :param mode: choose mode from gui, headless, iggui (only open iGibson UI), or pbgui(only open pybullet UI)
         :param image_width: width of the camera image
@@ -48,7 +50,8 @@ class Simulator:
         """
         # physics simulator
         self.gravity = gravity
-        self.timestep = timestep
+        self.physics_timestep = physics_timestep
+        self.render_timestep = render_timestep
         self.mode = mode
 
         #Todo: eliminate this
@@ -84,12 +87,13 @@ class Simulator:
         self.skybox_size = skybox_size  
         self.load()
 
-    def set_timestep(self, timestep):
+    def set_timestep(self, physics_timestep, render_timestep):
         """
         :param timestep: set timestep after the initialization of Simulator
         """
-        self.timestep = timestep
-        p.setTimeStep(self.timestep)
+        self.physics_timestep = physics_timestep
+        self.render_timestep = render_timestep
+        p.setTimeStep(self.physics_timestep)
 
     def add_viewer(self):
         """
@@ -144,7 +148,7 @@ class Simulator:
             self.cid = p.connect(p.GUI)
         else:
             self.cid = p.connect(p.DIRECT)
-        p.setTimeStep(self.timestep)
+        p.setTimeStep(self.physics_timestep)
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
         print("PyBullet Logging Information******************")
@@ -493,12 +497,22 @@ class Simulator:
 
         return ids
 
+    def _step_simulation(self):
+        """
+        Step the simulation for one step and update positions in renderer
+        """
+        p.stepSimulation()
+        for instance in self.renderer.instances:
+            if instance.dynamic:
+                self.update_position(instance)
+
     def step(self):
         """
-        Step the simulation and update positions in renderer
+        Step the simulation at self.render_timestep and update positions in renderer
         """
+        for _ in range(int(self.render_timestep / self.physics_timestep)):
+            p.stepSimulation()
 
-        p.stepSimulation()
         if self.auto_sync:
             self.sync()
 
