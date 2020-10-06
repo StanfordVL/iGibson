@@ -375,13 +375,12 @@ class NavigationEnv(BaseEnv):
 
     def run_simulation(self):
         """
-        Run simulation for one action timestep (simulator_loop physics timestep)
+        Run simulation for one action timestep (same as one render timestep in Simulator class)
         :return: collisions from this simulation
         """
         collision_links = []
-        for _ in range(self.simulator_loop):
-            self.simulator_step()
-            collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
+        self.simulator_step()
+        collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
         self.simulator.sync()
 
         return self.filter_collision_links(collision_links)
