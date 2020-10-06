@@ -14,13 +14,14 @@ from gibson2.utils.assets_utils import get_ig_assets_version
 from gibson2.utils.assets_utils import get_scene_path
 from gibson2.utils.assets_utils import get_ig_scene_non_colliding_seeds
 
+
 def benchmark_scene(scene_name, optimized=False):
     config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
     assets_version = get_ig_assets_version()
     print('assets_version', assets_version)
     seeds = get_ig_scene_non_colliding_seeds(scene_name)
-    random.seed(seeds[0])
-    scene = InteractiveIndoorScene(scene_name, texture_randomization=False, object_randomization=True)
+    scene = InteractiveIndoorScene(
+        scene_name, texture_randomization=False, object_randomization=True, random_seed=seeds[0])
     s = Simulator(mode='headless',
                   image_width=512,
                   image_height=512,
@@ -55,12 +56,13 @@ def benchmark_scene(scene_name, optimized=False):
         render_fps.append(1 / (end - physics_end))
 
     s.disconnect()
-    plt.figure(figsize=(7,15))
+    plt.figure(figsize=(7, 15))
 
     ax = plt.subplot(3, 1, 1)
     plt.hist(render_fps)
     ax.set_xlabel('Render fps')
-    ax.set_title('Scene {} version {}\noptimized {}'.format(scene_name, assets_version, optimized))
+    ax.set_title('Scene {} version {}\noptimized {}'.format(
+        scene_name, assets_version, optimized))
     ax = plt.subplot(3, 1, 2)
     plt.hist(physics_fps)
     ax.set_xlabel('Physics fps')
