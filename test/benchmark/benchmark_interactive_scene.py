@@ -38,7 +38,7 @@ def benchmark_scene(scene_name, optimized=False):
     fps = []
     physics_fps = []
     render_fps = []
-    for i in range(5000):
+    for i in range(100):
         # if i % 100 == 0:
         #     scene.randomize_texture()
         start = time.time()
