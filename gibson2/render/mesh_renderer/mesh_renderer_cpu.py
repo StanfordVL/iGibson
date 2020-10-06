@@ -647,6 +647,9 @@ class MeshRenderer(object):
 
         self.setup_framebuffer()
         self.vertical_fov = vertical_fov
+        self.horizontal_fov = 2 * np.arctan(np.tan(self.vertical_fov / 180.0 * np.pi / 2.0) * self.width /
+                                            self.height) / np.pi * 180.0
+
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
@@ -986,6 +989,8 @@ class MeshRenderer(object):
                                           [self.camera[0], self.camera[1], 0])
     def set_fov(self, fov):
         self.vertical_fov = fov
+        self.horizontal_fov = 2 * np.arctan(np.tan(self.vertical_fov / 180.0 * np.pi / 2.0) * self.width /
+                                            self.height) / np.pi * 180.0
         P = perspective(self.vertical_fov, float(
             self.width) / float(self.height), 0.1, 100)
         self.P = np.ascontiguousarray(P, np.float32)
@@ -1045,7 +1050,7 @@ class MeshRenderer(object):
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-
+        print(self.vertical_fov, self.horizontal_fov)
 
         if self.enable_shadow:
             # shadow pass
