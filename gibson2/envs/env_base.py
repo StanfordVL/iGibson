@@ -45,7 +45,8 @@ class BaseEnv(gym.Env):
         self.action_timestep = action_timestep
         self.physics_timestep = physics_timestep
         self.simulator = Simulator(mode=mode,
-                                   timestep=physics_timestep,
+                                   physics_timestep=physics_timestep,
+                                   render_timestep=action_timestep,
                                    use_fisheye=self.config.get('fisheye', False),
                                    image_width=self.config.get('image_width', 128),
                                    image_height=self.config.get('image_height', 128),
@@ -53,7 +54,6 @@ class BaseEnv(gym.Env):
                                    device_idx=device_idx,
                                    render_to_tensor=render_to_tensor,
                                    auto_sync=False)
-        self.simulator_loop = int(self.action_timestep / self.simulator.timestep)
         self.load()
 
     def reload(self, config_file):
