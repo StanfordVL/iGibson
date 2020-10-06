@@ -65,7 +65,7 @@ class Viewer:
         #position_cam = frames[0][y, x]
         #print(position_cam)
         position_cam = np.array([(x - self.renderer.width / 2) / float(self.renderer.width / 2) * np.tan(
-            self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
+            self.renderer.horizontal_fov / 2.0 / 180.0 * np.pi),
                                  -(y - self.renderer.height / 2) / float(self.renderer.height / 2) * np.tan(
             self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
                                  -1,
@@ -90,7 +90,7 @@ class Viewer:
         # position_cam_org = frames[0][y, x]
 
         position_cam = np.array([(x - self.renderer.width / 2) / float(self.renderer.width / 2) * np.tan(
-            self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
+            self.renderer.horizontal_fov / 2.0 / 180.0 * np.pi),
                                  -(y - self.renderer.height / 2) / float(self.renderer.height / 2) * np.tan(
                                      self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
                                  -1,
@@ -147,7 +147,7 @@ class Viewer:
         # position_cam_org = frames[0][y, x]
 
         position_cam = np.array([(x - self.renderer.width / 2) / float(self.renderer.width / 2) * np.tan(
-            self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
+            self.renderer.horizontal_fov / 2.0 / 180.0 * np.pi),
                                  -(y - self.renderer.height / 2) / float(self.renderer.height / 2) * np.tan(
                                      self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
                                  -1,
@@ -170,7 +170,7 @@ class Viewer:
         if self.dist < 0.1:
             self.dist = 0.1
         position_cam = np.array([(x - self.renderer.width / 2) / float(self.renderer.width / 2) * np.tan(
-            self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
+            self.renderer.horizontal_fov / 2.0 / 180.0 * np.pi),
                                  -(y - self.renderer.height / 2) / float(self.renderer.height / 2) * np.tan(
                                      self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
                                  -1,
