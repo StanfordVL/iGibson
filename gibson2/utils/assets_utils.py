@@ -22,6 +22,21 @@ def get_ig_model_path(category_name, model_name):
     assert model_name in os.listdir(ig_category_path), "Model {} from category {} does not exist".format(model_name, category_name)
     return os.path.join(ig_category_path, model_name)  
 
+def get_all_object_models():
+    ig_dataset_path = gibson2.ig_dataset_path
+    ig_categories_path = ig_dataset_path + "/objects"
+
+    categories = os.listdir(ig_categories_path)
+    categories = [item for item in categories if os.path.isdir(os.path.join(ig_categories_path, item))]
+    models = []
+    for category in categories:
+        category_models = os.listdir(os.path.join(ig_categories_path, category))
+        category_models = [item for item in category_models if os.path.isdir(os.path.join(ig_categories_path,
+                                                                                          category,
+                                                                                          item))]
+        models.extend([os.path.join(ig_categories_path, category, item) for item in category_models])
+    return models
+
 def get_ig_scene_non_colliding_seeds(scene_name):
     ig_dataset_path = gibson2.ig_dataset_path
     ig_scenes_path = ig_dataset_path + "/scenes"
