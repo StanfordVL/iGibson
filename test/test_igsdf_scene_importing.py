@@ -8,10 +8,12 @@ import gibson2
 import time
 import random
 
+
 def test_import_igsdf():
     random.seed(0)
     config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
-    scene = InteractiveIndoorScene('Rs', texture_randomization=False)
+    scene = InteractiveIndoorScene(
+        'Rs', texture_randomization=False, object_randomization=True)
     s = Simulator(mode='headless', image_width=512,
                   image_height=512, device_idx=0)
     s.import_ig_scene(scene)
@@ -32,6 +34,7 @@ def test_import_igsdf():
 
 def main():
     test_import_igsdf()
+
 
 if __name__ == "__main__":
     main()
