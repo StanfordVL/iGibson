@@ -241,6 +241,52 @@ class SimpleToolAP(SimpleTool):
         return skeleton
 
 
+class SimpleToolHardAP(SimpleToolAP):
+    def _create_skill_lib(self):
+        lib_skills = (
+            skills.GraspTopPos(
+                name="grasp", lift_height=0.1, lift_speed=0.01, reach_distance=0.03, grasp_speed=0.1,
+                params=OrderedDict(
+                    grasp_pos=skills.SkillParamsContinuous(low=[-0.2, -0.05, 0.03], high=[0.3, 0.05, 0.05]),
+                )
+            ),
+            skills.PlaceFixed(name="place", retract_distance=0.1),
+            skills.MoveWithPosDiscreteOrn(
+                name="hook", num_pause_steps=30, move_speed=0.02,
+                orientations=OrderedDict([(k, skills.ALL_ORIENTATIONS[k]) for k in ["front"]]),
+                params=OrderedDict(
+                    start_pos=skills.SkillParamsContinuous(low=[0.0, 0.05, 0.02], high=[0.1, 0.15, 0.02]),
+                    move_pos=skills.SkillParamsContinuous(low=[0.2, -0.1, 0], high=[0.4, 0.1, 0]),
+                    start_orn=skills.SkillParamsDiscrete(size=1)
+                )
+            ),
+            skills.MoveWithPosDiscreteOrn(
+                name="poke", num_pause_steps=30, move_speed=0.02,
+                orientations=OrderedDict([(k, skills.ALL_ORIENTATIONS[k]) for k in ["back"]]),
+                params=OrderedDict(
+                    start_pos=skills.SkillParamsContinuous(low=[0.55, -0.05, -0.01], high=[0.65, 0.05, 0.01]),
+                    move_pos=skills.SkillParamsContinuous(low=[-0.45, 0, 0], high=[-0.35, 0, 0]),
+                    start_orn=skills.SkillParamsDiscrete(size=1)
+                )
+            ),
+            skills.ConditionSkill(
+                name="on_target",
+                precondition_fn=lambda oid: PBU.is_center_placed_on(oid, self.objects["target"].body_id),
+            ),
+            skills.ConditionSkill(
+                name="on_cube1",
+                precondition_fn=lambda oid: PBU.is_center_placed_on(oid, self.objects["cube1"].body_id),
+            ),
+            skills.ConditionSkill(
+                name="on_cube1_on_target",
+                precondition_fn=lambda oid: PBU.is_center_placed_on(oid, self.objects["cube1"].body_id) and
+                                            PBU.is_center_placed_on(self.objects["cube1"].body_id,
+                                                                    self.objects["target"].body_id),
+            )
+        )
+        self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
+
+
 class SimpleToolStackAP(SimpleToolAP):
     def _sample_task(self):
         self.target_object = "cube2"

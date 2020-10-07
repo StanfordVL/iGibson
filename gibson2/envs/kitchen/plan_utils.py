@@ -26,6 +26,21 @@ def world_saved():
     saved_world.restore()
 
 
+@contextmanager
+def render_disabled():
+    p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+    yield
+    p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+
+
+def render_disabled_decorator(func):
+    def wrapped_load_func(*args, **kwargs):
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+        res = func(*args, **kwargs)
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+        return res
+    return wrapped_load_func
+
 class Path(object):
     def __init__(self, arm_path=None, gripper_path=None, gripper_collision=None, holding_collision=None):
         self._arm_path = arm_path

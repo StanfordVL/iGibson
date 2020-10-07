@@ -4,7 +4,7 @@ from collections import OrderedDict
 import gibson2.envs.kitchen.transform_utils as TU
 import gibson2.external.pybullet_tools.transformations as T
 from gibson2.envs.kitchen.plan_utils import ConfigurationPath, CartesianPath, configuration_path_to_cartesian_path, \
-    compute_grasp_pose, NoPlanException, PreconditionNotSatisfied, move_to_end_of_configuration_path
+    compute_grasp_pose, NoPlanException, PreconditionNotSatisfied, move_to_end_of_configuration_path, render_disabled_decorator
 from gibson2.envs.kitchen.robots import PlannerRobot
 from gibson2.envs.kitchen.robots import GRIPPER_CLOSE, GRIPPER_OPEN
 import gibson2.external.pybullet_tools.utils as PBU
@@ -1549,6 +1549,7 @@ class SkillLibrary(object):
             ind += s.action_dimension
         return masks
 
+    @render_disabled_decorator
     def plan(self, params, target_object_id):
         holding = self.env.robot.gripper.grasped_body_id
         if holding is not None:
