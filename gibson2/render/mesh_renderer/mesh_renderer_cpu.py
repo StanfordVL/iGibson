@@ -536,6 +536,16 @@ class MeshRendererSettings(object):
         self.optimized = optimized
         self.skybox_size=skybox_size
 
+    def get_fastest(self):
+        self.msaa = False
+        self.enable_shadow = False
+        return self
+
+    def get_best(self):
+        self.msaa = True
+        self.enable_shadow = True
+        return self
+
 class MeshRenderer(object):
     """
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
@@ -1056,7 +1066,6 @@ class MeshRenderer(object):
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-        print(self.vertical_fov, self.horizontal_fov)
 
         if self.enable_shadow:
             # shadow pass
