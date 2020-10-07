@@ -153,7 +153,6 @@ class InstanceGroup(object):
                         buffer = self.renderer.fbo_ms
                     else:
                         buffer = self.renderer.fbo
-
                     self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                            texture_id,
                                                            metallic_texture_id,
@@ -526,13 +525,21 @@ class RandomizedMaterial(Material):
         )
 
 class MeshRendererSettings(object):
-    def __init__(self, use_fisheye=False, msaa=False,
-                 enable_shadow=False, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr'),
-                 optimized=False, skybox_size=20.):
+    def __init__(self,
+                 use_fisheye=False,
+                 msaa=False,
+                 enable_shadow=False,
+                 env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr'),
+                 env_texture_filename2='',
+                 env_texture_filename3=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr'),
+                 optimized=False,
+                 skybox_size=20.):
         self.use_fisheye = use_fisheye
         self.msaa = msaa
         self.enable_shadow = enable_shadow
         self.env_texture_filename = env_texture_filename
+        self.env_texture_filename2 = env_texture_filename2
+        self.env_texture_filename3 = env_texture_filename3
         self.optimized = optimized
         self.skybox_size=skybox_size
 
@@ -678,15 +685,21 @@ class MeshRenderer(object):
         self.materials_mapping = {}
         self.mesh_materials = []
 
-        self.env_texture_filename = rendering_settings.env_texture_filename
+        self.rendering_settings = rendering_settings
+
         self.skybox_size = rendering_settings.skybox_size
         if not self.platform == 'Darwin':
             self.setup_pbr()
 
     def setup_pbr(self):
-        if os.path.exists(self.env_texture_filename):
-            self.r.setup_pbr(os.path.join(os.path.dirname(
-                mesh_renderer.__file__), 'shaders/'), self.env_texture_filename)
+        if os.path.exists(self.rendering_settings.env_texture_filename) or \
+              os.path.exists(self.rendering_settings.env_texture_filename2) or \
+              os.path.exists(self.rendering_settings.env_texture_filename3):
+            self.r.setup_pbr(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/'),
+                             self.rendering_settings.env_texture_filename,
+                             self.rendering_settings.env_texture_filename2,
+                             self.rendering_settings.env_texture_filename3
+                             )
         else:
             logging.warning(
                 "Environment texture not available, cannot use PBR.")
