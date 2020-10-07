@@ -1,5 +1,5 @@
 import numpy as np
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
 from gibson2.render.mesh_renderer.get_available_devices import get_cuda_device
 import logging
 
@@ -12,9 +12,9 @@ try:
         pytorch installation is required.
         """
 
-        def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False,
-                     enable_shadow=False):
-            super(MeshRendererG2G, self).__init__(width, height, vertical_fov, device_idx, use_fisheye, msaa, enable_shadow)
+        def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0,
+                     rendering_settings=MeshRendererSettings()):
+            super(MeshRendererG2G, self).__init__(width, height, vertical_fov, device_idx, rendering_settings)
             self.cuda_idx = get_cuda_device(self.device_minor)
             logging.info("Using cuda device {} for pytorch".format(self.cuda_idx))
             with torch.cuda.device(self.cuda_idx):
