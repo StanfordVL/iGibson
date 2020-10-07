@@ -3,6 +3,7 @@
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.robots.turtlebot_robot import Turtlebot
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.utils.utils import parse_config
 
 import os
@@ -22,12 +23,13 @@ def benchmark_scene(scene_name, optimized=False):
     seeds = get_ig_scene_non_colliding_seeds(scene_name)
     scene = InteractiveIndoorScene(
         scene_name, texture_randomization=False, object_randomization=True, random_seed=seeds[0])
+    settings = MeshRendererSettings(msaa=True, enable_shadow=True, optimized=optimized, env_texture_filename=os.path.join(   get_scene_path('Rs'), 'lighting', 'probes', 'probe_00.hdr'))
     s = Simulator(mode='headless',
                   image_width=512,
                   image_height=512,
                   device_idx=0,
-                  optimized_renderer=optimized,
-                  env_texture_filename=os.path.join(get_scene_path('Rs'), 'lighting', 'probes', 'probe_00.hdr'))
+                  rendering_settings=settings,
+                  )
     s.import_ig_scene(scene)
     turtlebot = Turtlebot(config)
     s.import_robot(turtlebot)

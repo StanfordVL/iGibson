@@ -1,5 +1,5 @@
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer
 from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
@@ -11,25 +11,20 @@ import platform
 import logging
 from IPython import embed
 
-
 class Simulator:
     def __init__(self,
                  gravity=9.8,
                  physics_timestep=1 / 120.0,
                  render_timestep=1 / 30.0,
-                 use_fisheye=False,
                  mode='gui',
-                 enable_shadow=False,
-                 enable_msaa=False,
                  image_width=128,
                  image_height=128,
                  vertical_fov=90,
                  device_idx=0,
                  render_to_tensor=False,
                  auto_sync=True,
-                 optimized_renderer=False,
-                 env_texture_filename=None,
-                 skybox_size=20.):
+                 rendering_settings=MeshRendererSettings()):
+
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -37,7 +32,6 @@ class Simulator:
         :param gravity: gravity on z direction.
         :param physics_timestep: timestep of physical simulation, p.stepSimulation()
         :param render_timestep: timestep of rendering, and Simulator.step() function
-        :param use_fisheye: use fisheye
         :param mode: choose mode from gui, headless, iggui (only open iGibson UI), or pbgui(only open pybullet UI)
         :param image_width: width of the camera image
         :param image_height: height of the camera image
@@ -46,7 +40,6 @@ class Simulator:
         :param render_to_tensor: Render to GPU tensors
         :param auto_sync: automatically sync object poses to gibson renderer, by default true,
         disable it when you want to run multiple physics step but don't need to visualize each frame
-        :param optimized_renderer: whether to optimize renderer (combine vertices)
         """
         # physics simulator
         self.gravity = gravity
@@ -77,14 +70,10 @@ class Simulator:
         self.image_height = image_height
         self.vertical_fov = vertical_fov
         self.device_idx = device_idx
-        self.use_fisheye = use_fisheye
         self.render_to_tensor = render_to_tensor
         self.auto_sync = auto_sync
-        self.enable_shadow = enable_shadow
-        self.enable_msaa = enable_msaa
-        self.optimized_renderer = optimized_renderer
-        self.env_texture_filename = env_texture_filename
-        self.skybox_size = skybox_size  
+        self.optimized_renderer = rendering_settings.optimized
+        self.rendering_settings = rendering_settings
         self.load()
 
     def set_timestep(self, physics_timestep, render_timestep):
@@ -118,30 +107,14 @@ class Simulator:
                                             height=self.image_height,
                                             vertical_fov=self.vertical_fov,
                                             device_idx=self.device_idx,
-                                            use_fisheye=self.use_fisheye,
-                                            enable_shadow=self.enable_shadow,
-                                            msaa=self.enable_msaa)
+                                            rendering_settings=self.rendering_settings)
         else:
-            if self.env_texture_filename is not None:
-                self.renderer = MeshRenderer(width=self.image_width,
-                                         height=self.image_height,
-                                         vertical_fov=self.vertical_fov,
-                                         device_idx=self.device_idx,
-                                         use_fisheye=self.use_fisheye,
-                                         enable_shadow=self.enable_shadow,
-                                         msaa=self.enable_msaa,
-                                         optimized=self.optimized_renderer,
-                                         skybox_size=self.skybox_size,
-                                         env_texture_filename=self.env_texture_filename)
-            else:
-                self.renderer = MeshRenderer(width=self.image_width,
-                                         height=self.image_height,
-                                         vertical_fov=self.vertical_fov,
-                                         device_idx=self.device_idx,
-                                         use_fisheye=self.use_fisheye,
-                                         enable_shadow=self.enable_shadow,
-                                         msaa=self.enable_msaa,
-                                         optimized=self.optimized_renderer)
+            self.renderer = MeshRenderer(width=self.image_width,
+                                     height=self.image_height,
+                                     vertical_fov=self.vertical_fov,
+                                     device_idx=self.device_idx,
+                                     rendering_settings=self.rendering_settings)
+
 
         print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:

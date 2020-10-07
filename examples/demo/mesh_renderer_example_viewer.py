@@ -2,7 +2,7 @@ import cv2
 import sys
 import os
 import numpy as np
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
 from gibson2.render.profiler import Profiler
 from gibson2.utils.assets_utils import get_scene_path
 from PIL import Image
@@ -76,9 +76,8 @@ def main():
         model_path = sys.argv[1]
     else:
         model_path = os.path.join(get_scene_path('Rs'), 'mesh_z_up.obj')
-
-    renderer = MeshRenderer(width=1024, height=1024, msaa=True, enable_shadow=True, vertical_fov=70,
-        env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'photo_studio_01_2k.hdr'))
+    settings = MeshRendererSettings(msaa=True, enable_shadow=True, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'photo_studio_01_2k.hdr'))
+    renderer = MeshRenderer(width=1024, height=1024,  vertical_fov=70, rendering_settings=settings)
     renderer.set_light_position_direction([0,0,10], [0,0,0])
 
     renderer.load_object('plane/plane_z_up_0.obj', scale=[3,3,3])

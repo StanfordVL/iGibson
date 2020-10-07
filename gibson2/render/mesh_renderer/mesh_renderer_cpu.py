@@ -525,6 +525,26 @@ class RandomizedMaterial(Material):
                 self.material_classes)
         )
 
+class MeshRendererSettings(object):
+    def __init__(self, use_fisheye=False, msaa=False,
+                 enable_shadow=False, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr'),
+                 optimized=False, skybox_size=20.):
+        self.use_fisheye = use_fisheye
+        self.msaa = msaa
+        self.enable_shadow = enable_shadow
+        self.env_texture_filename = env_texture_filename
+        self.optimized = optimized
+        self.skybox_size=skybox_size
+
+    def get_fastest(self):
+        self.msaa = False
+        self.enable_shadow = False
+        return self
+
+    def get_best(self):
+        self.msaa = True
+        self.enable_shadow = True
+        return self
 
 class MeshRenderer(object):
     """
@@ -532,17 +552,13 @@ class MeshRenderer(object):
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
 
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False,
-                 enable_shadow=False, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr'),
-                 optimized=False, skybox_size=20.):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, rendering_settings=MeshRendererSettings()):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
         :param vertical_fov: vertical field of view for the renderer
         :param device_idx: which GPU to run the renderer on
-        :param use_fisheye: use fisheye shader or not
-        :param enable_shadow: enable shadow in the rgb rendering
-        :param env_texture_filename: texture filename for PBR lighting
+        :param render_settings: rendering settings
         """
         self.shaderProgram = None
         self.fbo = None
@@ -559,10 +575,10 @@ class MeshRenderer(object):
         self.height = height
         self.faces = []
         self.instances = []
-        self.fisheye = use_fisheye
-        self.optimized = optimized
+        self.fisheye = rendering_settings.use_fisheye
+        self.optimized = rendering_settings.optimized
         self.texture_files = {}
-        self.enable_shadow = enable_shadow
+        self.enable_shadow = rendering_settings.enable_shadow
 
         if os.environ.get('GIBSON_DEVICE_ID', None):
             device = int(os.environ.get('GIBSON_DEVICE_ID'))
@@ -580,7 +596,7 @@ class MeshRenderer(object):
 
         self.device_idx = device_idx
         self.device_minor = device
-        self.msaa = msaa
+        self.msaa = rendering_settings.msaa
         self.platform = platform.system()
         if self.platform == 'Darwin' and self.optimized:
             logging.error('Optimized renderer is not supported on Mac')
@@ -662,8 +678,8 @@ class MeshRenderer(object):
         self.materials_mapping = {}
         self.mesh_materials = []
 
-        self.env_texture_filename = env_texture_filename
-        self.skybox_size = skybox_size
+        self.env_texture_filename = rendering_settings.env_texture_filename
+        self.skybox_size = rendering_settings.skybox_size
         if not self.platform == 'Darwin':
             self.setup_pbr()
 
@@ -1050,7 +1066,6 @@ class MeshRenderer(object):
             hidden
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-        print(self.vertical_fov, self.horizontal_fov)
 
         if self.enable_shadow:
             # shadow pass

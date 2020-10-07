@@ -13,6 +13,7 @@ from gibson2.scenes.stadium_scene import StadiumScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.utils.utils import parse_config
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 import gym
 
 
@@ -44,15 +45,17 @@ class BaseEnv(gym.Env):
         self.mode = mode
         self.action_timestep = action_timestep
         self.physics_timestep = physics_timestep
+        settings = MeshRendererSettings()
+        #TODO(fxia22): pass from config file
         self.simulator = Simulator(mode=mode,
                                    physics_timestep=physics_timestep,
                                    render_timestep=action_timestep,
-                                   use_fisheye=self.config.get('fisheye', False),
                                    image_width=self.config.get('image_width', 128),
                                    image_height=self.config.get('image_height', 128),
                                    vertical_fov=self.config.get('vertical_fov', 90),
                                    device_idx=device_idx,
                                    render_to_tensor=render_to_tensor,
+                                   rendering_settings=settings,
                                    auto_sync=False)
         self.load()
 
