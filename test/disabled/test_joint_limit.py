@@ -21,7 +21,7 @@ def main():
     s = Simulator(mode='headless',
                   image_width=512,
                   image_height=512,
-                  timestep=1 / float(step_per_sec))
+                  physics_timestep=1 / float(step_per_sec))
     p.setGravity(0.0, 0.0, 0.0)
 
     for obj_class_dir in sorted(os.listdir(root_dir)):
