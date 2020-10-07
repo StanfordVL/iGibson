@@ -529,9 +529,9 @@ class MeshRendererSettings(object):
                  use_fisheye=False,
                  msaa=False,
                  enable_shadow=False,
-                 env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr'),
-                 env_texture_filename2='',
-                 env_texture_filename3=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr'),
+                 env_texture_filename=os.path.join(gibson2.ig_dataset_path, 'background', 'photo_studio_01_2k.hdr'),
+                 env_texture_filename2=os.path.join(gibson2.ig_dataset_path, 'background', 'photo_studio_01_2k.hdr'),
+                 env_texture_filename3=os.path.join(gibson2.ig_dataset_path, 'background', 'photo_studio_01_2k.hdr'),
                  optimized=False,
                  skybox_size=20.):
         self.use_fisheye = use_fisheye
