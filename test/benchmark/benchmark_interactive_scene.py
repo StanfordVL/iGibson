@@ -23,7 +23,7 @@ def benchmark_scene(scene_name, optimized=False):
     seeds = get_ig_scene_non_colliding_seeds(scene_name)
     scene = InteractiveIndoorScene(
         scene_name, texture_randomization=False, object_randomization=True, random_seed=seeds[0])
-    settings = MeshRendererSettings(msaa=True, enable_shadow=True, optimized=optimized)
+    settings = MeshRendererSettings(msaa=False, enable_shadow=False, optimized=optimized)
     s = Simulator(mode='headless',
                   image_width=512,
                   image_height=512,
