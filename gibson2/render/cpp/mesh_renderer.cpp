@@ -779,7 +779,12 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
                         );
 
     if (env_texture_filename2.length() > 0) {
-        generate_light_maps(equirectToCubeProgram,
+        if (env_texture_filename2 == env_texture_filename) {
+            m_envTexture2 = m_envTexture;
+            m_irmapTexture2 = m_irmapTexture;
+            m_spBRDF_LUT2 = m_spBRDF_LUT;
+        } else {
+            generate_light_maps(equirectToCubeProgram,
                         spmapProgram,
                         irmapProgram,
                         spBRDFProgram,
@@ -788,12 +793,19 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
                         m_irmapTexture2,
                         m_spBRDF_LUT2
                         );
+        }
     }
 
     if (env_texture_filename3.length() > 0) {
-        generate_env_map(equirectToCubeProgram,
+        if (env_texture_filename3 == env_texture_filename2) {
+            m_envTexture3 = m_envTexture2;
+        } else if (env_texture_filename3 == env_texture_filename) {
+            m_envTexture3 = m_envTexture;
+        } else {
+            generate_env_map(equirectToCubeProgram,
                          env_texture_filename3,
                          m_envTexture3);
+        }
     }
 
     // delete all the programs
