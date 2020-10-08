@@ -92,6 +92,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     model_path = get_ig_scene_path(model)
                     filename = os.path.join(
                         model_path, model + "_building.urdf")
+                elif category in ["walls", "floors", "ceilings"]:  # For the walls, floors, ceilings separately (this will replace building)
+                    model_path = get_ig_scene_path(model)
+                    filename = os.path.join(
+                        model_path, model + "_" + category + ".urdf")
                 else:  # For other objects
                     category_path = get_ig_category_path(category)
                     assert len(os.listdir(category_path)) != 0, \
