@@ -17,11 +17,11 @@ DIRECT_QUERY = [
     'basket',
     'bathtub',
     'bench',
-    'cabinet',
+    'bottom_cabinet',
+    'bottom_cabinet_no_top',
     'carpet',
     'chair',
     'chest',
-    'clock',
     'coffee_machine',
     'coffee_table',
     'console_table',
@@ -31,11 +31,13 @@ DIRECT_QUERY = [
     'dishwasher',
     'dryer',
     'fence',
+    'floor_lamp',
     'fridge',
+    'grandfather_clock',
     'guitar',
     'heater',
-    'lamp',
     'laptop',
+    'loudspeaker',
     'microwave',
     'mirror',
     'monitor',
@@ -50,23 +52,27 @@ DIRECT_QUERY = [
     'sink',
     'sofa',
     'sofa_chair',
-    'speaker',
+    'speaker_system',
+    'standing_tv',
     'stool',
     'stove',
     'table',
+    'table_lamp',
     'toilet',
+    'top_cabinet',
     'towel_rack',
     'trash_can',
     'treadmill',
-    'tv',
+    'wall_clock',
+    'wall_mounted_tv',
     'washer',
 ]
 
 DIRECT_QUERY_SUB = {
     'bathtub': 'freestanding bathtub',
-    'cabinet': 'base cabinet',
+    'bottom cabinet': 'base cabinet',
+    'bottom cabinet_no_top': 'base cabinet',
     'carpet': 'rug',
-    'clock': 'grandfather clock',
     'cushion': 'pillow',
     'dryer': 'front load dryer',
     'fridge': 'top freezer fridge',
@@ -79,9 +85,12 @@ DIRECT_QUERY_SUB = {
     'shower': 'corner steam shower',
     'sink': 'bathroom sink',
     'sofa chair': 'arm chair',
-    'speaker': 'home speaker system',
+    'speaker system': 'home speaker system',
+    'standing tv': 'tv',
     'stove': 'gas range',
     'table': 'dining table',
+    'top cabinet': 'wall mounted cabinet',
+    'wall_mounted tv': 'tv',
     'washer': 'front load washing machine',
 }
 
@@ -105,12 +114,14 @@ def get_product_api():
 
 
 def query_amazon(products_api, marketplace_usa):
-    root_dir = '/cvgl2/u/chengshu/ig_dataset_v5'
+    root_dir = '/cvgl2/u/chengshu/ig_dataset'
     obj_dir = os.path.join(root_dir, 'objects')
     obj_dim_dir = os.path.join(root_dir, 'object_dims')
 
     for obj_class in sorted(os.listdir(obj_dir)):
         obj_class_query = obj_class.replace('_', ' ')
+        if obj_class not in ['top_cabinet', 'bottom_cabinet']:
+            continue
         if obj_class not in DIRECT_QUERY:
             continue
         if obj_class_query in DIRECT_QUERY_SUB:
@@ -154,16 +165,21 @@ def query_amazon(products_api, marketplace_usa):
                 'console_table', 'cooktop', 'crib', 'cushion', 'fence',
                 'heater', 'laptop', 'microwave', 'monitor',
                 'pool_table', 'range_hood', 'shelf', 'shower', 'sofa',
-                'table', 'towel_rack', 'tv'
+                'table', 'towel_rack', 'standing_tv', 'wall_mounted_tv',
             ]:
                 short_side = min(item_dim_array[:2])
                 long_side = max(item_dim_array[:2])
                 item_dim_array[0] = long_side
                 item_dim_array[1] = short_side
+            elif obj_class in ['table_lamp']:
+                short_side = min(item_dim_array[:2])
+                long_side = max(item_dim_array[:2])
+                item_dim_array[0] = short_side
+                item_dim_array[1] = long_side
             else:
                 short_side, long_side, longest_side = sorted(
                     item_dim_array[:3])
-                if obj_class in ['guitar', 'mirror', 'picture']:
+                if obj_class in ['guitar', 'mirror', 'picture', 'wall_clock']:
                     item_dim_array[0] = long_side
                     item_dim_array[1] = short_side
                     item_dim_array[2] = longest_side
@@ -199,7 +215,7 @@ def query_amazon(products_api, marketplace_usa):
 
 
 def check_weight():
-    root_dir = '/cvgl2/u/chengshu/ig_dataset_v5'
+    root_dir = '/cvgl2/u/chengshu/ig_dataset'
     obj_dim_dir = os.path.join(root_dir, 'object_dims')
     non_amazon_csv = os.path.join(obj_dim_dir, 'non_amazon.csv')
     assert os.path.isfile(non_amazon_csv), \

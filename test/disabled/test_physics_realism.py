@@ -155,35 +155,35 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
 
     # Now iterate over all links and scale the meshes and positions
     for link, link_trimesh in zip(all_links, all_links_trimesh):
+        inertials = link.findall('inertial')
+        if len(inertials) == 0:
+            inertial = ET.SubElement(link, 'inertial')
+        else:
+            assert len(inertials) == 1
+            inertial = inertials[0]
+
+        masses = inertial.findall('mass')
+        if len(masses) == 0:
+            mass = ET.SubElement(inertial, 'mass')
+        else:
+            assert len(masses) == 1
+            mass = masses[0]
+
+        inertias = inertial.findall('inertia')
+        if len(inertias) == 0:
+            inertia = ET.SubElement(inertial, 'inertia')
+        else:
+            assert len(inertias) == 1
+            inertia = inertias[0]
+
+        origins = inertial.findall('origin')
+        if len(origins) == 0:
+            origin = ET.SubElement(inertial, 'origin')
+        else:
+            assert len(origins) == 1
+            origin = origins[0]
+
         if link_trimesh is not None:
-            inertials = link.findall('inertial')
-            if len(inertials) == 0:
-                inertial = ET.SubElement(link, 'inertial')
-            else:
-                assert len(inertials) == 1
-                inertial = inertials[0]
-
-            masses = inertial.findall('mass')
-            if len(masses) == 0:
-                mass = ET.SubElement(inertial, 'mass')
-            else:
-                assert len(masses) == 1
-                mass = masses[0]
-
-            inertias = inertial.findall('inertia')
-            if len(inertias) == 0:
-                inertia = ET.SubElement(inertial, 'inertia')
-            else:
-                assert len(inertias) == 1
-                inertia = inertias[0]
-
-            origins = inertial.findall('origin')
-            if len(origins) == 0:
-                origin = ET.SubElement(inertial, 'origin')
-            else:
-                assert len(origins) == 1
-                origin = origins[0]
-
             if link.attrib['name'] == 'base_link':
                 if obj_class in ['lamp']:
                     link_trimesh.density *= 10.0
@@ -206,6 +206,17 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
             inertia.attrib['iyy'] = str(moment_of_inertia[1][1])
             inertia.attrib['iyz'] = str(moment_of_inertia[1][2])
             inertia.attrib['izz'] = str(moment_of_inertia[2][2])
+        else:
+            # empty link that does not have any mesh
+            origin.attrib['xyz'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
+            origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
+            mass.attrib['value'] = str(0.0)
+            inertia.attrib['ixx'] = str(0.0)
+            inertia.attrib['ixy'] = str(0.0)
+            inertia.attrib['ixz'] = str(0.0)
+            inertia.attrib['iyy'] = str(0.0)
+            inertia.attrib['iyz'] = str(0.0)
+            inertia.attrib['izz'] = str(0.0)
 
         scale_in_lf = scales_in_lf[link.attrib["name"]]
         # Apply the scale to all mesh elements within the link (original scale and origin)
