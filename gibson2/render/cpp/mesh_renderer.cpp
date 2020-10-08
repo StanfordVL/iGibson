@@ -462,10 +462,15 @@ MeshRendererContext::init_material_instance(int shaderProgram, float instance_co
     glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 1);
     glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 2);
     glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 3);
-    glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 4);
-    glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 5);
-    glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 6);
-    glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 7);
+
+    glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture2"), 4);
+    glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture2"), 5);
+    glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 6);
+
+    glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 7);
+    glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 8);
+    glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 9);
+    glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 10);
 }
 
 void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int metallic_texture_id,
@@ -484,22 +489,32 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
     glActiveTexture(GL_TEXTURE3);
     if (flag) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT.id);
 
+    glActiveTexture(GL_TEXTURE4);
+    if (flag) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture2.id);
+
+    glActiveTexture(GL_TEXTURE5);
+    if (flag) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture2.id);
+
+    glActiveTexture(GL_TEXTURE6);
+    if (flag) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT2.id);
+
+
     if (metallic_texture_id != -1) {
-        glActiveTexture(GL_TEXTURE4);
+        glActiveTexture(GL_TEXTURE7);
         if (flag) glBindTexture(GL_TEXTURE_2D, metallic_texture_id);
     }
 
     if (roughness_texture_id != -1) {
-        glActiveTexture(GL_TEXTURE5);
+        glActiveTexture(GL_TEXTURE8);
         if (flag) glBindTexture(GL_TEXTURE_2D, roughness_texture_id);
     }
 
     if (normal_texture_id != -1) {
-        glActiveTexture(GL_TEXTURE6);
+        glActiveTexture(GL_TEXTURE9);
         if (flag) glBindTexture(GL_TEXTURE_2D, normal_texture_id);
     }
 
-    glActiveTexture(GL_TEXTURE7);
+    glActiveTexture(GL_TEXTURE10);
     glBindTexture(GL_TEXTURE_2D, depth_texture_id);
 
     glBindVertexArray(vao);
@@ -560,10 +575,15 @@ void MeshRendererContext::init_material_pos_instance(int shaderProgram, py::arra
     glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 1);
     glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 2);
     glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 3);
-    glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 4);
-    glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 5);
-    glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 6);
-    glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 7);
+
+    glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture2"), 4);
+    glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture2"), 5);
+    glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 6);
+
+    glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 7);
+    glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 8);
+    glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 9);
+    glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 10);
 
 }
 
@@ -632,94 +652,167 @@ int MeshRendererContext::loadTexture(std::string filename) {
     return texture;
 }
 
-void MeshRendererContext::setup_pbr(std::string shader_path, std::string env_texture_filename) {
+void MeshRendererContext::generate_light_maps(
+    GLuint equirectToCubeProgram,
+    GLuint spmapProgram,
+    GLuint irmapProgram,
+    GLuint spBRDFProgram,
+    std::string env_texture_filename,
+    Texture& envTexture,
+    Texture& irmapTexture,
+    Texture& spBRDF_LUT
+    ){
+
+    envTextureUnfiltered = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
+
+    // Load & convert equirectangular environment map to a cubemap texture.
+    {
+        envTextureEquirect = createTexture(Image::fromFile(env_texture_filename, 3), GL_RGB, GL_RGB16F, 1);
+        glUseProgram(equirectToCubeProgram);
+        glBindTextureUnit(0, envTextureEquirect.id);
+        glBindImageTexture(0, envTextureUnfiltered.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+        glDispatchCompute(envTextureUnfiltered.width / 32, envTextureUnfiltered.height / 32, 6);
+    }
+    glGenerateTextureMipmap(envTextureUnfiltered.id);
+    {
+        envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
+
+        // Copy 0th mipmap level into destination environment map.
+        glCopyImageSubData(envTextureUnfiltered.id, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
+                           envTexture.id, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
+                           envTexture.width, envTexture.height, 6);
+
+        glUseProgram(spmapProgram);
+        glBindTextureUnit(0, envTextureUnfiltered.id);
+
+        // Pre-filter rest of the mip chain.
+        const float deltaRoughness = 1.0f / glm::max(float(envTexture.levels - 1), 1.0f);
+        for (int level = 1, size = kEnvMapSize / 2; level <= envTexture.levels; ++level, size /= 2) {
+            const GLuint numGroups = glm::max(1, size / 32);
+            glBindImageTexture(0, envTexture.id, level, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+            glProgramUniform1f(spmapProgram, 0, level * deltaRoughness);
+            glDispatchCompute(numGroups, numGroups, 6);
+        }
+    }
+
+    glDeleteTextures(1, &envTextureUnfiltered.id);
+    // Compute diffuse irradiance cubemap.
+    {
+        irmapTexture = createTexture(GL_TEXTURE_CUBE_MAP, kIrradianceMapSize, kIrradianceMapSize, GL_RGBA16F, 1);
+        glUseProgram(irmapProgram);
+        glBindTextureUnit(0, envTexture.id);
+        glBindImageTexture(0, irmapTexture.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+        glDispatchCompute(irmapTexture.width / 32, irmapTexture.height / 32, 6);
+
+    }
+
+    // Compute Cook-Torrance BRDF 2D LUT for split-sum approximation.
+    {
+        spBRDF_LUT = createTexture(GL_TEXTURE_2D, kBRDF_LUT_Size, kBRDF_LUT_Size, GL_RG16F, 1);
+        glTextureParameteri(spBRDF_LUT.id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(spBRDF_LUT.id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glUseProgram(spBRDFProgram);
+        glBindImageTexture(0, spBRDF_LUT.id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG16F);
+        glDispatchCompute(spBRDF_LUT.width / 32, spBRDF_LUT.height / 32, 1);
+    }
+
+}
+
+
+void MeshRendererContext::generate_env_map(
+    GLuint equirectToCubeProgram,
+    std::string env_texture_filename,
+    Texture& envTexture
+    ){
+
+    envTextureUnfiltered = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
+
+    // Load & convert equirectangular environment map to a cubemap texture.
+    {
+        envTextureEquirect = createTexture(Image::fromFile(env_texture_filename, 3), GL_RGB, GL_RGB16F, 1);
+        glUseProgram(equirectToCubeProgram);
+        glBindTextureUnit(0, envTextureEquirect.id);
+        glBindImageTexture(0, envTextureUnfiltered.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+        glDispatchCompute(envTextureUnfiltered.width / 32, envTextureUnfiltered.height / 32, 6);
+    }
+    glGenerateTextureMipmap(envTextureUnfiltered.id);
+    {
+        envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
+
+        // Copy 0th mipmap level into destination environment map.
+        glCopyImageSubData(envTextureUnfiltered.id, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
+                           envTexture.id, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
+                           envTexture.width, envTexture.height, 6);
+
+    }
+    glDeleteTextures(1, &envTextureUnfiltered.id);
+}
+
+void MeshRendererContext::setup_pbr(std::string shader_path,
+                                    std::string env_texture_filename,
+                                    std::string env_texture_filename2,
+                                    std::string env_texture_filename3)
+                                    {
 
     //glEnable(GL_CULL_FACE);
     glDisable(GL_CULL_FACE);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
     //glFrontFace(GL_CCW);
+    // create all the programs
+    GLuint equirectToCubeProgram = linkProgram({compileShader(shader_path + "/450/equirect2cube_cs.glsl",
+                                                                         GL_COMPUTE_SHADER)});
+    GLuint spmapProgram = linkProgram({compileShader(shader_path + "/450/spmap_cs.glsl", GL_COMPUTE_SHADER)});
+    GLuint irmapProgram = linkProgram({compileShader(shader_path + "/450/irmap_cs.glsl", GL_COMPUTE_SHADER)});
+    GLuint spBRDFProgram = linkProgram({compileShader(shader_path + "/450/spbrdf_cs.glsl", GL_COMPUTE_SHADER)});
 
+    // run subroutine to generate light map
+    generate_light_maps(equirectToCubeProgram,
+                        spmapProgram,
+                        irmapProgram,
+                        spBRDFProgram,
+                        env_texture_filename,
+                        m_envTexture,
+                        m_irmapTexture,
+                        m_spBRDF_LUT
+                        );
 
-    envTextureUnfiltered = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
-
-    // Load & convert equirectangular environment map to a cubemap texture.
-    {
-        GLuint equirectToCubeProgram = linkProgram({
-                                                           compileShader(shader_path + "/450/equirect2cube_cs.glsl",
-                                                                         GL_COMPUTE_SHADER)
-                                                   });
-
-        envTextureEquirect = createTexture(Image::fromFile(env_texture_filename, 3), GL_RGB, GL_RGB16F, 1);
-
-        glUseProgram(equirectToCubeProgram);
-        glBindTextureUnit(0, envTextureEquirect.id);
-        glBindImageTexture(0, envTextureUnfiltered.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
-        glDispatchCompute(envTextureUnfiltered.width / 32, envTextureUnfiltered.height / 32, 6);
-
-        //glDeleteTextures(1, &envTextureEquirect.id);
-        glDeleteProgram(equirectToCubeProgram);
-    }
-    glGenerateTextureMipmap(envTextureUnfiltered.id);
-
-    {
-        GLuint spmapProgram = linkProgram({
-                                                  compileShader(shader_path + "/450/spmap_cs.glsl", GL_COMPUTE_SHADER)
-                                          });
-
-        m_envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
-
-        // Copy 0th mipmap level into destination environment map.
-        glCopyImageSubData(envTextureUnfiltered.id, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
-                           m_envTexture.id, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
-                           m_envTexture.width, m_envTexture.height, 6);
-
-        glUseProgram(spmapProgram);
-        glBindTextureUnit(0, envTextureUnfiltered.id);
-
-        // Pre-filter rest of the mip chain.
-        const float deltaRoughness = 1.0f / glm::max(float(m_envTexture.levels - 1), 1.0f);
-        for (int level = 1, size = kEnvMapSize / 2; level <= m_envTexture.levels; ++level, size /= 2) {
-            const GLuint numGroups = glm::max(1, size / 32);
-            glBindImageTexture(0, m_envTexture.id, level, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
-            glProgramUniform1f(spmapProgram, 0, level * deltaRoughness);
-            glDispatchCompute(numGroups, numGroups, 6);
+    if (env_texture_filename2.length() > 0) {
+        if (env_texture_filename2 == env_texture_filename) {
+            m_envTexture2 = m_envTexture;
+            m_irmapTexture2 = m_irmapTexture;
+            m_spBRDF_LUT2 = m_spBRDF_LUT;
+        } else {
+            generate_light_maps(equirectToCubeProgram,
+                        spmapProgram,
+                        irmapProgram,
+                        spBRDFProgram,
+                        env_texture_filename2,
+                        m_envTexture2,
+                        m_irmapTexture2,
+                        m_spBRDF_LUT2
+                        );
         }
-        glDeleteProgram(spmapProgram);
     }
 
-    //glDeleteTextures(1, &envTextureUnfiltered.id);
-
-    // Compute diffuse irradiance cubemap.
-    {
-        GLuint irmapProgram = linkProgram({
-                                                  compileShader(shader_path + "/450/irmap_cs.glsl", GL_COMPUTE_SHADER)
-                                          });
-
-        m_irmapTexture = createTexture(GL_TEXTURE_CUBE_MAP, kIrradianceMapSize, kIrradianceMapSize, GL_RGBA16F, 1);
-
-        glUseProgram(irmapProgram);
-        glBindTextureUnit(0, m_envTexture.id);
-        glBindImageTexture(0, m_irmapTexture.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
-        glDispatchCompute(m_irmapTexture.width / 32, m_irmapTexture.height / 32, 6);
-        glDeleteProgram(irmapProgram);
+    if (env_texture_filename3.length() > 0) {
+        if (env_texture_filename3 == env_texture_filename2) {
+            m_envTexture3 = m_envTexture2;
+        } else if (env_texture_filename3 == env_texture_filename) {
+            m_envTexture3 = m_envTexture;
+        } else {
+            generate_env_map(equirectToCubeProgram,
+                         env_texture_filename3,
+                         m_envTexture3);
+        }
     }
 
-    // Compute Cook-Torrance BRDF 2D LUT for split-sum approximation.
-    {
-        GLuint spBRDFProgram = linkProgram({
-                                                   compileShader(shader_path + "/450/spbrdf_cs.glsl", GL_COMPUTE_SHADER)
-                                           });
-
-        m_spBRDF_LUT = createTexture(GL_TEXTURE_2D, kBRDF_LUT_Size, kBRDF_LUT_Size, GL_RG16F, 1);
-        glTextureParameteri(m_spBRDF_LUT.id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTextureParameteri(m_spBRDF_LUT.id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        glUseProgram(spBRDFProgram);
-        glBindImageTexture(0, m_spBRDF_LUT.id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG16F);
-        glDispatchCompute(m_spBRDF_LUT.width / 32, m_spBRDF_LUT.height / 32, 1);
-        glDeleteProgram(spBRDFProgram);
-    }
+    // delete all the programs
+    glDeleteProgram(equirectToCubeProgram);
+    glDeleteProgram(spmapProgram);
+    glDeleteProgram(irmapProgram);
+    glDeleteProgram(spBRDFProgram);
 
     glFinish();
 
@@ -1196,11 +1289,24 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
         glActiveTexture(GL_TEXTURE4);
         if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT.id);
 
+        glActiveTexture(GL_TEXTURE5);
+        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture2.id);
+
+        glActiveTexture(GL_TEXTURE6);
+        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture2.id);
+
+        glActiveTexture(GL_TEXTURE7);
+        if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT2.id);
+
 		glUniform1i(bigTexLoc, 0);
 		glUniform1i(smallTexLoc, 1);
 		glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 2);
         glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 3);
         glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 4);
+
+        glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture2"), 5);
+        glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture2"), 6);
+        glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 7);
 
 		glUseProgram(0);
 
@@ -1316,7 +1422,7 @@ void MeshRendererContext::renderSkyBox(int shaderProgram, py::array_t<float> V, 
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture.id);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture3.id);
     glUniform1i(glGetUniformLocation(shaderProgram, "envTexture"), 0);
     glBindBuffer(GL_ARRAY_BUFFER, m_skybox_vbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_skybox_ibo);

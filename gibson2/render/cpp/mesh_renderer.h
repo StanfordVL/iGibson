@@ -37,9 +37,16 @@ public:
     const int kIrradianceMapSize = 32;
     const int kBRDF_LUT_Size = 256;
 
-    Texture m_envTexture;
-    Texture m_irmapTexture;
-    Texture m_spBRDF_LUT;
+    Texture m_envTexture;  // indoor 1
+    Texture m_irmapTexture; // indoor 1
+    Texture m_spBRDF_LUT; // indoor 1
+
+    Texture m_envTexture2; // indoor 2
+    Texture m_irmapTexture2; // indoor 2
+    Texture m_spBRDF_LUT2; // indoor 2
+
+    Texture m_envTexture3; // outdoor
+
     Texture envTextureEquirect;
     Texture envTextureUnfiltered;
 
@@ -133,7 +140,27 @@ public:
 
     int loadTexture(std::string filename);
 
-    void setup_pbr(std::string shader_path, std::string env_texture_filename);
+    void setup_pbr(std::string shader_path,
+    std::string env_texture_filename,
+    std::string env_texture_filename2,
+    std::string env_texture_filename3);
+
+    void generate_light_maps(
+    GLuint equirectToCubeProgram,
+    GLuint spmapProgram,
+    GLuint irmapProgram,
+    GLuint spBRDFProgram,
+    std::string env_texture_filename,
+    Texture& envTexture,
+    Texture& irmapTexture,
+    Texture& spBRDF_LUT
+    );
+
+    void generate_env_map(
+    GLuint equirectToCubeProgram,
+    std::string env_texture_filename,
+    Texture& envTexture
+    );
 
     GLuint linkProgram(std::initializer_list<GLuint> shaders);
 

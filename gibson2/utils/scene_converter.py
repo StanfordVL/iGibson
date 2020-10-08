@@ -145,7 +145,7 @@ def convert_scene(scene_name, select_best=False):
 
     fname = scene_name if not select_best else "{}_best".format(scene_name)
     scene_file_out = os.path.join(get_ig_scene_path(scene_name), "{}.urdf".format(fname))
-    scene_tree.write(scene_file_out)
+    scene_tree.write(scene_file_out, xml_declaration=True)
     print('all categories:', categories)
 
 
