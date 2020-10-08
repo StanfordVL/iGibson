@@ -403,15 +403,21 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         self.quality_check = quality_check
 
+        self.body_collision_set = set()
         for body_a, body_b in body_body_collision:
             logging.warning('scene quality check: {} and {} has collision.'.format(
                 body_id_to_name[body_a],
                 body_id_to_name[body_b],
             ))
+            self.body_collision_set.add(body_id_to_name[body_a])
+            self.body_collision_set.add(body_id_to_name[body_b])
+
+        self.link_collision_set = set()
         for body_id in body_link_collision:
             logging.warning('scene quality check: {} has joint that cannot extend for >66%.'.format(
                 body_id_to_name[body_id],
             ))
+            self.link_collision_set.add(body_id_to_name[body_id])
 
     def load(self):
         # Load all the objects
