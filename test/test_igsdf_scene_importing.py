@@ -11,9 +11,8 @@ import random
 
 
 def test_import_igsdf():
-    seeds = get_ig_scene_non_colliding_seeds('Rs')
     scene = InteractiveIndoorScene(
-        'Rs', texture_randomization=False, object_randomization=False, seed=seeds[0])
+        'Rs', texture_randomization=False, object_randomization=True)
     s = Simulator(mode='headless', image_width=512,
                   image_height=512, device_idx=0)
     s.import_ig_scene(scene)
