@@ -1,6 +1,7 @@
 import gibson2
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.profiler import Profiler
 from gibson2.utils.assets_utils import get_ig_scene_path
 import argparse
@@ -23,13 +24,12 @@ def main():
     parser.add_argument('--object_rand', dest='object_rand',
                         action='store_true')
     args = parser.parse_args()
+    settings = MeshRendererSettings(enable_shadow=True, msaa=True, env_texture_filename=os.path.join(
+                gibson2.assets_path, 'test', 'photo_studio_01_2k.hdr'))
 
     s = Simulator(mode='headless', 
             image_width=900, image_height=560, 
-            enable_shadow=True, enable_msaa=True,
-            vertical_fov=60,
-            env_texture_filename=os.path.join(
-                gibson2.assets_path, 'test', 'photo_studio_01_2k.hdr')
+            vertical_fov=60, rendering_settings=settings
             )
     random.seed(args.seed)
     scene = InteractiveIndoorScene(

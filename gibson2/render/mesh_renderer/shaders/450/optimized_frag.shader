@@ -9,6 +9,11 @@ uniform float use_pbr;
 uniform samplerCube specularTexture;
 uniform samplerCube irradianceTexture;
 uniform sampler2D specularBRDF_LUT;
+
+uniform samplerCube specularTexture2;
+uniform samplerCube irradianceTexture2;
+uniform sampler2D specularBRDF_LUT2;
+
 uniform vec3 eyePosition;
 
 uniform TexColorData {

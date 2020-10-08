@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
 import sys
 import os
 import cv2
@@ -9,11 +9,13 @@ import cv2
 def benchmark(render_to_tensor=False, resolution=512, obj_num = 100, optimized = True):
     
     n_frame = 200
-    
+
     if optimized:
-        renderer = MeshRenderer(width=resolution, height=resolution, msaa=True, vertical_fov=90, optimized=True, device_idx=1)
+        settings = MeshRendererSettings(msaa=True, optimized=True)
+        renderer = MeshRenderer(width=resolution, height=resolution, vertical_fov=90, rendering_settings=settings)
     else:
-        renderer = MeshRenderer(width=resolution, height=resolution, msaa=True, vertical_fov=90, enable_shadow=False)
+        settings = MeshRendererSettings(msaa=True, optimized=False)
+        renderer = MeshRenderer(width=resolution, height=resolution, vertical_fov=90, rendering_settings=settings)
 
     renderer.load_object('plane/plane_z_up_0.obj', scale=[3,3,3])
     renderer.add_instance(0)

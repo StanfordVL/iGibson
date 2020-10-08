@@ -13,7 +13,7 @@ import numpy as np
 
 def main():
     config = parse_config('../configs/fetch_p2p_nav.yaml')
-    s = Simulator(mode='gui', timestep=1 / 240.0)
+    s = Simulator(mode='gui', physics_timestep=1 / 240.0)
     scene = EmptyScene()
     s.import_scene(scene)
     fetch = Fetch(config)

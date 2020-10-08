@@ -316,7 +316,7 @@ def render_physics_gifs(main_urdf_file_and_offset):
     s = Simulator(mode='headless',
                   image_width=512,
                   image_height=512,
-                  timestep=1 / float(step_per_sec))
+                  physics_timestep=1 / float(step_per_sec))
 
     root_dir = '/cvgl2/u/chengshu/ig_dataset_v5/objects'
     obj_count = 0
@@ -453,7 +453,7 @@ def debug_renderer_scaling():
     s = Simulator(mode='gui',
                   image_width=512,
                   image_height=512,
-                  timestep=1 / float(100))
+                  physics_timestep=1 / float(100))
     scene = EmptyScene()
     s.import_scene(scene, render_floor_plane=True)
     urdf_path = '/cvgl2/u/chengshu/ig_dataset_v5/objects/window/103070/103070_avg_size_0.urdf'

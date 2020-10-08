@@ -290,7 +290,7 @@ def save_urdfs_without_floating_joints(tree, file_prefix, merge_fj):
         transformation = extended_splitted_dict[esd_key][4]
         urdfs_no_floating[esd_key] = (
             urdf_file_name, transformation, is_fixed)
-        xml_tree_parent.write(urdf_file_name)
+        xml_tree_parent.write(urdf_file_name, xml_declaration=True)
         logging.info(urdf_file_name)
 
     return urdfs_no_floating
