@@ -10,8 +10,6 @@ import random
 
 
 def test_import_igsdf():
-    random.seed(0)
-    config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
     scene = InteractiveIndoorScene(
         'Rs', texture_randomization=False, object_randomization=True)
     s = Simulator(mode='headless', image_width=512,
