@@ -54,7 +54,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.scene_file = os.path.join(
             get_ig_scene_path(scene_id), "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
-
+        self.first_n_objects = np.inf
         self.random_groups = {}
         self.objects_by_category = {}
         self.objects_by_name = {}
@@ -92,6 +92,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     model_path = get_ig_scene_path(model)
                     filename = os.path.join(
                         model_path, model + "_building.urdf")
+                # For the walls, floors, ceilings separately (this will replace building)
+                elif category in ["walls", "floors", "ceilings"]:
+                    model_path = get_ig_scene_path(model)
+                    filename = os.path.join(
+                        model_path, model + "_" + category + ".urdf")
                 else:  # For other objects
                     category_path = get_ig_category_path(category)
                     assert len(os.listdir(category_path)) != 0, \
@@ -419,11 +424,16 @@ class InteractiveIndoorScene(StaticIndoorScene):
             ))
             self.link_collision_set.add(body_id_to_name[body_id])
 
+    def _set_first_n_objects(self, first_n_objects):
+        # hidden API for debugging purposes
+        self.first_n_objects = first_n_objects
+
     def load(self):
         # Load all the objects
         body_ids = []
         fixed_body_ids = []
         visual_mesh_to_material = []
+        num_loaded = 0
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
             body_ids += obj.load()
@@ -431,6 +441,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
             fixed_body_ids += [body_id for body_id, is_fixed
                                in zip(obj.body_ids, obj.is_fixed)
                                if is_fixed]
+            num_loaded += 1
+            if num_loaded > self.first_n_objects:
+                break
 
         # disable collision between the fixed links of the fixed objects
         for i in range(len(fixed_body_ids)):
@@ -451,3 +464,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.check_scene_quality(body_ids, fixed_body_ids)
 
         return body_ids
+
+    def reset_scene_objects(self):
+        for obj_name in self.objects_by_name:
+            self.objects_by_name[obj_name].reset()

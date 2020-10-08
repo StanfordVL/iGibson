@@ -148,7 +148,7 @@ class URDFObject(Object):
                 bbox_size = bbox_max - bbox_min
                 base_link_offset = (bbox_min + bbox_max) / 2.0
         else:
-            assert category == 'building', 'missing object model size and base link offset data'
+            assert category in ['building','walls','floors','ceilings'], 'missing object model size and base link offset data'
             bbox_size = None
             base_link_offset = np.zeros(3)
 
@@ -290,7 +290,7 @@ class URDFObject(Object):
 
         all_links = self.object_tree.findall('link')
         # compute dynamics properties
-        if self.category != "building":
+        if self.category not in ["building", "walls", "floors", "ceilings"]:
             all_links_trimesh = []
             total_volume = 0.0
             for link in all_links:
@@ -336,7 +336,7 @@ class URDFObject(Object):
 
         # Now iterate over all links and scale the meshes and positions
         for i, link in enumerate(all_links):
-            if self.category != "building":
+            if self.category not in ["building", "walls", "floors", "ceilings"]:
                 link_trimesh = all_links_trimesh[i]
                 # assign dynamics properties
                 inertials = link.findall('inertial')
@@ -486,7 +486,7 @@ class URDFObject(Object):
         for _ in range(len(self.urdf_paths)):
             self.visual_mesh_to_material.append({})
 
-        if self.category == 'building':
+        if self.category in ["building", "walls", "floors", "ceilings"]:
             return
 
         material_groups_file = os.path.join(
@@ -532,11 +532,11 @@ class URDFObject(Object):
             logging.info("Loading " + self.urdf_paths[idx])
             body_id = p.loadURDF(self.urdf_paths[idx])
             # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-            logging.info("Moving URDF to " +
-                         np.array_str(self.poses[idx]))
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
             orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+            logging.info("Moving URDF to (pos,ori): " +
+                         np.array_str(pos) + ", " + np.array_str(orn))
             _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
                 p.getDynamicsInfo(body_id, -1)
             pos, orn = p.multiplyTransforms(
@@ -555,3 +555,17 @@ class URDFObject(Object):
 
             self.body_ids.append(body_id)
         return self.body_ids
+
+    def reset(self):
+        for idx in range(len(self.body_ids)):
+            body_id = self.body_ids[idx]
+            transformation = self.poses[idx]
+            pos = transformation[0:3, 3]
+            orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+            logging.info("Resetting URDF to (pos,ori): " +
+                         np.array_str(pos) + ", " + np.array_str(orn))
+            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
+                p.getDynamicsInfo(body_id, -1)
+            pos, orn = p.multiplyTransforms(
+                pos, orn, inertial_pos, inertial_orn)
+            p.resetBasePositionAndOrientation(body_id, pos, orn)
