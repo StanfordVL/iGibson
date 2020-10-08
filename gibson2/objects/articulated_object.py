@@ -148,7 +148,7 @@ class URDFObject(Object):
                 bbox_size = bbox_max - bbox_min
                 base_link_offset = (bbox_min + bbox_max) / 2.0
         else:
-            assert category == 'building', 'missing object model size and base link offset data'
+            assert category in ['building','walls','floors','ceilings'], 'missing object model size and base link offset data'
             bbox_size = None
             base_link_offset = np.zeros(3)
 
@@ -290,7 +290,7 @@ class URDFObject(Object):
 
         all_links = self.object_tree.findall('link')
         # compute dynamics properties
-        if self.category != "building":
+        if self.category not in ["building", "walls", "floors", "ceilings"]:
             all_links_trimesh = []
             total_volume = 0.0
             for link in all_links:
@@ -336,7 +336,7 @@ class URDFObject(Object):
 
         # Now iterate over all links and scale the meshes and positions
         for i, link in enumerate(all_links):
-            if self.category != "building":
+            if self.category not in ["building", "walls", "floors", "ceilings"]:
                 link_trimesh = all_links_trimesh[i]
                 # assign dynamics properties
                 if link_trimesh is not None:
@@ -475,7 +475,7 @@ class URDFObject(Object):
         for _ in range(len(self.urdf_paths)):
             self.visual_mesh_to_material.append({})
 
-        if self.category == 'building':
+        if self.category in ["building", "walls", "floors", "ceilings"]:
             return
 
         material_groups_file = os.path.join(
