@@ -34,6 +34,7 @@ class TableTop(BaseEnv):
         super(TableTop, self).__init__(**kwargs)
 
     def _create_sensors(self):
+        # PBU.set_camera(0, -45, 0.8, (0.5, -0.3, 1.0))
         PBU.set_camera(0, -45, 0.8, (0.0, -0.3, 1.0))
         self.camera = Camera(
             height=self._camera_width,
@@ -61,6 +62,7 @@ class TableTop(BaseEnv):
 class SimpleTool(TableTop):
     def __init__(self, **kwargs):
         kwargs["robot_base_pose"] = ([0.3, 0.3, 1.2], [0, 0, 1, 0])
+        # kwargs["robot_base_pose"] = ([0.3, 0.3, 1.1], skills.ALL_ORIENTATIONS["top"])
         kwargs["gripper_joint_max"] = (0.6, 0.6)
         self.eef_x_limit = -0.4
         kwargs["eef_position_limits"] = (np.array([self.eef_x_limit, -10, -10]), np.array([10, 10, 10]))
@@ -106,6 +108,7 @@ class SimpleTool(TableTop):
         vm = VisualMarker(visual_shape=p.GEOM_BOX,
                           rgba_color=(0.5, 0.5, 0.5, 0.3),
                           half_extents=(0.01, 0.6, 0.1),
+                          # half_extents=(0.01, 10.0, 10.0),
                           initial_offset=(self.eef_x_limit, 0, 0.6)
                           )
         vm.load()
@@ -288,6 +291,13 @@ class SimpleToolHardAP(SimpleToolAP):
 
 
 class SimpleToolStackAP(SimpleToolAP):
+    @property
+    def black_listed_skills(self):
+        return np.array([
+            (self.skill_lib.name_to_skill_index("on_target"), self.objects.names.index("cube1")),
+            (self.skill_lib.name_to_skill_index("on_target"), self.objects.names.index("cube2"))
+        ])
+
     def _sample_task(self):
         self.target_object = "cube2"
         self._task_spec = np.array([self.skill_lib.name_to_skill_index("on_cube1_on_target"),

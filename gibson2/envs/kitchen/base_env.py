@@ -91,9 +91,14 @@ class BaseEnv(object):
     def _create_skill_lib(self):
         raise NotImplementedError
 
+    @property
+    def black_listed_skills(self):
+        return []
+
     def _setup_simulation(self):
         if self._use_gui:
             p.connect(p.GUI)
+            # p.connect(p.GUI, options='--background_color_red=1.0 --background_color_green=1.0 --background_color_blue=1.0')
         else:
             p.connect(p.DIRECT)
         p.setGravity(0, 0, -9.8)
