@@ -9,11 +9,11 @@ import gibson2
 import time
 import random
 
+
 def test_import_igsdf():
     seeds = get_ig_scene_non_colliding_seeds('Rs')
-    random.seed(seeds[0])
-    config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
-    scene = InteractiveIndoorScene('Rs', texture_randomization=False, object_randomization=True)
+    scene = InteractiveIndoorScene(
+        'Rs', texture_randomization=False, object_randomization=False, seed=seeds[0])
     s = Simulator(mode='headless', image_width=512,
                   image_height=512, device_idx=0)
     s.import_ig_scene(scene)
@@ -29,11 +29,11 @@ def test_import_igsdf():
         print("Frequency: ", 1 / (end - start))
 
     s.disconnect()
-    print("end")
 
 
 def main():
     test_import_igsdf()
+
 
 if __name__ == "__main__":
     main()
