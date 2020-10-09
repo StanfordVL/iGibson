@@ -13,6 +13,7 @@ from gibson2.scenes.stadium_scene import StadiumScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.utils.utils import parse_config
+from gibson2.utils.assets_utils import get_ig_scene_non_colliding_seeds
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 import gym
 
@@ -45,18 +46,28 @@ class BaseEnv(gym.Env):
         self.mode = mode
         self.action_timestep = action_timestep
         self.physics_timestep = physics_timestep
+        self.texture_randomization_freq = self.config.get(
+            'texture_randomization_freq', None)
+        self.object_randomization_freq = self.config.get(
+            'object_randomization_freq', None)
+        self.initialize_object_randomization()
+
         settings = MeshRendererSettings()
-        #TODO(fxia22): pass from config file
+        # TODO(fxia22): pass from config file
         self.simulator = Simulator(mode=mode,
                                    physics_timestep=physics_timestep,
                                    render_timestep=action_timestep,
-                                   image_width=self.config.get('image_width', 128),
-                                   image_height=self.config.get('image_height', 128),
-                                   vertical_fov=self.config.get('vertical_fov', 90),
+                                   image_width=self.config.get(
+                                       'image_width', 128),
+                                   image_height=self.config.get(
+                                       'image_height', 128),
+                                   vertical_fov=self.config.get(
+                                       'vertical_fov', 90),
                                    device_idx=device_idx,
                                    render_to_tensor=render_to_tensor,
                                    rendering_settings=settings,
-                                   auto_sync=False)
+                                   auto_sync=True)
+
         self.load()
 
     def reload(self, config_file):
@@ -78,40 +89,79 @@ class BaseEnv(gym.Env):
         self.simulator.reload()
         self.load()
 
+    def reload_model_object_randomization(self):
+        """
+        Reload the same model, with the next object randomization random seed
+        """
+        if self.object_randomization_freq is None:
+            return
+        self.advance_random_seed_idx()
+        self.simulator.reload()
+        self.load()
+
+    def advance_random_seed_idx(self):
+        if self.object_randomization_freq is None:
+            return
+        self.scene_random_seed_idx = (self.scene_random_seed_idx + 1) % len(
+            self.scene_random_seeds)
+
+    def initialize_object_randomization(self):
+        if self.object_randomization_freq is None:
+            return
+        self.scene_random_seeds = get_ig_scene_non_colliding_seeds(
+            self.config['scene_id'])
+        self.scene_random_seed_idx = 0
+
+    def get_next_scene_random_seed(self):
+        if self.object_randomization_freq is None:
+            return None
+        return self.scene_random_seeds[self.scene_random_seed_idx]
+
     def load(self):
         """
         Load the scene and robot
         """
         if self.config['scene'] == 'empty':
             scene = EmptyScene()
-            self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))
+            self.simulator.import_scene(
+                scene, load_texture=self.config.get('load_texture', True))
         elif self.config['scene'] == 'stadium':
             scene = StadiumScene()
-            self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))
+            self.simulator.import_scene(
+                scene, load_texture=self.config.get('load_texture', True))
         elif self.config['scene'] == 'gibson':
             scene = StaticIndoorScene(
                 self.config['scene_id'],
-                waypoint_resolution=self.config.get('waypoint_resolution', 0.2),
+                waypoint_resolution=self.config.get(
+                    'waypoint_resolution', 0.2),
                 num_waypoints=self.config.get('num_waypoints', 10),
                 build_graph=self.config.get('build_graph', False),
-                trav_map_resolution=self.config.get('trav_map_resolution', 0.1),
+                trav_map_resolution=self.config.get(
+                    'trav_map_resolution', 0.1),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
-                pybullet_load_texture=self.config.get('pybullet_load_texture', False),
+                pybullet_load_texture=self.config.get(
+                    'pybullet_load_texture', False),
             )
-            self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))
+            self.simulator.import_scene(
+                scene, load_texture=self.config.get('load_texture', True))
         elif self.config['scene'] == 'igibson':
             scene = InteractiveIndoorScene(
                 self.config['scene_id'],
-                waypoint_resolution=self.config.get('waypoint_resolution', 0.2),
+                waypoint_resolution=self.config.get(
+                    'waypoint_resolution', 0.2),
                 num_waypoints=self.config.get('num_waypoints', 10),
                 build_graph=self.config.get('build_graph', False),
-                trav_map_resolution=self.config.get('trav_map_resolution', 0.1),
+                trav_map_resolution=self.config.get(
+                    'trav_map_resolution', 0.1),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
-                pybullet_load_texture=self.config.get('pybullet_load_texture', False),
+                pybullet_load_texture=self.config.get(
+                    'pybullet_load_texture', False),
+                texture_randomization=self.texture_randomization_freq is not None,
+                object_randomization=self.object_randomization_freq is not None,
+                random_seed=self.get_next_scene_random_seed(),
             )
-            #TODO: Unify the function import_scene and take out of the if-else clauses
+            # TODO: Unify the function import_scene and take out of the if-else clauses
             self.simulator.import_ig_scene(scene)
-
 
         if self.config['robot'] == 'Turtlebot':
             robot = Turtlebot(self.config)
@@ -132,7 +182,8 @@ class BaseEnv(gym.Env):
         elif self.config['robot'] == 'Locobot':
             robot = Locobot(self.config)
         else:
-            raise Exception('unknown robot type: {}'.format(self.config['robot']))
+            raise Exception(
+                'unknown robot type: {}'.format(self.config['robot']))
 
         self.scene = scene
         self.robots = [robot]

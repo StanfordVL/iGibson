@@ -7,6 +7,10 @@ pybullet_load_texture: true
 trav_map_resolution: 0.1
 trav_map_erosion: 2
 
+# domain randomization
+texture_randomization_freq: null
+object_randomization_freq: null
+
 # robot
 robot: Turtlebot
 is_discrete: false

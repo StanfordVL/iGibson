@@ -22,6 +22,7 @@ class NavigationEnv(BaseEnv):
     arXiv preprint arXiv:1807.06757 (2018). (https://arxiv.org/pdf/1807.06757.pdf)
 
     """
+
     def __init__(
             self,
             config_file,
@@ -61,19 +62,24 @@ class NavigationEnv(BaseEnv):
         self.target_pos = np.array(self.config.get('target_pos', [5, 5, 0]))
         self.target_orn = np.array(self.config.get('target_orn', [0, 0, 0]))
 
-        self.initial_pos_z_offset = self.config.get('initial_pos_z_offset', 0.1)
+        self.initial_pos_z_offset = self.config.get(
+            'initial_pos_z_offset', 0.1)
         check_collision_distance = self.initial_pos_z_offset * 0.5
         # s = 0.5 * G * (t ** 2)
-        check_collision_distance_time = np.sqrt(check_collision_distance / (0.5 * 9.8))
-        self.check_collision_loop = int(check_collision_distance_time / self.physics_timestep)
+        check_collision_distance_time = np.sqrt(
+            check_collision_distance / (0.5 * 9.8))
+        self.check_collision_loop = int(
+            check_collision_distance_time / self.action_timestep)
 
-        self.additional_states_dim = self.config.get('additional_states_dim', 0)
+        self.additional_states_dim = self.config.get(
+            'additional_states_dim', 0)
         self.goal_format = self.config.get('goal_format', 'polar')
 
         # termination condition
         self.dist_tol = self.config.get('dist_tol', 0.5)
         self.max_step = self.config.get('max_step', 500)
-        self.max_collisions_allowed = self.config.get('max_collisions_allowed', 500)
+        self.max_collisions_allowed = self.config.get(
+            'max_collisions_allowed', 500)
 
         # reward
         self.reward_type = self.config.get('reward_type', 'l2')
@@ -83,16 +89,26 @@ class NavigationEnv(BaseEnv):
         self.slack_reward = self.config.get('slack_reward', -0.01)
 
         # reward weight
-        self.potential_reward_weight = self.config.get('potential_reward_weight', 1.0)
-        self.collision_reward_weight = self.config.get('collision_reward_weight', -0.1)
+        self.potential_reward_weight = self.config.get(
+            'potential_reward_weight', 1.0)
+        self.collision_reward_weight = self.config.get(
+            'collision_reward_weight', -0.1)
 
         # ignore the agent's collision with these body ids
-        self.collision_ignore_body_b_ids = set(self.config.get('collision_ignore_body_b_ids', []))
+        self.collision_ignore_body_b_ids = set(
+            self.config.get('collision_ignore_body_b_ids', []))
         # ignore the agent's collision with these link ids of itself
-        self.collision_ignore_link_a_ids = set(self.config.get('collision_ignore_link_a_ids', []))
+        self.collision_ignore_link_a_ids = set(
+            self.config.get('collision_ignore_link_a_ids', []))
 
         # discount factor
         self.discount_factor = self.config.get('discount_factor', 0.99)
+
+        # domain randomization frequency
+        self.texture_randomization_freq = self.config.get(
+            'texture_randomization_freq', None)
+        self.object_randomization_freq = self.config.get(
+            'object_randomization_freq', None)
 
     def load_observation_space(self):
         """
@@ -112,7 +128,8 @@ class NavigationEnv(BaseEnv):
         if 'rgb' in self.output:
             self.rgb_space = gym.spaces.Box(low=0.0,
                                             high=1.0,
-                                            shape=(self.image_height, self.image_width, 3),
+                                            shape=(self.image_height,
+                                                   self.image_width, 3),
                                             dtype=np.float32)
             observation_space['rgb'] = self.rgb_space
         if 'depth' in self.output:
@@ -121,19 +138,22 @@ class NavigationEnv(BaseEnv):
             self.depth_high = self.config.get('depth_high', 5.0)
             self.depth_space = gym.spaces.Box(low=0.0,
                                               high=1.0,
-                                              shape=(self.image_height, self.image_width, 1),
+                                              shape=(self.image_height,
+                                                     self.image_width, 1),
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
         if 'rgbd' in self.output:
             self.rgbd_space = gym.spaces.Box(low=0.0,
                                              high=1.0,
-                                             shape=(self.image_height, self.image_width, 4),
+                                             shape=(self.image_height,
+                                                    self.image_width, 4),
                                              dtype=np.float32)
             observation_space['rgbd'] = self.rgbd_space
         if 'seg' in self.output:
             self.seg_space = gym.spaces.Box(low=0.0,
                                             high=1.0,
-                                            shape=(self.image_height, self.image_width, 1),
+                                            shape=(self.image_height,
+                                                   self.image_width, 1),
                                             dtype=np.float32)
             observation_space['seg'] = self.seg_space
         if 'scan' in self.output:
@@ -141,13 +161,17 @@ class NavigationEnv(BaseEnv):
             self.n_horizontal_rays = self.config.get('n_horizontal_rays', 128)
             self.n_vertical_beams = self.config.get('n_vertical_beams', 1)
             assert self.n_vertical_beams == 1, 'scan can only handle one vertical beam for now'
-            self.laser_linear_range = self.config.get('laser_linear_range', 10.0)
-            self.laser_angular_range = self.config.get('laser_angular_range', 180.0)
+            self.laser_linear_range = self.config.get(
+                'laser_linear_range', 10.0)
+            self.laser_angular_range = self.config.get(
+                'laser_angular_range', 180.0)
             self.min_laser_dist = self.config.get('min_laser_dist', 0.05)
-            self.laser_link_name = self.config.get('laser_link_name', 'scan_link')
+            self.laser_link_name = self.config.get(
+                'laser_link_name', 'scan_link')
             self.scan_space = gym.spaces.Box(low=0.0,
                                              high=1.0,
-                                             shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
+                                             shape=(self.n_horizontal_rays *
+                                                    self.n_vertical_beams, 1),
                                              dtype=np.float32)
             observation_space['scan'] = self.scan_space
         if 'rgb_filled' in self.output:  # use filler
@@ -157,7 +181,8 @@ class NavigationEnv(BaseEnv):
                 from torchvision import datasets, transforms
                 from gibson2.learn.completion import CompletionNet
             except:
-                raise Exception('Trying to use rgb_filled ("the goggle"), but torch is not installed. Try "pip install torch torchvision".')
+                raise Exception(
+                    'Trying to use rgb_filled ("the goggle"), but torch is not installed. Try "pip install torch torchvision".')
 
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
@@ -239,7 +264,8 @@ class NavigationEnv(BaseEnv):
         """
         additional_states = self.global_to_local(self.target_pos)[:2]
         if self.goal_format == 'polar':
-            additional_states = np.array(cartesian_to_polar(additional_states[0], additional_states[1]))
+            additional_states = np.array(cartesian_to_polar(
+                additional_states[0], additional_states[1]))
 
         # linear velocity along the x-axis
         linear_velocity = rotate_vector_3d(self.robots[0].get_linear_velocity(),
@@ -247,14 +273,18 @@ class NavigationEnv(BaseEnv):
         # angular velocity along the z-axis
         angular_velocity = rotate_vector_3d(self.robots[0].get_angular_velocity(),
                                             *self.robots[0].get_rpy())[2]
-        additional_states = np.append(additional_states, [linear_velocity, angular_velocity])
+        additional_states = np.append(
+            additional_states, [linear_velocity, angular_velocity])
 
         if self.config['task'] == 'reaching':
-            end_effector_pos_local = self.global_to_local(self.robots[0].get_end_effector_position())
-            additional_states = np.append(additional_states, end_effector_pos_local)
+            end_effector_pos_local = self.global_to_local(
+                self.robots[0].get_end_effector_position())
+            additional_states = np.append(
+                additional_states, end_effector_pos_local)
 
         assert additional_states.shape[0] == self.additional_states_dim, \
-            'additional states dimension mismatch {} v.s. {}'.format(additional_states.shape[0], self.additional_states_dim)
+            'additional states dimension mismatch {} v.s. {}'.format(
+                additional_states.shape[0], self.additional_states_dim)
         return additional_states
 
     def add_naive_noise_to_sensor(self, sensor_reading, noise_rate, noise_value=1.0):
@@ -271,7 +301,8 @@ class NavigationEnv(BaseEnv):
         assert len(sensor_reading[(sensor_reading < 0.0) | (sensor_reading > 1.0)]) == 0,\
             'sensor reading has to be between [0.0, 1.0]'
 
-        valid_mask = np.random.choice(2, sensor_reading.shape, p=[noise_rate, 1.0 - noise_rate])
+        valid_mask = np.random.choice(2, sensor_reading.shape, p=[
+                                      noise_rate, 1.0 - noise_rate])
         sensor_reading[valid_mask == 0] = noise_value
         return sensor_reading
 
@@ -279,14 +310,17 @@ class NavigationEnv(BaseEnv):
         """
         :return: depth sensor reading, normalized to [0.0, 1.0]
         """
-        depth = -self.simulator.renderer.render_robot_cameras(modes=('3d'))[0][:, :, 2:3]
+        depth = - \
+            self.simulator.renderer.render_robot_cameras(modes=('3d'))[
+                0][:, :, 2:3]
         # 0.0 is a special value for invalid entries
         depth[depth < self.depth_low] = 0.0
         depth[depth > self.depth_high] = 0.0
 
         # re-scale depth to [0.0, 1.0]
         depth /= self.depth_high
-        depth = self.add_naive_noise_to_sensor(depth, self.depth_noise_rate, noise_value=0.0)
+        depth = self.add_naive_noise_to_sensor(
+            depth, self.depth_noise_rate, noise_value=0.0)
 
         return depth
 
@@ -312,7 +346,8 @@ class NavigationEnv(BaseEnv):
         """
         :return: semantic segmentation mask, normalized to [0.0, 1.0]
         """
-        seg = self.simulator.renderer.render_robot_cameras(modes='seg')[0][:, :, 0:1]
+        seg = self.simulator.renderer.render_robot_cameras(modes='seg')[
+            0][:, :, 0:1]
         if self.num_object_classes is not None:
             seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
         return seg
@@ -328,8 +363,10 @@ class NavigationEnv(BaseEnv):
         angle = np.arange(-laser_angular_half_range / 180 * np.pi,
                           laser_angular_half_range / 180 * np.pi,
                           self.laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
-        unit_vector_local = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
-        transform_matrix = quat2mat([laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
+        unit_vector_local = np.array(
+            [[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+        transform_matrix = quat2mat(
+            [laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
         unit_vector_world = transform_matrix.dot(unit_vector_local.T).T
 
         start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
@@ -337,8 +374,10 @@ class NavigationEnv(BaseEnv):
         end_pose = laser_pose[:3] + unit_vector_world * self.laser_linear_range
         results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
 
-        hit_fraction = np.array([item[2] for item in results])  # hit fraction = [0.0, 1.0] of self.laser_linear_range
-        hit_fraction = self.add_naive_noise_to_sensor(hit_fraction, self.scan_noise_rate)
+        # hit fraction = [0.0, 1.0] of self.laser_linear_range
+        hit_fraction = np.array([item[2] for item in results])
+        hit_fraction = self.add_naive_noise_to_sensor(
+            hit_fraction, self.scan_noise_rate)
         scan = np.expand_dims(hit_fraction, 1)
         return scan
 
@@ -366,8 +405,10 @@ class NavigationEnv(BaseEnv):
             state['seg'] = self.get_seg()
         if 'rgb_filled' in self.output:
             with torch.no_grad():
-                tensor = transforms.ToTensor()((state['rgb'] * 255).astype(np.uint8)).cuda()
-                rgb_filled = self.comp(tensor[None, :, :, :])[0].permute(1, 2, 0).cpu().numpy()
+                tensor = transforms.ToTensor()(
+                    (state['rgb'] * 255).astype(np.uint8)).cuda()
+                rgb_filled = self.comp(tensor[None, :, :, :])[
+                    0].permute(1, 2, 0).cpu().numpy()
                 state['rgb_filled'] = rgb_filled
         if 'scan' in self.output:
             state['scan'] = self.get_scan()
@@ -380,8 +421,8 @@ class NavigationEnv(BaseEnv):
         """
         collision_links = []
         self.simulator_step()
-        collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
-        self.simulator.sync()
+        collision_links.append(
+            list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
 
         return self.filter_collision_links(collision_links)
 
@@ -457,7 +498,8 @@ class NavigationEnv(BaseEnv):
         :param info: a dictionary to store additional info
         :return: reward, info
         """
-        collision_links_flatten = [item for sublist in collision_links for item in sublist]
+        collision_links_flatten = [
+            item for sublist in collision_links for item in sublist]
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
         if self.reward_type == 'l2':
@@ -465,12 +507,14 @@ class NavigationEnv(BaseEnv):
         elif self.reward_type == 'geodesic':
             new_potential = self.get_geodesic_potential()
         potential_reward = self.potential - new_potential
-        reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+        # |potential_reward| ~= 0.1 per step
+        reward += potential_reward * self.potential_reward_weight
         self.potential = new_potential
 
         collision_reward = float(len(collision_links_flatten) > 0)
         self.collision_step += int(collision_reward)
-        reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
+        # |collision_reward| ~= 1.0 per step if collision
+        reward += collision_reward * self.collision_reward_weight
 
         if self.is_goal_reached():
             reward += self.success_reward  # |success_reward| = 10.0 per step
@@ -503,7 +547,8 @@ class NavigationEnv(BaseEnv):
             info['episode_length'] = self.current_step
             info['collision_step'] = self.collision_step
             info['path_length'] = self.path_length
-            info['spl'] = float(info['success']) * min(1.0, self.geodesic_dist / self.path_length)
+            info['spl'] = float(info['success']) * \
+                min(1.0, self.geodesic_dist / self.path_length)
 
         return done, info
 
@@ -540,7 +585,8 @@ class NavigationEnv(BaseEnv):
                                                                  shortest_path[i][1],
                                                                  floor_height]))
             for i in range(num_nodes, self.num_waypoints_vis):
-                self.waypoints_vis[i].set_position(pos=np.array([0.0, 0.0, 100.0]))
+                self.waypoints_vis[i].set_position(
+                    pos=np.array([0.0, 0.0, 100.0]))
 
     def step(self, action):
         """
@@ -599,9 +645,10 @@ class NavigationEnv(BaseEnv):
             self.simulator_step()
             collisions = list(p.getContactPoints(bodyA=body_id))
 
-            if logging.root.level <= logging.DEBUG: #Only going into this if it is for logging --> efficiency
+            if logging.root.level <= logging.DEBUG:  # Only going into this if it is for logging --> efficiency
                 for item in collisions:
-                    logging.debug('bodyA:{}, bodyB:{}, linkA:{}, linkB:{}'.format(item[1], item[2], item[3], item[4]))
+                    logging.debug('bodyA:{}, bodyB:{}, linkA:{}, linkB:{}'.format(
+                        item[1], item[2], item[3], item[4]))
 
             if len(collisions) > 0:
                 return False
@@ -642,7 +689,8 @@ class NavigationEnv(BaseEnv):
             obj.keep_still()
 
         body_id = obj.robot_ids[0] if obj_type == 'robot' else obj.body_id
-        return self.check_collision(body_id)
+        has_collision = self.check_collision(body_id)
+        return has_collision
 
     def land(self, obj_type, obj, pos, orn):
         """
@@ -664,7 +712,7 @@ class NavigationEnv(BaseEnv):
 
         land_success = False
         # land for maximum 1 second, should fall down ~5 meters
-        max_simulator_step = int(1.0 / self.physics_timestep)
+        max_simulator_step = int(1.0 / self.action_timestep)
         for _ in range(max_simulator_step):
             self.simulator_step()
             if len(p.getContactPoints(bodyA=body_id)) > 0:
@@ -687,10 +735,19 @@ class NavigationEnv(BaseEnv):
         self.path_length = 0.0
         self.geodesic_dist = self.get_geodesic_potential()
 
+    def randomize_domain(self):
+        if self.object_randomization_freq is not None:
+            if self.current_episode % self.object_randomization_freq == 0:
+                self.reload_model_object_randomization()
+        if self.texture_randomization_freq is not None:
+            if self.current_episode % self.texture_randomization_freq == 0:
+                self.simulator.scene.randomize_texture()
+
     def reset(self):
         """
         Reset episode
         """
+        self.randomize_domain()
         self.reset_agent()
         self.simulator.sync()
         state = self.get_state()
@@ -746,11 +803,13 @@ class NavigationRandomEnv(NavigationEnv):
         The geodesic distance (or L2 distance if traversable map graph is not built)
         between initial_pos and target_pos has to be between [self.target_dist_min, self.target_dist_max]
         """
-        _, self.initial_pos = self.scene.get_random_point(floor=self.floor_num, random_height=self.random_height)
+        _, self.initial_pos = self.scene.get_random_point(
+            floor=self.floor_num, random_height=self.random_height)
         max_trials = 100
         dist = 0.0
         for _ in range(max_trials):
-            _, self.target_pos = self.scene.get_random_point(floor=self.floor_num, random_height=self.random_height)
+            _, self.target_pos = self.scene.get_random_point(
+                floor=self.floor_num, random_height=self.random_height)
             if self.scene.build_graph:
                 _, dist = self.get_shortest_path(from_initial_pos=True)
             else:
@@ -772,7 +831,8 @@ class NavigationRandomEnv(NavigationEnv):
             self.scene.reset_scene_objects()
         else:
             # reset "virtual floor" to the correct height
-            self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.02)
+            self.scene.reset_floor(floor=self.floor_num,
+                                   additional_elevation=0.02)
 
         state = super(NavigationRandomEnv, self).reset()
         return state
@@ -809,7 +869,8 @@ class NavigationRandomEnvSim2Real(NavigationRandomEnv):
             self.interactive_objects_num_dups = 2
             self.interactive_objects = self.load_interactive_objects()
             # does not penalize collision with these interactive objects
-            self.collision_ignore_body_b_ids |= set([obj.body_id for obj in self.interactive_objects])
+            self.collision_ignore_body_b_ids |= set(
+                [obj.body_id for obj in self.interactive_objects])
         elif self.track == 'dynamic':
             self.num_dynamic_objects = 1
             self.dynamic_objects = []
@@ -818,7 +879,8 @@ class NavigationRandomEnvSim2Real(NavigationRandomEnv):
                 robot = Turtlebot(self.config)
                 self.simulator.import_robot(robot)
                 self.dynamic_objects.append(robot)
-                self.dynamic_objects_last_actions.append(robot.action_space.sample())
+                self.dynamic_objects_last_actions.append(
+                    robot.action_space.sample())
 
             # dynamic objects will repeat their actions for 10 action timesteps
             self.dynamic_objects_action_repeat = 10
@@ -839,7 +901,8 @@ class NavigationRandomEnvSim2Real(NavigationRandomEnv):
 
         for _ in range(self.interactive_objects_num_dups):
             for urdf_model in interactive_objects_path:
-                obj = ArticulatedObject(os.path.join(gibson2.assets_path, 'models/sample_urdfs', urdf_model))
+                obj = ArticulatedObject(os.path.join(
+                    gibson2.assets_path, 'models/sample_urdfs', urdf_model))
                 self.simulator.import_object(obj)
                 interactive_objects.append(obj)
         return interactive_objects
@@ -852,7 +915,8 @@ class NavigationRandomEnvSim2Real(NavigationRandomEnv):
         for obj in self.interactive_objects:
             reset_success = False
             for _ in range(max_trials):
-                _, pos = self.scene.get_random_point(floor=self.floor_num, random_height=self.random_height)
+                _, pos = self.scene.get_random_point(
+                    floor=self.floor_num, random_height=self.random_height)
                 orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
                 if self.test_valid_position('obj', obj, pos, orn):
                     reset_success = True
@@ -890,7 +954,8 @@ class NavigationRandomEnvSim2Real(NavigationRandomEnv):
         Apply actions to dynamic objects (default: temporally extended random walk)
         """
         if self.current_step % self.dynamic_objects_action_repeat == 0:
-            self.dynamic_objects_last_actions = [robot.action_space.sample() for robot in self.dynamic_objects]
+            self.dynamic_objects_last_actions = [
+                robot.action_space.sample() for robot in self.dynamic_objects]
         for robot, action in zip(self.dynamic_objects, self.dynamic_objects_last_actions):
             robot.apply_action(action)
 
@@ -914,7 +979,8 @@ class NavigationRandomEnvSim2Real(NavigationRandomEnv):
             self.scene.reset_scene_objects()
         else:
             # reset "virtual floor" to the correct height
-            self.scene.reset_floor(floor=self.floor_num, additional_elevation=0.02)
+            self.scene.reset_floor(floor=self.floor_num,
+                                   additional_elevation=0.02)
 
         if self.track == 'interactive':
             self.reset_interactive_objects()
@@ -936,7 +1002,7 @@ if __name__ == '__main__':
         help='which config file to use [default: use yaml files in examples/configs]')
     parser.add_argument('--mode',
                         '-m',
-                        choices=['headless', 'gui'],
+                        choices=['headless', 'gui', 'iggui'],
                         default='headless',
                         help='which mode for simulation (default: headless)')
     parser.add_argument('--env_type',
@@ -977,5 +1043,6 @@ if __name__ == '__main__':
             print('reward', reward)
             if done:
                 break
-        print('Episode finished after {} timesteps, took {} seconds.'.format(nav_env.current_step, time.time() - start))
+        print('Episode finished after {} timesteps, took {} seconds.'.format(
+            nav_env.current_step, time.time() - start))
     nav_env.clean()
