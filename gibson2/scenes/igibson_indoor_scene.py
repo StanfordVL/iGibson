@@ -325,6 +325,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         for name in self.objects_by_name:
             for body_id in self.objects_by_name[name].body_ids:
                 body_id_to_name[body_id] = name
+        self.body_id_to_name = body_id_to_name
 
         # collect body ids for overlapped bboxes (e.g. tables and chairs,
         # sofas and coffee tables)

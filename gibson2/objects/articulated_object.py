@@ -148,7 +148,8 @@ class URDFObject(Object):
                 bbox_size = bbox_max - bbox_min
                 base_link_offset = (bbox_min + bbox_max) / 2.0
         else:
-            assert category in ['building','walls','floors','ceilings'], 'missing object model size and base link offset data'
+            assert category in ['building', 'walls', 'floors',
+                                'ceilings'], 'missing object model size and base link offset data'
             bbox_size = None
             base_link_offset = np.zeros(3)
 
@@ -486,11 +487,17 @@ class URDFObject(Object):
         for _ in range(len(self.urdf_paths)):
             self.visual_mesh_to_material.append({})
 
-        if self.category in ["building", "walls", "floors", "ceilings"]:
+        # deprecated - should remove soon
+        if self.category in ["building"]:
             return
 
-        material_groups_file = os.path.join(
-            self.model_path, 'misc/material_groups.json')
+        if self.category in ["walls", "floors", "ceilings"]:
+            material_groups_file = os.path.join(
+                self.model_path, 'misc/{}_material_groups.json'.format(self.category))
+        else:
+            material_groups_file = os.path.join(
+                self.model_path, 'misc/material_groups.json')
+
         assert os.path.isfile(material_groups_file), \
             'cannot find material group: {}'.format(material_groups_file)
         with open(material_groups_file) as f:
