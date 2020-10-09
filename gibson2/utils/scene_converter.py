@@ -32,7 +32,6 @@ missing_models = set([
 ])
 
 
-
 def convert_scene(scene_name, select_best=False):
 
     scene_file = get_ig_scene_path(
@@ -40,7 +39,6 @@ def convert_scene(scene_name, select_best=False):
     scene_tree = ET.parse(scene_file)
     bbox_dir = os.path.join(get_ig_scene_path(scene_name), "bbox")
     os.makedirs(bbox_dir, exist_ok=True)
-
 
     with open(get_ig_scene_path(scene_name) + '/misc/all_objs.json', 'r') as all_objs_file:
         all_objs = json.load(all_objs_file)
@@ -144,7 +142,8 @@ def convert_scene(scene_name, select_best=False):
             # print(total)
 
     fname = scene_name if not select_best else "{}_best".format(scene_name)
-    scene_file_out = os.path.join(get_ig_scene_path(scene_name), "{}.urdf".format(fname))
+    scene_file_out = os.path.join(get_ig_scene_path(
+        scene_name), "{}.urdf".format(fname))
     scene_tree.write(scene_file_out, xml_declaration=True)
     print('all categories:', categories)
 
