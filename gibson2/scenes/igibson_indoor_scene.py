@@ -92,7 +92,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     model_path = get_ig_scene_path(model)
                     filename = os.path.join(
                         model_path, model + "_building.urdf")
-                elif category in ["walls", "floors", "ceilings"]:  # For the walls, floors, ceilings separately (this will replace building)
+                # For the walls, floors, ceilings separately (this will replace building)
+                elif category in ["walls", "floors", "ceilings"]:
                     model_path = get_ig_scene_path(model)
                     filename = os.path.join(
                         model_path, model + "_" + category + ".urdf")
@@ -324,6 +325,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         for name in self.objects_by_name:
             for body_id in self.objects_by_name[name].body_ids:
                 body_id_to_name[body_id] = name
+        self.body_id_to_name = body_id_to_name
 
         # collect body ids for overlapped bboxes (e.g. tables and chairs,
         # sofas and coffee tables)
@@ -467,4 +469,3 @@ class InteractiveIndoorScene(StaticIndoorScene):
     def reset_scene_objects(self):
         for obj_name in self.objects_by_name:
             self.objects_by_name[obj_name].reset()
-
