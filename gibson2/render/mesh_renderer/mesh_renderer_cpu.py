@@ -609,7 +609,7 @@ class MeshRenderer(object):
             logging.error('Optimized renderer is not supported on Mac')
             exit()
         if self.platform == 'Darwin':
-            from gibson2.core.render.mesh_renderer import GLFWRendererContext
+            from gibson2.render.mesh_renderer import GLFWRendererContext
             self.r = GLFWRendererContext.GLFWRendererContext(width, height)
         else:
             self.r = EGLRendererContext.EGLRendererContext(
