@@ -21,8 +21,7 @@ def test_import_igsdf():
     hdr_texture2 = os.path.join(gibson2.ig_dataset_path, 'background', 'Rs.hdr')
     background_texture = os.path.join(gibson2.ig_dataset_path, 'background', 'palermo_sidewalk_2k.hdr')
 
-    scene = InteractiveIndoorScene('Rs', texture_randomization=False, object_randomization=True)
-    #scene._set_first_n_objects(1)
+    scene = InteractiveIndoorScene('Rs', texture_randomization=False, object_randomization=False)
     settings = MeshRendererSettings(env_texture_filename=hdr_texture, 
                                     env_texture_filename2=hdr_texture2,
                                     env_texture_filename3=background_texture,
@@ -31,7 +30,6 @@ def test_import_igsdf():
                   image_height=720, device_idx=0, rendering_settings=settings)
 
     s.import_ig_scene(scene)
-    s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
     for i in range(10000):
         start = time.time()
         s.step()

@@ -58,6 +58,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.random_groups = {}
         self.objects_by_category = {}
         self.objects_by_name = {}
+        self.objects_by_id = {}
 
         # Current time string to use to save the temporal urdfs
         timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -437,7 +438,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
         num_loaded = 0
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
-            body_ids += obj.load()
+            new_ids = obj.load()
+            for id in new_ids:
+                self.objects_by_id[id] = obj
+            body_ids += new_ids
             visual_mesh_to_material += obj.visual_mesh_to_material
             fixed_body_ids += [body_id for body_id, is_fixed
                                in zip(obj.body_ids, obj.is_fixed)
@@ -461,7 +465,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.load_trav_map(maps_path)
 
         self.visual_mesh_to_material = visual_mesh_to_material
-
         self.check_scene_quality(body_ids, fixed_body_ids)
 
         return body_ids

@@ -186,16 +186,36 @@ class Simulator:
         self.objects += new_object_ids
         if scene.texture_randomization:
             # use randomized texture
+
+
             for body_id, visual_mesh_to_material in \
                     zip(new_object_ids, scene.visual_mesh_to_material):
+                shadow_caster = True
+                if scene.objects_by_id[body_id].category == 'ceilings':
+                    shadow_caster = False
+
                 self.load_articulated_object_in_renderer(
                     body_id, class_id=body_id,
-                    visual_mesh_to_material=visual_mesh_to_material)
+                    visual_mesh_to_material=visual_mesh_to_material,
+                    shadow_caster=shadow_caster)
         else:
             # use default texture
             for body_id in new_object_ids:
-                self.load_articulated_object_in_renderer(body_id, class_id=body_id)
+                use_pbr = True
+                use_pbr_mapping = True
+                shadow_caster = True
+
+                if scene.objects_by_id[body_id].category in ['walls', 'floors', 'ceilings']:
+                    use_pbr = False
+                    use_pbr_mapping = False
+                if scene.objects_by_id[body_id].category == 'ceilings':
+                    shadow_caster = False
+                self.load_articulated_object_in_renderer(body_id, class_id=body_id,
+                                                         use_pbr=use_pbr,
+                                                         use_pbr_mapping=use_pbr_mapping,
+                                                         shadow_caster=shadow_caster)
         self.scene = scene
+
         return new_object_ids
 
     @load_without_pybullet_vis
@@ -303,7 +323,10 @@ class Simulator:
     def load_articulated_object_in_renderer(self,
                                             object_pb_id,
                                             class_id=None,
-                                            visual_mesh_to_material=None):
+                                            visual_mesh_to_material=None,
+                                            use_pbr=True,
+                                            use_pbr_mapping=True,
+                                            shadow_caster=True):
 
         if class_id is None:
             class_id = self.next_class_id
@@ -381,7 +404,10 @@ class Simulator:
                                          poses_rot=poses_rot,
                                          poses_trans=poses_trans,
                                          dynamic=True,
-                                         robot=None)
+                                         robot=None,
+                                         use_pbr=use_pbr,
+                                         use_pbr_mapping=use_pbr_mapping,
+                                         shadow_caster=shadow_caster)
 
     @load_without_pybullet_vis
     def import_robot(self, robot, class_id=None):

@@ -64,7 +64,11 @@ class InstanceGroup(object):
                  poses_trans,
                  poses_rot,
                  dynamic,
-                 robot=None):
+                 robot=None,
+                 use_pbr=True,
+                 use_pbr_mapping=True,
+                 shadow_caster=True
+                 ):
         """
         :param objects: visual objects
         :param id: id this instance_group
@@ -92,8 +96,9 @@ class InstanceGroup(object):
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.tf_tree = None
-        self.use_pbr = False
-        self.use_pbr_mapping = False
+        self.use_pbr = use_pbr
+        self.use_pbr_mapping = use_pbr_mapping
+        self.shadow_caster = shadow_caster
         self.roughness = 1
         self.metalness = 0
 
@@ -223,7 +228,11 @@ class Instance(object):
     Instance is one instance of a visual object. One visual object can have multiple instances to save memory.
     """
 
-    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic, softbody):
+    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic, softbody,
+                 use_pbr=True,
+                 use_pbr_mapping=True,
+                 shadow_caster=True
+                 ):
         self.object = object
         self.pose_trans = pose_trans
         self.pose_rot = pose_rot
@@ -233,10 +242,12 @@ class Instance(object):
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.softbody = softbody
-        self.use_pbr = False
-        self.use_pbr_mapping = False
+        self.use_pbr = use_pbr
+        self.use_pbr_mapping = use_pbr_mapping
+        self.shadow_caster = shadow_caster
         self.roughness = 1
         self.metalness = 0
+
 
     def render(self, shadow_pass=0):
         """
@@ -974,7 +985,10 @@ class MeshRenderer(object):
                            class_id=0,
                            pybullet_uuid=None,
                            dynamic=False,
-                           robot=None):
+                           robot=None,
+                           use_pbr=True,
+                           use_pbr_mapping=True,
+                           shadow_caster=True):
         """
         Create an instance group for a list of visual objects and link it to pybullet
         """
@@ -986,7 +1000,10 @@ class MeshRenderer(object):
                                        poses_trans=poses_trans,
                                        poses_rot=poses_rot,
                                        dynamic=dynamic,
-                                       robot=robot)
+                                       robot=robot,
+                                       use_pbr=use_pbr,
+                                       use_pbr_mapping=use_pbr_mapping,
+                                       shadow_caster=shadow_caster)
         self.instances.append(instance_group)
 
     def add_robot(self,
@@ -1123,7 +1140,7 @@ class MeshRenderer(object):
                 self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
             for instance in self.instances:
-                if not instance in hidden:
+                if (not instance in hidden) and instance.shadow_caster:
                     instance.render(shadow_pass=1)
 
             self.r.render_meshrenderer_post()
