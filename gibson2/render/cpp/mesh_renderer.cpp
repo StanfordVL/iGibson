@@ -456,6 +456,8 @@ MeshRendererContext::init_material_instance(int shaderProgram, float instance_co
     glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
     glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr_mapping"), use_pbr_mapping);
+    glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
+
     glUniform1f(glGetUniformLocation(shaderProgram, "metallic"), metallic);
     glUniform1f(glGetUniformLocation(shaderProgram, "roughness"), roughness);
     glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
@@ -471,6 +473,10 @@ MeshRendererContext::init_material_instance(int shaderProgram, float instance_co
     glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 8);
     glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 9);
     glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 10);
+
+    glUniform1i(glGetUniformLocation(shaderProgram, "lightModulationMap"), 11);
+
+
 }
 
 void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int metallic_texture_id,
@@ -517,6 +523,10 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
     glActiveTexture(GL_TEXTURE10);
     glBindTexture(GL_TEXTURE_2D, depth_texture_id);
 
+    if (m_use_two_light_probe) {
+        glActiveTexture(GL_TEXTURE11);
+        glBindTexture(GL_TEXTURE_2D, light_modulation_map.id);
+    }
     glBindVertexArray(vao);
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
     unsigned int *ptr = (unsigned int *) faces.request().ptr;
@@ -569,6 +579,8 @@ void MeshRendererContext::init_material_pos_instance(int shaderProgram, py::arra
     glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
     glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr_mapping"), use_pbr_mapping);
+    glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
+
     glUniform1f(glGetUniformLocation(shaderProgram, "metalness"), metalness);
     glUniform1f(glGetUniformLocation(shaderProgram, "roughness"), roughness);
     glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
@@ -584,6 +596,9 @@ void MeshRendererContext::init_material_pos_instance(int shaderProgram, py::arra
     glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 8);
     glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 9);
     glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 10);
+
+    glUniform1i(glGetUniformLocation(shaderProgram, "lightModulationMap"), 11);
+
 
 }
 
@@ -752,13 +767,18 @@ void MeshRendererContext::generate_env_map(
 void MeshRendererContext::setup_pbr(std::string shader_path,
                                     std::string env_texture_filename,
                                     std::string env_texture_filename2,
-                                    std::string env_texture_filename3)
+                                    std::string env_texture_filename3,
+                                    std::string light_modulation_map_filename
+                                    )
                                     {
 
     //glEnable(GL_CULL_FACE);
     glDisable(GL_CULL_FACE);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-
+    if (light_modulation_map_filename.length() > 0) {
+        light_modulation_map = createTexture(Image::fromFile(light_modulation_map_filename, 3), GL_RGB, GL_RGB16F, 1);
+        m_use_two_light_probe = true;
+    }
     //glFrontFace(GL_CCW);
     // create all the programs
     GLuint equirectToCubeProgram = linkProgram({compileShader(shader_path + "/450/equirect2cube_cs.glsl",
@@ -1240,6 +1260,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
         glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
+        glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
 
 		printf("multidrawcount %d\n", multidrawCount);
 
@@ -1298,6 +1319,10 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
         glActiveTexture(GL_TEXTURE7);
         if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT2.id);
 
+        if (m_use_two_light_probe) {
+            glBindTexture(GL_TEXTURE_2D, light_modulation_map.id);
+        }
+
 		glUniform1i(bigTexLoc, 0);
 		glUniform1i(smallTexLoc, 1);
 		glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 2);
@@ -1307,6 +1332,8 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
         glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture2"), 5);
         glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture2"), 6);
         glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 7);
+
+        glUniform1i(glGetUniformLocation(shaderProgram, "lightModulationMap"), 11);
 
 		glUseProgram(0);
 

@@ -12,11 +12,14 @@ uniform samplerCube specularTexture2;
 uniform samplerCube irradianceTexture2;
 uniform sampler2D specularBRDF_LUT2;
 
+uniform sampler2D lightModulationMap;
+
 uniform vec3 eyePosition;
 
 uniform float use_texture;
 uniform float use_pbr;
 uniform float use_pbr_mapping;
+uniform float use_two_light_probes;
 uniform float metallic;
 uniform float roughness;
 
@@ -178,11 +181,18 @@ void main() {
             vec3 F0 = mix(Fdielectric, albedo, metallic_sampled);
     		vec3 irradiance;
 
-            if (true) {
-                irradiance = texture(irradianceTexture, N).rgb;
+            float modulate_factor;
+
+            if (use_two_light_probes == 1) {
+                vec4 room = texture(lightModulationMap, vec2((FragPos.x + 5.0)/10.0,
+                (-FragPos.y + 5.0)/10.0));
+                modulate_factor = room.r;
             } else {
-                irradiance = texture(irradianceTexture2, N).rgb;
+                modulate_factor = 1.0;
             }
+
+            irradiance = texture(irradianceTexture, N).rgb * modulate_factor +
+                (1-modulate_factor) * texture(irradianceTexture2, N).rgb;
     		vec3 F = fresnelSchlick(F0, cosLo);
     		vec3 kd = mix(vec3(1.0) - F, vec3(0.0), metallic_sampled);
     		vec3 diffuseIBL = kd * albedo * irradiance;
@@ -190,13 +200,12 @@ void main() {
         	int specularTextureLevels2 = textureQueryLevels(specularTexture2);
     		vec3 specularIrradiance;
             vec2 specularBRDF;
-            if (true) {
-                specularIrradiance = textureLod(specularTexture, Lr, roughness_sampled * specularTextureLevels).rgb;
-                specularBRDF = texture(specularBRDF_LUT, vec2(cosLo, roughness_sampled)).rg;
-            } else {
-                specularIrradiance = textureLod(specularTexture2, Lr, roughness_sampled * specularTextureLevels2).rgb;
-                specularBRDF = texture(specularBRDF_LUT2, vec2(cosLo, roughness_sampled)).rg;
-            }
+            specularIrradiance = textureLod(specularTexture, Lr, roughness_sampled * specularTextureLevels).rgb *
+            modulate_factor + textureLod(specularTexture2, Lr, roughness_sampled * specularTextureLevels2).rgb *
+            (1-modulate_factor);
+
+            specularBRDF = texture(specularBRDF_LUT, vec2(cosLo, roughness_sampled)).rg * modulate_factor +
+            texture(specularBRDF_LUT2, vec2(cosLo, roughness_sampled)).rg * (1-modulate_factor);
     		vec3 specularIBL = (F0 * specularBRDF.x + specularBRDF.y) * specularIrradiance;
     		vec3 ambientLighting = diffuseIBL + specularIBL;
             //vec3 reflection = textureLod(specularTexture, vec3(Lr.x, Lr.z, Lr.y), 1).rgb;

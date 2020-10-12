@@ -22,6 +22,7 @@ def test_import_igsdf():
     background_texture = os.path.join(gibson2.ig_dataset_path, 'background', 'palermo_sidewalk_2k.hdr')
 
     scene = InteractiveIndoorScene('Rs', texture_randomization=False, object_randomization=True)
+    #scene._set_first_n_objects(1)
     settings = MeshRendererSettings(env_texture_filename=hdr_texture, 
                                     env_texture_filename2=hdr_texture2,
                                     env_texture_filename3=background_texture,

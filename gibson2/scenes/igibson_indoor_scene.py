@@ -469,3 +469,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
     def reset_scene_objects(self):
         for obj_name in self.objects_by_name:
             self.objects_by_name[obj_name].reset()
+
+    def get_num_objects(self):
+        return len(self.objects_by_name)
