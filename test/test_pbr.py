@@ -12,7 +12,7 @@ from PIL import Image
 def test_render_pbr():
     hdr_texture = os.path.join(gibson2.ig_dataset_path, 'background', 'quattro_canti_2k.hdr')
     model_path = os.path.join(get_ig_model_path('sink', 'sink_1'), 'shape', 'visual')
-    settings = MeshRendererSettings(msaa=True, enable_shadow=True, env_texture_filename=hdr_texture)
+    settings = MeshRendererSettings(msaa=True, enable_shadow=True, env_texture_filename=hdr_texture, env_texture_filename3=hdr_texture)
     renderer = MeshRenderer(width=1024, height=1024, vertical_fov=90, rendering_settings=settings)
     renderer.set_light_position_direction([0,0,10], [0,0,0])
     i = 0

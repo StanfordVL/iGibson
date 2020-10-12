@@ -6,6 +6,8 @@ uniform sampler2DArray bigTex;
 uniform sampler2DArray smallTex;
 
 uniform float use_pbr;
+uniform float use_two_light_probes;
+
 uniform samplerCube specularTexture;
 uniform samplerCube irradianceTexture;
 uniform sampler2D specularBRDF_LUT;
@@ -13,6 +15,8 @@ uniform sampler2D specularBRDF_LUT;
 uniform samplerCube specularTexture2;
 uniform samplerCube irradianceTexture2;
 uniform sampler2D specularBRDF_LUT2;
+
+uniform sampler2D lightModulationMap;
 
 uniform vec3 eyePosition;
 

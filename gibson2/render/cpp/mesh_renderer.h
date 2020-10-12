@@ -47,6 +47,9 @@ public:
 
     Texture m_envTexture3; // outdoor
 
+    Texture light_modulation_map; // modulate indoor 1 and indoor 2
+    bool m_use_two_light_probe = false;
+
     Texture envTextureEquirect;
     Texture envTextureUnfiltered;
 
@@ -143,7 +146,8 @@ public:
     void setup_pbr(std::string shader_path,
     std::string env_texture_filename,
     std::string env_texture_filename2,
-    std::string env_texture_filename3);
+    std::string env_texture_filename3,
+    std::string light_modulation_map_filename);
 
     void generate_light_maps(
     GLuint equirectToCubeProgram,

@@ -532,6 +532,7 @@ class MeshRendererSettings(object):
                  env_texture_filename=os.path.join(gibson2.ig_dataset_path, 'background', 'photo_studio_01_2k.hdr'),
                  env_texture_filename2=os.path.join(gibson2.ig_dataset_path, 'background', 'photo_studio_01_2k.hdr'),
                  env_texture_filename3=os.path.join(gibson2.ig_dataset_path, 'background', 'photo_studio_01_2k.hdr'),
+                 light_modulation_map_filename='',
                  optimized=False,
                  skybox_size=20.):
         self.use_fisheye = use_fisheye
@@ -541,7 +542,8 @@ class MeshRendererSettings(object):
         self.env_texture_filename2 = env_texture_filename2
         self.env_texture_filename3 = env_texture_filename3
         self.optimized = optimized
-        self.skybox_size=skybox_size
+        self.skybox_size = skybox_size
+        self.light_modulation_map_filename = light_modulation_map_filename
 
     def get_fastest(self):
         self.msaa = False
@@ -676,8 +678,10 @@ class MeshRenderer(object):
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
+        self.znear = 0.1
+        self.zfar = 100
         P = perspective(self.vertical_fov, float(
-            self.width) / float(self.height), 0.1, 100)
+            self.width) / float(self.height), self.znear, self.zfar)
         V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
@@ -698,7 +702,8 @@ class MeshRenderer(object):
             self.r.setup_pbr(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/'),
                              self.rendering_settings.env_texture_filename,
                              self.rendering_settings.env_texture_filename2,
-                             self.rendering_settings.env_texture_filename3
+                             self.rendering_settings.env_texture_filename3,
+                             self.rendering_settings.light_modulation_map_filename,
                              )
         else:
             logging.warning(
@@ -1016,12 +1021,18 @@ class MeshRenderer(object):
         # change shadow mapping camera to be above the real camera
         self.set_light_position_direction([self.camera[0], self.camera[1], 10],
                                           [self.camera[0], self.camera[1], 0])
+
+
+    def set_z_near_z_far(self, znear, zfar):
+        self.znear = znear
+        self.zfar = zfar
+
     def set_fov(self, fov):
         self.vertical_fov = fov
         self.horizontal_fov = 2 * np.arctan(np.tan(self.vertical_fov / 180.0 * np.pi / 2.0) * self.width /
                                             self.height) / np.pi * 180.0
         P = perspective(self.vertical_fov, float(
-            self.width) / float(self.height), 0.1, 100)
+            self.width) / float(self.height), self.znear, self.zfar)
         self.P = np.ascontiguousarray(P, np.float32)
 
     def set_light_color(self, color):
@@ -1030,21 +1041,40 @@ class MeshRenderer(object):
     def get_intrinsics(self):
         P = self.P
         w, h = self.width, self.height
-        znear, zfar = 0.01, 100.0
+        znear, zfar = self.znear, self.zfar
         a = (2.0 * znear) / P[0, 0]
         b = P[2, 0] * a
         right = (a + b) / 2.0
         left = b - right
-        c = (2.0 * znear) / P[1, 1]
-        d = P[3, 1] * c
+        c = -(2.0 * znear) / P[1, 1]
+        d = P[2, 1] * c
         top = (c + d) / 2.0
         bottom = d - top
         fu = w * znear / (right - left)
-        fv = h * znear / (top - bottom)
+        fv = -h * znear / (top - bottom)
 
         u0 = w - right * fu / znear
-        v0 = h - top * fv / znear
+        v0 = h - bottom * fv / znear
         return np.array([[fu, 0, u0], [0, fv, v0], [0, 0, 1]])
+
+    def set_projection_matrix(self, fu, fv, u0, v0, znear, zfar):
+        w = self.width
+        h = self.height
+        self.znear = znear
+        self.zfar = zfar
+        L = -(u0) * znear / fu
+        R = +(w - u0) * znear / fu
+        T = -(v0) * znear / fv
+        B = +(h - v0) * znear / fv
+        P = np.zeros((4, 4), dtype=np.float32)
+        P[0, 0] = 2 * znear / (R - L)
+        P[1, 1] = -2 * znear / (T - B)
+        P[2, 0] = (R + L) / (R - L)
+        P[2, 1] = (T + B) / (T - B)
+        P[2, 2] = -(zfar + znear) / (zfar - znear)
+        P[2, 3] = -1.0
+        P[3, 2] = (2 * zfar * znear) / (znear - zfar)
+        self.P = P
 
     def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d')):
         """
