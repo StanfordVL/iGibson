@@ -21,6 +21,8 @@ def main():
                         help='Random seed.')
     parser.add_argument('--domain_rand', dest='domain_rand',
                         action='store_true')
+    parser.add_argument('--domain_rand_interval', dest='domain_rand_interval',
+                        type=int, default=50)
     parser.add_argument('--object_rand', dest='object_rand',
                         action='store_true')
     args = parser.parse_args()
@@ -47,6 +49,8 @@ def main():
 
     s.sync()
     for i in range(len(points)):
+        if args.domain_rand and i % args.domain_rand_interval == 0:
+            scene.randomize_texture()
         x,y,dir_x,dir_y = [float(p) for p in points[i]]
         z = 1.7
         tar_x = x+dir_x
