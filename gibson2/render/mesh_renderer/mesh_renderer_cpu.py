@@ -720,6 +720,7 @@ class MeshRenderer(object):
                              self.rendering_settings.env_texture_filename2,
                              self.rendering_settings.env_texture_filename3,
                              self.rendering_settings.light_modulation_map_filename,
+                             self.rendering_settings.light_dimming_factor
                              )
         else:
             logging.warning(
