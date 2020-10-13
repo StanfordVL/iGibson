@@ -52,8 +52,12 @@ class BaseEnv(gym.Env):
             'object_randomization_freq', None)
         self.initialize_object_randomization()
 
-        settings = MeshRendererSettings()
-        # TODO(fxia22): pass from config file
+        enable_shadow = self.config.get('enable_shadow', False)
+        enable_pbr = self.config.get('enable_pbr', True)
+        settings = MeshRendererSettings(enable_shadow=enable_shadow,
+                                        enable_pbr=enable_pbr,
+                                        msaa=False)
+
         self.simulator = Simulator(mode=mode,
                                    physics_timestep=physics_timestep,
                                    render_timestep=action_timestep,
