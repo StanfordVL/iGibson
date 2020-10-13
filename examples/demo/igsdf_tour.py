@@ -28,7 +28,7 @@ def main():
     args = parser.parse_args()
 
     hdr_texture = os.path.join(
-                gibson2.assets_path, 'test', 'photo_studio_01_2k.hdr')
+                gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr')
     background_texture = os.path.join(
                 gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
