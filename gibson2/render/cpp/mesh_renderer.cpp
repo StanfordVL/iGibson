@@ -414,38 +414,6 @@ void MeshRendererContext::render_softbody_instance(int vao, int vbo, py::array_t
     glBindVertexArray(0);
 }
 
-void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
-                                           int shadow_pass, py::array_t<float> P, py::array_t<float> lightP,
-                                           py::array_t<float> eye_pos,
-                                           py::array_t<float> pose_trans,
-                                           py::array_t<float> pose_rot, py::array_t<float> lightpos,
-                                           py::array_t<float> lightcolor) {
-    glUseProgram(shaderProgram);
-    float *Vptr = (float *) V.request().ptr;
-    float *lightVptr = (float *) lightV.request().ptr;
-    float *Pptr = (float *) P.request().ptr;
-    float *lightPptr = (float *) lightP.request().ptr;
-    float *transptr = (float *) pose_trans.request().ptr;
-    float *rotptr = (float *) pose_rot.request().ptr;
-    float *lightposptr = (float *) lightpos.request().ptr;
-    float *lightcolorptr = (float *) lightcolor.request().ptr;
-    float *eye_pos_ptr = (float *) eye_pos.request().ptr;
-
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, lightVptr);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightP"), 1, GL_FALSE, lightPptr);
-    glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
-    glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
-    glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1],
-                lightcolorptr[2]);
-    glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), shadow_pass);
-
-}
-
-
 void
 MeshRendererContext::init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color,
                                             float use_texture, float use_pbr, float use_pbr_mapping, float metallic,
@@ -540,7 +508,7 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void MeshRendererContext::initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
+void MeshRendererContext::initvar(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
                                                  int shadow_pass, py::array_t<float> P, py::array_t<float> lightP,
                                                  py::array_t<float> eye_pos,
                                                  py::array_t<float> lightpos, py::array_t<float> lightcolor) {
@@ -563,43 +531,12 @@ void MeshRendererContext::initvar_instance_group(int shaderProgram, py::array_t<
     glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), shadow_pass);
 }
 
-void MeshRendererContext::init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans,
-                                                     py::array_t<float> pose_rot,
-                                                     float instance_color, py::array_t<float> diffuse_color,
-                                                     float use_texture, float use_pbr, float use_pbr_mapping,
-                                                     float metalness,
-                                                     float roughness) {
+void MeshRendererContext::init_pos_instance(int shaderProgram, py::array_t<float> pose_trans,
+                                                     py::array_t<float> pose_rot) {
     float *transptr = (float *) pose_trans.request().ptr;
     float *rotptr = (float *) pose_rot.request().ptr;
-    float *diffuse_ptr = (float *) diffuse_color.request().ptr;
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
-    glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
-    glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
-    glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
-    glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
-    glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr_mapping"), use_pbr_mapping);
-    glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
-
-    glUniform1f(glGetUniformLocation(shaderProgram, "metalness"), metalness);
-    glUniform1f(glGetUniformLocation(shaderProgram, "roughness"), roughness);
-    glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
-    glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 1);
-    glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 2);
-    glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 3);
-
-    glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture2"), 4);
-    glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture2"), 5);
-    glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 6);
-
-    glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 7);
-    glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 8);
-    glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 9);
-    glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 10);
-
-    glUniform1i(glGetUniformLocation(shaderProgram, "lightModulationMap"), 11);
-
-
 }
 
 
@@ -675,7 +612,8 @@ void MeshRendererContext::generate_light_maps(
     std::string env_texture_filename,
     Texture& envTexture,
     Texture& irmapTexture,
-    Texture& spBRDF_LUT
+    Texture& spBRDF_LUT,
+    float light_dimming_factor
     ){
 
     envTextureUnfiltered = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
@@ -685,6 +623,7 @@ void MeshRendererContext::generate_light_maps(
         envTextureEquirect = createTexture(Image::fromFile(env_texture_filename, 3), GL_RGB, GL_RGB16F, 1);
         glUseProgram(equirectToCubeProgram);
         glBindTextureUnit(0, envTextureEquirect.id);
+        glUniform1f(glGetUniformLocation(equirectToCubeProgram, "light_dimming_factor"), (float)light_dimming_factor);
         glBindImageTexture(0, envTextureUnfiltered.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
         glDispatchCompute(envTextureUnfiltered.width / 32, envTextureUnfiltered.height / 32, 6);
     }
@@ -768,7 +707,8 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
                                     std::string env_texture_filename,
                                     std::string env_texture_filename2,
                                     std::string env_texture_filename3,
-                                    std::string light_modulation_map_filename
+                                    std::string light_modulation_map_filename,
+                                    float light_dimming_factor
                                     )
                                     {
 
@@ -795,7 +735,8 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
                         env_texture_filename,
                         m_envTexture,
                         m_irmapTexture,
-                        m_spBRDF_LUT
+                        m_spBRDF_LUT,
+                        light_dimming_factor
                         );
 
     if (env_texture_filename2.length() > 0) {
@@ -811,7 +752,8 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
                         env_texture_filename2,
                         m_envTexture2,
                         m_irmapTexture2,
-                        m_spBRDF_LUT2
+                        m_spBRDF_LUT2,
+                        light_dimming_factor
                         );
         }
     }

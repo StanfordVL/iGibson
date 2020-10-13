@@ -264,17 +264,16 @@ PYBIND11_MODULE(EGLRendererContext, m) {
     // class Instance
     pymodule.def("render_softbody_instance", &EGLRendererContext::render_softbody_instance,
                  "render softbody in instance.render");
-    pymodule.def("initvar_instance", &EGLRendererContext::initvar_instance, "init uniforms in instance.render");
     pymodule.def("init_material_instance", &EGLRendererContext::init_material_instance,
                  "init materials in instance.render");
     pymodule.def("draw_elements_instance", &EGLRendererContext::draw_elements_instance,
                  "draw elements in instance.render and instancegroup.render");
 
     // class InstanceGroup
-    pymodule.def("initvar_instance_group", &EGLRendererContext::initvar_instance_group,
+    pymodule.def("initvar", &EGLRendererContext::initvar,
                  "init uniforms in instancegroup.render");
-    pymodule.def("init_material_pos_instance", &EGLRendererContext::init_material_pos_instance,
-                 "init materials and position in instancegroup.render");
+    pymodule.def("init_pos_instance", &EGLRendererContext::init_pos_instance,
+                 "init position in instancegroup.render");
 
     // misc
     pymodule.def("cglBindVertexArray", &EGLRendererContext::cglBindVertexArray, "binding function");
