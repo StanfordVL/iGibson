@@ -113,7 +113,7 @@ public:
 
     void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color,
                                 float use_texture, float use_pbr, float use_pbr_mapping, float metallic,
-                                float roughness);
+                                float roughness, py::array_t<float> transform_param);
 
     void draw_elements_instance(bool flag, int texture_id, int metallic_texture_id, int roughness_texture_id,
                                 int normal_texture_id, int depth_texture_id, int vao, int face_size,

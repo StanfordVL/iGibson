@@ -417,10 +417,16 @@ void MeshRendererContext::render_softbody_instance(int vao, int vbo, py::array_t
 void
 MeshRendererContext::init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color,
                                             float use_texture, float use_pbr, float use_pbr_mapping, float metallic,
-                                            float roughness) {
+                                            float roughness, py::array_t<float> transform_param) {
     float *diffuse_ptr = (float *) diffuse_color.request().ptr;
+    float *transform_param_ptr = (float *) transform_param.request().ptr;
+
     glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
     glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
+    glUniform3f(glGetUniformLocation(shaderProgram, "uv_transform_param"), transform_param_ptr[0],
+                                                                        transform_param_ptr[1],
+                                                                        transform_param_ptr[2]);
+
     glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
     glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
     glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr_mapping"), use_pbr_mapping);
