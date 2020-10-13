@@ -52,7 +52,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             scene_id)
         self.is_interactive = True
         self.scene_file = os.path.join(
-            get_ig_scene_path(scene_id), "{}.urdf".format(fname))
+            get_ig_scene_path(scene_id), "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
         self.first_n_objects = np.inf
         self.random_groups = {}
@@ -89,15 +89,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 model = link.attrib['model']
 
                 # Find the urdf file that defines this object
-                if category == "building":  # For the building
+                if category in ["walls", "floors", "ceilings"]:
                     model_path = get_ig_scene_path(model)
                     filename = os.path.join(
-                        model_path, model + "_building.urdf")
-                # For the walls, floors, ceilings separately (this will replace building)
-                elif category in ["walls", "floors", "ceilings"]:
-                    model_path = get_ig_scene_path(model)
-                    filename = os.path.join(
-                        model_path, model + "_" + category + ".urdf")
+                        model_path, "urdf", model + "_" + category + ".urdf")
                 else:  # For other objects
                     category_path = get_ig_category_path(category)
                     assert len(os.listdir(category_path)) != 0, \
