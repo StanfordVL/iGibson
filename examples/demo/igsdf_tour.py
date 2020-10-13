@@ -26,8 +26,16 @@ def main():
     parser.add_argument('--object_rand', dest='object_rand',
                         action='store_true')
     args = parser.parse_args()
-    settings = MeshRendererSettings(enable_shadow=True, msaa=True, env_texture_filename=os.path.join(
-                gibson2.assets_path, 'test', 'photo_studio_01_2k.hdr'))
+
+    hdr_texture = os.path.join(
+                gibson2.assets_path, 'test', 'photo_studio_01_2k.hdr')
+    background_texture = os.path.join(
+                gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+
+    settings = MeshRendererSettings(env_texture_filename=hdr_texture,
+               env_texture_filename3=background_texture,
+               enable_shadow=True, msaa=True,
+               light_dimming_factor=1.2)
 
     s = Simulator(mode='headless', 
             image_width=900, image_height=560, 
