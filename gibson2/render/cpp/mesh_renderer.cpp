@@ -612,7 +612,8 @@ void MeshRendererContext::generate_light_maps(
     std::string env_texture_filename,
     Texture& envTexture,
     Texture& irmapTexture,
-    Texture& spBRDF_LUT
+    Texture& spBRDF_LUT,
+    float light_dimming_factor
     ){
 
     envTextureUnfiltered = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
@@ -622,6 +623,7 @@ void MeshRendererContext::generate_light_maps(
         envTextureEquirect = createTexture(Image::fromFile(env_texture_filename, 3), GL_RGB, GL_RGB16F, 1);
         glUseProgram(equirectToCubeProgram);
         glBindTextureUnit(0, envTextureEquirect.id);
+        glUniform1f(glGetUniformLocation(equirectToCubeProgram, "light_dimming_factor"), (float)light_dimming_factor);
         glBindImageTexture(0, envTextureUnfiltered.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
         glDispatchCompute(envTextureUnfiltered.width / 32, envTextureUnfiltered.height / 32, 6);
     }
@@ -705,7 +707,8 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
                                     std::string env_texture_filename,
                                     std::string env_texture_filename2,
                                     std::string env_texture_filename3,
-                                    std::string light_modulation_map_filename
+                                    std::string light_modulation_map_filename,
+                                    float light_dimming_factor
                                     )
                                     {
 
@@ -732,7 +735,8 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
                         env_texture_filename,
                         m_envTexture,
                         m_irmapTexture,
-                        m_spBRDF_LUT
+                        m_spBRDF_LUT,
+                        light_dimming_factor
                         );
 
     if (env_texture_filename2.length() > 0) {
@@ -748,7 +752,8 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
                         env_texture_filename2,
                         m_envTexture2,
                         m_irmapTexture2,
-                        m_spBRDF_LUT2
+                        m_spBRDF_LUT2,
+                        light_dimming_factor
                         );
         }
     }

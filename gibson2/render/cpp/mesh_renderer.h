@@ -140,7 +140,8 @@ public:
     std::string env_texture_filename,
     std::string env_texture_filename2,
     std::string env_texture_filename3,
-    std::string light_modulation_map_filename);
+    std::string light_modulation_map_filename,
+    float light_dimming_factor);
 
     void generate_light_maps(
     GLuint equirectToCubeProgram,
@@ -150,7 +151,8 @@ public:
     std::string env_texture_filename,
     Texture& envTexture,
     Texture& irmapTexture,
-    Texture& spBRDF_LUT
+    Texture& spBRDF_LUT,
+    float light_dimming_factor
     );
 
     void generate_env_map(
