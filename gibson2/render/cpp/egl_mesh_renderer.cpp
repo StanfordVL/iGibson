@@ -273,8 +273,8 @@ PYBIND11_MODULE(EGLRendererContext, m) {
     // class InstanceGroup
     pymodule.def("initvar_instance_group", &EGLRendererContext::initvar_instance_group,
                  "init uniforms in instancegroup.render");
-    pymodule.def("init_material_pos_instance", &EGLRendererContext::init_material_pos_instance,
-                 "init materials and position in instancegroup.render");
+    pymodule.def("init_pos_instance", &EGLRendererContext::init_pos_instance,
+                 "init position in instancegroup.render");
 
     // misc
     pymodule.def("cglBindVertexArray", &EGLRendererContext::cglBindVertexArray, "binding function");

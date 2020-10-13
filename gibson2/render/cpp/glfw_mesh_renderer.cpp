@@ -124,8 +124,8 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
     // class InstanceGroup
     pymodule.def("initvar_instance_group", &GLFWRendererContext::initvar_instance_group,
                  "init uniforms in instancegroup.render");
-    pymodule.def("init_material_pos_instance", &GLFWRendererContext::init_material_pos_instance,
-                 "init materials and position in instancegroup.render");
+    pymodule.def("init_pos_instance", &GLFWRendererContext::init_pos_instance,
+                 "init position in instancegroup.render");
 
     // misc
     pymodule.def("cglBindVertexArray", &GLFWRendererContext::cglBindVertexArray, "binding function");
