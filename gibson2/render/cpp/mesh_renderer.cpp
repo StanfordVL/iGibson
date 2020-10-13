@@ -686,7 +686,7 @@ void MeshRendererContext::generate_env_map(
     Texture& envTexture
     ){
 
-    envTextureUnfiltered = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
+    envTextureUnfiltered = createTexture(GL_TEXTURE_CUBE_MAP, kSkyBoxMapSize, kSkyBoxMapSize, GL_RGBA16F, 0);
 
     // Load & convert equirectangular environment map to a cubemap texture.
     {
@@ -698,14 +698,14 @@ void MeshRendererContext::generate_env_map(
     }
     glGenerateTextureMipmap(envTextureUnfiltered.id);
     {
-        envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
-
+        envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kSkyBoxMapSize, kSkyBoxMapSize, GL_RGBA16F, 0);
         // Copy 0th mipmap level into destination environment map.
         glCopyImageSubData(envTextureUnfiltered.id, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
                            envTexture.id, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
                            envTexture.width, envTexture.height, 6);
 
     }
+    glGenerateTextureMipmap(envTexture.id);
     glDeleteTextures(1, &envTextureUnfiltered.id);
 }
 

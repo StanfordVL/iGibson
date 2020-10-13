@@ -34,6 +34,7 @@ public:
     int verbosity;
 
     const int kEnvMapSize = 256;
+    const int kSkyBoxMapSize = 1024;
     const int kIrradianceMapSize = 32;
     const int kBRDF_LUT_Size = 256;
 
