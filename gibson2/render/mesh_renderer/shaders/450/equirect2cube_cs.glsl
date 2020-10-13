@@ -6,6 +6,7 @@
 
 const float PI = 3.141592;
 const float TwoPI = 2 * PI;
+uniform float light_dimming_factor;
 
 #if VULKAN
 layout(set=0, binding=0) uniform sampler2D inputTexture;
@@ -47,6 +48,7 @@ void main(void)
 
 	// Sample equirectangular texture.
 	vec4 color = texture(inputTexture, vec2(phi/TwoPI, theta/PI));
+    color.xyz = color.xyz * light_dimming_factor;
 
 	// Write out color to output cubemap.
 	imageStore(outputTexture, ivec3(gl_GlobalInvocationID), color);

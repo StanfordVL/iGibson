@@ -109,33 +109,34 @@ class InstanceGroup(object):
         if self.renderer is None:
             return
 
-        self.renderer.r.initvar_instance_group(self.renderer.shaderProgram,
-                                               self.renderer.V,
-                                               self.renderer.lightV,
-                                               shadow_pass,
-                                               self.renderer.P,
-                                               self.renderer.lightP,
-                                               self.renderer.camera,
-                                               self.renderer.lightpos,
-                                               self.renderer.lightcolor)
+        self.renderer.r.initvar(self.renderer.shaderProgram,
+                               self.renderer.V,
+                               self.renderer.lightV,
+                               shadow_pass,
+                               self.renderer.P,
+                               self.renderer.lightP,
+                               self.renderer.camera,
+                               self.renderer.lightpos,
+                               self.renderer.lightcolor)
 
         for i, visual_object in enumerate(self.objects):
             for object_idx in visual_object.VAO_ids:
-                self.renderer.r.init_material_pos_instance(self.renderer.shaderProgram,
+                self.renderer.r.init_pos_instance(self.renderer.shaderProgram,
                                                            self.poses_trans[i],
-                                                           self.poses_rot[i],
-                                                           float(
-                                                               self.class_id) / 255.0,
+                                                           self.poses_rot[i])
+
+                self.renderer.r.init_material_instance(self.renderer.shaderProgram,
+                                                       float(
+                                                           self.class_id) / 255.0,
+                                                       self.renderer.materials_mapping[
+                                                           self.renderer.mesh_materials[object_idx]].kd,
+                                                       float(
                                                            self.renderer.materials_mapping[
-                                                               self.renderer.mesh_materials[object_idx]].kd[:3],
-                                                           float(
-                                                               self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()),
-                                                           float(self.use_pbr),
-                                                           float(
-                                                               self.use_pbr_mapping),
-                                                           float(
-                                                               self.metalness),
-                                                           float(self.roughness))
+                                                               self.renderer.mesh_materials[object_idx]].is_texture()),
+                                                       float(self.use_pbr),
+                                                       float(self.use_pbr_mapping),
+                                                       float(self.metalness),
+                                                       float(self.roughness))
 
                 try:
                     current_material = self.renderer.materials_mapping[
@@ -287,17 +288,19 @@ class Instance(object):
             self.renderer.r.render_softbody_instance(
                 self.renderer.VAOs[object_idx], self.renderer.VBOs[object_idx], new_data)
 
-        self.renderer.r.initvar_instance(self.renderer.shaderProgram,
-                                         self.renderer.V,
-                                         self.renderer.lightV,
-                                         shadow_pass,
-                                         self.renderer.P,
-                                         self.renderer.lightP,
-                                         self.renderer.camera,
-                                         self.pose_trans,
-                                         self.pose_rot,
-                                         self.renderer.lightpos,
-                                         self.renderer.lightcolor)
+        self.renderer.r.initvar(self.renderer.shaderProgram,
+                                 self.renderer.V,
+                                 self.renderer.lightV,
+                                 shadow_pass,
+                                 self.renderer.P,
+                                 self.renderer.lightP,
+                                 self.renderer.camera,
+                                 self.renderer.lightpos,
+                                 self.renderer.lightcolor)
+
+        self.renderer.r.init_pos_instance(self.renderer.shaderProgram,
+                                          self.pose_trans,
+                                          self.pose_rot)
 
         for object_idx in self.object.VAO_ids:
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
@@ -545,7 +548,8 @@ class MeshRendererSettings(object):
                  env_texture_filename3=os.path.join(gibson2.ig_dataset_path, 'background', 'photo_studio_01_2k.hdr'),
                  light_modulation_map_filename='',
                  optimized=False,
-                 skybox_size=20.):
+                 skybox_size=20.,
+                 light_dimming_factor=1.0):
         self.use_fisheye = use_fisheye
         self.msaa = msaa
         self.enable_shadow = enable_shadow
@@ -555,6 +559,7 @@ class MeshRendererSettings(object):
         self.optimized = optimized
         self.skybox_size = skybox_size
         self.light_modulation_map_filename = light_modulation_map_filename
+        self.light_dimming_factor = light_dimming_factor
 
     def get_fastest(self):
         self.msaa = False
@@ -715,6 +720,7 @@ class MeshRenderer(object):
                              self.rendering_settings.env_texture_filename2,
                              self.rendering_settings.env_texture_filename3,
                              self.rendering_settings.light_modulation_map_filename,
+                             self.rendering_settings.light_dimming_factor
                              )
         else:
             logging.warning(

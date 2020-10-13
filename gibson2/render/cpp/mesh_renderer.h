@@ -111,11 +111,6 @@ public:
 
     void render_softbody_instance(int vao, int vbo, py::array_t<float> vertexData);
 
-    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int shadow_pass,
-                          py::array_t<float> P, py::array_t<float> lightP,
-                          py::array_t<float> eye_pos, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
-                          py::array_t<float> lightpos, py::array_t<float> lightcolor);
-
     void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color,
                                 float use_texture, float use_pbr, float use_pbr_mapping, float metallic,
                                 float roughness);
@@ -124,14 +119,12 @@ public:
                                 int normal_texture_id, int depth_texture_id, int vao, int face_size,
                                 py::array_t<unsigned int> faces, GLuint fb);
 
-    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int shadow_pass,
+    void initvar(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int shadow_pass,
                                 py::array_t<float> P, py::array_t<float> lightP, py::array_t<float> eye_pos,
                                 py::array_t<float> lightpos,
                                 py::array_t<float> lightcolor);
 
-    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
-                                    float instance_color, py::array_t<float> diffuse_color, float use_texture,
-                                    float use_pbr, float use_pbr_mapping, float metalness, float roughness);
+    void init_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot);
 
     void render_tensor_pre(bool msaa, GLuint fb1, GLuint fb2);
 
@@ -147,7 +140,8 @@ public:
     std::string env_texture_filename,
     std::string env_texture_filename2,
     std::string env_texture_filename3,
-    std::string light_modulation_map_filename);
+    std::string light_modulation_map_filename,
+    float light_dimming_factor);
 
     void generate_light_maps(
     GLuint equirectToCubeProgram,
@@ -157,7 +151,8 @@ public:
     std::string env_texture_filename,
     Texture& envTexture,
     Texture& irmapTexture,
-    Texture& spBRDF_LUT
+    Texture& spBRDF_LUT,
+    float light_dimming_factor
     );
 
     void generate_env_map(
