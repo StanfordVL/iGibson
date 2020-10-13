@@ -414,38 +414,6 @@ void MeshRendererContext::render_softbody_instance(int vao, int vbo, py::array_t
     glBindVertexArray(0);
 }
 
-void MeshRendererContext::initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
-                                           int shadow_pass, py::array_t<float> P, py::array_t<float> lightP,
-                                           py::array_t<float> eye_pos,
-                                           py::array_t<float> pose_trans,
-                                           py::array_t<float> pose_rot, py::array_t<float> lightpos,
-                                           py::array_t<float> lightcolor) {
-    glUseProgram(shaderProgram);
-    float *Vptr = (float *) V.request().ptr;
-    float *lightVptr = (float *) lightV.request().ptr;
-    float *Pptr = (float *) P.request().ptr;
-    float *lightPptr = (float *) lightP.request().ptr;
-    float *transptr = (float *) pose_trans.request().ptr;
-    float *rotptr = (float *) pose_rot.request().ptr;
-    float *lightposptr = (float *) lightpos.request().ptr;
-    float *lightcolorptr = (float *) lightcolor.request().ptr;
-    float *eye_pos_ptr = (float *) eye_pos.request().ptr;
-
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, lightVptr);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightP"), 1, GL_FALSE, lightPptr);
-    glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
-    glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
-    glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1],
-                lightcolorptr[2]);
-    glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), shadow_pass);
-
-}
-
-
 void
 MeshRendererContext::init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color,
                                             float use_texture, float use_pbr, float use_pbr_mapping, float metallic,
@@ -540,7 +508,7 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void MeshRendererContext::initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
+void MeshRendererContext::initvar(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV,
                                                  int shadow_pass, py::array_t<float> P, py::array_t<float> lightP,
                                                  py::array_t<float> eye_pos,
                                                  py::array_t<float> lightpos, py::array_t<float> lightcolor) {
