@@ -128,7 +128,7 @@ class Viewer:
                 childFramePosition=child_frame_pos,
                 childFrameOrientation=child_frame_orn,
             )
-            p.changeConstraint(cid, maxForce=150)
+            p.changeConstraint(cid, maxForce=100)
             self.cid.append(cid)
             self.interaction_x, self.interaction_y = x,y
 
@@ -267,7 +267,7 @@ class Viewer:
                     self._mouse_iy = y
                     self.move_constraint(x, y)
                 elif (self.left_down or self.middle_down) and flags & cv2.EVENT_FLAG_CTRLKEY:
-                    dy = (y - self._mouse_iy) / 300.0
+                    dy = (y - self._mouse_iy) / 500.0
                     self.move_constraint_z(dy)
 
     def update(self):
