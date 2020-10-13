@@ -14,6 +14,7 @@ import sys
 import json
 from IPython import embed
 import random
+import math
 
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
@@ -525,6 +526,11 @@ class RandomizedMaterial(Material):
         self.metallic_texture_id = self.random_instance['metallic']
         self.roughness_texture_id = self.random_instance['roughness']
         self.normal_texture_id = self.random_instance['normal']
+        # self.transform_param = transform_param # x scale, y scale, rotation
+        scale = np.random.normal(loc=4, scale=1) # scaling by 4 is typically good
+        scale = max(scale, 2) # scaling should be at least 2.
+        rotation = random.randint(0,3) * math.pi / 2.
+        self.transform_param = [scale, scale, rotation]
 
     def __str__(self):
         return (
