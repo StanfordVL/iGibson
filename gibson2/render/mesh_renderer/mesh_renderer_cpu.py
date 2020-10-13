@@ -124,23 +124,20 @@ class InstanceGroup(object):
                 self.renderer.r.init_pos_instance(self.renderer.shaderProgram,
                                                            self.poses_trans[i],
                                                            self.poses_rot[i])
-
+                current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
                 self.renderer.r.init_material_instance(self.renderer.shaderProgram,
                                                        float(
                                                            self.class_id) / 255.0,
-                                                       self.renderer.materials_mapping[
-                                                           self.renderer.mesh_materials[object_idx]].kd,
-                                                       float(
-                                                           self.renderer.materials_mapping[
-                                                               self.renderer.mesh_materials[object_idx]].is_texture()),
+                                                       current_material.kd,
+                                                       float(current_material.is_texture()),
                                                        float(self.use_pbr),
                                                        float(self.use_pbr_mapping),
                                                        float(self.metalness),
-                                                       float(self.roughness))
+                                                       float(self.roughness),
+                                                       current_material.transform_param
+                                                       )
 
                 try:
-                    current_material = self.renderer.materials_mapping[
-                        self.renderer.mesh_materials[object_idx]]
                     texture_id = current_material.texture_id
                     metallic_texture_id = current_material.metallic_texture_id
                     roughness_texture_id = current_material.roughness_texture_id
@@ -303,20 +300,19 @@ class Instance(object):
                                           self.pose_rot)
 
         for object_idx in self.object.VAO_ids:
+            current_material = self.renderer.materials_mapping[
+                self.renderer.mesh_materials[object_idx]]
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
-                                                   float(
-                                                       self.class_id) / 255.0,
-                                                   self.renderer.materials_mapping[
-                                                       self.renderer.mesh_materials[object_idx]].kd,
-                                                   float(
-                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()),
+                                                   float(self.class_id) / 255.0,
+                                                   current_material.kd,
+                                                   float(current_material.is_texture()),
                                                    float(self.use_pbr),
                                                    float(self.use_pbr_mapping),
                                                    float(self.metalness),
-                                                   float(self.roughness))
+                                                   float(self.roughness),
+                                                   current_material.transform_param)
             try:
-                current_material = self.renderer.materials_mapping[
-                    self.renderer.mesh_materials[object_idx]]
+
                 texture_id = current_material.texture_id
                 metallic_texture_id = current_material.metallic_texture_id
                 roughness_texture_id = current_material.roughness_texture_id
@@ -385,13 +381,15 @@ class Instance(object):
 class Material(object):
     def __init__(self, material_type='color', kd=[0.5, 0.5, 0.5],
                  texture_id=None, metallic_texture_id=None,
-                 roughness_texture_id=None, normal_texture_id=None):
+                 roughness_texture_id=None, normal_texture_id=None,
+                 transform_param=[1, 1, 0]):
         self.material_type = material_type
         self.kd = kd
         self.texture_id = texture_id
         self.metallic_texture_id = metallic_texture_id
         self.roughness_texture_id = roughness_texture_id
         self.normal_texture_id = normal_texture_id
+        self.transform_param = transform_param # x scale, y scale, rotation
 
     def is_texture(self):
         return self.material_type == 'texture'
