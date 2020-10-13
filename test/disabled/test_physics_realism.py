@@ -1,4 +1,6 @@
 import os
+
+import gibson2
 import pybullet as p
 import numpy as np
 
@@ -270,7 +272,9 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
 
 
 def get_avg_size_mass():
-    avg_obj_dims_json = '/cvgl2/u/chengshu/ig_dataset_v5/object_dims/avg_obj_dims.json'
+
+    avg_obj_dims_json = os.path.join(
+        gibson2.ig_dataset_path, 'objects/avg_category_specs.json')
     with open(avg_obj_dims_json) as f:
         avg_obj_dims = json.load(f)
     return avg_obj_dims

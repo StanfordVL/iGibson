@@ -188,7 +188,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
     def load_avg_obj_dims(self):
         avg_obj_dim_file = os.path.join(
-            gibson2.ig_dataset_path, 'metadata/avg_obj_dims.json')
+            gibson2.ig_dataset_path, 'objects/avg_category_specs.json')
         if os.path.isfile(avg_obj_dim_file):
             with open(avg_obj_dim_file) as f:
                 return json.load(f)
