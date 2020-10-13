@@ -57,7 +57,7 @@ class URDFObject(Object):
                  bounding_box=None,
                  scale=None,
                  avg_obj_dims=None,
-                 joint_friction=10,
+                 joint_friction=None,
                  ):
         """
 
@@ -79,7 +79,15 @@ class URDFObject(Object):
         self.merge_fj = False
 
         # Friction for all prismatic and revolute joints
-        self.joint_friction = joint_friction
+        if joint_friction is not None:
+            self.joint_friction = joint_friction
+        else:
+            if self.category in ['oven', 'dishwasher']:
+                self.joint_friction = 30
+            elif self.category in ['toilet']:
+                self.joint_friction = 3
+            else:
+                self.joint_friction = 10
 
         # These following fields have exactly the same length (i.e. the number
         # of sub URDFs in this object)
