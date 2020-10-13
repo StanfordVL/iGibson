@@ -121,21 +121,22 @@ class InstanceGroup(object):
 
         for i, visual_object in enumerate(self.objects):
             for object_idx in visual_object.VAO_ids:
-                self.renderer.r.init_material_pos_instance(self.renderer.shaderProgram,
+                self.renderer.r.init_pos_instance(self.renderer.shaderProgram,
                                                            self.poses_trans[i],
-                                                           self.poses_rot[i],
-                                                           float(
-                                                               self.class_id) / 255.0,
+                                                           self.poses_rot[i])
+
+                self.renderer.r.init_material_instance(self.renderer.shaderProgram,
+                                                       float(
+                                                           self.class_id) / 255.0,
+                                                       self.renderer.materials_mapping[
+                                                           self.renderer.mesh_materials[object_idx]].kd,
+                                                       float(
                                                            self.renderer.materials_mapping[
-                                                               self.renderer.mesh_materials[object_idx]].kd[:3],
-                                                           float(
-                                                               self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()),
-                                                           float(self.use_pbr),
-                                                           float(
-                                                               self.use_pbr_mapping),
-                                                           float(
-                                                               self.metalness),
-                                                           float(self.roughness))
+                                                               self.renderer.mesh_materials[object_idx]].is_texture()),
+                                                       float(self.use_pbr),
+                                                       float(self.use_pbr_mapping),
+                                                       float(self.metalness),
+                                                       float(self.roughness))
 
                 try:
                     current_material = self.renderer.materials_mapping[

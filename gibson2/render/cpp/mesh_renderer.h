@@ -129,9 +129,7 @@ public:
                                 py::array_t<float> lightpos,
                                 py::array_t<float> lightcolor);
 
-    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
-                                    float instance_color, py::array_t<float> diffuse_color, float use_texture,
-                                    float use_pbr, float use_pbr_mapping, float metalness, float roughness);
+    void init_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot);
 
     void render_tensor_pre(bool msaa, GLuint fb1, GLuint fb2);
 

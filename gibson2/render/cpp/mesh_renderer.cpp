@@ -563,43 +563,12 @@ void MeshRendererContext::initvar_instance_group(int shaderProgram, py::array_t<
     glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), shadow_pass);
 }
 
-void MeshRendererContext::init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans,
-                                                     py::array_t<float> pose_rot,
-                                                     float instance_color, py::array_t<float> diffuse_color,
-                                                     float use_texture, float use_pbr, float use_pbr_mapping,
-                                                     float metalness,
-                                                     float roughness) {
+void MeshRendererContext::init_pos_instance(int shaderProgram, py::array_t<float> pose_trans,
+                                                     py::array_t<float> pose_rot) {
     float *transptr = (float *) pose_trans.request().ptr;
     float *rotptr = (float *) pose_rot.request().ptr;
-    float *diffuse_ptr = (float *) diffuse_color.request().ptr;
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_trans"), 1, GL_FALSE, transptr);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "pose_rot"), 1, GL_TRUE, rotptr);
-    glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
-    glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
-    glUniform1f(glGetUniformLocation(shaderProgram, "use_texture"), use_texture);
-    glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
-    glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr_mapping"), use_pbr_mapping);
-    glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
-
-    glUniform1f(glGetUniformLocation(shaderProgram, "metalness"), metalness);
-    glUniform1f(glGetUniformLocation(shaderProgram, "roughness"), roughness);
-    glUniform1i(glGetUniformLocation(shaderProgram, "texUnit"), 0);
-    glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 1);
-    glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 2);
-    glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 3);
-
-    glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture2"), 4);
-    glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture2"), 5);
-    glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 6);
-
-    glUniform1i(glGetUniformLocation(shaderProgram, "metallicTexture"), 7);
-    glUniform1i(glGetUniformLocation(shaderProgram, "roughnessTexture"), 8);
-    glUniform1i(glGetUniformLocation(shaderProgram, "normalTexture"), 9);
-    glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 10);
-
-    glUniform1i(glGetUniformLocation(shaderProgram, "lightModulationMap"), 11);
-
-
 }
 
 
