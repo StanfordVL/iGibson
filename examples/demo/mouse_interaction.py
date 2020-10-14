@@ -33,7 +33,7 @@ def test_import_igsdf():
 
     s.import_ig_scene(scene)
 
-    for i in range(10000):
+    while True:
         start = time.time()
         s.step()
         end = time.time()
