@@ -449,9 +449,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 if parent_idx != 0:
                     continue
                 # try to set the door to from 90 to 0 degrees until no collision
-                for j_pos in np.arange(0.0, np.pi / 2 + np.pi / 36.0, step=np.pi / 36.0):
+                for j_pos in np.arange(0.0, j_high + np.pi / 36.0, step=np.pi / 36.0):
                     p.restoreState(state_id)
-                    p.resetJointState(body_id, joint_id, np.pi / 2 - j_pos)
+                    p.resetJointState(body_id, joint_id, j_high - j_pos)
                     p.stepSimulation()
                     has_collision = self.check_collision(
                         body_a=body_id, link_a=joint_id)
