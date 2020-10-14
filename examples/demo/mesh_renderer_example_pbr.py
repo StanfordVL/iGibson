@@ -74,7 +74,7 @@ def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:
-        model_path = os.path.join(get_scene_path('Rs'), 'mesh_z_up.obj')
+        model_path = os.path.join(get_scene_path('Rs_int'), 'mesh_z_up.obj')
     settings = MeshRendererSettings(msaa=True, enable_shadow=True)
     renderer = MeshRenderer(width=512, height=512, vertical_fov=90, rendering_settings=settings)
     renderer.set_light_position_direction([0,0,10], [0,0,0])

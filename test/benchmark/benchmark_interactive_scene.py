@@ -87,10 +87,10 @@ def benchmark_scene(scene_name, optimized=False, first_n = 200):
 
 def main():
     #for i in [0, 1,5,10,20,30,40,50,60,70]:
-    benchmark_scene('Rs', True)
-    #benchmark_scene('Rs', False)
-    #benchmark_scene('Wainscott_0', True)
-    #benchmark_scene('Wainscott_0', False)
+    benchmark_scene('Rs_int', True)
+    #benchmark_scene('Rs_int', False)
+    #benchmark_scene('Wainscott_0_int', True)
+    #benchmark_scene('Wainscott_0_int', False)
 
 
 if __name__ == "__main__":

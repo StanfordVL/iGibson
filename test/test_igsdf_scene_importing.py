@@ -12,7 +12,7 @@ import random
 
 def test_import_igsdf():
     scene = InteractiveIndoorScene(
-        'Rs', texture_randomization=False, object_randomization=True)
+        'Rs_int', texture_randomization=False, object_randomization=True)
     s = Simulator(mode='headless', image_width=512,
                   image_height=512, device_idx=0)
     s.import_ig_scene(scene)
