@@ -235,6 +235,7 @@ py::array_t<float> MeshRendererContext::readbuffer_meshrenderer(char *mode, int 
     return data;
 }
 
+
 void MeshRendererContext::clean_meshrenderer(std::vector<GLuint> texture1, std::vector<GLuint> texture2,
                                              std::vector<GLuint> fbo, std::vector<GLuint> vaos,
                                              std::vector<GLuint> vbos) {
@@ -243,6 +244,19 @@ void MeshRendererContext::clean_meshrenderer(std::vector<GLuint> texture1, std::
     glDeleteFramebuffers(fbo.size(), fbo.data());
     glDeleteBuffers(vaos.size(), vaos.data());
     glDeleteBuffers(vbos.size(), vbos.data());
+
+    if (m_envTexture.id != 0) glDeleteTextures(1, &m_envTexture.id);
+    if (m_irmapTexture.id != 0) glDeleteTextures(1, &m_irmapTexture.id);
+    if (m_spBRDF_LUT.id != 0) glDeleteTextures(1, &m_spBRDF_LUT.id);
+    if (m_envTexture2.id != 0) glDeleteTextures(1, &m_envTexture2.id);
+    if (m_irmapTexture2.id != 0) glDeleteTextures(1, &m_irmapTexture2.id);
+    if (m_spBRDF_LUT2.id != 0) glDeleteTextures(1, &m_spBRDF_LUT2.id);
+    if (m_envTexture3.id != 0) glDeleteTextures(1, &m_envTexture3.id);
+    if (m_light_modulation_map.id != 0) glDeleteTextures(1, &m_light_modulation_map.id);
+    if (m_default_metallic_texture.id != 0) glDeleteTextures(1, &m_default_metallic_texture.id);
+    if (m_default_roughness_texture.id != 0) glDeleteTextures(1, &m_default_roughness_texture.id);
+    if (m_default_normal_texture.id != 0) glDeleteTextures(1, &m_default_normal_texture.id);
+
 }
 
 py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int height) {
@@ -499,7 +513,7 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
 
     if (m_use_two_light_probe) {
         glActiveTexture(GL_TEXTURE11);
-        glBindTexture(GL_TEXTURE_2D, light_modulation_map.id);
+        glBindTexture(GL_TEXTURE_2D, m_light_modulation_map.id);
     }
     glBindVertexArray(vao);
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
@@ -633,6 +647,7 @@ void MeshRendererContext::generate_light_maps(
         glBindImageTexture(0, envTextureUnfiltered.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
         glDispatchCompute(envTextureUnfiltered.width / 32, envTextureUnfiltered.height / 32, 6);
     }
+    glDeleteTextures(1, &envTextureEquirect.id);
     glGenerateTextureMipmap(envTextureUnfiltered.id);
     {
         envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
@@ -696,6 +711,7 @@ void MeshRendererContext::generate_env_map(
         glBindImageTexture(0, envTextureUnfiltered.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
         glDispatchCompute(envTextureUnfiltered.width / 32, envTextureUnfiltered.height / 32, 6);
     }
+    glDeleteTextures(1, &envTextureEquirect.id);
     glGenerateTextureMipmap(envTextureUnfiltered.id);
     {
         envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kSkyBoxMapSize, kSkyBoxMapSize, GL_RGBA16F, 0);
@@ -722,7 +738,7 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
     glDisable(GL_CULL_FACE);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
     if (light_modulation_map_filename.length() > 0) {
-        light_modulation_map = createTexture(Image::fromFile(light_modulation_map_filename, 3), GL_RGB, GL_RGB16F, 1);
+        m_light_modulation_map = createTexture(Image::fromFile(light_modulation_map_filename, 3), GL_RGB, GL_RGB16F, 1);
         m_use_two_light_probe = true;
     }
     //glFrontFace(GL_CCW);
@@ -1268,7 +1284,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
         if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT2.id);
 
         if (m_use_two_light_probe) {
-            glBindTexture(GL_TEXTURE_2D, light_modulation_map.id);
+            glBindTexture(GL_TEXTURE_2D, m_light_modulation_map.id);
         }
 
 		glUniform1i(bigTexLoc, 0);
