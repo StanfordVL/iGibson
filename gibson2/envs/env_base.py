@@ -165,6 +165,7 @@ class BaseEnv(gym.Env):
                 random_seed=self.get_next_scene_random_seed(),
                 should_open_all_doors=self.config.get(
                     'should_open_all_doors', False),
+                trav_map_type=self.config.get('trav_map_type', 'with_obj'),
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
             self.simulator.import_ig_scene(scene)
