@@ -48,7 +48,12 @@ public:
 
     Texture m_envTexture3; // outdoor
 
-    Texture light_modulation_map; // modulate indoor 1 and indoor 2
+    Texture m_light_modulation_map; // modulate indoor 1 and indoor 2
+
+    Texture m_default_metallic_texture;
+    Texture m_default_roughness_texture;
+    Texture m_default_normal_texture;
+
     bool m_use_two_light_probe = false;
 
     Texture envTextureEquirect;
