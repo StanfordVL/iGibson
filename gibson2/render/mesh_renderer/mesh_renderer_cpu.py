@@ -7,7 +7,7 @@ import pybullet as p
 import gibson2.render.mesh_renderer as mesh_renderer
 from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
 from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
-    safemat2quat, xyzw2wxyz, ortho
+    safemat2quat, xyzw2wxyz, ortho, transform_vertex
 import numpy as np
 import os
 import sys
@@ -26,7 +26,7 @@ class VisualObject(object):
     by a VisualObject
     """
 
-    def __init__(self, filename, VAO_ids, id, renderer):
+    def __init__(self, filename, VAO_ids, vertex_data_indices, face_indices, id, renderer):
         """
         :param filename: filename of the obj file
         :param VAO_ids: VAO_ids in OpenGL
@@ -38,6 +38,8 @@ class VisualObject(object):
         self.texture_ids = []
         self.id = id
         self.renderer = renderer
+        self.vertex_data_indices = vertex_data_indices
+        self.face_indices = face_indices
 
     def __str__(self):
         return "Object({})->VAO({})".format(self.id, self.VAO_ids)
@@ -189,6 +191,17 @@ class InstanceGroup(object):
 
         self.pose_rot = np.ascontiguousarray(quat2rotmat(quat))
 
+    def dump(self):
+        vertices_info = []
+        faces_info = []
+        for i, visual_obj in enumerate(self.objects):
+            for vertex_data_index, face_data_index in zip(visual_obj.vertex_data_indices, visual_obj.face_indices):
+                vertices_info.append(transform_vertex(self.renderer.vertex_data[vertex_data_index],
+                                                      pose_trans=self.poses_trans[i],
+                                                      pose_rot=self.poses_rot[i]))
+                faces_info.append(self.renderer.faces[face_data_index])
+        return vertices_info, faces_info
+
     def __str__(self):
         return "InstanceGroup({}) -> Objects({})".format(
             self.id, ",".join([str(object.id) for object in self.objects]))
@@ -339,6 +352,16 @@ class Instance(object):
         :param quat: New quaternion in w,x,y,z
         """
         self.pose_rot = np.ascontiguousarray(quat2rotmat(quat))
+
+    def dump(self):
+        vertices_info = []
+        faces_info = []
+        for vertex_data_index, face_index in zip(self.object.vertex_data_indices, self.object.face_indices):
+            vertices_info.append(transform_vertex(self.renderer.vertex_data[vertex_data_index],
+                                                  pose_rot=self.pose_rot,
+                                                  pose_trans=self.pose_trans))
+            faces_info.append(self.renderer.faces[face_index])
+        return vertices_info, faces_info
 
     def __str__(self):
         return "Instance({}) -> Object({})".format(self.id, self.object.id)
@@ -653,6 +676,7 @@ class MeshRenderer(object):
 
         self.texture_load_counter = 0
 
+        print("About to setup pbr!")
         self.env_texture_filename = env_texture_filename
         self.skybox_size = skybox_size
         if not self.platform == 'Darwin':
@@ -660,11 +684,13 @@ class MeshRenderer(object):
 
     def setup_pbr(self):
         if os.path.exists(self.env_texture_filename):
+            print("Setup pbr!")
             self.r.setup_pbr(os.path.join(os.path.dirname(
                 mesh_renderer.__file__), 'shaders/'), self.env_texture_filename)
         else:
             logging.warning(
                 "Environment texture not available, cannot use PBR.")
+        print("Trying to set up skybox!")
         self.r.loadSkyBox(self.skyboxShaderProgram, self.skybox_size)
 
     def set_light_position_direction(self, position, target):
@@ -746,7 +772,8 @@ class MeshRenderer(object):
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
         ret = reader.ParseFromFile(obj_path)
-
+        vertex_data_indices = []
+        face_indices = []
         if not ret:
             logging.error("Warning: {}".format(reader.Warning()))
             logging.error("Error: {}".format(reader.Error()))
@@ -881,8 +908,10 @@ class MeshRenderer(object):
                 self.shaderProgram, vertexData)
             self.VAOs.append(VAO)
             self.VBOs.append(VBO)
+            face_indices.append(len(self.faces))
             self.faces.append(faces)
             self.objects.append(obj_path)
+            vertex_data_indices.append(len(self.vertex_data))
             self.vertex_data.append(vertexData)
             self.shapes.append(shape)
             if material_id == -1:  # if material loading fails, use the default material
@@ -899,7 +928,8 @@ class MeshRenderer(object):
             VAO_ids.append(self.get_num_objects() - 1)
 
         new_obj = VisualObject(
-            obj_path, VAO_ids, len(self.visual_objects), self)
+            obj_path, VAO_ids=VAO_ids, vertex_data_indices=vertex_data_indices, face_indices=face_indices,
+            id=len(self.visual_objects), renderer=self)
         self.visual_objects.append(new_obj)
         return VAO_ids
 
@@ -998,11 +1028,10 @@ class MeshRenderer(object):
         self.set_light_position_direction([self.camera[0], self.camera[1], 10],
                                           [self.camera[0], self.camera[1], 0])
     def set_fov(self, fov):
-        # self.vertical_fov = fov
-        # P = perspective(self.vertical_fov, float(
-        #     self.width) / float(self.height), 0.1, 100)
-        # self.P = np.ascontiguousarray(P, np.float32)
-        pass
+        self.vertical_fov = fov
+        P = perspective(self.vertical_fov, float(
+            self.width) / float(self.height), 0.1, 100)
+        self.P = np.ascontiguousarray(P, np.float32)
 
     def set_light_color(self, color):
         self.lightcolor = color
@@ -1128,6 +1157,21 @@ class MeshRenderer(object):
 
     def get_instances(self):
         return self.instances
+
+    def dump(self):
+        instances_vertices = []
+        instances_faces = []
+        len_v = 0
+        for instance in self.instances:
+            vertex_info, face_info = instance.dump()
+            for v,f in zip(vertex_info, face_info):
+                instances_vertices.append(v)
+                instances_faces.append(f + len_v)
+                len_v += len(v)
+        instances_vertices = np.concatenate(instances_vertices, axis=0)
+        instances_faces = np.concatenate(instances_faces, axis=0)
+
+        return instances_vertices, instances_faces
 
     def set_light_pos(self, light):
         self.lightpos = light

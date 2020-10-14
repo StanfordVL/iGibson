@@ -521,11 +521,11 @@ class URDFObject(Object):
             logging.info("Loading " + self.urdf_paths[idx])
             body_id = p.loadURDF(self.urdf_paths[idx])
             # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-            logging.info("Moving URDF to " +
-                         np.array_str(self.poses[idx]))
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
             orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+            logging.info("Moving URDF to (pos,ori): " +
+                         np.array_str(pos) + ", " + np.array_str(orn))
             _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
                 p.getDynamicsInfo(body_id, -1)
             pos, orn = p.multiplyTransforms(
@@ -540,7 +540,21 @@ class URDFObject(Object):
                 jointType = info[2]
                 if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
                     p.setJointMotorControl2(body_id, j, p.VELOCITY_CONTROL, force=self.joint_friction, targetVelocity=0)
-
-
             self.body_ids.append(body_id)
         return self.body_ids
+
+    def reset(self):
+        for idx in range(len(self.body_ids)):
+            body_id = self.body_ids[idx]
+            transformation = self.poses[idx]
+            pos = transformation[0:3, 3]
+            orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+            logging.info("Resetting URDF to (pos,ori): " +
+                         np.array_str(pos) + ", " + np.array_str(orn))
+            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
+                p.getDynamicsInfo(body_id, -1)
+            pos, orn = p.multiplyTransforms(
+                pos, orn, inertial_pos, inertial_orn)
+            p.resetBasePositionAndOrientation(body_id, pos, orn)
+
+

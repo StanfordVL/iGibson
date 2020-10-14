@@ -81,8 +81,10 @@ class BaseEnv(gym.Env):
         """
         if self.config['scene'] == 'empty':
             scene = EmptyScene()
+            self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))
         elif self.config['scene'] == 'stadium':
             scene = StadiumScene()
+            self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))
         elif self.config['scene'] == 'gibson':
             scene = StaticIndoorScene(
                 self.config['scene_id'],
@@ -93,6 +95,7 @@ class BaseEnv(gym.Env):
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
                 pybullet_load_texture=self.config.get('pybullet_load_texture', False),
             )
+            self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))
         elif self.config['scene'] == 'igibson':
             scene = InteractiveIndoorScene(
                 self.config['scene_id'],
@@ -103,7 +106,9 @@ class BaseEnv(gym.Env):
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
                 pybullet_load_texture=self.config.get('pybullet_load_texture', False),
             )
-        self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))
+            #TODO: Unify the function import_scene and take out of the if-else clauses
+            self.simulator.import_ig_scene(scene)
+
 
         if self.config['robot'] == 'Turtlebot':
             robot = Turtlebot(self.config)

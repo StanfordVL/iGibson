@@ -57,10 +57,11 @@ if optimize:
 # Note: the VRLogReader plays back the demo at the recorded fps, so there is not need to set this
 vr_log_path = 'vr_logs/vr_demo_save.h5'
 vr_reader = VRLogReader(log_filepath=vr_log_path)
+vr_hand_action_path = 'vr_hand'
 
 while vr_reader.get_data_left_to_read():
-    # Note: Please see the code in gibson2/utils/vr_logging.py to extract custom
-    # data for experiments
-    vr_reader.read_frame(s, fullReplay=True)
-    
+    vr_hand_actions = vr_reader.read_action(vr_hand_action_path)
+    print(vr_hand_actions.shape, vr_hand_actions)
+
+    vr_reader.read_frame(s, fullReplay=False)
     s.step(shouldPrintTime=False)

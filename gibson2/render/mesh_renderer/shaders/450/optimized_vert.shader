@@ -1,11 +1,15 @@
 #version 450
 
-#define MAX_ARRAY_SIZE 512
+#define MAX_ARRAY_SIZE 1024
 
-layout (std140) uniform TransformData {
+layout (std140) uniform TransformDataTrans {
     mat4 pose_trans_array[MAX_ARRAY_SIZE];
+};
+
+layout (std140) uniform TransformDataRot {
     mat4 pose_rot_array[MAX_ARRAY_SIZE];
 };
+
 
 in int gl_DrawID;
 

@@ -50,7 +50,9 @@ public:
 
 	// UBO data
 	GLuint uboTexColorData;
-	GLuint uboTransformData;
+	GLuint uboTransformDataRot;
+	GLuint uboTransformDataTrans;
+
 	int texColorDataSize;
 	int transformDataSize;
     GLuint m_skybox_vbo;

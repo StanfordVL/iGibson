@@ -134,6 +134,11 @@ setup(
             'ipython',
             'pytest',
             'future',
+            'trimesh',
+            'sphinx_markdown_tables',
+            'sphinx==2.2.1',
+            'recommonmark',
+            'sphinx_rtd_theme'
     ],
     ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/render')],
     cmdclass=dict(build_ext=CMakeBuild),

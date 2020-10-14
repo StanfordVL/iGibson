@@ -33,7 +33,7 @@
 #include "stb_image_resize.h"
 
 #include "mesh_renderer.h"
-#define MAX_ARRAY_SIZE 512
+#define MAX_ARRAY_SIZE 1024
 #define BUFFER_OFFSET(offset) (static_cast<char*>(0) + (offset))
 
 namespace py = pybind11;
@@ -651,7 +651,7 @@ void MeshRendererContext::setup_pbr(std::string shader_path, std::string env_tex
     // Load & convert equirectangular environment map to a cubemap texture.
     {
         GLuint equirectToCubeProgram = linkProgram({
-                                                           compileShader(shader_path + "/450/equirect2cube_cs.glsl",
+                                                           compileShader(shader_path + "\\450\\equirect2cube_cs.glsl",
                                                                          GL_COMPUTE_SHADER)
                                                    });
 
@@ -669,7 +669,7 @@ void MeshRendererContext::setup_pbr(std::string shader_path, std::string env_tex
 
     {
         GLuint spmapProgram = linkProgram({
-                                                  compileShader(shader_path + "/450/spmap_cs.glsl", GL_COMPUTE_SHADER)
+                                                  compileShader(shader_path + "\\450\\spmap_cs.glsl", GL_COMPUTE_SHADER)
                                           });
 
         m_envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
@@ -698,7 +698,7 @@ void MeshRendererContext::setup_pbr(std::string shader_path, std::string env_tex
     // Compute diffuse irradiance cubemap.
     {
         GLuint irmapProgram = linkProgram({
-                                                  compileShader(shader_path + "/450/irmap_cs.glsl", GL_COMPUTE_SHADER)
+                                                  compileShader(shader_path + "\\450\\irmap_cs.glsl", GL_COMPUTE_SHADER)
                                           });
 
         m_irmapTexture = createTexture(GL_TEXTURE_CUBE_MAP, kIrradianceMapSize, kIrradianceMapSize, GL_RGBA16F, 1);
@@ -713,7 +713,7 @@ void MeshRendererContext::setup_pbr(std::string shader_path, std::string env_tex
     // Compute Cook-Torrance BRDF 2D LUT for split-sum approximation.
     {
         GLuint spBRDFProgram = linkProgram({
-                                                   compileShader(shader_path + "/450/spbrdf_cs.glsl", GL_COMPUTE_SHADER)
+                                                   compileShader(shader_path + "\\450\\spbrdf_cs.glsl", GL_COMPUTE_SHADER)
                                            });
 
         m_spBRDF_LUT = createTexture(GL_TEXTURE_2D, kBRDF_LUT_Size, kBRDF_LUT_Size, GL_RG16F, 1);
@@ -1123,7 +1123,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		for (int i = 0; i < multidrawCount; i++) {
 			unsigned int offset = (unsigned int)indexOffsetPtr[i];
 			this->multidrawStartIndices.push_back(BUFFER_OFFSET((offset * sizeof(unsigned int))));
-			printf("multidraw start idx %d\n", offset);
+			//printf("multidraw start idx %d\n", offset);
 		}
 
 		// Store for rendering
@@ -1167,13 +1167,21 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glBufferSubData(GL_UNIFORM_BUFFER, 2 * 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragNData);
 		glBufferSubData(GL_UNIFORM_BUFFER, 3 * 16 * MAX_ARRAY_SIZE, diffuseDataSize * sizeof(float), diffuseData);
 
-		glGenBuffers(1, &uboTransformData);
-		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
+		glGenBuffers(1, &uboTransformDataTrans);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformDataTrans);
 		transformDataSize = 2 * 64 * MAX_ARRAY_SIZE;
 		glBufferData(GL_UNIFORM_BUFFER, transformDataSize, NULL, GL_DYNAMIC_DRAW);
-		GLuint transformDataIdx = glGetUniformBlockIndex(shaderProgram, "TransformData");
-		glUniformBlockBinding(shaderProgram, transformDataIdx, 1);
-		glBindBufferBase(GL_UNIFORM_BUFFER, 1, uboTransformData);
+		GLuint transformDataTransIdx = glGetUniformBlockIndex(shaderProgram, "TransformDataTrans");
+		glUniformBlockBinding(shaderProgram, transformDataTransIdx, 1);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 1, uboTransformDataTrans);
+
+		glGenBuffers(1, &uboTransformDataRot);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformDataRot);
+		glBufferData(GL_UNIFORM_BUFFER, transformDataSize, NULL, GL_DYNAMIC_DRAW);
+		GLuint transformDataRotIdx = glGetUniformBlockIndex(shaderProgram, "TransformDataRot");
+		glUniformBlockBinding(shaderProgram, transformDataRotIdx, 2);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 2, uboTransformDataRot);
+
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		GLuint bigTexLoc = glGetUniformLocation(shaderProgram, "bigTex");
@@ -1219,9 +1227,17 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		int transDataSize = pose_trans_array.size();
 		int rotDataSize = pose_rot_array.size();
 
-		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformData);
+        //printf("transDataSize %d\n", transDataSize);
+
+        if (transDataSize > MAX_ARRAY_SIZE * 16) transDataSize = MAX_ARRAY_SIZE * 16;
+        if (rotDataSize > MAX_ARRAY_SIZE * 16) rotDataSize = MAX_ARRAY_SIZE * 16;
+
+		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformDataTrans);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, transDataSize * sizeof(float), transPtr);
-		glBufferSubData(GL_UNIFORM_BUFFER, transformDataSize / 2, rotDataSize * sizeof(float), rotPtr);
+
+		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformDataRot);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, rotDataSize * sizeof(float), rotPtr);
+
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		float* Vptr = (float*)V.request().ptr;
@@ -1237,7 +1253,12 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 	// Optimized rendering function that is called once per frame for all merged data
 	void MeshRendererContext::renderOptimized(GLuint VAO) {
 		glBindVertexArray(VAO);
-		glMultiDrawElements(GL_TRIANGLES, &this->multidrawCounts[0], GL_UNSIGNED_INT, &this->multidrawStartIndices[0], this->multidrawCount);
+		int draw_count = this->multidrawCount;
+		if (draw_count > MAX_ARRAY_SIZE) {
+		    draw_count = MAX_ARRAY_SIZE;
+		    printf("Warning: not all objects are drawn\n");
+		}
+		glMultiDrawElements(GL_TRIANGLES, &this->multidrawCounts[0], GL_UNSIGNED_INT, &this->multidrawStartIndices[0], draw_count);
 	}
 
 void MeshRendererContext::clean_meshrenderer_optimized(std::vector<GLuint> color_attachments, std::vector<GLuint> textures, std::vector<GLuint> fbo, std::vector<GLuint> vaos, std::vector<GLuint> vbos, std::vector<GLuint> ebos) {
@@ -1248,7 +1269,8 @@ void MeshRendererContext::clean_meshrenderer_optimized(std::vector<GLuint> color
 		glDeleteBuffers(vbos.size(), vbos.data());
 		glDeleteBuffers(ebos.size(), ebos.data());
 		glDeleteBuffers(1, &uboTexColorData);
-		glDeleteBuffers(1, &uboTransformData);
+		glDeleteBuffers(1, &uboTransformDataTrans);
+		glDeleteBuffers(1, &uboTransformDataRot);
 	}
 
 

@@ -2,7 +2,8 @@ import gibson2
 import os
 import argparse
 import random
-
+import subprocess
+import json
 
 def get_ig_scene_path(scene_name):
     ig_dataset_path = gibson2.ig_dataset_path
@@ -20,6 +21,33 @@ def get_ig_model_path(category_name, model_name):
     ig_category_path = get_ig_category_path(category_name)
     assert model_name in os.listdir(ig_category_path), "Model {} from category {} does not exist".format(model_name, category_name)
     return os.path.join(ig_category_path, model_name)  
+
+def get_all_object_models():
+    ig_dataset_path = gibson2.ig_dataset_path
+    ig_categories_path = ig_dataset_path + "/objects"
+
+    categories = os.listdir(ig_categories_path)
+    categories = [item for item in categories if os.path.isdir(os.path.join(ig_categories_path, item))]
+    models = []
+    for category in categories:
+        category_models = os.listdir(os.path.join(ig_categories_path, category))
+        category_models = [item for item in category_models if os.path.isdir(os.path.join(ig_categories_path,
+                                                                                          category,
+                                                                                          item))]
+        models.extend([os.path.join(ig_categories_path, category, item) for item in category_models])
+    return models
+
+def get_ig_scene_non_colliding_seeds(scene_name):
+    ig_dataset_path = gibson2.ig_dataset_path
+    ig_scenes_path = ig_dataset_path + "/scenes"
+    seed_path = os.path.join(ig_scenes_path, scene_name, 'misc', 'random_seeds.json')
+    return json.load(open(seed_path))
+
+def get_ig_assets_version():
+    process = subprocess.Popen(['git',  '-C', gibson2.ig_dataset_path, 'rev-parse', 'HEAD'],
+                               shell=False, stdout=subprocess.PIPE)
+    git_head_hash = str(process.communicate()[0].strip())
+    return "{}".format(git_head_hash)
 
 def get_scene_path(scene_id):
     data_path = gibson2.dataset_path
@@ -58,9 +86,9 @@ def download_demo_data():
         os.system('wget https://storage.googleapis.com/gibson_scenes/Rs.tar.gz -O /tmp/Rs.tar.gz')
         os.system('tar -zxf /tmp/Rs.tar.gz --directory {}'.format(gibson2.dataset_path))
 
-    if not os.path.exists(os.path.join(gibson2.dataset_path, 'Rs_interactive')):
-        os.system('wget https://storage.googleapis.com/gibson_scenes/Rs_interactive.tar.gz -O /tmp/Rs_interactive.tar.gz')
-        os.system('tar -zxf /tmp/Rs_interactive.tar.gz --directory {}'.format(gibson2.dataset_path))
+    # if not os.path.exists(os.path.join(gibson2.dataset_path, 'Rs_interactive')):
+    #     os.system('wget https://storage.googleapis.com/gibson_scenes/Rs_interactive.tar.gz -O /tmp/Rs_interactive.tar.gz')
+    #     os.system('tar -zxf /tmp/Rs_interactive.tar.gz --directory {}'.format(gibson2.dataset_path))
 
 def download_dataset(url):
     if not os.path.exists(gibson2.dataset_path):

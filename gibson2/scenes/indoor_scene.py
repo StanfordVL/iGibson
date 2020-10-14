@@ -61,7 +61,7 @@ class IndoorScene(Scene):
         :param maps_path: String with the path to the folder containing the traversability maps
         :return: None
         """
-        if not os.path.isfile(maps_path):
+        if not os.path.exists(maps_path):
             logging.warning('trav map does not exist: {}'.format(maps_path))
             return
 

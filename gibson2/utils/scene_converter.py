@@ -12,6 +12,12 @@ import json
 import numpy as np
 import math
 
+"""
+Script to update all urdfs
+
+for file in ../../gibson2/ig_dataset/scenes/*
+  python scene_converter.py $(basename $file)
+"""
 
 config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 missing_models = set([
@@ -26,6 +32,7 @@ missing_models = set([
 ])
 
 
+
 def convert_scene(scene_name, select_best=False):
 
     scene_file = get_ig_scene_path(
@@ -35,7 +42,7 @@ def convert_scene(scene_name, select_best=False):
     os.makedirs(bbox_dir, exist_ok=True)
 
 
-    with open(get_ig_scene_path(scene_name) + '/misc/all_objs_new.json', 'r') as all_objs_file:
+    with open(get_ig_scene_path(scene_name) + '/misc/all_objs.json', 'r') as all_objs_file:
         all_objs = json.load(all_objs_file)
 
         total = 0
@@ -72,7 +79,7 @@ def convert_scene(scene_name, select_best=False):
                     bbox_json = os.path.join(obj_dir, 'misc', 'metadata.json')
                     with open(bbox_json, 'r') as fp:
                         bbox_data = json.load(fp)
-                    obj_lenx, obj_leny, obj_lenz = bbox_data['bbox_size'] 
+                    obj_lenx, obj_leny, obj_lenz = bbox_data['bbox_size']
 
                     # all_objs.json and bbox.json have xy axis flipped
                     scale_x, scale_y, scale_z = \
@@ -135,7 +142,7 @@ def convert_scene(scene_name, select_best=False):
             parent = ET.SubElement(
                 joint_el, 'parent', dict([("link", "world")]))
             # print(total)
-    
+
     fname = scene_name if not select_best else "{}_best".format(scene_name)
     scene_file_out = os.path.join(get_ig_scene_path(scene_name), "{}.urdf".format(fname))
     scene_tree.write(scene_file_out)

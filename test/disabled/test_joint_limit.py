@@ -33,7 +33,7 @@ def main():
             urdf_path = os.path.join(obj_inst_dir, urdf_path)
 
             obj = ArticulatedObject(urdf_path)
-            s.import_articulated_object(obj)
+            s.import_object(obj)
 
             with open(os.path.join(obj_inst_dir, 'misc/bbox.json'), 'r') as bbox_file:
                 bbox_data = json.load(bbox_file)
