@@ -46,10 +46,12 @@ class Viewer:
 
     def create_visual_object(self):
         self.constraint_marker = VisualMarker(radius=0.04, rgba_color=[0,0,1,1])
-        self.simulator.import_articulated_object(self.constraint_marker)
         self.constraint_marker2 = VisualMarker(visual_shape=p.GEOM_CAPSULE, radius=0.01, length=3,
                                                initial_offset=[0,0,-1.5], rgba_color=[0,0,1,1])
-        self.simulator.import_articulated_object(self.constraint_marker2)
+        if self.simulator is not None:
+            self.simulator.import_object(self.constraint_marker2)
+            self.simulator.import_object(self.constraint_marker)
+
 
     def apply_push_force(self, x, y, force):
         camera_pose = np.array([self.px, self.py, self.pz])

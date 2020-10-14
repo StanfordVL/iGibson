@@ -44,7 +44,7 @@ s.import_scene(scene)
 # This playground only uses one hand - it has enough friction to pick up some of the
 # mustard bottles
 rHand = VrHand()
-s.import_articulated_object(rHand)
+s.import_object(rHand)
 # This sets the hand constraints so it can move with the VR controller
 rHand.set_start_state(start_pos=[0.0, 0.5, 1.5])
 
@@ -56,7 +56,7 @@ gaze_marker.set_position([0,0,1.5])
 
 basket_path = os.path.join(sample_urdf_folder, 'object_ZU6u5fvE8Z1.urdf')
 basket = ArticulatedObject(basket_path)
-s.import_articulated_object(basket)
+s.import_object(basket)
 basket.set_position([1, 0.2, 1])
 p.changeDynamics(basket.body_id, -1, mass=5)
 
@@ -64,28 +64,32 @@ mass_list = [5, 10, 100, 500]
 mustard_start = [1, -0.2, 1]
 for i in range(len(mass_list)):
     mustard = YCBObject('006_mustard_bottle')
-    s.import_articulated_object(mustard)
+    s.import_object(mustard)
     mustard.set_position([mustard_start[0], mustard_start[1] - i * 0.2, mustard_start[2]])
     p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
 
 if optimize:
-    s.optimize_data()
+    s.optimize_vertex_and_texture()
 
 # Start user close to counter for interaction
 s.setVROffset([1.0, 0, -0.4])
 
-# The VRLogWriter has a simple interface:
-# all we have to do is initialize it
-# and then call process_frame at the end of
-# each frame to record data.
-# Data is automatically flushed every
-# frames_before_write frames to hdf5.
+# Modify this path to save to different files
 vr_log_path = 'vr_logs/vr_demo_save.h5'
-# Saves every 2 seconds or so
+# Saves every 2 seconds or so (200 / 90fps is approx 2 seconds)
 vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=True)
 
+# Save Vr hand transform, validity and trigger fraction
+# action->vr_hand (dataset)
+# Total size of numpy array: 1 (validity) + 3 (pos) + 4 (orn) + 1 (trig_frac) = (9,)
+vr_hand_action_path = 'vr_hand'
+vr_writer.register_action(vr_hand_action_path, (9,))
+
+# Call set_up_data_storage once all actions have been registered
+vr_writer.set_up_data_storage()
+
 # Main simulation loop - 20 to 30 seconds of simulation data recorded
-for i in range(2000):
+for i in range(210):
     # Optionally print fps during simulator step
     s.step(shouldPrintTime=print_fps)
 
@@ -101,6 +105,15 @@ for i in range(2000):
 
     # Get coordinate system for relative movement device
     right, _, forward = s.getDeviceCoordinateSystem(relative_movement_device)
+
+    # Save VR hand data
+    vr_hand_data = [1.0 if rIsValid else 0.0]
+    vr_hand_data.extend(rTrans)
+    vr_hand_data.extend(rRot)
+    vr_hand_data.append(rTrig)
+    vr_hand_data = np.array(vr_hand_data)
+    
+    vr_writer.save_action(vr_hand_action_path, vr_hand_data)
 
     if rIsValid:
         rHand.move(rTrans, rRot)

@@ -1,6 +1,6 @@
 #version 450
 
-#define MAX_ARRAY_SIZE 512
+#define MAX_ARRAY_SIZE 1024
 
 uniform sampler2DArray bigTex;
 uniform sampler2DArray smallTex;

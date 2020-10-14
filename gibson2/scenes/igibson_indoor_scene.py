@@ -13,6 +13,7 @@ import json
 from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path
 from IPython import embed
 
+
 class InteractiveIndoorScene(StaticIndoorScene):
     """
     Create an interactive scene defined with iGibson Scene Description Format (iGSDF).
@@ -31,6 +32,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  waypoint_resolution=0.2,
                  pybullet_load_texture=False,
                  texture_randomization=False,
+                 random_seed=None,
+                 link_collision_tolerance=0.03,
                  object_randomization=False,
                  ):
 
@@ -44,10 +47,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
             pybullet_load_texture,
         )
         self.texture_randomization = texture_randomization
-        self.object_randomization = object_randomization 
-        fname = scene_id if object_randomization else '{}_best'.format(scene_id)
+        self.object_randomization = object_randomization
+        fname = scene_id if object_randomization else '{}_best'.format(
+            scene_id)
         self.is_interactive = True
-        self.scene_file = os.path.join(get_ig_scene_path(scene_id), "{}.urdf".format(fname))
+        self.scene_file = os.path.join(
+            get_ig_scene_path(scene_id), "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
 
         self.random_groups = {}
@@ -58,12 +63,21 @@ class InteractiveIndoorScene(StaticIndoorScene):
         timestr = time.strftime("%Y%m%d-%H%M%S")
         # Create the subfolder
         self.scene_instance_folder = os.path.join(
-            gibson2.ig_dataset_path, "scene_instances", 
-            '{}_{}_{}'.format(timestr, random.getrandbits(64), os.getpid() ))
+            gibson2.ig_dataset_path, "scene_instances",
+            '{}_{}_{}'.format(timestr, random.getrandbits(64), os.getpid()))
         os.makedirs(self.scene_instance_folder, exist_ok=True)
 
         # Load average object density if exists
         self.avg_obj_dims = self.load_avg_obj_dims()
+
+        # load overlapping bboxes in scene annotation
+        self.overlapped_bboxes = self.load_overlapped_bboxes()
+
+        # percentage of objects allowed that CANNOT extend their joints by >66%
+        self.link_collision_tolerance = link_collision_tolerance
+
+        if random_seed is not None:
+            random.seed(random_seed)
 
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):
@@ -114,7 +128,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
                 if "bounding_box" in link.keys() and "scale" in link.keys():
                     logging.error(
-                        "You cannot define both scale and bounding box size defined to embed a URDF")
+                        "You cannot define both scale and bounding box size to embed a URDF")
                     exit(-1)
 
                 bounding_box = None
@@ -174,6 +188,15 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 return json.load(f)
         else:
             return {}
+
+    def load_overlapped_bboxes(self):
+        bbox_overlap_file = os.path.join(
+            get_ig_scene_path(self.scene_id), 'misc', 'bbox_overlap.json')
+        if os.path.isfile(bbox_overlap_file):
+            with open(bbox_overlap_file) as f:
+                return json.load(f)
+        else:
+            return []
 
     def add_object(self,
                    category,
@@ -269,6 +292,127 @@ class InteractiveIndoorScene(StaticIndoorScene):
             obj = self.objects_by_name[int_object]
             obj.randomize_texture()
 
+    def check_collision(self, body_a, body_b=None, link_a=None, fixed_body_ids=None):
+        if body_b is None:
+            assert link_a is not None
+            pts = p.getContactPoints(bodyA=body_a, linkIndexA=link_a)
+        else:
+            assert body_b is not None
+            pts = p.getContactPoints(bodyA=body_a, bodyB=body_b)
+
+        # contactDistance < 0 means actual penetration
+        pts = [elem for elem in pts if elem[8] < 0.0]
+
+        # only count collision with fixed body ids if provided
+        if fixed_body_ids is not None:
+            pts = [elem for elem in pts if elem[2] in fixed_body_ids]
+
+        return len(pts) > 0
+
+    def check_scene_quality(self, body_ids, fixed_body_ids):
+        quality_check = True
+
+        body_body_collision = []
+        body_link_collision = []
+
+        # build mapping from body_id to object name for debugging
+        body_id_to_name = {}
+        for name in self.objects_by_name:
+            for body_id in self.objects_by_name[name].body_ids:
+                body_id_to_name[body_id] = name
+
+        # collect body ids for overlapped bboxes (e.g. tables and chairs,
+        # sofas and coffee tables)
+        overlapped_body_ids = []
+        for obj1_name, obj2_name in self.overlapped_bboxes:
+            for obj1_body_id in self.objects_by_name[obj1_name].body_ids:
+                for obj2_body_id in self.objects_by_name[obj2_name].body_ids:
+                    overlapped_body_ids.append((obj1_body_id, obj2_body_id))
+
+        # cache pybullet initial state
+        state_id = p.saveState()
+
+        # check if these overlapping bboxes have collision
+        p.stepSimulation()
+        for body_a, body_b in overlapped_body_ids:
+            has_collision = self.check_collision(body_a=body_a, body_b=body_b)
+            quality_check = quality_check and (not has_collision)
+            if has_collision:
+                body_body_collision.append((body_a, body_b))
+
+        # check if fixed, articulated objects can extend their joints
+        # without collision with other fixed objects
+        joint_collision_allowed = int(
+            len(body_ids) * self.link_collision_tolerance)
+        joint_collision_so_far = 0
+        for body_id in fixed_body_ids:
+            joint_quality = True
+            for joint_id in range(p.getNumJoints(body_id)):
+                j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
+                j_type = p.getJointInfo(body_id, joint_id)[2]
+                if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                    continue
+                # this is the continuous joint (e.g. wheels for office chairs)
+                if j_low >= j_high:
+                    continue
+
+                # usually j_low and j_high includes j_default = 0.0
+                # if not, set j_default to be j_low
+                j_default = 0.0
+                if not (j_low <= j_default <= j_high):
+                    j_default = j_low
+
+                # check three joint positions, 0%, 33% and 66%
+                j_range = j_high - j_low
+                j_low_perc = j_range * 0.33 + j_low
+                j_high_perc = j_range * 0.66 + j_low
+
+                # check if j_default has collision
+                p.restoreState(state_id)
+                p.resetJointState(body_id, joint_id, j_default)
+                p.stepSimulation()
+                has_collision = self.check_collision(
+                    body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
+                joint_quality = joint_quality and (not has_collision)
+
+                # check if j_low_perc has collision
+                p.restoreState(state_id)
+                p.resetJointState(body_id, joint_id, j_low_perc)
+                p.stepSimulation()
+                has_collision = self.check_collision(
+                    body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
+                joint_quality = joint_quality and (not has_collision)
+
+                # check if j_high_perc has collision
+                p.restoreState(state_id)
+                p.resetJointState(body_id, joint_id, j_high_perc)
+                p.stepSimulation()
+                has_collision = self.check_collision(
+                    body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
+                joint_quality = joint_quality and (not has_collision)
+
+            if not joint_quality:
+                joint_collision_so_far += 1
+                body_link_collision.append(body_id)
+
+        quality_check = quality_check and (
+            joint_collision_so_far <= joint_collision_allowed)
+
+        # restore state to the initial state before testing collision
+        p.restoreState(state_id)
+
+        self.quality_check = quality_check
+
+        for body_a, body_b in body_body_collision:
+            logging.warning('scene quality check: {} and {} has collision.'.format(
+                body_id_to_name[body_a],
+                body_id_to_name[body_b],
+            ))
+        for body_id in body_link_collision:
+            logging.warning('scene quality check: {} has joint that cannot extend for >66%.'.format(
+                body_id_to_name[body_id],
+            ))
+
     def load(self):
         # Load all the objects
         body_ids = []
@@ -298,4 +442,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         self.visual_mesh_to_material = visual_mesh_to_material
 
+        self.check_scene_quality(body_ids, fixed_body_ids)
+
         return body_ids
+
+    def reset_scene_objects(self):
+        for obj_name in self.objects_by_name:
+            self.objects_by_name[obj_name].reset()
+

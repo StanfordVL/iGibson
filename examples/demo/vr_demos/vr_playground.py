@@ -42,7 +42,7 @@ s.import_scene(scene)
 # This playground only uses one hand - it has enough friction to pick up some of the
 # mustard bottles
 rHand = VrHand()
-s.import_articulated_object(rHand)
+s.import_object(rHand)
 # This sets the hand constraints so it can move with the VR controller
 rHand.set_start_state(start_pos=[0.0, 0.5, 1.5])
 
@@ -54,7 +54,7 @@ gaze_marker.set_position([0,0,1.5])
 
 basket_path = os.path.join(sample_urdf_folder, 'object_ZU6u5fvE8Z1.urdf')
 basket = ArticulatedObject(basket_path)
-s.import_articulated_object(basket)
+s.import_object(basket)
 basket.set_position([1, 0.2, 1])
 p.changeDynamics(basket.body_id, -1, mass=5)
 
@@ -62,12 +62,12 @@ mass_list = [5, 10, 100, 500]
 mustard_start = [1, -0.2, 1]
 for i in range(len(mass_list)):
     mustard = YCBObject('006_mustard_bottle')
-    s.import_articulated_object(mustard)
+    s.import_object(mustard)
     mustard.set_position([mustard_start[0], mustard_start[1] - i * 0.2, mustard_start[2]])
     p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
 
 if optimize:
-    s.optimize_data()
+    s.optimize_vertex_and_texture()
 
 # Start user close to counter for interaction
 s.setVROffset([1.0, 0, -0.4])

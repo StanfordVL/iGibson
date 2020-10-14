@@ -7,6 +7,10 @@ Can easily save velocity for joints, but might have to use link states for norma
 HDF5 hierarchy:
 / (root)
 
+--- action (group)
+
+------ N x action_path (group) - these are paths introduced by the user and are of the form Y x group_name + dataset name
+
 --- frame_data (group)
 
 ------ frame_number (dataset)
@@ -57,6 +61,19 @@ import pybullet as p
 import time
 
 class VRLogWriter():
+    """Class that handles saving of VR data, physics data and user-defined actions.
+
+    Function flow:
+    1) Before simulation
+    init -> N x register_action -> set_up_data_storage
+
+    2) During simulation:
+    N x save_action (at any point during frame) -> process_frame (at end of frame)
+
+    3) After simulation, before disconnecting from PyBullet sever:
+    end_log_session
+    """
+
     # TIMELINE: Initialize the VRLogger just before simulation starts, once all bodies have been loaded
     def __init__(self, frames_before_write, log_filepath, profiling_mode=False):
         # The number of frames to store data on the stack before writing to HDF5.
@@ -80,18 +97,13 @@ class VRLogWriter():
         self.persistent_frame_count = 0
         # Time when last frame ended (not valid for first frame, so set to 0)
         self.last_frame_end_time = 0
-
-        # Refresh the data map after initialization
-        self.refresh_data_map()
-        # VR data is all invalid before first frame, but
-        # PyBullet objects have starting positions that must be loaded
-        self.write_pybullet_data_to_map()
-
+        # Handle of HDF5 file
+        self.hf = None
         # Name path data - used to extract data from data map and save to hd5
         self.name_path_data = []
         self.generate_name_path_data()
-        self.hf = None
-        self.set_up_data_storage()
+        # Create data map
+        self.create_data_map()
 
     def generate_name_path_data(self):
         """Generates lists of name paths for resolution in hd5 saving.
@@ -115,14 +127,11 @@ class VRLogWriter():
                 ['vr', 'vr_eye_tracking_data'],
         ])
 
-    def refresh_data_map(self):
-        """Creates a map of data that will go into HDF5 file.
-        Will be flushed after self.frames_before_write frames.
-        
-        Args:
-            pb_ids: list of pybullet body ids
-        """
+    def create_data_map(self):
+        """Creates data map of data that will go into HDF5 file. All the data in the
+        map is reset after every self.frames_before_write frames, by refresh_data_map."""
         self.data_map = dict()
+        self.data_map['action'] = dict()
         self.data_map['frame_data'] = dict()
         self.data_map['frame_data']['frame_number'] = np.full((self.frames_before_write, 1), self.default_fill_sentinel)
         self.data_map['frame_data']['last_frame_duration'] = np.full((self.frames_before_write, 1), self.default_fill_sentinel)
@@ -150,18 +159,43 @@ class VRLogWriter():
             },
             'vr_eye_tracking_data': np.full((self.frames_before_write, 9), self.default_fill_sentinel)
         }
+    
+    # TIMELINE: Register all actions immediately after calling init
+    def register_action(self, action_path, action_shape):
+        """Registers an action to be saved every frame in the VRLogWriter.
 
-    def get_data_for_name_path(self, name_path):
-        """Resolves a list of names (group/dataset) into a numpy array.
-        eg. [vr, vr_camera, right_eye_view] -> self.data_map['vr']['vr_camera']['right_eye_view']"""
-        next_data = self.data_map
-        for name in name_path:
-            next_data = next_data[name]
+        Args:
+            action_path: The /-separated path specifying where to save action data. All entries but the last will be treated
+                as group names, and the last entry will the be the dataset. The parent group for all
+                actions is called action. Eg. action_path = vr_hand/constraint. This will end up in
+                action (group) -> vr_hand (group) -> constraint (dataset) in the saved data.
+            action_shape: tuple representing action shape. It is expected that all actions will be numpy arrays. They
+                are stacked over time in the first dimension to create a persistent action data store.
+        """
+        # Extend name path data - this is used for fast saving and lookup later on
+        act_path = ['action']
+        path_tokens = action_path.split('/')
+        act_path.extend(path_tokens)
+        self.name_path_data.append(act_path)
 
-        return next_data
+        # Add action to dictionary - create any new dictionaries that don't yet exist
+        curr_dict = self.data_map['action']
+        for tok in path_tokens[:-1]:
+            if tok in curr_dict.keys():
+                curr_dict = curr_dict[tok]
+            else:
+                curr_dict[tok] = dict()
+                curr_dict = curr_dict[tok]
 
+        # Curr_dict refers to the last group - we then add in the dataset of the right shape
+        # The action is extended across self.frames_before_write rows
+        extended_shape = (self.frames_before_write,) + action_shape
+        curr_dict[path_tokens[-1]] = np.full(extended_shape, self.default_fill_sentinel)
+
+    # TIMELINE: Call set_up once all actions have been registered, or directly after init if no actions to save
     def set_up_data_storage(self):
-        """Sets up hd5 data structure to write to."""
+        """Performs set up of internal data structures needed for storage, once
+        VRLogWriter has been initialized and all actions have been registered."""
         # Note: this erases the file contents previously stored as self.log_filepath
         hf = h5py.File(self.log_filepath, 'w')
         for name_path in self.name_path_data:
@@ -176,10 +210,33 @@ class VRLogWriter():
         # Now open in r+ mode to append to the file
         self.hf = h5py.File(self.log_filepath, 'r+')
 
+    def get_data_for_name_path(self, name_path):
+        """Resolves a list of names (group/dataset) into a numpy array.
+        eg. [vr, vr_camera, right_eye_view] -> self.data_map['vr']['vr_camera']['right_eye_view']"""
+        next_data = self.data_map
+        for name in name_path:
+            next_data = next_data[name]
+
+        return next_data
+
+    # TIMELINE: Call this at any time before process_frame to save a specific action
+    def save_action(self, action_path, action):
+        """Saves a single action to the VRLogWriter. It is assumed that this function will
+        be called every frame, including the first.
+
+        Args:
+            action_path: The /-separated action path that was used to register this action
+            action: The action as a numpy array - must have the same shape as the action_shape that
+                was registered along with this action path
+        """
+        full_action_path = 'action/' + action_path
+        act_data = self.get_data_for_name_path(full_action_path.split('/'))
+        act_data[self.frame_counter, ...] = action
+
     def write_frame_data_to_map(self):
         """Writes frame data to the data map."""
-        self.data_map['frame_data']['frame_number'] = self.persistent_frame_count
-        self.data_map['frame_data']['last_frame_duration'] = time.time() - self.last_frame_end_time
+        self.data_map['frame_data']['frame_number'][self.frame_counter, ...] = self.persistent_frame_count
+        self.data_map['frame_data']['last_frame_duration'][self.frame_counter, ...] = time.time() - self.last_frame_end_time
         self.last_frame_end_time = time.time()
 
     def write_vr_data_to_map(self, s):
@@ -249,6 +306,14 @@ class VRLogWriter():
             # We have accumulated enough data, which we will write to hd5
             self.write_to_hd5()
 
+    def refresh_data_map(self):
+        """Resets all values stored in self.data_map to the default sentinel value.
+        This function is called after we have written the last self.frames_before_write
+        frames to HDF5 and can start inputting new frame data into the data map."""
+        for name_path in self.name_path_data:
+            np_data = self.get_data_for_name_path(name_path)
+            np_data.fill(self.default_fill_sentinel)
+
     def write_to_hd5(self):
         """Writes data stored in self.data_map to hd5.
         The data is saved each time this function is called, so data
@@ -290,7 +355,7 @@ class VRLogReader():
         """Extracts pybullet body ids from saved data."""
         return [int(metadata[0].split('_')[-1]) for metadata in self.hf['physics_data'].items()]
 
-    def read_frame(self, s):
+    def read_frame(self, s, fullReplay=True):
         """Reads a frame from the VR logger and steps simulation with stored data."""
 
         """Reads a frame from the VR logger and steps simulation with stored data.
@@ -300,6 +365,9 @@ class VRLogReader():
 
         Args:
             s (simulator): used to set camera view and projection matrices
+            fullReplay: boolean indicating if we should replay full state of the world or not.
+                If this value is set to false, we simply increment the frame counter each frame, 
+                and let the user take control of processing actions and simulating them
         """
         # Note: Currently returns hmd position, as a test
         # Catch error where the user tries to keep reading a frame when all frames have been read
@@ -314,29 +382,39 @@ class VRLogReader():
         s.renderer.V = self.hf['vr/vr_camera/right_eye_view'][self.frame_counter]
         s.renderer.P = self.hf['vr/vr_camera/right_eye_proj'][self.frame_counter]
 
-        # Then we update the physics
-        for pb_id in self.pb_ids:
-            id_name = 'body_id_{0}'.format(pb_id)
-            id_data = self.hf['physics_data/' + id_name][self.frame_counter]
-            pos = id_data[:3]
-            orn = id_data[3:7]
-            joint_data = id_data[7:]
-            p.resetBasePositionAndOrientation(pb_id, pos, orn)
-            for i in range(len(joint_data)):
-                p.resetJointState(pb_id, i, joint_data[i])
-
-        # An example of how to extract VR data
-        ret_data = self.hf['vr/vr_device_data/hmd'][self.frame_counter, 1:4]
+        if fullReplay:
+            # If doing full replay we update the physics manually each frame
+            for pb_id in self.pb_ids:
+                id_name = 'body_id_{0}'.format(pb_id)
+                id_data = self.hf['physics_data/' + id_name][self.frame_counter]
+                pos = id_data[:3]
+                orn = id_data[3:7]
+                joint_data = id_data[7:]
+                p.resetBasePositionAndOrientation(pb_id, pos, orn)
+                for i in range(len(joint_data)):
+                    p.resetJointState(pb_id, i, joint_data[i])
 
         self.frame_counter += 1
         if self.frame_counter >= self.total_frame_num:
             self.data_left_to_read = False
             self.end_log_session()
         
-        read_duration = time.time() - read_start_time
-        # Sleep to match duration of this frame, to create an accurate replay
-        if read_duration < frame_duration:
-            time.sleep(frame_duration - read_duration)
+        if fullReplay:
+            # Only sleep to simulate accurate timestep if doing full replay
+            read_duration = time.time() - read_start_time
+            # Sleep to match duration of this frame, to create an accurate replay
+            if read_duration < frame_duration:
+                time.sleep(frame_duration - read_duration)
+
+    def read_action(self, action_path):
+        """Reads the action at action_path for the current frame.
+
+        Args:
+            action_path: /-separated string representing the action to fetch. This should match
+                an action that was previously registered with the VRLogWriter during data saving
+        """
+        full_action_path = 'action/' + action_path
+        return self.hf[full_action_path][self.frame_counter]
     
     # TIMELINE: Use this as the while loop condition to keep reading frames!
     def get_data_left_to_read(self):
