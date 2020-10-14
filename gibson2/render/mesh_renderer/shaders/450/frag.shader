@@ -19,7 +19,7 @@ uniform vec3 eyePosition;
 uniform float use_texture;
 uniform float use_pbr;
 uniform float use_pbr_mapping;
-uniform float use_two_light_probes;
+uniform float use_two_light_probe;
 uniform float metallic;
 uniform float roughness;
 
@@ -183,14 +183,13 @@ void main() {
 
             float modulate_factor;
 
-            if (use_two_light_probes == 1) {
-                vec4 room = texture(lightModulationMap, vec2((FragPos.x + 5.0)/10.0,
-                (-FragPos.y + 5.0)/10.0));
+            if (use_two_light_probe == 1) {
+                vec4 room = texture(lightModulationMap, vec2((FragPos.x + 15.0)/30.0,
+                (-FragPos.y + 15.0)/30.0));
                 modulate_factor = room.r;
             } else {
                 modulate_factor = 1.0;
             }
-
             irradiance = texture(irradianceTexture, N).rgb * modulate_factor +
                 (1-modulate_factor) * texture(irradianceTexture2, N).rgb;
     		vec3 F = fresnelSchlick(F0, cosLo);
