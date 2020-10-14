@@ -52,8 +52,12 @@ class BaseEnv(gym.Env):
             'object_randomization_freq', None)
         self.initialize_object_randomization()
 
-        settings = MeshRendererSettings()
-        # TODO(fxia22): pass from config file
+        enable_shadow = self.config.get('enable_shadow', False)
+        enable_pbr = self.config.get('enable_pbr', True)
+        settings = MeshRendererSettings(enable_shadow=enable_shadow,
+                                        enable_pbr=enable_pbr,
+                                        msaa=False)
+
         self.simulator = Simulator(mode=mode,
                                    physics_timestep=physics_timestep,
                                    render_timestep=action_timestep,
@@ -159,6 +163,8 @@ class BaseEnv(gym.Env):
                 texture_randomization=self.texture_randomization_freq is not None,
                 object_randomization=self.object_randomization_freq is not None,
                 random_seed=self.get_next_scene_random_seed(),
+                should_open_all_doors=self.config.get(
+                    'should_open_all_doors', False),
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
             self.simulator.import_ig_scene(scene)
