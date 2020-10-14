@@ -33,9 +33,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  waypoint_resolution=0.2,
                  pybullet_load_texture=False,
                  texture_randomization=False,
-                 random_seed=None,
                  link_collision_tolerance=0.03,
                  object_randomization=False,
+                 object_randomization_idx=None,
                  should_open_all_doors=False,
                  ):
 
@@ -52,8 +52,14 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
         self.should_open_all_doors = should_open_all_doors
-        fname = scene_id if object_randomization else '{}_best'.format(
-            scene_id)
+        if object_randomization:
+            if object_randomization_idx is None:
+                fname = scene_id
+            else:
+                fname = '{}_random_{}'.format(scene_id,
+                                              object_randomization_idx)
+        else:
+            fname = '{}_best'.format(scene_id)
         self.is_interactive = True
         self.scene_file = os.path.join(
             get_ig_scene_path(scene_id), "urdf", "{}.urdf".format(fname))
@@ -80,9 +86,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # percentage of objects allowed that CANNOT extend their joints by >66%
         self.link_collision_tolerance = link_collision_tolerance
-
-        if random_seed is not None:
-            random.seed(random_seed)
 
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):

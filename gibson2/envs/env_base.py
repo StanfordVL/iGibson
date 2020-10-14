@@ -13,7 +13,6 @@ from gibson2.scenes.stadium_scene import StadiumScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.utils.utils import parse_config
-from gibson2.utils.assets_utils import get_ig_scene_non_colliding_seeds
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 import gym
 
@@ -50,7 +49,8 @@ class BaseEnv(gym.Env):
             'texture_randomization_freq', None)
         self.object_randomization_freq = self.config.get(
             'object_randomization_freq', None)
-        self.initialize_object_randomization()
+        self.object_randomization_idx = 0
+        self.num_object_randomization_idx = 10
 
         enable_shadow = self.config.get('enable_shadow', False)
         enable_pbr = self.config.get('enable_pbr', True)
@@ -99,22 +99,10 @@ class BaseEnv(gym.Env):
         """
         if self.object_randomization_freq is None:
             return
-        self.advance_random_seed_idx()
+        self.object_randomization_idx = (self.object_randomization_idx + 1) % \
+            (self.num_object_randomization_idx)
         self.simulator.reload()
         self.load()
-
-    def advance_random_seed_idx(self):
-        if self.object_randomization_freq is None:
-            return
-        self.scene_random_seed_idx = (self.scene_random_seed_idx + 1) % len(
-            self.scene_random_seeds)
-
-    def initialize_object_randomization(self):
-        if self.object_randomization_freq is None:
-            return
-        self.scene_random_seeds = get_ig_scene_non_colliding_seeds(
-            self.config['scene_id'])
-        self.scene_random_seed_idx = 0
 
     def get_next_scene_random_seed(self):
         if self.object_randomization_freq is None:
@@ -162,7 +150,7 @@ class BaseEnv(gym.Env):
                     'pybullet_load_texture', False),
                 texture_randomization=self.texture_randomization_freq is not None,
                 object_randomization=self.object_randomization_freq is not None,
-                random_seed=self.get_next_scene_random_seed(),
+                object_randomization_idx=self.object_randomization_idx,
                 should_open_all_doors=self.config.get(
                     'should_open_all_doors', False),
                 trav_map_type=self.config.get('trav_map_type', 'with_obj'),
