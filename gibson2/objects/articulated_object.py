@@ -57,7 +57,7 @@ class URDFObject(Object):
                  bounding_box=None,
                  scale=None,
                  avg_obj_dims=None,
-                 joint_friction=10,
+                 joint_friction=None,
                  ):
         """
 
@@ -79,7 +79,15 @@ class URDFObject(Object):
         self.merge_fj = False
 
         # Friction for all prismatic and revolute joints
-        self.joint_friction=joint_friction
+        if joint_friction is not None:
+            self.joint_friction = joint_friction
+        else:
+            if self.category in ['oven', 'dishwasher']:
+                self.joint_friction = 30
+            elif self.category in ['toilet']:
+                self.joint_friction = 3
+            else:
+                self.joint_friction = 10
 
         # These following fields have exactly the same length (i.e. the number
         # of sub URDFs in this object)
@@ -148,7 +156,8 @@ class URDFObject(Object):
                 bbox_size = bbox_max - bbox_min
                 base_link_offset = (bbox_min + bbox_max) / 2.0
         else:
-            assert category == 'building', 'missing object model size and base link offset data'
+            assert category in ['building', 'walls', 'floors',
+                                'ceilings'], 'missing object model size and base link offset data'
             bbox_size = None
             base_link_offset = np.zeros(3)
 
@@ -290,7 +299,7 @@ class URDFObject(Object):
 
         all_links = self.object_tree.findall('link')
         # compute dynamics properties
-        if self.category != "building":
+        if self.category not in ["building", "walls", "floors", "ceilings"]:
             all_links_trimesh = []
             total_volume = 0.0
             for link in all_links:
@@ -336,38 +345,38 @@ class URDFObject(Object):
 
         # Now iterate over all links and scale the meshes and positions
         for i, link in enumerate(all_links):
-            if self.category != "building":
+            if self.category not in ["building", "walls", "floors", "ceilings"]:
                 link_trimesh = all_links_trimesh[i]
                 # assign dynamics properties
+                inertials = link.findall('inertial')
+                if len(inertials) == 0:
+                    inertial = ET.SubElement(link, 'inertial')
+                else:
+                    assert len(inertials) == 1
+                    inertial = inertials[0]
+
+                masses = inertial.findall('mass')
+                if len(masses) == 0:
+                    mass = ET.SubElement(inertial, 'mass')
+                else:
+                    assert len(masses) == 1
+                    mass = masses[0]
+
+                inertias = inertial.findall('inertia')
+                if len(inertias) == 0:
+                    inertia = ET.SubElement(inertial, 'inertia')
+                else:
+                    assert len(inertias) == 1
+                    inertia = inertias[0]
+
+                origins = inertial.findall('origin')
+                if len(origins) == 0:
+                    origin = ET.SubElement(inertial, 'origin')
+                else:
+                    assert len(origins) == 1
+                    origin = origins[0]
+
                 if link_trimesh is not None:
-                    inertials = link.findall('inertial')
-                    if len(inertials) == 0:
-                        inertial = ET.SubElement(link, 'inertial')
-                    else:
-                        assert len(inertials) == 1
-                        inertial = inertials[0]
-
-                    masses = inertial.findall('mass')
-                    if len(masses) == 0:
-                        mass = ET.SubElement(inertial, 'mass')
-                    else:
-                        assert len(masses) == 1
-                        mass = masses[0]
-
-                    inertias = inertial.findall('inertia')
-                    if len(inertias) == 0:
-                        inertia = ET.SubElement(inertial, 'inertia')
-                    else:
-                        assert len(inertias) == 1
-                        inertia = inertias[0]
-
-                    origins = inertial.findall('origin')
-                    if len(origins) == 0:
-                        origin = ET.SubElement(inertial, 'origin')
-                    else:
-                        assert len(origins) == 1
-                        origin = origins[0]
-
                     # a hack to artificially increase the density of the lamp base
                     if link.attrib['name'] == 'base_link':
                         if self.category in ['lamp']:
@@ -391,6 +400,17 @@ class URDFObject(Object):
                     inertia.attrib['iyy'] = str(moment_of_inertia[1][1])
                     inertia.attrib['iyz'] = str(moment_of_inertia[1][2])
                     inertia.attrib['izz'] = str(moment_of_inertia[2][2])
+                else:
+                    # empty link that does not have any mesh
+                    origin.attrib['xyz'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
+                    origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
+                    mass.attrib['value'] = str(0.0)
+                    inertia.attrib['ixx'] = str(0.0)
+                    inertia.attrib['ixy'] = str(0.0)
+                    inertia.attrib['ixz'] = str(0.0)
+                    inertia.attrib['iyy'] = str(0.0)
+                    inertia.attrib['iyz'] = str(0.0)
+                    inertia.attrib['izz'] = str(0.0)
 
             scale_in_lf = scales_in_lf[link.attrib["name"]]
             # Apply the scale to all mesh elements within the link (original scale and origin)
@@ -475,11 +495,17 @@ class URDFObject(Object):
         for _ in range(len(self.urdf_paths)):
             self.visual_mesh_to_material.append({})
 
-        if self.category == 'building':
+        # deprecated - should remove soon
+        if self.category in ["building"]:
             return
 
-        material_groups_file = os.path.join(
-            self.model_path, 'misc/material_groups.json')
+        if self.category in ["walls", "floors", "ceilings"]:
+            material_groups_file = os.path.join(
+                self.model_path, 'misc/{}_material_groups.json'.format(self.category))
+        else:
+            material_groups_file = os.path.join(
+                self.model_path, 'misc/material_groups.json')
+
         assert os.path.isfile(material_groups_file), \
             'cannot find material group: {}'.format(material_groups_file)
         with open(material_groups_file) as f:
@@ -539,7 +565,9 @@ class URDFObject(Object):
                 info = p.getJointInfo(body_id, j)
                 jointType = info[2]
                 if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
-                    p.setJointMotorControl2(body_id, j, p.VELOCITY_CONTROL, force=self.joint_friction, targetVelocity=0)
+                    p.setJointMotorControl2(
+                        body_id, j, p.VELOCITY_CONTROL, force=self.joint_friction, targetVelocity=0)
+
             self.body_ids.append(body_id)
         return self.body_ids
 
@@ -556,5 +584,3 @@ class URDFObject(Object):
             pos, orn = p.multiplyTransforms(
                 pos, orn, inertial_pos, inertial_orn)
             p.resetBasePositionAndOrientation(body_id, pos, orn)
-
-

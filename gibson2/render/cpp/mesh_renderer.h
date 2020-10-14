@@ -34,12 +34,23 @@ public:
     int verbosity;
 
     const int kEnvMapSize = 256;
+    const int kSkyBoxMapSize = 1024;
     const int kIrradianceMapSize = 32;
     const int kBRDF_LUT_Size = 256;
 
-    Texture m_envTexture;
-    Texture m_irmapTexture;
-    Texture m_spBRDF_LUT;
+    Texture m_envTexture;  // indoor 1
+    Texture m_irmapTexture; // indoor 1
+    Texture m_spBRDF_LUT; // indoor 1
+
+    Texture m_envTexture2; // indoor 2
+    Texture m_irmapTexture2; // indoor 2
+    Texture m_spBRDF_LUT2; // indoor 2
+
+    Texture m_envTexture3; // outdoor
+
+    Texture light_modulation_map; // modulate indoor 1 and indoor 2
+    bool m_use_two_light_probe = false;
+
     Texture envTextureEquirect;
     Texture envTextureUnfiltered;
 
@@ -101,27 +112,20 @@ public:
 
     void render_softbody_instance(int vao, int vbo, py::array_t<float> vertexData);
 
-    void initvar_instance(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int shadow_pass,
-                          py::array_t<float> P, py::array_t<float> lightP,
-                          py::array_t<float> eye_pos, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
-                          py::array_t<float> lightpos, py::array_t<float> lightcolor);
-
     void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color,
                                 float use_texture, float use_pbr, float use_pbr_mapping, float metallic,
-                                float roughness);
+                                float roughness, py::array_t<float> transform_param);
 
     void draw_elements_instance(bool flag, int texture_id, int metallic_texture_id, int roughness_texture_id,
                                 int normal_texture_id, int depth_texture_id, int vao, int face_size,
                                 py::array_t<unsigned int> faces, GLuint fb);
 
-    void initvar_instance_group(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int shadow_pass,
+    void initvar(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int shadow_pass,
                                 py::array_t<float> P, py::array_t<float> lightP, py::array_t<float> eye_pos,
                                 py::array_t<float> lightpos,
                                 py::array_t<float> lightcolor);
 
-    void init_material_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
-                                    float instance_color, py::array_t<float> diffuse_color, float use_texture,
-                                    float use_pbr, float use_pbr_mapping, float metalness, float roughness);
+    void init_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot);
 
     void render_tensor_pre(bool msaa, GLuint fb1, GLuint fb2);
 
@@ -133,7 +137,30 @@ public:
 
     int loadTexture(std::string filename);
 
-    void setup_pbr(std::string shader_path, std::string env_texture_filename);
+    void setup_pbr(std::string shader_path,
+    std::string env_texture_filename,
+    std::string env_texture_filename2,
+    std::string env_texture_filename3,
+    std::string light_modulation_map_filename,
+    float light_dimming_factor);
+
+    void generate_light_maps(
+    GLuint equirectToCubeProgram,
+    GLuint spmapProgram,
+    GLuint irmapProgram,
+    GLuint spBRDFProgram,
+    std::string env_texture_filename,
+    Texture& envTexture,
+    Texture& irmapTexture,
+    Texture& spBRDF_LUT,
+    float light_dimming_factor
+    );
+
+    void generate_env_map(
+    GLuint equirectToCubeProgram,
+    std::string env_texture_filename,
+    Texture& envTexture
+    );
 
     GLuint linkProgram(std::initializer_list<GLuint> shaders);
 

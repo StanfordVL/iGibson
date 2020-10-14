@@ -2,7 +2,7 @@ import cv2
 import sys
 import os
 import numpy as np
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
 from gibson2.render.profiler import Profiler
 from gibson2.utils.assets_utils import get_scene_path
 from PIL import Image
@@ -75,16 +75,15 @@ def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:
-        model_path = os.path.join(get_scene_path('Rs'), 'mesh_z_up.obj')
-
-    renderer = MeshRenderer(width=1024, height=1024, msaa=True, enable_shadow=True, vertical_fov=70,
-        env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'photo_studio_01_2k.hdr'))
+        model_path = os.path.join(get_scene_path('Rs_int'), 'mesh_z_up.obj')
+    settings = MeshRendererSettings(msaa=True, enable_shadow=True, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'photo_studio_01_2k.hdr'))
+    renderer = MeshRenderer(width=512, height=512,  vertical_fov=70, rendering_settings=settings)
     renderer.set_light_position_direction([0,0,10], [0,0,0])
 
     renderer.load_object('plane/plane_z_up_0.obj', scale=[3,3,3])
     renderer.add_instance(0)
-    renderer.set_pose([0,0,-1.5,1, 0, 0.0, 0.0], -1)
-
+    #renderer.set_pose([0,0,-1.5,1, 0, 0.0, 0.0], -1)
+    #renderer.set_projection_matrix(134.64, 50.64, 64, 64, 0.1, 100)
     i = 1
 
     v = []

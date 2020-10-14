@@ -1,6 +1,6 @@
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
 from gibson2.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer, ViewerVR
 from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
@@ -16,11 +16,9 @@ import time
 class Simulator:
     def __init__(self,
                  gravity=9.8,
-                 timestep=1 / 240.0,
-                 use_fisheye=False,
+                 physics_timestep=1 / 120.0,
+                 render_timestep=1 / 30.0,
                  mode='gui',
-                 enable_shadow=False,
-                 enable_msaa=False,
                  image_width=128,
                  image_height=128,
                  vertical_fov=90,
@@ -30,17 +28,18 @@ class Simulator:
                  optimized_renderer=False,
                  env_texture_filename=None,
                  skybox_size=20.,
-                 use_dynamic_timestep=False,
+                 rendering_settings=MeshRendererSettings()
                  vrFullscreen=True,
 		         vrEyeTracking=False,
                  vrMode=True):
+
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
 
         :param gravity: gravity on z direction.
-        :param timestep: timestep of physical simulation
-        :param use_fisheye: use fisheye
+        :param physics_timestep: timestep of physical simulation, p.stepSimulation()
+        :param render_timestep: timestep of rendering, and Simulator.step() function
         :param mode: choose mode from gui, headless, iggui (only open iGibson UI), or pbgui(only open pybullet UI)
         :param image_width: width of the camera image
         :param image_height: height of the camera image
@@ -49,12 +48,12 @@ class Simulator:
         :param render_to_tensor: Render to GPU tensors
         :param auto_sync: automatically sync object poses to gibson renderer, by default true,
         disable it when you want to run multiple physics step but don't need to visualize each frame
-        :param optimized_renderer: whether to optimize renderer (combine vertices)
         """
         print("Starting init!")
         # physics simulator
         self.gravity = gravity
-        self.timestep = timestep
+        self.physics_timestep = physics_timestep
+        self.render_timestep = render_timestep
         self.mode = mode
 
         #Todo: eliminate this
@@ -78,16 +77,6 @@ class Simulator:
 
         if self.mode in ['vr']:
             self.use_vr_renderer = True
-        
-        # This will only be set once (to 20, 45 or 90) after initial measurements
-        self.use_dynamic_timestep = use_dynamic_timestep
-        # Number of frames to average over to figure out fps value
-        self.frame_measurement_num = 45
-        self.current_frame_count = 0
-        self.frame_time_sum = 0.0
-        self.should_set_timestep = True
-        # Low pass-filtered average frame time, set to 0 to start
-        self.avg_frame_time = 0
                    
         # renderer
         self.vrFullscreen = vrFullscreen
@@ -98,23 +87,19 @@ class Simulator:
         self.image_height = image_height
         self.vertical_fov = vertical_fov
         self.device_idx = device_idx
-        self.use_fisheye = use_fisheye
         self.render_to_tensor = render_to_tensor
         self.auto_sync = auto_sync
-        self.enable_shadow = enable_shadow
-        self.enable_msaa = enable_msaa
-        self.optimized_renderer = optimized_renderer
-        self.env_texture_filename = env_texture_filename
-        self.skybox_size = skybox_size  
-        print("Starting load!")
+        self.optimized_renderer = rendering_settings.optimized
+        self.rendering_settings = rendering_settings
         self.load()
 
-    def set_timestep(self, timestep):
+    def set_timestep(self, physics_timestep, render_timestep):
         """
         :param timestep: set timestep after the initialization of Simulator
         """
-        self.timestep = timestep
-        p.setTimeStep(self.timestep)
+        self.physics_timestep = physics_timestep
+        self.render_timestep = render_timestep
+        p.setTimeStep(self.physics_timestep)
 
     def add_viewer(self):
         """
@@ -143,9 +128,7 @@ class Simulator:
                                             height=self.image_height,
                                             vertical_fov=self.vertical_fov,
                                             device_idx=self.device_idx,
-                                            use_fisheye=self.use_fisheye,
-                                            enable_shadow=self.enable_shadow,
-                                            msaa=self.enable_msaa)
+                                            rendering_settings=self.rendering_settings)
         elif self.use_vr_renderer:
             if self.env_texture_filename is not None:
                 self.renderer = MeshRendererVR(fullscreen=self.vrFullscreen,
@@ -157,33 +140,19 @@ class Simulator:
                                             useEyeTracking=self.vrEyeTracking,
                                             vrMode=self.vrMode)
         else:
-            if self.env_texture_filename is not None:
-                self.renderer = MeshRenderer(width=self.image_width,
-                                         height=self.image_height,
-                                         vertical_fov=self.vertical_fov,
-                                         device_idx=self.device_idx,
-                                         use_fisheye=self.use_fisheye,
-                                         enable_shadow=self.enable_shadow,
-                                         msaa=self.enable_msaa,
-                                         optimized=self.optimized_renderer,
-                                         skybox_size=self.skybox_size,
-                                         env_texture_filename=self.env_texture_filename)
-            else:
-                self.renderer = MeshRenderer(width=self.image_width,
-                                         height=self.image_height,
-                                         vertical_fov=self.vertical_fov,
-                                         device_idx=self.device_idx,
-                                         use_fisheye=self.use_fisheye,
-                                         enable_shadow=self.enable_shadow,
-                                         msaa=self.enable_msaa,
-                                         optimized=self.optimized_renderer)
+            self.renderer = MeshRenderer(width=self.image_width,
+                                     height=self.image_height,
+                                     vertical_fov=self.vertical_fov,
+                                     device_idx=self.device_idx,
+                                     rendering_settings=self.rendering_settings)
+
 
         print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:
             self.cid = p.connect(p.GUI)
         else:
             self.cid = p.connect(p.DIRECT)
-        p.setTimeStep(self.timestep)
+        p.setTimeStep(self.physics_timestep)
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
         print("PyBullet Logging Information******************")
@@ -251,16 +220,36 @@ class Simulator:
         self.objects += new_object_ids
         if scene.texture_randomization:
             # use randomized texture
+
+
             for body_id, visual_mesh_to_material in \
                     zip(new_object_ids, scene.visual_mesh_to_material):
+                shadow_caster = True
+                if scene.objects_by_id[body_id].category == 'ceilings':
+                    shadow_caster = False
+
                 self.load_articulated_object_in_renderer(
                     body_id, class_id=body_id,
-                    visual_mesh_to_material=visual_mesh_to_material)
+                    visual_mesh_to_material=visual_mesh_to_material,
+                    shadow_caster=shadow_caster)
         else:
             # use default texture
             for body_id in new_object_ids:
-                self.load_articulated_object_in_renderer(body_id, class_id=body_id)
+                use_pbr = True
+                use_pbr_mapping = True
+                shadow_caster = True
+
+                if scene.objects_by_id[body_id].category in ['walls', 'floors', 'ceilings']:
+                    use_pbr = False
+                    use_pbr_mapping = False
+                if scene.objects_by_id[body_id].category == 'ceilings':
+                    shadow_caster = False
+                self.load_articulated_object_in_renderer(body_id, class_id=body_id,
+                                                         use_pbr=use_pbr,
+                                                         use_pbr_mapping=use_pbr_mapping,
+                                                         shadow_caster=shadow_caster)
         self.scene = scene
+
         return new_object_ids
 
     @load_without_pybullet_vis
@@ -368,7 +357,10 @@ class Simulator:
     def load_articulated_object_in_renderer(self,
                                             object_pb_id,
                                             class_id=None,
-                                            visual_mesh_to_material=None):
+                                            visual_mesh_to_material=None,
+                                            use_pbr=True,
+                                            use_pbr_mapping=True,
+                                            shadow_caster=True):
 
         if class_id is None:
             class_id = self.next_class_id
@@ -446,7 +438,10 @@ class Simulator:
                                          poses_rot=poses_rot,
                                          poses_trans=poses_trans,
                                          dynamic=True,
-                                         robot=None)
+                                         robot=None,
+                                         use_pbr=use_pbr,
+                                         use_pbr_mapping=use_pbr_mapping,
+                                         shadow_caster=shadow_caster)
 
     @load_without_pybullet_vis
     def import_robot(self, robot, class_id=None):
@@ -535,48 +530,24 @@ class Simulator:
 
         return ids
 
-    def step(self, shouldPrintTime=False):
+    def _step_simulation(self):
         """
-        Step the simulation and update positions in renderer
+        Step the simulation for one step and update positions in renderer
         """
-        start_time = time.time()
-
         p.stepSimulation()
+        for instance in self.renderer.instances:
+            if instance.dynamic:
+                self.update_position(instance)
 
-        physics_time = time.time() - start_time
-        curr_time = time.time()
+    def step(self):
+        """
+        Step the simulation at self.render_timestep and update positions in renderer
+        """
+        for _ in range(int(self.render_timestep / self.physics_timestep)):
+            p.stepSimulation()
 
         if self.auto_sync:
             self.sync()
-
-        render_time = time.time() - curr_time
-        curr_frame_time = physics_time + render_time
-        self.frame_time_sum += curr_frame_time
-        self.current_frame_count += 1
-        if self.current_frame_count >= self.frame_measurement_num and self.should_set_timestep and self.use_dynamic_timestep:
-            unrounded_timestep = self.frame_time_sum / float(self.frame_measurement_num)
-            rounded_timestep = 0
-            if unrounded_timestep > 1.0 / 32.5:
-                rounded_timestep = 1.0 / 20.0
-            elif unrounded_timestep > 1.0 / 67.5:
-                rounded_timestep = 1.0 / 45.0
-            else:
-                rounded_timestep = 1.0 / 90.0
-
-            print("Final rounded timestep is: ", rounded_timestep)
-            print("Final fps is: ", int(1 / rounded_timestep))
-            self.set_timestep(rounded_timestep)
-            self.should_set_timestep = False
-
-        if shouldPrintTime:
-            print("Physics time: %f" % float(physics_time/0.001))
-            print("Render time: %f" % float(render_time/0.001))
-            print("Total frame time: %f" % float(curr_frame_time/0.001))
-            if curr_frame_time <= 0:
-                 print("Curr fps: 1000")
-            else:
-                print("Curr fps: %f" % float(1/curr_frame_time))
-            print("___________________________________")
 
     def sync(self):
         """

@@ -23,6 +23,7 @@ class IndoorScene(Scene):
                  scene_id,
                  trav_map_resolution=0.1,
                  trav_map_erosion=2,
+                 trav_map_type='with_obj',
                  build_graph=True,
                  num_waypoints=10,
                  waypoint_resolution=0.2,
@@ -34,6 +35,7 @@ class IndoorScene(Scene):
         :param scene_id: Scene id
         :param trav_map_resolution: traversability map resolution
         :param trav_map_erosion: erosion radius of traversability areas, should be robot footprint radius
+        :param trav_map_type: type of traversability map, with_obj | no_obj
         :param build_graph: build connectivity graph
         :param num_waypoints: number of way points returned
         :param waypoint_resolution: resolution of adjacent way points
@@ -48,6 +50,7 @@ class IndoorScene(Scene):
         self.trav_map_original_size = None
         self.trav_map_size = None
         self.trav_map_erosion = trav_map_erosion
+        self.trav_map_type=trav_map_type
         self.build_graph = build_graph
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
@@ -68,14 +71,24 @@ class IndoorScene(Scene):
         self.floor_map = []
         self.floor_graph = []
         for f in range(len(self.floor_heights)):
-            trav_map = np.array(Image.open(
-                os.path.join(maps_path,
-                             'floor_trav_{}.png'.format(f))
-            ))
-            obstacle_map = np.array(Image.open(
-                os.path.join(maps_path,
-                             'floor_{}.png'.format(f))
-            ))
+            if self.trav_map_type == 'with_obj':
+                trav_map = np.array(Image.open(
+                    os.path.join(maps_path,
+                                 'floor_trav_{}.png'.format(f))
+                ))
+                obstacle_map = np.array(Image.open(
+                    os.path.join(maps_path,
+                                 'floor_{}.png'.format(f))
+                ))
+            else:
+                trav_map = np.array(Image.open(
+                    os.path.join(maps_path,
+                                 'floor_trav_no_obj_{}.png'.format(f))
+                ))
+                obstacle_map = np.array(Image.open(
+                    os.path.join(maps_path,
+                                 'floor_no_obj_{}.png'.format(f))
+                ))
             if self.trav_map_original_size is None:
                 height, width = trav_map.shape
                 assert height == width, 'trav map is not a square'

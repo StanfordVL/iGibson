@@ -1,4 +1,6 @@
 import os
+
+import gibson2
 import pybullet as p
 import numpy as np
 
@@ -155,35 +157,35 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
 
     # Now iterate over all links and scale the meshes and positions
     for link, link_trimesh in zip(all_links, all_links_trimesh):
+        inertials = link.findall('inertial')
+        if len(inertials) == 0:
+            inertial = ET.SubElement(link, 'inertial')
+        else:
+            assert len(inertials) == 1
+            inertial = inertials[0]
+
+        masses = inertial.findall('mass')
+        if len(masses) == 0:
+            mass = ET.SubElement(inertial, 'mass')
+        else:
+            assert len(masses) == 1
+            mass = masses[0]
+
+        inertias = inertial.findall('inertia')
+        if len(inertias) == 0:
+            inertia = ET.SubElement(inertial, 'inertia')
+        else:
+            assert len(inertias) == 1
+            inertia = inertias[0]
+
+        origins = inertial.findall('origin')
+        if len(origins) == 0:
+            origin = ET.SubElement(inertial, 'origin')
+        else:
+            assert len(origins) == 1
+            origin = origins[0]
+
         if link_trimesh is not None:
-            inertials = link.findall('inertial')
-            if len(inertials) == 0:
-                inertial = ET.SubElement(link, 'inertial')
-            else:
-                assert len(inertials) == 1
-                inertial = inertials[0]
-
-            masses = inertial.findall('mass')
-            if len(masses) == 0:
-                mass = ET.SubElement(inertial, 'mass')
-            else:
-                assert len(masses) == 1
-                mass = masses[0]
-
-            inertias = inertial.findall('inertia')
-            if len(inertias) == 0:
-                inertia = ET.SubElement(inertial, 'inertia')
-            else:
-                assert len(inertias) == 1
-                inertia = inertias[0]
-
-            origins = inertial.findall('origin')
-            if len(origins) == 0:
-                origin = ET.SubElement(inertial, 'origin')
-            else:
-                assert len(origins) == 1
-                origin = origins[0]
-
             if link.attrib['name'] == 'base_link':
                 if obj_class in ['lamp']:
                     link_trimesh.density *= 10.0
@@ -206,6 +208,17 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
             inertia.attrib['iyy'] = str(moment_of_inertia[1][1])
             inertia.attrib['iyz'] = str(moment_of_inertia[1][2])
             inertia.attrib['izz'] = str(moment_of_inertia[2][2])
+        else:
+            # empty link that does not have any mesh
+            origin.attrib['xyz'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
+            origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
+            mass.attrib['value'] = str(0.0)
+            inertia.attrib['ixx'] = str(0.0)
+            inertia.attrib['ixy'] = str(0.0)
+            inertia.attrib['ixz'] = str(0.0)
+            inertia.attrib['iyy'] = str(0.0)
+            inertia.attrib['iyz'] = str(0.0)
+            inertia.attrib['izz'] = str(0.0)
 
         scale_in_lf = scales_in_lf[link.attrib["name"]]
         # Apply the scale to all mesh elements within the link (original scale and origin)
@@ -259,7 +272,9 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
 
 
 def get_avg_size_mass():
-    avg_obj_dims_json = '/cvgl2/u/chengshu/ig_dataset_v5/object_dims/avg_obj_dims.json'
+
+    avg_obj_dims_json = os.path.join(
+        gibson2.ig_dataset_path, 'objects/avg_category_specs.json')
     with open(avg_obj_dims_json) as f:
         avg_obj_dims = json.load(f)
     return avg_obj_dims
@@ -305,7 +320,7 @@ def render_physics_gifs(main_urdf_file_and_offset):
     s = Simulator(mode='headless',
                   image_width=512,
                   image_height=512,
-                  timestep=1 / float(step_per_sec))
+                  physics_timestep=1 / float(step_per_sec))
 
     root_dir = '/cvgl2/u/chengshu/ig_dataset_v5/objects'
     obj_count = 0
@@ -442,7 +457,7 @@ def debug_renderer_scaling():
     s = Simulator(mode='gui',
                   image_width=512,
                   image_height=512,
-                  timestep=1 / float(100))
+                  physics_timestep=1 / float(100))
     scene = EmptyScene()
     s.import_scene(scene, render_floor_plane=True)
     urdf_path = '/cvgl2/u/chengshu/ig_dataset_v5/objects/window/103070/103070_avg_size_0.urdf'

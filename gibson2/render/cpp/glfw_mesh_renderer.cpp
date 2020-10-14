@@ -140,17 +140,15 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
     // class Instance
     pymodule.def("render_softbody_instance", &GLFWRendererContext::render_softbody_instance,
                  "render softbody in instance.render");
-    pymodule.def("initvar_instance", &GLFWRendererContext::initvar_instance, "init uniforms in instance.render");
+    pymodule.def("initvar", &GLFWRendererContext::initvar, "init uniforms in instance.render");
     pymodule.def("init_material_instance", &GLFWRendererContext::init_material_instance,
                  "init materials in instance.render");
     pymodule.def("draw_elements_instance", &GLFWRendererContext::draw_elements_instance,
                  "draw elements in instance.render and instancegroup.render");
 
     // class InstanceGroup
-    pymodule.def("initvar_instance_group", &GLFWRendererContext::initvar_instance_group,
-                 "init uniforms in instancegroup.render");
-    pymodule.def("init_material_pos_instance", &GLFWRendererContext::init_material_pos_instance,
-                 "init materials and position in instancegroup.render");
+    pymodule.def("init_pos_instance", &GLFWRendererContext::init_pos_instance,
+                 "init position in instancegroup.render");
 
     // misc
     pymodule.def("cglBindVertexArray", &GLFWRendererContext::cglBindVertexArray, "binding function");
