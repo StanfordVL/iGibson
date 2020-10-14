@@ -12,6 +12,33 @@ def test_render_loading_cleaning():
     renderer = MeshRenderer(width=800, height=600)
     renderer.release()
 
+def test_projection_matrix():
+    renderer = MeshRenderer(width=128, height=128)
+    K_original = np.array([[134.64, 0, 60.44],[0, 134.64, 45.14],[0,0,1]])
+
+    renderer.set_projection_matrix(K_original[0,0], K_original[1,1], K_original[0,2],
+                                   K_original[1,2], 0.1, 100)
+    print(renderer.P)
+    K_recovered = np.array(renderer.get_intrinsics())
+    print(K_original, K_recovered)
+    max_error = np.max(np.abs(K_original - K_recovered))
+    print(max_error)
+    assert(max_error < 1e-3)
+    renderer.release()
+
+def test_projection_matrix_and_fov():
+    renderer = MeshRenderer(width=128, height=128)
+    K_original = np.array([[134.64, 0, 60.44],[0, 134.64, 45.14],[0,0,1]])
+
+    renderer.set_projection_matrix(K_original[0,0], K_original[1,1], K_original[0,2],
+                                   K_original[1,2], 0.1, 100)
+    print(renderer.P)
+    K_recovered = np.array(renderer.get_intrinsics())
+    print(K_original, K_recovered)
+    max_error = np.max(np.abs(K_original - K_recovered))
+    print(max_error)
+    assert(max_error < 1e-3)
+    renderer.release()
 
 def test_render_rendering(record_property):
     download_assets()

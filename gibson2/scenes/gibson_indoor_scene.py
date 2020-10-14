@@ -23,6 +23,7 @@ class StaticIndoorScene(IndoorScene):
                  scene_id,
                  trav_map_resolution=0.1,
                  trav_map_erosion=2,
+                 trav_map_type='with_obj',
                  build_graph=True,
                  num_waypoints=10,
                  waypoint_resolution=0.2,
@@ -34,6 +35,7 @@ class StaticIndoorScene(IndoorScene):
         :param scene_id: Scene id
         :param trav_map_resolution: traversability map resolution
         :param trav_map_erosion: erosion radius of traversability areas, should be robot footprint radius
+        :param trav_map_type: type of traversability map, with_obj | no_obj
         :param build_graph: build connectivity graph
         :param num_waypoints: number of way points returned
         :param waypoint_resolution: resolution of adjacent way points
@@ -44,6 +46,7 @@ class StaticIndoorScene(IndoorScene):
             scene_id,
             trav_map_resolution,
             trav_map_erosion,
+            trav_map_type,
             build_graph,
             num_waypoints,
             waypoint_resolution,

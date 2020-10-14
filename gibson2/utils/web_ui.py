@@ -6,6 +6,7 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.utils.utils import parse_config
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 import numpy as np
 from gibson2.render.profiler import Profiler
 import cv2
@@ -38,7 +39,8 @@ def index():
 
 def gen():
     config = parse_config('../../examples/configs/turtlebot_demo.yaml')
-    s = Simulator(mode='headless', image_width=256, image_height=256, enable_shadow=True, enable_msaa=False)
+    settings = MeshRendererSettings(enable_shadow=True, msaa=False)
+    s = Simulator(mode='headless', image_width=256, image_height=256, rendering_settings=settings)
     scene = StaticIndoorScene('Rs',
                               build_graph=True,
                               pybullet_load_texture=True)

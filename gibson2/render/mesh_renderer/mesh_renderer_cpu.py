@@ -14,6 +14,7 @@ import sys
 import json
 from IPython import embed
 import random
+import math
 
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
@@ -63,7 +64,11 @@ class InstanceGroup(object):
                  poses_trans,
                  poses_rot,
                  dynamic,
-                 robot=None):
+                 robot=None,
+                 use_pbr=True,
+                 use_pbr_mapping=True,
+                 shadow_caster=True
+                 ):
         """
         :param objects: visual objects
         :param id: id this instance_group
@@ -91,8 +96,9 @@ class InstanceGroup(object):
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.tf_tree = None
-        self.use_pbr = False
-        self.use_pbr_mapping = False
+        self.use_pbr = use_pbr
+        self.use_pbr_mapping = use_pbr_mapping
+        self.shadow_caster = shadow_caster
         self.roughness = 1
         self.metalness = 0
 
@@ -103,37 +109,35 @@ class InstanceGroup(object):
         if self.renderer is None:
             return
 
-        self.renderer.r.initvar_instance_group(self.renderer.shaderProgram,
-                                               self.renderer.V,
-                                               self.renderer.lightV,
-                                               shadow_pass,
-                                               self.renderer.P,
-                                               self.renderer.lightP,
-                                               self.renderer.camera,
-                                               self.renderer.lightpos,
-                                               self.renderer.lightcolor)
+        self.renderer.r.initvar(self.renderer.shaderProgram,
+                               self.renderer.V,
+                               self.renderer.lightV,
+                               shadow_pass,
+                               self.renderer.P,
+                               self.renderer.lightP,
+                               self.renderer.camera,
+                               self.renderer.lightpos,
+                               self.renderer.lightcolor)
 
         for i, visual_object in enumerate(self.objects):
             for object_idx in visual_object.VAO_ids:
-                self.renderer.r.init_material_pos_instance(self.renderer.shaderProgram,
+                self.renderer.r.init_pos_instance(self.renderer.shaderProgram,
                                                            self.poses_trans[i],
-                                                           self.poses_rot[i],
-                                                           float(
-                                                               self.class_id) / 255.0,
-                                                           self.renderer.materials_mapping[
-                                                               self.renderer.mesh_materials[object_idx]].kd[:3],
-                                                           float(
-                                                               self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()),
-                                                           float(self.use_pbr),
-                                                           float(
-                                                               self.use_pbr_mapping),
-                                                           float(
-                                                               self.metalness),
-                                                           float(self.roughness))
+                                                           self.poses_rot[i])
+                current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
+                self.renderer.r.init_material_instance(self.renderer.shaderProgram,
+                                                       float(
+                                                           self.class_id) / 255.0,
+                                                       current_material.kd,
+                                                       float(current_material.is_texture()),
+                                                       float(self.use_pbr),
+                                                       float(self.use_pbr_mapping),
+                                                       float(self.metalness),
+                                                       float(self.roughness),
+                                                       current_material.transform_param
+                                                       )
 
                 try:
-                    current_material = self.renderer.materials_mapping[
-                        self.renderer.mesh_materials[object_idx]]
                     texture_id = current_material.texture_id
                     metallic_texture_id = current_material.metallic_texture_id
                     roughness_texture_id = current_material.roughness_texture_id
@@ -152,9 +156,7 @@ class InstanceGroup(object):
                         buffer = self.renderer.fbo_ms
                     else:
                         buffer = self.renderer.fbo
-
-                    self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
-                                                           self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                    self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                            texture_id,
                                                            metallic_texture_id,
                                                            roughness_texture_id,
@@ -224,7 +226,11 @@ class Instance(object):
     Instance is one instance of a visual object. One visual object can have multiple instances to save memory.
     """
 
-    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic, softbody):
+    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic, softbody,
+                 use_pbr=True,
+                 use_pbr_mapping=True,
+                 shadow_caster=True
+                 ):
         self.object = object
         self.pose_trans = pose_trans
         self.pose_rot = pose_rot
@@ -234,10 +240,12 @@ class Instance(object):
         self.pybullet_uuid = pybullet_uuid
         self.dynamic = dynamic
         self.softbody = softbody
-        self.use_pbr = False
-        self.use_pbr_mapping = False
+        self.use_pbr = use_pbr
+        self.use_pbr_mapping = use_pbr_mapping
+        self.shadow_caster = shadow_caster
         self.roughness = 1
         self.metalness = 0
+
 
     def render(self, shadow_pass=0):
         """
@@ -277,33 +285,34 @@ class Instance(object):
             self.renderer.r.render_softbody_instance(
                 self.renderer.VAOs[object_idx], self.renderer.VBOs[object_idx], new_data)
 
-        self.renderer.r.initvar_instance(self.renderer.shaderProgram,
-                                         self.renderer.V,
-                                         self.renderer.lightV,
-                                         shadow_pass,
-                                         self.renderer.P,
-                                         self.renderer.lightP,
-                                         self.renderer.camera,
-                                         self.pose_trans,
-                                         self.pose_rot,
-                                         self.renderer.lightpos,
-                                         self.renderer.lightcolor)
+        self.renderer.r.initvar(self.renderer.shaderProgram,
+                                 self.renderer.V,
+                                 self.renderer.lightV,
+                                 shadow_pass,
+                                 self.renderer.P,
+                                 self.renderer.lightP,
+                                 self.renderer.camera,
+                                 self.renderer.lightpos,
+                                 self.renderer.lightcolor)
+
+        self.renderer.r.init_pos_instance(self.renderer.shaderProgram,
+                                          self.pose_trans,
+                                          self.pose_rot)
 
         for object_idx in self.object.VAO_ids:
+            current_material = self.renderer.materials_mapping[
+                self.renderer.mesh_materials[object_idx]]
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
-                                                   float(
-                                                       self.class_id) / 255.0,
-                                                   self.renderer.materials_mapping[
-                                                       self.renderer.mesh_materials[object_idx]].kd,
-                                                   float(
-                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture()),
+                                                   float(self.class_id) / 255.0,
+                                                   current_material.kd,
+                                                   float(current_material.is_texture()),
                                                    float(self.use_pbr),
                                                    float(self.use_pbr_mapping),
                                                    float(self.metalness),
-                                                   float(self.roughness))
+                                                   float(self.roughness),
+                                                   current_material.transform_param)
             try:
-                current_material = self.renderer.materials_mapping[
-                    self.renderer.mesh_materials[object_idx]]
+
                 texture_id = current_material.texture_id
                 metallic_texture_id = current_material.metallic_texture_id
                 roughness_texture_id = current_material.roughness_texture_id
@@ -373,13 +382,15 @@ class Instance(object):
 class Material(object):
     def __init__(self, material_type='color', kd=[0.5, 0.5, 0.5],
                  texture_id=None, metallic_texture_id=None,
-                 roughness_texture_id=None, normal_texture_id=None):
+                 roughness_texture_id=None, normal_texture_id=None,
+                 transform_param=[1, 1, 0]):
         self.material_type = material_type
         self.kd = kd
         self.texture_id = texture_id
         self.metallic_texture_id = metallic_texture_id
         self.roughness_texture_id = roughness_texture_id
         self.normal_texture_id = normal_texture_id
+        self.transform_param = transform_param # x scale, y scale, rotation
 
     def is_texture(self):
         return self.material_type == 'texture'
@@ -515,6 +526,11 @@ class RandomizedMaterial(Material):
         self.metallic_texture_id = self.random_instance['metallic']
         self.roughness_texture_id = self.random_instance['roughness']
         self.normal_texture_id = self.random_instance['normal']
+        # self.transform_param = transform_param # x scale, y scale, rotation
+        scale = np.random.normal(loc=4, scale=1) # scaling by 4 is typically good
+        scale = max(scale, 2) # scaling should be at least 2.
+        rotation = random.randint(0,3) * math.pi / 2.
+        self.transform_param = [scale, scale, rotation]
 
     def __str__(self):
         return (
@@ -526,6 +542,42 @@ class RandomizedMaterial(Material):
                 self.material_classes)
         )
 
+class MeshRendererSettings(object):
+    def __init__(self,
+                 use_fisheye=False,
+                 msaa=False,
+                 enable_shadow=False,
+                 enable_pbr=True,
+                 env_texture_filename=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr'),
+                 env_texture_filename2=os.path.join(gibson2.ig_dataset_path, 'scenes','background', 'photo_studio_01_2k.hdr'),
+                 env_texture_filename3=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr'),
+                 light_modulation_map_filename='',
+                 optimized=False,
+                 skybox_size=20.,
+                 light_dimming_factor=1.0,
+                 fullscreen=False):
+        self.use_fisheye = use_fisheye
+        self.msaa = msaa
+        self.enable_shadow = enable_shadow
+        self.env_texture_filename = env_texture_filename
+        self.env_texture_filename2 = env_texture_filename2
+        self.env_texture_filename3 = env_texture_filename3
+        self.optimized = optimized
+        self.skybox_size = skybox_size
+        self.light_modulation_map_filename = light_modulation_map_filename
+        self.light_dimming_factor = light_dimming_factor
+        self.enable_pbr=enable_pbr
+        self.fullscreen=fullscreen
+
+    def get_fastest(self):
+        self.msaa = False
+        self.enable_shadow = False
+        return self
+
+    def get_best(self):
+        self.msaa = True
+        self.enable_shadow = True
+        return self
 
 class MeshRenderer(object):
     """
@@ -533,17 +585,13 @@ class MeshRenderer(object):
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
 
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, use_fisheye=False, msaa=False,
-                 enable_shadow=False, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'Rs.hdr'),
-                 optimized=False, fullscreen=False, skybox_size=20.):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, rendering_settings=MeshRendererSettings()):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
         :param vertical_fov: vertical field of view for the renderer
         :param device_idx: which GPU to run the renderer on
-        :param use_fisheye: use fisheye shader or not
-        :param enable_shadow: enable shadow in the rgb rendering
-        :param env_texture_filename: texture filename for PBR lighting
+        :param render_settings: rendering settings
         """
         self.shaderProgram = None
         self.windowShaderProgram = None
@@ -561,13 +609,10 @@ class MeshRenderer(object):
         self.height = height
         self.faces = []
         self.instances = []
-        self.fisheye = use_fisheye
-        self.optimized = optimized
-        self.fullscreen = fullscreen
+        self.fisheye = rendering_settings.use_fisheye
+        self.optimized = rendering_settings.optimized
         self.texture_files = {}
-        self.texture_load_counter = 0
-        self.enable_shadow = enable_shadow
-        self.platform = platform.system()
+        self.enable_shadow = rendering_settings.enable_shadow
 
         device_idx = None
         device = None
@@ -588,7 +633,8 @@ class MeshRenderer(object):
 
         self.device_idx = device_idx
         self.device_minor = device
-        self.msaa = msaa
+        self.msaa = rendering_settings.msaa
+        self.platform = platform.system()
         if self.platform == 'Darwin' and self.optimized:
             logging.error('Optimized renderer is not supported on Mac')
             exit()
@@ -604,7 +650,7 @@ class MeshRenderer(object):
                 width, height, device)
 
         if self.platform == 'Windows':
-            self.r.init(True, self.fullscreen)
+            self.r.init(True, rendering_settings.fullscreen)
         else:
             self.r.init()
 
@@ -662,11 +708,16 @@ class MeshRenderer(object):
 
         self.setup_framebuffer()
         self.vertical_fov = vertical_fov
+        self.horizontal_fov = 2 * np.arctan(np.tan(self.vertical_fov / 180.0 * np.pi / 2.0) * self.width /
+                                            self.height) / np.pi * 180.0
+
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
+        self.znear = 0.1
+        self.zfar = 100
         P = perspective(self.vertical_fov, float(
-            self.width) / float(self.height), 0.1, 100)
+            self.width) / float(self.height), self.znear, self.zfar)
         V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
@@ -674,19 +725,23 @@ class MeshRenderer(object):
         self.materials_mapping = {}
         self.mesh_materials = []
 
-        self.texture_load_counter = 0
+        self.rendering_settings = rendering_settings
 
-        print("About to setup pbr!")
-        self.env_texture_filename = env_texture_filename
-        self.skybox_size = skybox_size
-        if not self.platform == 'Darwin':
+        self.skybox_size = rendering_settings.skybox_size
+        if not self.platform == 'Darwin' and rendering_settings.enable_pbr:
             self.setup_pbr()
 
     def setup_pbr(self):
-        if os.path.exists(self.env_texture_filename):
-            print("Setup pbr!")
-            self.r.setup_pbr(os.path.join(os.path.dirname(
-                mesh_renderer.__file__), 'shaders/'), self.env_texture_filename)
+        if os.path.exists(self.rendering_settings.env_texture_filename) or \
+              os.path.exists(self.rendering_settings.env_texture_filename2) or \
+              os.path.exists(self.rendering_settings.env_texture_filename3):
+            self.r.setup_pbr(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/'),
+                             self.rendering_settings.env_texture_filename,
+                             self.rendering_settings.env_texture_filename2,
+                             self.rendering_settings.env_texture_filename3,
+                             self.rendering_settings.light_modulation_map_filename,
+                             self.rendering_settings.light_dimming_factor
+                             )
         else:
             logging.warning(
                 "Environment texture not available, cannot use PBR.")
@@ -958,10 +1013,16 @@ class MeshRenderer(object):
                      pose_rot=np.eye(4),
                      pose_trans=np.eye(4),
                      dynamic=False,
-                     softbody=False):
+                     softbody=False,
+                     use_pbr=True,
+                     use_pbr_mapping=True,
+                     shadow_caster=True):
         """
         Create instance for a visual object and link it to pybullet
         """
+        use_pbr = use_pbr and self.rendering_settings.enable_pbr
+        use_pbr_mapping = use_pbr_mapping and self.rendering_settings.enable_pbr
+
         instance = Instance(self.visual_objects[object_id],
                             id=len(self.instances),
                             pybullet_uuid=pybullet_uuid,
@@ -969,7 +1030,10 @@ class MeshRenderer(object):
                             pose_trans=pose_trans,
                             pose_rot=pose_rot,
                             dynamic=dynamic,
-                            softbody=softbody)
+                            softbody=softbody,
+                            use_pbr=use_pbr,
+                            use_pbr_mapping=use_pbr_mapping,
+                            shadow_caster=shadow_caster)
         self.instances.append(instance)
 
     def add_instance_group(self,
@@ -980,10 +1044,17 @@ class MeshRenderer(object):
                            class_id=0,
                            pybullet_uuid=None,
                            dynamic=False,
-                           robot=None):
+                           robot=None,
+                           use_pbr=True,
+                           use_pbr_mapping=True,
+                           shadow_caster=True):
         """
         Create an instance group for a list of visual objects and link it to pybullet
         """
+
+        use_pbr = use_pbr and self.rendering_settings.enable_pbr
+        use_pbr_mapping = use_pbr_mapping and self.rendering_settings.enable_pbr
+
         instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids],
                                        id=len(self.instances),
                                        link_ids=link_ids,
@@ -992,7 +1063,10 @@ class MeshRenderer(object):
                                        poses_trans=poses_trans,
                                        poses_rot=poses_rot,
                                        dynamic=dynamic,
-                                       robot=robot)
+                                       robot=robot,
+                                       use_pbr=use_pbr,
+                                       use_pbr_mapping=use_pbr_mapping,
+                                       shadow_caster=shadow_caster)
         self.instances.append(instance_group)
 
     def add_robot(self,
@@ -1027,10 +1101,18 @@ class MeshRenderer(object):
         # change shadow mapping camera to be above the real camera
         self.set_light_position_direction([self.camera[0], self.camera[1], 10],
                                           [self.camera[0], self.camera[1], 0])
+
+
+    def set_z_near_z_far(self, znear, zfar):
+        self.znear = znear
+        self.zfar = zfar
+
     def set_fov(self, fov):
         self.vertical_fov = fov
+        self.horizontal_fov = 2 * np.arctan(np.tan(self.vertical_fov / 180.0 * np.pi / 2.0) * self.width /
+                                            self.height) / np.pi * 180.0
         P = perspective(self.vertical_fov, float(
-            self.width) / float(self.height), 0.1, 100)
+            self.width) / float(self.height), self.znear, self.zfar)
         self.P = np.ascontiguousarray(P, np.float32)
 
     def set_light_color(self, color):
@@ -1039,21 +1121,40 @@ class MeshRenderer(object):
     def get_intrinsics(self):
         P = self.P
         w, h = self.width, self.height
-        znear, zfar = 0.01, 100.0
+        znear, zfar = self.znear, self.zfar
         a = (2.0 * znear) / P[0, 0]
         b = P[2, 0] * a
         right = (a + b) / 2.0
         left = b - right
-        c = (2.0 * znear) / P[1, 1]
-        d = P[3, 1] * c
+        c = -(2.0 * znear) / P[1, 1]
+        d = P[2, 1] * c
         top = (c + d) / 2.0
         bottom = d - top
         fu = w * znear / (right - left)
-        fv = h * znear / (top - bottom)
+        fv = -h * znear / (top - bottom)
 
         u0 = w - right * fu / znear
-        v0 = h - top * fv / znear
+        v0 = h - bottom * fv / znear
         return np.array([[fu, 0, u0], [0, fv, v0], [0, 0, 1]])
+
+    def set_projection_matrix(self, fu, fv, u0, v0, znear, zfar):
+        w = self.width
+        h = self.height
+        self.znear = znear
+        self.zfar = zfar
+        L = -(u0) * znear / fu
+        R = +(w - u0) * znear / fu
+        T = -(v0) * znear / fv
+        B = +(h - v0) * znear / fv
+        P = np.zeros((4, 4), dtype=np.float32)
+        P[0, 0] = 2 * znear / (R - L)
+        P[1, 1] = -2 * znear / (T - B)
+        P[2, 0] = (R + L) / (R - L)
+        P[2, 1] = (T + B) / (T - B)
+        P[2, 2] = -(zfar + znear) / (zfar - znear)
+        P[2, 3] = -1.0
+        P[3, 2] = (2 * zfar * znear) / (znear - zfar)
+        self.P = P
 
     def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d')):
         """
@@ -1089,7 +1190,6 @@ class MeshRenderer(object):
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
 
-
         if self.enable_shadow:
             # shadow pass
 
@@ -1103,7 +1203,7 @@ class MeshRenderer(object):
                 self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
             for instance in self.instances:
-                if not instance in hidden:
+                if (not instance in hidden) and instance.shadow_caster:
                     instance.render(shadow_pass=1)
 
             self.r.render_meshrenderer_post()

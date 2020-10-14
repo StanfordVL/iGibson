@@ -27,6 +27,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  scene_id,
                  trav_map_resolution=0.1,
                  trav_map_erosion=2,
+                 trav_map_type='with_obj',
                  build_graph=True,
                  num_waypoints=10,
                  waypoint_resolution=0.2,
@@ -35,12 +36,14 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  random_seed=None,
                  link_collision_tolerance=0.03,
                  object_randomization=False,
+                 should_open_all_doors=False,
                  ):
 
         super().__init__(
             scene_id,
             trav_map_resolution,
             trav_map_erosion,
+            trav_map_type,
             build_graph,
             num_waypoints,
             waypoint_resolution,
@@ -48,16 +51,18 @@ class InteractiveIndoorScene(StaticIndoorScene):
         )
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
+        self.should_open_all_doors = should_open_all_doors
         fname = scene_id if object_randomization else '{}_best'.format(
             scene_id)
         self.is_interactive = True
         self.scene_file = os.path.join(
-            get_ig_scene_path(scene_id), "{}.urdf".format(fname))
+            get_ig_scene_path(scene_id), "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
-
+        self.first_n_objects = np.inf
         self.random_groups = {}
         self.objects_by_category = {}
         self.objects_by_name = {}
+        self.objects_by_id = {}
 
         # Current time string to use to save the temporal urdfs
         timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -88,10 +93,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 model = link.attrib['model']
 
                 # Find the urdf file that defines this object
-                if category == "building":  # For the building
+                if category in ["walls", "floors", "ceilings"]:
                     model_path = get_ig_scene_path(model)
                     filename = os.path.join(
-                        model_path, model + "_building.urdf")
+                        model_path, "urdf", model + "_" + category + ".urdf")
                 else:  # For other objects
                     category_path = get_ig_category_path(category)
                     assert len(os.listdir(category_path)) != 0, \
@@ -182,7 +187,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
     def load_avg_obj_dims(self):
         avg_obj_dim_file = os.path.join(
-            gibson2.ig_dataset_path, 'metadata/avg_obj_dims.json')
+            gibson2.ig_dataset_path, 'objects/avg_category_specs.json')
         if os.path.isfile(avg_obj_dim_file):
             with open(avg_obj_dim_file) as f:
                 return json.load(f)
@@ -320,6 +325,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         for name in self.objects_by_name:
             for body_id in self.objects_by_name[name].body_ids:
                 body_id_to_name[body_id] = name
+        self.body_id_to_name = body_id_to_name
 
         # collect body ids for overlapped bboxes (e.g. tables and chairs,
         # sofas and coffee tables)
@@ -403,28 +409,96 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         self.quality_check = quality_check
 
+        self.body_collision_set = set()
         for body_a, body_b in body_body_collision:
             logging.warning('scene quality check: {} and {} has collision.'.format(
                 body_id_to_name[body_a],
                 body_id_to_name[body_b],
             ))
+            self.body_collision_set.add(body_id_to_name[body_a])
+            self.body_collision_set.add(body_id_to_name[body_b])
+
+        self.link_collision_set = set()
         for body_id in body_link_collision:
             logging.warning('scene quality check: {} has joint that cannot extend for >66%.'.format(
                 body_id_to_name[body_id],
             ))
+            self.link_collision_set.add(body_id_to_name[body_id])
+
+    def _set_first_n_objects(self, first_n_objects):
+        # hidden API for debugging purposes
+        self.first_n_objects = first_n_objects
+
+    def open_all_doors(self):
+        if 'door' not in self.objects_by_category:
+            return
+        state_id = p.saveState()
+        for obj in self.objects_by_category['door']:
+            # assume door only has one sub URDF
+            body_id = obj.body_ids[0]
+            for joint_id in range(p.getNumJoints(body_id)):
+                j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
+                j_type = p.getJointInfo(body_id, joint_id)[2]
+                parent_idx = p.getJointInfo(body_id, joint_id)[-1]
+                if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                    continue
+                # this is the continuous joint
+                if j_low >= j_high:
+                    continue
+                # this is the door knob joint
+                if parent_idx != 0:
+                    continue
+                # try to set the door to from 90 to 0 degrees until no collision
+                for j_pos in np.arange(0.0, np.pi / 2 + np.pi / 36.0, step=np.pi / 36.0):
+                    p.restoreState(state_id)
+                    p.resetJointState(body_id, joint_id, np.pi / 2 - j_pos)
+                    p.stepSimulation()
+                    has_collision = self.check_collision(
+                        body_a=body_id, link_a=joint_id)
+                    if not has_collision:
+                        state_id = p.saveState()
+                        break
+
+    def close_all_doors(self):
+        if 'door' not in self.objects_by_category:
+            return
+        for obj in self.objects_by_category['door']:
+            # assume door only has one sub URDF
+            body_id = obj.body_ids[0]
+            for joint_id in range(p.getNumJoints(body_id)):
+                j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
+                j_type = p.getJointInfo(body_id, joint_id)[2]
+                parent_idx = p.getJointInfo(body_id, joint_id)[-1]
+                if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                    continue
+                # this is the continuous joint
+                if j_low >= j_high:
+                    continue
+                # this is the door knob joint
+                if parent_idx != 0:
+                    continue
+                # set door position to 0.0
+                p.resetJointState(body_id, joint_id, 0.0)
 
     def load(self):
         # Load all the objects
         body_ids = []
         fixed_body_ids = []
         visual_mesh_to_material = []
+        num_loaded = 0
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
-            body_ids += obj.load()
+            new_ids = obj.load()
+            for id in new_ids:
+                self.objects_by_id[id] = obj
+            body_ids += new_ids
             visual_mesh_to_material += obj.visual_mesh_to_material
             fixed_body_ids += [body_id for body_id, is_fixed
                                in zip(obj.body_ids, obj.is_fixed)
                                if is_fixed]
+            num_loaded += 1
+            if num_loaded > self.first_n_objects:
+                break
 
         # disable collision between the fixed links of the fixed objects
         for i in range(len(fixed_body_ids)):
@@ -441,7 +515,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.load_trav_map(maps_path)
 
         self.visual_mesh_to_material = visual_mesh_to_material
-
         self.check_scene_quality(body_ids, fixed_body_ids)
 
         return body_ids
@@ -449,4 +522,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
     def reset_scene_objects(self):
         for obj_name in self.objects_by_name:
             self.objects_by_name[obj_name].reset()
+        if self.should_open_all_doors:
+            self.open_all_doors()
 
+    def get_num_objects(self):
+        return len(self.objects_by_name)
