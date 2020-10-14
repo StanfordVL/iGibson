@@ -55,7 +55,9 @@ void main() {
             projCoords = projCoords * 0.5 + 0.5;
             float cosTheta = dot(Normal_world, lightDir);
             cosTheta = clamp(cosTheta, 0.0, 1.0);
-            float bias = 0.005*tan(acos(cosTheta));
+            float Theta = acos(cosTheta);
+            Theta = clamp(Theta, -PI/2.0+1e-4, PI/2.0-1e-4);
+            float bias = 0.005*tan(Theta);
             bias = clamp(bias, 0.001 ,0.1);
             float currentDepth = projCoords.z;
             float closestDepth = 0;
