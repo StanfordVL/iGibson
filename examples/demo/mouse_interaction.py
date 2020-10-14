@@ -14,14 +14,14 @@ import sys
 
 
 def test_import_igsdf():
-    seeds = get_ig_scene_non_colliding_seeds('Rs')
+    seeds = get_ig_scene_non_colliding_seeds('Rs_int')
     random.seed(seeds[0])
     config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
     hdr_texture = os.path.join(gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr')
     hdr_texture2 = os.path.join(gibson2.ig_dataset_path, 'scenes', 'background', 'Rs.hdr')
     background_texture = os.path.join(gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
-    scene = InteractiveIndoorScene('Rs', texture_randomization=False, object_randomization=False)
+    scene = InteractiveIndoorScene('Rs_int', texture_randomization=False, object_randomization=False)
     #scene._set_first_n_objects(10)
     settings = MeshRendererSettings(env_texture_filename=hdr_texture, 
                                     env_texture_filename2=hdr_texture2,
