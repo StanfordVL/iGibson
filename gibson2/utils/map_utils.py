@@ -19,7 +19,9 @@ def get_xy_floors(vertices, faces, dist_threshold=-0.98):
     return np.array(z_faces), vertices, faces_selected
 
 
-def gen_trav_map(vertices, faces, output_folder, add_clutter=False, filename_format = 'floor_trav_{}.png'):
+def gen_trav_map(vertices, faces, output_folder, add_clutter=False,
+                 trav_map_filename_format = 'floor_trav_{}.png',
+                 obstacle_map_filename_format = 'floor_{}.png'):
     """Generate traversability maps.
 
     Args:
@@ -39,7 +41,7 @@ def gen_trav_map(vertices, faces, output_folder, add_clutter=False, filename_for
     max_length = np.max([np.abs(xmin), np.abs(ymin), np.abs(xmax), np.abs(ymax)])
     max_length = np.ceil(max_length).astype(np.int)
 
-    wall_maps = gen_map(vertices, faces, output_folder)
+    wall_maps = gen_map(vertices, faces, output_folder, img_filename_format=obstacle_map_filename_format)
 
     for i_floor in range(len(floors)):
         floor = floors[i_floor]
@@ -76,7 +78,7 @@ def gen_trav_map(vertices, faces, output_folder, add_clutter=False, filename_for
 
         cur_img = Image.fromarray((erosion * 255).astype(np.uint8))
         #cur_img = Image.fromarray(np.flipud(cur_img))
-        cur_img.save(os.path.join(output_folder, filename_format.format(i_floor)))
+        cur_img.save(os.path.join(output_folder, trav_map_filename_format.format(i_floor)))
 
 INTERSECT_EDGE = 0
 INTERSECT_VERTEX = 1
