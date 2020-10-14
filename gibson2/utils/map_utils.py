@@ -4,6 +4,7 @@ from tqdm import tqdm
 import cv2
 from PIL import Image
 import sys
+from scipy.spatial import ConvexHull
 
 def get_xy_floors(vertices, faces, dist_threshold=-0.98):
     z_faces = []
@@ -42,6 +43,11 @@ def gen_trav_map(vertices, faces, output_folder, add_clutter=False,
     max_length = np.ceil(max_length).astype(np.int)
 
     wall_maps = gen_map(vertices, faces, output_folder, img_filename_format=obstacle_map_filename_format)
+    wall_pts = np.array(np.where(wall_maps[0] == 0)).T
+    wall_convex_hull = ConvexHull(wall_pts)
+    wall_map_hull = np.zeros(wall_maps[0].shape).astype(np.uint8)
+    cv2.fillPoly(wall_map_hull, [wall_convex_hull.points[wall_convex_hull.vertices][:,::-1].reshape((-1,1,2)).astype(
+        np.int32)], 255)
 
     for i_floor in range(len(floors)):
         floor = floors[i_floor]
@@ -73,8 +79,7 @@ def gen_trav_map(vertices, faces, output_folder, add_clutter=False,
         wall_map = wall_maps[i_floor]
         wall_map = cv2.erode(wall_map, kernel, iterations=1)
         erosion[wall_map == 0] = 0
-
-
+        erosion[wall_map_hull == 0] = 0  # crop using convex hull
 
         cur_img = Image.fromarray((erosion * 255).astype(np.uint8))
         #cur_img = Image.fromarray(np.flipud(cur_img))
