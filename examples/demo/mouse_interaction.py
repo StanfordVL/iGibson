@@ -17,13 +17,13 @@ def test_import_igsdf():
     seeds = get_ig_scene_non_colliding_seeds('Rs_int')
     random.seed(seeds[0])
     config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
-    hdr_texture = os.path.join(gibson2.ig_dataset_path, 'scenes', 'Rs', 'lighting', 'probes', 'probe_02.hdr')
-    hdr_texture2 = os.path.join(gibson2.ig_dataset_path, 'scenes', 'Rs', 'lighting', 'probes', 'probe_03.hdr')
-    light_modulation_map_filename = os.path.join(gibson2.ig_dataset_path, 'scenes', 'Rs', 'layout', 'light_fusion_map.png')
+    hdr_texture = os.path.join(gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'lighting', 'probes', 'probe_02.hdr')
+    hdr_texture2 = os.path.join(gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'lighting', 'probes', 'probe_03.hdr')
+    light_modulation_map_filename = os.path.join(gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'light_fusion_map.png')
     background_texture = os.path.join(gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
     scene = InteractiveIndoorScene('Rs_int', texture_randomization=False, object_randomization=False)
-    #scene._set_first_n_objects(10)
+    scene._set_first_n_objects(10)
     settings = MeshRendererSettings(env_texture_filename=hdr_texture, 
                                     env_texture_filename2=hdr_texture2,
                                     env_texture_filename3=background_texture,
