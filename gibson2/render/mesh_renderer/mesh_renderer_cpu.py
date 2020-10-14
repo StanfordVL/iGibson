@@ -547,6 +547,7 @@ class MeshRendererSettings(object):
                  use_fisheye=False,
                  msaa=False,
                  enable_shadow=False,
+                 enable_pbr=True,
                  env_texture_filename=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr'),
                  env_texture_filename2=os.path.join(gibson2.ig_dataset_path, 'scenes','background', 'photo_studio_01_2k.hdr'),
                  env_texture_filename3=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr'),
@@ -564,6 +565,7 @@ class MeshRendererSettings(object):
         self.skybox_size = skybox_size
         self.light_modulation_map_filename = light_modulation_map_filename
         self.light_dimming_factor = light_dimming_factor
+        self.enable_pbr=enable_pbr
 
     def get_fastest(self):
         self.msaa = False
@@ -712,7 +714,7 @@ class MeshRenderer(object):
         self.rendering_settings = rendering_settings
 
         self.skybox_size = rendering_settings.skybox_size
-        if not self.platform == 'Darwin':
+        if not self.platform == 'Darwin' and rendering_settings.enable_pbr:
             self.setup_pbr()
 
     def setup_pbr(self):
@@ -973,10 +975,16 @@ class MeshRenderer(object):
                      pose_rot=np.eye(4),
                      pose_trans=np.eye(4),
                      dynamic=False,
-                     softbody=False):
+                     softbody=False,
+                     use_pbr=True,
+                     use_pbr_mapping=True,
+                     shadow_caster=True):
         """
         Create instance for a visual object and link it to pybullet
         """
+        use_pbr = use_pbr and self.rendering_settings.enable_pbr
+        use_pbr_mapping = use_pbr_mapping and self.rendering_settings.enable_pbr
+
         instance = Instance(self.visual_objects[object_id],
                             id=len(self.instances),
                             pybullet_uuid=pybullet_uuid,
@@ -984,7 +992,10 @@ class MeshRenderer(object):
                             pose_trans=pose_trans,
                             pose_rot=pose_rot,
                             dynamic=dynamic,
-                            softbody=softbody)
+                            softbody=softbody,
+                            use_pbr=use_pbr,
+                            use_pbr_mapping=use_pbr_mapping,
+                            shadow_caster=shadow_caster)
         self.instances.append(instance)
 
     def add_instance_group(self,
@@ -1002,6 +1013,10 @@ class MeshRenderer(object):
         """
         Create an instance group for a list of visual objects and link it to pybullet
         """
+
+        use_pbr = use_pbr and self.rendering_settings.enable_pbr
+        use_pbr_mapping = use_pbr_mapping and self.rendering_settings.enable_pbr
+
         instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids],
                                        id=len(self.instances),
                                        link_ids=link_ids,
