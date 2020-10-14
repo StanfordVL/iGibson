@@ -4,6 +4,7 @@ from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.robots.turtlebot_robot import Turtlebot
 from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, cartesian_to_polar
 from gibson2.envs.env_base import BaseEnv
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
 import argparse
@@ -540,6 +541,12 @@ class NavigationEnv(BaseEnv):
 
         # time out
         elif self.current_step >= self.max_step:
+            done = True
+            info['success'] = False
+
+        # fall off the cliff of valid region
+        elif isinstance(self.scene, InteractiveIndoorScene) and \
+                (self.robots[0].get_position()[2] < self.scene.get_floor_height() - 0.03):
             done = True
             info['success'] = False
 
