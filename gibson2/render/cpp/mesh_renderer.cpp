@@ -496,16 +496,25 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
     if (metallic_texture_id != -1) {
         glActiveTexture(GL_TEXTURE7);
         if (flag) glBindTexture(GL_TEXTURE_2D, metallic_texture_id);
+    } else {
+        glActiveTexture(GL_TEXTURE7);
+        if (flag) glBindTexture(GL_TEXTURE_2D, m_default_metallic_texture.id);
     }
 
     if (roughness_texture_id != -1) {
         glActiveTexture(GL_TEXTURE8);
         if (flag) glBindTexture(GL_TEXTURE_2D, roughness_texture_id);
+    } else {
+        glActiveTexture(GL_TEXTURE8);
+        if (flag) glBindTexture(GL_TEXTURE_2D, m_default_roughness_texture.id);
     }
 
     if (normal_texture_id != -1) {
         glActiveTexture(GL_TEXTURE9);
         if (flag) glBindTexture(GL_TEXTURE_2D, normal_texture_id);
+    } else {
+        glActiveTexture(GL_TEXTURE9);
+        if (flag) glBindTexture(GL_TEXTURE_2D, m_default_normal_texture.id);
     }
 
     glActiveTexture(GL_TEXTURE10);
@@ -797,6 +806,28 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
     glDeleteProgram(spmapProgram);
     glDeleteProgram(irmapProgram);
     glDeleteProgram(spBRDFProgram);
+
+
+
+    m_default_metallic_texture = createTexture(GL_TEXTURE_2D, 1, 1, GL_R32F, 1);
+    std::vector<GLfloat> zeros(1 * 1 * 1, 0.0);
+    glBindTexture(GL_TEXTURE_2D, m_default_metallic_texture.id);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RED, GL_FLOAT, &zeros[0]);
+    glGenerateTextureMipmap(m_default_metallic_texture.id);
+
+    m_default_roughness_texture = createTexture(GL_TEXTURE_2D, 1, 1, GL_R32F, 1);
+    std::vector<GLfloat> ones(1 * 1 * 1, 1.0);
+    glBindTexture(GL_TEXTURE_2D, m_default_roughness_texture.id);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RED, GL_FLOAT, &ones[0]);
+    glGenerateTextureMipmap(m_default_roughness_texture.id);
+
+    m_default_normal_texture = createTexture(GL_TEXTURE_2D, 1, 1, GL_RGBA32F, 1);
+    std::vector<GLfloat> default_normal(1 * 1 * 4, 1.0);
+    default_normal[0] = 0.5;
+    default_normal[1] = 0.5;
+    glBindTexture(GL_TEXTURE_2D, m_default_normal_texture.id);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RGBA, GL_FLOAT, &default_normal[0]);
+    glGenerateTextureMipmap(m_default_normal_texture.id);
 
     glFinish();
 
