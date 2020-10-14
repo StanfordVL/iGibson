@@ -35,6 +35,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  random_seed=None,
                  link_collision_tolerance=0.03,
                  object_randomization=False,
+                 should_open_all_doors=False,
                  ):
 
         super().__init__(
@@ -48,6 +49,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         )
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
+        self.should_open_all_doors = should_open_all_doors
         fname = scene_id if object_randomization else '{}_best'.format(
             scene_id)
         self.is_interactive = True
@@ -425,6 +427,57 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # hidden API for debugging purposes
         self.first_n_objects = first_n_objects
 
+    def open_all_doors(self):
+        if 'door' not in self.objects_by_category:
+            return
+        state_id = p.saveState()
+        for obj in self.objects_by_category['door']:
+            # assume door only has one sub URDF
+            body_id = obj.body_ids[0]
+            for joint_id in range(p.getNumJoints(body_id)):
+                j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
+                j_type = p.getJointInfo(body_id, joint_id)[2]
+                parent_idx = p.getJointInfo(body_id, joint_id)[-1]
+                if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                    continue
+                # this is the continuous joint
+                if j_low >= j_high:
+                    continue
+                # this is the door knob joint
+                if parent_idx != 0:
+                    continue
+                # try to set the door to from 90 to 0 degrees until no collision
+                for j_pos in np.arange(0.0, np.pi / 2 + np.pi / 36.0, step=np.pi / 36.0):
+                    p.restoreState(state_id)
+                    p.resetJointState(body_id, joint_id, np.pi / 2 - j_pos)
+                    p.stepSimulation()
+                    has_collision = self.check_collision(
+                        body_a=body_id, link_a=joint_id)
+                    if not has_collision:
+                        state_id = p.saveState()
+                        break
+
+    def close_all_doors(self):
+        if 'door' not in self.objects_by_category:
+            return
+        for obj in self.objects_by_category['door']:
+            # assume door only has one sub URDF
+            body_id = obj.body_ids[0]
+            for joint_id in range(p.getNumJoints(body_id)):
+                j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
+                j_type = p.getJointInfo(body_id, joint_id)[2]
+                parent_idx = p.getJointInfo(body_id, joint_id)[-1]
+                if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                    continue
+                # this is the continuous joint
+                if j_low >= j_high:
+                    continue
+                # this is the door knob joint
+                if parent_idx != 0:
+                    continue
+                # set door position to 0.0
+                p.resetJointState(body_id, joint_id, 0.0)
+
     def load(self):
         # Load all the objects
         body_ids = []
@@ -467,6 +520,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
     def reset_scene_objects(self):
         for obj_name in self.objects_by_name:
             self.objects_by_name[obj_name].reset()
+        if self.should_open_all_doors:
+            self.open_all_doors()
 
     def get_num_objects(self):
         return len(self.objects_by_name)
