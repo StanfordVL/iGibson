@@ -13,18 +13,17 @@ import random
 import matplotlib.pyplot as plt
 from gibson2.utils.assets_utils import get_ig_assets_version
 from gibson2.utils.assets_utils import get_scene_path
-from gibson2.utils.assets_utils import get_ig_scene_non_colliding_seeds
 
 
-def benchmark_scene(scene_name, optimized=False, first_n = 200):
+def benchmark_scene(scene_name, optimized=False, first_n=200):
     config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
     assets_version = get_ig_assets_version()
     print('assets_version', assets_version)
-    seeds = get_ig_scene_non_colliding_seeds(scene_name)
     scene = InteractiveIndoorScene(
-        scene_name, texture_randomization=False, object_randomization=True, random_seed=seeds[0])
-    settings = MeshRendererSettings(msaa=False, enable_shadow=False, optimized=optimized)
-    #scene._set_first_n_objects(first_n)
+        scene_name, texture_randomization=False, object_randomization=False)
+    settings = MeshRendererSettings(
+        msaa=False, enable_shadow=False, optimized=optimized)
+    # scene._set_first_n_objects(first_n)
     s = Simulator(mode='headless',
                   image_width=512,
                   image_height=512,
@@ -81,12 +80,12 @@ def benchmark_scene(scene_name, optimized=False, first_n = 200):
     plt.plot(physics_fps)
     ax.set_xlabel('Physics fps with time')
     ax.set_ylabel('fps')
-    plt.savefig('scene_benchmark_{}_o_{}_{}.pdf'.format(scene_name, optimized, first_n))
-
+    plt.savefig('scene_benchmark_{}_o_{}_{}.pdf'.format(
+        scene_name, optimized, first_n))
 
 
 def main():
-    #for i in [0, 1,5,10,20,30,40,50,60,70]:
+    # for i in [0, 1,5,10,20,30,40,50,60,70]:
     benchmark_scene('Rs_int', True)
     #benchmark_scene('Rs_int', False)
     #benchmark_scene('Wainscott_0_int', True)
