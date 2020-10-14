@@ -159,6 +159,8 @@ class BaseEnv(gym.Env):
                 texture_randomization=self.texture_randomization_freq is not None,
                 object_randomization=self.object_randomization_freq is not None,
                 random_seed=self.get_next_scene_random_seed(),
+                should_open_all_doors=self.config.get(
+                    'should_open_all_doors', False),
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
             self.simulator.import_ig_scene(scene)
