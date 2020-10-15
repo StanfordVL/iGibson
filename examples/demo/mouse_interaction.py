@@ -34,6 +34,8 @@ def test_import_igsdf():
     s = Simulator(mode='iggui', image_width=960,
                   image_height=720, device_idx=0, rendering_settings=settings)
 
+    s.viewer.min_cam_z = 1.0
+
     s.import_ig_scene(scene)
 
     while True:
