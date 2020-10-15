@@ -46,7 +46,7 @@ def main():
                env_texture_filename3=background_texture,
                light_modulation_map_filename=light_map,
                enable_shadow=True, msaa=True,
-               skybox_size=36,
+               skybox_size=36.,
                light_dimming_factor=1.2)
 
     s = Simulator(mode='headless', 
@@ -60,8 +60,6 @@ def main():
             object_randomization=args.object_rand)
 
     s.import_ig_scene(scene)
-    s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
-    s.renderer.set_light_position_direction([0,0,10], [0,0,0])
 
     traj_path = os.path.join(get_ig_scene_path(args.scene), 'misc', 
                              'tour_cam_trajectory.txt')
@@ -73,7 +71,10 @@ def main():
     with open(traj_path, 'r') as fp:
         points = [l.rstrip().split(',') for l in fp.readlines()]
 
+    for _ in range(60):
+        s.step()
     s.sync()
+
     for i in range(len(points)):
         if args.domain_rand and i % args.domain_rand_interval == 0:
             scene.randomize_texture()
