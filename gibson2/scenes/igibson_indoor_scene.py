@@ -461,6 +461,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     if not has_collision:
                         state_id = p.saveState()
                         break
+        p.removeState(state_id)
 
     def close_all_doors(self):
         if 'door' not in self.objects_by_category:
