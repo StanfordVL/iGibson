@@ -14,11 +14,11 @@ import sys
 
 def test_import_igsdf():
     hdr_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'lighting', 'probes', 'probe_02.hdr')
+        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
     hdr_texture2 = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'lighting', 'probes', 'probe_03.hdr')
+        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
     light_modulation_map_filename = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'light_fusion_map.png')
+        gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
     background_texture = os.path.join(
         gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
