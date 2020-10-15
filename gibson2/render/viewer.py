@@ -331,6 +331,8 @@ class Viewer:
             move_vec = rotate_vector_2d(move_vec, yaw)
             self.px += move_vec[0]
             self.py += move_vec[1]
+            if self.manipulation_mode:
+                self.move_constraint(self._mouse_ix, self._mouse_iy)
         elif q == ord('q'):
             if self.video_folder is not "":
                 logging.info("You recorded a video. To compile the frames into a mp4 go to the corresponding subfolder" +
