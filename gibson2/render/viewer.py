@@ -17,7 +17,7 @@ class Viewer:
                  initial_up = [0,0,1],
                  simulator = None,
                  renderer = None,
-                 limited_to_ground = True,
+                 min_cam_z = -1e6,
                  ):
         self.px = initial_pos[0]
         self.py = initial_pos[1]
@@ -25,7 +25,7 @@ class Viewer:
         self.theta = np.arctan2(initial_view_direction[1], initial_view_direction[0])
         self.phi = np.arctan2(initial_view_direction[2], np.sqrt(initial_view_direction[0] ** 2 +
                                                                 initial_view_direction[1] ** 2))
-        self.limited_to_ground = limited_to_ground
+        self.min_cam_z = min_cam_z
 
         self._mouse_ix, self._mouse_iy = -1, -1
         self.left_down = False
@@ -228,8 +228,7 @@ class Viewer:
                     self.px += motion_along_vd[0]
                     self.py += motion_along_vd[1]
                     self.pz += motion_along_vd[2]
-                    if self.limited_to_ground:
-                        self.pz = max(0, self.pz)
+                    self.pz = max(self.min_cam_z, self.pz)
                 elif self.right_down: #if right button was pressed we change translation of camera
 
                     zz = self.view_direction/np.linalg.norm(self.view_direction)
@@ -244,8 +243,7 @@ class Viewer:
                     self.px += (motion_along_vx[0] + motion_along_vy[0])
                     self.py += (motion_along_vx[1] + motion_along_vy[1])
                     self.pz += (motion_along_vx[2] + motion_along_vy[2])
-                    if self.limited_to_ground:
-                        self.pz = max(0, self.pz)
+                    self.pz = max(self.min_cam_z, self.pz)
         else:
             if (event == cv2.EVENT_MBUTTONDOWN) or (flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down):
                 # Middle mouse button press or only once, when pressing left mouse while shift key is pressed (Mac
