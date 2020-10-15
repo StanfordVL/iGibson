@@ -123,7 +123,7 @@ setup(
             'scipy>=1.2.1',
             'pybullet>2.6.4',
             'transforms3d>=0.3.1',
-            'opencv-python>=4.0.0',
+            'opencv-python>=3.4.8',
             'Pillow>=5.4.0',
             'networkx>=2.0',
             'PyYAML',
