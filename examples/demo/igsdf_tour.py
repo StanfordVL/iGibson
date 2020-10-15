@@ -27,24 +27,35 @@ def main():
                         action='store_true')
     args = parser.parse_args()
 
-    hdr_texture = os.path.join(
-                gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr')
+    # hdr_texture1 = os.path.join(
+                 # gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr')
+    hdr_texture1 = os.path.join(
+                 gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+    hdr_texture2 = os.path.join(
+                 gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    light_modulation_map_filename = os.path.join(
+                 get_ig_scene_path(args.scene), 'layout', 'floor_lighttype_0.png')
+
     background_texture = os.path.join(
                 gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
-    settings = MeshRendererSettings(env_texture_filename=hdr_texture,
+    settings = MeshRendererSettings(
+               env_texture_filename=hdr_texture1,
+               env_texture_filename2=hdr_texture2,
                env_texture_filename3=background_texture,
                enable_shadow=True, msaa=True,
                light_dimming_factor=1.2)
 
     s = Simulator(mode='headless', 
-            image_width=900, image_height=560, 
+            image_width=1080, image_height=720, 
             vertical_fov=60, rendering_settings=settings
             )
+
     random.seed(args.seed)
     scene = InteractiveIndoorScene(
             args.scene, texture_randomization=args.domain_rand,
             object_randomization=args.object_rand)
+
     s.import_ig_scene(scene)
     s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
     s.renderer.set_light_position_direction([0,0,10], [0,0,0])
