@@ -649,11 +649,6 @@ void MeshRendererContext::generate_light_maps(
 
     // Load & convert equirectangular environment map to a cubemap texture.
     {
-        GLuint equirectToCubeProgram = linkProgram({
-                                                           compileShader(shader_path + "/450/equirect2cube_cs.glsl",
-                                                                         GL_COMPUTE_SHADER)
-                                                   });
-
         envTextureEquirect = createTexture(Image::fromFile(env_texture_filename, 3), GL_RGB, GL_RGB16F, 1);
         glUseProgram(equirectToCubeProgram);
         glBindTextureUnit(0, envTextureEquirect.id);
@@ -664,11 +659,7 @@ void MeshRendererContext::generate_light_maps(
     glDeleteTextures(1, &envTextureEquirect.id);
     glGenerateTextureMipmap(envTextureUnfiltered.id);
     {
-        GLuint spmapProgram = linkProgram({
-                                                  compileShader(shader_path + "/450/spmap_cs.glsl", GL_COMPUTE_SHADER)
-                                          });
-
-        m_envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
+        envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
 
         // Copy 0th mipmap level into destination environment map.
         glCopyImageSubData(envTextureUnfiltered.id, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
@@ -691,12 +682,7 @@ void MeshRendererContext::generate_light_maps(
     glDeleteTextures(1, &envTextureUnfiltered.id);
     // Compute diffuse irradiance cubemap.
     {
-        GLuint irmapProgram = linkProgram({
-                                                  compileShader(shader_path + "/450/irmap_cs.glsl", GL_COMPUTE_SHADER)
-                                          });
-
-        m_irmapTexture = createTexture(GL_TEXTURE_CUBE_MAP, kIrradianceMapSize, kIrradianceMapSize, GL_RGBA16F, 1);
-
+        irmapTexture = createTexture(GL_TEXTURE_CUBE_MAP, kIrradianceMapSize, kIrradianceMapSize, GL_RGBA16F, 1);
         glUseProgram(irmapProgram);
         glBindTextureUnit(0, envTexture.id);
         glBindImageTexture(0, irmapTexture.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
@@ -706,14 +692,9 @@ void MeshRendererContext::generate_light_maps(
 
     // Compute Cook-Torrance BRDF 2D LUT for split-sum approximation.
     {
-        GLuint spBRDFProgram = linkProgram({
-                                                   compileShader(shader_path + "/450/spbrdf_cs.glsl", GL_COMPUTE_SHADER)
-                                           });
-
-        m_spBRDF_LUT = createTexture(GL_TEXTURE_2D, kBRDF_LUT_Size, kBRDF_LUT_Size, GL_RG16F, 1);
+        spBRDF_LUT = createTexture(GL_TEXTURE_2D, kBRDF_LUT_Size, kBRDF_LUT_Size, GL_RG16F, 1);
         glTextureParameteri(m_spBRDF_LUT.id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTextureParameteri(m_spBRDF_LUT.id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
         glUseProgram(spBRDFProgram);
         glBindImageTexture(0, spBRDF_LUT.id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG16F);
         glDispatchCompute(spBRDF_LUT.width / 32, spBRDF_LUT.height / 32, 1);
