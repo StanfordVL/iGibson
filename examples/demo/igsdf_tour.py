@@ -16,7 +16,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--scene', type=str, 
                         help='Name of the scene in the iG Dataset')
-    parser.add_argument('--save_dir', type=str, help='Directory to save the frames.')
+    parser.add_argument('--save_dir', type=str, help='Directory to save the frames.',
+                        default='misc')
     parser.add_argument('--seed', type=int, default=15, 
                         help='Random seed.')
     parser.add_argument('--domain_rand', dest='domain_rand',
@@ -33,7 +34,7 @@ def main():
                  gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
     hdr_texture2 = os.path.join(
                  gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
-    light_modulation_map_filename = os.path.join(
+    light_map= os.path.join(
                  get_ig_scene_path(args.scene), 'layout', 'floor_lighttype_0.png')
 
     background_texture = os.path.join(
@@ -43,7 +44,9 @@ def main():
                env_texture_filename=hdr_texture1,
                env_texture_filename2=hdr_texture2,
                env_texture_filename3=background_texture,
+               light_modulation_map_filename=light_map,
                enable_shadow=True, msaa=True,
+               skybox_size=36,
                light_dimming_factor=1.2)
 
     s = Simulator(mode='headless', 
@@ -64,6 +67,9 @@ def main():
                              'tour_cam_trajectory.txt')
     save_dir = os.path.join(get_ig_scene_path(args.scene), args.save_dir)
     os.makedirs(save_dir, exist_ok=True)
+    tmp_dir = os.path.join(save_dir, 'tmp')
+    os.makedirs(tmp_dir, exist_ok=True)
+
     with open(traj_path, 'r') as fp:
         points = [l.rstrip().split(',') for l in fp.readlines()]
 
@@ -83,11 +89,11 @@ def main():
             frame = s.renderer.render(modes=('rgb'))
         img = Image.fromarray((
                 255*np.concatenate(frame, axis=1)[:,:,:3]).astype(np.uint8))
-        img.save(os.path.join(save_dir, '{:05d}.png'.format(i)))
-    
-    cmd = 'ffmpeg -i {s}/%5d.png -y -c:a copy -c:v libx264 -crf 18 -preset veryslow -r 30 {s}/viz.mp4'.format(s=save_dir)
+        img.save(os.path.join(tmp_dir, '{:05d}.png'.format(i)))
+
+    cmd = 'ffmpeg -i {t}/%5d.png -y -an -c:v libx264 -crf 18 -preset veryslow -r 30 {s}/tour.mp4'.format(t=tmp_dir, s=save_dir)
     subprocess.call(cmd, shell=True)
-    cmd = 'rm {}/*.png'.format(save_dir)
+    cmd = 'rm -r {}'.format(tmp_dir)
     subprocess.call(cmd, shell=True)
 
     s.disconnect()
