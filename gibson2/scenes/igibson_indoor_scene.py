@@ -459,6 +459,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     has_collision = self.check_collision(
                         body_a=body_id, link_a=joint_id)
                     if not has_collision:
+                        p.removeState(state_id)
                         state_id = p.saveState()
                         break
         p.removeState(state_id)
