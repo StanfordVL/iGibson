@@ -49,7 +49,8 @@ def main():
     s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
     s.renderer.set_light_position_direction([0,0,10], [0,0,0])
 
-    traj_path = os.path.join(get_ig_scene_path(args.scene), 'misc', 'traj.txt')
+    traj_path = os.path.join(get_ig_scene_path(args.scene), 'misc', 
+                             'tour_cam_trajectory.txt')
     save_dir = os.path.join(get_ig_scene_path(args.scene), args.save_dir)
     os.makedirs(save_dir, exist_ok=True)
     with open(traj_path, 'r') as fp:
