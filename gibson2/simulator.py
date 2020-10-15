@@ -219,7 +219,7 @@ class Simulator:
         return new_object_ids
 
     @load_without_pybullet_vis
-    def import_object(self, obj, class_id=None):
+    def import_object(self, obj, class_id=None, use_pbr=True, use_pbr_mapping=True, shadow_caster=True):
         """
         Import a non-articulated object into the simulator
 
@@ -231,12 +231,21 @@ class Simulator:
         new_object_pb_id = obj.load()
         self.objects += [new_object_pb_id]
         if obj.__class__ in [ArticulatedObject, URDFObject]:
-            self.load_articulated_object_in_renderer(new_object_pb_id, class_id)
+            self.load_articulated_object_in_renderer(new_object_pb_id,
+                                                     class_id,
+                                                     use_pbr=use_pbr,
+                                                     use_pbr_mapping=use_pbr_mapping,
+                                                     shadow_caster=shadow_caster)
         else:
             softbody = False
             if obj.__class__.__name__ == 'SoftObject':
                 softbody = True
-            self.load_object_in_renderer(new_object_pb_id, class_id, softbody)
+            self.load_object_in_renderer(new_object_pb_id,
+                                         class_id,
+                                         softbody,
+                                         use_pbr=use_pbr,
+                                         use_pbr_mapping=use_pbr_mapping,
+                                         shadow_caster=shadow_caster)
         return new_object_pb_id
 
     @load_without_pybullet_vis
@@ -247,6 +256,9 @@ class Simulator:
                                 texture_scale=1.0,
                                 load_texture=True,
                                 render_floor_plane=False,
+                                use_pbr=True,
+                                use_pbr_mapping=True,
+                                shadow_caster=True
                                 ):
 
         if class_id is None:
@@ -317,7 +329,11 @@ class Simulator:
                                            pybullet_uuid=object_pb_id,
                                            class_id=class_id,
                                            dynamic=True,
-                                           softbody=softbody)
+                                           softbody=softbody,
+                                           use_pbr=use_pbr,
+                                           use_pbr_mapping=use_pbr_mapping,
+                                           shadow_caster=shadow_caster
+                                           )
 
     @load_without_pybullet_vis
     def load_articulated_object_in_renderer(self,
