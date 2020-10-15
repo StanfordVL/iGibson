@@ -5,7 +5,11 @@
 
 class GLFWRendererContext: public MeshRendererContext {
 public:
-    GLFWRendererContext(int w, int h): MeshRendererContext(w, h) {};
+    int m_glVersionMajor, m_glVersionMinor;
+    GLFWRendererContext(int w, int h, int glVersionMajor, int glVersionMinor): MeshRendererContext(w, h) {
+        m_glVersionMajor = glVersionMajor;
+        m_glVersionMinor = glVersionMinor;
+    };
     GLFWwindow *window = NULL;
     int init();
     void release();
