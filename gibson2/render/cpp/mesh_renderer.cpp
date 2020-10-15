@@ -36,6 +36,11 @@
 
 namespace py = pybind11;
 
+#ifdef WIN32
+#define OS_SEP "\\"
+#else
+#define OS_SEP "/"
+#endif
 
 class Image {
 public:
@@ -751,11 +756,11 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
     }
     //glFrontFace(GL_CCW);
     // create all the programs
-    GLuint equirectToCubeProgram = linkProgram({compileShader(shader_path + "/450/equirect2cube_cs.glsl",
+    GLuint equirectToCubeProgram = linkProgram({compileShader(shader_path + OS_SEP + "equirect2cube_cs.glsl",
                                                                          GL_COMPUTE_SHADER)});
-    GLuint spmapProgram = linkProgram({compileShader(shader_path + "/450/spmap_cs.glsl", GL_COMPUTE_SHADER)});
-    GLuint irmapProgram = linkProgram({compileShader(shader_path + "/450/irmap_cs.glsl", GL_COMPUTE_SHADER)});
-    GLuint spBRDFProgram = linkProgram({compileShader(shader_path + "/450/spbrdf_cs.glsl", GL_COMPUTE_SHADER)});
+    GLuint spmapProgram = linkProgram({compileShader(shader_path + OS_SEP + "spmap_cs.glsl", GL_COMPUTE_SHADER)});
+    GLuint irmapProgram = linkProgram({compileShader(shader_path + OS_SEP + "irmap_cs.glsl", GL_COMPUTE_SHADER)});
+    GLuint spBRDFProgram = linkProgram({compileShader(shader_path + OS_SEP + "spbrdf_cs.glsl", GL_COMPUTE_SHADER)});
 
     // run subroutine to generate light map
     generate_light_maps(equirectToCubeProgram,

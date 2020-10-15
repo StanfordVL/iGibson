@@ -554,7 +554,9 @@ class MeshRendererSettings(object):
                  light_modulation_map_filename='',
                  optimized=False,
                  skybox_size=20.,
-                 light_dimming_factor=1.0):
+                 light_dimming_factor=1.0,
+                 glfw_gl_version=None,
+                 ):
         self.use_fisheye = use_fisheye
         self.msaa = msaa
         self.enable_shadow = enable_shadow
@@ -566,6 +568,13 @@ class MeshRendererSettings(object):
         self.light_modulation_map_filename = light_modulation_map_filename
         self.light_dimming_factor = light_dimming_factor
         self.enable_pbr=enable_pbr
+        if glfw_gl_version is not None:
+            self.glfw_gl_version = glfw_gl_version
+        else:
+            if platform.system() == 'Darwin':
+                self.glfw_gl_version = [4, 1]
+            else:
+                self.glfw_gl_version = [4, 5]
 
     def get_fastest(self):
         self.msaa = False
@@ -591,6 +600,7 @@ class MeshRenderer(object):
         :param device_idx: which GPU to run the renderer on
         :param render_settings: rendering settings
         """
+        self.rendering_settings = rendering_settings
         self.shaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
@@ -634,7 +644,10 @@ class MeshRenderer(object):
             exit()
         if self.platform == 'Darwin':
             from gibson2.render.mesh_renderer import GLFWRendererContext
-            self.r = GLFWRendererContext.GLFWRendererContext(width, height)
+            self.r = GLFWRendererContext.GLFWRendererContext(width, height,
+                                                             int(self.rendering_settings.glfw_gl_version[0]),
+                                                             int(self.rendering_settings.glfw_gl_version[1])
+                                                             )
         else:
             self.r = EGLRendererContext.EGLRendererContext(
                 width, height, device)
@@ -659,35 +672,35 @@ class MeshRenderer(object):
                 self.shaderProgram = self.r.compile_shader_meshrenderer(
                     "".join(open(
                         os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders/410/vert.shader')).readlines()),
+                                     'shaders', '410', 'vert.shader')).readlines()),
                     "".join(open(
                         os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders/410/frag.shader')).readlines()))
+                                     'shaders', '410', 'frag.shader')).readlines()))
             else:
                 if self.optimized:
                     self.shaderProgram = self.r.compile_shader_meshrenderer(
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                         'shaders/450/optimized_vert.shader')).readlines()),
+                                         'shaders', '450', 'optimized_vert.shader')).readlines()),
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                         'shaders/450/optimized_frag.shader')).readlines()))
+                                         'shaders', '450', 'optimized_frag.shader')).readlines()))
                 else:
                     self.shaderProgram = self.r.compile_shader_meshrenderer(
                         "".join(open(
                                 os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                             'shaders/450/vert.shader')).readlines()),
+                                             'shaders', '450', 'vert.shader')).readlines()),
                         "".join(open(
                                 os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                             'shaders/450/frag.shader')).readlines()))
+                                             'shaders', '450', 'frag.shader')).readlines()))
 
             self.skyboxShaderProgram = self.r.compile_shader_meshrenderer(
                             "".join(open(
                                 os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                            'shaders/410/skybox_vs.glsl')).readlines()),
+                                            'shaders', '410', 'skybox_vs.glsl')).readlines()),
                             "".join(open(
                                 os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                            'shaders/410/skybox_fs.glsl')).readlines()))
+                                            'shaders', '410', 'skybox_fs.glsl')).readlines()))
 
         # default light looking down and tilted
         self.set_light_position_direction([0, 0, 2], [0, 0.5, 0])
@@ -711,7 +724,7 @@ class MeshRenderer(object):
         self.materials_mapping = {}
         self.mesh_materials = []
 
-        self.rendering_settings = rendering_settings
+
 
         self.skybox_size = rendering_settings.skybox_size
         if not self.platform == 'Darwin' and rendering_settings.enable_pbr:
@@ -721,7 +734,7 @@ class MeshRenderer(object):
         if os.path.exists(self.rendering_settings.env_texture_filename) or \
               os.path.exists(self.rendering_settings.env_texture_filename2) or \
               os.path.exists(self.rendering_settings.env_texture_filename3):
-            self.r.setup_pbr(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders/'),
+            self.r.setup_pbr(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders', '450'),
                              self.rendering_settings.env_texture_filename,
                              self.rendering_settings.env_texture_filename2,
                              self.rendering_settings.env_texture_filename3,

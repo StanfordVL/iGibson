@@ -42,8 +42,8 @@ int GLFWRendererContext::init() {
         exit(EXIT_FAILURE);
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, m_glVersionMajor);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, m_glVersionMinor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     glfwWindowHint(GLFW_DEPTH_BITS, 0);
@@ -83,7 +83,7 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
 
     py::class_<GLFWRendererContext> pymodule = py::class_<GLFWRendererContext>(m, "GLFWRendererContext");
 
-    pymodule.def(py::init<int, int>());
+    pymodule.def(py::init<int, int, int, int>());
     pymodule.def("init", &GLFWRendererContext::init);
     pymodule.def("release", &GLFWRendererContext::release);
 
