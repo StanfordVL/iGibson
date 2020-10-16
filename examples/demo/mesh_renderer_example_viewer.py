@@ -76,15 +76,15 @@ def main():
         model_path = sys.argv[1]
     else:
         model_path = os.path.join(get_scene_path('Rs_int'), 'mesh_z_up.obj')
-    settings = MeshRendererSettings(msaa=True, enable_shadow=True, env_texture_filename=os.path.join(gibson2.assets_path, 'test', 'photo_studio_01_2k.hdr'))
+    settings = MeshRendererSettings(msaa=True, enable_shadow=True)
     renderer = MeshRenderer(width=512, height=512,  vertical_fov=70, rendering_settings=settings)
     renderer.set_light_position_direction([0,0,10], [0,0,0])
 
-    renderer.load_object('plane/plane_z_up_0.obj', scale=[3,3,3])
-    renderer.add_instance(0)
+    #renderer.load_object('plane/plane_z_up_0.obj', scale=[3,3,3])
+    #renderer.add_instance(0)
     #renderer.set_pose([0,0,-1.5,1, 0, 0.0, 0.0], -1)
     #renderer.set_projection_matrix(134.64, 50.64, 64, 64, 0.1, 100)
-    i = 1
+    i = 0
 
     v = []
     for fn in os.listdir(model_path):

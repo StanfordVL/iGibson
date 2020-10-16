@@ -28,7 +28,7 @@ class Simulator:
                  optimized_renderer=False,
                  env_texture_filename=None,
                  skybox_size=20.,
-                 rendering_settings=MeshRendererSettings()
+                 rendering_settings=MeshRendererSettings(),
                  vrFullscreen=True,
 		         vrEyeTracking=False,
                  vrMode=True):
@@ -130,15 +130,9 @@ class Simulator:
                                             device_idx=self.device_idx,
                                             rendering_settings=self.rendering_settings)
         elif self.use_vr_renderer:
-            if self.env_texture_filename is not None:
-                self.renderer = MeshRendererVR(fullscreen=self.vrFullscreen,
-                                            useEyeTracking=self.vrEyeTracking,
-                                            vrMode=self.vrMode,
-                                            env_texture_filename=self.env_texture_filename)
-            else:
-                self.renderer = MeshRendererVR(fullscreen=self.vrFullscreen,
-                                            useEyeTracking=self.vrEyeTracking,
-                                            vrMode=self.vrMode)
+            self.renderer = MeshRendererVR(fullscreen=self.vrFullscreen,
+                                        useEyeTracking=self.vrEyeTracking,
+                                        vrMode=self.vrMode)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                      height=self.image_height,

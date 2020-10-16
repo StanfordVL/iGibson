@@ -735,17 +735,15 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	// class Instance
 	pymodule.def("render_softbody_instance", &VRRendererContext::render_softbody_instance,
 		"render softbody in instance.render");
-	pymodule.def("initvar_instance", &VRRendererContext::initvar_instance, "init uniforms in instance.render");
+	pymodule.def("initvar", &VRRendererContext::initvar, "init uniforms in instance.render");
 	pymodule.def("init_material_instance", &VRRendererContext::init_material_instance,
 		"init materials in instance.render");
 	pymodule.def("draw_elements_instance", &VRRendererContext::draw_elements_instance,
 		"draw elements in instance.render and instancegroup.render");
 
 	// class InstanceGroup
-	pymodule.def("initvar_instance_group", &VRRendererContext::initvar_instance_group,
-		"init uniforms in instancegroup.render");
-	pymodule.def("init_material_pos_instance", &VRRendererContext::init_material_pos_instance,
-		"init materials and position in instancegroup.render");
+	pymodule.def("init_pos_instance", &VRRendererContext::init_pos_instance,
+		"init position in instancegroup.render");
 
 	// misc
 	pymodule.def("cglBindVertexArray", &VRRendererContext::cglBindVertexArray, "binding function");

@@ -17,7 +17,7 @@ class MeshRendererVR(MeshRenderer):
         self.scaleFactor = 1.4
         self.width = int(self.baseWidth * self.scaleFactor)
         self.height = int(self.baseHeight * self.scaleFactor)
-        self.vr_rendering_settings = MeshRendererSettings(optimized=True, fullscreen=self.fullscreen)
+        self.vr_rendering_settings = MeshRendererSettings(optimized=True, fullscreen=self.fullscreen, enable_pbr=True)
         super().__init__(width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings)
 
         # Rename self.r to self.vrsys
