@@ -333,6 +333,18 @@ class Viewer:
             self.py += move_vec[1]
             if self.manipulation_mode:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
+        elif q == ord('z'):
+            self.theta += np.pi/32
+            self.view_direction = np.array([np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(
+                self.phi), np.sin(self.phi)])
+            if self.manipulation_mode:
+                self.move_constraint(self._mouse_ix, self._mouse_iy)
+        elif q == ord('x'):
+            self.theta -= np.pi/64
+            self.view_direction = np.array([np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(
+                self.phi), np.sin(self.phi)])
+            if self.manipulation_mode:
+                self.move_constraint(self._mouse_ix, self._mouse_iy)
         elif q == ord('q'):
             if self.video_folder is not "":
                 logging.info("You recorded a video. To compile the frames into a mp4 go to the corresponding subfolder" +
