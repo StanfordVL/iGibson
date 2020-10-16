@@ -2,7 +2,6 @@
 #define GLFW_MESH_RENDERER_HEADER
 
 #include "mesh_renderer.h"
-#include <GLFW\glfw3.h>
 
 class GLFWRendererContext: public MeshRendererContext {
 public:
