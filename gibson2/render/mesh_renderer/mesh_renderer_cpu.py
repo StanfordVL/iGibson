@@ -621,8 +621,6 @@ class MeshRenderer(object):
         self.texture_files = {}
         self.enable_shadow = rendering_settings.enable_shadow
 
-        device_idx = None
-        device = None
         self.platform = platform.system()
         if os.environ.get('GIBSON_DEVICE_ID', None):
             device = int(os.environ.get('GIBSON_DEVICE_ID'))
