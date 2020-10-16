@@ -1,7 +1,6 @@
 import logging
 import platform
-# TODO: Need to add a post-install command so we don't need to use the Release folder
-from gibson2.render.mesh_renderer.Release import tinyobjloader
+from gibson2.render.mesh_renderer import tinyobjloader
 import gibson2
 import pybullet as p
 import gibson2.render.mesh_renderer as mesh_renderer
@@ -19,7 +18,6 @@ import math
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
-# from pyassimp import load, release
 
 class VisualObject(object):
     """
@@ -332,8 +330,7 @@ class Instance(object):
                 else:
                     buffer = self.renderer.fbo
 
-                self.renderer.r.draw_elements_instance(self.renderer.shaderProgram,
-                                                       self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                self.renderer.r.draw_elements_instance(self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                                                        texture_id,
                                                        metallic_texture_id,
                                                        roughness_texture_id,
@@ -555,12 +552,9 @@ class MeshRendererSettings(object):
                  optimized=False,
                  skybox_size=20.,
                  light_dimming_factor=1.0,
-<<<<<<< HEAD
-                 fullscreen=False):
-=======
+                 fullscreen=False,
                  glfw_gl_version=None,
                  ):
->>>>>>> pbr
         self.use_fisheye = use_fisheye
         self.msaa = msaa
         self.enable_shadow = enable_shadow
@@ -572,9 +566,7 @@ class MeshRendererSettings(object):
         self.light_modulation_map_filename = light_modulation_map_filename
         self.light_dimming_factor = light_dimming_factor
         self.enable_pbr=enable_pbr
-<<<<<<< HEAD
         self.fullscreen=fullscreen
-=======
         if glfw_gl_version is not None:
             self.glfw_gl_version = glfw_gl_version
         else:
@@ -582,7 +574,6 @@ class MeshRendererSettings(object):
                 self.glfw_gl_version = [4, 1]
             else:
                 self.glfw_gl_version = [4, 5]
->>>>>>> pbr
 
     def get_fastest(self):
         self.msaa = False
@@ -632,6 +623,7 @@ class MeshRenderer(object):
 
         device_idx = None
         device = None
+        self.platform = platform.system()
         if os.environ.get('GIBSON_DEVICE_ID', None):
             device = int(os.environ.get('GIBSON_DEVICE_ID'))
             logging.info("GIBSON_DEVICE_ID environment variable has been manually set. "
@@ -650,7 +642,6 @@ class MeshRenderer(object):
         self.device_idx = device_idx
         self.device_minor = device
         self.msaa = rendering_settings.msaa
-        self.platform = platform.system()
         if self.platform == 'Darwin' and self.optimized:
             logging.error('Optimized renderer is not supported on Mac')
             exit()
@@ -661,8 +652,11 @@ class MeshRenderer(object):
                                                              int(self.rendering_settings.glfw_gl_version[1])
                                                              )
         elif self.platform == 'Windows':
-            from gibson2.render.mesh_renderer.Release import VRRendererContext
-            self.r = VRRendererContext.VRRendererContext(width, height)
+            from gibson2.render.mesh_renderer import VRRendererContext
+            self.r = VRRendererContext.VRRendererContext(width, height,
+                                                             int(self.rendering_settings.glfw_gl_version[0]),
+                                                             int(self.rendering_settings.glfw_gl_version[1])
+                                                             )
         else:
             from gibson2.render.mesh_renderer import EGLRendererContext
             self.r = EGLRendererContext.EGLRendererContext(
