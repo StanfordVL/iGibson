@@ -29,6 +29,7 @@ class Viewer:
         self.phi = np.arctan2(initial_view_direction[2], np.sqrt(initial_view_direction[0] ** 2 +
                                                                  initial_view_direction[1] ** 2))
         self.min_cam_z = min_cam_z
+        self.show_help = 0
 
         self._mouse_ix, self._mouse_iy = -1, -1
         self.left_down = False
@@ -306,12 +307,74 @@ class Viewer:
             frame = np.zeros((300, 300, 3)).astype(np.uint8)
 
         # Text with the position and viewing direction of the camera of the external viewer
+        text_color = (0, 0, 0)
         cv2.putText(frame, "px {:1.1f} py {:1.1f} pz {:1.1f}".format(self.px, self.py, self.pz), (10, 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, cv2.LINE_AA)
         cv2.putText(frame, "[{:1.1f} {:1.1f} {:1.1f}]".format(*self.view_direction), (10, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, cv2.LINE_AA)
         cv2.putText(frame, ["nav mode", "manip mode"][self.manipulation_mode], (10, 60),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, cv2.LINE_AA)
+        if self.show_help >= 0:
+            if self.show_help >= 150:
+                first_color = (255, 0, 0)
+                help_text = "Keyboard cheatsheet:"
+                cv2.putText(frame, help_text, (10, 80),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+                help_text = "'w','a','s','d': up, left, down, right (any mode)"
+                cv2.putText(frame, help_text, (10, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+                help_text = "'q','e': turn left, turn right (any mode)"
+                cv2.putText(frame, help_text, (10, 120),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+                help_text = "'m': Toggle mouse mode between navigation and manipulation"
+                cv2.putText(frame, help_text, (10, 140),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+                help_text = "'r': Start/stop recording frames (results in \\tmp folder)"
+                cv2.putText(frame, help_text, (10, 160),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+                help_text = "'p': Pause/resume recording"
+                cv2.putText(frame, help_text, (10, 180),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+                help_text = "'h': Show this help on screen"
+                cv2.putText(frame, help_text, (10, 200),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+                help_text = "'ESC': Quit"
+                cv2.putText(frame, help_text, (10, 220),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+                self.show_help -= 1
+            else:
+                second_color = (255, 0, 255)
+                help_text = "Mouse controls in navigation mode:"
+                cv2.putText(frame, help_text, (10, 80),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+                help_text = "Left click and drag: rotate camera"
+                cv2.putText(frame, help_text, (10, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+                help_text = "CNTRL + left click and drag: translate camera left/right"
+                cv2.putText(frame, help_text, (10, 120),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+                help_text = "Middle click and drag (linux) or left SHIFT + left click and drag: up/down of mouse"
+                cv2.putText(frame, help_text, (10, 140),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+                help_text = " translates camera forward/backwards"
+                cv2.putText(frame, help_text, (10, 160),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+                help_text = "Mouse controls in manipulation mode:"
+                cv2.putText(frame, help_text, (10, 180),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+                help_text = "Left click and drag: create ball-joint connection to clicked object and move it"
+                cv2.putText(frame, help_text, (10, 200),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+                help_text = "Middle click and drag (linux) or left SHIFT + left click and drag: create rigid connection"
+                cv2.putText(frame, help_text, (10, 220),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+                help_text = " to object and move it"
+                cv2.putText(frame, help_text, (10, 240),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+                help_text = "CNTRL + click and drag: up/down of the mouse moves object further/closer"
+                cv2.putText(frame, help_text, (10, 260),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+                self.show_help -= 1
         cv2.imshow('ExternalView', frame)
 
         # We keep some double functinality for "backcompatibility"
@@ -319,7 +382,9 @@ class Viewer:
         move_vec = self.view_direction[:2]
         # step size is 0.05m
         move_vec = move_vec / np.linalg.norm(move_vec) * 0.05
-        if q in [ord('w'), ord('s'), ord('a'), ord('d')]:
+        if q == ord('h'):
+            self.show_help = 300
+        elif q in [ord('w'), ord('s'), ord('a'), ord('d')]:
             if q == ord('w'):
                 yaw = 0.0
             elif q == ord('s'):
@@ -333,19 +398,19 @@ class Viewer:
             self.py += move_vec[1]
             if self.manipulation_mode:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
-        elif q == ord('z'):
+        elif q == ord('q'):
             self.theta += np.pi/32
             self.view_direction = np.array([np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(
                 self.phi), np.sin(self.phi)])
             if self.manipulation_mode:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
-        elif q == ord('x'):
+        elif q == ord('e'):
             self.theta -= np.pi/64
             self.view_direction = np.array([np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(
                 self.phi), np.sin(self.phi)])
             if self.manipulation_mode:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
-        elif q == ord('q'):
+        elif q == 27:
             if self.video_folder is not "":
                 logging.info("You recorded a video. To compile the frames into a mp4 go to the corresponding subfolder" +
                              " in /tmp and execute: ")
