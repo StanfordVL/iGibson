@@ -4,6 +4,7 @@ from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.robots.turtlebot_robot import Turtlebot
 from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, cartesian_to_polar
 from gibson2.envs.env_base import BaseEnv
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
 import argparse
@@ -502,14 +503,15 @@ class NavigationEnv(BaseEnv):
             item for sublist in collision_links for item in sublist]
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
-        if self.reward_type == 'l2':
-            new_potential = self.get_l2_potential()
-        elif self.reward_type == 'geodesic':
-            new_potential = self.get_geodesic_potential()
-        potential_reward = self.potential - new_potential
-        # |potential_reward| ~= 0.1 per step
-        reward += potential_reward * self.potential_reward_weight
-        self.potential = new_potential
+
+        if self.reward_type in ['l2', 'geodesic']:
+            if self.reward_type == 'l2':
+                new_potential = self.get_l2_potential()
+            elif self.reward_type == 'geodesic':
+                new_potential = self.get_geodesic_potential()
+            potential_reward = self.potential - new_potential
+            reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+            self.potential = new_potential
 
         collision_reward = float(len(collision_links_flatten) > 0)
         self.collision_step += int(collision_reward)
@@ -540,6 +542,12 @@ class NavigationEnv(BaseEnv):
 
         # time out
         elif self.current_step >= self.max_step:
+            done = True
+            info['success'] = False
+
+        # fall off the cliff of valid region
+        elif isinstance(self.scene, InteractiveIndoorScene) and \
+                (self.robots[0].get_position()[2] < self.scene.get_floor_height() - 0.03):
             done = True
             info['success'] = False
 

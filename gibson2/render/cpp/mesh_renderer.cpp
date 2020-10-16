@@ -38,6 +38,11 @@
 
 namespace py = pybind11;
 
+#ifdef WIN32
+#define OS_SEP "\\"
+#else
+#define OS_SEP "/"
+#endif
 
 class Image {
 public:
@@ -237,6 +242,7 @@ py::array_t<float> MeshRendererContext::readbuffer_meshrenderer(char *mode, int 
     return data;
 }
 
+
 void MeshRendererContext::clean_meshrenderer(std::vector<GLuint> texture1, std::vector<GLuint> texture2,
                                              std::vector<GLuint> fbo, std::vector<GLuint> vaos,
                                              std::vector<GLuint> vbos) {
@@ -245,6 +251,19 @@ void MeshRendererContext::clean_meshrenderer(std::vector<GLuint> texture1, std::
     glDeleteFramebuffers(fbo.size(), fbo.data());
     glDeleteBuffers(vaos.size(), vaos.data());
     glDeleteBuffers(vbos.size(), vbos.data());
+
+    if (m_envTexture.id != 0) glDeleteTextures(1, &m_envTexture.id);
+    if (m_irmapTexture.id != 0) glDeleteTextures(1, &m_irmapTexture.id);
+    if (m_spBRDF_LUT.id != 0) glDeleteTextures(1, &m_spBRDF_LUT.id);
+    if (m_envTexture2.id != 0) glDeleteTextures(1, &m_envTexture2.id);
+    if (m_irmapTexture2.id != 0) glDeleteTextures(1, &m_irmapTexture2.id);
+    if (m_spBRDF_LUT2.id != 0) glDeleteTextures(1, &m_spBRDF_LUT2.id);
+    if (m_envTexture3.id != 0) glDeleteTextures(1, &m_envTexture3.id);
+    if (m_light_modulation_map.id != 0) glDeleteTextures(1, &m_light_modulation_map.id);
+    if (m_default_metallic_texture.id != 0) glDeleteTextures(1, &m_default_metallic_texture.id);
+    if (m_default_roughness_texture.id != 0) glDeleteTextures(1, &m_default_roughness_texture.id);
+    if (m_default_normal_texture.id != 0) glDeleteTextures(1, &m_default_normal_texture.id);
+
 }
 
 py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int height) {
@@ -487,16 +506,25 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
     if (metallic_texture_id != -1) {
         glActiveTexture(GL_TEXTURE7);
         if (flag) glBindTexture(GL_TEXTURE_2D, metallic_texture_id);
+    } else {
+        glActiveTexture(GL_TEXTURE7);
+        if (flag) glBindTexture(GL_TEXTURE_2D, m_default_metallic_texture.id);
     }
 
     if (roughness_texture_id != -1) {
         glActiveTexture(GL_TEXTURE8);
         if (flag) glBindTexture(GL_TEXTURE_2D, roughness_texture_id);
+    } else {
+        glActiveTexture(GL_TEXTURE8);
+        if (flag) glBindTexture(GL_TEXTURE_2D, m_default_roughness_texture.id);
     }
 
     if (normal_texture_id != -1) {
         glActiveTexture(GL_TEXTURE9);
         if (flag) glBindTexture(GL_TEXTURE_2D, normal_texture_id);
+    } else {
+        glActiveTexture(GL_TEXTURE9);
+        if (flag) glBindTexture(GL_TEXTURE_2D, m_default_normal_texture.id);
     }
 
     glActiveTexture(GL_TEXTURE10);
@@ -504,7 +532,7 @@ void MeshRendererContext::draw_elements_instance(bool flag, int texture_id, int 
 
     if (m_use_two_light_probe) {
         glActiveTexture(GL_TEXTURE11);
-        glBindTexture(GL_TEXTURE_2D, light_modulation_map.id);
+        glBindTexture(GL_TEXTURE_2D, m_light_modulation_map.id);
     }
     glBindVertexArray(vao);
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
@@ -638,6 +666,7 @@ void MeshRendererContext::generate_light_maps(
         glBindImageTexture(0, envTextureUnfiltered.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
         glDispatchCompute(envTextureUnfiltered.width / 32, envTextureUnfiltered.height / 32, 6);
     }
+    glDeleteTextures(1, &envTextureEquirect.id);
     glGenerateTextureMipmap(envTextureUnfiltered.id);
     {
         envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kEnvMapSize, kEnvMapSize, GL_RGBA16F, 0);
@@ -674,9 +703,8 @@ void MeshRendererContext::generate_light_maps(
     // Compute Cook-Torrance BRDF 2D LUT for split-sum approximation.
     {
         spBRDF_LUT = createTexture(GL_TEXTURE_2D, kBRDF_LUT_Size, kBRDF_LUT_Size, GL_RG16F, 1);
-        glTextureParameteri(spBRDF_LUT.id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTextureParameteri(spBRDF_LUT.id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
+        glTextureParameteri(m_spBRDF_LUT.id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_spBRDF_LUT.id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glUseProgram(spBRDFProgram);
         glBindImageTexture(0, spBRDF_LUT.id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG16F);
         glDispatchCompute(spBRDF_LUT.width / 32, spBRDF_LUT.height / 32, 1);
@@ -701,6 +729,7 @@ void MeshRendererContext::generate_env_map(
         glBindImageTexture(0, envTextureUnfiltered.id, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
         glDispatchCompute(envTextureUnfiltered.width / 32, envTextureUnfiltered.height / 32, 6);
     }
+    glDeleteTextures(1, &envTextureEquirect.id);
     glGenerateTextureMipmap(envTextureUnfiltered.id);
     {
         envTexture = createTexture(GL_TEXTURE_CUBE_MAP, kSkyBoxMapSize, kSkyBoxMapSize, GL_RGBA16F, 0);
@@ -727,16 +756,16 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
     glDisable(GL_CULL_FACE);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
     if (light_modulation_map_filename.length() > 0) {
-        light_modulation_map = createTexture(Image::fromFile(light_modulation_map_filename, 3), GL_RGB, GL_RGB16F, 1);
+        m_light_modulation_map = createTexture(Image::fromFile(light_modulation_map_filename, 3), GL_RGB, GL_RGB16F, 1);
         m_use_two_light_probe = true;
     }
     //glFrontFace(GL_CCW);
     // create all the programs
-    GLuint equirectToCubeProgram = linkProgram({compileShader(shader_path + "/450/equirect2cube_cs.glsl",
+    GLuint equirectToCubeProgram = linkProgram({compileShader(shader_path + OS_SEP + "equirect2cube_cs.glsl",
                                                                          GL_COMPUTE_SHADER)});
-    GLuint spmapProgram = linkProgram({compileShader(shader_path + "/450/spmap_cs.glsl", GL_COMPUTE_SHADER)});
-    GLuint irmapProgram = linkProgram({compileShader(shader_path + "/450/irmap_cs.glsl", GL_COMPUTE_SHADER)});
-    GLuint spBRDFProgram = linkProgram({compileShader(shader_path + "/450/spbrdf_cs.glsl", GL_COMPUTE_SHADER)});
+    GLuint spmapProgram = linkProgram({compileShader(shader_path + OS_SEP + "spmap_cs.glsl", GL_COMPUTE_SHADER)});
+    GLuint irmapProgram = linkProgram({compileShader(shader_path + OS_SEP + "irmap_cs.glsl", GL_COMPUTE_SHADER)});
+    GLuint spBRDFProgram = linkProgram({compileShader(shader_path + OS_SEP + "spbrdf_cs.glsl", GL_COMPUTE_SHADER)});
 
     // run subroutine to generate light map
     generate_light_maps(equirectToCubeProgram,
@@ -786,6 +815,28 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
     glDeleteProgram(spmapProgram);
     glDeleteProgram(irmapProgram);
     glDeleteProgram(spBRDFProgram);
+
+
+
+    m_default_metallic_texture = createTexture(GL_TEXTURE_2D, 1, 1, GL_R32F, 1);
+    std::vector<GLfloat> zeros(1 * 1 * 1, 0.0);
+    glBindTexture(GL_TEXTURE_2D, m_default_metallic_texture.id);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RED, GL_FLOAT, &zeros[0]);
+    glGenerateTextureMipmap(m_default_metallic_texture.id);
+
+    m_default_roughness_texture = createTexture(GL_TEXTURE_2D, 1, 1, GL_R32F, 1);
+    std::vector<GLfloat> ones(1 * 1 * 1, 1.0);
+    glBindTexture(GL_TEXTURE_2D, m_default_roughness_texture.id);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RED, GL_FLOAT, &ones[0]);
+    glGenerateTextureMipmap(m_default_roughness_texture.id);
+
+    m_default_normal_texture = createTexture(GL_TEXTURE_2D, 1, 1, GL_RGBA32F, 1);
+    std::vector<GLfloat> default_normal(1 * 1 * 4, 1.0);
+    default_normal[0] = 0.5;
+    default_normal[1] = 0.5;
+    glBindTexture(GL_TEXTURE_2D, m_default_normal_texture.id);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RGBA, GL_FLOAT, &default_normal[0]);
+    glGenerateTextureMipmap(m_default_normal_texture.id);
 
     glFinish();
 
@@ -1273,7 +1324,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
         if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT2.id);
 
         if (m_use_two_light_probe) {
-            glBindTexture(GL_TEXTURE_2D, light_modulation_map.id);
+            glBindTexture(GL_TEXTURE_2D, m_light_modulation_map.id);
         }
 
 		glUniform1i(bigTexLoc, 0);

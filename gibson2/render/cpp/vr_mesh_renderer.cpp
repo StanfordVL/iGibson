@@ -702,7 +702,7 @@ PYBIND11_MODULE(VRRendererContext, m) {
 
 	py::class_<VRRendererContext> pymodule = py::class_<VRRendererContext>(m, "VRRendererContext");
 
-	pymodule.def(py::init<int, int>());
+	pymodule.def(py::init<int, int, int, int>());
 	pymodule.def("init", &VRRendererContext::init);
 	pymodule.def("release", &VRRendererContext::release);
 	pymodule.def("render_companion_window_from_buffer", &VRRendererContext::render_companion_window_from_buffer);
