@@ -6,10 +6,12 @@
 
 class GLFWRendererContext: public MeshRendererContext {
 public:
-	int width;
-	int height;
+    int m_glVersionMajor, m_glVersionMinor;
+    GLFWRendererContext(int w, int h, int glVersionMajor, int glVersionMinor): MeshRendererContext(w, h) {
+        m_glVersionMajor = glVersionMajor;
+        m_glVersionMinor = glVersionMinor;
+    };
 
-    GLFWRendererContext(int w, int h): MeshRendererContext(w, h), width(w), height(h) {};
     GLFWwindow *window = NULL;
 	// By default don't render window and don't use fullscreen
     int init(bool render_window = false, bool fullscreen = false);

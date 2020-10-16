@@ -90,7 +90,7 @@ public:
 
 	EyeTrackingData eyeTrackingData;
 
-	VRRendererContext(int w, int h) : GLFWRendererContext(w, h), m_pHMD(NULL), nearClip(0.1f), farClip(30.0f) {};
+	VRRendererContext(int w, int h, int glVersionMajor, int glVersionMinor) : GLFWRendererContext(w, h, glVersionMajor, glVersionMinor), m_pHMD(NULL), nearClip(0.1f), farClip(30.0f) {};
 
 	py::list getButtonDataForController(char* controllerType);
 

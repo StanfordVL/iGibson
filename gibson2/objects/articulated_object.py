@@ -311,7 +311,8 @@ class URDFObject(Object):
                 assert len(meshes) == 1, (self.filename, link.attrib['name'])
                 collision_mesh_path = os.path.join(self.model_path,
                                                    meshes[0].attrib['filename'])
-                trimesh_obj = trimesh.load(file_obj=collision_mesh_path)
+                trimesh_obj = trimesh.load(
+                    file_obj=collision_mesh_path, force='mesh')
                 all_links_trimesh.append(trimesh_obj)
                 volume = trimesh_obj.volume
                 # a hack to artificially increase the density of the lamp base
