@@ -132,12 +132,7 @@ $ pip install -e .
 
 Should end printing 'Successfully installed gibson2'
 
-* Copy dlls into the mesh_renderer/Release folder:
-Copy and paste the following dll files into iGibson/gibson2/render/mesh_renderer/Release:
-1) openvr_api.dll in render/openvr/bin/win64
-2) All the dll files in render/sranipal/bin
-
-You can find all the VR demos iGibson/examples/demo
+You can find all the VR demos iGibson/examples/demo/vr_demos
 
 Run:
 
