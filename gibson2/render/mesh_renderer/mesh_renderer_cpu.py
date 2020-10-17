@@ -622,6 +622,19 @@ class MeshRenderer(object):
         self.enable_shadow = rendering_settings.enable_shadow
 
         self.platform = platform.system()
+
+        device = None
+        """
+        device_idx is the major id
+        device is the minor id
+        you can get it from nvidia-smi -a
+         
+        The minor number for the device is such that the Nvidia device node file for each GPU will have the form 
+        /dev/nvidia[minor number]. Available only on Linux platform.
+        
+        TODO: add device management for windows platform.
+        """
+
         if os.environ.get('GIBSON_DEVICE_ID', None):
             device = int(os.environ.get('GIBSON_DEVICE_ID'))
             logging.info("GIBSON_DEVICE_ID environment variable has been manually set. "
