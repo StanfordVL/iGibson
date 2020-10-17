@@ -31,9 +31,9 @@ def main():
     # hdr_texture1 = os.path.join(
                  # gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr')
     hdr_texture1 = os.path.join(
-                 gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-    hdr_texture2 = os.path.join(
                  gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    hdr_texture2 = os.path.join(
+                 gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
     light_map= os.path.join(
                  get_ig_scene_path(args.scene), 'layout', 'floor_lighttype_0.png')
 
@@ -47,7 +47,7 @@ def main():
                light_modulation_map_filename=light_map,
                enable_shadow=True, msaa=True,
                skybox_size=36.,
-               light_dimming_factor=1.2)
+               light_dimming_factor=0.8)
 
     s = Simulator(mode='headless', 
             image_width=1080, image_height=720, 
