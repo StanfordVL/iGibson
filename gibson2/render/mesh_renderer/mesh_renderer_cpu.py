@@ -744,7 +744,8 @@ class MeshRenderer(object):
         else:
             logging.warning(
                 "Environment texture not available, cannot use PBR.")
-        self.r.loadSkyBox(self.skyboxShaderProgram, self.skybox_size)
+        if rendering_settings.enable_pbr:
+            self.r.loadSkyBox(self.skyboxShaderProgram, self.skybox_size)
 
     def set_light_position_direction(self, position, target):
         self.lightpos = position
@@ -1198,9 +1199,10 @@ class MeshRenderer(object):
         else:
             self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
-        if not self.optimized:
+        if not self.optimized and self.rendering_settings.enable_pbr:
             self.r.renderSkyBox(self.skyboxShaderProgram, self.V, self.P)
             # TODO: skybox is not supported in optimized renderer, need fix
+            # TODO: skybox is not used in non-pbr mode
 
         if self.optimized:
             self.update_dynamic_positions()
