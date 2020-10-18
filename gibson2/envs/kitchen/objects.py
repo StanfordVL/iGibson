@@ -16,17 +16,21 @@ class Faucet(Object):
             dispense_height=0.3,
             base_color=(0.75, 0.75, 0.75, 1),
             beads_color=(0, 0, 1, 1),
-            beads_size=0.015
+            base_size=(0.15, 0.15, 0.01),
+            beads_size=0.015,
+            exclude_ids=(),
     ):
         self._dispense_freq = dispense_freq
         self._beads = []
         self._next_bead_index = 0
         self._n_step_since = 0
         self._base_color = base_color
+        self._base_size = base_size
         self._beads_color = beads_color
         self._beads_size = beads_size
         self._num_beads = num_beads
         self._dispense_position = np.array([0, 0, dispense_height])
+        self._exclude_ids = exclude_ids
         super(Faucet, self).__init__()
 
     @property
@@ -34,7 +38,7 @@ class Faucet(Object):
         return deepcopy(self._beads)
 
     def load(self):
-        self.body_id = PBU.create_box(0.15, 0.15, 0.01, mass=100, color=self._base_color)
+        self.body_id = PBU.create_box(*self._base_size, mass=100, color=self._base_color)
         self._beads = [PBU.create_sphere(
             self._beads_size, mass=PBU.STATIC_MASS, color=self._beads_color
         ) for _ in range(self._num_beads)]
@@ -65,7 +69,7 @@ class Faucet(Object):
     def step(self, task_objs, gripper=None):
         should_dispense = False
         for o in task_objs:
-            if o.body_id == self.body_id:
+            if o.body_id == self.body_id or o.body_id in self._exclude_ids:
                 continue
             center_place = PBU.is_center_stable(o.body_id, self.body_id, above_epsilon=0.01, below_epsilon=0.02)
             in_contact = PBU.body_collision(self.body_id, o.body_id)
@@ -75,6 +79,47 @@ class Faucet(Object):
             self._n_step_since = 0
         else:
             self._n_step_since += 1
+
+
+class CoffeeGrinder(Object):
+    def __init__(self, mass=10.0):
+        super(CoffeeGrinder, self).__init__()
+        self._mass = mass
+
+    def load(self):
+        collision_id1, visual_id1 = PBU.create_shape(
+            PBU.get_cylinder_geometry(0.1, 0.01), color=(0.5, 0.5, 0.5, 1))
+        collision_id2, visual_id2 = PBU.create_shape(
+            PBU.get_cylinder_geometry(0.015, 0.3), color=(0.3, 0.3, 0.3, 1))
+        collision_id3, visual_id3 = PBU.create_shape(
+            PBU.get_box_geometry(0.05, 0.02, 0.03), color=(0.5, 0.5, 0.5, 1))
+        collision_id4, visual_id4 = PBU.create_shape(
+            PBU.get_cylinder_geometry(0.05, 0.12), color=(0.3, 0.3, 0.3, 1))
+        collision_id5, visual_id5 = PBU.create_shape(
+            PBU.get_cylinder_geometry(0.05, 0.04), color=(0.2, 0.2, 0.2, 0.7))
+
+        link_masses = [self._mass * 0.7, self._mass * 0.1, self._mass * 0.1, self._mass * 0.1]
+
+        self.body_id = p.createMultiBody(
+            baseMass=1.0,
+            baseCollisionShapeIndex=collision_id1,
+            baseVisualShapeIndex=visual_id1,
+            basePosition=PBU.unit_point(),
+            baseOrientation=PBU.unit_quat(),
+            baseInertialFramePosition=PBU.unit_point(),
+            baseInertialFrameOrientation=PBU.unit_quat(),
+            linkMasses=link_masses,
+            linkCollisionShapeIndices=[collision_id2, collision_id3, collision_id4, collision_id5],
+            linkVisualShapeIndices=[visual_id2, visual_id3, visual_id4, visual_id5],
+            linkPositions=[(0.09, 0, 0.15), (0.07, 0, 0.27), (0, 0, 0.27), (0, 0, 0.35)],
+            linkOrientations=[T.quaternion_from_euler(0, 0, np.pi / 2), PBU.unit_quat(), PBU.unit_quat(), PBU.unit_quat()],
+            linkInertialFramePositions=[PBU.unit_point(), PBU.unit_point(), PBU.unit_point(), PBU.unit_point()],
+            linkInertialFrameOrientations=[PBU.unit_quat(), PBU.unit_quat(), PBU.unit_quat(), PBU.unit_quat()],
+            linkParentIndices=[0, 0, 0, 0],
+            linkJointTypes=[p.JOINT_FIXED, p.JOINT_FIXED, p.JOINT_FIXED, p.JOINT_FIXED],
+            linkJointAxis=[(0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0)]
+        )
+        self.loaded = True
 
 
 class CoffeeMachine(Faucet):

@@ -11,7 +11,7 @@ import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.envs.kitchen.plan_utils as PU
 from gibson2.envs.kitchen.plan_utils import Buffer
 import gibson2.envs.kitchen.skills as skills
-from gibson2.envs.kitchen.envs import env_factory, EnvSkillWrapper
+from gibson2.envs.kitchen.base_env import env_factory, EnvSkillWrapper
 
 
 """

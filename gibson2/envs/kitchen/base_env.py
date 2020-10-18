@@ -15,6 +15,18 @@ import gibson2.external.pybullet_tools.utils as PBU
 import gibson2.envs.kitchen.plan_utils as PU
 
 
+def env_factory(name, **kwargs):
+    from gibson2.envs.kitchen.tool_envs import SimpleToolAP, SimpleToolHardAP, SimpleToolStackAP
+    from gibson2.envs.kitchen.kitchen_envs import KitchenCoffeeAP, KitchenDrawerAP, KitchenAP, TablePour
+    if name.endswith("Skill"):
+        name = name[:-5]
+        kwargs["use_skills"] = True
+        kwargs["use_planner"] = True
+        return EnvSkillWrapper(eval(name)(**kwargs))
+    else:
+        return eval(name)(**kwargs)
+
+
 class BaseEnv(object):
     MAX_DPOS = 0.1
     MAX_DROT = np.pi / 8
@@ -97,8 +109,8 @@ class BaseEnv(object):
 
     def _setup_simulation(self):
         if self._use_gui:
-            p.connect(p.GUI)
-            # p.connect(p.GUI, options='--background_color_red=1.0 --background_color_green=1.0 --background_color_blue=1.0')
+            # p.connect(p.GUI)
+            p.connect(p.GUI, options='--background_color_red=1.0 --background_color_green=1.0 --background_color_blue=1.0')
         else:
             p.connect(p.DIRECT)
         p.setGravity(0, 0, -9.8)
