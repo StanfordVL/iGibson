@@ -12,7 +12,7 @@ def main():
     settings = MeshRendererSettings(enable_shadow=True, msaa=False)
     s = Simulator(mode='gui', image_width=256, image_height=256, rendering_settings=settings)
 
-    scene = iGSDFScene(args.scene)
+    scene = InteractiveIndoorScene(args.scene)
     s.import_ig_scene(scene)
 
     for i in range(10000):

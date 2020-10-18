@@ -74,6 +74,11 @@ class Viewer:
             self.simulator.import_object(
                 self.constraint_marker2, use_pbr=False)
             self.simulator.import_object(self.constraint_marker, use_pbr=False)
+        
+        ###### TODO this is probably not the right fix
+        self.constraint_marker.load()
+        self.constraint_marker2.load()
+        ######    
 
         self.constraint_marker.set_position([0, 0, -1])
         self.constraint_marker2.set_position([0, 0, -1])
