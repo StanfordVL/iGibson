@@ -97,13 +97,13 @@ def main():
 
     s.renderer.set_light_position_direction([0,0,10], [0,0,0])
 
-    s.renderer.load_object('plane/plane_z_up_0.obj', scale=[3,3,3])
-    s.renderer.add_instance(0)
-    s.renderer.set_pose([0,0,-1.5,1, 0, 0.0, 0.0], -1)
-
+    #s.renderer.load_object('plane/plane_z_up_0.obj', scale=[3,3,3])
+    #s.renderer.add_instance(0)
+    #s.renderer.set_pose([0,0,-1.5,1, 0, 0.0, 0.0], -1)
+    # removed the plane since it is in local dir
 
     v = []
-    mesh_path = os.path.join(model_path, 'shape/visual')
+    mesh_path = os.path.join(model_path, 'shape', 'visual')
     for fn in os.listdir(mesh_path):
         if fn.endswith('obj'):
             vertices, faces = load_obj_np(os.path.join(mesh_path, fn))
