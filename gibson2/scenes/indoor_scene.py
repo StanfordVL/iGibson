@@ -50,7 +50,7 @@ class IndoorScene(Scene):
         self.trav_map_original_size = None
         self.trav_map_size = None
         self.trav_map_erosion = trav_map_erosion
-        self.trav_map_type=trav_map_type
+        self.trav_map_type = trav_map_type
         self.build_graph = build_graph
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
