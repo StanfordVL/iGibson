@@ -109,7 +109,8 @@ class Simulator:
         if self.use_vr_renderer:
             self.viewer = ViewerVR()
         else:
-            self.viewer = Viewer()
+            # self.viewer = Viewer()
+            self.viewer = Viewer(simulator=self, renderer=self.renderer)
         self.viewer.renderer = self.renderer
 
     def reload(self):
@@ -151,16 +152,14 @@ class Simulator:
         p.setPhysicsEngineParameter(enableFileCaching=0)
         print("PyBullet Logging Information******************")
 
-        if (self.use_ig_renderer or self.use_vr_renderer) and not self.render_to_tensor:
-            self.add_viewer()
 
         self.visual_objects = {}
         self.robots = []
         self.scene = None
         self.next_class_id = 0
-
-        if self.use_ig_renderer and not self.render_to_tensor:
+        if (self.use_ig_renderer or self.use_vr_renderer) and not self.render_to_tensor:
             self.add_viewer()
+
 
     def optimize_vertex_and_texture(self):
         self.renderer.optimize_vertex_and_texture()
