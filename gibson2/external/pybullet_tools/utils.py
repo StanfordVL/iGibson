@@ -4381,6 +4381,38 @@ def read_pcd_file(path):
             continue
         return [tuple(map(float, f.readline().split())) for _ in range(num_points)]
 
+
+def is_collision_free(body_a, link_a_list,
+                      body_b=None, link_b_list=None):
+    """
+    :param body_a: body id of body A
+    :param link_a_list: link ids of body A that that of interest
+    :param body_b: body id of body B (optional)
+    :param link_b_list: link ids of body B that are of interest (optional)
+    :return: whether the bodies and links of interest are collision-free
+    """
+    if body_b is None:
+        for link_a in link_a_list:
+            contact_pts = p.getContactPoints(
+                bodyA=body_a, linkIndexA=link_a)
+            if len(contact_pts) > 0:
+                return False
+    elif link_b_list is None:
+        for link_a in link_a_list:
+            contact_pts = p.getContactPoints(
+                bodyA=body_a, bodyB=body_b, linkIndexA=link_a)
+            if len(contact_pts) > 0:
+                return False
+    else:
+        for link_a in link_a_list:
+            for link_b in link_b_list:
+                contact_pts = p.getContactPoints(
+                    bodyA=body_a, bodyB=body_b,
+                    linkIndexA=link_a, linkIndexB=link_b)
+                if len(contact_pts) > 0:
+                    return False
+    return True
+
 # TODO: factor out things that don't depend on pybullet
 
 #####################################

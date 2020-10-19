@@ -20,7 +20,7 @@ def test_occupancy_grid():
     ts = nav_env.step(action)
     assert np.sum(ts[0]['occupancy_grid'] == 0) > 0
     assert np.sum(ts[0]['occupancy_grid'] == 1) > 0
-    
+
     nav_env.clean()
 
 
@@ -29,13 +29,15 @@ def test_base_planning():
     download_assets()
     download_demo_data()
     config_filename = os.path.join(gibson2.root_path, '../test/test_house_occupancy_grid.yaml')
-    
+
     nav_env = NavigationEnv(config_file=config_filename, mode='headless')
     motion_planner = MotionPlanningWrapper(nav_env)
+
     state = nav_env.reset()
     plan = motion_planner.plan_base_motion(state, [0,1,0])
     print(plan)
-    assert len(plan) > 0 
+    motion_planner.dry_run_base_plan(plan)
 
+    assert len(plan) > 0 
     nav_env.clean()
 
