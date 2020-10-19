@@ -171,7 +171,7 @@ class CoffeeMachine(Faucet):
     def load(self):
         self.body_id = p.loadURDF(
             self._file_path, globalScaling=self._scale, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-        self.platform = VisualMarker(visual_shape=p.GEOM_BOX, half_extents=[0.05, 0.05, 0.005], rgba_color=(0.8, 0.8, 0.8, 0.1))
+        self.platform = Box(size=[0.1, 0.1, 0.005], color=(0.8, 0.8, 0.8, 0.1))
         self.platform.load()
         # self.button = VisualMarker(visual_shape=p.GEOM_CYLINDER, radius=0.03, length=0.008, rgba_color=(0, 1, 0, 1))
         self.button = Cylinder(radius=0.03, height=0.008, color=(0, 1, 0, 1), mass=PBU.STATIC_MASS)
@@ -186,10 +186,19 @@ class CoffeeMachine(Faucet):
         beans = EU.objects_center_in_container(self._beans_set, self.body_id)
 
         # needs to be in the funnel
-        # beans = [bid for bid in beans if PBU.get_pose(bid)[0][2] > self.get_position()[2] - 0.05]
+        beans = [bid for bid in beans if PBU.get_pose(bid)[0][2] > self.get_position()[2] - 0.05]
+
+        # start_machine = PBU.body_collision(gripper.body_id, self.button.body_id)
+        start_machine = False
+        for o in task_objs:
+            if o.body_id == self.platform.body_id:
+                continue
+            center_place = PBU.is_center_stable(o.body_id, self.platform.body_id, above_epsilon=0.01, below_epsilon=0.02)
+            collision = PBU.body_collision(o.body_id, self.platform.body_id)
+            start_machine = start_machine or (collision and center_place)
 
         # start dispensing when button is pressed
-        self._should_dispense = self._should_dispense or PBU.body_collision(gripper.body_id, self.button.body_id)
+        self._should_dispense = self._should_dispense or start_machine
         # stop when no more beans in the machine
         self._should_dispense = self._should_dispense and len(beans) > 0
 
