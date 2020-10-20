@@ -665,7 +665,7 @@ class MeshRenderer(object):
         if self.platform == 'Windows':
             self.r.init(True, rendering_settings.fullscreen)
         else:
-            self.r.init()
+            self.r.init(False, rendering_settings.fullscreen)
 
         self.glstring = self.r.getstring_meshrenderer()
 

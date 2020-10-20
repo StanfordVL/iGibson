@@ -112,14 +112,6 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
 
 
-class PostInstallCommand(install):
-        """Post-installation for installation mode."""
-        def run(self):
-                print('post installation')
-                #check_call("bash realenv/envs/build.sh".split())
-                install.run(self)
-
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
@@ -157,7 +149,7 @@ setup(
             'sphinx_rtd_theme'
     ],
     ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/render')],
-    cmdclass={'build_ext':CMakeBuild},
+    cmdclass=dict(build_ext=CMakeBuild),
     tests_require=[],
     package_data={'': [
     'gibson2/global_config.yaml',
