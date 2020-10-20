@@ -621,9 +621,20 @@ class MeshRenderer(object):
         self.texture_files = {}
         self.enable_shadow = rendering_settings.enable_shadow
 
-        device_idx = None
-        device = None
         self.platform = platform.system()
+
+        device = None
+        """
+        device_idx is the major id
+        device is the minor id
+        you can get it from nvidia-smi -a
+         
+        The minor number for the device is such that the Nvidia device node file for each GPU will have the form 
+        /dev/nvidia[minor number]. Available only on Linux platform.
+        
+        TODO: add device management for windows platform.
+        """
+
         if os.environ.get('GIBSON_DEVICE_ID', None):
             device = int(os.environ.get('GIBSON_DEVICE_ID'))
             logging.info("GIBSON_DEVICE_ID environment variable has been manually set. "
@@ -758,8 +769,8 @@ class MeshRenderer(object):
         else:
             logging.warning(
                 "Environment texture not available, cannot use PBR.")
-        print("Trying to set up skybox!")
-        self.r.loadSkyBox(self.skyboxShaderProgram, self.skybox_size)
+        if self.rendering_settings.enable_pbr:
+            self.r.loadSkyBox(self.skyboxShaderProgram, self.skybox_size)
 
     def set_light_position_direction(self, position, target):
         self.lightpos = position
@@ -1236,9 +1247,10 @@ class MeshRenderer(object):
         else:
             self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
-        if not self.optimized:
+        if not self.optimized and self.rendering_settings.enable_pbr:
             self.r.renderSkyBox(self.skyboxShaderProgram, self.V, self.P)
             # TODO: skybox is not supported in optimized renderer, need fix
+            # TODO: skybox is not used in non-pbr mode
 
         if self.optimized:
             self.update_dynamic_positions()
