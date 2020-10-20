@@ -13,11 +13,12 @@ class iGTNTaskInstance(TaskNetTask):
     def __init__(self, atus_activity):
         super().__init__(atus_activity)
 
-    def initialize_scene(self):             # NOTE can't have the same method name right 
+    def initialize_scene(self):             # NOTE can't have the same method name right? Should TaskNetTask.initialize() be a private method so that this can be initialize()?  
         '''
         Get scene populated with objects such that scene satisfies initial conditions 
         '''
-        self.scene_name, self.scene = self.initialize(InteractiveIndoorScene, URDFObject)
+        # Set self.scene_name, self.scene, self.sampled_simulator_objects, and self.sampled_dsl_objects
+        self.initialize(InteractiveIndoorScene, URDFObject)
 
         hdr_texture = os.path.join(
             gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
@@ -38,6 +39,12 @@ class iGTNTaskInstance(TaskNetTask):
     
         self.simulator.viewer.min_cam_z = 1.0
         self.simulator.import_ig_scene(self.scene)
+
+        # NOTE not making a separate add_objects function since users shouldn't be able to add extra tasks,
+        # that could make the final conditions unsatisfiable or otherwise vacuous. Can change if needed.
+        for obj, obj_pos, obj_orn in self.sampled_simulator_objects:
+            self.simulator.import_object(obj)
+            obj.set_position_orientation(obj_pos, obj_orn)
 
 
 def main():
