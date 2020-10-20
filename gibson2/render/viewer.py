@@ -50,6 +50,7 @@ class Viewer:
         self.renderer = renderer
         self.simulator = simulator
         self.cid = []
+        self.dist = 0
 
         # Flag to control if the mouse interface is in navigation or manipulation mode
         self.manipulation_mode = False
@@ -167,6 +168,9 @@ class Viewer:
         self.constraint_marker2.set_position([0, 0, 100])
 
     def move_constraint(self, x, y):
+        # no constraint created but move_constraint called
+        if len(self.cid) == 0:
+            return
         camera_pose = np.array([self.px, self.py, self.pz])
         self.renderer.set_camera(
             camera_pose, camera_pose + self.view_direction, self.up)
@@ -189,6 +193,9 @@ class Viewer:
         self.interaction_x, self.interaction_y = x, y
 
     def move_constraint_z(self, dy):
+        # no constraint created but move_constraint called
+        if len(self.cid) == 0:
+            return
         x, y = self.interaction_x, self.interaction_y
         camera_pose = np.array([self.px, self.py, self.pz])
         self.renderer.set_camera(
