@@ -4,6 +4,7 @@ import numpy as np
 import os
 import pybullet as p
 
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import ArticulatedObject
@@ -15,14 +16,30 @@ from gibson2.utils.vr_utils import translate_vr_position_by_vecs
 from gibson2 import assets_path
 import gibson2
 
+"""
+use_fisheye=False,
+                 msaa=False,
+                 enable_shadow=False,
+                 enable_pbr=True,
+                 env_texture_filename=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr'),
+                 env_texture_filename2=os.path.join(gibson2.ig_dataset_path, 'scenes','background', 'photo_studio_01_2k.hdr'),
+                 env_texture_filename3=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr'),
+                 light_modulation_map_filename='',
+                 optimized=False,
+                 skybox_size=20.,
+                 light_dimming_factor=1.0,
+                 fullscreen=False,
+                 glfw_gl_version=None,
+                 """
+
 # Playground configuration: edit this to change functionality
 optimize = True
-vr_mode = False
+vr_mode = True
 
-# Initialize simulator
+# Initialize simulator with specific rendering settings
 s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, 
-            optimized_renderer=optimize, vrFullscreen=False, vrEyeTracking=False, vrMode=vr_mode)
-#scene = StaticIndoorScene('Placida')
+            rendering_settings=MeshRendererSettings(optimized=optimize),
+            vrEyeTracking=False, vrMode=vr_mode)
 scene = InteractiveIndoorScene('Rs_int')
 scene._set_first_n_objects(10)
 s.import_scene(scene)

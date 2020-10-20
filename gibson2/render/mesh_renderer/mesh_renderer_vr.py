@@ -1,5 +1,3 @@
-import os
-import gibson2
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
 
 class MeshRendererVR(MeshRenderer):
@@ -8,8 +6,8 @@ class MeshRendererVR(MeshRenderer):
     a link to the underlying VRRendererContext, on which various functions can be called.
     """
 
-    def __init__(self, fullscreen=False, useEyeTracking=False, vrMode=True):
-        self.fullscreen = fullscreen
+    def __init__(self, rendering_settings=MeshRendererSettings(), useEyeTracking=False, vrMode=True):
+        self.vr_rendering_settings = rendering_settings
         self.useEyeTracking = useEyeTracking
         self.vrMode = vrMode
         self.baseWidth = 1080
@@ -17,7 +15,6 @@ class MeshRendererVR(MeshRenderer):
         self.scaleFactor = 1.4
         self.width = int(self.baseWidth * self.scaleFactor)
         self.height = int(self.baseHeight * self.scaleFactor)
-        self.vr_rendering_settings = MeshRendererSettings(optimized=True, fullscreen=self.fullscreen, enable_pbr=True)
         super().__init__(width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings)
 
         # Rename self.r to self.vrsys
