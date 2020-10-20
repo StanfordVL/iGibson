@@ -25,11 +25,7 @@ class Simulator:
                  device_idx=0,
                  render_to_tensor=False,
                  auto_sync=True,
-                 optimized_renderer=False,
-                 env_texture_filename=None,
-                 skybox_size=20.,
                  rendering_settings=MeshRendererSettings(),
-                 vrFullscreen=True,
 		         vrEyeTracking=False,
                  vrMode=True):
 
@@ -49,7 +45,6 @@ class Simulator:
         :param auto_sync: automatically sync object poses to gibson renderer, by default true,
         disable it when you want to run multiple physics step but don't need to visualize each frame
         """
-        print("Starting init!")
         # physics simulator
         self.gravity = gravity
         self.physics_timestep = physics_timestep
@@ -78,8 +73,7 @@ class Simulator:
         if self.mode in ['vr']:
             self.use_vr_renderer = True
                    
-        # renderer
-        self.vrFullscreen = vrFullscreen
+        # renderer + VR
         self.vrEyeTracking = vrEyeTracking
         self.vrMode = vrMode
         self.max_haptic_duration = 4000
@@ -89,7 +83,6 @@ class Simulator:
         self.device_idx = device_idx
         self.render_to_tensor = render_to_tensor
         self.auto_sync = auto_sync
-        self.optimized_renderer = rendering_settings.optimized
         self.rendering_settings = rendering_settings
         self.load()
 
@@ -130,7 +123,7 @@ class Simulator:
                                             device_idx=self.device_idx,
                                             rendering_settings=self.rendering_settings)
         elif self.use_vr_renderer:
-            self.renderer = MeshRendererVR(fullscreen=self.vrFullscreen,
+            self.renderer = MeshRendererVR(rendering_settings=self.rendering_settings,
                                         useEyeTracking=self.vrEyeTracking,
                                         vrMode=self.vrMode)
         else:

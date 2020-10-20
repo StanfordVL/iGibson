@@ -9,6 +9,7 @@ import numpy as np
 import os
 import pybullet as p
 
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.vr_objects import VrHand
@@ -22,7 +23,6 @@ sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
 # Playground configuration: edit this to change functionality
 optimize = True
 vr_mode = True
-print_fps = False
 # Toggles fullscreen companion window
 fullscreen = False
 # Toggles SRAnipal eye tracking
@@ -35,7 +35,10 @@ relative_movement_device = 'hmd'
 movement_speed = 0.01
 
 # Initialize simulator
-s = Simulator(mode='vr', timestep = 1/90.0, optimized_renderer=optimize, vrFullscreen=fullscreen, vrEyeTracking=use_eye_tracking, vrMode=vr_mode)
+# Initialize simulator with specific rendering settings
+s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, 
+            rendering_settings=MeshRendererSettings(optimized=optimize, fullscreen=fullscreen, enable_pbr=True),
+            vrEyeTracking=use_eye_tracking, vrMode=vr_mode)
 scene = StaticIndoorScene('Placida')
 s.import_scene(scene)
 
@@ -91,7 +94,7 @@ while True:
                 pass
 
     # Optionally print fps during simulator step
-    s.step(shouldPrintTime=print_fps)
+    s.step()
 
     # VR device data
     hmdIsValid, hmdTrans, hmdRot = s.getDataForVRDevice('hmd')
