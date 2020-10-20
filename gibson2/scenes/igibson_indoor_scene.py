@@ -14,6 +14,7 @@ from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get
 from IPython import embed
 
 
+# class InteractiveIndoorScene(StaticIndoorScene):
 class InteractiveIndoorScene(StaticIndoorScene):
     """
     Create an interactive scene defined with iGibson Scene Description Format (iGSDF).

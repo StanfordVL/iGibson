@@ -3,6 +3,7 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.utils.utils import parse_config
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from gibson2.objects.ycb_object import YCBObject 
 import os
 import gibson2
 import time
@@ -24,7 +25,7 @@ def test_import_igsdf():
 
     scene = InteractiveIndoorScene(
         'Rs_int', texture_randomization=False, object_randomization=False)
-    scene._set_first_n_objects(5)
+    # scene._set_first_n_objects(10)
     settings = MeshRendererSettings(env_texture_filename=hdr_texture,
                                     env_texture_filename2=hdr_texture2,
                                     env_texture_filename3=background_texture,
@@ -37,6 +38,9 @@ def test_import_igsdf():
     s.viewer.min_cam_z = 1.0
 
     s.import_ig_scene(scene)
+
+    # Add objects 
+    # obj1 = YCBObject(filename=
 
     while True:
         start = time.time()
