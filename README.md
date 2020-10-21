@@ -132,19 +132,19 @@ $ pip install -e .
 
 Should end printing 'Successfully installed gibson2'
 
-You can find all the VR demos iGibson/examples/demo/vr_demos
+You can find all the VR demos in iGibson/examples/demo/vr_demos
 
 Run:
 
-$ python vr_demo_hand.py (for a scene with an interactive hand)
+$ python vr_playground_no_pbr (for a scene without PBR)
 
 or 
 
-$ python vr_demo_rs.py (for the current state-of-the-art Gibson graphics)
+$ python vr_playground_pbr (for the current state-of-the-art Gibson graphics)
 
-To see the features of the VR software.
-
-To use the gripper asset featured in the interaction demos, please download the 'gripper' folder at this link: https://drive.google.com/drive/folders/1-lHTtUuEgs9zzcievvvVdjHP0BdN7Du4?usp=sharing, and put it in assets/models (wherever your assets folder is).
+Data saving/replay code can be found in vr_demos/data_save_replay.
+Run vr_demo_save to save a demo to a log file, and vr_demo_replay to run it again. 
+Please see the demos and gibson2/utils/vr_logging.py for more details on the data saving/replay system.
 
 To use the VR hand asset, please download and unzip the asset and put it into assets/models under the folder name 'vr_hand'.
 Link to VR hand: https://drive.google.com/file/d/117qb1r_YHHVdQuwLD83N_nd0la57j9hZ/view?usp=sharing
