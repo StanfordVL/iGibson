@@ -87,8 +87,10 @@ class CoffeeGrinder(Object):
         self._mass = mass
 
     def load(self):
+        # collision_id1, visual_id1 = PBU.create_shape(
+        #     PBU.get_cylinder_geometry(0.1, 0.01), color=(0.5, 0.5, 0.5, 1))
         collision_id1, visual_id1 = PBU.create_shape(
-            PBU.get_cylinder_geometry(0.1, 0.01), color=(0.5, 0.5, 0.5, 1))
+            PBU.get_box_geometry(0.2, 0.2, 0.01), color=(0.5, 0.5, 0.5, 1))
         collision_id2, visual_id2 = PBU.create_shape(
             PBU.get_cylinder_geometry(0.015, 0.3), color=(0.3, 0.3, 0.3, 1))
         collision_id3, visual_id3 = PBU.create_shape(
@@ -118,6 +120,45 @@ class CoffeeGrinder(Object):
             linkParentIndices=[0, 0, 0, 0],
             linkJointTypes=[p.JOINT_FIXED, p.JOINT_FIXED, p.JOINT_FIXED, p.JOINT_FIXED],
             linkJointAxis=[(0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0)]
+        )
+        self.loaded = True
+
+
+class TeaDispenser(Object):
+    def __init__(self, mass=10.0):
+        super(TeaDispenser, self).__init__()
+        self._mass = mass
+
+    def load(self):
+        collision_id1, visual_id1 = PBU.create_shape(
+            PBU.get_cylinder_geometry(0.1, 0.01), color=(0.5, 0.5, 0.5, 1))
+        collision_id2, visual_id2 = PBU.create_shape(
+            PBU.get_cylinder_geometry(0.04, 0.36), color=(0.3, 0.3, 0.3, 1))
+        collision_id3, visual_id3 = PBU.create_shape(
+            PBU.get_box_geometry(0.08, 0.02, 0.03), color=(0.5, 0.5, 0.5, 1))
+        collision_id4, visual_id4 = PBU.create_shape(
+            PBU.get_cylinder_geometry(0.02, 0.05), color=(0.7, 0.7, 0.7, 1))
+
+        link_masses = [self._mass * 0.5, self._mass * 0.1, self._mass * 0.1]
+
+        self.body_id = p.createMultiBody(
+            baseMass=0.3 * self._mass,
+            baseCollisionShapeIndex=collision_id1,
+            baseVisualShapeIndex=visual_id1,
+            basePosition=PBU.unit_point(),
+            baseOrientation=PBU.unit_quat(),
+            baseInertialFramePosition=PBU.unit_point(),
+            baseInertialFrameOrientation=PBU.unit_quat(),
+            linkMasses=link_masses,
+            linkCollisionShapeIndices=[collision_id2, collision_id3, collision_id4],
+            linkVisualShapeIndices=[visual_id2, visual_id3, visual_id4],
+            linkPositions=[(0.14, 0, 0.175), (0.05, 0, 0.27), (0, 0, 0.27)],
+            linkOrientations=[T.quaternion_from_euler(0, 0, np.pi / 2), PBU.unit_quat(), PBU.unit_quat()],
+            linkInertialFramePositions=[PBU.unit_point(), PBU.unit_point(), PBU.unit_point()],
+            linkInertialFrameOrientations=[PBU.unit_quat(), PBU.unit_quat(), PBU.unit_quat()],
+            linkParentIndices=[0, 0, 0],
+            linkJointTypes=[p.JOINT_FIXED, p.JOINT_FIXED, p.JOINT_FIXED],
+            linkJointAxis=[(0, 0, 0), (0, 0, 0), (0, 0, 0)]
         )
         self.loaded = True
 
@@ -171,10 +212,10 @@ class CoffeeMachine(Faucet):
     def load(self):
         self.body_id = p.loadURDF(
             self._file_path, globalScaling=self._scale, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-        self.platform = Box(size=[0.1, 0.1, 0.005], color=(0.8, 0.8, 0.8, 0.1))
+        self.platform = Box(size=[0.12, 0.12, 0.01], color=(0.8, 0.8, 0.8, 0.1))
         self.platform.load()
-        # self.button = VisualMarker(visual_shape=p.GEOM_CYLINDER, radius=0.03, length=0.008, rgba_color=(0, 1, 0, 1))
-        self.button = Cylinder(radius=0.03, height=0.008, color=(0, 1, 0, 1), mass=PBU.STATIC_MASS)
+        # self.button = VisualMarker(visual_shape=p.GEOM_CYLINDER, radius=0.03, length=0.008, rgba_color=(0, 1, 0, 0))
+        self.button = Cylinder(radius=0.03, height=0.008, color=(0, 1, 0, 0), mass=PBU.STATIC_MASS)
         self.button.load()
         self._beads = [PBU.create_sphere(
             self._beads_size, mass=PBU.STATIC_MASS, color=self._beads_color
@@ -182,7 +223,6 @@ class CoffeeMachine(Faucet):
         self.loaded = True
 
     def step(self, task_objs, gripper=None):
-        self._sync_parts()
         beans = EU.objects_center_in_container(self._beans_set, self.body_id)
 
         # needs to be in the funnel

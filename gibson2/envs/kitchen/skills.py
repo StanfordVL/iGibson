@@ -621,6 +621,7 @@ class GraspDistOrn(Skill):
             lift_height=0.1,
             lift_speed=0.05,
             grasp_speed=0.05,
+            pos_offset=(0, 0, 0),
             joint_resolutions=DEFAULT_JOINT_RESOLUTIONS,
             verbose=False,
             precondition_fn=None
@@ -640,6 +641,7 @@ class GraspDistOrn(Skill):
         self.lift_speed = lift_speed
         self.grasp_speed = grasp_speed
         self.reach_distance = reach_distance
+        self.pos_offset = np.array(pos_offset)
 
     def get_default_params(self):
         return OrderedDict(
@@ -652,7 +654,11 @@ class GraspDistOrn(Skill):
         params = self.deserialize_skill_param_array(params)
         grasp_orn_quat = TU.axisangle2quat(*TU.vec2axisangle(params["grasp_orn"]))
         grasp_pose = compute_grasp_pose(
-            PBU.get_pose(target_object_id), grasp_orientation=grasp_orn_quat, grasp_distance=params["grasp_distance"])
+            PBU.get_pose(target_object_id),
+            grasp_orientation=grasp_orn_quat,
+            grasp_distance=params["grasp_distance"],
+            grasp_position=self.pos_offset
+        )
         traj= plan_skill_grasp(
             planner=self.planner,
             obstacles=self.obstacles,
@@ -694,7 +700,11 @@ class GraspDistDiscreteOrn(GraspDistOrn):
         pose_idx = int(np.argmax(params["grasp_orn"]))
         orn = SKILL_ORIENTATIONS[SKILL_ORIENTATION_NAMES[pose_idx]]
         grasp_pose = compute_grasp_pose(
-            PBU.get_pose(target_object_id), grasp_orientation=orn, grasp_distance=params["grasp_distance"])
+            PBU.get_pose(target_object_id),
+            grasp_orientation=orn,
+            grasp_distance=params["grasp_distance"],
+            grasp_position=self.pos_offset
+        )
 
         traj= plan_skill_grasp(
             planner=self.planner,
@@ -748,7 +758,7 @@ class GraspTopPos(GraspDistOrn):
             object_frame=PBU.get_pose(target_object_id),
             grasp_orientation=orn,
             grasp_distance=0,
-            grasp_position=params["grasp_pos"]
+            grasp_position=params["grasp_pos"] + self.pos_offset
         )
 
         traj = plan_skill_grasp(
