@@ -416,10 +416,10 @@ class KitchenDualAP(KitchenAP):
             num_beads[i, 1] = len(
                 EU.objects_center_in_container(self.objects["faucet_tea"].beads, container_id=o.body_id)
             )
-            coffee_beads = EU.objects_center_in_container(self.objects["coffee_machine"].beads, container_id=o.body_id)
+            coffee_beans = EU.objects_center_in_container(self.objects["faucet_coffee"].beads, container_id=o.body_id)
             if o.body_id == self.objects["coffee_machine"].body_id:
-                coffee_beads = [c for c in coffee_beads if PBU.get_pose(c)[0][2] > self.objects["coffee_machine"].get_position()[2] - 0.05]
-            num_beads[i, 1] = len(coffee_beads)
+                coffee_beans = [c for c in coffee_beans if PBU.get_pose(c)[0][2] > self.objects["coffee_machine"].get_position()[2] - 0.05]
+            num_beads[i, 1] = len(coffee_beans)
 
         obs = dict(
             num_beads=num_beads
@@ -435,9 +435,9 @@ class KitchenDualAP(KitchenAP):
         num_tea_in_mug1 = len(EU.objects_center_in_container(
             self.objects["faucet_tea"].beads, self.objects["mug1"].body_id))
 
-        coffee_beads = EU.objects_center_in_container(self.objects["coffee_machine"].beads, container_id=self.objects["coffee_machine"].body_id)
-        coffee_beads = [c for c in coffee_beads if PBU.get_pose(c)[0][2] > self.objects["coffee_machine"].get_position()[2] - 0.05]
-        num_beans_in_coffee_machine = len(coffee_beads)
+        coffee_beads = EU.objects_center_in_container(self.objects["faucet_coffee"].beads, container_id=self.objects["coffee_machine"].body_id)
+        coffee_beads_in_machine = [c for c in coffee_beads if PBU.get_pose(c)[0][2] > self.objects["coffee_machine"].get_position()[2] - 0.05]
+        num_beans_in_coffee_machine = len(coffee_beads_in_machine)
 
         successes = {
             "fill_mug1_coffee": num_coffee_in_mug1 >= 3,
@@ -455,7 +455,7 @@ class KitchenDualAP(KitchenAP):
 
     def _sample_task(self):
         self.target_skill = np.random.choice(["filled_coffee", "filled_tea"])
-        # self.target_skill = "filled_tea"
+        # self.target_skill = "filled_coffee"
         self._task_spec = np.array([self.skill_lib.name_to_skill_index(self.target_skill), self.objects.names.index("mug1")])
 
     def _create_objects(self):
