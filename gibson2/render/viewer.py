@@ -311,6 +311,20 @@ class Viewer:
                     dy = (y - self._mouse_iy) / 500.0
                     self.move_constraint_z(dy)
 
+    def reset(self):
+        self.px = 0
+        self.py = 0
+        self.pz = 1.2
+        self.theta = 0
+        self.phi = 0
+        self.view_direction = np.array([np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(
+                            self.phi), np.sin(self.phi)])
+        self.left_down = False
+        self.right_down = False
+        self.middle_down = False
+        self.remove_constraint()
+
+
     def update(self):
         camera_pose = np.array([self.px, self.py, self.pz])
         if not self.renderer is None:
@@ -466,7 +480,9 @@ class Viewer:
                 self.middle_down = False
                 self.right_down = False
                 self.manipulation_mode = True
-
+        elif q == ord('l'):
+            # reset
+            self.reset()
         if self.recording and not self.pause_recording:
             cv2.imwrite(os.path.join(self.video_folder, '{:05d}.png'.format(self.frame_idx)),
                         (frame * 255).astype(np.uint8))
