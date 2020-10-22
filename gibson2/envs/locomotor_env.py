@@ -4,6 +4,7 @@ from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.robots.turtlebot_robot import Turtlebot
 from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, cartesian_to_polar
 from gibson2.envs.env_base import BaseEnv
+from gibson2.tasks.room_rearrangement_task import RoomRearrangementTask
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -15,6 +16,7 @@ import os
 import pybullet as p
 import time
 import logging
+from IPython import embed
 
 
 class NavigationEnv(BaseEnv):
@@ -110,6 +112,11 @@ class NavigationEnv(BaseEnv):
             'texture_randomization_freq', None)
         self.object_randomization_freq = self.config.get(
             'object_randomization_freq', None)
+
+        if self.config['task'] == 'room_rearrangement':
+            self.task = RoomRearrangementTask(self.config)
+        else:
+            self.task = None
 
     def load_observation_space(self):
         """
@@ -611,8 +618,14 @@ class NavigationEnv(BaseEnv):
 
         state = self.get_state(collision_links)
         info = {}
-        reward, info = self.get_reward(collision_links, action, info)
-        done, info = self.get_termination(collision_links, action, info)
+        if self.config['task'] in ['room_rearrangement']:
+            reward, info = self.task.get_reward(
+                self, collision_links, action, info)
+            done, info = self.task.get_termination(
+                self, collision_links, action, info)
+        else:
+            reward, info = self.get_reward(collision_links, action, info)
+            done, info = self.get_termination(collision_links, action, info)
         self.step_visualization()
 
         if done and self.automatic_reset:
@@ -627,8 +640,6 @@ class NavigationEnv(BaseEnv):
         reset_success = False
         max_trials = 100
 
-        # move robot away from the scene
-        self.robots[0].set_position([0.0, 0.0, 100.0])
         # cache pybullet state
         state_id = p.saveState()
         for _ in range(max_trials):
@@ -764,13 +775,22 @@ class NavigationEnv(BaseEnv):
         Reset episode
         """
         self.randomize_domain()
-        self.reset_agent()
+        # move robot away from the scene
+        self.robots[0].set_position([100.0, 100.0, 100.0])
+        if self.config['task'] in ['room_rearrangement']:
+            self.task.reset_scene(self)
+            self.task.reset_agent(self)
+        else:
+            self.reset_agent()
         self.simulator.sync()
         state = self.get_state()
-        if self.reward_type == 'l2':
-            self.potential = self.get_l2_potential()
-        elif self.reward_type == 'geodesic':
-            self.potential = self.get_geodesic_potential()
+        if self.config['task'] in ['room_rearrangement']:
+            pass
+        else:
+            if self.reward_type == 'l2':
+                self.potential = self.get_l2_potential()
+            elif self.reward_type == 'geodesic':
+                self.potential = self.get_geodesic_potential()
         self.reset_variables()
         self.step_visualization()
 
@@ -843,6 +863,8 @@ class NavigationRandomEnv(NavigationEnv):
         self.floor_num = self.scene.get_random_floor()
 
         if self.scene.is_interactive:
+            # move robot away from the scene
+            self.robots[0].set_position([100.0, 100.0, 100.0])
             # reset scene objects
             self.scene.reset_scene_objects()
         else:
@@ -991,6 +1013,8 @@ class NavigationRandomEnvSim2Real(NavigationRandomEnv):
         self.floor_num = self.scene.get_random_floor()
 
         if self.scene.is_interactive:
+            # move robot away from the scene
+            self.robots[0].set_position([100.0, 100.0, 100.0])
             # reset scene objects
             self.scene.reset_scene_objects()
         else:

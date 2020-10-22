@@ -432,58 +432,86 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # hidden API for debugging purposes
         self.first_n_objects = first_n_objects
 
-    def open_all_doors(self):
-        if 'door' not in self.objects_by_category:
-            return
-        state_id = p.saveState()
-        for obj in self.objects_by_category['door']:
-            # assume door only has one sub URDF
-            body_id = obj.body_ids[0]
-            for joint_id in range(p.getNumJoints(body_id)):
-                j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
-                j_type = p.getJointInfo(body_id, joint_id)[2]
-                parent_idx = p.getJointInfo(body_id, joint_id)[-1]
-                if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                    continue
-                # this is the continuous joint
-                if j_low >= j_high:
-                    continue
-                # this is the door knob joint
-                if parent_idx != 0:
-                    continue
-                # try to set the door to from 90 to 0 degrees until no collision
-                for j_pos in np.arange(0.0, j_high + np.pi / 36.0, step=np.pi / 36.0):
-                    p.restoreState(state_id)
-                    p.resetJointState(body_id, joint_id, j_high - j_pos)
+    def open_one_obj(self, body_id, mode='random'):
+        body_joint_pairs = []
+        for joint_id in range(p.getNumJoints(body_id)):
+            # cache current physics state
+            state_id = p.saveState()
+
+            j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
+            j_type = p.getJointInfo(body_id, joint_id)[2]
+            parent_idx = p.getJointInfo(body_id, joint_id)[-1]
+            if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                continue
+            # this is the continuous joint
+            if j_low >= j_high:
+                continue
+            # this is the 2nd degree joint, ignore for now
+            if parent_idx != 0:
+                continue
+
+            if mode == 'max':
+                # try to set the joint to the maxr value until no collision
+                # step_size is 5cm for prismatic joint and 5 degrees for revolute joint
+                step_size = np.pi / 36.0 if j_type == p.JOINT_REVOLUTE else 0.05
+                for j_pos in np.arange(0.0, j_high + step_size, step=step_size):
+                    p.resetJointState(
+                        body_id, joint_id, j_high - j_pos)
                     p.stepSimulation()
                     has_collision = self.check_collision(
                         body_a=body_id, link_a=joint_id)
+                    p.restoreState(state_id)
                     if not has_collision:
-                        p.removeState(state_id)
-                        state_id = p.saveState()
+                        p.resetJointState(body_id, joint_id, j_high - j_pos)
                         break
-        p.removeState(state_id)
 
-    def close_all_doors(self):
-        if 'door' not in self.objects_by_category:
-            return
-        for obj in self.objects_by_category['door']:
-            # assume door only has one sub URDF
-            body_id = obj.body_ids[0]
-            for joint_id in range(p.getNumJoints(body_id)):
-                j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
-                j_type = p.getJointInfo(body_id, joint_id)[2]
-                parent_idx = p.getJointInfo(body_id, joint_id)[-1]
-                if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                    continue
-                # this is the continuous joint
-                if j_low >= j_high:
-                    continue
-                # this is the door knob joint
-                if parent_idx != 0:
-                    continue
-                # set door position to 0.0
-                p.resetJointState(body_id, joint_id, 0.0)
+            elif mode == 'random':
+                # try to set the joint to a random value until no collision
+                reset_success = False
+                # make 10 attemps
+                for _ in range(10):
+                    j_pos = np.random.uniform(j_low, j_high)
+                    p.resetJointState(
+                        body_id, joint_id, j_pos)
+                    p.stepSimulation()
+                    has_collision = self.check_collision(
+                        body_a=body_id, link_a=joint_id)
+                    p.restoreState(state_id)
+                    if not has_collision:
+                        p.resetJointState(body_id, joint_id, j_pos)
+                        reset_success = True
+                        break
+
+                # if none of the random values work, set it to 0.0 by default
+                if not reset_success:
+                    p.resetJointState(body_id, joint_id, 0.0)
+            else:
+                assert False
+
+            body_joint_pairs.append((body_id, joint_id))
+            # Remove cached state to avoid memory leak.
+            p.removeState(state_id)
+
+        return body_joint_pairs
+
+    def open_all_objs_by_category(self, category, mode='random'):
+        body_joint_pairs = []
+        if category not in self.objects_by_category:
+            return body_joint_pairs
+        for obj in self.objects_by_category[category]:
+            for body_id in obj.body_ids:
+                body_joint_pairs += self.open_one_obj(body_id, mode=mode)
+        return body_joint_pairs
+
+    def open_all_objs_by_categories(self, categories, mode='random'):
+        body_joint_pairs = []
+        for category in categories:
+            body_joint_pairs += self.open_all_objs_by_category(
+                category, mode=mode)
+        return body_joint_pairs
+
+    def open_all_doors(self):
+        return self.open_all_objs_by_category('door', mode='max')
 
     def load(self):
         # Load all the objects
