@@ -23,6 +23,7 @@ SKILL_ORIENTATION_NAMES = list(SKILL_ORIENTATIONS.keys())
 ALL_ORIENTATIONS = OrderedDict(SKILL_ORIENTATIONS)
 
 ALL_ORIENTATIONS["backward"] = T.quaternion_from_euler(np.pi / 2, 0, 0)
+ALL_ORIENTATIONS["top_left"] = T.quaternion_from_euler(np.pi / 2, np.pi / 2, 0)
 
 DRAWER_GRASP_ORN = T.quaternion_from_euler(-np.pi / 2, 0, np.pi)
 
@@ -399,7 +400,7 @@ class SkillParamsContinuous(SkillParams):
         else:
             num_samples = 1
 
-        assert mode in ['uniform', 'normal']
+        assert mode in ['uniform', 'normal', 'grid']
         if low is not None:
             low = np.array(low)
             assert low.shape == self.sample_shape
@@ -412,7 +413,7 @@ class SkillParamsContinuous(SkillParams):
             high = self.high
         sample = None
         if sampler_fn is not None:
-            sample = np.stack([sampler_fn() for _ in range(num_samples)])
+            sample = sampler_fn(num_samples)
         elif choices is not None:
             for c in choices:
                 assert np.array(c).shape == self.sample_shape
@@ -754,6 +755,59 @@ class GraspTopPos(GraspDistOrn):
         assert len(params) == self.action_dimension
         params = self.deserialize_skill_param_array(params)
         orn = SKILL_ORIENTATIONS["top"]
+        grasp_pose = compute_grasp_pose(
+            object_frame=PBU.get_pose(target_object_id),
+            grasp_orientation=orn,
+            grasp_distance=0,
+            grasp_position=params["grasp_pos"] + self.pos_offset
+        )
+
+        traj = plan_skill_grasp(
+            planner=self.planner,
+            obstacles=self.obstacles,
+            grasp_pose=grasp_pose,
+            joint_resolutions=self.joint_resolutions,
+            lift_height=self.lift_height,
+            lift_speed=self.lift_speed,
+            grasp_speed=self.grasp_speed,
+            reach_distance=self.reach_distance
+        )
+        return traj
+
+
+class GraspTopDiscreteOrnPos(GraspDistOrn):
+    """Top-down grasp with parameterized relative positions"""
+    @property
+    def orientations(self):
+        return OrderedDict([(k, ALL_ORIENTATIONS[k]) for k in ["top", "top_left"]])
+
+    def get_default_params(self):
+        return OrderedDict(
+            grasp_pos=SkillParamsContinuous(size=3),
+            grasp_orn=SkillParamsDiscrete(size=len(self.orientations))
+        )
+
+    def skill_params_to_string(self, params, target_object_id):
+        msg = Skill.skill_params_to_string(self, params, target_object_id)
+        params = self.deserialize_skill_param_array(params)
+        orn_name = list(self.orientations.keys())[int(params["grasp_orn"].argmax())]
+        with np.printoptions(precision=4, suppress=True):
+            param_str = "pos={}, orn={}".format(params["grasp_pos"], orn_name)
+        return msg + " " + param_str
+
+    def skill_params_to_pose(self, params, target_object_id):
+        params = self.deserialize_skill_param_array(params)
+        rel_pos = params["grasp_pos"]
+        obj_pos = PBU.get_pose(target_object_id)[0]
+        orn_name = list(self.orientations.keys())[int(params["grasp_orn"].argmax())]
+        eef_pose = (rel_pos + np.array(obj_pos), self.orientations[orn_name])
+        return eef_pose
+
+    def plan(self, params, target_object_id=None):
+        assert len(params) == self.action_dimension
+        params = self.deserialize_skill_param_array(params)
+        orn_name = list(self.orientations.keys())[int(params["grasp_orn"].argmax())]
+        orn = self.orientations[orn_name]
         grasp_pose = compute_grasp_pose(
             object_frame=PBU.get_pose(target_object_id),
             grasp_orientation=orn,

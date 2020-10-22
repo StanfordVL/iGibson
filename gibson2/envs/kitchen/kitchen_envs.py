@@ -280,9 +280,10 @@ class Kitchen(BaseEnv):
 
 
 class KitchenAP(Kitchen):
-    def _get_pour_pos(self):
-        pour_delta = np.array([0, 0, 0.5])
-        pour_delta[:2] += (np.random.rand(2) * 0.07 + 0.03) * np.random.choice([-1, 1], size=2)
+    def _get_pour_pos(self, ns):
+        pour_delta = np.zeros((ns, 3))
+        pour_delta[:, 2] = 0.5
+        pour_delta[:, :2] += (np.random.rand(ns, 2) * 0.07 + 0.03) * np.random.choice([-1, 1], size=(ns, 2))
         return pour_delta
 
     def is_success_all_tasks(self):
@@ -448,8 +449,10 @@ class KitchenDualAP(KitchenAP):
         }
         if self.target_skill == "filled_coffee":
             successes["task"] = successes["fill_mug1_coffee"]
-        else:
+        elif self.target_skill == "filled_tea":
             successes["task"] = successes["fill_mug1_tea"]
+        else:
+            raise NotImplementedError
 
         return successes
 
