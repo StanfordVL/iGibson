@@ -45,6 +45,20 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+def init_scene(scene):
+    body_joint_pairs = scene.open_all_objs_by_categories(
+            ['bottom_cabinet',
+             'bottom_cabinet_no_top',
+             'top_cabinet',
+             'dishwasher',
+             'fridge',
+             'microwave',
+             'oven',
+             'washer'
+             'dryer',
+             'door',
+             ], mode='random')
+
 class InteractionSampler(Viewer):
     def __init__(self,
                  simulator,
@@ -164,6 +178,7 @@ def main():
             object_randomization=args.object_rand)
 
     s.import_ig_scene(scene)
+    init_scene(scene)
 
     save_dir = os.path.join(get_ig_scene_path(args.scene), args.save_dir)
     os.makedirs(save_dir, exist_ok=True)
@@ -231,24 +246,25 @@ def main():
 
             interaction_pre = {'joint':None, 
                     'link':get_link_pose(object_id, link_id)}
-            fixed = True
+            fixed = False # if it's the base link, we use p2p constraint
             if link_id != -1:
                 joint_info = get_joint_info(object_id, link_id)
                 joint_info['pos'] = p.getJointState(object_id, link_id)[0]
                 interaction_pre['joint'] = joint_info
-                if joint_info['type'] == p.JOINT_REVOLUTE:
-                    fixed = False
+                if joint_info['type'] != p.JOINT_REVOLUTE:
+                    # only for revolute joint, we use p2p constraint
+                    fixed = True 
             print(interaction_pre)
 
             # interact pix_loc
             interactor.create_constraint(pix_x, pix_y, fixed)
-            hit_target = (np.array(hit_pos) + 
+            hit_target = (np.array(hit_pos) - 
                           np.array(hit_normal) * INTERACTION_TARGET)
             interactor.update()
-            time.sleep(1)
+            time.sleep(0.5)
             interactor.move_constraint_3d(hit_target)
             interactor.update()
-            time.sleep(1)
+            time.sleep(0.5)
             interactor.remove_constraint()
 
             # render result after interaction:
