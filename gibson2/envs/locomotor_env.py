@@ -628,7 +628,7 @@ class NavigationEnv(BaseEnv):
         max_trials = 100
 
         # move robot away from the scene
-        self.robots[0].set_position([0.0, 0.0, 100.0])
+        self.robots[0].set_position([100.0, 100.0, 100.0])
         # cache pybullet state
         state_id = p.saveState()
         for _ in range(max_trials):
@@ -843,6 +843,8 @@ class NavigationRandomEnv(NavigationEnv):
         self.floor_num = self.scene.get_random_floor()
 
         if self.scene.is_interactive:
+            # move robot away from the scene
+            self.robots[0].set_position([100.0, 100.0, 100.0])
             # reset scene objects
             self.scene.reset_scene_objects()
         else:
@@ -991,6 +993,8 @@ class NavigationRandomEnvSim2Real(NavigationRandomEnv):
         self.floor_num = self.scene.get_random_floor()
 
         if self.scene.is_interactive:
+            # move robot away from the scene
+            self.robots[0].set_position([100.0, 100.0, 100.0])
             # reset scene objects
             self.scene.reset_scene_objects()
         else:
