@@ -29,8 +29,19 @@ class RoomRearrangementTask(BaseTask):
             }]
         }
 
+    def get_task_potential(self):
+        task_potential = 0.0
+        for (body_id, joint_id) in self.body_joint_pairs:
+            j_type = p.getJointInfo(body_id, joint_id)[2]
+            j_pos = p.getJointState(body_id, joint_id)[0]
+            scale = self.prismatic_joint_reward_scale \
+                if j_type == p.JOINT_PRISMATIC \
+                else self.revolute_joint_reward_scale
+            task_potential += scale * j_pos
+        return task_potential
+
     def reset_scene(self, env):
-        body_joint_pairs = env.scene.open_all_objs_by_categories(
+        self.body_joint_pairs = env.scene.open_all_objs_by_categories(
             ['bottom_cabinet',
              'bottom_cabinet_no_top',
              'top_cabinet',
@@ -41,16 +52,7 @@ class RoomRearrangementTask(BaseTask):
              'washer'
              'dryer',
              ], mode='random')
-        self.body_joint_pos = {}
-        self.task_potential = 0.0
-        for (body_id, joint_id) in body_joint_pairs:
-            j_type = p.getJointInfo(body_id, joint_id)[2]
-            j_pos = p.getJointState(body_id, joint_id)[0]
-            self.body_joint_pos[(body_id, joint_id, j_type)] = j_pos
-            scale = self.prismatic_joint_reward_scale \
-                if j_type == p.JOINT_PRISMATIC \
-                else self.revolute_joint_reward_scale
-            self.task_potential += scale * j_pos
+        self.task_potential = self.get_task_potential()
 
     def sample_initial_pose(self, env):
         initial_pos_regs = self.initial_pos_region[env.scene.scene_id]
@@ -90,13 +92,7 @@ class RoomRearrangementTask(BaseTask):
             item for sublist in collision_links for item in sublist]
         env.collision_step += int(len(collision_links_flatten) > 0)
 
-        new_task_potential = 0.0
-        for (body_id, joint_id, j_type) in self.body_joint_pos:
-            j_pos = p.getJointState(body_id, joint_id)[0]
-            scale = self.prismatic_joint_reward_scale \
-                if j_type == p.JOINT_PRISMATIC \
-                else self.revolute_joint_reward_scale
-            new_task_potential += scale * j_pos
+        new_task_potential = self.get_task_potential()
         reward = self.task_potential - new_task_potential
         self.task_potential = new_task_potential
 
