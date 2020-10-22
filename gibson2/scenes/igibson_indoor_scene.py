@@ -485,6 +485,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 # if none of the random values work, set it to 0.0 by default
                 if not reset_success:
                     p.resetJointState(body_id, joint_id, 0.0)
+            elif mode == 'zero':
+                p.resetJointState(body_id, joint_id, 0.0)
             else:
                 assert False
 
