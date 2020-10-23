@@ -129,18 +129,16 @@ class InteractionSampler(Viewer):
         self.renderer.set_camera(
             camera_pose, camera_pose + self.view_direction, self.up)
         outputs = self.renderer.render(modes=self.modes)
-        frame = cv2.cvtColor(np.concatenate(outputs, axis=1),
-                                 cv2.COLOR_RGB2BGR)
         if not self.headless:
-            text_color = (0, 0, 0)
-            cv2.putText(frame, "px {:1.1f} py {:1.1f} pz {:1.1f}".format(
-                        self.px, self.py, self.pz), (10, 20),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, 
-                        cv2.LINE_AA)
-            cv2.putText(frame, "[{:1.1f} {:1.1f} {:1.1f}]".format(
-                        *self.view_direction), (10, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, 
-                        cv2.LINE_AA)
+            colors = np.array([(241,187,123),(253,100,103),
+                      (91,26,24),(214,114,54),
+                      (230,160,196),(198,205,247),
+                      (216,164,153),(114,148,212)])
+            seg = (outputs[-1][:,:,0] * 255).astype(int)
+            seg_color = colors[seg.reshape(-1) % len(colors)].astype(float) / 255.
+            outputs[-1][:,:,:-1] = seg_color.reshape((*seg.shape, 3))
+            frame = cv2.cvtColor(np.concatenate(outputs, axis=1),
+                                 cv2.COLOR_RGB2BGR)
             cv2.imshow('ExternalView', frame)
             cv2.waitKey(1)
         return outputs
@@ -245,7 +243,8 @@ def main():
             object_id, link_id, _, hit_pos, hit_normal = res[0]
 
             interaction_pre = {'joint':None, 
-                    'link':get_link_pose(object_id, link_id)}
+                    'link':get_link_pose(object_id, link_id),
+                    'constraint':tuple(hit_pos)}
             fixed = False # if it's the base link, we use p2p constraint
             if link_id != -1:
                 joint_info = get_joint_info(object_id, link_id)
@@ -270,7 +269,8 @@ def main():
             # render result after interaction:
             imgs_post = interactor.update()
             interaction_post = {'joint':None, 
-                    'link':get_link_pose(object_id, link_id)}
+                    'link':get_link_pose(object_id, link_id),
+                    'constraint':tuple(hit_target)}
             if link_id != -1:
                 joint_info = get_joint_info(object_id, link_id)
                 joint_info['pos'] = p.getJointState(object_id, link_id)[0]
