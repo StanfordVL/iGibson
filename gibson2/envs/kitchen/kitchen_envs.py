@@ -440,7 +440,7 @@ class KitchenDualAP(KitchenAP):
         coffee_beads_in_machine = [c for c in coffee_beads if PBU.get_pose(c)[0][2] > self.objects["coffee_machine"].get_position()[2] - 0.05]
         num_beans_in_coffee_machine = len(coffee_beads_in_machine)
 
-        successes = {
+        all_successes = {
             "fill_mug1_coffee": num_coffee_in_mug1 >= 3,
             "fill_mug1_beans": num_beans_in_mug1 >= 3,
             "fill_mug1_tea": num_tea_in_mug1 >= 3,
@@ -448,13 +448,19 @@ class KitchenDualAP(KitchenAP):
             "mug1_graspable": mug1_graspable
         }
         if self.target_skill == "filled_coffee":
+            successes = dict([(k, all_successes[k]) for k in all_successes if k in ["fill_mug1_coffee", "fill_mug1_beans", "fill_coffee_machine", "mug1_graspable"]])
             successes["task"] = successes["fill_mug1_coffee"]
         elif self.target_skill == "filled_tea":
+            successes = dict([(k, all_successes[k]) for k in all_successes if k in ["fill_mug1_tea", "mug1_graspable"]])
             successes["task"] = successes["fill_mug1_tea"]
         else:
             raise NotImplementedError
 
         return successes
+
+    def set_goal(self, task_specs):
+        self._task_spec = task_specs
+        self.target_skill = self.skill_lib.skill_names[task_specs[0]]
 
     def _sample_task(self):
         self.target_skill = np.random.choice(["filled_coffee", "filled_tea"])

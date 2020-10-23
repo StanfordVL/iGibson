@@ -134,6 +134,10 @@ class SimpleToolAP(SimpleTool):
         )
         self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
 
+    def set_goal(self, task_specs):
+        self._task_spec = task_specs
+        self.target_object = self.objects.names[task_specs[1]]
+
     def _sample_task(self):
         self.target_object = np.random.choice(["cube1", "cube2"])
         # self.target_object = "cube1"
@@ -271,7 +275,8 @@ class ToolAP(SimpleToolAP):
                     start_pos=skills.SkillParamsContinuous(low=[0.55, -0.05, -0.01], high=[0.65, 0.05, 0.01]),
                     move_pos=skills.SkillParamsContinuous(low=[-0.45, 0, 0], high=[-0.35, 0, 0]),
                     start_orn=skills.SkillParamsDiscrete(size=1)
-                )
+                ),
+                joint_resolutions=(0.05, 0.05, 0.05, np.pi / 32, np.pi / 32, np.pi / 32)
             ),
             skills.ConditionSkill(
                 name="on_target",
@@ -289,7 +294,7 @@ class ToolAP(SimpleToolAP):
             )
         )
         self.skill_lib = skills.SkillLibrary(self, self.planner, obstacles=self.obstacles, skills=lib_skills)
-        PBU.draw_aabb(aabb=[[-0.1, 0.1, 0.7], [0.5, 0.4, 0.7]])
+        # PBU.draw_aabb(aabb=[[-0.1, 0.1, 0.7], [0.5, 0.4, 0.7]])
 
 
 class VizToolAP(ToolAP):
@@ -330,7 +335,6 @@ class VizToolAP(ToolAP):
                     "grasp", num_samples=num_samples, grasp_pos=dict(low=[-0.0, -0.0, 0.03], high=[0.0, 0.0, 0.05]))
         else:
             return lambda: self.skill_lib.sample_serialized_skill_params(skill_name, num_samples=num_samples)
-
 
 
 class SimpleToolStackAP(SimpleToolAP):
@@ -389,3 +393,101 @@ class SimpleToolStackAP(SimpleToolAP):
             "cube2"
         )]
         return skeleton
+
+
+class ToolStackAP(ToolAP):
+    @property
+    def black_listed_skills(self):
+        return np.array([
+            (self.skill_lib.name_to_skill_index("on_target"), self.objects.names.index("cube1")),
+            (self.skill_lib.name_to_skill_index("on_target"), self.objects.names.index("cube2"))
+        ])
+
+    def _sample_task(self):
+        self.target_object = "cube2"
+        self._task_spec = np.array([self.skill_lib.name_to_skill_index("on_cube1_on_target"),
+                                    self.objects.names.index(self.target_object)])
+
+    def is_success_all_tasks(self):
+        conds = dict(
+            cube2_on_cube1=PBU.is_center_placed_on(self.objects["cube2"].body_id, self.objects["cube1"].body_id),
+            cube1_on_target=PBU.is_center_placed_on(self.objects["cube1"].body_id, self.objects["target"].body_id),
+            cube1_graspable=self.objects["cube1"].get_position()[0] > self.eef_x_limit,
+            cube2_graspable=not PBU.is_center_placed_on(self.objects["cube2"].body_id, self.fixtures["tube"].body_id, -1),
+        )
+        success = conds
+        success["task"] = success["cube2_on_cube1"] and success["cube1_on_target"]
+        return success
+
+    def get_task_skeleton(self):
+        skeleton = [(
+            self.get_constrained_skill_param_sampler("grasp", "tool"),
+            "tool"
+        ), (
+            self.get_constrained_skill_param_sampler("hook", "cube1"),
+            "cube1"
+        ), (
+            self.get_constrained_skill_param_sampler("grasp", "cube1"),
+            "cube1"
+        ), (
+            self.get_constrained_skill_param_sampler("place", "target"),
+            "target"
+        ), (
+            self.get_constrained_skill_param_sampler("grasp", "tool"),
+            "tool"
+        ), (
+            self.get_constrained_skill_param_sampler("poke", "cube2"),
+            "cube2"
+        ), (
+            self.get_constrained_skill_param_sampler("grasp", "cube2"),
+            "cube2"
+        ), (
+            self.get_constrained_skill_param_sampler("place", "cube1"),
+            "cube1"
+        ), (
+            lambda: self.skill_lib.sample_serialized_skill_params("on_cube1_on_target"),
+            "cube2"
+        )]
+        return skeleton
+
+
+class ToolStackEasyAP(ToolStackAP):
+    def get_constrained_skill_param_sampler(self, skill_name, object_name, num_samples=None):
+        if skill_name == "grasp" and object_name == "tool":
+            # return lambda: self.skill_lib.sample_serialized_skill_params("grasp", num_samples=num_samples)
+            return lambda: self.skill_lib.sample_serialized_skill_params(
+                "grasp", num_samples=num_samples, grasp_pos=dict(low=[-0.2, -0.1, 0.03], high=[0.3, 0.1, 0.05])
+            )
+        elif skill_name == "poke":
+            return lambda: self.skill_lib.sample_serialized_skill_params(
+                "poke", num_samples=num_samples,
+                start_pos=dict(low=[0.55, -0.01, -0.01], high=[0.65, 0.01, 0.01])
+            )
+        elif skill_name == "grasp" and object_name in ["cube1", "cube2"]:
+            return lambda: self.skill_lib.sample_serialized_skill_params(
+                    "grasp", num_samples=num_samples, grasp_pos=dict(low=[0, 0, 0.04], high=[0, 0, 0.05]))
+        else:
+            return lambda: self.skill_lib.sample_serialized_skill_params(skill_name, num_samples=num_samples)
+
+
+class ToolStackMediumAP(ToolStackAP):
+    def get_constrained_skill_param_sampler(self, skill_name, object_name, num_samples=None):
+        if skill_name == "poke":
+            return lambda: self.skill_lib.sample_serialized_skill_params(
+                "poke", num_samples=num_samples,
+                start_pos=dict(low=[0.55, -0.01, -0.01], high=[0.65, 0.01, 0.01])
+            )
+        elif skill_name == "grasp" and object_name in ["cube1", "cube2"]:
+            return lambda: self.skill_lib.sample_serialized_skill_params(
+                    "grasp", num_samples=num_samples, grasp_pos=dict(low=[0, 0, 0.04], high=[0, 0, 0.05]))
+        else:
+            return lambda: self.skill_lib.sample_serialized_skill_params(skill_name, num_samples=num_samples)
+
+
+class ToolStackMediumHardAP(ToolStackAP):
+    def get_constrained_skill_param_sampler(self, skill_name, object_name, num_samples=None):
+        if skill_name == "grasp" and object_name in ["cube1", "cube2"]:
+            return lambda: self.skill_lib.sample_serialized_skill_params(
+                    "grasp", num_samples=num_samples, grasp_pos=dict(low=[0, 0, 0.04], high=[0, 0, 0.05]))
+        else:
+            return lambda: self.skill_lib.sample_serialized_skill_params(skill_name, num_samples=num_samples)

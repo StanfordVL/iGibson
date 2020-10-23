@@ -16,7 +16,8 @@ import gibson2.envs.kitchen.plan_utils as PU
 
 
 def env_factory(name, **kwargs):
-    from gibson2.envs.kitchen.tool_envs import SimpleToolAP, SimpleToolHardAP, SimpleToolStackAP, ToolAP, VizToolAP
+    from gibson2.envs.kitchen.tool_envs import SimpleToolAP, SimpleToolHardAP, SimpleToolStackAP, ToolAP, VizToolAP, \
+        ToolStackAP, ToolStackEasyAP, ToolStackMediumAP, ToolStackMediumHardAP
     from gibson2.envs.kitchen.kitchen_envs import KitchenDrawerAP, KitchenAP, TablePour, KitchenEasyAP, KitchenDualAP
     if name.endswith("Skill"):
         name = name[:-5]
