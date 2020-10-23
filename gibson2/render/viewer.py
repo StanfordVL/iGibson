@@ -114,7 +114,7 @@ class Viewer:
             1])
         position_cam[:3] *= ray_distance
 
-        print(position_cam)
+        # print(position_cam)
         position_world = np.linalg.inv(self.renderer.V).dot(position_cam)
         position_eye = camera_pose
         res = p.rayTest(position_eye, position_world[:3])
@@ -131,7 +131,7 @@ class Viewer:
 
             child_frame_pos, child_frame_orn = p.multiplyTransforms(*p.invertTransform(link_pos, link_orn), hit_pos,
                                                                     [0, 0, 0, 1])
-            print(child_frame_pos)
+            # print(child_frame_pos)
             self.constraint_marker.set_position(hit_pos)
             self.constraint_marker2.set_position(hit_pos)
             self.dist = np.linalg.norm(np.array(hit_pos) - camera_pose)

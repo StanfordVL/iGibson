@@ -22,18 +22,25 @@ from gibson2.utils.utils import rotate_vector_2d
 import time
 import math
 import pdb
+import json
+from tqdm import tqdm
 
 FETCH_HEIGHT=1.08
 INTERACTION_TARGET=0.3
+DEPTH_HIGH = 20.
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--scene', type=str, 
                         help='Name of the scene in the iG Dataset')
     parser.add_argument('--save_dir', type=str, help='Directory to save the frames.',
-                        default='misc')
+                        default='misc/interaction_pretrain')
     parser.add_argument('--resolution', type=int, default=1024, 
                         help='Image resolution.')
+    parser.add_argument('--samples', type=int, default=10, 
+                        help='number of sampled locations')
+    parser.add_argument('--interactions', type=int, default=20, 
+                        help='number of interactions')
     parser.add_argument('--seed', type=int, default=15, 
                         help='Random seed.')
     parser.add_argument('--domain_rand', dest='domain_rand',
@@ -129,13 +136,12 @@ class InteractionSampler(Viewer):
         return
 
     def update(self):
-        for _ in range(10):
-            self.simulator.step()
         camera_pose = np.array([self.px, self.py, self.pz])
         self.renderer.set_camera(
             camera_pose, camera_pose + self.view_direction, self.up)
         outputs = self.renderer.render(modes=self.modes)
         if not self.headless:
+            # assume mode is rgb,3d,seg
             colors = np.array([(241,187,123),(253,100,103),
                       (91,26,24),(214,114,54),
                       (230,160,196),(198,205,247),
@@ -147,7 +153,25 @@ class InteractionSampler(Viewer):
                                  cv2.COLOR_RGB2BGR)
             cv2.imshow('ExternalView', frame)
             cv2.waitKey(1)
-        return outputs
+        return_vals = dict(zip(self.modes, outputs))
+        if 'rgb' in return_vals:
+            return_vals['rgb'] = Image.fromarray(
+                    (return_vals['rgb'][:,:,:3]*255).astype(np.uint8))
+        if '3d' in return_vals:
+            depth = -return_vals['3d'][:,:,2:3]
+            depth[depth > DEPTH_HIGH] = DEPTH_HIGH
+            depth[depth < 0.] = 0.
+            return_vals['3d'] = Image.fromarray(
+                    ((depth / DEPTH_HIGH) * np.iinfo(np.uint16).max).astype(np.uint16),
+                    'I;16')
+        if 'seg' in return_vals:
+            return_vals['seg'] = Image.fromarray(
+                    (return_vals['seg'][:,:,0]*255).astype(np.uint8))
+        cam = {}
+        cam['cam_pose'] = (self.px, self.py, self.pz)
+        cam['cam_dir'] = tuple(self.view_direction)
+        cam['cam_up'] = tuple(self.up)
+        return return_vals,cam
 
 
 def main():
@@ -191,7 +215,6 @@ def main():
         s.step()
     s.sync()
 
-    interaction_steps = 20
 
     interactor = InteractionSampler(
                  simulator=s,
@@ -199,13 +222,12 @@ def main():
                  initial_pos=[0, 0, FETCH_HEIGHT],
                  initial_view_direction=[1, 0, 0],
                  initial_up=[0, 0, 1],
-                 headless=False)
+                 headless=True)
 
     random.seed(8)
     np.random.seed(8)
-    samples = 1000
-    for i in range(samples):
-        if args.domain_rand and i % args.domain_rand_interval == 0:
+    for sample_i in tqdm(range(args.samples)):
+        if args.domain_rand and sample_i % args.domain_rand_interval == 0:
             scene.randomize_texture()
 
         # sample camera location
@@ -214,26 +236,21 @@ def main():
         lookat = np.random.random((2,)) + 1e-6
         lookat = lookat / np.linalg.norm(lookat)
 
-        # TODO: sample local camera variations
-        # augmented_poses = []
-
         recorded_data = [] 
         # interact for multiple steps
-        for _ in range(interaction_steps):
+        for _ in range(args.interactions):
             curr = {}
             # pre-render views
             interactor.set_pose([*standat, FETCH_HEIGHT],
                                 [*lookat, 0.])
-            curr['imgs_pre'] = interactor.update()
+
+            curr['imgs_pre'],curr['cam'] = interactor.update()
 
             # sample pixel location
             pix_x = math.floor(random.random() * s.renderer.width)
             pix_y = math.floor(random.random() * s.renderer.height)
             curr['interact_at'] = (pix_x, pix_y)
-            print('interacting at : {},{}'.format(pix_x, pix_y))
-
-            # # TODO: augment pixel locations in other views
-            # pix_loc_in_aug = tranform_pix_loc(pix_loc, augmented_poses)
+            # print('interacting at : {},{}'.format(pix_x, pix_y))
 
             # retrieve joint / link information
             res = interactor.raycast(pix_x, pix_y)
@@ -244,9 +261,11 @@ def main():
                 curr['imgs_post'] = None 
                 curr['interaction_pre']= None
                 curr['interaction_post']= None
+                curr['hit']= None
                 recorded_data.append(curr)
                 continue
             object_id, link_id, _, hit_pos, hit_normal = res[0]
+            curr['hit']= {'pos':tuple(hit_pos), 'normal':tuple(hit_normal)} 
             cam_back = interactor.world2cam(hit_pos)
 
             interaction_pre = {'joint':None, 
@@ -260,19 +279,20 @@ def main():
                 if joint_info['type'] != p.JOINT_REVOLUTE:
                     # only for revolute joint, we use p2p constraint
                     fixed = True 
-            print(interaction_pre)
 
             # interact pix_loc
             interactor.create_constraint(pix_x, pix_y, fixed,
                                          ray_distance=20.,max_force=60.)
+            s.step()
             hit_target = (np.array(hit_pos) - 
                           np.array(hit_normal) * INTERACTION_TARGET)
             interactor.move_constraint_3d(hit_target)
-            interactor.update()
+            for _ in range(20):
+                s.step()
             interactor.remove_constraint()
 
             # render result after interaction:
-            imgs_post = interactor.update()
+            curr['imgs_post'],_ = interactor.update()
             interaction_post = {'joint':None, 
                     'link':get_link_pose(object_id, link_id),
                     'constraint':tuple(hit_target)}
@@ -284,9 +304,24 @@ def main():
             curr['interaction_post']=interaction_post
             recorded_data.append(curr)
 
-        # TODO: save episode
-            
+        # save episode
+        episode_dir = os.path.join(save_dir, '{:04d}'.format(sample_i))
+        os.makedirs(episode_dir, exist_ok=True)
+        for i, step in enumerate(recorded_data):
+            save_images(step.pop('imgs_pre'), episode_dir, i, 'pre')
+            save_images(step.pop('imgs_post'), episode_dir, i, 'post')
+            with open(os.path.join(episode_dir, 
+                      'info_{:04d}.json'.format(i)), 'w') as fp:
+                json.dump(step,fp)
     s.disconnect()
+
+def save_images(imgs, dir, id, prefix):
+    if imgs is not None:
+        for k,v in imgs.items():
+            v.save(os.path.join(
+                   dir, '{}_{:04d}_{}.png'.format(prefix, id, k)))
+
+
 
 def get_joint_info(object_id, link_id):
     if link_id == -1:
