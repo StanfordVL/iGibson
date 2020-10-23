@@ -565,10 +565,10 @@ class URDFObject(Object):
             for j in range(p.getNumJoints(body_id)):
                 info = p.getJointInfo(body_id, j)
                 jointType = info[2]
-                if jointType == p.JOINT_REVOLUTE or jointType == p.JOINT_PRISMATIC:
+                if jointType in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
                     p.setJointMotorControl2(
-                        body_id, j, p.VELOCITY_CONTROL, force=self.joint_friction, targetVelocity=0)
-
+                        body_id, j, p.VELOCITY_CONTROL,
+                        targetVelocity=0.0, force=self.joint_friction)
             self.body_ids.append(body_id)
         return self.body_ids
 
@@ -585,3 +585,14 @@ class URDFObject(Object):
             pos, orn = p.multiplyTransforms(
                 pos, orn, inertial_pos, inertial_orn)
             p.resetBasePositionAndOrientation(body_id, pos, orn)
+
+            # reset joint position to 0.0
+            for j in range(p.getNumJoints(body_id)):
+                info = p.getJointInfo(body_id, j)
+                jointType = info[2]
+                if jointType in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                    p.resetJointState(
+                        body_id, j, targetValue=0.0, targetVelocity=0.0)
+                    p.setJointMotorControl2(
+                        body_id, j, p.VELOCITY_CONTROL,
+                        targetVelocity=0.0, force=self.joint_friction)
