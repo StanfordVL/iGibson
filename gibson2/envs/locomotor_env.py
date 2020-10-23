@@ -503,14 +503,14 @@ class NavigationEnv(BaseEnv):
             item for sublist in collision_links for item in sublist]
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
-
         if self.reward_type in ['l2', 'geodesic']:
             if self.reward_type == 'l2':
                 new_potential = self.get_l2_potential()
             elif self.reward_type == 'geodesic':
                 new_potential = self.get_geodesic_potential()
             potential_reward = self.potential - new_potential
-            reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+            # |potential_reward| ~= 0.1 per step
+            reward += potential_reward * self.potential_reward_weight
             self.potential = new_potential
 
         collision_reward = float(len(collision_links_flatten) > 0)
@@ -626,17 +626,25 @@ class NavigationEnv(BaseEnv):
         """
         reset_success = False
         max_trials = 100
+
+        # move robot away from the scene
+        self.robots[0].set_position([0.0, 0.0, 100.0])
+        # cache pybullet state
+        state_id = p.saveState()
         for _ in range(max_trials):
             self.reset_initial_and_target_pos()
             if self.test_valid_position('robot', self.robots[0], self.initial_pos, self.initial_orn) and \
                     self.test_valid_position('robot', self.robots[0], self.target_pos):
                 reset_success = True
+                p.restoreState(state_id)
                 break
+            p.restoreState(state_id)
 
         if not reset_success:
             logging.warning("WARNING: Failed to reset robot without collision")
 
         self.land('robot', self.robots[0], self.initial_pos, self.initial_orn)
+        p.removeState(state_id)
 
     def reset_initial_and_target_pos(self):
         """
