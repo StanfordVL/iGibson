@@ -68,7 +68,7 @@ class Viewer:
         self.constraint_marker.set_position([0, 0, -1])
         self.constraint_marker2.set_position([0, 0, -1])
 
-    def apply_push_force(self, x, y, force):
+    def apply_push_force(self, x, y, force, ray_distance=5.):
         camera_pose = np.array([self.px, self.py, self.pz])
         self.renderer.set_camera(
             camera_pose, camera_pose + self.view_direction, self.up)
@@ -82,7 +82,7 @@ class Viewer:
             self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
             -1,
             1])
-        position_cam[:3] *= 5
+        position_cam[:3] *= ray_distance
 
         position_world = np.linalg.inv(self.renderer.V).dot(position_cam)
         position_eye = camera_pose
@@ -97,7 +97,8 @@ class Viewer:
             p.applyExternalForce(
                 object_id, link_id, -np.array(hit_normal) * force, hit_pos, p.WORLD_FRAME)
 
-    def create_constraint(self, x, y, fixed=False):
+    def create_constraint(self, x, y, fixed=False, 
+                          ray_distance=5., max_force=100.):
         camera_pose = np.array([self.px, self.py, self.pz])
         self.renderer.set_camera(
             camera_pose, camera_pose + self.view_direction, self.up)
@@ -111,7 +112,7 @@ class Viewer:
             self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
             -1,
             1])
-        position_cam[:3] *= 5
+        position_cam[:3] *= ray_distance
 
         print(position_cam)
         position_world = np.linalg.inv(self.renderer.V).dot(position_cam)
@@ -145,7 +146,7 @@ class Viewer:
                 childFramePosition=child_frame_pos,
                 childFrameOrientation=child_frame_orn,
             )
-            p.changeConstraint(cid, maxForce=100)
+            p.changeConstraint(cid, maxForce=max_force)
             self.cid.append(cid)
             self.interaction_x, self.interaction_y = x, y
 
