@@ -6,6 +6,7 @@ from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, carte
 from gibson2.envs.env_base import BaseEnv
 from gibson2.tasks.room_rearrangement_task import RoomRearrangementTask
 from gibson2.tasks.push_door_nav_task import PushDoorNavTask
+from gibson2.tasks.point_nav_task import PointNavTask
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -118,6 +119,8 @@ class NavigationEnv(BaseEnv):
             self.task = RoomRearrangementTask(self.config)
         elif self.config['task'] == 'push_door_nav':
             self.task = PushDoorNavTask(self.config)
+        elif self.config['task'] == 'point_nav':
+            self.task = PointNavTask(self.config)
         else:
             self.task = None
 
@@ -621,7 +624,7 @@ class NavigationEnv(BaseEnv):
 
         state = self.get_state(collision_links)
         info = {}
-        if self.config['task'] in ['room_rearrangement', 'push_door_nav']:
+        if self.config['task'] in ['room_rearrangement', 'push_door_nav', 'point_nav']:
             reward, info = self.task.get_reward(
                 self, collision_links, action, info)
             done, info = self.task.get_termination(
@@ -780,14 +783,14 @@ class NavigationEnv(BaseEnv):
         self.randomize_domain()
         # move robot away from the scene
         self.robots[0].set_position([100.0, 100.0, 100.0])
-        if self.config['task'] in ['room_rearrangement', 'push_door_nav']:
+        if self.config['task'] in ['room_rearrangement', 'push_door_nav', 'point_nav']:
             self.task.reset_scene(self)
             self.task.reset_agent(self)
         else:
             self.reset_agent()
         self.simulator.sync()
         state = self.get_state()
-        if self.config['task'] in ['room_rearrangement', 'push_door_nav']:
+        if self.config['task'] in ['room_rearrangement', 'push_door_nav', 'point_nav']:
             pass
         else:
             if self.reward_type == 'l2':
