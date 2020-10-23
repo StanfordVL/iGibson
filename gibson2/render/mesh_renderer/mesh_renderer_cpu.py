@@ -660,23 +660,25 @@ class MeshRenderer(object):
             from gibson2.render.mesh_renderer import GLFWRendererContext
             self.r = GLFWRendererContext.GLFWRendererContext(width, height,
                                                              int(self.rendering_settings.glfw_gl_version[0]),
-                                                             int(self.rendering_settings.glfw_gl_version[1])
+                                                             int(self.rendering_settings.glfw_gl_version[1]),
+                                                             False,
+                                                             rendering_settings.fullscreen
                                                              )
         elif self.platform == 'Windows':
             from gibson2.render.mesh_renderer import VRRendererContext
             self.r = VRRendererContext.VRRendererContext(width, height,
                                                              int(self.rendering_settings.glfw_gl_version[0]),
-                                                             int(self.rendering_settings.glfw_gl_version[1])
+                                                             int(self.rendering_settings.glfw_gl_version[1]),
+                                                             True,
+                                                             rendering_settings.fullscreen
                                                              )
         else:
             from gibson2.render.mesh_renderer import EGLRendererContext
             self.r = EGLRendererContext.EGLRendererContext(
                 width, height, device)
 
-        if self.platform == 'Windows':
-            self.r.init(True, rendering_settings.fullscreen)
-        else:
-            self.r.init(False, rendering_settings.fullscreen)
+
+        self.r.init()
 
         self.glstring = self.r.getstring_meshrenderer()
 
