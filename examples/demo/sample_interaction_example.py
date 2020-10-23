@@ -94,7 +94,7 @@ class InteractionSampler(Viewer):
             cv2.moveWindow("ExternalView", 0, 0)
         self.create_visual_object()
 
-    def raycast(self, x, y):
+    def raycast(self, x, y, ray_distance=20.):
         camera_pose = np.array([self.px, self.py, self.pz])
         self.renderer.set_camera(
             camera_pose, camera_pose + self.view_direction, self.up)
@@ -104,7 +104,7 @@ class InteractionSampler(Viewer):
             self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
             -1,
             1])
-        position_cam[:3] *= 5
+        position_cam[:3] *= ray_distance
         position_world = np.linalg.inv(self.renderer.V).dot(position_cam)
         position_eye = camera_pose
         res = p.rayTest(position_eye, position_world[:3])
@@ -118,6 +118,12 @@ class InteractionSampler(Viewer):
     def move_constraint_3d(self, position_world):
         self.constraint_marker.set_position(position_world)
         self.constraint_marker2.set_position(position_world)
+
+    def world2cam(self, position_world):
+        cam_space = self.renderer.V.dot([*position_world, 1])
+        image_space = self.renderer.get_intrinsics().dot(cam_space[:-1])
+        x,y = (image_space[:-1] / image_space[-1]).astype(int)
+        return (self.renderer.width - x,y)
 
     def change_dir(self, event, x, y, flags, param):
         return
@@ -241,6 +247,7 @@ def main():
                 recorded_data.append(curr)
                 continue
             object_id, link_id, _, hit_pos, hit_normal = res[0]
+            cam_back = interactor.world2cam(hit_pos)
 
             interaction_pre = {'joint':None, 
                     'link':get_link_pose(object_id, link_id),
@@ -256,14 +263,12 @@ def main():
             print(interaction_pre)
 
             # interact pix_loc
-            interactor.create_constraint(pix_x, pix_y, fixed)
+            interactor.create_constraint(pix_x, pix_y, fixed,
+                                         ray_distance=20.,max_force=60.)
             hit_target = (np.array(hit_pos) - 
                           np.array(hit_normal) * INTERACTION_TARGET)
-            interactor.update()
-            time.sleep(0.5)
             interactor.move_constraint_3d(hit_target)
             interactor.update()
-            time.sleep(0.5)
             interactor.remove_constraint()
 
             # render result after interaction:
