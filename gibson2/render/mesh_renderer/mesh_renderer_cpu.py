@@ -1217,8 +1217,8 @@ class MeshRenderer(object):
         if self.enable_shadow:
             # shadow pass
 
-            V = np.copy(self.V)
-            P = np.copy(self.P)
+            self.cameraV = np.copy(self.V)
+            self.cameraP = np.copy(self.P)
             self.V = np.copy(self.lightV)
             self.P = np.copy(self.lightP)
             if self.msaa:
@@ -1238,8 +1238,8 @@ class MeshRenderer(object):
 
             self.r.readbuffer_meshrenderer_shadow_depth(
                 self.width, self.height, self.fbo, self.depth_tex_shadow)
-            self.V = np.copy(V)
-            self.P = np.copy(P)
+            self.V = np.copy(self.cameraV)
+            self.P = np.copy(self.cameraP)
         # main pass
 
         if self.msaa:
@@ -1581,6 +1581,14 @@ class MeshRenderer(object):
                                                                                         self.tex_id_1, self.tex_id_2,
                                                                                         buffer,
                                                                                         float(self.use_pbr))
+
+    def reset_camera(self):
+        """
+        reset camera after the renderer is interrupted
+        :return:
+        """
+        self.V = np.copy(self.cameraV)
+        self.P = np.copy(self.cameraP)
 
     def update_dynamic_positions(self):
         """
