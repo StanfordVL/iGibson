@@ -6,10 +6,10 @@ import gibson2
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings 
-from gibson2.objects.articulated_object import URDFObject
+from gibson2.objects.articulated_object import URDFObject, ArticulatedObject
 
 
-class iGTNTaskInstance(TaskNetTask):
+class iGTNTask(TaskNetTask):
     def __init__(self, atus_activity):
         super().__init__(atus_activity)
 
@@ -18,7 +18,7 @@ class iGTNTaskInstance(TaskNetTask):
         Get scene populated with objects such that scene satisfies initial conditions 
         '''
         # Set self.scene_name, self.scene, self.sampled_simulator_objects, and self.sampled_dsl_objects
-        self.initialize(InteractiveIndoorScene, URDFObject)
+        self.initialize(InteractiveIndoorScene, ArticulatedObject)
 
         hdr_texture = os.path.join(
             gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
@@ -48,10 +48,10 @@ class iGTNTaskInstance(TaskNetTask):
 
 
 def main():
-    igtn_task_instance = iGTNTaskInstance('demo1')
+    igtn_task_instance = iGTNTask('demo2_1')
     igtn_task_instance.initialize_scene()
 
-    for i in range(100):
+    for i in range(500):
         igtn_task_instance.simulator.step()
     print('TASK SUCCESS:', igtn_task_instance.check_success())
     igtn_task_instance.simulator.disconnect()
