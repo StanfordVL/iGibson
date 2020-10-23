@@ -48,13 +48,13 @@ class iGTNTask(TaskNetTask):
 
 
 def main():
-    igtn_task_instance = iGTNTask('demo2_1')
-    igtn_task_instance.initialize_scene()
+    igtn_task = iGTNTask('demo2_1')
+    igtn_task.initialize_scene()
 
     for i in range(500):
-        igtn_task_instance.simulator.step()
-    print('TASK SUCCESS:', igtn_task_instance.check_success())
-    igtn_task_instance.simulator.disconnect()
+        igtn_task.simulator.step()
+    print('TASK SUCCESS:', igtn_task.check_success())
+    igtn_task.simulator.disconnect()
                 
     
 if __name__ == '__main__':
