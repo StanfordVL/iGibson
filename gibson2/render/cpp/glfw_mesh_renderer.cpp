@@ -33,7 +33,7 @@
 
 namespace py = pybind11;
 
-int GLFWRendererContext::init(bool render_window, bool fullscreen) {
+int GLFWRendererContext::init() {
     verbosity = 20;
 
     // Initialize GLFW context and window
@@ -51,12 +51,12 @@ int GLFWRendererContext::init(bool render_window, bool fullscreen) {
     glfwWindowHint(GLFW_SAMPLES, 0);
 
 	// Hide GLFW window if user requests
-	if (!render_window) {
+	if (!m_render_window) {
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 	}
 
 
-	if (fullscreen) {
+	if (m_fullscreen) {
 		this->window = glfwCreateWindow(m_windowWidth, m_windowHeight, "Gibson Renderer Output", glfwGetPrimaryMonitor(), NULL);
 	}
 	else {
@@ -107,7 +107,7 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
 
     py::class_<GLFWRendererContext> pymodule = py::class_<GLFWRendererContext>(m, "GLFWRendererContext");
 
-    pymodule.def(py::init<int, int, int, int>());
+    pymodule.def(py::init<int, int, int, int, bool, bool>());
     pymodule.def("init", &GLFWRendererContext::init);
     pymodule.def("release", &GLFWRendererContext::release);
 	pymodule.def("render_companion_window_from_buffer", &GLFWRendererContext::render_companion_window_from_buffer);
