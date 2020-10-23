@@ -323,6 +323,7 @@ class Viewer:
         self.right_down = False
         self.middle_down = False
         self.remove_constraint()
+        self.renderer.reset_camera()
 
 
     def update(self):
