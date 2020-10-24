@@ -2,8 +2,8 @@ from abc import abstractmethod, ABC
 
 
 class BaseTask(ABC):
-    def __init__(self, config):
-        self.config = config
+    def __init__(self, env):
+        self.config = env.config
 
     @abstractmethod
     def reset_scene(self, env):
