@@ -436,11 +436,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
     def open_all_doors(self):
         if 'door' not in self.objects_by_category:
             return
-        state_id = p.saveState()
         for obj in self.objects_by_category['door']:
             # assume door only has one sub URDF
             body_id = obj.body_ids[0]
             for joint_id in range(p.getNumJoints(body_id)):
+                state_id = p.saveState()
                 j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
                 j_type = p.getJointInfo(body_id, joint_id)[2]
                 parent_idx = p.getJointInfo(body_id, joint_id)[-1]
@@ -454,16 +454,15 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     continue
                 # try to set the door to from 90 to 0 degrees until no collision
                 for j_pos in np.arange(0.0, j_high + np.pi / 36.0, step=np.pi / 36.0):
-                    p.restoreState(state_id)
                     p.resetJointState(body_id, joint_id, j_high - j_pos)
                     p.stepSimulation()
                     has_collision = self.check_collision(
                         body_a=body_id, link_a=joint_id)
+                    p.restoreState(state_id)
                     if not has_collision:
-                        p.removeState(state_id)
-                        state_id = p.saveState()
+                        p.resetJointState(body_id, joint_id, j_high - j_pos)
                         break
-        p.removeState(state_id)
+                p.removeState(state_id)
 
     def close_all_doors(self):
         if 'door' not in self.objects_by_category:
