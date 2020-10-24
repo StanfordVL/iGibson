@@ -35,11 +35,11 @@ def parse_args():
                         help='Name of the scene in the iG Dataset')
     parser.add_argument('--save_dir', type=str, help='Directory to save the frames.',
                         default='misc/interaction_pretrain')
-    parser.add_argument('--resolution', type=int, default=1024, 
+    parser.add_argument('--resolution', type=int, default=512, 
                         help='Image resolution.')
     parser.add_argument('--samples', type=int, default=10, 
                         help='number of sampled locations')
-    parser.add_argument('--interactions', type=int, default=20, 
+    parser.add_argument('--interactions', type=int, default=10, 
                         help='number of interactions')
     parser.add_argument('--seed', type=int, default=15, 
                         help='Random seed.')
@@ -155,18 +155,14 @@ class InteractionSampler(Viewer):
             cv2.waitKey(1)
         return_vals = dict(zip(self.modes, outputs))
         if 'rgb' in return_vals:
-            return_vals['rgb'] = Image.fromarray(
-                    (return_vals['rgb'][:,:,:3]*255).astype(np.uint8))
+            return_vals['rgb'] = (return_vals['rgb'][:,:,:3]*255).astype(np.uint8)
         if '3d' in return_vals:
             depth = -return_vals['3d'][:,:,2:3]
             depth[depth > DEPTH_HIGH] = DEPTH_HIGH
             depth[depth < 0.] = 0.
-            return_vals['3d'] = Image.fromarray(
-                    ((depth / DEPTH_HIGH) * np.iinfo(np.uint16).max).astype(np.uint16),
-                    'I;16')
+            return_vals['3d'] =((depth / DEPTH_HIGH) * np.iinfo(np.uint16).max).astype(np.uint16)
         if 'seg' in return_vals:
-            return_vals['seg'] = Image.fromarray(
-                    (return_vals['seg'][:,:,0]*255).astype(np.uint8))
+            return_vals['seg'] = (return_vals['seg'][:,:,0]*255).astype(np.uint8)
         cam = {}
         cam['cam_pose'] = (self.px, self.py, self.pz)
         cam['cam_dir'] = tuple(self.view_direction)
@@ -238,7 +234,7 @@ def main():
 
         recorded_data = [] 
         # interact for multiple steps
-        for _ in range(args.interactions):
+        for interaction_i in range(args.interactions):
             curr = {}
             # pre-render views
             interactor.set_pose([*standat, FETCH_HEIGHT],
@@ -249,7 +245,14 @@ def main():
             # sample pixel location
             pix_x = math.floor(random.random() * s.renderer.width)
             pix_y = math.floor(random.random() * s.renderer.height)
+            if interaction_i % 3 == 0:
+                # for every 4 samples, we want at least one that interacts with object
+                pix_y, pix_x = random.choice(list(zip(*np.where(curr['imgs_pre']['seg'] > 2))))
+                pix_y = int(pix_y)
+                pix_x = int(pix_x)
+
             curr['interact_at'] = (pix_x, pix_y)
+            curr['object_cat'] = int(curr['imgs_pre']['seg'][pix_y,pix_x])
             # print('interacting at : {},{}'.format(pix_x, pix_y))
 
             # retrieve joint / link information
@@ -289,10 +292,10 @@ def main():
             interactor.move_constraint_3d(hit_target)
             for _ in range(20):
                 s.step()
-            interactor.remove_constraint()
 
             # render result after interaction:
             curr['imgs_post'],_ = interactor.update()
+            interactor.remove_constraint()
             interaction_post = {'joint':None, 
                     'link':get_link_pose(object_id, link_id),
                     'constraint':tuple(hit_target)}
@@ -318,10 +321,12 @@ def main():
 def save_images(imgs, dir, id, prefix):
     if imgs is not None:
         for k,v in imgs.items():
+            if k == '3d':
+                v = Image.fromarray(v,'I;16')
+            else:
+                v = Image.fromarray(v)
             v.save(os.path.join(
                    dir, '{}_{:04d}_{}.png'.format(prefix, id, k)))
-
-
 
 def get_joint_info(object_id, link_id):
     if link_id == -1:
