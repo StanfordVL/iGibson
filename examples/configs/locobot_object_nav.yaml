@@ -37,7 +37,7 @@ max_step: 500
 max_collisions_allowed: 500
 
 # sensor spec
-output: [sensor, rgb, depth]
+output: [rgb]
 # image
 # ASUS Xtion PRO LIVE
 # https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE
