@@ -118,7 +118,7 @@ class InteractionSampler(Viewer):
         return res
     
     def set_pose(self, loc, view_dir, up=[0,0,1]):
-        self.x,self.y,self.z = loc
+        self.px,self.py,self.pz = loc
         self.view_direction = view_dir
         self.up = up
 
@@ -228,7 +228,7 @@ def main():
             scene.randomize_texture()
 
         # sample camera location
-        _,floor_pt= scene.get_random_point() 
+        _,floor_pt= scene.get_random_point(floor=0) 
         standat = floor_pt[:-1]
         lookat = np.random.random((2,)) + 1e-6
         lookat = lookat / np.linalg.norm(lookat)
