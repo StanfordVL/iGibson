@@ -36,7 +36,10 @@ class ObjectNavTask(BaseTask):
                                      radius=0.25)
         self.target_dist_min = self.config.get('target_dist_min', 1.0)
         self.target_dist_max = self.config.get('target_dist_max', 10.0)
-        env.simulator.import_object(self.goal_obj, class_id=self.goal_class_id)
+        env.simulator.import_object(self.goal_obj,
+                                    class_id=self.goal_class_id,
+                                    use_pbr=False,
+                                    use_pbr_mapping=False)
 
     def sample_initial_pose(self, env):
         _, initial_pos = env.scene.get_random_point(
