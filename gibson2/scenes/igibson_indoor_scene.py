@@ -444,12 +444,15 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 j_type = p.getJointInfo(body_id, joint_id)[2]
                 parent_idx = p.getJointInfo(body_id, joint_id)[-1]
                 if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                    p.removeState(state_id)
                     continue
                 # this is the continuous joint
                 if j_low >= j_high:
+                    p.removeState(state_id)
                     continue
                 # this is the door knob joint
                 if parent_idx != 0:
+                    p.removeState(state_id)
                     continue
                 # try to set the door to from 90 to 0 degrees until no collision
                 for j_pos in np.arange(0.0, j_high + np.pi / 36.0, step=np.pi / 36.0):
