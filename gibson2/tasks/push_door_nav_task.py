@@ -13,18 +13,18 @@ import numpy as np
 
 
 class PushDoorNavTask(BaseTask):
-    def __init__(self, config):
-        super(PushDoorNavTask, self).__init__(config)
+    def __init__(self, env):
+        super(PushDoorNavTask, self).__init__(env)
         self.nav_potential_reward_weight = self.config.get(
             'nav_potential_reward_weight', 1.0)
         self.door_potential_reward_weight = self.config.get(
             'door_potential_reward_weight', 1.0)
         self.success_reward = self.config.get('success_reward', 10.0)
         self.termination_conditions = [
-            MaxCollision(config),
-            Timeout(config),
-            OutOfBound(config),
-            PointGoal(config),
+            MaxCollision(self.config),
+            Timeout(self.config),
+            OutOfBound(self.config),
+            PointGoal(self.config),
         ]
         self.goal_condition = self.termination_conditions[-1]
         self.initial_pos_region = {

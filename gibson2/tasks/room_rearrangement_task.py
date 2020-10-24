@@ -11,16 +11,16 @@ import numpy as np
 
 
 class RoomRearrangementTask(BaseTask):
-    def __init__(self, config):
-        super(RoomRearrangementTask, self).__init__(config)
+    def __init__(self, env):
+        super(RoomRearrangementTask, self).__init__(env)
         self.prismatic_joint_reward_scale = self.config.get(
             'prismatic_joint_reward_scale', 1.0)
         self.revolute_joint_reward_scale = self.config.get(
             'revolute_joint_reward_scale', 1.0)
         self.termination_conditions = [
-            MaxCollision(config),
-            Timeout(config),
-            OutOfBound(config),
+            MaxCollision(self.config),
+            Timeout(self.config),
+            OutOfBound(self.config),
         ]
         self.initial_pos_region = {
             'Rs_int': [{

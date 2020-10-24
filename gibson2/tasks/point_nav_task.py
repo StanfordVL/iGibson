@@ -14,8 +14,8 @@ import numpy as np
 
 
 class PointNavTask(BaseTask):
-    def __init__(self, config):
-        super(PointNavTask, self).__init__(config)
+    def __init__(self, env):
+        super(PointNavTask, self).__init__(env)
         self.potential_reward_weight = self.config.get(
             'potential_reward_weight', 1.0)
         self.success_reward = self.config.get('success_reward', 10.0)
@@ -24,16 +24,16 @@ class PointNavTask(BaseTask):
         self.target_dist_max = self.config.get('target_dist_max', 10.0)
 
         self.termination_conditions = [
-            MaxCollision(config),
-            Timeout(config),
-            OutOfBound(config),
-            PointGoal(config),
+            MaxCollision(self.config),
+            Timeout(self.config),
+            OutOfBound(self.config),
+            PointGoal(self.config),
         ]
         self.goal_condition = self.termination_conditions[-1]
 
     def sample_initial_pose_and_target_pos(self, env):
         _, initial_pos = env.scene.get_random_point(
-            floor=env.floor_num, random_height=self.random_height)
+            floor=env.floor_num, random_height=False)
         max_trials = 100
         dist = 0.0
         for _ in range(max_trials):
@@ -100,7 +100,7 @@ class PointNavTask(BaseTask):
 
         reward = 0.0
         new_potential = self.get_potential(env)
-        reward += (new_potential - self.potential) * \
+        reward += (self.potential - new_potential) * \
             self.potential_reward_weight
         self.potential = new_potential
 
