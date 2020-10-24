@@ -222,6 +222,8 @@ def main():
 
     random.seed(8)
     np.random.seed(8)
+
+    id_to_category = dict((v,k) for k, v in scene.category_ids.items())
     for sample_i in tqdm(range(args.samples)):
         if args.domain_rand and sample_i % args.domain_rand_interval == 0:
             scene.randomize_texture()
@@ -254,7 +256,6 @@ def main():
                     pix_x = int(pix_x)
 
             curr['interact_at'] = (pix_x, pix_y)
-            curr['object_cat'] = int(curr['imgs_pre']['seg'][pix_y,pix_x])
             # print('interacting at : {},{}'.format(pix_x, pix_y))
 
             # retrieve joint / link information
@@ -271,16 +272,18 @@ def main():
                 continue
             object_id, link_id, _, hit_pos, hit_normal = res[0]
             object_name = ''
+            object_cat  = int(curr['imgs_pre']['seg'][pix_y,pix_x])
+            object_cat_name = id_to_category[object_cat]
             if link_id != -1:
                 if object_id in scene.objects_by_id:
                     object_name = scene.objects_by_id[object_id].model
                 else:
                     object_name = 'OBJECT_ID_NOT_FOUND'
 
-
             curr['hit']= {'object_id':object_id, 
                           'link_id':link_id, 
                           'object_name':object_name, 
+                          'object_cat': (object_cat, object_cat_name), 
                           'pos':tuple(hit_pos), 
                           'normal':tuple(hit_normal)} 
             cam_back = interactor.world2cam(hit_pos)
