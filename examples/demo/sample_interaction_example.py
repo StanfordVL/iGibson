@@ -41,7 +41,7 @@ def parse_args():
                         help='number of sampled locations')
     parser.add_argument('--interactions', type=int, default=10, 
                         help='number of interactions')
-    parser.add_argument('--seed', type=int, default=15, 
+    parser.add_argument('--seed', type=int, default=8, 
                         help='Random seed.')
     parser.add_argument('--domain_rand', dest='domain_rand',
                         action='store_true')
@@ -197,6 +197,8 @@ def main():
             )
 
     random.seed(args.seed)
+    np.random.seed(args.seed)
+
     scene = InteractiveIndoorScene(
             args.scene, texture_randomization=args.domain_rand,
             object_randomization=args.object_rand)
@@ -219,9 +221,6 @@ def main():
                  initial_view_direction=[1, 0, 0],
                  initial_up=[0, 0, 1],
                  headless=True)
-
-    random.seed(8)
-    np.random.seed(8)
 
     id_to_category = dict((v,k) for k, v in scene.category_ids.items())
     for sample_i in tqdm(range(args.samples)):
