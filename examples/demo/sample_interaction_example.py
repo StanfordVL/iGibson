@@ -37,7 +37,7 @@ def parse_args():
                         default='misc/interaction_pretrain')
     parser.add_argument('--resolution', type=int, default=512, 
                         help='Image resolution.')
-    parser.add_argument('--samples', type=int, default=10, 
+    parser.add_argument('--samples', type=int, default=3000, 
                         help='number of sampled locations')
     parser.add_argument('--interactions', type=int, default=10, 
                         help='number of interactions')
