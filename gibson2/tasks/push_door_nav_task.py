@@ -48,6 +48,7 @@ class PushDoorNavTask(BaseTask):
         return door_potential
 
     def reset_scene(self, env):
+        env.scene.force_wakeup_scene_objects()
         self.body_joint_pairs = env.scene.open_all_objs_by_category(
             'door', mode='zero')
         self.door_potential = self.get_door_potential()

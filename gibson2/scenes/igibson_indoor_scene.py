@@ -554,10 +554,16 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         return body_ids
 
+    def force_wakeup_scene_objects(self):
+        for obj_name in self.objects_by_name:
+            self.objects_by_name[obj_name].force_wakeup()
+
     def reset_scene_objects(self):
         for obj_name in self.objects_by_name:
             self.objects_by_name[obj_name].reset()
+
         if self.should_open_all_doors:
+            self.force_wakeup_scene_objects()
             self.open_all_doors()
 
     def get_num_objects(self):
