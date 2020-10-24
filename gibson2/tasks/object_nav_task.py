@@ -6,11 +6,13 @@ from gibson2.termination_conditions.max_collision import MaxCollision
 from gibson2.termination_conditions.timeout import Timeout
 from gibson2.termination_conditions.out_of_bound import OutOfBound
 from gibson2.objects.visual_marker import VisualMarker
+from gibson2.objects.visual_shape import VisualShape
 from gibson2.utils.utils import l2_distance, rotate_vector_2d
 
 import logging
 import random
 import numpy as np
+import os
 
 
 class ObjectNavTask(BaseTask):
@@ -23,7 +25,8 @@ class ObjectNavTask(BaseTask):
         )
         self.horizontal_fov = self.config.get(
             'horizontal_fov', 60)
-        self.goal_height = self.config.get('goal_height', 0.75)
+        self.goal_height = self.config.get('goal_height', 1.5)
+        self.goal_height_offset = self.config.get('goal_height_offset', 0.5)
         self.goal_class_id = self.config.get('goal_class_id', 255)
         self.termination_conditions = [
             MaxCollision(self.config),
@@ -31,15 +34,20 @@ class ObjectNavTask(BaseTask):
             OutOfBound(self.config),
         ]
         self.goal_condition = self.termination_conditions[-1]
-        self.goal_obj = VisualMarker(visual_shape=p.GEOM_SPHERE,
-                                     rgba_color=[1, 0, 0, 1],
-                                     radius=0.25)
+        self.goal_obj_path = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            'assets/ceiling_lamp_0/shape/visual/lakheden_m1_vm.obj'
+        )
+        self.goal_obj = VisualShape(
+            filename=self.goal_obj_path,
+            scale=2.0)
+        # self.goal_obj = VisualMarker(visual_shape=p.GEOM_SPHERE,
+        #                              rgba_color=[1, 0, 0, 1],
+        #                              radius=0.25)
         self.target_dist_min = self.config.get('target_dist_min', 1.0)
         self.target_dist_max = self.config.get('target_dist_max', 10.0)
         env.simulator.import_object(self.goal_obj,
-                                    class_id=self.goal_class_id,
-                                    use_pbr=False,
-                                    use_pbr_mapping=False)
+                                    class_id=self.goal_class_id)
 
     def sample_initial_pose(self, env):
         _, initial_pos = env.scene.get_random_point(
@@ -58,8 +66,7 @@ class ObjectNavTask(BaseTask):
             reset_success = False
             max_trials = 100
             for _ in range(max_trials):
-                initial_pos, initial_orn = \
-                    self.sample_initial_pose(env)
+                initial_pos, initial_orn = self.sample_initial_pose(env)
                 reset_success = env.test_valid_position(
                     'robot', env.robots[0], initial_pos, initial_orn)
                 p.restoreState(state_id)
@@ -101,7 +108,7 @@ class ObjectNavTask(BaseTask):
                 goal_pos = np.array([
                     ray_from[0] + unit_vec[0] * hit_dist_sampled,
                     ray_from[1] + unit_vec[1] * hit_dist_sampled,
-                    self.goal_height
+                    self.goal_height + self.goal_height_offset,
                 ])
                 self.goal_obj.set_position(goal_pos)
                 goal_success = True
