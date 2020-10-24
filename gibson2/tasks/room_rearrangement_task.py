@@ -41,6 +41,7 @@ class RoomRearrangementTask(BaseTask):
         return task_potential
 
     def reset_scene(self, env):
+        env.scene.force_wakeup_scene_objects()
         self.body_joint_pairs = env.scene.open_all_objs_by_categories(
             ['bottom_cabinet',
              'bottom_cabinet_no_top',
