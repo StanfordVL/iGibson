@@ -37,7 +37,7 @@ def parse_args():
                         default='misc/interaction_pretrain')
     parser.add_argument('--resolution', type=int, default=512, 
                         help='Image resolution.')
-    parser.add_argument('--samples', type=int, default=3000, 
+    parser.add_argument('--samples', type=int, default=4000, 
                         help='number of sampled locations')
     parser.add_argument('--interactions', type=int, default=10, 
                         help='number of interactions')
@@ -312,8 +312,11 @@ def main():
         episode_dir = os.path.join(save_dir, '{:04d}'.format(sample_i))
         os.makedirs(episode_dir, exist_ok=True)
         for i, step in enumerate(recorded_data):
-            save_images(step.pop('imgs_pre'), episode_dir, i, 'pre')
-            save_images(step.pop('imgs_post'), episode_dir, i, 'post')
+            save_images(step.pop('imgs_pre'), episode_dir, i, 'step')
+            if i == len(recorded_data) - 1:
+                save_images(step.pop('imgs_post'), episode_dir, i+1, 'step')
+            else:
+                step.pop('imgs_post')
             with open(os.path.join(episode_dir, 
                       'info_{:04d}.json'.format(i)), 'w') as fp:
                 json.dump(step,fp)
