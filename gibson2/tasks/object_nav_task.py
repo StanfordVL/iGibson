@@ -5,6 +5,8 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.termination_conditions.max_collision import MaxCollision
 from gibson2.termination_conditions.timeout import Timeout
 from gibson2.termination_conditions.out_of_bound import OutOfBound
+from gibson2.termination_conditions.object_goal import ObjectGoal
+
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.visual_shape import VisualShape
 from gibson2.utils.utils import l2_distance, rotate_vector_2d
@@ -23,6 +25,9 @@ class ObjectNavTask(BaseTask):
         self.reward_type = self.config.get(
             'reward_type', 'relative'
         )
+        self.success_reward = self.config.get(
+            'success_reward', 10.0
+        )
         self.horizontal_fov = self.config.get(
             'horizontal_fov', 60)
         self.goal_height = self.config.get('goal_height', 1.5)
@@ -32,6 +37,7 @@ class ObjectNavTask(BaseTask):
             MaxCollision(self.config),
             Timeout(self.config),
             OutOfBound(self.config),
+            ObjectGoal(self.config),
         ]
         self.goal_condition = self.termination_conditions[-1]
         self.goal_obj_path = os.path.join(
@@ -135,12 +141,16 @@ class ObjectNavTask(BaseTask):
             item for sublist in collision_links for item in sublist]
         env.collision_step += int(len(collision_links_flatten) > 0)
 
+        reward = 0.0
         new_potential = self.get_goal_pixel_perc(env)
         if self.reward_type == 'absolute':
-            reward = new_potential * self.reward_scale
+            reward += new_potential * self.reward_scale
         else:
-            reward = (new_potential - self.potential) * self.reward_scale
+            reward += (new_potential - self.potential) * self.reward_scale
             self.potential = new_potential
+
+        if self.goal_condition.get_termination(env)[0]:
+            reward += self.success_reward
 
         return reward, info
 
