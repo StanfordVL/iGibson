@@ -42,7 +42,7 @@ output: [sensor, rgb, depth]
 fisheye: false
 image_width: 512
 image_height: 512
-vertical_fov: 90
+vertical_fov: 120
 
 # depth
 depth_low: 0.1
