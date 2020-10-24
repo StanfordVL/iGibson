@@ -270,7 +270,19 @@ def main():
                 recorded_data.append(curr)
                 continue
             object_id, link_id, _, hit_pos, hit_normal = res[0]
-            curr['hit']= {'pos':tuple(hit_pos), 'normal':tuple(hit_normal)} 
+            object_name = ''
+            if link_id != -1:
+                if object_id in scene.objects_by_id:
+                    object_name = scene.objects_by_id[object_id].model
+                else:
+                    object_name = 'OBJECT_ID_NOT_FOUND'
+
+
+            curr['hit']= {'object_id':object_id, 
+                          'link_id':link_id, 
+                          'object_name':object_name, 
+                          'pos':tuple(hit_pos), 
+                          'normal':tuple(hit_normal)} 
             cam_back = interactor.world2cam(hit_pos)
 
             interaction_pre = {'joint':None, 
