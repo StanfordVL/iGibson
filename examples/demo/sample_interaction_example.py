@@ -247,9 +247,11 @@ def main():
             pix_y = math.floor(random.random() * s.renderer.height)
             if interaction_i % 3 == 0:
                 # for every 4 samples, we want at least one that interacts with object
-                pix_y, pix_x = random.choice(list(zip(*np.where(curr['imgs_pre']['seg'] > 2))))
-                pix_y = int(pix_y)
-                pix_x = int(pix_x)
+                non_structure = list(zip(*np.where(curr['imgs_pre']['seg'] > 2)))
+                if len(non_structure) > 0:
+                    pix_y, pix_x = random.choice(non_structure)
+                    pix_y = int(pix_y)
+                    pix_x = int(pix_x)
 
             curr['interact_at'] = (pix_x, pix_y)
             curr['object_cat'] = int(curr['imgs_pre']['seg'][pix_y,pix_x])
