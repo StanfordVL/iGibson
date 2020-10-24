@@ -292,10 +292,11 @@ def main():
             interactor.move_constraint_3d(hit_target)
             for _ in range(20):
                 s.step()
+            interactor.remove_constraint()
+            s.step()
 
             # render result after interaction:
             curr['imgs_post'],_ = interactor.update()
-            interactor.remove_constraint()
             interaction_post = {'joint':None, 
                     'link':get_link_pose(object_id, link_id),
                     'constraint':tuple(hit_target)}
