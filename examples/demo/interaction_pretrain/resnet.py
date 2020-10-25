@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torchvision.models as _models
 
 
-__all__ = ["create_encoder", "get_encoder_class", "all_models"]
+__all__ = ["create_encoder", "get_encoder_class"]
 
 
 class Swish(nn.Module):
@@ -42,9 +42,6 @@ class Conv2dWS(nn.Conv2d):
             x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups
         )
 
-
-
-
 def get_encoder_class(model_name):
     import kitten.model.encoder as _enc
 
@@ -55,20 +52,11 @@ def get_encoder_class(model_name):
     else:
         raise NotImplementedError(f"Unknown model: {model_name}")
 
-
 def create_encoder(model_name, **kwargs):
     return get_encoder_class(model_name)(**kwargs)
 
-
-def all_models():
-    import kitten.model.encoder as _enc
-
-    return [a for a in _enc.__dict__ if a.startswith("res")]
-
-
 def _conv_op(ws):
     return Conv2dWS if ws else nn.Conv2d
-
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1, ws=False):
     """
