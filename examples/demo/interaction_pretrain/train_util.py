@@ -6,6 +6,7 @@ import numpy as np
 import glob
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
+import imageio
 
 def get_label(image_path):
     img_dir = os.path.dirname(image_path)
@@ -19,7 +20,6 @@ def get_label(image_path):
     x = int(x / 4) # width 
     y = int(y / 4) # height
     return moved, (x,y) 
-
 
 def get_binary_label(data):
     if data['hit'] is None:
@@ -44,6 +44,9 @@ def get_binary_label(data):
             return math.abs(joint_post['pos'] - joint_pre['pos']) > 0.05
 
     return link_pos_delta > 0.1
+
+def get_depth_path(image_path):
+    return image_path.replace('_rgb.png', '_3d.png')
             
 class iGibsonInteractionPretrain(Dataset):
     """iGibson Interaction Pretrain dataset."""
@@ -75,15 +78,12 @@ class iGibsonInteractionPretrain(Dataset):
 
     def __getitem__(self, idx):
         img_name = imgs[idx]
-        image = io.imread(img_name)
+        image = imageio.imread(img_name)
         image = self.transform(image)
         label, action = int(get_binary_label(img_name))
 
-        sample = {'image': image, 
-                  '' : action_heatmap,
-                  'label': label}
-
-        if self.transform:
-            sample = self.transform(sample)
+        sample = {'image' : image, 
+                  'action': action, # (width, height)
+                  'label' : label}
 
         return sample
