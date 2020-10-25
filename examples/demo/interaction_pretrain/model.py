@@ -7,14 +7,15 @@ import torch.nn.functional as F
 from resnet import  resnet9w32gn_ws
 
 class UNet(nn.Module):
-    def __init__(self):
+    def __init__(self, input_channels=4):
         super(UNet, self).__init__()
-        self.backbone = resnet9w32gn_ws(2)
+        self.backbone = resnet9w32gn_ws(input_channels)
         factor = 2
-        self.up1 = Up(1024, 512 // factor)
-        self.up2 = Up(512, 256 // factor)
-        self.up3 = Up(256, 128 // factor)
-        self.up4 = Up(128, 64)
+        layer_size = [256, 128, 64, 32, 32]
+        self.up1 = Up(layer_size[0] + layer_size[1], layer_size[1])
+        self.up2 = Up(layer_size[1] + layer_size[2], layer_size[2])
+        self.up3 = Up(layer_size[2] + layer_size[3], layer_size[3])
+        self.up4 = Up(layer_size[3] + layer_size[4], layer_size[4])
 
     def forward(self, x):
         x1,x2,x3,x4,x5 = self.backbone(x)
@@ -64,15 +65,6 @@ class Up(nn.Module):
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
-        # input is CHW
-        diffY = x2.size()[2] - x1.size()[2]
-        diffX = x2.size()[3] - x1.size()[3]
-
-        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
-                        diffY // 2, diffY - diffY // 2])
-        # if you have padding issues, see
-        # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
-        # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
 
