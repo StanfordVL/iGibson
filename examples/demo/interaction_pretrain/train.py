@@ -17,6 +17,8 @@ import torchvision.transforms as transforms
 
 import train_util
 import pdb
+import matplotlib.pyplot as plt
+
 
 parser = argparse.ArgumentParser(description='Interaction Pre-Training')
 
@@ -116,9 +118,8 @@ def main_worker(args):
     total = 0
     for x in train_dataset:
         total += x['label']
-        
 
-    pdb.set_trace()
+    print(total, len(train_dataset))
 
     # if args.evaluate:
         # validate(val_loader, model, criterion, args)

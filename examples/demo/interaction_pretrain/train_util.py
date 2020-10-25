@@ -23,8 +23,6 @@ def get_label(image_path):
     with open(json_path, 'r') as fp:
         data = json.load(fp)
     moved = get_binary_label(data, image_path)
-    if moved:
-        print(image_path)
     x,y = data['interact_at']
     x = int(x / 4) # width 
     y = int(y / 4) # height
@@ -52,7 +50,7 @@ def get_binary_label(data, image_path):
         if joint_pre['type'] == 1:
             return abs(joint_post['pos'] - joint_pre['pos']) > 0.1
 
-    return link_pos_delta > 0.1
+    return link_pos_delta > 0.02
 
 def get_depth_image(image_path):
     depth_path = image_path.replace('_rgb.png', '_3d.png')
@@ -135,17 +133,17 @@ class iGibsonInteractionPretrain(Dataset):
 
     def __getitem__(self, idx):
         img_name = self.imgs[idx]
-        # image = Image.open(img_name)
-        # image = self.transform(image)
+        image = Image.open(img_name)
+        image = self.transform(image)
         label, action = get_label(img_name)
         label = int(label)
 
-        # if self.load_depth:
-            # depth = get_depth_image(img_name)
-            # depth = self.depth_transform(depth)
-            # image = torch.cat((image, depth), 0)
-        # sample = {'image' : image, 
-        sample = {
+        if self.load_depth:
+            depth = get_depth_image(img_name)
+            depth = self.depth_transform(depth)
+            image = torch.cat((image, depth), 0)
+        sample = {'image' : image, 
+        # sample = {
                   'action': action, # (width, height)
                   'label' : label}
         return sample
