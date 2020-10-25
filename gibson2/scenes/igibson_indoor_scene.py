@@ -562,3 +562,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
     def get_num_objects(self):
         return len(self.objects_by_name)
+
+    def get_body_ids(self):
+        ids = []
+        for obj_name in self.objects_by_name:
+            if self.objects_by_name[obj_name].body_id is not None:
+                ids.extend(self.objects_by_name[obj_name].body_id)
+        return ids

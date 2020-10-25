@@ -65,6 +65,9 @@ class Fetch(LocomotorRobot):
     def get_end_effector_position(self):
         return self.parts['gripper_link'].get_position()
 
+    def end_effector_part_index(self):
+        return self.parts['gripper_link'].body_part_index
+
     def load(self):
         ids = super(Fetch, self).load()
         robot_id = self.robot_ids[0]

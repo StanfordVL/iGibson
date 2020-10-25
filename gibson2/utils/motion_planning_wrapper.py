@@ -34,7 +34,7 @@ class MotionPlanningWrapper(object):
                  base_mp_algo: str = 'birrt',
                  arm_mp_algo: str = 'birrt',
                  optimize_iter: int = 0,
-                 fine_motion_plan: bool = False):
+                 fine_motion_plan: bool = True):
         """
         Get planning related parameters.
         """
@@ -60,6 +60,10 @@ class MotionPlanningWrapper(object):
         self.initial_height = self.env.initial_pos_z_offset
         self.fine_motion_plan = fine_motion_plan
         self.robot_type = self.env.config['robot']
+
+        if self.env.simulator.viewer is not None:
+            self.env.simulator.viewer.setup_motion_planner(self)
+
         if self.robot_type in ['Fetch', 'Movo']:
             self.setup_arm_mp()
 
@@ -108,10 +112,10 @@ class MotionPlanningWrapper(object):
             if self.env.scene.mesh_body_id is not None:
                 self.mp_obstacles.append(self.env.scene.mesh_body_id)
         elif isinstance(self.env.scene, InteractiveIndoorScene):
-            for obj_name in self.env.scene.objects_by_name:
-                self.mp_obstacles.extend(self.env.scene.objects_by_name[obj_name].body_ids)
+                self.mp_obstacles.extend(self.env.scene.get_body_ids())
 
-    def plan_base_motion(self, state, goal):
+    def plan_base_motion(self, goal):
+        state = self.env.get_state()
         x, y, theta = goal
         grid = state['occupancy_grid']
 
@@ -382,14 +386,13 @@ class MotionPlanningWrapper(object):
     def dry_run_arm_plan(self, arm_path):
         base_pose = get_base_values(self.robot_id)
         if arm_path is not None:
-            if self.mode == 'gui':
+            if self.mode in ['gui', 'iggui', 'pbgui']:
                 for joint_way_point in arm_path:
                     set_joint_positions(
                         self.robot_id, self.arm_joint_ids, joint_way_point)
-                    #self.simulator.step()
-
                     set_base_values_with_z(
                         self.robot_id, base_pose, z=self.initial_height)
+                    self.simulator_sync()
                     sleep(0.02)  # animation
             else:
                 set_joint_positions(
@@ -402,3 +405,70 @@ class MotionPlanningWrapper(object):
             set_joint_positions(self.robot_id, self.arm_joint_ids,
                                 self.arm_default_joint_positions)
             return False
+
+    def plan_arm_push(self, hit_pos, hit_normal):
+        joint_positions = self.get_arm_joint_positions(hit_pos)
+        set_joint_positions(self.robot_id, self.arm_joint_ids,
+                            self.arm_default_joint_positions)
+        self.simulator_sync()
+        if joint_positions is not None:
+            plan = self.plan_arm_motion(joint_positions)
+            return plan
+
+
+    def interact(self, push_point, push_direction, push_distance=0.2):
+        """
+        Move the arm according to push_vector and physically
+        simulate the interaction
+        :param action: policy output
+        :param arm_subgoal: starting location of the interaction
+        :return: None
+        """
+
+        push_vector = np.array(push_direction) * push_distance
+
+        max_limits, min_limits, rest_position, joint_range, joint_damping = \
+            self.get_ik_parameters()
+        base_pose = get_base_values(self.robot_id)
+
+        steps = 50
+        for i in range(steps):
+            push_goal = np.array(push_point) + \
+                        push_vector * (i + 1) / float(steps)
+
+            joint_positions = p.calculateInverseKinematics(
+                self.robot_id,
+                self.robot.end_effector_part_index(),
+                targetPosition=push_goal,
+                # targetOrientation=self.robots[0].get_orientation(),
+                lowerLimits=min_limits,
+                upperLimits=max_limits,
+                jointRanges=joint_range,
+                restPoses=rest_position,
+                jointDamping=joint_damping,
+                solver=p.IK_DLS,
+                maxNumIterations=100)
+
+            if self.robot_type == 'Fetch':
+                joint_positions = joint_positions[2:10]
+            elif self.robot_type == 'Movo':
+                joint_positions = joint_positions[:8]
+
+            control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
+            #if self.robot_type == 'Movo':
+            #    self.robot.control_tuck_left()
+            self.simulator_step()
+            set_base_values_with_z(
+                self.robot_id, base_pose, z=self.initial_height)
+
+            if self.mode in ['pbgui', 'iggui', 'gui']:
+                sleep(0.02)  # for visualization
+
+    def execute_arm_push(self, plan, hit_pos, hit_normal):
+        self.dry_run_arm_plan(plan)
+
+        self.interact(hit_pos, hit_normal)
+
+        set_joint_positions(self.robot_id, self.arm_joint_ids,
+                            self.arm_default_joint_positions)
+        self.simulator_sync()
