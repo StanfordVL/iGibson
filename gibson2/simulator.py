@@ -74,6 +74,7 @@ class Simulator:
         self.auto_sync = auto_sync
         self.optimized_renderer = rendering_settings.optimized
         self.rendering_settings = rendering_settings
+        self.viewer = None
         self.load()
 
     def set_timestep(self, physics_timestep, render_timestep):

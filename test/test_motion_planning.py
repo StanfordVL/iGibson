@@ -34,7 +34,7 @@ def test_base_planning():
     motion_planner = MotionPlanningWrapper(nav_env)
 
     state = nav_env.reset()
-    plan = motion_planner.plan_base_motion(state, [0,1,0])
+    plan = motion_planner.plan_base_motion([0,1,0])
     print(plan)
     motion_planner.dry_run_base_plan(plan)
 
