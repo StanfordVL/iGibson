@@ -67,6 +67,8 @@ class MotionPlanningWrapper(object):
         if self.robot_type in ['Fetch', 'Movo']:
             self.setup_arm_mp()
 
+        self.arm_interaction_length = 0.2
+
     def setup_arm_mp(self):
         if self.robot_type == 'Fetch':
             self.arm_default_joint_positions = (0.30322468280792236,
@@ -408,15 +410,18 @@ class MotionPlanningWrapper(object):
 
     def plan_arm_push(self, hit_pos, hit_normal):
         joint_positions = self.get_arm_joint_positions(hit_pos)
+        print('planned JP', joint_positions)
         set_joint_positions(self.robot_id, self.arm_joint_ids,
                             self.arm_default_joint_positions)
         self.simulator_sync()
         if joint_positions is not None:
             plan = self.plan_arm_motion(joint_positions)
             return plan
+        else:
+            return None
 
 
-    def interact(self, push_point, push_direction, push_distance=0.2):
+    def interact(self, push_point, push_direction):
         """
         Move the arm according to push_vector and physically
         simulate the interaction
@@ -425,7 +430,7 @@ class MotionPlanningWrapper(object):
         :return: None
         """
 
-        push_vector = np.array(push_direction) * push_distance
+        push_vector = np.array(push_direction) * self.arm_interaction_length
 
         max_limits, min_limits, rest_position, joint_range, joint_damping = \
             self.get_ik_parameters()
@@ -465,10 +470,11 @@ class MotionPlanningWrapper(object):
                 sleep(0.02)  # for visualization
 
     def execute_arm_push(self, plan, hit_pos, hit_normal):
-        self.dry_run_arm_plan(plan)
+        if not plan is None:
+            self.dry_run_arm_plan(plan)
 
-        self.interact(hit_pos, hit_normal)
+            self.interact(hit_pos, hit_normal)
 
-        set_joint_positions(self.robot_id, self.arm_joint_ids,
-                            self.arm_default_joint_positions)
-        self.simulator_sync()
+            set_joint_positions(self.robot_id, self.arm_joint_ids,
+                                self.arm_default_joint_positions)
+            self.simulator_sync()
