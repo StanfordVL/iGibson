@@ -26,7 +26,19 @@ class RoomRearrangementTask(BaseTask):
             'Rs_int': [{
                 'x': [0.8, 0.8],
                 'y': [1.0, 3.2],
-            }]
+            }],
+            'Beechwood_0_int': [{
+                'x': [-7, -3],
+                'y': [-6, -2.5],
+            }],
+            'Ihlen_1_int': [{
+                'x': [-4, -1.5],
+                'y': [4, 5],
+            }],
+            'Merom_1_int': [{
+                'x': [-1.5, -1],
+                'y': [3, 6.5],
+            }],
         }
 
     def get_task_potential(self):
@@ -52,7 +64,7 @@ class RoomRearrangementTask(BaseTask):
              'oven',
              'washer'
              'dryer',
-             ], mode='random')
+             ], mode='random', prob=0.5)
         self.task_potential = self.get_task_potential()
 
     def sample_initial_pose(self, env):
