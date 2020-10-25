@@ -16,6 +16,7 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 
 import train_util
+import pdb
 
 parser = argparse.ArgumentParser(description='Interaction Pre-Training')
 
@@ -72,14 +73,14 @@ def main_worker(args):
     global best_acc1
 
     # create model
-    model = torch.nn.DataParallel(model).cuda()
+    # model = torch.nn.DataParallel(model).cuda()
 
-    # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda()
+    # # define loss function (criterion) and optimizer
+    # criterion = nn.CrossEntropyLoss().cuda()
 
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+    # optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                                # momentum=args.momentum,
+                                # weight_decay=args.weight_decay)
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -111,46 +112,55 @@ def main_worker(args):
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
+    
+    total = 0
+    for x in train_dataset:
+        total += x['label']
+        
 
-    if args.evaluate:
-        validate(val_loader, model, criterion, args)
-        return
+    pdb.set_trace()
 
-    for epoch in range(args.start_epoch, args.epochs):
-        adjust_learning_rate(optimizer, epoch, args)
+    # if args.evaluate:
+        # validate(val_loader, model, criterion, args)
+        # return
 
-        # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args)
+    # for epoch in range(args.start_epoch, args.epochs):
+        # adjust_learning_rate(optimizer, epoch, args)
 
-        # evaluate on validation set
-        acc1 = validate(val_loader, model, criterion, args)
+        # # train for one epoch
+        # train(train_loader, model, criterion, optimizer, epoch, args)
 
-        # remember best acc@1 and save checkpoint
-        is_best = acc1 > best_acc1
-        best_acc1 = max(acc1, best_acc1)
+        # # evaluate on validation set
+        # acc1 = validate(val_loader, model, criterion, args)
 
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'arch': args.arch,
-            'state_dict': model.state_dict(),
-            'best_acc1': best_acc1,
-            'optimizer' : optimizer.state_dict(),
-        }, is_best)
+        # # remember best acc@1 and save checkpoint
+        # is_best = acc1 > best_acc1
+        # best_acc1 = max(acc1, best_acc1)
+
+        # save_checkpoint({
+            # 'epoch': epoch + 1,
+            # 'arch': args.arch,
+            # 'state_dict': model.state_dict(),
+            # 'best_acc1': best_acc1,
+            # 'optimizer' : optimizer.state_dict(),
+        # }, is_best)
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(train_loader, 
+          backbone, decoder, 
+          criterion, optimizer, 
+          epoch, args):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
     progress = ProgressMeter(
         len(train_loader),
-        [batch_time, data_time, losses, top1, top5],
+        [batch_time, data_time, losses, top1],
         prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
-    model.train()
+    backbone.train()
 
     end = time.time()
     for i, sample in enumerate(train_loader):
@@ -161,14 +171,13 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         target = sample['label'].cuda(non_blocking=True)
 
         # compute output
-        output = model(images)
+        features = backbone(images)
         loss = criterion(output, target)
 
         # measure accuracy and record loss
-        acc1, acc5 = accuracy(output, target, topk=(1, 5))
+        acc1 = accuracy(output, target)
         losses.update(loss.item(), images.size(0))
         top1.update(acc1[0], images.size(0))
-        top5.update(acc5[0], images.size(0))
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
@@ -187,10 +196,9 @@ def validate(val_loader, model, criterion, args):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
     progress = ProgressMeter(
         len(val_loader),
-        [batch_time, losses, top1, top5],
+        [batch_time, losses, top1],
         prefix='Test: ')
 
     # switch to evaluate mode
