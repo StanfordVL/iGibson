@@ -9,20 +9,15 @@ import torch
 import torch.nn as nn
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
-import torch.distributed as dist
 import torch.optim
 import torch.multiprocessing as mp
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
-import torchvision.datasets as datasets
-import torchvision.models as models
 
-model_names = sorted(name for name in models.__dict__
-    if name.islower() and not name.startswith("__")
-    and callable(models.__dict__[name]))
+import train_util
 
-parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
+parser = argparse.ArgumentParser(description='Interaction Pre-Training')
 
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
@@ -47,6 +42,8 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                     help='use pre-trained model')
+parser.add_argument('--use-depth', dest='use_depth', action='store_true',
+                    help='use depth as input')
 # parser.add_argument('--seed', default=None, type=int,
                     # help='seed for initializing training. ')
 parser.add_argument('--gpu', default=None, type=int,
@@ -67,14 +64,11 @@ def main():
                       # 'You may see unexpected behavior when restarting '
                       # 'from checkpoints.')
 
-    if args.gpu is not None:
-        warnings.warn('You have chosen a specific GPU. This will completely '
-                      'disable data parallelism.')
     ngpus_per_node = torch.cuda.device_count()
-    main_worker(args.gpu, ngpus_per_node, args)
+    main_worker(args)
 
 
-def main_worker(gpu, ngpus_per_node, args):
+def main_worker(args):
     global best_acc1
 
     # create model
@@ -91,17 +85,9 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
-            if args.gpu is None:
-                checkpoint = torch.load(args.resume)
-            else:
-                # Map model to be loaded to specified single gpu.
-                loc = 'cuda:{}'.format(args.gpu)
-                checkpoint = torch.load(args.resume, map_location=loc)
+            checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
             best_acc1 = checkpoint['best_acc1']
-            if args.gpu is not None:
-                # best_acc1 may be from a checkpoint from a different GPU
-                best_acc1 = best_acc1.to(args.gpu)
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
             print("=> loaded checkpoint '{}' (epoch {})"
@@ -112,33 +98,18 @@ def main_worker(gpu, ngpus_per_node, args):
     cudnn.benchmark = True
 
     # Data loading code
-    traindir = os.path.join(args.data, 'train')
-    valdir = os.path.join(args.data, 'val')
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-
-    train_dataset = datasets.ImageFolder(
-        traindir,
-        transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize,
-        ]))
-
-
+    train_dataset = train_util.iGibsonInteractionPretrain(
+                                load_depth=args.use_depth,
+                                train=True)
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler)
+        num_workers=args.workers, pin_memory=True)
 
+    val_dataset= train_util.iGibsonInteractionPretrain(
+                                load_depth=args.use_depth,
+                                train=False)
     val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(valdir, transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ])),
-        batch_size=args.batch_size, shuffle=False,
+        val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
     if args.evaluate:
@@ -146,8 +117,6 @@ def main_worker(gpu, ngpus_per_node, args):
         return
 
     for epoch in range(args.start_epoch, args.epochs):
-        if args.distributed:
-            train_sampler.set_epoch(epoch)
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
@@ -160,15 +129,13 @@ def main_worker(gpu, ngpus_per_node, args):
         is_best = acc1 > best_acc1
         best_acc1 = max(acc1, best_acc1)
 
-        if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                and args.rank % ngpus_per_node == 0):
-            save_checkpoint({
-                'epoch': epoch + 1,
-                'arch': args.arch,
-                'state_dict': model.state_dict(),
-                'best_acc1': best_acc1,
-                'optimizer' : optimizer.state_dict(),
-            }, is_best)
+        save_checkpoint({
+            'epoch': epoch + 1,
+            'arch': args.arch,
+            'state_dict': model.state_dict(),
+            'best_acc1': best_acc1,
+            'optimizer' : optimizer.state_dict(),
+        }, is_best)
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
@@ -186,14 +153,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     model.train()
 
     end = time.time()
-    for i, (images, target) in enumerate(train_loader):
+    for i, sample in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
 
-        if args.gpu is not None:
-            images = images.cuda(args.gpu, non_blocking=True)
-        if torch.cuda.is_available():
-            target = target.cuda(args.gpu, non_blocking=True)
+        images = sample['image'].cuda(non_blocking=True)
+        target = sample['label'].cuda(non_blocking=True)
 
         # compute output
         output = model(images)

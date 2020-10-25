@@ -6,7 +6,13 @@ import numpy as np
 import glob
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
+import torch
 import imageio
+
+DEPTH_HIGH = 20.
+DEPTH_CLIP_HIGH = 3.5
+DEPTH_CLIP_LOW = 0.
+DEPTH_NOISE_RATE = 0.01
 
 def get_label(image_path):
     img_dir = os.path.dirname(image_path)
@@ -45,23 +51,57 @@ def get_binary_label(data):
 
     return link_pos_delta > 0.1
 
-def get_depth_path(image_path):
-    return image_path.replace('_rgb.png', '_3d.png')
-            
+def get_depth_image(image_path):
+    depth_path = image_path.replace('_rgb.png', '_3d.png')
+    depth = imageio.imread(depth_path).astype(float) * DEPTH_HIGH / float(np.iinfo(np.uint16).max)
+    depth[depth > DEPTH_CLIP_HIGH] = 0.0
+    depth[depth < DEPTH_CLIP_LOW] = 0.0
+    depth /= DEPTH_CLIP_HIGH
+    depth = add_naive_noise_to_sensor(
+            depth, DEPTH_NOISE_RATE, noise_value=0.0)
+    return depth
+
+def add_naive_noise_to_sensor(sensor_reading, noise_rate, noise_value=1.0):
+        """
+        Add naive sensor dropout to perceptual sensor, such as RGBD and LiDAR scan
+        :param sensor_reading: raw sensor reading, range must be between [0.0, 1.0]
+        :param noise_rate: how much noise to inject, 0.05 means 5% of the data will be replaced with noise_value
+        :param noise_value: noise_value to overwrite raw sensor reading
+        :return: sensor reading corrupted with noise
+        """
+        if noise_rate <= 0.0:
+            return sensor_reading
+
+        assert len(sensor_reading[(sensor_reading < 0.0) | (sensor_reading > 1.0)]) == 0,\
+            'sensor reading has to be between [0.0, 1.0]'
+
+        valid_mask = np.random.choice(2, sensor_reading.shape, p=[
+                                      noise_rate, 1.0 - noise_rate])
+        sensor_reading[valid_mask == 0] = noise_value
+        return sensor_reading
+
 class iGibsonInteractionPretrain(Dataset):
     """iGibson Interaction Pretrain dataset."""
 
-    def __init__(self, transform=None):
-        """
-        Args:
-            csv_file (string): Path to the csv file with annotations.
-            root_dir (string): Directory with all the images.
-            transform (callable, optional): Optional transform to be applied
-                on a sample.
-        """
+    def __init__(self, 
+                 load_depth=False,
+                 transform=None,
+                 depth_transform=None,
+                 train=True):
         self.asset_root = gibson2.ig_dataset_path
-        self.imgs = glob.glob(os.path.join(self.asset_root, 'scenes',
-                              '*/misc/interaction_pretrain/*/step_000?_rgb.png'))
+        self.imgs = []
+        scenes_root = os.path.join(self.asset_root, 'scenes')
+        for s in os.listdir(scenes_root):
+            pretrain_dir = os.path.join(scenes_root, s, 'misc/interaction_pretrain')
+            data_range = range(3200) if train else range(3200, 4000)
+            for i in data_range:
+                for j in range(10):
+                    self.imgs.append(
+                        os.path.join(pretrain_dir, 
+                            '{0:4d}'.format(i), 
+                            'step_{0:4d}_rgb.png'.format(j)))
+        # self.imgs = glob.glob(os.path.join(self.asset_root, 'scenes',
+                              # '*/misc/interaction_pretrain/*/step_000?_rgb.png'))
         if transform is None:
             normalize = transforms.Normalize(
                             mean=[0.485, 0.456, 0.406],
@@ -72,6 +112,14 @@ class iGibsonInteractionPretrain(Dataset):
                             normalize,])),
         else:
             self.transform = transform
+        self.load_depth = load_depth
+        if load_depth:
+            if depth_transform is None:
+                self.depth_transform = transforms.Compose([
+                                transforms.Resize(128),
+                                transforms.ToTensor(),])),
+            else:
+                self.depth_transform = depth_transform
 
     def __len__(self):
         return len(self.imgs)
@@ -80,10 +128,14 @@ class iGibsonInteractionPretrain(Dataset):
         img_name = imgs[idx]
         image = imageio.imread(img_name)
         image = self.transform(image)
-        label, action = int(get_binary_label(img_name))
+        label, action = get_binary_label(img_name)
+        label = int(label)
 
+        if self.load_depth:
+            depth = get_depth_image(img_name)
+            depth = self.depth_transform(depth)
+            image = torch.cat((image, depth), 0)
         sample = {'image' : image, 
                   'action': action, # (width, height)
                   'label' : label}
-
         return sample
