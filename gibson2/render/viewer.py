@@ -411,7 +411,7 @@ class Viewer:
             if self.manipulation_mode:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
         elif q == 27:
-            if self.video_folder is not "":
+            if self.video_folder != "":
                 logging.info("You recorded a video. To compile the frames into a mp4 go to the corresponding subfolder" +
                              " in /tmp and execute: ")
                 logging.info(

@@ -20,7 +20,7 @@ import pybullet as p
 import time
 import logging
 from IPython import embed
-
+import cv2
 
 class NavigationEnv(BaseEnv):
     """
@@ -205,6 +205,19 @@ class NavigationEnv(BaseEnv):
             self.comp.load_state_dict(
                 torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
+
+        if 'occupancy_grid' in self.output:
+            self.grid_resolution = self.config.get('grid_resolution', 128)
+            self.occupancy_range = self.config.get('occupancy_range', 5)  # m
+            self.robot_footprint_radius = self.config.get('robot_footprint_radius', 0.32)
+            self.robot_footprint_radius_in_map = int(
+                self.robot_footprint_radius / self.occupancy_range *
+                self.grid_resolution)
+            self.occupancy_grid_space = gym.spaces.Box(low=0.0,
+                                                       high=1.0,
+                                                       shape=(self.grid_resolution,
+                                                              self.grid_resolution, 1))
+            observation_space['occupancy_grid'] = self.occupancy_grid_space
 
         self.observation_space = gym.spaces.Dict(observation_space)
 
@@ -397,6 +410,68 @@ class NavigationEnv(BaseEnv):
         scan = np.expand_dims(hit_fraction, 1)
         return scan
 
+    def get_local_occupancy_grid(self, state=None):
+
+        laser_linear_range = self.laser_linear_range
+        laser_angular_range = self.laser_angular_range
+        min_laser_dist = self.min_laser_dist
+        laser_link_name = self.laser_link_name
+
+        laser_angular_half_range = laser_angular_range / 2.0
+        laser_pose = self.robots[0].parts[laser_link_name].get_pose()
+        base_pose = self.robots[0].parts['base_link'].get_pose()
+
+        angle = np.arange(
+            -np.radians(laser_angular_half_range),
+            np.radians(laser_angular_half_range),
+            np.radians(laser_angular_range) / self.n_horizontal_rays
+        )
+        unit_vector_laser = np.array(
+            [[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+
+        if 'scan' in self.output and state is not None:
+            scan = state['scan'] # ray batch test is expensive, reuse scan from state
+        else:
+            scan = self.get_scan()
+
+        scan_laser = unit_vector_laser * \
+                     (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
+
+        laser_translation = laser_pose[:3]
+        laser_rotation = quat2mat(
+            [laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])
+        scan_world = laser_rotation.dot(scan_laser.T).T + laser_translation
+
+        base_translation = base_pose[:3]
+        base_rotation = quat2mat(
+            [base_pose[6], base_pose[3], base_pose[4], base_pose[5]])
+        scan_local = base_rotation.T.dot((scan_world - base_translation).T).T
+        scan_local = scan_local[:, :2]
+        scan_local = np.concatenate(
+            [np.array([[0, 0]]), scan_local, np.array([[0, 0]])], axis=0)
+
+        # flip y axis
+        scan_local[:, 1] *= -1
+
+        occupancy_grid = np.zeros(
+            (self.grid_resolution, self.grid_resolution)).astype(np.uint8)
+        scan_local_in_map = scan_local / self.occupancy_range * \
+                            self.grid_resolution + (self.grid_resolution / 2)
+        scan_local_in_map = scan_local_in_map.reshape(
+            (1, -1, 1, 2)).astype(np.int32)
+
+        cv2.fillPoly(img=occupancy_grid,
+                     pts=scan_local_in_map,
+                     color=True,
+                     lineType=1)
+        cv2.circle(img=occupancy_grid,
+                   center=(self.grid_resolution // 2,
+                           self.grid_resolution // 2),
+                   radius=int(self.robot_footprint_radius_in_map),
+                   color=1,
+                   thickness=-1)
+        return occupancy_grid
+
     def get_state(self, collision_links=[]):
         """
         :param collision_links: collisions from last time step
@@ -428,6 +503,13 @@ class NavigationEnv(BaseEnv):
                 state['rgb_filled'] = rgb_filled
         if 'scan' in self.output:
             state['scan'] = self.get_scan()
+
+        if 'occupancy_grid' in self.output:
+            if 'scan' in self.output:
+                grid = self.get_local_occupancy_grid(state)
+            else:
+                grid = self.get_local_occupancy_grid()
+            state['occupancy_grid'] = grid
         return state
 
     def run_simulation(self):
