@@ -31,13 +31,73 @@ class PushDoorNavTask(BaseTask):
             'Rs_int': [{
                 'x': [-1, 1],
                 'y': [-3, 0.5],
-            }]
+            }],
+            'Beechwood_0_int': [{
+                'x': [-10, -5],
+                'y': [1.5, 4],
+            }, {
+                'x': [-4, 1],
+                'y': [-4.5, -2.5],
+            }, {
+                'x': [-4, 1],
+                'y': [-4.5, -2.5],
+            }],
+            'Ihlen_1_int': [{
+                'x': [-0.4, -0.4],
+                'y': [4.25, 5.75],
+            }, {
+                'x': [-0.4, -0.4],
+                'y': [4.25, 8],
+            }, {
+                'x': [-0.4, -0.4],
+                'y': [4.25, 8],
+            }],
+            'Merom_1_int': [{
+                'x': [0, 3],
+                'y': [7, 9],
+            }, {
+                'x': [0, 3],
+                'y': [7, 9],
+            }, {
+                'x': [0, 3],
+                'y': [7, 9],
+            }],
         }
         self.target_pos_region = {
             'Rs_int': [{
                 'x': [-2.5, -2.5],
                 'y': [2, 2.5],
-            }]
+            }],
+            'Beechwood_0_int': [{
+                'x': [-0.5, 0.5],
+                'y': [-0.5, 0.5],
+            }, {
+                'x': [-1, 0.5],
+                'y': [2.5, 3.0],
+            }, {
+                'x': [-3.5, -2.5],
+                'y': [3, 3],
+            }],
+            'Ihlen_1_int': [{
+                'x': [2, 4.5],
+                'y': [3.5, 6.0],
+            }, {
+                'x': [2, 4.5],
+                'y': [8, 10.5],
+            }, {
+                'x': [-2, -2],
+                'y': [8, 10.5],
+            }],
+            'Merom_1_int': [{
+                'x': [2.5, 4.5],
+                'y': [-1.5, 2],
+            }, {
+                'x': [0.5, 0.5],
+                'y': [0.5, 1.5],
+            }, {
+                'x': [3, 4],
+                'y': [3.5, 4.5],
+            }],
         }
 
     def get_door_potential(self):
@@ -57,7 +117,7 @@ class PushDoorNavTask(BaseTask):
         initial_pos_regs = self.initial_pos_region[env.scene.scene_id]
         target_pos_regs = self.target_pos_region[env.scene.scene_id]
 
-        random_idx = np.random.randint(len(self.initial_pos_region))
+        random_idx = np.random.randint(len(initial_pos_regs))
         initial_pos_reg = initial_pos_regs[random_idx]
         target_pos_reg = target_pos_regs[random_idx]
 

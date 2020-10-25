@@ -499,20 +499,23 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         return body_joint_pairs
 
-    def open_all_objs_by_category(self, category, mode='random'):
+    def open_all_objs_by_category(self, category, mode='random', prob=1.0):
         body_joint_pairs = []
         if category not in self.objects_by_category:
             return body_joint_pairs
         for obj in self.objects_by_category[category]:
+            # open probability
+            if np.random.random() > prob:
+                continue
             for body_id in obj.body_ids:
                 body_joint_pairs += self.open_one_obj(body_id, mode=mode)
         return body_joint_pairs
 
-    def open_all_objs_by_categories(self, categories, mode='random'):
+    def open_all_objs_by_categories(self, categories, mode='random', prob=1.0):
         body_joint_pairs = []
         for category in categories:
             body_joint_pairs += self.open_all_objs_by_category(
-                category, mode=mode)
+                category, mode=mode, prob=prob)
         return body_joint_pairs
 
     def open_all_doors(self):
