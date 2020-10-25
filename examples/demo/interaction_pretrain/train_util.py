@@ -147,3 +147,72 @@ class iGibsonInteractionPretrain(Dataset):
                   'action': action, # (width, height)
                   'label' : label}
         return sample
+
+#######################
+# Visualization 
+#######################
+
+from PIL import Image, ImageDraw
+import matplotlib.pyplot as plt
+
+def segmentation_pca( predicted ):
+    H,W,C = predicted.shape
+    from sklearn.decomposition import PCA  
+    x = np.zeros((H,W,3), dtype='float')
+    embedding_flattened = predicted.reshape((-1,C))
+    pca = PCA(n_components=3)
+    pca.fit(np.vstack(embedding_flattened))
+    lower_dim = pca.transform(embedding_flattened).reshape((H,W,-1))
+    x = (lower_dim - lower_dim.min()) / (lower_dim.max() - lower_dim.min())
+    #scipy.misc.toimage(np.squeeze(x), cmin=0.0, cmax=1.0).save(to_store_name)
+    return x
+
+def visualize_data_entry(data_entry, feature, prediction, prediction_dense, save_path=None):
+    if data_entry['image'].shape[0] == 4:
+        depth = data_entry['image'][-1,:,:].numpy()
+        rgb_raw = data_entry['image'][:-1,:,:]
+    else:
+        depth = np.zeros([128,128])
+        rgb_raw = data_entry['image']
+    inv_normalize = transforms.Normalize(
+        mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225],
+        std=[1/0.229, 1/0.224, 1/0.225]
+    )
+    im = transforms.ToPILImage()(inv_normalize(rgb_raw)).convert("RGB")
+    draw = ImageDraw.Draw(im)
+    x,y = data_entry['action']
+    #x,y = 0,0
+    x_min = max(0, x-3)
+    y_min = max(0, y-3)
+    x_max = min(im.size[0], x+3)
+    y_max = min(im.size[1], y+3)
+    draw.ellipse((x_min, y_min, x_max, y_max), fill = 'blue', outline ='red')
+    fig, ax = plt.subplots(nrows=2,ncols=2, figsize=(10,10))
+    ax[0][0].imshow(im)
+    ax[0][0].axis('off')
+    ax[0][0].set_title('RGB')
+    ax[0][1].imshow(depth)
+    ax[0][1].axis('off')
+    ax[0][1].set_title('Depth')
+
+    feature_viz = segmentation_pca(feature)
+    ax[1][1].imshow(feature_viz)
+    ax[1][1].axis('off')
+    ax[1][1].set_title('Feature')
+
+    pred_dense = plt.get_cmap('coolwarm')(prediction_dense)[:,:,:-1]
+    #print(pred_dense.shape)
+    pred_heatmap = Image.fromarray((pred_dense * 255).astype(np.uint8))
+    overlayed = Image.blend(im, pred_heatmap, 0.5)
+    #ax[1][0].imshow(im)
+    ax[1][0].imshow(overlayed)
+    ax[1][0].axis('off')
+    ax[1][0].set_title('pred. (dense)')
+
+    fig.suptitle('Label: {}; Prediction: {}'.format(
+        'moved' if data_entry['label'] else 'not moved',
+        'moved' if prediction else 'not moved'), fontsize=20)
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    #plt.show()
+    if save_path is not None:
+        fig.savefig(save_path)

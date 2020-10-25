@@ -3,26 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as _models
 
-
-__all__ = ["create_encoder", "get_encoder_class"]
-
-
-class Swish(nn.Module):
-    def __init__(self, learnable_beta=False):
-        super().__init__()
-        self.learnable_beta = learnable_beta
-        if learnable_beta:
-            self.beta = nn.Parameter(torch.ones(()), requires_grad=True)
-        else:
-            self.beta = None
-
-    def forward(self, x):
-        if self.learnable_beta:
-            return x * torch.sigmoid(self.beta * x)
-        else:
-            return x * torch.sigmoid(x)
-
-
 class Conv2dWS(nn.Conv2d):
     """
     Weight Standardization
@@ -41,16 +21,6 @@ class Conv2dWS(nn.Conv2d):
         return F.conv2d(
             x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups
         )
-
-def get_encoder_class(model_name):
-    import kitten.model.encoder as _enc
-
-    if hasattr(_enc, model_name):
-        return getattr(_enc, model_name)
-    elif hasattr(_models, model_name):
-        return getattr(_models, model_name)
-    else:
-        raise NotImplementedError(f"Unknown model: {model_name}")
 
 def create_encoder(model_name, **kwargs):
     return get_encoder_class(model_name)(**kwargs)
@@ -84,13 +54,7 @@ def _get_nonlinearity(name: str):
     """
     Activation function
     """
-    if name == "swish":
-        return Swish()
-    if name == "swishb":
-        return Swish(learnable_beta=True)
-    elif name == "softplus":
-        return nn.Softplus()
-    elif name == "leakyrelu":
+    if name == "leakyrelu":
         return nn.LeakyReLU(inplace=True)
     elif name == "elu":
         return nn.ELU(inplace=True)
@@ -152,14 +116,15 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
-    # Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
-    # while original implementation places the stride at the first 1x1 convolution(self.conv1)
-    # according to "Deep residual learning for image recognition"https://arxiv.org/abs/1512.03385.
-    # This variant is also known as ResNet V1.5 and improves accuracy according to
-    # https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
+    ''' 
+    Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
+    while original implementation places the stride at the first 1x1 convolution(self.conv1)
+    according to "Deep residual learning for image recognition"https://arxiv.org/abs/1512.03385.
+    This variant is also known as ResNet V1.5 and improves accuracy according to
+    https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
+    '''
 
     expansion = 4
-
     def __init__(
         self,
         inplanes,
@@ -216,7 +181,7 @@ class ResNet(nn.Module):
         self,
         block,
         layers,
-        num_classes=1000,
+        input_channels=4,
         base_width=64,
         zero_init_residual=False,
         groups=1,
@@ -246,7 +211,7 @@ class ResNet(nn.Module):
         self.width_per_group = width_per_group
         self.ws = ws
         self.conv1 = _conv_op(ws)(
-            3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
+            input_channels, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
         )
         self.bn1 = norm_layer(self.inplanes)
         self.nonlinearity = nonlinearity
@@ -274,8 +239,6 @@ class ResNet(nn.Module):
             stride=2,
             dilate=replace_stride_with_dilation[2],
         )
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(base_width * 8 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -344,18 +307,13 @@ class ResNet(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-        x = self.maxpool(x)
+        x1 = self.maxpool(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
-
-        return x
+        x2 = self.layer1(x1)
+        x3 = self.layer2(x2)
+        x4 = self.layer3(x3)
+        x5 = self.layer4(x4)
+        return x1,x2,x3,x4,x5
 
     def forward(self, x):
         return self._forward_impl(x)
@@ -373,7 +331,9 @@ class GroupNorm16(nn.GroupNorm):
 
 
 def _resnet_basic_gn(
-    num_layers, base_width, nonlinearity="swish", *, num_classes, ws=False
+    input_channels,
+    num_layers, base_width, 
+    nonlinearity="relu", *, ws=False
 ):
     if base_width == 64:
         gn_layer = GroupNorm32
@@ -382,16 +342,11 @@ def _resnet_basic_gn(
     else:
         raise NotImplementedError
 
-    if num_layers == 9:
-        layers = [1, 1, 1, 1]
-    elif num_layers == 18:
-        layers = [2, 2, 2, 2]
-    else:
-        raise NotImplementedError
+    layers = [1, 1, 1, 1]
     return ResNet(
         BasicBlock,
         layers,
-        num_classes=num_classes,
+        input_channels=input_channels,
         base_width=base_width,
         norm_layer=gn_layer,
         nonlinearity=nonlinearity,
@@ -399,48 +354,16 @@ def _resnet_basic_gn(
     )
 
 
-def resnet9w32(num_classes, pretrained=False):
+def resnet9w32(pretrained=False):
     return ResNet(
         BasicBlock,
         [1, 1, 1, 1],
-        num_classes=num_classes,
         base_width=32,
         nonlinearity="relu",
         ws=False,
     )
 
-
-def resnet9w32gns(num_classes, pretrained=False):
-    return _resnet_basic_gn(9, 32, "swish", num_classes=num_classes)
-
-
-def resnet9w64gns(num_classes, pretrained=False):
-    return _resnet_basic_gn(9, 64, "swish", num_classes=num_classes)
+def resnet9w32gn_ws(input_channels=4, pretrained=False):
+    return _resnet_basic_gn(input_channels, 9, 32, "relu", ws=True)
 
 
-def resnet18w32gns(num_classes, pretrained=False):
-    return _resnet_basic_gn(18, 32, "swish", num_classes=num_classes)
-
-
-def resnet18w64gns(num_classes, pretrained=False):
-    return _resnet_basic_gn(18, 64, "swish", num_classes=num_classes)
-
-
-def resnet9w32gns_ws(num_classes, pretrained=False):
-    "swish with learnable beta"
-    return _resnet_basic_gn(9, 32, "swish", num_classes=num_classes, ws=True)
-
-
-def resnet9w32gn_ws(num_classes, pretrained=False):
-    "swish with learnable beta"
-    return _resnet_basic_gn(9, 32, "relu", num_classes=num_classes, ws=True)
-
-
-def resnet18w64gns_ws(num_classes, pretrained=False):
-    "swish with learnable beta"
-    return _resnet_basic_gn(18, 64, "swish", num_classes=num_classes, ws=True)
-
-
-def resnet18w64gn_ws(num_classes, pretrained=False):
-    "swish with learnable beta"
-    return _resnet_basic_gn(18, 64, "relu", num_classes=num_classes, ws=True)
