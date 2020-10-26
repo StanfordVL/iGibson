@@ -14,7 +14,6 @@ import numpy as np
 import os
 import pybullet as p
 
-import gibson2
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import ArticulatedObject
@@ -24,11 +23,12 @@ from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2.utils.vr_utils import move_player_no_body
 from gibson2 import assets_path
+import gibson2
 sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
 
 # Playground configuration: edit this to change functionality
-optimize = False
-vr_mode = True
+optimize = True
+vr_mode = False
 # Toggles fullscreen companion window
 fullscreen = False
 # Toggles SRAnipal eye tracking
@@ -42,9 +42,8 @@ relative_movement_device = 'hmd'
 # Movement speed for touchpad-based movement
 movement_speed = 0.02
 
-# HDR files for PBR rendering
 hdr_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
 hdr_texture2 = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
 light_modulation_map_filename = os.path.join(
@@ -52,22 +51,28 @@ light_modulation_map_filename = os.path.join(
 background_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
-# VR rendering settings
-vr_rendering_settings = MeshRendererSettings(optimized=optimize,
-                                            env_texture_filename=hdr_texture,
-                                            env_texture_filename2=hdr_texture2,
-                                            env_texture_filename3=background_texture,
-                                            light_modulation_map_filename=light_modulation_map_filename,
-                                            enable_shadow=False, 
-                                            msaa=True,
-                                            light_dimming_factor=1.0)
-# Initialize simulator with specific rendering settings
-s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, rendering_settings=vr_rendering_settings,
-            vr_eye_tracking=use_eye_tracking, vr_mode=vr_mode)
-scene = InteractiveIndoorScene('Rs_int')
-s.import_ig_scene(scene)
+rendering_settings = MeshRendererSettings(optimized=True,
+                                    env_texture_filename=hdr_texture,
+                                    env_texture_filename2=hdr_texture2,
+                                    env_texture_filename3=background_texture,
+                                    light_modulation_map_filename=light_modulation_map_filename,
+                                    enable_pbr=True,
+                                    enable_shadow=False, 
+                                    msaa=True,
+                                    fullscreen=fullscreen,
+                                    light_dimming_factor=1.0)
 
-p.setGravity(0, 0, 0)
+# Initialize simulator with specific rendering settings
+s = Simulator(mode='iggui', physics_timestep = 1/90.0, render_timestep = 1/90.0, image_width=512, image_height=512,
+            rendering_settings=rendering_settings, vrMode=vr_mode)
+scene = InteractiveIndoorScene('Beechwood_0_int')
+#scene._set_first_n_objects(40)
+s.import_scene(scene)
+
+#camera_pose = np.array([0, 0, 1.2])
+#view_direction = np.array([1, 0, 0])
+#s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
+#s.renderer.set_fov(90)
 
 # Player body is represented by a translucent blue cylinder
 if enable_vr_body:
@@ -75,34 +80,18 @@ if enable_vr_body:
     s.import_object(vr_body)
     vr_body.init_body([0,0])
 
-# TODO: Remove this once I get the VR hand working!
-vr_hand_base = os.path.join(assets_path, 'models', 'vr_hand')
-vrh_right = os.path.join(vr_hand_base, 'vr_hand_right.urdf')
-vrh_left = os.path.join(vr_hand_base, 'vr_hand_left.urdf')
-
-vrh_r = ArticulatedObject(vrh_right)
-s.import_object(vrh_r)
-vrh_r.set_position([0, 0, 1])
-
-vrh_l = ArticulatedObject(vrh_left)
-s.import_object(vrh_l)
-vrh_l.set_position([0, 0.2, 1])
-
 # This playground only uses one hand - it has enough friction to pick up some of the
 # mustard bottles
-#rHand = VrHand()
-#s.import_object(rHand)
+rHand = VrHand()
+s.import_object(rHand)
 # This sets the hand constraints so it can move with the VR controller
-#rHand.set_start_state(start_pos=[0.0, 0.5, 1.5])
+rHand.set_start_state(start_pos=[0.0, 0.5, 1.5])
 
 # Add playground objects to the scene
 # Eye tracking visual marker - a red marker appears in the scene to indicate gaze direction
 gaze_marker = VisualMarker(radius=0.03)
 s.import_object(gaze_marker)
 gaze_marker.set_position([0,0,1.5])
-
-# Set VR system to be at (0, 0) with a height of 1.5m
-s.set_vr_pos([0, 0, 0.5])
 
 if optimize:
     s.optimize_vertex_and_texture()
@@ -114,11 +103,11 @@ while True:
     # Step the simulator - this needs to be done every frame to actually run the simulation
     s.step()
 
-    rIsValid, rTrans, rRot = s.get_data_for_vr_device('right_controller')
-    rTrig, rTouchX, rTouchY = s.get_button_data_for_controller('right_controller')
+    rIsValid, rTrans, rRot = s.getDataForVRDevice('right_controller')
+    rTrig, rTouchX, rTouchY = s.getButtonDataForController('right_controller')
 
     # VR eye tracking data
-    is_eye_data_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = s.get_eye_tracking_data()
+    is_eye_data_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = s.getEyeTrackingData()
     if is_eye_data_valid:
         # Move gaze marker based on eye tracking data
         updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
