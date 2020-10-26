@@ -24,6 +24,8 @@ from gibson2.utils.utils import rotate_vector_2d, rotate_vector_3d
 from gibson2.utils.utils import l2_distance, quatToXYZW
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from gibson2.objects.visual_marker import VisualMarker
+from transforms3d import euler
 
 import pybullet as p
 
@@ -68,6 +70,32 @@ class MotionPlanningWrapper(object):
             self.setup_arm_mp()
 
         self.arm_interaction_length = 0.2
+
+        self.marker = None
+        self.marker_direction = None
+
+        if self.mode in ['gui', 'iggui']:
+            self.marker = VisualMarker(
+                radius=0.04, rgba_color=[0, 0, 1, 1])
+            self.marker_direction = VisualMarker(visual_shape=p.GEOM_CAPSULE, radius=0.01, length=0.2,
+                                                   initial_offset=[0, 0, -0.1], rgba_color=[0, 0, 1, 1])
+            self.env.simulator.import_object(
+                self.marker, use_pbr=False)
+            self.env.simulator.import_object(self.marker_direction, use_pbr=False)
+
+    def set_marker_position(self, pos):
+        self.marker.set_position(pos)
+
+    def set_marker_position_yaw(self, pos, yaw):
+        quat = quatToXYZW(seq='wxyz', orn=euler.euler2quat(0, -np.pi/2, yaw))
+        self.marker.set_position(pos)
+        self.marker_direction.set_position_orientation(pos, quat)
+
+    def set_marker_position_direction(self, pos, direction):
+        yaw = np.arctan2(direction[1], direction[0])
+        quat = quatToXYZW(seq='wxyz', orn=euler.euler2quat(0, -np.pi/2, yaw))
+        self.marker.set_position(pos)
+        self.marker_direction.set_position_orientation(pos, quat)
 
     def setup_arm_mp(self):
         if self.robot_type == 'Fetch':
@@ -117,6 +145,9 @@ class MotionPlanningWrapper(object):
                 self.mp_obstacles.extend(self.env.scene.get_body_ids())
 
     def plan_base_motion(self, goal):
+        if self.marker is not None:
+            self.set_marker_position_yaw([goal[0], goal[1], 0.05], goal[2])
+
         state = self.env.get_state()
         x, y, theta = goal
         grid = state['occupancy_grid']
@@ -409,8 +440,11 @@ class MotionPlanningWrapper(object):
             return False
 
     def plan_arm_push(self, hit_pos, hit_normal):
+        if self.marker is not None:
+            self.set_marker_position_direction(hit_pos, hit_normal)
         joint_positions = self.get_arm_joint_positions(hit_pos)
-        print('planned JP', joint_positions)
+
+        #print('planned JP', joint_positions)
         set_joint_positions(self.robot_id, self.arm_joint_ids,
                             self.arm_default_joint_positions)
         self.simulator_sync()

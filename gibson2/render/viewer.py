@@ -55,6 +55,8 @@ class Viewer:
         cv2.setMouseCallback('ExternalView', self.change_dir)
         self.create_visual_object()
         self.planner = None
+        self.block_command = False
+
 
     def setup_motion_planner(self, planner: None):
         self.planner = planner
@@ -323,7 +325,7 @@ class Viewer:
                 elif (self.left_down or self.middle_down) and flags & cv2.EVENT_FLAG_CTRLKEY:
                     dy = (y - self._mouse_iy) / 500.0
                     self.move_constraint_z(dy)
-        elif self.manipulation_mode == 2:
+        elif self.manipulation_mode == 2 and not self.block_command:
             if event == cv2.EVENT_LBUTTONDOWN:  # left mouse button press
                 self._mouse_ix, self._mouse_iy = x, y
                 self.left_down = True
@@ -332,19 +334,31 @@ class Viewer:
             if event == cv2.EVENT_LBUTTONUP:
                 hit_pos, _ = self.get_hit(x, y)
                 target_yaw = np.arctan2(hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
+                self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
+                self.planner.simulator_sync()
+                self.left_down = False
                 if hit_pos is not None:
+                    self.block_command = True
                     plan = self.planner.plan_base_motion([self.hit_pos[0], self.hit_pos[1], target_yaw])
                     print(plan)
                     if plan is not None and len(plan) > 0:
                         self.planner.dry_run_base_plan(plan)
+                    self.block_command = False
+
+            if event == cv2.EVENT_MOUSEMOVE:
+                if self.left_down:
+                    hit_pos, _ = self.get_hit(x, y)
+                    target_yaw = np.arctan2(hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
+                    self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
+                    self.planner.simulator_sync()
 
             if event == cv2.EVENT_MBUTTONDOWN:
                 hit_pos, hit_normal = self.get_hit(x, y)
                 if hit_pos is not None:
+                    self.block_command = True
                     plan = self.planner.plan_arm_push(hit_pos, -np.array(hit_normal))
                     self.planner.execute_arm_push(plan, hit_pos, -np.array(hit_normal))
-
-
+                    self.block_command = False
     def update(self):
         camera_pose = np.array([self.px, self.py, self.pz])
         if not self.renderer is None:
