@@ -172,7 +172,9 @@ def segmentation_pca( predicted ):
 def visualize_data_entry(data_entry, feature, prediction, 
                          prediction_dense, 
                          step_num,
-                         save_path=None):
+                         save_path=None,
+                         save_first=True,
+                         return_figure=False):
     for batch_i in range(data_entry['image'].size(0)):
         if data_entry['image'][batch_i].shape[0] == 4:
             depth = data_entry['image'][batch_i][-1,:,:].numpy()
@@ -223,9 +225,13 @@ def visualize_data_entry(data_entry, feature, prediction,
             'moved' if np.argmax(prediction[batch_i].cpu().numpy()) 
             else 'not moved'), fontsize=20)
         fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+        if return_figure:
+            return fig
         #plt.show()
         if save_path is not None:
             fig.savefig(os.path.join(save_path, 
                         '{:04d}_{:04d}.png'.format(step_num, batch_i)))
         fig.clf()
         plt.close()
+        if save_first:
+            break

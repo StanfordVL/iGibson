@@ -20,6 +20,7 @@ import pdb
 import matplotlib.pyplot as plt
 from model import UNet
 import numpy as np
+from torch.utils.tensorboard import SummaryWriter
 
 
 parser = argparse.ArgumentParser(description='Interaction Pre-Training')
@@ -39,8 +40,8 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=50, type=int,
-                    metavar='N', help='print frequency (default: 10)')
+parser.add_argument('-p', '--print-freq', default=100, type=int,
+                    metavar='N', help='print frequency (default: 100)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
@@ -58,6 +59,8 @@ best_acc1 = 0
 
 def main():
     args = parser.parse_args()
+    writer = SummaryWriter('runs/{}'.format(
+                           'rgbd' if args.use_depth else 'rgb'))
 
     # if args.seed is not None:
         # random.seed(args.seed)
@@ -87,7 +90,8 @@ def main_worker(args):
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
-    experiment_name = 'rgbd'
+
+    experiment_name =  'rgbd' if args.use_depth else 'rgb'
     save_dir = './ckpt/{}'.format(experiment_name)
     os.makedirs(save_dir, exist_ok=True)
 
@@ -143,7 +147,6 @@ def main_worker(args):
 
         save_checkpoint( save_dir, {
             'epoch': epoch + 1,
-            'arch': args.arch,
             'state_dict': model.state_dict(),
             'best_acc1': best_acc1,
             'optimizer' : optimizer.state_dict(),
@@ -242,7 +245,7 @@ def validate(val_loader, model, criterion, args, viz_dir):
             if i % args.print_freq == 0:
                 progress.display(i)
                 train_util.visualize_data_entry(sample,features,
-                        Y,pred,i, save_path=viz_dir)
+                        Y,pred,i, save_path=viz_dir, save_first=False)
 
         # TODO: this should also be done with the ProgressMeter
         print(' * Acc@1 {top1.avg:.3f}'
@@ -253,7 +256,7 @@ def validate(val_loader, model, criterion, args, viz_dir):
 def save_checkpoint(save_dir, state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, os.path.join(save_dir, filename))
     if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
+        shutil.copyfile(os.path.join(save_dir, filename), 'model_best.pth.tar')
 
 
 class AverageMeter(object):
