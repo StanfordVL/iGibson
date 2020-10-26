@@ -138,12 +138,11 @@ class MotionPlanningWrapper(object):
         self.arm_ik_threshold = 0.05
 
         self.mp_obstacles = []
-        if isinstance(self.env.scene, StaticIndoorScene):
+        if type(self.env.scene) == StaticIndoorScene:
             if self.env.scene.mesh_body_id is not None:
                 self.mp_obstacles.append(self.env.scene.mesh_body_id)
-        elif isinstance(self.env.scene, InteractiveIndoorScene):
+        elif type(self.env.scene) == InteractiveIndoorScene:
                 self.mp_obstacles.extend(self.env.scene.get_body_ids())
-
     def plan_base_motion(self, goal):
         if self.marker is not None:
             self.set_marker_position_yaw([goal[0], goal[1], 0.05], goal[2])
@@ -259,6 +258,9 @@ class MotionPlanningWrapper(object):
         while n_attempt < max_attempt:
             if self.robot_type == 'Movo':
                 self.robot.tuck()
+
+            state_id = p.saveState()
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
             set_joint_positions(self.robot_id, self.arm_joint_ids, sample_fn())
             arm_joint_positions = p.calculateInverseKinematics(
                 self.robot_id,
@@ -272,6 +274,9 @@ class MotionPlanningWrapper(object):
                 jointDamping=joint_damping,
                 solver=p.IK_DLS,
                 maxNumIterations=100)
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+            p.restoreState(state_id)
+            p.removeState(state_id)
 
             if self.robot_type == 'Fetch':
                 arm_joint_positions = arm_joint_positions[2:10]
@@ -396,6 +401,7 @@ class MotionPlanningWrapper(object):
 
         plan_arm_start = time()
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+        state_id = p.saveState()
 
         allow_collision_links = []
         if self.robot_type == 'Fetch':
@@ -414,6 +420,8 @@ class MotionPlanningWrapper(object):
             allow_collision_links=allow_collision_links,
             )
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+        p.restoreState(state_id)
+        p.removeState(state_id)
         return arm_path
 
     def dry_run_arm_plan(self, arm_path):

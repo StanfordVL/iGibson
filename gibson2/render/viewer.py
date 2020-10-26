@@ -335,7 +335,6 @@ class Viewer:
                 hit_pos, _ = self.get_hit(x, y)
                 target_yaw = np.arctan2(hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
                 self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
-                self.planner.simulator_sync()
                 self.left_down = False
                 if hit_pos is not None:
                     self.block_command = True
@@ -350,7 +349,6 @@ class Viewer:
                     hit_pos, _ = self.get_hit(x, y)
                     target_yaw = np.arctan2(hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
                     self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
-                    self.planner.simulator_sync()
 
             if event == cv2.EVENT_MBUTTONDOWN:
                 hit_pos, hit_normal = self.get_hit(x, y)
@@ -359,6 +357,7 @@ class Viewer:
                     plan = self.planner.plan_arm_push(hit_pos, -np.array(hit_normal))
                     self.planner.execute_arm_push(plan, hit_pos, -np.array(hit_normal))
                     self.block_command = False
+
     def update(self):
         camera_pose = np.array([self.px, self.py, self.pz])
         if not self.renderer is None:
