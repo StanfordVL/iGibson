@@ -97,7 +97,7 @@ class iGibsonInteractionPretrain(Dataset):
             pretrain_dir = os.path.join(scenes_root, s, 'misc/interaction_pretrain')
             if not os.path.isdir(pretrain_dir):
                 continue
-            data_range = range(3200) if train else range(3200, 4000)
+            data_range = range(3600) if train else range(3600, 4000)
             for i in data_range:
                 for j in range(10):
                     img_path = os.path.join(pretrain_dir, 

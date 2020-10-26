@@ -121,7 +121,7 @@ def main_worker(args, writer):
 
     val_dataset= train_util.iGibsonInteractionPretrain(
                                 load_depth=args.use_depth,
-                                train=True)
+                                train=False)
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
