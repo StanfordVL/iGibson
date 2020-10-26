@@ -128,7 +128,7 @@ def main_worker(args, writer):
     
     if args.evaluate:
         validate(val_loader, model, criterion, args,
-                 os.path.join(save_dir, 'eval'), writer)
+                 os.path.join(save_dir, 'eval'), writer, args.start_epoch)
         return
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -141,7 +141,7 @@ def main_worker(args, writer):
         # evaluate on validation set
         acc1 = validate(val_loader, model, criterion, args, 
                         os.path.join(save_dir, '{:04d}'.format(epoch)),
-                        writer)
+                        writer, epoch)
 
         # remember best acc@1 and save checkpoint
         is_best = acc1 > best_acc1
@@ -211,8 +211,9 @@ def train(train_loader,
             writer.add_scalar('training accuracy',
                             acc1,
                             epoch * len(train_loader) + i)
+            writer.flush()
 
-def validate(val_loader, model, criterion, args, viz_dir, writer):
+def validate(val_loader, model, criterion, args, viz_dir, writer, epoch):
     os.makedirs(viz_dir, exist_ok=True)
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -267,8 +268,10 @@ def validate(val_loader, model, criterion, args, viz_dir, writer):
                 writer.add_figure('predictions vs. actuals',
                                 train_util.visualize_data_entry(
                                     sample,features,
-                                    Y,pred,i,return_figure=True)
+                                    Y,pred,i,return_figure=True),
                                 epoch * len(val_loader) + i)
+                writer.flush()
+
 
 
         # TODO: this should also be done with the ProgressMeter
