@@ -132,6 +132,7 @@ def main_worker(args, writer):
         validate(val_loader, model, criterion, args,
                 os.path.join(save_dir, '{:04d}'.format(args.start_epoch - 1)), 
                 writer, args.start_epoch)
+        writer.close()
         return
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -156,6 +157,7 @@ def main_worker(args, writer):
             'best_acc1': best_acc1,
             'optimizer' : optimizer.state_dict(),
             }, is_best, 'ckpt_{:04d}.pth.tar'.format(epoch))
+    writer.close()
 
 
 def train(train_loader, 
