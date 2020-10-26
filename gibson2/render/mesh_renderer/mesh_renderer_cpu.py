@@ -943,6 +943,11 @@ class MeshRenderer(object):
                 shape_normal = np.zeros((shape_vertex.shape[0], 3))
             else:
                 shape_normal = vertex_normal[shape_normal_index]
+            
+            # Need to flip normals in axes where we have negative scaling
+            for i in range(3):
+                if scale[i] < 0:
+                    shape_normal[:, i] *= -1
 
             # Need to flip normals in axes where we have negative scaling
             for i in range(3):
