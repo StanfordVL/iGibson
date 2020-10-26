@@ -90,8 +90,9 @@ class iGibsonInteractionPretrain(Dataset):
                  transform=None,
                  depth_transform=None,
                  train=True):
-        # self.asset_root = gibson2.ig_dataset_path
         self.asset_root = '/scr-ssd/wshen/dataset/ig_dataset'
+        if not os.path.isdir(self.asset_root):
+            self.asset_root = gibson2.ig_dataset_path
         self.imgs = []
         scenes_root = os.path.join(self.asset_root, 'scenes')
         for s in os.listdir(scenes_root):

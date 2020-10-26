@@ -22,6 +22,8 @@ from model import UNet
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import classification_report
 
 parser = argparse.ArgumentParser(description='Interaction Pre-Training')
 
@@ -121,14 +123,15 @@ def main_worker(args, writer):
 
     val_dataset= train_util.iGibsonInteractionPretrain(
                                 load_depth=args.use_depth,
-                                train=False)
+                                train=True)
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
     
     if args.evaluate:
         validate(val_loader, model, criterion, args,
-                 os.path.join(save_dir, 'eval'), writer, args.start_epoch)
+                os.path.join(save_dir, '{:04d}'.format(args.start_epoch - 1)), 
+                writer, args.start_epoch)
         return
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -226,7 +229,10 @@ def validate(val_loader, model, criterion, args, viz_dir, writer, epoch):
     model.eval()
 
     with torch.no_grad():
+        agg_predicted = []
+        agg_label = []
         end = time.time()
+        softmax = nn.Softmax(dim=1)
         for i, sample in enumerate(val_loader):
 
             images = sample['image'].cuda(non_blocking=True)
@@ -246,11 +252,16 @@ def validate(val_loader, model, criterion, args, viz_dir, writer, epoch):
             losses.update(loss.item(), images.size(0))
             top1.update(acc1, images.size(0))
 
+            # store pred and label, for later precision/recall/f1
+            y_prob = softmax(Y.cpu()).numpy()[:,1]
+            agg_predicted.append(y_prob)
+            agg_label.append(target.cpu().numpy())
+
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
 
-            if i % args.print_freq == 0:
+            if args.print_freq != 0 and  i % args.print_freq == 0:
                 progress.display(i)
                 train_util.visualize_data_entry(sample,features,
                         Y,pred,i, save_path=viz_dir, save_first=False)
@@ -270,13 +281,45 @@ def validate(val_loader, model, criterion, args, viz_dir, writer, epoch):
                                     Y,pred,i,return_figure=True),
                                 epoch * len(val_loader) + i)
 
+        # process precision/recall/f1
+        all_pred = np.concatenate(agg_predicted)
+        all_label = np.concatenate(agg_label)
+        
+        # process precision recall curve
+        fig = get_precision_recall_curve(all_label, all_pred, epoch)
+        fig.savefig(os.path.join(viz_dir, 'prec_recall.png'))
+        writer.add_figure('precision vs recall',
+                        fig, epoch * len(val_loader))
+        fig.clf()
+        plt.close()
 
+        # get values
+        values = classification_report(all_label, all_pred > 0.5, output_dict=True)['1']
+        writer.add_scalar('val precision',
+                        values['precision'],
+                        epoch * len(val_loader))
+        writer.add_scalar('val recall',
+                        values['recall'],
+                        epoch * len(val_loader))
+        writer.add_scalar('val f1',
+                        values['f1-score'],
+                        epoch * len(val_loader))
 
         # TODO: this should also be done with the ProgressMeter
         print(' * Acc@1 {top1.avg:.3f}'
               .format(top1=top1))
     return top1.avg
 
+def get_precision_recall_curve(all_label, all_pred, epoch):
+    precision_steps, recall_steps, _ = precision_recall_curve(all_label, all_pred)
+    fig,ax = plt.subplots(nrows=1,ncols=1,figsize=(8,8))
+    # plot the precision-recall curves
+    ax.plot(recall_steps, precision_steps, label='epoch {}'.format(epoch))
+    ax.set_xlabel('Recall')
+    ax.set_ylabel('Precision')
+    ax.set_title('Precision-Recall curve')
+    ax.legend()
+    return fig
 
 def save_checkpoint(save_dir, state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, os.path.join(save_dir, filename))
