@@ -73,10 +73,10 @@ def main():
                       # 'from checkpoints.')
 
     ngpus_per_node = torch.cuda.device_count()
-    main_worker(args)
+    main_worker(args, writer)
 
 
-def main_worker(args):
+def main_worker(args, writer):
     global best_acc1
 
     # create model
@@ -128,18 +128,20 @@ def main_worker(args):
     
     if args.evaluate:
         validate(val_loader, model, criterion, args,
-                 viz_dir = os.path.join(save_dir, 'eval'))
+                 os.path.join(save_dir, 'eval'), writer)
         return
 
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args)
+        train(train_loader, model, criterion, optimizer, 
+              epoch, args, writer)
 
         # evaluate on validation set
         acc1 = validate(val_loader, model, criterion, args, 
-                viz_dir = os.path.join(save_dir, '{:04d}'.format(epoch)))
+                        os.path.join(save_dir, '{:04d}'.format(epoch)),
+                        writer)
 
         # remember best acc@1 and save checkpoint
         is_best = acc1 > best_acc1
@@ -156,7 +158,7 @@ def main_worker(args):
 def train(train_loader, 
           model,
           criterion, optimizer, 
-          epoch, args):
+          epoch, args, writer):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -202,9 +204,15 @@ def train(train_loader,
 
         if i % args.print_freq == 0:
             progress.display(i)
+            # ...log the running loss
+            writer.add_scalar('training loss',
+                            loss.item(),
+                            epoch * len(train_loader) + i)
+            writer.add_scalar('training accuracy',
+                            acc1,
+                            epoch * len(train_loader) + i)
 
-
-def validate(val_loader, model, criterion, args, viz_dir):
+def validate(val_loader, model, criterion, args, viz_dir, writer):
     os.makedirs(viz_dir, exist_ok=True)
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -246,6 +254,22 @@ def validate(val_loader, model, criterion, args, viz_dir):
                 progress.display(i)
                 train_util.visualize_data_entry(sample,features,
                         Y,pred,i, save_path=viz_dir, save_first=False)
+
+                # ...log the running loss
+                writer.add_scalar('validation loss',
+                                loss.item(),
+                                epoch * len(val_loader) + i)
+                writer.add_scalar('validation accuracy',
+                                acc1,
+                                epoch * len(val_loader) + i)
+
+                # visualize mini-batch
+                writer.add_figure('predictions vs. actuals',
+                                train_util.visualize_data_entry(
+                                    sample,features,
+                                    Y,pred,i,return_figure=True)
+                                epoch * len(val_loader) + i)
+
 
         # TODO: this should also be done with the ProgressMeter
         print(' * Acc@1 {top1.avg:.3f}'
