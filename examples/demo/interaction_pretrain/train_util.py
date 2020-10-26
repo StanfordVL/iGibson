@@ -26,7 +26,7 @@ def get_label(image_path):
     x,y = data['interact_at']
     x = int(x / 4) # width 
     y = int(y / 4) # height
-    return moved, (x,y) 
+    return moved, (y,x) 
 
 def get_binary_label(data, image_path):
     if data['hit'] is None:
@@ -136,6 +136,8 @@ class iGibsonInteractionPretrain(Dataset):
         image = Image.open(img_name)
         image = self.transform(image)
         label, action = get_label(img_name)
+        x,y = action
+        action = x * 128 + y
         label = int(label)
 
         if self.load_depth:
@@ -144,7 +146,7 @@ class iGibsonInteractionPretrain(Dataset):
             image = torch.cat((image, depth), 0)
         sample = {'image' : image, 
         # sample = {
-                  'action': action, # (width, height)
+                  'action': np.array(action), # (height, width)
                   'label' : label}
         return sample
 
@@ -167,52 +169,63 @@ def segmentation_pca( predicted ):
     #scipy.misc.toimage(np.squeeze(x), cmin=0.0, cmax=1.0).save(to_store_name)
     return x
 
-def visualize_data_entry(data_entry, feature, prediction, prediction_dense, save_path=None):
-    if data_entry['image'].shape[0] == 4:
-        depth = data_entry['image'][-1,:,:].numpy()
-        rgb_raw = data_entry['image'][:-1,:,:]
-    else:
-        depth = np.zeros([128,128])
-        rgb_raw = data_entry['image']
-    inv_normalize = transforms.Normalize(
-        mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225],
-        std=[1/0.229, 1/0.224, 1/0.225]
-    )
-    im = transforms.ToPILImage()(inv_normalize(rgb_raw)).convert("RGB")
-    draw = ImageDraw.Draw(im)
-    x,y = data_entry['action']
-    #x,y = 0,0
-    x_min = max(0, x-3)
-    y_min = max(0, y-3)
-    x_max = min(im.size[0], x+3)
-    y_max = min(im.size[1], y+3)
-    draw.ellipse((x_min, y_min, x_max, y_max), fill = 'blue', outline ='red')
-    fig, ax = plt.subplots(nrows=2,ncols=2, figsize=(10,10))
-    ax[0][0].imshow(im)
-    ax[0][0].axis('off')
-    ax[0][0].set_title('RGB')
-    ax[0][1].imshow(depth)
-    ax[0][1].axis('off')
-    ax[0][1].set_title('Depth')
+def visualize_data_entry(data_entry, feature, prediction, 
+                         prediction_dense, 
+                         step_num,
+                         save_path=None):
+    for batch_i in range(data_entry['image'].size(0)):
+        if data_entry['image'][batch_i].shape[0] == 4:
+            depth = data_entry['image'][batch_i][-1,:,:].numpy()
+            rgb_raw = data_entry['image'][batch_i][:-1,:,:]
+        else:
+            depth = np.zeros([128,128])
+            rgb_raw = data_entry['image'][batch_i]
+        inv_normalize = transforms.Normalize(
+            mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225],
+            std=[1/0.229, 1/0.224, 1/0.225]
+        )
+        im = transforms.ToPILImage()(inv_normalize(rgb_raw)).convert("RGB")
+        draw = ImageDraw.Draw(im)
+        xy_flat = data_entry['action'][batch_i]
+        x = xy_flat // 128
+        y = xy_flat % 128
+        x_min = max(0, x-3)
+        y_min = max(0, y-3)
+        x_max = min(im.size[0], x+3)
+        y_max = min(im.size[1], y+3)
+        draw.ellipse((y_min, x_min, y_max, x_max), fill = 'blue', outline ='red')
+        fig, ax = plt.subplots(nrows=2,ncols=2, figsize=(10,10))
+        ax[0][0].imshow(im)
+        ax[0][0].axis('off')
+        ax[0][0].set_title('RGB')
+        ax[0][1].imshow(depth)
+        ax[0][1].axis('off')
+        ax[0][1].set_title('Depth')
 
-    feature_viz = segmentation_pca(feature)
-    ax[1][1].imshow(feature_viz)
-    ax[1][1].axis('off')
-    ax[1][1].set_title('Feature')
+        feature_numpy = feature[batch_i].cpu().permute(1, 2, 0).numpy()
+        feature_viz = segmentation_pca(feature_numpy)
+        ax[1][1].imshow(feature_viz)
+        ax[1][1].axis('off')
+        ax[1][1].set_title('Feature')
+        
+        prediction_dense_np = prediction_dense[batch_i].cpu().permute(1,2,0).numpy()[:,:,1]
+        pred_dense = plt.get_cmap('coolwarm')(prediction_dense_np)[:,:,:-1]
+        #print(pred_dense.shape)
+        pred_heatmap = Image.fromarray((pred_dense * 255).astype(np.uint8))
+        overlayed = Image.blend(im, pred_heatmap, 0.5)
+        #ax[1][0].imshow(im)
+        ax[1][0].imshow(overlayed)
+        ax[1][0].axis('off')
+        ax[1][0].set_title('pred. (dense)')
 
-    pred_dense = plt.get_cmap('coolwarm')(prediction_dense)[:,:,:-1]
-    #print(pred_dense.shape)
-    pred_heatmap = Image.fromarray((pred_dense * 255).astype(np.uint8))
-    overlayed = Image.blend(im, pred_heatmap, 0.5)
-    #ax[1][0].imshow(im)
-    ax[1][0].imshow(overlayed)
-    ax[1][0].axis('off')
-    ax[1][0].set_title('pred. (dense)')
-
-    fig.suptitle('Label: {}; Prediction: {}'.format(
-        'moved' if data_entry['label'] else 'not moved',
-        'moved' if prediction else 'not moved'), fontsize=20)
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    #plt.show()
-    if save_path is not None:
-        fig.savefig(save_path)
+        fig.suptitle('Interact {},{}; Label: {}; Prediction: {}'.format(x,y,
+            'moved' if data_entry['label'][batch_i] else 'not moved',
+            'moved' if np.argmax(prediction[batch_i].cpu().numpy()) 
+            else 'not moved'), fontsize=20)
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+        #plt.show()
+        if save_path is not None:
+            fig.savefig(os.path.join(save_path, 
+                        '{:04d}_{:04d}.png'.format(step_num, batch_i)))
+        fig.clf()
+        plt.close()

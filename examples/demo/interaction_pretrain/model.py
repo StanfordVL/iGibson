@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from resnet import  resnet9w32gn_ws
 
 class UNet(nn.Module):
-    def __init__(self, input_channels=4):
+    def __init__(self, input_channels=4, output_channels=2):
         super(UNet, self).__init__()
         self.backbone = resnet9w32gn_ws(input_channels)
         factor = 2
@@ -16,6 +16,9 @@ class UNet(nn.Module):
         self.up2 = Up(layer_size[1] + layer_size[2], layer_size[2])
         self.up3 = Up(layer_size[2] + layer_size[3], layer_size[3])
         self.up4 = Up(layer_size[3] + layer_size[4], layer_size[4])
+        self.readout = DoubleConv(layer_size[4], 
+                                  output_channels, 
+                                  mid_channels=layer_size[4] // 2)
 
     def forward(self, x):
         x1,x2,x3,x4,x5 = self.backbone(x)
@@ -23,7 +26,9 @@ class UNet(nn.Module):
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
-        return x
+        y = self.readout(x)
+        return y,x
+
 
 """ Parts of the U-Net model """
 

@@ -18,6 +18,8 @@ import torchvision.transforms as transforms
 import train_util
 import pdb
 import matplotlib.pyplot as plt
+from model import UNet
+import numpy as np
 
 
 parser = argparse.ArgumentParser(description='Interaction Pre-Training')
@@ -37,7 +39,7 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=10, type=int,
+parser.add_argument('-p', '--print-freq', default=50, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -75,14 +77,19 @@ def main_worker(args):
     global best_acc1
 
     # create model
-    # model = torch.nn.DataParallel(model).cuda()
+    model = UNet(input_channels=4 if args.use_depth else 3)
+    model = torch.nn.DataParallel(model).cuda()
 
-    # # define loss function (criterion) and optimizer
-    # criterion = nn.CrossEntropyLoss().cuda()
+    # define loss function (criterion) and optimizer
+    weight=torch.from_numpy(np.array([1.,20.]).astype(np.float32))
+    criterion = nn.CrossEntropyLoss(weight=weight).cuda()
 
-    # optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                # momentum=args.momentum,
-                                # weight_decay=args.weight_decay)
+    optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                                momentum=args.momentum,
+                                weight_decay=args.weight_decay)
+    experiment_name = 'rgbd'
+    save_dir = './ckpt/{}'.format(experiment_name)
+    os.makedirs(save_dir, exist_ok=True)
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -110,45 +117,41 @@ def main_worker(args):
 
     val_dataset= train_util.iGibsonInteractionPretrain(
                                 load_depth=args.use_depth,
-                                train=False)
+                                train=True)
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
     
-    total = 0
-    for x in train_dataset:
-        total += x['label']
+    if args.evaluate:
+        validate(val_loader, model, criterion, args,
+                 viz_dir = os.path.join(save_dir, 'eval'))
+        return
 
-    print(total, len(train_dataset))
+    for epoch in range(args.start_epoch, args.epochs):
+        adjust_learning_rate(optimizer, epoch, args)
 
-    # if args.evaluate:
-        # validate(val_loader, model, criterion, args)
-        # return
+        # train for one epoch
+        train(train_loader, model, criterion, optimizer, epoch, args)
 
-    # for epoch in range(args.start_epoch, args.epochs):
-        # adjust_learning_rate(optimizer, epoch, args)
+        # evaluate on validation set
+        acc1 = validate(val_loader, model, criterion, args, 
+                viz_dir = os.path.join(save_dir, '{:04d}'.format(epoch)))
 
-        # # train for one epoch
-        # train(train_loader, model, criterion, optimizer, epoch, args)
+        # remember best acc@1 and save checkpoint
+        is_best = acc1 > best_acc1
+        best_acc1 = max(acc1, best_acc1)
 
-        # # evaluate on validation set
-        # acc1 = validate(val_loader, model, criterion, args)
-
-        # # remember best acc@1 and save checkpoint
-        # is_best = acc1 > best_acc1
-        # best_acc1 = max(acc1, best_acc1)
-
-        # save_checkpoint({
-            # 'epoch': epoch + 1,
-            # 'arch': args.arch,
-            # 'state_dict': model.state_dict(),
-            # 'best_acc1': best_acc1,
-            # 'optimizer' : optimizer.state_dict(),
-        # }, is_best)
+        save_checkpoint( save_dir, {
+            'epoch': epoch + 1,
+            'arch': args.arch,
+            'state_dict': model.state_dict(),
+            'best_acc1': best_acc1,
+            'optimizer' : optimizer.state_dict(),
+            }, is_best, 'ckpt_{:04d}.pth.tar'.format(epoch))
 
 
 def train(train_loader, 
-          backbone, decoder, 
+          model,
           criterion, optimizer, 
           epoch, args):
     batch_time = AverageMeter('Time', ':6.3f')
@@ -161,7 +164,7 @@ def train(train_loader,
         prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
-    backbone.train()
+    model.train()
 
     end = time.time()
     for i, sample in enumerate(train_loader):
@@ -170,15 +173,20 @@ def train(train_loader,
 
         images = sample['image'].cuda(non_blocking=True)
         target = sample['label'].cuda(non_blocking=True)
+        action = sample['action'].cuda(non_blocking=True)
 
         # compute output
-        features = backbone(images)
-        loss = criterion(output, target)
+        pred, _ = model(images)
+        pred_flat = torch.flatten(pred, 2, -1)
+        eI = action[..., None, None].expand(pred_flat.size(0), 2, 1)
+        Y = torch.gather(pred_flat, dim=2, index=eI).squeeze()
+
+        loss = criterion(Y, target)
 
         # measure accuracy and record loss
-        acc1 = accuracy(output, target)
+        acc1 = accuracy(Y, target)[0].cpu().numpy()[0]
         losses.update(loss.item(), images.size(0))
-        top1.update(acc1[0], images.size(0))
+        top1.update(acc1, images.size(0))
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
@@ -193,7 +201,8 @@ def train(train_loader,
             progress.display(i)
 
 
-def validate(val_loader, model, criterion, args):
+def validate(val_loader, model, criterion, args, viz_dir):
+    os.makedirs(viz_dir, exist_ok=True)
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
@@ -207,21 +216,24 @@ def validate(val_loader, model, criterion, args):
 
     with torch.no_grad():
         end = time.time()
-        for i, (images, target) in enumerate(val_loader):
-            if args.gpu is not None:
-                images = images.cuda(args.gpu, non_blocking=True)
-            if torch.cuda.is_available():
-                target = target.cuda(args.gpu, non_blocking=True)
+        for i, sample in enumerate(val_loader):
+
+            images = sample['image'].cuda(non_blocking=True)
+            target = sample['label'].cuda(non_blocking=True)
+            action = sample['action'].cuda(non_blocking=True)
 
             # compute output
-            output = model(images)
-            loss = criterion(output, target)
+            pred, features = model(images)
+            pred_flat = torch.flatten(pred, 2, -1)
+            eI = action[..., None, None].expand(pred_flat.size(0), 2, 1)
+            Y = torch.gather(pred_flat, dim=2, index=eI).squeeze()
+
+            loss = criterion(Y, target)
 
             # measure accuracy and record loss
-            acc1, acc5 = accuracy(output, target, topk=(1, 5))
+            acc1 = accuracy(Y, target)[0].cpu().numpy()[0]
             losses.update(loss.item(), images.size(0))
-            top1.update(acc1[0], images.size(0))
-            top5.update(acc5[0], images.size(0))
+            top1.update(acc1, images.size(0))
 
             # measure elapsed time
             batch_time.update(time.time() - end)
@@ -229,16 +241,17 @@ def validate(val_loader, model, criterion, args):
 
             if i % args.print_freq == 0:
                 progress.display(i)
+                train_util.visualize_data_entry(sample,features,
+                        Y,pred,i, save_path=viz_dir)
 
         # TODO: this should also be done with the ProgressMeter
-        print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
-              .format(top1=top1, top5=top5))
-
+        print(' * Acc@1 {top1.avg:.3f}'
+              .format(top1=top1))
     return top1.avg
 
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
-    torch.save(state, filename)
+def save_checkpoint(save_dir, state, is_best, filename='checkpoint.pth.tar'):
+    torch.save(state, os.path.join(save_dir, filename))
     if is_best:
         shutil.copyfile(filename, 'model_best.pth.tar')
 
