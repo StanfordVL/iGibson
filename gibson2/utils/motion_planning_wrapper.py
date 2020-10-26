@@ -253,14 +253,13 @@ class MotionPlanningWrapper(object):
         max_attempt = 200
         sample_fn = get_sample_fn(self.robot_id, self.arm_joint_ids)
         base_pose = get_base_values(self.robot_id)
-
+        state_id = p.saveState()
+        #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         # find collision-free IK solution for arm_subgoal
         while n_attempt < max_attempt:
             if self.robot_type == 'Movo':
                 self.robot.tuck()
 
-            state_id = p.saveState()
-            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
             set_joint_positions(self.robot_id, self.arm_joint_ids, sample_fn())
             arm_joint_positions = p.calculateInverseKinematics(
                 self.robot_id,
@@ -274,9 +273,7 @@ class MotionPlanningWrapper(object):
                 jointDamping=joint_damping,
                 solver=p.IK_DLS,
                 maxNumIterations=100)
-            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
-            p.restoreState(state_id)
-            p.removeState(state_id)
+
 
             if self.robot_type == 'Fetch':
                 arm_joint_positions = arm_joint_positions[2:10]
@@ -330,8 +327,14 @@ class MotionPlanningWrapper(object):
                 continue
 
             #self.episode_metrics['arm_ik_time'] += time() - ik_start
+            #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+            p.restoreState(state_id)
+            p.removeState(state_id)
             return arm_joint_positions
 
+        #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+        p.restoreState(state_id)
+        p.removeState(state_id)
         #self.episode_metrics['arm_ik_time'] += time() - ik_start
         return None
 
