@@ -31,7 +31,7 @@ parser.add_argument('--epochs', default=90, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=64, type=int,
+parser.add_argument('-b', '--batch-size', default=128, type=int,
                     metavar='N')
 parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
@@ -84,7 +84,7 @@ def main_worker(args, writer):
     model = torch.nn.DataParallel(model).cuda()
 
     # define loss function (criterion) and optimizer
-    weight=torch.from_numpy(np.array([1.,20.]).astype(np.float32))
+    weight=torch.from_numpy(np.array([1.,30.]).astype(np.float32))
     criterion = nn.CrossEntropyLoss(weight=weight).cuda()
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
@@ -211,7 +211,6 @@ def train(train_loader,
             writer.add_scalar('training accuracy',
                             acc1,
                             epoch * len(train_loader) + i)
-            writer.flush()
 
 def validate(val_loader, model, criterion, args, viz_dir, writer, epoch):
     os.makedirs(viz_dir, exist_ok=True)
@@ -270,7 +269,6 @@ def validate(val_loader, model, criterion, args, viz_dir, writer, epoch):
                                     sample,features,
                                     Y,pred,i,return_figure=True),
                                 epoch * len(val_loader) + i)
-                writer.flush()
 
 
 
