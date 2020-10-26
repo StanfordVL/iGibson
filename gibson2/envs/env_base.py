@@ -54,9 +54,12 @@ class BaseEnv(gym.Env):
 
         enable_shadow = self.config.get('enable_shadow', False)
         enable_pbr = self.config.get('enable_pbr', True)
+        texture_scale = self.config.get('texture_scale', 1.0)
+
         settings = MeshRendererSettings(enable_shadow=enable_shadow,
                                         enable_pbr=enable_pbr,
-                                        msaa=False)
+                                        msaa=False,
+                                        texture_scale=texture_scale)
 
         self.simulator = Simulator(mode=mode,
                                    physics_timestep=physics_timestep,

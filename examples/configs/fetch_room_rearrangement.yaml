@@ -9,6 +9,8 @@ trav_map_resolution: 0.1
 trav_map_erosion: 3
 should_open_all_doors: true
 #_set_first_n_objects: 5
+texture_scale: 0.5
+
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null

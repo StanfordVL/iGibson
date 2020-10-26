@@ -9,6 +9,7 @@ trav_map_resolution: 0.1
 trav_map_erosion: 3
 should_open_all_doors: false
 #_set_first_n_objects: 5
+texture_scale: 0.5
 
 # domain randomization
 texture_randomization_freq: null
@@ -66,4 +67,3 @@ scan_noise_rate: 0.0
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
-
