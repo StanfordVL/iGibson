@@ -2,7 +2,6 @@ import os
 import pybullet as p
 
 from gibson2 import assets_path
-from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.object_base import Object
 from gibson2.utils.utils import multQuatLists
 from gibson2.utils.vr_utils import translate_vr_position_by_vecs
@@ -49,9 +48,9 @@ class VrBody(Object):
 
     def _load(self):
         # Use a box to represent the player body
-        col_cy = p.createCollisionShape(p.GEOM_BOX, halfExtents=[self.shoulder_width, self.body_width, self.height/2])
+        col_cy = p.createCollisionShape(p.GEOM_BOX, halfExtents=[self.body_width, self.shoulder_width, self.height/2])
         # Make body a translucent blue
-        vis_cy = p.createVisualShape(p.GEOM_BOX, halfExtents=[self.radius, self.radius, self.height/2], rgbaColor=[0.65,0.65,0.65,1])
+        vis_cy = p.createVisualShape(p.GEOM_BOX, halfExtents=[self.body_width, self.shoulder_width, self.height/2], rgbaColor=[0.65,0.65,0.65,1])
         body_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_cy, 
                                     baseVisualShapeIndex=vis_cy)
 
@@ -65,7 +64,7 @@ class VrBody(Object):
         is calculated.
         """
         # Calculate right and forward vectors relative to input device
-        right, _, forward = s.get_device_coordinate_systen(relative_device)
+        right, _, forward = s.get_device_coordinate_system(relative_device)
         
         # Get HMD data
         hmd_is_valid, hmd_trans, hmd_rot = s.get_data_for_vr_device('hmd')
@@ -97,7 +96,7 @@ class VrBody(Object):
 
         # Extract only z rotation from HMD so we can spin the body on the vertical axis
         _, _, curr_z = p.getEulerFromQuaternion(self.get_orientation())
-        if hmdIsValid:
+        if hmd_is_valid:
             _, _, hmd_z = p.getEulerFromQuaternion(hmd_rot)
             curr_z = hmd_z
 
@@ -109,7 +108,7 @@ class VrBody(Object):
         self.prev_hmd_wp = hmd_wp
 
 
-class VrHand(ArticulatedObject):
+class VrHand(Object):
     """
     Represents the human hand used for VR programs
 
@@ -133,8 +132,17 @@ class VrHand(ArticulatedObject):
     Joint 16 has name Itip__Imiddle
     """
 
-    def __init__(self, scale=1):
-        super().__init__(filename=os.path.join(assets_path, 'models', 'vr_hand', 'vr_hand.urdf'), scale=scale)
+    def __init__(self, hand='right'):
+        self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_hand')
+        self.hand = hand
+        if self.hand not in ['left', 'right']:
+            print('ERROR: hand parameter must either be left or right!')
+            return
+
+        self.filename = os.path.join(self.vr_hand_folder, 'vr_hand_{}.urdf'.format(self.hand))
+        self.scale = 1
+        super(VrHand, self).__init__()
+        """
         # Hand needs to be rotated to visually align with VR controller
         self.base_rot = p.getQuaternionFromEuler([0, 160, -80])
         # Lists of joint indices for hand part
@@ -153,8 +161,17 @@ class VrHand(ArticulatedObject):
         self.open_pos = [0, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 1.0, 0.1, 0.1, 0.1, 0.2, 0.3, 0.4]
         # Closed positions for all joints
         self.close_pos = [0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 1.2, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8]
+        """
+
+    def _load(self):
+        # TODO: Set start state here?
+        body_id = p.loadURDF(self.filename, globalScaling=self.scale,
+                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+
+        return body_id
 
     def set_start_state(self, start_pos):
+        print("sssssss")
         """Call after importing the hand."""
         self.set_position(start_pos)
         for jointIndex in range(p.getNumJoints(self.body_id)):
@@ -172,6 +189,7 @@ class VrHand(ArticulatedObject):
     # Close frac of 1 indicates fully closed joint, and close frac of 0 indicates fully open joint
     # Joints move smoothly between their values in self.open_pos and self.close_pos
     def set_close_fraction(self, close_frac, maxForce=500):
+        print("sssssss")
         for jointIndex in range(p.getNumJoints(self.body_id)):
             open_pos = self.open_pos[jointIndex]
             close_pos = self.close_pos[jointIndex]
@@ -180,5 +198,6 @@ class VrHand(ArticulatedObject):
             p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos, force=maxForce)
 
     def move(self, trans, rot, maxForce=500):
+        print("sssssss")
         final_rot = multQuatLists(rot, self.base_rot)
         p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=maxForce)

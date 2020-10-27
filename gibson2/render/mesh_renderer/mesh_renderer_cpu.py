@@ -99,6 +99,12 @@ class InstanceGroup(object):
         self.shadow_caster = shadow_caster
         self.roughness = 1
         self.metalness = 0
+        # Indices into optimized buffers such as color information and transformation buffer
+        # These values are used to set buffer information during simulation
+        self.or_buffer_indices = None
+        # Store trans and rot data for OR as a single variable that we update every frame - avoids copying variable each frame
+        self.trans_data = None
+        self.rot_data = None
 
     def render(self, shadow_pass=0):
         """
@@ -243,6 +249,9 @@ class Instance(object):
         self.shadow_caster = shadow_caster
         self.roughness = 1
         self.metalness = 0
+                # Indices into optimized buffers such as color information and transformation buffer
+        # These values are used to set buffer information during simulation
+        self.or_buffer_indices = None
 
 
     def render(self, shadow_pass=0):
@@ -750,8 +759,8 @@ class MeshRenderer(object):
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
         self.mesh_materials = []
-
-
+        # Number of unique shapes comprising the optimized renderer buffer
+        self.or_buffer_shape_num = 0
 
         self.skybox_size = rendering_settings.skybox_size
         if not self.platform == 'Darwin' and rendering_settings.enable_pbr:
@@ -1445,17 +1454,34 @@ class MeshRenderer(object):
         for instance in self.instances:
             if isinstance(instance, Instance):
                 ids = instance.object.VAO_ids
+                or_buffer_idx_start = len(duplicate_vao_ids)
                 duplicate_vao_ids.extend(ids)
+                or_buffer_idx_end = len(duplicate_vao_ids)
+                # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this Instance will use
+                instance.or_buffer_indices = list(np.arange(or_buffer_idx_start, or_buffer_idx_end)).copy()
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * len(ids))
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
                 id_sum = 0
+                # Collect OR buffer indices over all visual objects in this group
+                temp_or_buffer_indices = []
                 for vo in instance.objects:
                     ids = vo.VAO_ids
+                    or_buffer_idx_start = len(duplicate_vao_ids)
                     duplicate_vao_ids.extend(ids)
+                    or_buffer_idx_end = len(duplicate_vao_ids)
+                    # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this InstanceGroup will use
+                    temp_or_buffer_indices.extend(list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
                     id_sum += len(ids)
+                instance.or_buffer_indices = temp_or_buffer_indices.copy()
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * id_sum)
+
+        # Number of shapes in the OR buffer is equal to the number of duplicate vao_ids
+        self.or_buffer_shape_num = len(duplicate_vao_ids)
+        # Construct trans and rot data to be the right shape
+        self.trans_data = np.zeros((self.or_buffer_shape_num, 4, 4))
+        self.rot_data = np.zeros((self.or_buffer_shape_num, 4, 4))
 
         # Variables needed for multi draw elements call
         index_ptr_offsets = []
@@ -1598,6 +1624,7 @@ class MeshRenderer(object):
         """
         A function to update all dynamic positions.
         """
+        """
         trans_data = []
         rot_data = []
 
@@ -1605,14 +1632,35 @@ class MeshRenderer(object):
             if isinstance(instance, Instance):
                 trans_data.append(instance.pose_trans)
                 rot_data.append(instance.pose_rot)
+                print("Single instance:")
+                print(instance.pose_trans)
+                print(instance.pose_rot)
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
+                print("Double instance:")
                 trans_data.extend(instance.poses_trans)
                 rot_data.extend(instance.poses_rot)
+                print(instance.poses_trans)
+                print(instace.poses_rot)
 
         self.pose_trans_array = np.ascontiguousarray(
             np.concatenate(trans_data, axis=0))
         self.pose_rot_array = np.ascontiguousarray(
             np.concatenate(rot_data, axis=0))
+
+        print(self.pose_trans_array.shape, self.pose_rot_array.shape)
+        """
+        for instance in self.instances:
+            if isinstance(instance, Instance):
+                buf_idxs = instance.or_buffer_indices
+                self.trans_data[buf_idxs] = np.array(instance.pose_trans)
+                self.rot_data[buf_idxs] = np.array(instance.pose_rot)
+            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
+                buf_idxs = instance.or_buffer_indices
+                self.trans_data[buf_idxs] = np.array(instance.poses_trans)
+                self.rot_data[buf_idxs] = np.array(instance.poses_rot)
+
+        self.pose_trans_array = np.ascontiguousarray(self.trans_data)
+        self.pose_rot_array = np.ascontiguousarray(self.rot_data)
 
     def use_pbr(self, use_pbr, use_pbr_mapping):
         for instance in self.instances:
