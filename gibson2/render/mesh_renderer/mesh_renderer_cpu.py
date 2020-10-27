@@ -99,12 +99,11 @@ class InstanceGroup(object):
         self.shadow_caster = shadow_caster
         self.roughness = 1
         self.metalness = 0
+        # Determines whether object will be rendered
+        self.hidden = False
         # Indices into optimized buffers such as color information and transformation buffer
         # These values are used to set buffer information during simulation
         self.or_buffer_indices = None
-        # Store trans and rot data for OR as a single variable that we update every frame - avoids copying variable each frame
-        self.trans_data = None
-        self.rot_data = None
 
     def render(self, shadow_pass=0):
         """
@@ -249,7 +248,9 @@ class Instance(object):
         self.shadow_caster = shadow_caster
         self.roughness = 1
         self.metalness = 0
-                # Indices into optimized buffers such as color information and transformation buffer
+        # Determines whether object will be rendered
+        self.hidden = False
+        # Indices into optimized buffers such as color information and transformation buffer
         # These values are used to set buffer information during simulation
         self.or_buffer_indices = None
 
@@ -761,6 +762,9 @@ class MeshRenderer(object):
         self.mesh_materials = []
         # Number of unique shapes comprising the optimized renderer buffer
         self.or_buffer_shape_num = 0
+        # Store trans and rot data for OR as a single variable that we update every frame - avoids copying variable each frame
+        self.trans_data = None
+        self.rot_data = None
 
         self.skybox_size = rendering_settings.skybox_size
         if not self.platform == 'Darwin' and rendering_settings.enable_pbr:
@@ -1450,6 +1454,10 @@ class MeshRenderer(object):
         # Some of these may share visual data, but have unique transforms
         duplicate_vao_ids = []
         class_id_array = []
+        # Stores use_pbr, use_pbr_mapping and shadow caster, with 1.0 for padding of fourth element
+        pbr_data_array = []
+        # Stores whether object is hidden or not
+        hidden_array = []
 
         for instance in self.instances:
             if isinstance(instance, Instance):
@@ -1461,6 +1469,8 @@ class MeshRenderer(object):
                 instance.or_buffer_indices = list(np.arange(or_buffer_idx_start, or_buffer_idx_end)).copy()
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * len(ids))
+                pbr_data_array.extend([[float(instance.use_pbr), float(instance.use_pbr_mapping), float(instance.shadow_caster), 1.0]] * len(ids))
+                hidden_array.extend([int(instance.hidden)] * len(ids))
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
                 id_sum = 0
                 # Collect OR buffer indices over all visual objects in this group
@@ -1476,6 +1486,8 @@ class MeshRenderer(object):
                 instance.or_buffer_indices = temp_or_buffer_indices.copy()
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * id_sum)
+                pbr_data_array.extend([[float(instance.use_pbr), float(instance.use_pbr_mapping), float(instance.shadow_caster), 1.0]] * id_sum)
+                hidden_array.extend([int(instance.hidden)] * id_sum)
 
         # Number of shapes in the OR buffer is equal to the number of duplicate vao_ids
         self.or_buffer_shape_num = len(duplicate_vao_ids)
@@ -1559,6 +1571,7 @@ class MeshRenderer(object):
 
         # Convert frag shader data to list of vec4 for use in uniform buffer objects
         frag_shader_data = []
+        pbr_data = []
         frag_shader_roughness_metallic_data = []
         frag_shader_normal_data = []
 
@@ -1567,6 +1580,8 @@ class MeshRenderer(object):
                 tex_layer_array[i]), class_id_array[i], 0.0]
             frag_shader_data.append(
                 np.ascontiguousarray(data_list, dtype=np.float32))
+            pbr_data.append(
+                np.ascontiguousarray(pbr_data_array[i], dtype=np.float32))
             roughness_metallic_data_list = [float(roughness_tex_num_array[i]),
                                             float(
                 roughness_tex_layer_array[i]),
@@ -1590,21 +1605,19 @@ class MeshRenderer(object):
             np.concatenate(frag_shader_normal_data, axis=0), np.float32)
         merged_diffuse_color_array = np.ascontiguousarray(
             np.concatenate(diffuse_color_array, axis=0), np.float32)
+        merged_pbr_data = np.ascontiguousarray(
+            np.concatenate(pbr_data, axis=0), np.float32)
+        self.merged_hidden_data = np.ascontiguousarray(hidden_array, dtype=np.int32)
 
         merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
         print("Merged vertex data shape:")
         print(merged_vertex_data.shape)
+        print("Enable pbr: {}".format(self.rendering_settings.enable_pbr))
 
         if self.msaa:
             buffer = self.fbo_ms
         else:
             buffer = self.fbo
-
-        self.use_pbr = False
-        for instance in self.instances:
-            if instance.use_pbr:
-                self.use_pbr = True
-                break
 
         self.optimized_VAO, self.optimized_VBO, self.optimized_EBO = self.r.renderSetup(self.shaderProgram, self.V,
                                                                                         self.P, self.lightpos,
@@ -1616,38 +1629,24 @@ class MeshRenderer(object):
                                                                                         merged_frag_shader_roughness_metallic_data,
                                                                                         merged_frag_shader_normal_data,
                                                                                         merged_diffuse_color_array,
+                                                                                        merged_pbr_data,
+                                                                                        self.merged_hidden_data,
                                                                                         self.tex_id_1, self.tex_id_2,
                                                                                         buffer,
-                                                                                        float(self.use_pbr))
+                                                                                        float(self.rendering_settings.enable_pbr))
+
+    def update_hidden_state(self, instance):
+        """
+        Updates the hidden state of a single instance.
+        This function is called by instances and not every frame, since hiding is a very infrequent operation.
+        """
+        buf_idxs = instance.or_buffer_indices
+        self.merged_hidden_data[buf_idxs] = instance.hidden
+        self.r.updateHiddenData(self.merged_hidden_data)
 
     def update_dynamic_positions(self):
         """
         A function to update all dynamic positions.
-        """
-        """
-        trans_data = []
-        rot_data = []
-
-        for instance in self.instances:
-            if isinstance(instance, Instance):
-                trans_data.append(instance.pose_trans)
-                rot_data.append(instance.pose_rot)
-                print("Single instance:")
-                print(instance.pose_trans)
-                print(instance.pose_rot)
-            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
-                print("Double instance:")
-                trans_data.extend(instance.poses_trans)
-                rot_data.extend(instance.poses_rot)
-                print(instance.poses_trans)
-                print(instace.poses_rot)
-
-        self.pose_trans_array = np.ascontiguousarray(
-            np.concatenate(trans_data, axis=0))
-        self.pose_rot_array = np.ascontiguousarray(
-            np.concatenate(rot_data, axis=0))
-
-        print(self.pose_trans_array.shape, self.pose_rot_array.shape)
         """
         for instance in self.instances:
             if isinstance(instance, Instance):

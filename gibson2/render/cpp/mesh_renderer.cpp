@@ -1185,6 +1185,8 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		py::array_t<int> indices, py::array_t<float> mergedFragData, py::array_t<float> mergedFragRMData,
 		py::array_t<float> mergedFragNData,
 		py::array_t<float> mergedDiffuseData,
+		py::array_t<float> mergedPBRData,
+		py::array_t<int> mergedHiddenData,
 		int tex_id_1, int tex_id_2, GLuint fb,
 		float use_pbr) {
 		// First set up VAO and corresponding attributes
@@ -1210,22 +1212,22 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glBufferData(GL_ARRAY_BUFFER, mergedVertexData.size() * sizeof(float), mergedVertexDataPtr, GL_STATIC_DRAW);
 
 		GLuint positionAttrib = glGetAttribLocation(shaderProgram, "position");
-        GLuint normalAttrib = glGetAttribLocation(shaderProgram, "normal");
-        GLuint coordsAttrib = glGetAttribLocation(shaderProgram, "texCoords");
-        GLuint tangentlAttrib = glGetAttribLocation(shaderProgram, "tangent");
-        GLuint bitangentAttrib = glGetAttribLocation(shaderProgram, "bitangent");
+		GLuint normalAttrib = glGetAttribLocation(shaderProgram, "normal");
+		GLuint coordsAttrib = glGetAttribLocation(shaderProgram, "texCoords");
+		GLuint tangentlAttrib = glGetAttribLocation(shaderProgram, "tangent");
+		GLuint bitangentAttrib = glGetAttribLocation(shaderProgram, "bitangent");
 
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glEnableVertexAttribArray(2);
-        glEnableVertexAttribArray(3);
-        glEnableVertexAttribArray(4);
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+		glEnableVertexAttribArray(3);
+		glEnableVertexAttribArray(4);
 
-        glVertexAttribPointer(positionAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 0);
-        glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 12);
-        glVertexAttribPointer(coordsAttrib, 2, GL_FLOAT, GL_TRUE, 56, (void *) 24);
-        glVertexAttribPointer(tangentlAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 32);
-        glVertexAttribPointer(bitangentAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 44);
+		glVertexAttribPointer(positionAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void*)0);
+		glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void*)12);
+		glVertexAttribPointer(coordsAttrib, 2, GL_FLOAT, GL_TRUE, 56, (void*)24);
+		glVertexAttribPointer(tangentlAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void*)32);
+		glVertexAttribPointer(bitangentAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void*)44);
 
 		glBindVertexArray(0);
 
@@ -1246,7 +1248,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 
 		// Set up shaders
 		float* fragData = (float*)mergedFragData.request().ptr;
-        float* fragRMData = (float*)mergedFragRMData.request().ptr;
+		float* fragRMData = (float*)mergedFragRMData.request().ptr;
 		float* fragNData = (float*)mergedFragNData.request().ptr;
 		float* diffuseData = (float*)mergedDiffuseData.request().ptr;
 		int fragDataSize = mergedFragData.size();
@@ -1263,8 +1265,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
-        glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
-        glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
+		glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
 
 		printf("multidrawcount %d\n", multidrawCount);
 
@@ -1276,24 +1277,48 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glUniformBlockBinding(shaderProgram, texColorDataIdx, 0);
 		glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboTexColorData);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, fragDataSize * sizeof(float), fragData);
-        glBufferSubData(GL_UNIFORM_BUFFER, 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragRMData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragRMData);
 		glBufferSubData(GL_UNIFORM_BUFFER, 2 * 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragNData);
 		glBufferSubData(GL_UNIFORM_BUFFER, 3 * 16 * MAX_ARRAY_SIZE, diffuseDataSize * sizeof(float), diffuseData);
 
+		float* pbrData = (float*)mergedPBRData.request().ptr;
+		int pbrDataSize = mergedPBRData.size();
+
+		glGenBuffers(1, &uboPbrData);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboPbrData);
+		int pbrDataMaxSize = 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, pbrDataMaxSize, NULL, GL_STATIC_DRAW);
+		GLuint pbrDataIdx = glGetUniformBlockIndex(shaderProgram, "PBRData");
+		glUniformBlockBinding(shaderProgram, pbrDataIdx, 1);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 1, uboPbrData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, pbrDataSize * sizeof(float), pbrData);
+
 		glGenBuffers(1, &uboTransformDataTrans);
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformDataTrans);
-		transformDataSize = 2 * 64 * MAX_ARRAY_SIZE;
+		transformDataSize = 64 * MAX_ARRAY_SIZE;
 		glBufferData(GL_UNIFORM_BUFFER, transformDataSize, NULL, GL_DYNAMIC_DRAW);
 		GLuint transformDataTransIdx = glGetUniformBlockIndex(shaderProgram, "TransformDataTrans");
-		glUniformBlockBinding(shaderProgram, transformDataTransIdx, 1);
-		glBindBufferBase(GL_UNIFORM_BUFFER, 1, uboTransformDataTrans);
+		glUniformBlockBinding(shaderProgram, transformDataTransIdx, 2);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 2, uboTransformDataTrans);
 
 		glGenBuffers(1, &uboTransformDataRot);
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformDataRot);
 		glBufferData(GL_UNIFORM_BUFFER, transformDataSize, NULL, GL_DYNAMIC_DRAW);
 		GLuint transformDataRotIdx = glGetUniformBlockIndex(shaderProgram, "TransformDataRot");
-		glUniformBlockBinding(shaderProgram, transformDataRotIdx, 2);
-		glBindBufferBase(GL_UNIFORM_BUFFER, 2, uboTransformDataRot);
+		glUniformBlockBinding(shaderProgram, transformDataRotIdx, 3);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 3, uboTransformDataRot);
+
+		int* hiddenData = (int*)mergedHiddenData.request().ptr;
+		int hiddenDataSize = mergedHiddenData.size();
+
+		glGenBuffers(1, &uboHidden);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboHidden);
+		int hiddenDataMaxSize = 4 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, hiddenDataMaxSize, NULL, GL_DYNAMIC_DRAW);
+		GLuint hiddenIdx = glGetUniformBlockIndex(shaderProgram, "Hidden");
+		glUniformBlockBinding(shaderProgram, hiddenIdx, 4);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 4, uboHidden);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(int), hiddenData);
 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
@@ -1305,39 +1330,39 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D_ARRAY, tex_id_2);
 
-        glActiveTexture(GL_TEXTURE2);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture.id);
+		glActiveTexture(GL_TEXTURE2);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture.id);
 
-        glActiveTexture(GL_TEXTURE3);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture.id);
+		glActiveTexture(GL_TEXTURE3);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture.id);
 
-        glActiveTexture(GL_TEXTURE4);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT.id);
+		glActiveTexture(GL_TEXTURE4);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT.id);
 
-        glActiveTexture(GL_TEXTURE5);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture2.id);
+		glActiveTexture(GL_TEXTURE5);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture2.id);
 
-        glActiveTexture(GL_TEXTURE6);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture2.id);
+		glActiveTexture(GL_TEXTURE6);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture2.id);
 
-        glActiveTexture(GL_TEXTURE7);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT2.id);
+		glActiveTexture(GL_TEXTURE7);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT2.id);
 
-        if (m_use_two_light_probe) {
-            glBindTexture(GL_TEXTURE_2D, m_light_modulation_map.id);
-        }
+		if (m_use_two_light_probe) {
+			glBindTexture(GL_TEXTURE_2D, m_light_modulation_map.id);
+		}
 
 		glUniform1i(bigTexLoc, 0);
 		glUniform1i(smallTexLoc, 1);
 		glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 2);
-        glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 3);
-        glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 4);
+		glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 3);
+		glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 4);
 
-        glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture2"), 5);
-        glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture2"), 6);
-        glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 7);
+		glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture2"), 5);
+		glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture2"), 6);
+		glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 7);
 
-        glUniform1i(glGetUniformLocation(shaderProgram, "lightModulationMap"), 11);
+		glUniform1i(glGetUniformLocation(shaderProgram, "lightModulationMap"), 11);
 
 		glUseProgram(0);
 
@@ -1349,6 +1374,15 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		return renderData;
 	}
 
+	// Updates hidden states in vertex shader
+	void MeshRendererContext::updateHiddenData(py::array_t<int> hidden_array) {
+		int* hiddenData = (int*)hidden_array.request().ptr;
+		int hiddenDataSize = hidden_array.size();
+
+		glBindBuffer(GL_UNIFORM_BUFFER, uboHidden);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(int), hiddenData);
+	}
+
 	// Updates positions and rotations in vertex shader
 	void MeshRendererContext::updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array,
 	py::array_t<float> pose_rot_array, py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos) {
@@ -1358,8 +1392,6 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		float* rotPtr = (float*)pose_rot_array.request().ptr;
 		int transDataSize = pose_trans_array.size();
 		int rotDataSize = pose_rot_array.size();
-
-        //printf("transDataSize %d\n", transDataSize);
 
         if (transDataSize > MAX_ARRAY_SIZE * 16) transDataSize = MAX_ARRAY_SIZE * 16;
         if (rotDataSize > MAX_ARRAY_SIZE * 16) rotDataSize = MAX_ARRAY_SIZE * 16;
@@ -1379,7 +1411,6 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
         glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
-
 	}
 
 	// Optimized rendering function that is called once per frame for all merged data
