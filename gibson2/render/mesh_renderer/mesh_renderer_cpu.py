@@ -1067,7 +1067,9 @@ class MeshRenderer(object):
                       poses_trans=poses_trans,
                       poses_rot=poses_rot,
                       dynamic=dynamic,
-                      robot=robot)
+                      robot=robot,
+                      use_pbr=False,
+                      use_pbr_mapping=False)
         self.instances.append(robot)
 
     def set_camera(self, camera, target, up):
@@ -1336,7 +1338,7 @@ class MeshRenderer(object):
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos +
                                 view_direction, [0, 0, 1])
-                for item in self.render(modes=modes, hidden=[instance]):
+                for item in self.render(modes=modes):
                     frames.append(item)
         return frames
 
