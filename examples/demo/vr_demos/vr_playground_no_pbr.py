@@ -82,8 +82,10 @@ p.changeDynamics(basket.body_id, -1, mass=5)
 
 mass_list = [5, 10, 100, 500]
 mustard_start = [1, -0.2, 1]
+mustard_list = []
 for i in range(len(mass_list)):
     mustard = YCBObject('006_mustard_bottle')
+    mustard_list.append(mustard)
     s.import_object(mustard)
     mustard.set_position([mustard_start[0], mustard_start[1] - i * 0.2, mustard_start[2]])
     p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
@@ -91,9 +93,14 @@ for i in range(len(mass_list)):
 if optimize:
     s.optimize_vertex_and_texture()
 
+# Hide third mustard as a test
+# TODO: Figure out how to hide objects - is setting gl_position enough?
+s.set_hidden_state(mustard_list[2])
+
 # Start user close to counter for interaction
 s.set_vr_offset([-0.5, 0.0, -0.4])
 
+# TODO: Test both VR hands and add in dynamic hiding
 # Main simulation loop
 while True:
     # Demonstrates how to call VR events - replace pass with custom logic

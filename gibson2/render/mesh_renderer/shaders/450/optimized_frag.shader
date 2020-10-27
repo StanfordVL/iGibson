@@ -5,7 +5,6 @@
 uniform sampler2DArray bigTex;
 uniform sampler2DArray smallTex;
 
-uniform float use_pbr;
 uniform float use_two_light_probes;
 
 uniform samplerCube specularTexture;
@@ -20,11 +19,15 @@ uniform sampler2D lightModulationMap;
 
 uniform vec3 eyePosition;
 
-uniform TexColorData {
+layout (std140) uniform TexColorData {
     vec4 tex_data[MAX_ARRAY_SIZE];
     vec4 tex_roughness_metallic_data[MAX_ARRAY_SIZE];
     vec4 tex_normal_data[MAX_ARRAY_SIZE];
     vec4 diffuse_colors[MAX_ARRAY_SIZE];
+};
+
+layout (std140) uniform PBRData {
+    vec4 pbr_data[MAX_ARRAY_SIZE];
 };
 
 in vec2 theCoords;
@@ -87,6 +90,11 @@ void main() {
     int tex_num = int(curr_tex_data.x);
     int tex_layer = int(curr_tex_data.y);
     float instance_color = curr_tex_data.z;
+    vec4 curr_pbr_data = pbr_data[Draw_id];
+    int use_pbr = int(curr_pbr_data.x);
+    // TODO: Implement pbr mapping and shadow casting using the variables below
+    int use_pbr_mapping = int(curr_pbr_data.y);
+    int shadow_caster = int(curr_pbr_data.z);
 
     if (use_pbr == 1) {
         int normal_tex_num = int(tex_normal_data[Draw_id].x);

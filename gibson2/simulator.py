@@ -669,6 +669,20 @@ class Simulator:
         else:
             self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
 
+    # Note: this function must be called after optimize_vertex_and_texture is called
+    # TODO: Make this interface work with the non-optimized renderer as well
+    def set_hidden_state(self, obj, hide=True):
+        """
+        Sets the hidden state of an object to be either hidden or not hidden.
+        The object passed in must inherent from Object at the top level.
+        """
+        # Find instance corresponding to this id in the renderer
+        for instance in self.renderer.instances:
+            if obj.body_id == instance.pybullet_uuid:
+                instance.hidden = hide
+                self.renderer.update_hidden_state(instance)
+                return
+
     @staticmethod
     def update_position(instance):
         """
