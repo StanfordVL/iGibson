@@ -470,7 +470,7 @@ class NavigationEnv(BaseEnv):
                    radius=int(self.robot_footprint_radius_in_map),
                    color=1,
                    thickness=-1)
-        return occupancy_grid
+        return occupancy_grid[:,:,None]
 
     def get_state(self, collision_links=[]):
         """
