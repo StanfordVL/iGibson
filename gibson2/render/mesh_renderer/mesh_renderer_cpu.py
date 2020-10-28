@@ -1456,7 +1456,9 @@ class MeshRenderer(object):
         class_id_array = []
         # Stores use_pbr, use_pbr_mapping and shadow caster, with 1.0 for padding of fourth element
         pbr_data_array = []
-        # Stores whether object is hidden or not
+        # Stores whether object is hidden or not - we store as a vec4, since this is the smallest
+        # alignment unit in the std140 layout that our shaders use for their uniform buffers
+        # Note: we can store other variables in the other 3 components in future
         hidden_array = []
 
         for instance in self.instances:
@@ -1470,7 +1472,7 @@ class MeshRenderer(object):
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * len(ids))
                 pbr_data_array.extend([[float(instance.use_pbr), float(instance.use_pbr_mapping), float(instance.shadow_caster), 1.0]] * len(ids))
-                hidden_array.extend([int(instance.hidden)] * len(ids))
+                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * len(ids))
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
                 id_sum = 0
                 # Collect OR buffer indices over all visual objects in this group
@@ -1487,7 +1489,7 @@ class MeshRenderer(object):
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * id_sum)
                 pbr_data_array.extend([[float(instance.use_pbr), float(instance.use_pbr_mapping), float(instance.shadow_caster), 1.0]] * id_sum)
-                hidden_array.extend([int(instance.hidden)] * id_sum)
+                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
 
         # Number of shapes in the OR buffer is equal to the number of duplicate vao_ids
         self.or_buffer_shape_num = len(duplicate_vao_ids)
@@ -1572,6 +1574,7 @@ class MeshRenderer(object):
         # Convert frag shader data to list of vec4 for use in uniform buffer objects
         frag_shader_data = []
         pbr_data = []
+        hidden_data = []
         frag_shader_roughness_metallic_data = []
         frag_shader_normal_data = []
 
@@ -1582,6 +1585,8 @@ class MeshRenderer(object):
                 np.ascontiguousarray(data_list, dtype=np.float32))
             pbr_data.append(
                 np.ascontiguousarray(pbr_data_array[i], dtype=np.float32))
+            hidden_data.append(
+                np.ascontiguousarray(hidden_array[i], dtype=np.float32))
             roughness_metallic_data_list = [float(roughness_tex_num_array[i]),
                                             float(
                 roughness_tex_layer_array[i]),
@@ -1607,7 +1612,8 @@ class MeshRenderer(object):
             np.concatenate(diffuse_color_array, axis=0), np.float32)
         merged_pbr_data = np.ascontiguousarray(
             np.concatenate(pbr_data, axis=0), np.float32)
-        self.merged_hidden_data = np.ascontiguousarray(hidden_array, dtype=np.int32)
+        self.merged_hidden_data = np.ascontiguousarray(
+            np.concatenate(hidden_data, axis=0), np.float32)
 
         merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
         print("Merged vertex data shape:")
@@ -1641,8 +1647,10 @@ class MeshRenderer(object):
         This function is called by instances and not every frame, since hiding is a very infrequent operation.
         """
         buf_idxs = instance.or_buffer_indices
-        self.merged_hidden_data[buf_idxs] = instance.hidden
-        self.r.updateHiddenData(self.merged_hidden_data)
+        # Need to multiply buf_idxs by four so we index into the first element of the vec4 corresponding to each buffer index
+        vec4_buf_idxs = [idx * 4 for idx in buf_idxs]
+        self.merged_hidden_data[vec4_buf_idxs] = float(instance.hidden)
+        self.r.updateHiddenData(self.shaderProgram, np.ascontiguousarray(self.merged_hidden_data, dtype=np.float32))
 
     def update_dynamic_positions(self):
         """

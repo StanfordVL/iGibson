@@ -1186,7 +1186,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		py::array_t<float> mergedFragNData,
 		py::array_t<float> mergedDiffuseData,
 		py::array_t<float> mergedPBRData,
-		py::array_t<int> mergedHiddenData,
+		py::array_t<float> mergedHiddenData,
 		int tex_id_1, int tex_id_2, GLuint fb,
 		float use_pbr) {
 		// First set up VAO and corresponding attributes
@@ -1308,17 +1308,17 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glUniformBlockBinding(shaderProgram, transformDataRotIdx, 3);
 		glBindBufferBase(GL_UNIFORM_BUFFER, 3, uboTransformDataRot);
 
-		int* hiddenData = (int*)mergedHiddenData.request().ptr;
+		float *hiddenData = (float*)mergedHiddenData.request().ptr;
 		int hiddenDataSize = mergedHiddenData.size();
 
 		glGenBuffers(1, &uboHidden);
 		glBindBuffer(GL_UNIFORM_BUFFER, uboHidden);
-		int hiddenDataMaxSize = 4 * MAX_ARRAY_SIZE;
+		int hiddenDataMaxSize = 16 * MAX_ARRAY_SIZE;
 		glBufferData(GL_UNIFORM_BUFFER, hiddenDataMaxSize, NULL, GL_DYNAMIC_DRAW);
 		GLuint hiddenIdx = glGetUniformBlockIndex(shaderProgram, "Hidden");
 		glUniformBlockBinding(shaderProgram, hiddenIdx, 4);
 		glBindBufferBase(GL_UNIFORM_BUFFER, 4, uboHidden);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(int), hiddenData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(float), hiddenData);
 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
@@ -1375,12 +1375,16 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 	}
 
 	// Updates hidden states in vertex shader
-	void MeshRendererContext::updateHiddenData(py::array_t<int> hidden_array) {
-		int* hiddenData = (int*)hidden_array.request().ptr;
+	void MeshRendererContext::updateHiddenData(int shaderProgram, py::array_t<float> hidden_array) {
+		glUseProgram(shaderProgram);
+
+		float* hiddenData = (float*)hidden_array.request().ptr;
 		int hiddenDataSize = hidden_array.size();
 
 		glBindBuffer(GL_UNIFORM_BUFFER, uboHidden);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(int), hiddenData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(float), hiddenData);
+
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 
 	// Updates positions and rotations in vertex shader
@@ -1432,8 +1436,10 @@ void MeshRendererContext::clean_meshrenderer_optimized(std::vector<GLuint> color
 		glDeleteBuffers(vbos.size(), vbos.data());
 		glDeleteBuffers(ebos.size(), ebos.data());
 		glDeleteBuffers(1, &uboTexColorData);
+		glDeleteBuffers(1, &uboPbrData);
 		glDeleteBuffers(1, &uboTransformDataTrans);
 		glDeleteBuffers(1, &uboTransformDataRot);
+		glDeleteBuffers(1, &uboHidden);
 	}
 
 

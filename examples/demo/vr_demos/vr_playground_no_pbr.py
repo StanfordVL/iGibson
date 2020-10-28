@@ -40,6 +40,8 @@ touchpad_movement = True
 relative_movement_device = 'hmd'
 # Movement speed for touchpad-based movement
 movement_speed = 0.02
+# Whether we should hide a mustard bottle when the menu button is presed
+hide_mustard_on_press = True
 
 # Initialize simulator with specific rendering settings
 s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, 
@@ -47,9 +49,6 @@ s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0,
             vr_eye_tracking=use_eye_tracking, vr_mode=vr_mode)
 scene = StaticIndoorScene('Placida')
 s.import_scene(scene)
-
-# TODO: Set gravity back once I finish debugging the VR hands
-#p.setGravity(0,0,0)
 
 # Player body is represented by a translucent blue cylinder
 if enable_vr_body:
@@ -59,14 +58,15 @@ if enable_vr_body:
 
 # The hand can either be 'right' or 'left'
 # It has enough friction to pick up the basket and the mustard bottles
-#rHand = VrHand(hand='right')
-#s.import_object(rHand)
+rHand = VrHand(hand='right')
+s.import_object(rHand)
 # This sets the hand constraints so it can move with the VR controller
-#rHand.set_start_state(start_pos=[0.0, 0.5, 1.5])
-vr_hand_path = os.path.join(assets_path, 'models', 'vr_hand', 'vr_hand_right.urdf')
-vr_hand_r = ArticulatedObject(vr_hand_path)
-s.import_object(vr_hand_r)
-vr_hand_r.set_position([-0.85, -0.6, 0.8])
+rHand.set_start_state(start_pos=[0, 0, 1.5])
+
+lHand = VrHand(hand='left')
+s.import_object(lHand)
+# This sets the hand constraints so it can move with the VR controller
+lHand.set_start_state(start_pos=[0, 0.5, 1.5])
 
 # Add playground objects to the scene
 # Eye tracking visual marker - a red marker appears in the scene to indicate gaze direction
@@ -93,14 +93,12 @@ for i in range(len(mass_list)):
 if optimize:
     s.optimize_vertex_and_texture()
 
-# Hide third mustard as a test
-# TODO: Figure out how to hide objects - is setting gl_position enough?
-s.set_hidden_state(mustard_list[2])
-
 # Start user close to counter for interaction
 s.set_vr_offset([-0.5, 0.0, -0.4])
 
-# TODO: Test both VR hands and add in dynamic hiding
+# State of mustard hiding, toggled by a menu press
+hide_mustard = False
+
 # Main simulation loop
 while True:
     # Demonstrates how to call VR events - replace pass with custom logic
@@ -108,16 +106,11 @@ while True:
     eventList = s.poll_vr_events()
     for event in eventList:
         deviceType, eventType = event
-        if deviceType == 'left_controller':
-            if eventType == 'trigger_press':
-                pass
-            elif eventType == 'trigger_unpress':
-                pass
-        elif deviceType == 'right_controller':
-            if eventType == 'trigger_press':
-                pass
-            elif eventType == 'trigger_unpress':
-                pass
+        if deviceType == 'right_controller':
+            if eventType == 'menu_press' and hide_mustard_on_press:
+                # Toggle mustard hidden state
+                hide_mustard = not hide_mustard
+                s.set_hidden_state(mustard_list[2], hide=hide_mustard)
 
     # Step the simulator - this needs to be done every frame to actually run the simulation
     s.step()
@@ -139,8 +132,8 @@ while True:
         gaze_marker.set_position(updated_marker_pos)
 
     if rIsValid:
-        #rHand.move(rTrans, rRot)
-        #rHand.set_close_fraction(rTrig)
+        rHand.move(rTrans, rRot)
+        rHand.set_close_fraction(rTrig)
 
         if enable_vr_body:
             # See VrBody class for more details on this method
@@ -155,5 +148,10 @@ while True:
         # Note: open trigger has closed fraction of 0.05 when open, so cutoff haptic input under 0.1
         # to avoid constant rumbling
         s.trigger_haptic_pulse('right_controller', rTrig if rTrig > 0.1 else 0)
+
+    if lIsValid:
+        lHand.move(lTrans, lRot)
+        lHand.set_close_fraction(lTrig)
+        s.trigger_haptic_pulse('left_controller', lTrig if lTrig > 0.1 else 0)
 
 s.disconnect()

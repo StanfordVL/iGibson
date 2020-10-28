@@ -194,11 +194,11 @@ public:
 		py::array_t<float> mergedFragNData,
 		py::array_t<float> mergedDiffuseData,
 		py::array_t<float> mergedPBRData,
-		py::array_t<int> mergedHiddenData,
+		py::array_t<float> mergedHiddenData,
 		int tex_id_1, int tex_id_2, GLuint fb,
 		float use_pbr);
 
-	void updateHiddenData(py::array_t<int> hidden_array);
+	void updateHiddenData(int shaderProgram, py::array_t<float> hidden_array);
 
 	void updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array, py::array_t<float> pose_rot_array,
 	py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos) ;
