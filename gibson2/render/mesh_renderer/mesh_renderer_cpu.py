@@ -99,6 +99,11 @@ class InstanceGroup(object):
         self.shadow_caster = shadow_caster
         self.roughness = 1
         self.metalness = 0
+        # Determines whether object will be rendered
+        self.hidden = False
+        # Indices into optimized buffers such as color information and transformation buffer
+        # These values are used to set buffer information during simulation
+        self.or_buffer_indices = None
 
     def render(self, shadow_pass=0):
         """
@@ -243,6 +248,11 @@ class Instance(object):
         self.shadow_caster = shadow_caster
         self.roughness = 1
         self.metalness = 0
+        # Determines whether object will be rendered
+        self.hidden = False
+        # Indices into optimized buffers such as color information and transformation buffer
+        # These values are used to set buffer information during simulation
+        self.or_buffer_indices = None
 
 
     def render(self, shadow_pass=0):
@@ -750,8 +760,11 @@ class MeshRenderer(object):
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
         self.mesh_materials = []
-
-
+        # Number of unique shapes comprising the optimized renderer buffer
+        self.or_buffer_shape_num = 0
+        # Store trans and rot data for OR as a single variable that we update every frame - avoids copying variable each frame
+        self.trans_data = None
+        self.rot_data = None
 
         self.skybox_size = rendering_settings.skybox_size
         if not self.platform == 'Darwin' and rendering_settings.enable_pbr:
@@ -943,6 +956,16 @@ class MeshRenderer(object):
                 shape_normal = np.zeros((shape_vertex.shape[0], 3))
             else:
                 shape_normal = vertex_normal[shape_normal_index]
+            
+            # Need to flip normals in axes where we have negative scaling
+            for i in range(3):
+                if scale[i] < 0:
+                    shape_normal[:, i] *= -1
+
+            # Need to flip normals in axes where we have negative scaling
+            for i in range(3):
+                if scale[i] < 0:
+                    shape_normal[:, i] *= -1
 
             if len(vertex_texcoord) == 0:
                 # dummy texcoord if texcoord is not available
@@ -1431,21 +1454,48 @@ class MeshRenderer(object):
         # Some of these may share visual data, but have unique transforms
         duplicate_vao_ids = []
         class_id_array = []
+        # Stores use_pbr, use_pbr_mapping and shadow caster, with 1.0 for padding of fourth element
+        pbr_data_array = []
+        # Stores whether object is hidden or not - we store as a vec4, since this is the smallest
+        # alignment unit in the std140 layout that our shaders use for their uniform buffers
+        # Note: we can store other variables in the other 3 components in future
+        hidden_array = []
 
         for instance in self.instances:
             if isinstance(instance, Instance):
                 ids = instance.object.VAO_ids
+                or_buffer_idx_start = len(duplicate_vao_ids)
                 duplicate_vao_ids.extend(ids)
+                or_buffer_idx_end = len(duplicate_vao_ids)
+                # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this Instance will use
+                instance.or_buffer_indices = list(np.arange(or_buffer_idx_start, or_buffer_idx_end)).copy()
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * len(ids))
+                pbr_data_array.extend([[float(instance.use_pbr), float(instance.use_pbr_mapping), float(instance.shadow_caster), 1.0]] * len(ids))
+                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * len(ids))
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
                 id_sum = 0
+                # Collect OR buffer indices over all visual objects in this group
+                temp_or_buffer_indices = []
                 for vo in instance.objects:
                     ids = vo.VAO_ids
+                    or_buffer_idx_start = len(duplicate_vao_ids)
                     duplicate_vao_ids.extend(ids)
+                    or_buffer_idx_end = len(duplicate_vao_ids)
+                    # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this InstanceGroup will use
+                    temp_or_buffer_indices.extend(list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
                     id_sum += len(ids)
+                instance.or_buffer_indices = temp_or_buffer_indices.copy()
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * id_sum)
+                pbr_data_array.extend([[float(instance.use_pbr), float(instance.use_pbr_mapping), float(instance.shadow_caster), 1.0]] * id_sum)
+                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
+
+        # Number of shapes in the OR buffer is equal to the number of duplicate vao_ids
+        self.or_buffer_shape_num = len(duplicate_vao_ids)
+        # Construct trans and rot data to be the right shape
+        self.trans_data = np.zeros((self.or_buffer_shape_num, 4, 4))
+        self.rot_data = np.zeros((self.or_buffer_shape_num, 4, 4))
 
         # Variables needed for multi draw elements call
         index_ptr_offsets = []
@@ -1523,6 +1573,8 @@ class MeshRenderer(object):
 
         # Convert frag shader data to list of vec4 for use in uniform buffer objects
         frag_shader_data = []
+        pbr_data = []
+        hidden_data = []
         frag_shader_roughness_metallic_data = []
         frag_shader_normal_data = []
 
@@ -1531,6 +1583,10 @@ class MeshRenderer(object):
                 tex_layer_array[i]), class_id_array[i], 0.0]
             frag_shader_data.append(
                 np.ascontiguousarray(data_list, dtype=np.float32))
+            pbr_data.append(
+                np.ascontiguousarray(pbr_data_array[i], dtype=np.float32))
+            hidden_data.append(
+                np.ascontiguousarray(hidden_array[i], dtype=np.float32))
             roughness_metallic_data_list = [float(roughness_tex_num_array[i]),
                                             float(
                 roughness_tex_layer_array[i]),
@@ -1554,21 +1610,20 @@ class MeshRenderer(object):
             np.concatenate(frag_shader_normal_data, axis=0), np.float32)
         merged_diffuse_color_array = np.ascontiguousarray(
             np.concatenate(diffuse_color_array, axis=0), np.float32)
+        merged_pbr_data = np.ascontiguousarray(
+            np.concatenate(pbr_data, axis=0), np.float32)
+        self.merged_hidden_data = np.ascontiguousarray(
+            np.concatenate(hidden_data, axis=0), np.float32)
 
         merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
         print("Merged vertex data shape:")
         print(merged_vertex_data.shape)
+        print("Enable pbr: {}".format(self.rendering_settings.enable_pbr))
 
         if self.msaa:
             buffer = self.fbo_ms
         else:
             buffer = self.fbo
-
-        self.use_pbr = False
-        for instance in self.instances:
-            if instance.use_pbr:
-                self.use_pbr = True
-                break
 
         self.optimized_VAO, self.optimized_VBO, self.optimized_EBO = self.r.renderSetup(self.shaderProgram, self.V,
                                                                                         self.P, self.lightpos,
@@ -1580,9 +1635,24 @@ class MeshRenderer(object):
                                                                                         merged_frag_shader_roughness_metallic_data,
                                                                                         merged_frag_shader_normal_data,
                                                                                         merged_diffuse_color_array,
+                                                                                        merged_pbr_data,
+                                                                                        self.merged_hidden_data,
                                                                                         self.tex_id_1, self.tex_id_2,
                                                                                         buffer,
-                                                                                        float(self.use_pbr))
+                                                                                        float(self.rendering_settings.enable_pbr))
+
+    def update_hidden_state(self, instance):
+        """
+        Updates the hidden state of a single instance.
+        This function is called by instances and not every frame, since hiding is a very infrequent operation.
+        """
+        buf_idxs = instance.or_buffer_indices
+        if not buf_idxs:
+            print('ERROR: trying to set hidden state of an instance that has no visual objects!')
+        # Need to multiply buf_idxs by four so we index into the first element of the vec4 corresponding to each buffer index
+        vec4_buf_idxs = [idx * 4 for idx in buf_idxs]
+        self.merged_hidden_data[vec4_buf_idxs] = float(instance.hidden)
+        self.r.updateHiddenData(self.shaderProgram, np.ascontiguousarray(self.merged_hidden_data, dtype=np.float32))
 
     def reset_camera(self):
         """
@@ -1596,21 +1666,25 @@ class MeshRenderer(object):
         """
         A function to update all dynamic positions.
         """
-        trans_data = []
-        rot_data = []
-
         for instance in self.instances:
+            #if instance.dynamic:
             if isinstance(instance, Instance):
-                trans_data.append(instance.pose_trans)
-                rot_data.append(instance.pose_rot)
+                buf_idxs = instance.or_buffer_indices
+                # Continue if instance has no visual objects
+                if not buf_idxs:
+                    continue
+                self.trans_data[buf_idxs] = np.array(instance.pose_trans)
+                self.rot_data[buf_idxs] = np.array(instance.pose_rot)
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
-                trans_data.extend(instance.poses_trans)
-                rot_data.extend(instance.poses_rot)
+                buf_idxs = instance.or_buffer_indices
+                # Continue if instance has no visual objects
+                if not buf_idxs:
+                    continue
+                self.trans_data[buf_idxs] = np.array(instance.poses_trans)
+                self.rot_data[buf_idxs] = np.array(instance.poses_rot)
 
-        self.pose_trans_array = np.ascontiguousarray(
-            np.concatenate(trans_data, axis=0))
-        self.pose_rot_array = np.ascontiguousarray(
-            np.concatenate(rot_data, axis=0))
+        self.pose_trans_array = np.ascontiguousarray(self.trans_data)
+        self.pose_rot_array = np.ascontiguousarray(self.rot_data)
 
     def use_pbr(self, use_pbr, use_pbr_mapping):
         for instance in self.instances:

@@ -37,3 +37,10 @@ class Object(object):
     def set_position_orientation(self, pos, orn):
         p.resetBasePositionAndOrientation(self.body_id, pos, orn)
 
+    def rotate_by(self, x=0, y=0, z=0):
+        """
+        Rotates an object by given euler angles
+        """
+        e_x, e_y, e_z = p.getEulerFromQuaternion(self.get_orientation())
+        self.set_orientation(p.getQuaternionFromEuler([e_x + x, e_y + y, e_z + z]))
+

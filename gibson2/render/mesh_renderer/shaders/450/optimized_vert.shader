@@ -10,6 +10,10 @@ layout (std140) uniform TransformDataRot {
     mat4 pose_rot_array[MAX_ARRAY_SIZE];
 };
 
+layout (std140) uniform Hidden {
+    vec4 hidden_array[MAX_ARRAY_SIZE];
+};
+
 
 in int gl_DrawID;
 
@@ -40,7 +44,9 @@ flat out int Draw_id;
 void main() {
     mat4 pose_trans = pose_trans_array[gl_DrawID];
     mat4 pose_rot = transpose(pose_rot_array[gl_DrawID]);
-    gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1);
+    // Hidden is stored in the x element of the vector - y, z and w are currently unused and set to 1.0
+    float hidden = hidden_array[gl_DrawID].x;
+    gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1) * (1 - hidden);
     vec4 world_position4 = pose_trans * pose_rot * vec4(position, 1);
     FragPos = vec3(world_position4.xyz / world_position4.w); // in world coordinate
     Normal_world = normalize(mat3(pose_rot) * normal); // in world coordinate
