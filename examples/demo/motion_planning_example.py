@@ -1,3 +1,5 @@
+import open3d as o3d
+
 from gibson2.envs.locomotor_env import NavigationRandomEnv
 from gibson2.utils.motion_planning_wrapper import MotionPlanningWrapper
 import argparse

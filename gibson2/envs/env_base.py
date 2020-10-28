@@ -56,10 +56,25 @@ class BaseEnv(gym.Env):
         enable_pbr = self.config.get('enable_pbr', True)
         texture_scale = self.config.get('texture_scale', 1.0)
 
+        import os
+        import gibson2
+        hdr_texture = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+        hdr_texture2 = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+        light_modulation_map_filename = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+        background_texture = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+
         settings = MeshRendererSettings(enable_shadow=enable_shadow,
                                         enable_pbr=enable_pbr,
-                                        msaa=False,
-                                        texture_scale=texture_scale)
+                                        msaa=True,
+                                        texture_scale=texture_scale,
+                                        env_texture_filename=hdr_texture,
+                                        env_texture_filename2=hdr_texture2,
+                                        env_texture_filename3=background_texture,
+                                        light_modulation_map_filename=light_modulation_map_filename)
 
         self.simulator = Simulator(mode=mode,
                                    physics_timestep=physics_timestep,

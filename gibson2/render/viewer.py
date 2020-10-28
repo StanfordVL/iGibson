@@ -1,3 +1,4 @@
+import open3d as o3d
 import os
 import random
 import subprocess
@@ -57,6 +58,15 @@ class Viewer:
         self.planner = None
         self.block_command = False
 
+        self.vis = o3d.visualization.Visualizer()
+        self.vis.create_window(width=1024, height=1024)
+        self.pcd = None
+
+        self.colors = np.array(
+        [(int(np.random.uniform(0, 255)), int(np.random.uniform(0, 255)), int(np.random.uniform(0, ))) for _
+         in range(80)])
+
+        self.render_lidar = False
 
     def setup_motion_planner(self, planner: None):
         self.planner = planner
@@ -497,6 +507,15 @@ class Viewer:
                 os.makedirs(self.video_folder, exist_ok=True)
                 self.recording = True
                 self.frame_idx = 0
+
+        elif q == ord('k'):
+            self.colors = np.array(
+                [(int(np.random.uniform(0, 255)), int(np.random.uniform(0, 255)), int(np.random.uniform(0, ))) for _
+                 in range(80)])
+
+        elif q == ord('l'):
+            self.render_lidar = not self.render_lidar
+
         elif q == ord('p'):  # Pause/Resume recording
             if self.pause_recording:
                 self.pause_recording = False
@@ -514,11 +533,40 @@ class Viewer:
             self.frame_idx += 1
 
         if not self.renderer is None:
-            frames = self.renderer.render_robot_cameras(modes=('rgb'))
+            frames = self.renderer.render_robot_cameras(modes=('rgb', 'normal', '3d', 'seg'))
+            #from IPython import embed; embed()
+            frames[2][:,:,0:3] = -frames[2][:,:,2:3] / 5.0 # fill 3d
+            #colors = np.array([(241, 187, 123), (253, 100, 103),
+            #                   (91, 26, 24), (214, 114, 54),
+            #                   (230, 160, 196), (198, 205, 247),
+            #                   (216, 164, 153), (114, 148, 212)])
+
+
+
+            seg = (frames[-1][:, :, 0] * 255).astype(int)
+            seg_color = self.colors[seg.reshape(-1) % len(self.colors)].astype(float) / 255.
+            frames[-1][:, :, :-1] = seg_color.reshape((*seg.shape, 3))
+
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(
                     frames, axis=1), cv2.COLOR_RGB2BGR)
                 cv2.imshow('RobotView', frame)
+
+            if self.render_lidar:
+                lidar_readings = self.renderer.get_lidar_all(offset_with_camera=[0,0,0.2])[:,[0,2,1]]
+
+                #print('lidar', lidar_readings)
+
+                if self.pcd is None:
+                    self.pcd = o3d.geometry.PointCloud()
+                    self.pcd.points = o3d.utility.Vector3dVector(lidar_readings)
+                    self.vis.add_geometry(self.pcd)
+                else:
+                    self.pcd.points = o3d.utility.Vector3dVector(lidar_readings)
+
+                self.vis.update_geometry(self.pcd)
+                self.vis.poll_events()
+                self.vis.update_renderer()
 
 
 if __name__ == '__main__':
