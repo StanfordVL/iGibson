@@ -1,3 +1,4 @@
+import numpy as np 
 import os 
 
 import tasknet as tn 
@@ -7,6 +8,7 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings 
 from gibson2.objects.articulated_object import URDFObject, ArticulatedObject
+from gibson2.external.pybullet_tools.utils import *
 
 
 class iGTNTask(TaskNetTask):
@@ -45,6 +47,69 @@ class iGTNTask(TaskNetTask):
         for obj, obj_pos, obj_orn in self.sampled_simulator_objects:
             self.simulator.import_object(obj)
             obj.set_position_orientation(obj_pos, obj_orn)
+
+    def onTop(objA, objB):
+        '''
+        Checks if one object is on top of another. TODO does it need to update TN object representation?
+                                                        We've been saying no.
+        True iff objA TODO 
+        :param objA: simulator object
+        :param objB: simulator object 
+        '''
+        return is_placement(objA, objB) or is_center_stable(objA, objB)
+
+    def inside(objA, objB):
+        '''
+        Checks if one object is inside another. 
+        True iff the AABB of objA does not extend past the AABB of objB
+        :param objA: simulator object
+        :param objB: simulator object 
+        '''
+        return aabb_contains_aabb(objA.body_id, objB.body_id)   # TODO do these need to be body_ids or the objects themselves 
+
+
+    def nextTo(objA, objB, objA_link=None, objB_link=None):
+        '''
+        Checks if one object is next to another. 
+        True iff the distance between the objects is TODO less than 2/3 of the average
+                 side length across both objects' AABBs 
+        :param objA: simulator object
+        :param objB: simulator object 
+        '''
+        # Get distance 
+        objA_aabb, objB_aabb = get_aabb(objA, link=objA_link), get_aabb(objB, link=objB_link)
+        objA_upper, objA_lower = objA_aabb
+        objB_upper, objB_lower = objB_aabb
+        distance_vec = []
+        for dim in range(3):
+            glb = max(objA_lower[dim], objB_lower[dim])
+            lub = min(objA_upper[dim], objB_upper[dim])
+            distance_vec.append(min(0, glb - lub))
+        distance = np.linalg.norm(np.array(distance_vec))
+       
+        # Get size - based on AABB edge lengths, since we conceptualize distance as 1D
+        objA_dims = objA_upper - objA_lower
+        objB_dims = objB_upper - objB_lower
+        avg_aabb_length = np.mean(objA_dims + objB_dims)
+
+        return distance <= (avg_aabb_length * (2./3.))      # TODO better function 
+        
+    def under(objA, objB):
+        '''
+        Checks if one object is underneath another. 
+        True iff the (x, y) coordinates of objA's AABB center are within the (x, y) projection
+                 of objB's AABB, and the z-coordinate of objA's AABB upper is less than the 
+                 z-coordinate of objB's AABB lower. 
+        :param objA: simulator object
+        :param objB: simulator object 
+        ''' 
+        return aabb_contains_point(
+                                get_aabb_center(get_aabb(objA)), 
+                                aabb2d_from_aabb(get_aabb(objB)))
+        
+    def touching(objA, objB):
+
+        return body_collision(objA, objB)        
 
 
 def main():
