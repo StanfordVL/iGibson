@@ -3,6 +3,7 @@ import pybullet as p
 
 from gibson2 import assets_path
 from gibson2.objects.object_base import Object
+from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.utils.utils import multQuatLists
 from gibson2.utils.vr_utils import translate_vr_position_by_vecs
 
@@ -68,6 +69,7 @@ class VrBody(Object):
         
         # Get HMD data
         hmd_is_valid, hmd_trans, hmd_rot = s.get_data_for_vr_device('hmd')
+        # Set the body to the HMD position on the first frame that it is valid, to aid calculation accuracy
         if self.first_frame and hmd_is_valid:
             self.set_position(hmd_trans)
             self.first_frame = False
@@ -108,7 +110,7 @@ class VrBody(Object):
         self.prev_hmd_wp = hmd_wp
 
 
-class VrHand(Object):
+class VrHand(ArticulatedObject):
     """
     Represents the human hand used for VR programs
 
@@ -140,11 +142,12 @@ class VrHand(Object):
             return
 
         self.filename = os.path.join(self.vr_hand_folder, 'vr_hand_{}.urdf'.format(self.hand))
-        self.scale = 1
-        super(VrHand, self).__init__()
-        """
+        super(VrHand, self).__init__(filename=self.filename, scale=1)
         # Hand needs to be rotated to visually align with VR controller
-        self.base_rot = p.getQuaternionFromEuler([0, 160, -80])
+        if self.hand == 'right':
+            self.base_rot = p.getQuaternionFromEuler([0, 160, -80])
+        else:
+            self.base_rot = p.getQuaternionFromEuler([0, 160, 80])
         # Lists of joint indices for hand part
         self.base_idxs = [0]
         # Proximal indices for non-thumb fingers
@@ -161,17 +164,8 @@ class VrHand(Object):
         self.open_pos = [0, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 1.0, 0.1, 0.1, 0.1, 0.2, 0.3, 0.4]
         # Closed positions for all joints
         self.close_pos = [0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 1.2, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8]
-        """
-
-    def _load(self):
-        # TODO: Set start state here?
-        body_id = p.loadURDF(self.filename, globalScaling=self.scale,
-                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-
-        return body_id
 
     def set_start_state(self, start_pos):
-        print("sssssss")
         """Call after importing the hand."""
         self.set_position(start_pos)
         for jointIndex in range(p.getNumJoints(self.body_id)):
@@ -189,7 +183,6 @@ class VrHand(Object):
     # Close frac of 1 indicates fully closed joint, and close frac of 0 indicates fully open joint
     # Joints move smoothly between their values in self.open_pos and self.close_pos
     def set_close_fraction(self, close_frac, maxForce=500):
-        print("sssssss")
         for jointIndex in range(p.getNumJoints(self.body_id)):
             open_pos = self.open_pos[jointIndex]
             close_pos = self.close_pos[jointIndex]
@@ -198,6 +191,5 @@ class VrHand(Object):
             p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos, force=maxForce)
 
     def move(self, trans, rot, maxForce=500):
-        print("sssssss")
         final_rot = multQuatLists(rot, self.base_rot)
         p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=maxForce)

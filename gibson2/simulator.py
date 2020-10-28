@@ -253,7 +253,7 @@ class Simulator:
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
         new_object_pb_id = obj.load()
         self.objects += [new_object_pb_id]
-        if obj.__class__ in [ArticulatedObject, URDFObject]:
+        if isinstance(obj, ArticulatedObject) or isinstance(obj, URDFObject):
             self.load_articulated_object_in_renderer(new_object_pb_id,
                                                      class_id,
                                                      use_pbr=use_pbr,
@@ -670,7 +670,8 @@ class Simulator:
             self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
 
     # Note: this function must be called after optimize_vertex_and_texture is called
-    # TODO: Make this interface work with the non-optimized renderer as well
+    # Note: this function currently only works with the optimized renderer - please use the renderer hidden list
+    # to hide objects in the non-optimized renderer
     def set_hidden_state(self, obj, hide=True):
         """
         Sets the hidden state of an object to be either hidden or not hidden.
