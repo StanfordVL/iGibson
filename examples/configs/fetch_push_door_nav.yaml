@@ -14,6 +14,7 @@ texture_scale: 0.5
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
+task_randomization_freq: 2
 
 # robot
 robot: Fetch

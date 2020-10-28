@@ -13,6 +13,12 @@ import numpy as np
 class RoomRearrangementTask(BaseTask):
     def __init__(self, env):
         super(RoomRearrangementTask, self).__init__(env)
+        self.task_randomization_freq = self.config.get(
+            'task_randomization_freq', None,
+        )
+        if self.task_randomization_freq is None:
+            self.task_randomization_freq = 1
+        self.body_joint_pos = []
         self.prismatic_joint_reward_scale = self.config.get(
             'prismatic_joint_reward_scale', 1.0)
         self.revolute_joint_reward_scale = self.config.get(
@@ -52,19 +58,33 @@ class RoomRearrangementTask(BaseTask):
             task_potential += scale * j_pos
         return task_potential
 
+    def save_task_setup(self):
+        self.body_joint_pos = []
+        for (body_id, joint_id) in self.body_joint_pairs:
+            j_pos = p.getJointState(body_id, joint_id)[0]
+            self.body_joint_pos.append(((body_id, joint_id), j_pos))
+
+    def load_task_setup(self):
+        for ((body_id, joint_id), pos) in self.body_joint_pos:
+            p.resetJointState(body_id, joint_id, pos)
+
     def reset_scene(self, env):
-        env.scene.force_wakeup_scene_objects()
-        self.body_joint_pairs = env.scene.open_all_objs_by_categories(
-            ['bottom_cabinet',
-             'bottom_cabinet_no_top',
-             'top_cabinet',
-             'dishwasher',
-             'fridge',
-             'microwave',
-             'oven',
-             'washer'
-             'dryer',
-             ], mode='random', prob=0.5)
+        if env.current_episode % self.task_randomization_freq == 0:
+            env.scene.force_wakeup_scene_objects()
+            self.body_joint_pairs = env.scene.open_all_objs_by_categories(
+                ['bottom_cabinet',
+                 'bottom_cabinet_no_top',
+                 'top_cabinet',
+                 'dishwasher',
+                 'fridge',
+                 'microwave',
+                 'oven',
+                 'washer'
+                 'dryer',
+                 ], mode='random', prob=0.5)
+            self.save_task_setup()
+        else:
+            self.load_task_setup()
         self.task_potential = self.get_task_potential()
 
     def sample_initial_pose(self, env):
