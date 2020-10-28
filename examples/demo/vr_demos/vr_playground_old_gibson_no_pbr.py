@@ -1,6 +1,6 @@
 """ VR playground containing various objects and VR options that can be toggled
 to experiment with the VR experience in iGibson. This playground operates in
-the Placida scene, which does not use PBR.
+the Placida scene, which is from the set of old iGibson environments and does not use PBR.
 
 Important: VR functionality and where to find it:
 
@@ -27,7 +27,6 @@ sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
 
 # Playground configuration: edit this to change functionality
 optimize = True
-vr_mode = True
 # Toggles fullscreen companion window
 fullscreen = False
 # Toggles SRAnipal eye tracking
@@ -39,14 +38,14 @@ touchpad_movement = True
 # Set to one of hmd, right_controller or left_controller to move relative to that device
 relative_movement_device = 'hmd'
 # Movement speed for touchpad-based movement
-movement_speed = 0.02
+movement_speed = 0.03
 # Whether we should hide a mustard bottle when the menu button is presed
 hide_mustard_on_press = True
 
 # Initialize simulator with specific rendering settings
 s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, 
             rendering_settings=MeshRendererSettings(optimized=optimize, fullscreen=fullscreen, enable_pbr=False),
-            vr_eye_tracking=use_eye_tracking, vr_mode=vr_mode)
+            vr_eye_tracking=use_eye_tracking, vr_mode=True)
 scene = StaticIndoorScene('Placida')
 s.import_scene(scene)
 
@@ -58,21 +57,21 @@ if enable_vr_body:
 
 # The hand can either be 'right' or 'left'
 # It has enough friction to pick up the basket and the mustard bottles
-rHand = VrHand(hand='right')
-s.import_object(rHand)
+r_hand = VrHand(hand='right')
+s.import_object(r_hand)
 # This sets the hand constraints so it can move with the VR controller
-rHand.set_start_state(start_pos=[0, 0, 1.5])
+r_hand.set_start_state(start_pos=[0, 0, 1.5])
 
-lHand = VrHand(hand='left')
-s.import_object(lHand)
+l_hand = VrHand(hand='left')
+s.import_object(l_hand)
 # This sets the hand constraints so it can move with the VR controller
-lHand.set_start_state(start_pos=[0, 0.5, 1.5])
+l_hand.set_start_state(start_pos=[0, 0.5, 1.5])
 
-# Add playground objects to the scene
-# Eye tracking visual marker - a red marker appears in the scene to indicate gaze direction
-gaze_marker = VisualMarker(radius=0.03)
-s.import_object(gaze_marker)
-gaze_marker.set_position([0,0,1.5])
+if use_eye_tracking:
+    # Eye tracking visual marker - a red marker appears in the scene to indicate gaze direction
+    gaze_marker = VisualMarker(radius=0.03)
+    s.import_object(gaze_marker)
+    gaze_marker.set_position([0,0,1.5])
 
 basket_path = os.path.join(sample_urdf_folder, 'object_ZU6u5fvE8Z1.urdf')
 basket = ArticulatedObject(basket_path)
@@ -103,11 +102,11 @@ hide_mustard = False
 while True:
     # Demonstrates how to call VR events - replace pass with custom logic
     # See pollVREvents description in simulator for full list of events
-    eventList = s.poll_vr_events()
-    for event in eventList:
-        deviceType, eventType = event
-        if deviceType == 'right_controller':
-            if eventType == 'menu_press' and hide_mustard_on_press:
+    event_list = s.poll_vr_events()
+    for event in event_list:
+        device_type, event_type = event
+        if device_type == 'right_controller':
+            if event_type == 'menu_press' and hide_mustard_on_press:
                 # Toggle mustard hidden state
                 hide_mustard = not hide_mustard
                 s.set_hidden_state(mustard_list[2], hide=hide_mustard)
@@ -116,42 +115,43 @@ while True:
     s.step()
 
     # VR device data
-    hmdIsValid, hmdTrans, hmdRot = s.get_data_for_vr_device('hmd')
-    lIsValid, lTrans, lRot = s.get_data_for_vr_device('left_controller')
-    rIsValid, rTrans, rRot = s.get_data_for_vr_device('right_controller')
+    hmd_is_valid, hmd_trans, hmd_rot = s.get_data_for_vr_device('hmd')
+    l_is_valid, l_trans, l_rot = s.get_data_for_vr_device('left_controller')
+    r_is_valid, r_trans, r_rot = s.get_data_for_vr_device('right_controller')
 
     # VR button data
-    lTrig, lTouchX, lTouchY = s.get_button_data_for_controller('left_controller')
-    rTrig, rTouchX, rTouchY = s.get_button_data_for_controller('right_controller')
+    l_trig, l_touch_x, l_touch_y = s.get_button_data_for_controller('left_controller')
+    r_trig, r_touch_x, r_touch_y = s.get_button_data_for_controller('right_controller')
 
     # VR eye tracking data
-    is_eye_data_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = s.get_eye_tracking_data()
-    if is_eye_data_valid:
-        # Move gaze marker based on eye tracking data
-        updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
-        gaze_marker.set_position(updated_marker_pos)
+    if use_eye_tracking:
+        is_eye_data_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = s.get_eye_tracking_data()
+        if is_eye_data_valid:
+            # Move gaze marker based on eye tracking data
+            updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
+            gaze_marker.set_position(updated_marker_pos)
 
-    if rIsValid:
-        rHand.move(rTrans, rRot)
-        rHand.set_close_fraction(rTrig)
+    if r_is_valid:
+        r_hand.move(r_trans, r_rot)
+        r_hand.set_close_fraction(r_trig)
 
         if enable_vr_body:
             # See VrBody class for more details on this method
-            vr_body.move_body(s, rTouchX, rTouchY, movement_speed, relative_movement_device)
+            vr_body.move_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
         else:
             # Right hand used to control movement
             # Move VR system based on device coordinate system and touchpad press location
-            move_player_no_body(s, rTouchX, rTouchY, movement_speed, relative_movement_device)
+            move_player_no_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
 
         # Trigger haptic pulse on right touchpad, modulated by trigger close fraction
         # Close the trigger to create a stronger pulse
         # Note: open trigger has closed fraction of 0.05 when open, so cutoff haptic input under 0.1
         # to avoid constant rumbling
-        s.trigger_haptic_pulse('right_controller', rTrig if rTrig > 0.1 else 0)
+        s.trigger_haptic_pulse('right_controller', r_trig if r_trig > 0.1 else 0)
 
-    if lIsValid:
-        lHand.move(lTrans, lRot)
-        lHand.set_close_fraction(lTrig)
-        s.trigger_haptic_pulse('left_controller', lTrig if lTrig > 0.1 else 0)
+    if l_is_valid:
+        l_hand.move(l_trans, l_rot)
+        l_hand.set_close_fraction(l_trig)
+        s.trigger_haptic_pulse('left_controller', l_trig if l_trig > 0.1 else 0)
 
 s.disconnect()

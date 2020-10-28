@@ -1647,6 +1647,8 @@ class MeshRenderer(object):
         This function is called by instances and not every frame, since hiding is a very infrequent operation.
         """
         buf_idxs = instance.or_buffer_indices
+        if not buf_idxs:
+            print('ERROR: trying to set hidden state of an instance that has no visual objects!')
         # Need to multiply buf_idxs by four so we index into the first element of the vec4 corresponding to each buffer index
         vec4_buf_idxs = [idx * 4 for idx in buf_idxs]
         self.merged_hidden_data[vec4_buf_idxs] = float(instance.hidden)
@@ -1657,12 +1659,19 @@ class MeshRenderer(object):
         A function to update all dynamic positions.
         """
         for instance in self.instances:
+            #if instance.dynamic:
             if isinstance(instance, Instance):
                 buf_idxs = instance.or_buffer_indices
+                # Continue if instance has no visual objects
+                if not buf_idxs:
+                    continue
                 self.trans_data[buf_idxs] = np.array(instance.pose_trans)
                 self.rot_data[buf_idxs] = np.array(instance.pose_rot)
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
                 buf_idxs = instance.or_buffer_indices
+                # Continue if instance has no visual objects
+                if not buf_idxs:
+                    continue
                 self.trans_data[buf_idxs] = np.array(instance.poses_trans)
                 self.rot_data[buf_idxs] = np.array(instance.poses_rot)
 

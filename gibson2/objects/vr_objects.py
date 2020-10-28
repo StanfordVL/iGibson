@@ -171,7 +171,7 @@ class VrHand(ArticulatedObject):
         for jointIndex in range(p.getNumJoints(self.body_id)):
             # Make masses larger for greater stability
             # Mass is in kg, friction is coefficient
-            p.changeDynamics(self.body_id, jointIndex, mass=0.2, lateralFriction=5)
+            p.changeDynamics(self.body_id, jointIndex, mass=0.2, lateralFriction=3)
             open_pos = self.open_pos[jointIndex]
             p.resetJointState(self.body_id, jointIndex, open_pos)
             p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=open_pos, force=500)

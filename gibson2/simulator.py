@@ -283,7 +283,6 @@ class Simulator:
                                 use_pbr_mapping=True,
                                 shadow_caster=True
                                 ):
-
         if class_id is None:
             class_id = self.next_class_id
         self.next_class_id += 1

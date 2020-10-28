@@ -35,24 +35,6 @@ class ArticulatedObject(Object):
         return body_id
 
 
-class VArticulatedObject(Object):
-    """
-    Articulated objects are defined in URDF files. They are passive (no motors)
-    """
-
-    def __init__(self, filename, scale=1):
-        super(VArticulatedObject, self).__init__()
-        self.filename = filename
-        self.scale = scale
-
-    def _load(self):
-        body_id = p.loadURDF(self.filename, globalScaling=self.scale,
-                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-        self.mass = p.getDynamicsInfo(body_id, -1)[0]
-
-        return body_id
-
-
 class RBOObject(ArticulatedObject):
     def __init__(self, name, scale=1):
         filename = os.path.join(gibson2.assets_path, 'models', 'rbo', name, 'configuration',
