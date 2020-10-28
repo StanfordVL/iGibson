@@ -26,8 +26,8 @@ class Simulator:
                  render_to_tensor=False,
                  auto_sync=True,
                  rendering_settings=MeshRendererSettings(),
-		         vrEyeTracking=False,
-                 vrMode=True):
+		         vr_eye_tracking=False,
+                 vr_mode=True):
 
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
@@ -44,6 +44,9 @@ class Simulator:
         :param render_to_tensor: Render to GPU tensors
         :param auto_sync: automatically sync object poses to gibson renderer, by default true,
         disable it when you want to run multiple physics step but don't need to visualize each frame
+        :param rendering_settings: settings to use for mesh renderer
+        :param vr_eye_tracking: whether to use eye tracking in VR
+        :param vr_mode: whether to render to the VR headset as well as the screen
         """
         # physics simulator
         self.gravity = gravity
@@ -74,8 +77,8 @@ class Simulator:
             self.use_vr_renderer = True
                    
         # renderer + VR
-        self.vrEyeTracking = vrEyeTracking
-        self.vrMode = vrMode
+        self.vr_eye_tracking = vr_eye_tracking
+        self.vr_mode = vr_mode
         self.max_haptic_duration = 4000
         self.image_width = image_width
         self.image_height = image_height
@@ -125,8 +128,8 @@ class Simulator:
                                             rendering_settings=self.rendering_settings)
         elif self.use_vr_renderer:
             self.renderer = MeshRendererVR(rendering_settings=self.rendering_settings,
-                                        useEyeTracking=self.vrEyeTracking,
-                                        vrMode=self.vrMode)
+                                        use_eye_tracking=self.vr_eye_tracking,
+                                        vr_mode=self.vr_mode)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                      height=self.image_height,
@@ -250,7 +253,7 @@ class Simulator:
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
         new_object_pb_id = obj.load()
         self.objects += [new_object_pb_id]
-        if obj.__class__ in [ArticulatedObject, URDFObject]:
+        if isinstance(obj, ArticulatedObject) or isinstance(obj, URDFObject):
             self.load_articulated_object_in_renderer(new_object_pb_id,
                                                      class_id,
                                                      use_pbr=use_pbr,
@@ -280,7 +283,6 @@ class Simulator:
                                 use_pbr_mapping=True,
                                 shadow_caster=True
                                 ):
-
         if class_id is None:
             class_id = self.next_class_id
         self.next_class_id += 1
@@ -566,7 +568,7 @@ class Simulator:
     # deviceType: left_controller, right_controller
     # eventType: grip_press, grip_unpress, trigger_press, trigger_unpress, touchpad_press, touchpad_unpress,
     # touchpad_touch, touchpad_untouch, menu_press, menu_unpress (menu is the application button)
-    def pollVREvents(self):
+    def poll_vr_events(self):
         if not self.use_vr_renderer:
             return []
 
@@ -576,7 +578,7 @@ class Simulator:
     # Call this after step - returns all VR device data for a specific device
     # Device can be hmd, left_controller or right_controller
     # Returns isValid (indicating validity of data), translation and rotation in Gibson world space
-    def getDataForVRDevice(self, deviceName):
+    def get_data_for_vr_device(self, deviceName):
         if not self.use_vr_renderer:
             return [None, None, None]
 
@@ -585,7 +587,7 @@ class Simulator:
         return [isValid, translation, rotation]
 
     # Get world position of HMD without offset
-    def getHmdWorldPos(self):
+    def get_hmd_world_pos(self):
         if not self.use_vr_renderer:
             return None
         
@@ -598,7 +600,7 @@ class Simulator:
     # Data is only valid if isValid is true from previous call to getDataForVRDevice
     # Trigger data: 1 (closed) <------> 0 (open)
     # Analog data: X: -1 (left) <-----> 1 (right) and Y: -1 (bottom) <------> 1 (top)
-    def getButtonDataForController(self, controllerName):
+    def get_button_data_for_controller(self, controllerName):
         if not self.use_vr_renderer:
             return [None, None, None]
         
@@ -607,24 +609,36 @@ class Simulator:
     
     # Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
     # Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
-    def getEyeTrackingData(self):
-        if not self.use_vr_renderer or not self.vrEyeTracking:
+    def get_eye_tracking_data(self):
+        if not self.use_vr_renderer or not self.vr_eye_tracking:
             return [None, None, None, None, None]
             
         is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
         return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
 
-    # Sets the translational offset of the VR system (HMD, left controller, right controller)
+    # Sets the world position of the VR system in iGibson space
+    def set_vr_pos(self, pos=None):
+        if not self.use_vr_renderer:
+            return
+
+        offset_to_pos = np.array(pos) - self.get_hmd_world_pos()
+        self.set_vr_offset(offset_to_pos)
+    
+    # Gets the world position of the VR system in iGibson space
+    def get_vr_pos(self):
+        return self.get_hmd_world_pos() + self.get_vr_offset()
+
+    # Sets the translational offset of the VR system (HMD, left controller, right controller) from world space coordinates
     # Can be used for many things, including adjusting height and teleportation-based movement
     # Input must be a list of three floats, corresponding to x, y, z in Gibson coordinate space
-    def setVROffset(self, pos=None):
+    def set_vr_offset(self, pos=None):
         if not self.use_vr_renderer:
             return
 
         self.renderer.vrsys.setVROffset(-pos[1], pos[2], -pos[0])
 
     # Gets the current VR offset vector in list form: x, y, z (in Gibson coordinates)
-    def getVROffset(self):
+    def get_vr_offset(self):
         if not self.use_vr_renderer:
             return [None, None, None]
 
@@ -634,7 +648,7 @@ class Simulator:
     # Gets the direction vectors representing the device's coordinate system in list form: x, y, z (in Gibson coordinates)
     # List contains "right", "up" and "forward" vectors in that order
     # Device can be one of "hmd", "left_controller" or "right_controller"
-    def getDeviceCoordinateSystem(self, device):
+    def get_device_coordinate_system(self, device):
         if not self.use_vr_renderer:
             return [None, None, None]
 
@@ -648,11 +662,26 @@ class Simulator:
 
     # Triggers a haptic pulse of the specified strength (0 is weakest, 1 is strongest)
     # Device can be one of "hmd", "left_controller" or "right_controller"
-    def triggerHapticPulse(self, device, strength):
+    def trigger_haptic_pulse(self, device, strength):
         if not self.use_vr_renderer:
             print("Error: can't use haptics without VR system!")
         else:
             self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
+
+    # Note: this function must be called after optimize_vertex_and_texture is called
+    # Note: this function currently only works with the optimized renderer - please use the renderer hidden list
+    # to hide objects in the non-optimized renderer
+    def set_hidden_state(self, obj, hide=True):
+        """
+        Sets the hidden state of an object to be either hidden or not hidden.
+        The object passed in must inherent from Object at the top level.
+        """
+        # Find instance corresponding to this id in the renderer
+        for instance in self.renderer.instances:
+            if obj.body_id == instance.pybullet_uuid:
+                instance.hidden = hide
+                self.renderer.update_hidden_state(instance)
+                return
 
     @staticmethod
     def update_position(instance):
