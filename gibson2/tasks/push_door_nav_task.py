@@ -15,6 +15,11 @@ import numpy as np
 class PushDoorNavTask(BaseTask):
     def __init__(self, env):
         super(PushDoorNavTask, self).__init__(env)
+        self.task_randomization_freq = self.config.get(
+            'task_randomization_freq', None,
+        )
+        if self.task_randomization_freq is None:
+            self.task_randomization_freq = 1
         self.nav_potential_reward_weight = self.config.get(
             'nav_potential_reward_weight', 1.0)
         self.door_potential_reward_weight = self.config.get(
@@ -107,10 +112,24 @@ class PushDoorNavTask(BaseTask):
             door_potential += j_pos
         return door_potential
 
+    def save_task_setup(self):
+        self.body_joint_pos = []
+        for (body_id, joint_id) in self.body_joint_pairs:
+            j_pos = p.getJointState(body_id, joint_id)[0]
+            self.body_joint_pos.append(((body_id, joint_id), j_pos))
+
+    def load_task_setup(self):
+        for ((body_id, joint_id), pos) in self.body_joint_pos:
+            p.resetJointState(body_id, joint_id, pos)
+
     def reset_scene(self, env):
-        env.scene.force_wakeup_scene_objects()
-        self.body_joint_pairs = env.scene.open_all_objs_by_category(
-            'door', mode='zero')
+        if env.current_episode % self.task_randomization_freq == 0:
+            env.scene.force_wakeup_scene_objects()
+            self.body_joint_pairs = env.scene.open_all_objs_by_category(
+                'door', mode='zero')
+            self.save_task_setup()
+        else:
+            self.load_task_setup()
         self.door_potential = self.get_door_potential()
 
     def sample_initial_pose_and_target_pos(self, env):
