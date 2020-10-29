@@ -22,6 +22,11 @@ import logging
 from IPython import embed
 import cv2
 
+try:
+    import torch.nn as nn
+    import torch
+except:
+    pass
 class NavigationEnv(BaseEnv):
     """
     We define navigation environments following Anderson, Peter, et al. 'On evaluation of embodied navigation agents.'
@@ -207,6 +212,29 @@ class NavigationEnv(BaseEnv):
             self.comp.load_state_dict(
                 torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
+
+        if 'pretrain_pred' in self.output:# or 'pretrain_feat' in self.output:
+            try:
+                import torch.nn as nn
+                import torch
+                from torchvision import datasets, transforms
+                from gibson2.learn.model import UNet
+            except:
+                raise Exception(
+                    'Trying to use rgb_filled ("the goggle"), but torch is not installed. Try "pip install torch torchvision".')
+
+            self.interaction_model = UNet(input_channels=3)
+            self.interaction_model = torch.nn.DataParallel(self.interaction_model).cuda()
+            checkpoint = torch.load(os.path.join(gibson2.assets_path, 'networks', 'ckpt_0008.pth.tar'))
+            self.interaction_model.load_state_dict(checkpoint['state_dict'])
+            self.interaction_model.eval()
+
+            self.pretrain_pred_space = gym.spaces.Box(low=0.0,
+                                                      high=1.0,
+                                                      shape=(self.image_height,
+                                                             self.image_width, 2),
+                                                     dtype=np.float32)
+            observation_space['pretrain_pred'] = self.pretrain_pred_space
 
         if 'occupancy_grid' in self.output:
             self.grid_resolution = self.config.get('grid_resolution', 128)
@@ -507,6 +535,14 @@ class NavigationEnv(BaseEnv):
         if 'scan' in self.output:
             state['scan'] = self.get_scan()
 
+        if 'pretrain_pred' in self.output:# or 'pretrain_feat' in self.output:
+            with torch.no_grad():
+                tensor = torch.from_numpy(
+                    (state['rgb']).astype(np.float32)).permute(2, 0, 1).cuda()
+                pretrain_pred,pretrain_feat = self.interaction_model(tensor[None, :, :, :])
+                pretrain_pred = pretrain_pred[0].permute(1, 2, 0).cpu().numpy()
+            state['pretrain_pred'] = pretrain_pred
+
         if 'occupancy_grid' in self.output:
             if 'scan' in self.output:
                 grid = self.get_local_occupancy_grid(state)
@@ -514,6 +550,7 @@ class NavigationEnv(BaseEnv):
                 grid = self.get_local_occupancy_grid()
             state['occupancy_grid'] = grid
         return state
+
 
     def run_simulation(self):
         """
