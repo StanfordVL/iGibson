@@ -410,8 +410,10 @@ class NavigationEnv(BaseEnv):
         """
         seg = self.simulator.renderer.render_robot_cameras(modes='seg')[
             0][:, :, 0:1]
-        if self.num_object_classes is not None:
-            seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
+        #if self.num_object_classes is not None:
+        #    seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
+
+        seg = ((seg * 255).astype(np.int) == 7).astype(np.float32)
         return seg
 
     def get_scan(self):
