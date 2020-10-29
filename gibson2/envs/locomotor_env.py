@@ -228,7 +228,9 @@ class NavigationEnv(BaseEnv):
 
             self.interaction_model = UNet(input_channels=3)
             self.interaction_model = torch.nn.DataParallel(self.interaction_model).cuda()
-            checkpoint = torch.load(os.path.join(gibson2.assets_path, 'networks', 'ckpt_0008.pth.tar'))
+
+            interaction_model_filename = self.config.get('interaction_model_filename', 'ckpt_0021.pth.tar')
+            checkpoint = torch.load(os.path.join(gibson2.assets_path, 'networks', interaction_model_filename))
             self.interaction_model.load_state_dict(checkpoint['state_dict'])
             self.interaction_model.eval()
 
