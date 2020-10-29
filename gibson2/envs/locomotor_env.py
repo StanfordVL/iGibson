@@ -551,6 +551,7 @@ class NavigationEnv(BaseEnv):
                 tensor = self.transform(
                     Image.fromarray((state['rgb'] * 255).astype(np.uint8))).cuda()
                 pretrain_pred,pretrain_feat = self.interaction_model(tensor[None, :, :, :])
+                pretrain_pred = nn.Softmax(dim=1)(pretrain_pred)
                 pretrain_pred = pretrain_pred[0].permute(1, 2, 0).cpu().numpy()
             state['pretrain_pred'] = pretrain_pred
 
