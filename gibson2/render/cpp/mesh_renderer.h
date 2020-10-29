@@ -73,8 +73,10 @@ public:
 
 	int texColorDataSize;
 	int transformDataSize;
-    GLuint m_skybox_vbo;
-    GLuint m_skybox_ibo;
+
+	// Skybox data
+	GLuint m_skybox_vao;
+	GLuint m_skybox_vbo;
 
 #ifdef USE_CUDA
     cudaGraphicsResource* cuda_res[MAX_NUM_RESOURCES];

@@ -1272,10 +1272,8 @@ class MeshRenderer(object):
         else:
             self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
-        if not self.optimized and self.rendering_settings.enable_pbr:
+        if self.rendering_settings.enable_pbr:
             self.r.renderSkyBox(self.skyboxShaderProgram, self.V, self.P)
-            # TODO: skybox is not supported in optimized renderer, need fix
-            # TODO: skybox is not used in non-pbr mode
 
         if self.optimized:
             self.update_dynamic_positions()

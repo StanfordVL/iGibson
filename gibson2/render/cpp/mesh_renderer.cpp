@@ -1446,48 +1446,73 @@ void MeshRendererContext::clean_meshrenderer_optimized(std::vector<GLuint> color
 		glDeleteBuffers(1, &uboTransformDataTrans);
 		glDeleteBuffers(1, &uboTransformDataRot);
 		glDeleteBuffers(1, &uboHidden);
+		// Delete skybox VAO and buffers
+		glDeleteVertexArrays(1, &m_skybox_vao);
+		glDeleteBuffers(1, &m_skybox_vbo);
 	}
 
 
-void MeshRendererContext::loadSkyBox(int shaderProgram, float skybox_size){
-    GLint vertex = glGetAttribLocation(shaderProgram, "position");
-    GLfloat cube_vertices[] = {
-	  -1.0,  1.0,  1.0,
-	  -1.0, -1.0,  1.0,
-	   1.0, -1.0,  1.0,
-	   1.0,  1.0,  1.0,
-	  -1.0,  1.0, -1.0,
-	  -1.0, -1.0, -1.0,
-	   1.0, -1.0, -1.0,
-	   1.0,  1.0, -1.0,
+void MeshRendererContext::loadSkyBox(int shaderProgram, float skybox_size) {
+	// First set up VAO and corresponding attributes
+	glGenVertexArrays(1, &m_skybox_vao);
+	glBindVertexArray(m_skybox_vao);
+
+	float cube_vertices[] = {    
+		-1.0f,  1.0f, -1.0f,
+		-1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+
+		-1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f,  1.0f,
+		-1.0f, -1.0f,  1.0f,
+
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+
+		-1.0f, -1.0f,  1.0f,
+		-1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f,  1.0f,
+
+		-1.0f,  1.0f, -1.0f,
+		 1.0f,  1.0f, -1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		-1.0f,  1.0f,  1.0f,
+		-1.0f,  1.0f, -1.0f,
+
+		-1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f,  1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f,  1.0f,
+		 1.0f, -1.0f,  1.0f
 	};
-	for (int i = 0; i < 24; i++) cube_vertices[i] *= skybox_size;
-	GLuint vbo_cube_vertices;
-	glGenBuffers(1, &vbo_cube_vertices);
-	m_skybox_vbo = vbo_cube_vertices;
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+	// Scale cube vertices up to skybox size
+	for (int i = 0; i < 108; i++) cube_vertices[i] *= skybox_size;
+	glGenBuffers(1, &m_skybox_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, m_skybox_vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(vertex);
-    glVertexAttribPointer(vertex, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	GLuint vertexAttrib = glGetAttribLocation(shaderProgram, "position");
+	glEnableVertexAttribArray(vertexAttrib);
+	glVertexAttribPointer(vertexAttrib, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// cube indices for index buffer object
-	GLushort cube_indices[] = {
-	  0, 1, 2, 3,
-	  3, 2, 6, 7,
-	  7, 6, 5, 4,
-	  4, 5, 1, 0,
-	  0, 3, 7, 4,
-	  1, 2, 6, 5,
-	};
-	GLuint ibo_cube_indices;
-	glGenBuffers(1, &ibo_cube_indices);
-	m_skybox_ibo = ibo_cube_indices;
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_cube_indices);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_indices), cube_indices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
+	glBindVertexArray(0);
 }
+
 void MeshRendererContext::renderSkyBox(int shaderProgram, py::array_t<float> V, py::array_t<float> P){
     glUseProgram(shaderProgram);
     float* Vptr = (float*)V.request().ptr;
@@ -1498,12 +1523,7 @@ void MeshRendererContext::renderSkyBox(int shaderProgram, py::array_t<float> V, 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture3.id);
     glUniform1i(glGetUniformLocation(shaderProgram, "envTexture"), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, m_skybox_vbo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_skybox_ibo);
 
-    glDrawElements(GL_QUADS, 24, GL_UNSIGNED_SHORT, 0);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
+	glBindVertexArray(m_skybox_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
 }
