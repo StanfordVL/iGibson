@@ -21,10 +21,11 @@ import time
 import logging
 from IPython import embed
 import cv2
-
+from PIL import Image
 try:
     import torch.nn as nn
     import torch
+    from torchvision import transforms
 except:
     pass
 class NavigationEnv(BaseEnv):
@@ -132,6 +133,8 @@ class NavigationEnv(BaseEnv):
             self.task = ObjectNavTask(self)
         else:
             self.task = None
+
+        self.transform = None
 
     def load_observation_space(self):
         """
@@ -537,8 +540,16 @@ class NavigationEnv(BaseEnv):
 
         if 'pretrain_pred' in self.output:# or 'pretrain_feat' in self.output:
             with torch.no_grad():
-                tensor = torch.from_numpy(
-                    (state['rgb']).astype(np.float32)).permute(2, 0, 1).cuda()
+                if self.transform is None:
+                    normalize = transforms.Normalize(
+                        mean=[0.485, 0.456, 0.406],
+                        std=[0.229, 0.224, 0.225])
+                    self.transform = transforms.Compose([
+                        transforms.Resize(128),
+                        transforms.ToTensor(),
+                        normalize, ])
+                tensor = self.transform(
+                    Image.fromarray((state['rgb'] * 255).astype(np.uint8))).cuda()
                 pretrain_pred,pretrain_feat = self.interaction_model(tensor[None, :, :, :])
                 pretrain_pred = pretrain_pred[0].permute(1, 2, 0).cpu().numpy()
             state['pretrain_pred'] = pretrain_pred
