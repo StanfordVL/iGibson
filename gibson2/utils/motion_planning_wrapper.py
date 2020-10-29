@@ -36,7 +36,7 @@ class MotionPlanningWrapper(object):
                  base_mp_algo: str = 'birrt',
                  arm_mp_algo: str = 'birrt',
                  optimize_iter: int = 0,
-                 fine_motion_plan: bool = True):
+                 fine_motion_plan: bool = False):
         """
         Get planning related parameters.
         """
@@ -99,7 +99,7 @@ class MotionPlanningWrapper(object):
 
     def setup_arm_mp(self):
         if self.robot_type == 'Fetch':
-            self.arm_default_joint_positions = (0.30322468280792236,
+            self.arm_default_joint_positions = (0.10322468280792236,
                                                 -1.414019864768982,
                                                 1.5178184935241699,
                                                 0.8189625336474915,
@@ -200,7 +200,7 @@ class MotionPlanningWrapper(object):
                          way_point[2]],
                         z=self.initial_height)
                     self.simulator_sync()
-                    sleep(0.02) # for animation
+                    #sleep(0.005) # for animation
             else:
                 set_base_values_with_z(
                     self.robot_id,
@@ -250,7 +250,7 @@ class MotionPlanningWrapper(object):
             self.get_ik_parameters()
 
         n_attempt = 0
-        max_attempt = 200
+        max_attempt = 75
         sample_fn = get_sample_fn(self.robot_id, self.arm_joint_ids)
         base_pose = get_base_values(self.robot_id)
         state_id = p.saveState()
@@ -437,7 +437,7 @@ class MotionPlanningWrapper(object):
                     set_base_values_with_z(
                         self.robot_id, base_pose, z=self.initial_height)
                     self.simulator_sync()
-                    sleep(0.02)  # animation
+                    #sleep(0.02)  # animation
             else:
                 set_joint_positions(
                     self.robot_id, self.arm_joint_ids, arm_path[-1])
@@ -505,6 +505,11 @@ class MotionPlanningWrapper(object):
                 joint_positions = joint_positions[:8]
 
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
+
+            #set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
+            achieved = self.robot.get_end_effector_position()
+            #print('ee delta', np.array(achieved) - push_goal, np.linalg.norm(np.array(achieved) - push_goal))
+
             #if self.robot_type == 'Movo':
             #    self.robot.control_tuck_left()
             self.simulator_step()

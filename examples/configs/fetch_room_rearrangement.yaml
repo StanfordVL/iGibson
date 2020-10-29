@@ -1,6 +1,6 @@
 # scene
 scene: igibson
-scene_id: Merom_1_int
+scene_id: Rs_int
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
@@ -8,7 +8,7 @@ trav_map_type: no_obj
 trav_map_resolution: 0.1
 trav_map_erosion: 3
 should_open_all_doors: true
-#_set_first_n_objects: 5
+_set_first_n_objects: 5
 texture_scale: 0.5
 
 # domain randomization
@@ -23,7 +23,7 @@ torso_lift_velocity: 0.8
 arm_velocity: 0.8
 
 # task, observation and action
-task: room_rearrangement
+task: room_rearrangement_simple
 initial_pos_z_offset: 0.03
 additional_states_dim: 4
 
@@ -35,7 +35,7 @@ revolute_joint_reward_scale: 1.0
 discount_factor: 0.99
 
 # termination condition
-max_step: 25
+max_step: 10
 max_collisions_allowed: 500
 
 # sensor spec
@@ -44,8 +44,9 @@ output: [sensor, rgb, depth, scan, occupancy_grid]
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
 fisheye: false
-image_width: 128
-image_height: 128
+image_width: 512
+image_height: 512
+grid_resolution: 512
 vertical_fov: 90
 # depth
 depth_low: 0.35

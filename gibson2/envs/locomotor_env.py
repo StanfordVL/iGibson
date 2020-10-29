@@ -4,7 +4,7 @@ from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.robots.turtlebot_robot import Turtlebot
 from gibson2.utils.utils import rotate_vector_3d, l2_distance, quatToXYZW, cartesian_to_polar
 from gibson2.envs.env_base import BaseEnv
-from gibson2.tasks.room_rearrangement_task import RoomRearrangementTask
+from gibson2.tasks.room_rearrangement_task import RoomRearrangementTask, RoomRearrangementSimpleTask
 from gibson2.tasks.push_door_nav_task import PushDoorNavTask
 from gibson2.tasks.point_nav_task import PointNavTask
 from gibson2.tasks.object_nav_task import ObjectNavTask
@@ -117,6 +117,8 @@ class NavigationEnv(BaseEnv):
 
         if self.config['task'] == 'room_rearrangement':
             self.task = RoomRearrangementTask(self)
+        elif self.config['task'] == 'room_rearrangement_simple':
+            self.task = RoomRearrangementSimpleTask(self)
         elif self.config['task'] == 'push_door_nav':
             self.task = PushDoorNavTask(self)
         elif self.config['task'] == 'point_nav':
@@ -470,6 +472,7 @@ class NavigationEnv(BaseEnv):
                    radius=int(self.robot_footprint_radius_in_map),
                    color=1,
                    thickness=-1)
+
         return occupancy_grid[:,:,None]
 
     def get_state(self, collision_links=[]):
@@ -708,7 +711,8 @@ class NavigationEnv(BaseEnv):
 
         state = self.get_state(collision_links)
         info = {}
-        if self.config['task'] in ['room_rearrangement', 'push_door_nav', 'point_nav', 'object_nav']:
+        if self.config['task'] in ['room_rearrangement', 'room_rearrangement_simple', 'push_door_nav', 'point_nav',
+                                   'object_nav']:
             reward, info = self.task.get_reward(
                 self, collision_links, action, info)
             done, info = self.task.get_termination(
@@ -867,14 +871,16 @@ class NavigationEnv(BaseEnv):
         self.randomize_domain()
         # move robot away from the scene
         self.robots[0].set_position([100.0, 100.0, 100.0])
-        if self.config['task'] in ['room_rearrangement', 'push_door_nav', 'point_nav', 'object_nav']:
+        if self.config['task'] in ['room_rearrangement', 'room_rearrangement_simple', 'push_door_nav', 'point_nav',
+                                   'object_nav']:
             self.task.reset_scene(self)
             self.task.reset_agent(self)
         else:
             self.reset_agent()
         self.simulator.sync()
         state = self.get_state()
-        if self.config['task'] in ['room_rearrangement', 'push_door_nav', 'point_nav', 'object_nav']:
+        if self.config['task'] in ['room_rearrangement', 'room_rearrangement_simple', 'push_door_nav', 'point_nav',
+                                   'object_nav']:
             pass
         else:
             if self.reward_type == 'l2':

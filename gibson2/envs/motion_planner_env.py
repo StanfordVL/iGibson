@@ -11,8 +11,8 @@ class MotionPlanningEnv(NavigationRandomEnv):
     def __init__(self, config_file, mode):
         super(MotionPlanningEnv, self).__init__(config_file=config_file,
                                       mode=mode,
-                                      action_timestep=1.0 / 120.0,
-                                      physics_timestep=1.0 / 120.0)
+                                      action_timestep=1.0 / 300.0,
+                                      physics_timestep=1.0 / 300.0)
 
         self.motion_planner = MotionPlanningWrapper(self)
         self.action_space = gym.spaces.Box(shape=(8,),
@@ -30,8 +30,8 @@ class MotionPlanningEnv(NavigationRandomEnv):
         # action[6] = arm_push_vector_x
         # action[7] = arm_push_vector_y
 
-        use_base = action[0] > 0.0
-        use_arm = action[0] <= 0.0
+        use_base = 0 #action[0] > 0.0
+        use_arm = 1 # = action[0] <= 0.0
 
         base_subgoal_theta = (action[1] * 110.0) / 180.0 * np.pi  # [-110.0, 110.0]
         base_subgoal_dist = (action[2] + 1)  # [0.0, 2.0]
@@ -85,7 +85,10 @@ class MotionPlanningEnv(NavigationRandomEnv):
             plan = self.motion_planner.plan_arm_push(arm_subgoal, push_vector)
             self.motion_planner.execute_arm_push(plan, arm_subgoal, push_vector)
 
-        return super(MotionPlanningEnv, self).step(np.zeros((10,)))
+        state, reward, done, info = super(MotionPlanningEnv, self).step(np.zeros((10,)))
+
+        print('reward', reward)
+        return state, reward, done, info
 
     def reset(self):
         return super(MotionPlanningEnv, self).reset()
@@ -108,14 +111,18 @@ if __name__ == '__main__':
     step_time_list = []
     for episode in range(100):
         print('Episode: {}'.format(episode))
-        start = time.time()
+        
         nav_env.reset()
         for _ in range(100):  # 10 seconds
             action = nav_env.action_space.sample()
+            start = time.time()
             state, reward, done, _ = nav_env.step(action)
+            print('elapsed', time.time()-start)
+            #for k in state.keys():
+            #    print(k, state[k].shape)
             print('reward', reward)
             if done:
                 break
-        print('Episode finished after {} timesteps, took {} seconds.'.format(
-            nav_env.current_step, time.time() - start))
+        #print('Episode finished after {} timesteps, took {} seconds.'.format(
+        #    nav_env.current_step, time.time() - start))
     nav_env.clean()
