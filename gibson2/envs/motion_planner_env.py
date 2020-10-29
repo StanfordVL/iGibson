@@ -5,6 +5,8 @@ import numpy as np
 from gibson2.utils.utils import quat_pos_to_mat, rotate_vector_2d
 import time
 import gym
+#import cv2
+from PIL import Image
 
 class MotionPlanningEnv(NavigationRandomEnv):
 
@@ -15,10 +17,37 @@ class MotionPlanningEnv(NavigationRandomEnv):
                                       physics_timestep=1.0 / 300.0)
 
         self.motion_planner = MotionPlanningWrapper(self)
-        self.action_space = gym.spaces.Box(shape=(8,),
+
+
+        self.action_map = self.config.get('action_map', False)
+
+
+        if self.action_map:
+            self.base_orn_num_bins = 12  # 12
+            self.push_vec_num_bins = 12
+            self.downsample_ratio = 4
+            self.q_value_size = self.image_height // self.downsample_ratio
+            # TODO: assume base and arm Q-value map has the same resolution
+            assert self.image_height == self.image_width
+            assert self.grid_resolution == self.image_width
+
+            #if self.arena == 'random_nav':
+            #    action_dim = self.base_orn_num_bins * (self.q_value_size ** 2)
+            #elif self.arena in ['random_manip', 'random_manip_atomic',
+            #                    'tabletop_manip', 'tabletop_reaching']:
+            action_dim = self.push_vec_num_bins * (self.q_value_size ** 2)
+            #else:
+            #    action_dim = \
+            #        self.base_orn_num_bins * (self.q_value_size ** 2) + \
+            #        self.push_vec_num_bins * (self.q_value_size ** 2)
+
+            self.action_space = gym.spaces.Discrete(action_dim)
+        else:
+            self.action_space = gym.spaces.Box(shape=(8,),
                                            low=-1.0,
                                            high=1.0,
                                            dtype=np.float32)
+
 
     def get_subgoals_from_vector_action(self, action):
         # action[0] = base_or_arm
@@ -69,12 +98,84 @@ class MotionPlanningEnv(NavigationRandomEnv):
         push_vector = np.append(push_vector, 0.0)
         return use_base, use_arm, base_subgoal_pos, base_subgoal_orn, arm_subgoal, push_vector
 
-    def get_subgoals_from_dense_action(self):
-        pass
+    def get_subgoals_from_dense_action(self, action):
+        assert 0 <= action < self.action_space.n
+        new_action = np.zeros(8)
+        base_range = self.base_orn_num_bins * (self.q_value_size ** 2)
+
+        #if self.arena in ['random_manip', 'random_manip_atomic',
+        #                  'tabletop_manip', 'tabletop_reaching']:
+        # doing arm only for now
+        # TODO: add base
+        action += base_range
+
+        # base
+        if action < base_range:
+            base_orn_bin = action // (self.q_value_size ** 2)
+            base_orn_bin = (base_orn_bin + 0.5) / self.base_orn_num_bins
+            base_orn_bin = (base_orn_bin * 2 - 1)
+            assert -1 <= base_orn_bin <= 1, action
+
+            base_pixel = action % (self.q_value_size ** 2)
+            base_pixel_row = base_pixel // self.q_value_size + 0.5
+            base_pixel_col = base_pixel % self.q_value_size + 0.5
+            # if self.rotate_occ_grid:
+            #     # rotate the pixel back to 0 degree rotation
+            #     base_pixel_row -= self.q_value_size / 2.0
+            #     base_pixel_col -= self.q_value_size / 2.0
+            #     base_pixel_row, base_pixel_col = rotate_vector_2d(
+            #         np.array([base_pixel_row, base_pixel_col]),
+            #         -base_orn_bin * np.pi)
+            #     base_pixel_row += self.q_value_size / 2.0
+            #     base_pixel_col += self.q_value_size / 2.0
+
+            base_local_y = (-base_pixel_row + self.q_value_size / 2.0) \
+                           * (self.occupancy_range / self.q_value_size)
+            base_local_x = (base_pixel_col - self.q_value_size / 2.0) \
+                           * (self.occupancy_range / self.q_value_size)
+            base_subgoal_theta = np.arctan2(base_local_y, base_local_x)
+            base_subgoal_dist = np.linalg.norm(
+                [base_local_x, base_local_y])
+
+            new_action[0] = 1.0
+            new_action[1] = base_subgoal_theta
+            new_action[2] = base_subgoal_dist
+            new_action[3] = base_orn_bin
+
+        # arm
+        else:
+            action -= base_range
+            arm_pixel = action % (self.q_value_size ** 2)
+            arm_pixel_row = arm_pixel // self.q_value_size + 0.5
+            arm_pixel_col = arm_pixel % self.q_value_size + 0.5
+            arm_pixel_row = (arm_pixel_row) / self.q_value_size
+            arm_pixel_row = arm_pixel_row * 2 - 1
+            arm_pixel_col = (arm_pixel_col) / self.q_value_size
+            arm_pixel_col = arm_pixel_col * 2 - 1
+            assert -1 <= arm_pixel_row <= 1, action
+            assert -1 <= arm_pixel_col <= 1, action
+
+            push_vec_bin = action // (self.q_value_size ** 2)
+            push_vec_bin = (push_vec_bin + 0.5) / self.push_vec_num_bins
+            assert 0 <= push_vec_bin <= 1, action
+            push_vec_bin = push_vec_bin * np.pi * 2.0
+            push_vector = rotate_vector_2d(
+                np.array([1.0, 0.0]), push_vec_bin)
+
+            new_action[0] = -1.0
+            new_action[4] = arm_pixel_row
+            new_action[5] = arm_pixel_col
+            new_action[6:8] = push_vector
+
+        return self.get_subgoals_from_vector_action(new_action)
 
     def step(self, action):
-        use_base, use_arm, base_subgoal_pos, base_subgoal_orn, arm_subgoal, push_vector = \
-            self.get_subgoals_from_vector_action(action)
+        if self.action_map:
+            use_base, use_arm, base_subgoal_pos, base_subgoal_orn, arm_subgoal, push_vector = \
+                self.get_subgoals_from_dense_action(action)
+        else:
+            use_base, use_arm, base_subgoal_pos, base_subgoal_orn, arm_subgoal, push_vector = \
+                self.get_subgoals_from_vector_action(action)
 
         if use_base:
             plan = self.motion_planner.plan_base_motion([base_subgoal_pos[0], base_subgoal_pos[1], base_subgoal_orn])
@@ -113,10 +214,16 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         
         nav_env.reset()
-        for _ in range(100):  # 10 seconds
+        for i in range(100):  # 10 seconds
             action = nav_env.action_space.sample()
             start = time.time()
             state, reward, done, _ = nav_env.step(action)
+            #print(state['pretrain_pred'])
+            #cv2.imshow('test1', state['pretrain_pred'][:, :, 0])
+            #cv2.imshow('test2', state['pretrain_pred'][:, :, 1])
+            #from IPython import embed; embed()
+
+            #Image.fromarray((state['rgb'] * 255).astype(np.uint8)).save('observation_{}.png'.format(episode))
             print('elapsed', time.time()-start)
             #for k in state.keys():
             #    print(k, state[k].shape)
