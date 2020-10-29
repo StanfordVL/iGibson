@@ -195,8 +195,12 @@ class Simulator:
                 if scene.objects_by_id[body_id].category == 'ceilings':
                     shadow_caster = False
 
-                self.load_articulated_object_in_renderer(
-                    body_id, class_id=body_id,
+                class_id=body_id
+                if hasattr(scene, 'category_ids'):
+                    class_id=scene.category_ids[
+                            scene.objects_by_id[body_id].category]
+                self.load_articulated_object_in_renderer(body_id, 
+                    class_id=class_id,
                     visual_mesh_to_material=visual_mesh_to_material,
                     shadow_caster=shadow_caster)
         else:
@@ -211,10 +215,16 @@ class Simulator:
                     use_pbr_mapping = False
                 if scene.objects_by_id[body_id].category == 'ceilings':
                     shadow_caster = False
-                self.load_articulated_object_in_renderer(body_id, class_id=body_id,
-                                                         use_pbr=use_pbr,
-                                                         use_pbr_mapping=use_pbr_mapping,
-                                                         shadow_caster=shadow_caster)
+
+                class_id = body_id
+                if hasattr(scene, 'category_ids'):
+                    class_id=scene.category_ids[
+                        scene.objects_by_id[body_id].category]
+                self.load_articulated_object_in_renderer(body_id,
+                    class_id=class_id,
+                    use_pbr=use_pbr,
+                    use_pbr_mapping=use_pbr_mapping,
+                    shadow_caster=shadow_caster)
         self.scene = scene
 
         return new_object_ids
