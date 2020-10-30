@@ -98,6 +98,10 @@ class NavigationEnv(BaseEnv):
             'potential_reward_weight', 1.0)
         self.collision_reward_weight = self.config.get(
             'collision_reward_weight', -0.1)
+        self.safe_dist_reward_weight = self.config.get(
+            'safe_dist_reward_weight', 0.0)
+        self.safe_dist_thresh = self.config.get(
+            'safe_dist_thresh', 0.36)
 
         # ignore the agent's collision with these body ids
         self.collision_ignore_body_b_ids = set(
@@ -428,6 +432,7 @@ class NavigationEnv(BaseEnv):
                 state['rgb_filled'] = rgb_filled
         if 'scan' in self.output:
             state['scan'] = self.get_scan()
+
         return state
 
     def run_simulation(self):
@@ -532,6 +537,20 @@ class NavigationEnv(BaseEnv):
         self.collision_step += int(collision_reward)
         # |collision_reward| ~= 1.0 per step if collision
         reward += collision_reward * self.collision_reward_weight
+
+        if self.safe_dist_reward_weight != 0.0:
+            normalized_scan = self.get_scan()
+            scan = normalized_scan * \
+                (self.laser_linear_range - self.min_laser_dist) + self.min_laser_dist
+            min_dist_scan = np.min(scan)
+
+            normalized_depth = self.get_depth()
+            depth = normalized_depth * self.depth_high
+            min_dist_depth = np.min(depth)
+
+            min_dist = min(min_dist_scan, min_dist_depth)
+            safe_dist_reward = float(min_dist < self.safe_dist_thresh)
+            reward += safe_dist_reward * self.safe_dist_reward_weight
 
         if self.is_goal_reached():
             reward += self.success_reward  # |success_reward| = 10.0 per step
