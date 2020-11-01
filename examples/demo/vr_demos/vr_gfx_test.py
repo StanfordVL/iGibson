@@ -22,7 +22,7 @@ from gibson2.simulator import Simulator
 
 # Playground configuration: edit this to change functionality
 optimize = True
-vr_mode = True
+vr_mode = False
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -49,6 +49,7 @@ vr_rendering_settings = MeshRendererSettings(optimized=optimize,
 s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, rendering_settings=vr_rendering_settings,
             vr_eye_tracking=False, vr_mode=vr_mode)
 scene = InteractiveIndoorScene('Rs_int')
+scene._set_first_n_objects(10)
 s.import_ig_scene(scene)
 
 if not vr_mode:

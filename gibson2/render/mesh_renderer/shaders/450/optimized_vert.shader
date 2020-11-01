@@ -18,10 +18,13 @@ layout (std140) uniform Hidden {
 in int gl_DrawID;
 
 uniform mat4 V;
+uniform mat4 lightV;
 uniform mat4 P;
+uniform mat4 lightP;
 
 uniform vec3 instance_color;
 uniform vec3 diffuse_color;
+// TODO: Add uv transform param
 
 layout (location=0) in vec3 position;
 layout (location=1) in vec3 normal;
@@ -62,5 +65,6 @@ void main() {
     vec3 B = normalize(vec3(pose_trans * pose_rot * vec4(bitangent, 0.0)));
     vec3 N = normalize(vec3(pose_trans * pose_rot * vec4(normal,    0.0)));
     TBN = mat3(T, B, N);
+    FragPosLightSpace = lightP * lightV * pose_trans * pose_rot * vec4(position, 1);
     Draw_id = gl_DrawID;
 }

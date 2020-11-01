@@ -1251,9 +1251,15 @@ class MeshRenderer(object):
             else:
                 self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
-            for instance in self.instances:
-                if (not instance in hidden) and instance.shadow_caster:
-                    instance.render(shadow_pass=1)
+            if self.optimized:
+                self.update_dynamic_positions()
+                self.r.updateDynamicData(
+                    self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P, self.lightV, self.lightP, 1, self.camera)
+                self.r.renderOptimized(self.optimized_VAO)
+            else:
+                for instance in self.instances:
+                    if (not instance in hidden) and instance.shadow_caster:
+                        instance.render(shadow_pass=1)
 
             self.r.render_meshrenderer_post()
 
@@ -1277,8 +1283,11 @@ class MeshRenderer(object):
 
         if self.optimized:
             self.update_dynamic_positions()
-            self.r.updateDynamicData(
-                self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P, self.camera)
+            if self.enable_shadow:
+                self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P, self.lightV, self.lightP, 2, self.camera)
+            else:
+                self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P, self.lightV, self.lightP, 0, self.camera)
+
             self.r.renderOptimized(self.optimized_VAO)
         else:
             for instance in self.instances:
@@ -1637,7 +1646,8 @@ class MeshRenderer(object):
                                                                                         self.merged_hidden_data,
                                                                                         self.tex_id_1, self.tex_id_2,
                                                                                         buffer,
-                                                                                        float(self.rendering_settings.enable_pbr))
+                                                                                        float(self.rendering_settings.enable_pbr),
+                                                                                        self.depth_tex_shadow)
 
     def update_hidden_state(self, instance):
         """
