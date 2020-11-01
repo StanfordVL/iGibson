@@ -1194,7 +1194,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		py::array_t<float> mergedPBRData,
 		py::array_t<float> mergedHiddenData,
 		int tex_id_1, int tex_id_2, GLuint fb,
-		float use_pbr) {
+		float use_pbr, int depth_tex_id) {
 		// First set up VAO and corresponding attributes
 		GLuint VAO;
 		glGenVertexArrays(1, &VAO);
@@ -1354,9 +1354,13 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glActiveTexture(GL_TEXTURE7);
 		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT2.id);
 
+		glActiveTexture(GL_TEXTURE11);
 		if (m_use_two_light_probe) {
 			glBindTexture(GL_TEXTURE_2D, m_light_modulation_map.id);
 		}
+
+		glActiveTexture(GL_TEXTURE12);
+		glBindTexture(GL_TEXTURE_2D, depth_tex_id);
 
 		glUniform1i(bigTexLoc, 0);
 		glUniform1i(smallTexLoc, 1);
@@ -1369,6 +1373,8 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 7);
 
 		glUniform1i(glGetUniformLocation(shaderProgram, "lightModulationMap"), 11);
+
+		glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 12);
 
 		glUseProgram(0);
 
@@ -1395,7 +1401,8 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 
 	// Updates positions and rotations in vertex shader
 	void MeshRendererContext::updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array,
-	py::array_t<float> pose_rot_array, py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos) {
+	py::array_t<float> pose_rot_array, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightV, py::array_t<float> lightP, int shadow_pass,
+		py::array_t<float> eye_pos) {
 		glUseProgram(shaderProgram);
 
 		float* transPtr = (float*)pose_trans_array.request().ptr;
@@ -1416,10 +1423,15 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 
 		float* Vptr = (float*)V.request().ptr;
 		float* Pptr = (float*)P.request().ptr;
+		float* lightVptr = (float*)lightV.request().ptr;
+		float* lightPptr = (float*)lightP.request().ptr;
         float *eye_pos_ptr = (float *) eye_pos.request().ptr;
 
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, Vptr);
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightP"), 1, GL_FALSE, Pptr);
+		glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), shadow_pass);
         glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
 	}
 
