@@ -43,6 +43,7 @@ out vec3 Pos_cam_projected;
 out vec3 Diffuse_color;
 out mat3 TBN;
 flat out int Draw_id;
+out vec4 FragPosLightSpace;
 
 void main() {
     mat4 pose_trans = pose_trans_array[gl_DrawID];
