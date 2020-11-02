@@ -100,8 +100,8 @@ void main() {
     int shadow_caster = int(curr_pbr_data.z);
     vec2 texelSize = 1.0 / textureSize(depthMap, 0);
 
-    /*
     float shadow = 0.0;
+
     if (shadow_pass == 2) {
         vec3 projCoords = FragPosLightSpace.xyz / FragPosLightSpace.w;
         projCoords = projCoords * 0.5 + 0.5;
@@ -131,7 +131,7 @@ void main() {
     }
     else {
         shadow = 0.0;
-    }*/
+    }
 
     if (use_pbr == 1) {
         int normal_tex_num = int(tex_normal_data[Draw_id].x);
