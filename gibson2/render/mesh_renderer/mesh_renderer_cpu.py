@@ -1252,10 +1252,22 @@ class MeshRenderer(object):
                 self.r.render_meshrenderer_pre(0, 0, self.fbo)
 
             if self.optimized:
+                # If objects are not shadow casters, we do not render them during the shadow pass. This can be achieved
+                # by setting their state to hidden for rendering the depth map
+                # Store which instances we hide, so we don't accidentally unhide instances that should remain hidden
+                shadow_hidden_instances = []
+                for instance in self.instances:
+                    if not instance.shadow_caster and not instance.hidden:
+                        instance.hidden = True
+                        self.update_hidden_state(instance)
+                        shadow_hidden_instances.append(instance)
                 self.update_dynamic_positions()
                 self.r.updateDynamicData(
                     self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P, self.lightV, self.lightP, 1, self.camera)
                 self.r.renderOptimized(self.optimized_VAO)
+                for instance in shadow_hidden_instances:
+                    instance.hidden = False
+                    self.update_hidden_state(instance)
             else:
                 for instance in self.instances:
                     if (not instance in hidden) and instance.shadow_caster:

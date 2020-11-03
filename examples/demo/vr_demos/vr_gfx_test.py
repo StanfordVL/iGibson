@@ -22,7 +22,7 @@ from gibson2.simulator import Simulator
 
 # Playground configuration: edit this to change functionality
 optimize = True
-vr_mode = True
+vr_mode = False
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -41,7 +41,7 @@ vr_rendering_settings = MeshRendererSettings(optimized=optimize,
                                             env_texture_filename2=hdr_texture2,
                                             env_texture_filename3=background_texture,
                                             light_modulation_map_filename=light_modulation_map_filename,
-                                            enable_shadow=False, 
+                                            enable_shadow=True, 
                                             enable_pbr=True,
                                             msaa=True,
                                             light_dimming_factor=1.0)
@@ -63,6 +63,9 @@ if optimize:
     s.optimize_vertex_and_texture()
 
 while True:
+    start_time = time.time()
     s.step()
+    frame_time = time.time() - start_time
+    print('Fps: {}'.format(round(1/max(0.0001, frame_time), 2)))
 
 s.disconnect()
