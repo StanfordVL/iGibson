@@ -22,7 +22,7 @@ from gibson2.simulator import Simulator
 
 # Playground configuration: edit this to change functionality
 optimize = True
-vr_mode = True
+vr_mode = False
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -66,6 +66,7 @@ while True:
     start_time = time.time()
     s.step()
     frame_time = time.time() - start_time
+    print('Frame time: {}'.format(frame_time))
     print('Fps: {}'.format(round(1/max(0.0001, frame_time), 2)))
 
 s.disconnect()

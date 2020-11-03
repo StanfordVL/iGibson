@@ -1193,6 +1193,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		py::array_t<float> mergedDiffuseData,
 		py::array_t<float> mergedPBRData,
 		py::array_t<float> mergedHiddenData,
+		py::array_t<float> mergedUVData,
 		int tex_id_1, int tex_id_2, GLuint fb,
 		float use_pbr, int depth_tex_id) {
 		// First set up VAO and corresponding attributes
@@ -1326,6 +1327,18 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glBindBufferBase(GL_UNIFORM_BUFFER, 4, uboHidden);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(float), hiddenData);
 
+		float* uvData = (float*)mergedUVData.request().ptr;
+		int uvDataSize = mergedUVData.size();
+
+		glGenBuffers(1, &uboUV);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboUV);
+		int uvMaxDataSize = 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, uvMaxDataSize, NULL, GL_DYNAMIC_DRAW);
+		GLuint uvIdx = glGetUniformBlockIndex(shaderProgram, "UVData");
+		glUniformBlockBinding(shaderProgram, uvIdx, 5);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 5, uboUV);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, uvDataSize * sizeof(float), uvData);
+
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		GLuint bigTexLoc = glGetUniformLocation(shaderProgram, "bigTex");
@@ -1395,6 +1408,19 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 
 		glBindBuffer(GL_UNIFORM_BUFFER, uboHidden);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(float), hiddenData);
+
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
+
+	// Updates UV data in vertex shader
+	void MeshRendererContext::updateUVData(int shaderProgram, py::array_t<float> uv_data) {
+		glUseProgram(shaderProgram);
+
+		float* uvData = (float*)uv_data.request().ptr;
+		int uvDataSize = uv_data.size();
+
+		glBindBuffer(GL_UNIFORM_BUFFER, uboUV);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, uvDataSize * sizeof(float), uvData);
 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}

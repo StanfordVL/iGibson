@@ -203,7 +203,6 @@ void main() {
     }
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
     InstanceColour = vec4(Instance_color,1);
-    PCColour = vec4(Pos_cam, 1);
     if (shadow_pass == 1) {
         PCColour = vec4(Pos_cam_projected, 1);
     } else {
