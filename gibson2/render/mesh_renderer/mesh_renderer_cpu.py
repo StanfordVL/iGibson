@@ -1227,7 +1227,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), return_buffer=True):
+    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), return_buffer=True, render_shadow_pass=True):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -1239,7 +1239,7 @@ class MeshRenderer(object):
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
 
-        if self.enable_shadow:
+        if self.enable_shadow and render_shadow_pass:
             # shadow pass
 
             V = np.copy(self.V)

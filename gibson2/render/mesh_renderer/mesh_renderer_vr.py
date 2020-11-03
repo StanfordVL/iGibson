@@ -31,18 +31,19 @@ class MeshRendererVR(MeshRenderer):
             self.V = left_view
             self.P = left_proj
             
-            super().render(modes=('rgb'), return_buffer=False)
+            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
             self.vrsys.postRenderVRForEye("left", self.color_tex_rgb)
             # Render and submit right eye
             self.V = right_view
             self.P = right_proj
             
-            super().render(modes=('rgb'), return_buffer=False)
+            # We don't need to render the shadow pass a second time for the second eye
+            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=False)
             self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
 
             self.vrsys.postRenderVRUpdate(True)
         else:
-            super().render(modes=('rgb'), return_buffer=False)
+            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
 
     # Releases VR system and renderer
     def release(self):
