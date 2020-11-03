@@ -22,7 +22,7 @@ from gibson2.simulator import Simulator
 
 # Playground configuration: edit this to change functionality
 optimize = True
-vr_mode = False
+vr_mode = True
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
