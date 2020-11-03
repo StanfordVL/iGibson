@@ -1489,7 +1489,7 @@ class MeshRenderer(object):
                 instance.or_buffer_indices = list(np.arange(or_buffer_idx_start, or_buffer_idx_end)).copy()
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * len(ids))
-                pbr_data_array.extend([[float(instance.use_pbr), float(instance.use_pbr_mapping), float(instance.shadow_caster), 1.0]] * len(ids))
+                pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * len(ids))
                 hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * len(ids))
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
                 id_sum = 0
@@ -1506,7 +1506,7 @@ class MeshRenderer(object):
                 instance.or_buffer_indices = temp_or_buffer_indices.copy()
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * id_sum)
-                pbr_data_array.extend([[float(instance.use_pbr), float(instance.use_pbr_mapping), float(instance.shadow_caster), 1.0]] * id_sum)
+                pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
                 hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
 
         # Number of shapes in the OR buffer is equal to the number of duplicate vao_ids
