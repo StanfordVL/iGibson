@@ -1238,6 +1238,7 @@ class MeshRenderer(object):
             render the window and don't return the frame buffers as numpy arrays (to increase speed)
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
+        import time
 
         if self.enable_shadow and render_shadow_pass:
             # shadow pass
@@ -1255,19 +1256,17 @@ class MeshRenderer(object):
                 # If objects are not shadow casters, we do not render them during the shadow pass. This can be achieved
                 # by setting their state to hidden for rendering the depth map
                 # Store which instances we hide, so we don't accidentally unhide instances that should remain hidden
-                shadow_hidden_instances = []
-                for instance in self.instances:
-                    if not instance.shadow_caster and not instance.hidden:
-                        instance.hidden = True
-                        self.update_hidden_state(instance)
-                        shadow_hidden_instances.append(instance)
+                shadow_hidden_instances = [i for i in self.instances if not i.shadow_caster and not i.hidden]
+                for instance in shadow_hidden_instances:
+                    instance.hidden = True
+                self.update_hidden_state(shadow_hidden_instances)
                 self.update_dynamic_positions()
                 self.r.updateDynamicData(
                     self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P, self.lightV, self.lightP, 1, self.camera)
                 self.r.renderOptimized(self.optimized_VAO)
                 for instance in shadow_hidden_instances:
                     instance.hidden = False
-                    self.update_hidden_state(instance)
+                self.update_hidden_state(shadow_hidden_instances)
             else:
                 for instance in self.instances:
                     if (not instance in hidden) and instance.shadow_caster:
@@ -1529,6 +1528,7 @@ class MeshRenderer(object):
         metallic_tex_layer_array = []
         normal_tex_num_array = []
         normal_tex_layer_array = []
+        transform_param_array = []
 
         index_offset = 0
         for id in duplicate_vao_ids:
@@ -1577,6 +1577,10 @@ class MeshRenderer(object):
                 normal_tex_num_array.append(tex_num)
                 normal_tex_layer_array.append(tex_layer)
 
+            # List of 3 floats
+            transform_param = id_material.transform_param
+            transform_param_array.append([transform_param[0], transform_param[1], transform_param[2], 1.0])
+
             kd = np.asarray(id_material.kd, dtype=np.float32)
             # Add padding so can store diffuse color as vec4
             # The 4th element is set to 1 as that is what is used by the fragment shader
@@ -1594,6 +1598,7 @@ class MeshRenderer(object):
         frag_shader_data = []
         pbr_data = []
         hidden_data = []
+        uv_data = []
         frag_shader_roughness_metallic_data = []
         frag_shader_normal_data = []
 
@@ -1620,6 +1625,8 @@ class MeshRenderer(object):
                                 ]
             frag_shader_normal_data.append(
                 np.ascontiguousarray(normal_data_list, dtype=np.float32))
+            uv_data.append(
+                np.ascontiguousarray(transform_param_array[i], dtype=np.float32))
 
         merged_frag_shader_data = np.ascontiguousarray(
             np.concatenate(frag_shader_data, axis=0), np.float32)
@@ -1633,6 +1640,8 @@ class MeshRenderer(object):
             np.concatenate(pbr_data, axis=0), np.float32)
         self.merged_hidden_data = np.ascontiguousarray(
             np.concatenate(hidden_data, axis=0), np.float32)
+        self.merged_uv_data = np.ascontiguousarray(
+            np.concatenate(uv_data, axis=0), np.float32)
 
         merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
         print("Merged vertex data shape:")
@@ -1656,22 +1665,24 @@ class MeshRenderer(object):
                                                                                         merged_diffuse_color_array,
                                                                                         merged_pbr_data,
                                                                                         self.merged_hidden_data,
+                                                                                        self.merged_uv_data,
                                                                                         self.tex_id_1, self.tex_id_2,
                                                                                         buffer,
                                                                                         float(self.rendering_settings.enable_pbr),
                                                                                         self.depth_tex_shadow)
 
-    def update_hidden_state(self, instance):
+    def update_hidden_state(self, instances):
         """
-        Updates the hidden state of a single instance.
+        Updates the hidden state of a list of instances
         This function is called by instances and not every frame, since hiding is a very infrequent operation.
         """
-        buf_idxs = instance.or_buffer_indices
-        if not buf_idxs:
-            print('ERROR: trying to set hidden state of an instance that has no visual objects!')
-        # Need to multiply buf_idxs by four so we index into the first element of the vec4 corresponding to each buffer index
-        vec4_buf_idxs = [idx * 4 for idx in buf_idxs]
-        self.merged_hidden_data[vec4_buf_idxs] = float(instance.hidden)
+        for instance in instances:
+            buf_idxs = instance.or_buffer_indices
+            if not buf_idxs:
+                print('ERROR: trying to set hidden state of an instance that has no visual objects!')
+            # Need to multiply buf_idxs by four so we index into the first element of the vec4 corresponding to each buffer index
+            vec4_buf_idxs = [idx * 4 for idx in buf_idxs]
+            self.merged_hidden_data[vec4_buf_idxs] = float(instance.hidden)
         self.r.updateHiddenData(self.shaderProgram, np.ascontiguousarray(self.merged_hidden_data, dtype=np.float32))
 
     def update_dynamic_positions(self):

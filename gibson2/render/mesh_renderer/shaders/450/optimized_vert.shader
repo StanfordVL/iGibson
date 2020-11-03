@@ -14,6 +14,10 @@ layout (std140) uniform Hidden {
     vec4 hidden_array[MAX_ARRAY_SIZE];
 };
 
+layout (std140) uniform UVData {
+    vec4 uv_transform_param[MAX_ARRAY_SIZE];
+};
+
 
 in int gl_DrawID;
 
@@ -24,7 +28,6 @@ uniform mat4 lightP;
 
 uniform vec3 instance_color;
 uniform vec3 diffuse_color;
-// TODO: Add uv transform param
 
 layout (location=0) in vec3 position;
 layout (location=1) in vec3 normal;
@@ -59,7 +62,12 @@ void main() {
     Pos_cam_projected = pos_cam4_projected.xyz / pos_cam4_projected.w;
     vec4 pos_cam4 = V * pose_trans * pose_rot * vec4(position, 1);
     Pos_cam = pos_cam4.xyz / pos_cam4.w;
-    theCoords = texCoords;
+
+    theCoords.x = (cos(uv_transform_param[gl_DrawID][2]) * texCoords.x * uv_transform_param[gl_DrawID][0])
+                   - (sin(uv_transform_param[gl_DrawID][2]) * texCoords.y * uv_transform_param[gl_DrawID][1]);
+    theCoords.y = (sin(uv_transform_param[gl_DrawID][2]) * texCoords.x * uv_transform_param[gl_DrawID][0])
+                   + (cos(uv_transform_param[gl_DrawID][2]) * texCoords.y * uv_transform_param[gl_DrawID][1]);
+
     Instance_color = instance_color;
     Diffuse_color = diffuse_color;
     vec3 T = normalize(vec3(pose_trans * pose_rot * vec4(tangent,   0.0)));
