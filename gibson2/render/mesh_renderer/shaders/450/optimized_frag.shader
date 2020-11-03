@@ -96,8 +96,6 @@ void main() {
     float instance_color = curr_tex_data.z;
     vec4 curr_pbr_data = pbr_data[Draw_id];
     int use_pbr = int(curr_pbr_data.x);
-    int use_pbr_mapping = int(curr_pbr_data.y);
-    int shadow_caster = int(curr_pbr_data.z);
     vec2 texelSize = 1.0 / textureSize(depthMap, 0);
 
     float shadow = 0.0;
