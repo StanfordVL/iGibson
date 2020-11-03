@@ -117,7 +117,7 @@ if optimize:
     s.optimize_vertex_and_texture()
 
 # Set VR starting position in the scene
-s.set_vr_offset([0, 0, -0.8])
+s.set_vr_offset([0, 0, -0.3])
 
 # State of can hiding, toggled by a menu press
 hide_can = False
