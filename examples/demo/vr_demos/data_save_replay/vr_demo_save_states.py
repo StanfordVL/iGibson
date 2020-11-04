@@ -1,33 +1,32 @@
-""" VR playground containing various objects and VR options that can be toggled
-to experiment with the VR experience in iGibson. This playground operates in a
-PBR scene. Please see vr_playground_no_pbr.py for a non-PBR experience.
+""" VR saving demo using simplified VR playground code.
 
-Important: VR functionality and where to find it:
+This demo saves the states of all objects in their entirety. The replay
+resulting from this is completely controlled by the saved state data, and does
+not involve any meaningful physical simulation.
 
-1) Most VR functions can be found in the gibson2/simulator.py
-2) VR utility functions are found in gibson2/utils/vr_utils.py
-3) The VR renderer can be found in gibson2/render/mesh_renderer.py
-4) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in gibson2/render/cpp
-"""
+Note: This demo does not use PBR so it can be supported on a wide range of devices, including Mac OS.
+
+This demo saves to vr_logs/vr_demo_save_states.h5
+If you would like to replay the data, please run
+vr_demo_replay using this file path as an input.
+
+Run this demo if you would like to save your own data."""
 
 import numpy as np
 import os
 import pybullet as p
-import time
 
-import gibson2
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.objects.object_base import Object
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.vr_objects import VrBody, VrHand
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
+from gibson2.utils.vr_logging import VRLogWriter
 from gibson2.utils.vr_utils import move_player_no_body
 from gibson2 import assets_path
 sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
-groceries_folder = os.path.join(assets_path, 'models', 'groceries')
 
 # Playground configuration: edit this to change functionality
 optimize = True
@@ -43,98 +42,72 @@ touchpad_movement = True
 relative_movement_device = 'hmd'
 # Movement speed for touchpad-based movement
 movement_speed = 0.03
-# Whether we should hide a can bottle when the menu button is presed
-hide_can_on_press = True
 
-# HDR files for PBR rendering
-hdr_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-hdr_texture2 = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
-light_modulation_map_filename = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
-background_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
-
-# VR rendering settings
-vr_rendering_settings = MeshRendererSettings(optimized=optimize,
-                                            fullscreen=fullscreen,
-                                            env_texture_filename=hdr_texture,
-                                            env_texture_filename2=hdr_texture2,
-                                            env_texture_filename3=background_texture,
-                                            light_modulation_map_filename=light_modulation_map_filename,
-                                            enable_shadow=False, 
-                                            enable_pbr=True,
-                                            msaa=True,
-                                            light_dimming_factor=1.0)
 # Initialize simulator with specific rendering settings
-s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, rendering_settings=vr_rendering_settings,
+s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, 
+            rendering_settings=MeshRendererSettings(optimized=optimize, fullscreen=fullscreen, enable_pbr=False),
             vr_eye_tracking=use_eye_tracking, vr_mode=True)
-scene = InteractiveIndoorScene('Rs_int')
-# Turn this on when debugging to speed up loading
-# scene._set_first_n_objects(10)
-s.import_ig_scene(scene)
+scene = StaticIndoorScene('Placida')
+s.import_scene(scene)
 
 # Player body is represented by a translucent blue cylinder
 if enable_vr_body:
     vr_body = VrBody()
-    s.import_object(vr_body, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+    s.import_object(vr_body)
     vr_body.init_body([0,0])
 
 # The hand can either be 'right' or 'left'
 # It has enough friction to pick up the basket and the mustard bottles
 r_hand = VrHand(hand='right')
-s.import_object(r_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+s.import_object(r_hand)
 # This sets the hand constraints so it can move with the VR controller
 r_hand.set_start_state(start_pos=[0, 0, 1.5])
 
 l_hand = VrHand(hand='left')
-s.import_object(l_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+s.import_object(l_hand)
 # This sets the hand constraints so it can move with the VR controller
 l_hand.set_start_state(start_pos=[0, 0.5, 1.5])
 
 if use_eye_tracking:
     # Eye tracking visual marker - a red marker appears in the scene to indicate gaze direction
     gaze_marker = VisualMarker(radius=0.03)
-    s.import_object(gaze_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+    s.import_object(gaze_marker)
     gaze_marker.set_position([0,0,1.5])
 
 basket_path = os.path.join(sample_urdf_folder, 'object_ZU6u5fvE8Z1.urdf')
-basket = ArticulatedObject(basket_path, scale=0.8)
-s.import_object(basket, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
-basket.set_position([-1, 1.55, 1.2])
+basket = ArticulatedObject(basket_path)
+s.import_object(basket)
+basket.set_position([1, 0.2, 1])
 p.changeDynamics(basket.body_id, -1, mass=5)
 
-can_1_path = os.path.join(groceries_folder, 'canned_food', '1', 'rigid_body.urdf')
-can_pos = [[-0.8, 1.55, 1.2], [-0.6, 1.55, 1.2], [-0.4, 1.55, 1.2]]
-cans = []
-for i in range (len(can_pos)):
-    can_1 = ArticulatedObject(can_1_path, scale=0.6)
-    cans.append(can_1)
-    s.import_object(can_1, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
-    can_1.set_position(can_pos[i])
+mass_list = [5, 10, 100, 500]
+mustard_start = [1, -0.2, 1]
+mustard_list = []
+for i in range(len(mass_list)):
+    mustard = YCBObject('006_mustard_bottle')
+    mustard_list.append(mustard)
+    s.import_object(mustard)
+    mustard.set_position([mustard_start[0], mustard_start[1] - i * 0.2, mustard_start[2]])
+    p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
 
 if optimize:
     s.optimize_vertex_and_texture()
 
-# Set VR starting position in the scene
-s.set_vr_offset([0, 0, -0.6])
+# Start user close to counter for interaction
+s.set_vr_offset([-0.5, 0.0, -0.5])
 
-# State of can hiding, toggled by a menu press
-hide_can = False
+# Modify this path to save to different files
+vr_log_path = 'vr_logs/vr_demo_save_states.h5'
+# Saves every 2 seconds or so (200 / 90fps is approx 2 seconds)
+vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=True)
 
-while True:
-    # Demonstrates how to call VR events - replace pass with custom logic
-    # See pollVREvents description in simulator for full list of events
-    event_list = s.poll_vr_events()
-    for event in event_list:
-        device_type, event_type = event
-        if device_type == 'right_controller':
-            if event_type == 'menu_press' and hide_can_on_press:
-                # Toggle mustard hidden state
-                hide_can = not hide_can
-                s.set_hidden_state(cans[2], hide=hide_can)
+# Call set_up_data_storage once all actions have been registered (in this demo we only save states so there are none)
+# Despite having no actions, we need to call this function
+vr_writer.set_up_data_storage()
 
+# Main simulation loop
+for i in range(3000):
+    # Step the simulator - this needs to be done every frame to actually run the simulation
     s.step()
 
     # VR device data
@@ -177,4 +150,10 @@ while True:
         l_hand.set_close_fraction(l_trig)
         s.trigger_haptic_pulse('left_controller', l_trig if l_trig > 0.1 else 0)
 
+    # Record this frame's data in the VRLogWriter
+    vr_writer.process_frame(s)
+
+# Note: always call this after the simulation is over to close the log file
+# and clean up resources used.
+vr_writer.end_log_session()
 s.disconnect()
