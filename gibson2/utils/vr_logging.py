@@ -1,9 +1,6 @@
 """
 VRLog classes that write/read iGibson VR data to/from HDF5.
 
-TODO: Save velocity/torque for algorithmic training? Not necessary for replay, but might be helpful.
-Can easily save velocity for joints, but might have to use link states for normal pybullet objects.
-
 HDF5 hierarchy:
 / (root)
 
@@ -85,7 +82,6 @@ class VRLogWriter():
         # If true, will print out time it takes to save to hd5
         self.profiling_mode = profiling_mode
         # PyBullet body ids to be saved
-        # TODO: Make sure this is the correct way to get the body ids!
         self.pb_ids = [p.getBodyUniqueId(i) for i in range(p.getNumBodies())]
         self.pb_id_data_len_map = dict()
         self.data_map = None
@@ -95,8 +91,8 @@ class VRLogWriter():
         self.frame_counter = 0
         # Counts number of frames and does not reset
         self.persistent_frame_count = 0
-        # Time when last frame ended (not valid for first frame, so set to 0)
-        self.last_frame_end_time = 0
+        # Time when last frame ended (not valid for first frame, set to current time to get a reasonable estimate)
+        self.last_frame_end_time = time.time()
         # Handle of HDF5 file
         self.hf = None
         # Name path data - used to extract data from data map and save to hd5
@@ -256,7 +252,7 @@ class VRLogWriter():
         self.data_map['vr']['vr_camera']['right_eye_proj'][self.frame_counter, ...] = s.renderer.P
 
         for device in ['hmd', 'left_controller', 'right_controller']:
-            is_valid, trans, rot = s.getDataForVRDevice(device)
+            is_valid, trans, rot = s.get_data_for_vr_device(device)
             if is_valid is not None:
                 data_list = [is_valid]
                 data_list.extend(trans)
@@ -264,11 +260,11 @@ class VRLogWriter():
                 self.data_map['vr']['vr_device_data'][device][self.frame_counter, ...] = np.array(data_list)
 
             if device == 'left_controller' or device == 'right_controller':
-                button_data_list = s.getButtonDataForController(device)
+                button_data_list = s.get_button_data_for_controller(device)
                 if button_data_list[0] is not None:
                     self.data_map['vr']['vr_button_data'][device][self.frame_counter, ...] = np.array(button_data_list)
 
-        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = s.getEyeTrackingData()
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = s.get_eye_tracking_data()
         if is_valid is not None:
             eye_data_list = [is_valid]
             eye_data_list.extend(origin)
@@ -405,6 +401,16 @@ class VRLogReader():
             # Sleep to match duration of this frame, to create an accurate replay
             if read_duration < frame_duration:
                 time.sleep(frame_duration - read_duration)
+
+    def read_value(self, value_path):
+        """Reads any saved value at value_path for the current frame.
+
+        Args:
+            value_path: /-separated string representing the value to fetch. This should be one of the
+            values list in the comment at the top of this file.
+            Eg. vr/vr_button_data/right_controller
+        """
+        return self.hf[value_path][self.frame_counter]
 
     def read_action(self, action_path):
         """Reads the action at action_path for the current frame.

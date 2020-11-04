@@ -1,14 +1,13 @@
-""" VR saving demo using simplified VR playground code.
+""" VR replay demo using simplified VR playground code.
 
-This demo replays the actions of certain objects in the scene.
+This demo replay the states of all objects in their entirety, and does
+not involve any meaningful physical simulation.
 
 Note: This demo does not use PBR so it can be supported on a wide range of devices, including Mac OS.
 
-This demo saves to vr_logs/vr_demo_save_states.h5
-If you would like to replay the data, please run
-vr_demo_replay using this file path as an input.
-
-Run this demo if you would like to save your own data."""
+This demo reads logs from to vr_logs/vr_demo_save_states.h5
+If you would like to replay your own data, please run
+vr_demo_save_states and change the file path where data is recoded."""
 
 import numpy as np
 import os
@@ -40,8 +39,6 @@ touchpad_movement = True
 relative_movement_device = 'hmd'
 # Movement speed for touchpad-based movement
 movement_speed = 0.03
-# Whether we should hide a mustard bottle when the menu button is presed
-hide_mustard_on_press = True
 
 # Initialize simulator with specific rendering settings
 s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, 
@@ -54,19 +51,17 @@ s.import_scene(scene)
 if enable_vr_body:
     vr_body = VrBody()
     s.import_object(vr_body)
-    # Note: we don't call init_body since we will be controlling the body directly through pos/orientation actions
+    # Note: we don't call init_body for the VR body to avoid constraints interfering with the replay
 
 # The hand can either be 'right' or 'left'
 # It has enough friction to pick up the basket and the mustard bottles
 r_hand = VrHand(hand='right')
 s.import_object(r_hand)
-# This sets the hand constraints so it can move with the VR controller
-r_hand.set_start_state(start_pos=[0, 0, 1.5])
+# Note: we don't call set start state for the VR hands to avoid constraints interfering with the replay
 
 l_hand = VrHand(hand='left')
 s.import_object(l_hand)
-# This sets the hand constraints so it can move with the VR controller
-l_hand.set_start_state(start_pos=[0, 0.5, 1.5])
+# Note: we don't call set start state for the VR hands to avoid constraints interfering with the replay
 
 if use_eye_tracking:
     # Eye tracking visual marker - a red marker appears in the scene to indicate gaze direction
@@ -96,59 +91,14 @@ if optimize:
 # Start user close to counter for interaction
 s.set_vr_offset([-0.5, 0.0, -0.5])
 
-# State of can hiding, toggled by a menu press
-hide_mustard = False
-
-# Modify this path to save to different files
-vr_log_path = 'vr_logs/vr_demo_save_actions.h5'
-vr_right_hand_action_path = 'vr_hand/right'
-vr_left_hand_action_path = 'vr_hand/left'
-vr_menu_button_action_path = 'vr_menu_button'
-vr_body_action_path = 'vr_body'
-
+# Note: the VRLogReader plays back the demo at the recorded fps, so there is not need to set this
+vr_log_path = 'vr_logs/vr_demo_save_states.h5'
 vr_reader = VRLogReader(log_filepath=vr_log_path)
 
-# In this demo, we feed actions into the simulator and simulate
-# everything else.
 # The VR reader automatically shuts itself down and performs cleanup once the while loop has finished running
 while vr_reader.get_data_left_to_read():
-    # We set fullReplay to false so we only simulate using actions
-    vr_reader.read_frame(s, fullReplay=False)
+    # Note: Please see the code in gibson2/utils/vr_logging.py to extract custom
+    # data for experiments
+    vr_reader.read_frame(s, fullReplay=True)
+    
     s.step()
-    
-    # Contains validity [0], trans [1-3], orn [4-7], trig_frac [8], touch coordinates (x and y) [9-10]
-    vr_rh_actions = vr_reader.read_action(vr_right_hand_action_path)
-    vr_lh_actions = vr_reader.read_action(vr_left_hand_action_path)
-    vr_menu_state = vr_reader.read_action(vr_menu_button_action_path)
-    vr_body_actions = vr_reader.read_action(vr_body_action_path)
-
-    # Set mustard hidden state based on recorded button action
-    if vr_menu_state == 1:
-        s.set_hidden_state(mustard_list[2], hide=True)
-    elif vr_menu_state == 0:
-        s.set_hidden_state(mustard_list[2], hide=False)
-
-    # Move VR hands
-    if vr_rh_actions[0] == 1.0:
-        r_hand.move(vr_rh_actions[1:4], vr_rh_actions[4:8])
-        r_hand.set_close_fraction(vr_rh_actions[8])
-    
-    if vr_lh_actions[0] == 1.0:
-        l_hand.move(vr_lh_actions[1:4], vr_lh_actions[4:8])
-        l_hand.set_close_fraction(vr_lh_actions[8])
-
-    # Move VR body
-    vr_body.set_position_orientation(vr_body_actions[0:3], vr_body_actions[3:7])
-
-    # Get stored eye tracking data - this is an example of how to read values that are not actions from the VRLogReader
-    eye_data = vr_reader.read_value('vr/vr_eye_tracking_data')
-    is_eye_data_valid = eye_data[0]
-    origin = eye_data[1:4]
-    direction = eye_data[4:7]
-    left_pupil_diameter = eye_data[7]
-    right_pupil_diameter = eye_data[8]
-    
-    if is_eye_data_valid:
-        # Move gaze marker based on eye tracking data
-        updated_marker_pos = [origin[0] + direction[0], origin[1] + direction[1], origin[2] + direction[2]]
-        gaze_marker.set_position(updated_marker_pos)
