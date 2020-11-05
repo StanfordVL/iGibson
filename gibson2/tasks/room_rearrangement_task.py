@@ -166,8 +166,8 @@ class RoomRearrangementSimpleTask(BaseTask):
         ]
         self.initial_pos_region = {
             'Rs_int': [{
-                'x': [-0.7, -0.7],
-                'y': [-0.35, -0.35],
+                'x': [-0.8, -0.6],
+                'y': [-0.5, -0.2],
             }],
         }
 

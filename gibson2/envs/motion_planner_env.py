@@ -42,6 +42,14 @@ class MotionPlanningEnv(NavigationRandomEnv):
             #        self.push_vec_num_bins * (self.q_value_size ** 2)
 
             self.action_space = gym.spaces.Discrete(action_dim)
+
+            for key in ['occupancy_grid', 'rgb', 'depth', 'rgbd', 'pretrain_pred']:
+                if key in self.output:
+                    old_shape = self.observation_space.spaces[key].shape
+                    self.observation_space.spaces[key].shape = (
+                        old_shape[2], old_shape[0], old_shape[1])
+
+
         else:
             self.action_space = gym.spaces.Box(shape=(8,),
                                            low=-1.0,
@@ -189,10 +197,19 @@ class MotionPlanningEnv(NavigationRandomEnv):
         state, reward, done, info = super(MotionPlanningEnv, self).step(np.zeros((10,)))
 
         print('reward', reward)
+        for key in ['occupancy_grid', 'rgb', 'depth', 'rgbd', 'pretrain_pred']:
+            if key in self.output:
+                state[key] = np.copy(state[key].transpose(2, 0, 1))
+        
         return state, reward, done, info
 
     def reset(self):
-        return super(MotionPlanningEnv, self).reset()
+        state = super(MotionPlanningEnv, self).reset()
+        for key in ['occupancy_grid', 'rgb', 'depth', 'rgbd', 'pretrain_pred']:
+            if key in self.output:
+                state[key] = np.copy(state[key].transpose(2, 0, 1))
+        return state
+
 
 
 if __name__ == '__main__':

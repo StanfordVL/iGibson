@@ -40,7 +40,7 @@ max_step: 10
 max_collisions_allowed: 500
 
 # sensor spec
-output: [sensor, rgb, depth, scan, occupancy_grid]
+output: [sensor, rgbd, scan, occupancy_grid]
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09

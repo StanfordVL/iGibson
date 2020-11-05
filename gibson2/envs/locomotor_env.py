@@ -169,6 +169,9 @@ class NavigationEnv(BaseEnv):
                                               dtype=np.float32)
             observation_space['depth'] = self.depth_space
         if 'rgbd' in self.output:
+            self.depth_noise_rate = self.config.get('depth_noise_rate', 0.0)
+            self.depth_low = self.config.get('depth_low', 0.5)
+            self.depth_high = self.config.get('depth_high', 5.0)
             self.rgbd_space = gym.spaces.Box(low=0.0,
                                              high=1.0,
                                              shape=(self.image_height,
@@ -237,7 +240,7 @@ class NavigationEnv(BaseEnv):
             self.pretrain_pred_space = gym.spaces.Box(low=0.0,
                                                       high=1.0,
                                                       shape=(self.image_height,
-                                                             self.image_width, 2),
+                                                             self.image_width, 1),
                                                      dtype=np.float32)
             observation_space['pretrain_pred'] = self.pretrain_pred_space
 
@@ -508,7 +511,7 @@ class NavigationEnv(BaseEnv):
                    color=1,
                    thickness=-1)
 
-        return occupancy_grid[:,:,None]
+        return occupancy_grid[:,:,None].astype(np.float32)
 
     def get_state(self, collision_links=[]):
         """
@@ -553,11 +556,11 @@ class NavigationEnv(BaseEnv):
                         transforms.ToTensor(),
                         normalize, ])
                 tensor = self.transform(
-                    Image.fromarray((state['rgb'] * 255).astype(np.uint8))).cuda()
+                    Image.fromarray((self.get_rgb() * 255).astype(np.uint8))).cuda()
                 pretrain_pred,pretrain_feat = self.interaction_model(tensor[None, :, :, :])
                 pretrain_pred = nn.Softmax(dim=1)(pretrain_pred)
                 pretrain_pred = pretrain_pred[0].permute(1, 2, 0).cpu().numpy()
-            state['pretrain_pred'] = pretrain_pred
+            state['pretrain_pred'] = pretrain_pred[:,:,1:]
 
         if 'occupancy_grid' in self.output:
             if 'scan' in self.output:

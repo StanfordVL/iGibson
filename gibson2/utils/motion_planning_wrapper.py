@@ -36,7 +36,7 @@ class MotionPlanningWrapper(object):
                  base_mp_algo: str = 'birrt',
                  arm_mp_algo: str = 'birrt',
                  optimize_iter: int = 0,
-                 fine_motion_plan: bool = False):
+                 fine_motion_plan: bool = True):
         """
         Get planning related parameters.
         """
