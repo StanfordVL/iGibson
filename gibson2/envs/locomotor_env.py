@@ -230,12 +230,14 @@ class NavigationEnv(BaseEnv):
                     'Trying to use rgb_filled ("the goggle"), but torch is not installed. Try "pip install torch torchvision".')
 
             self.interaction_model = UNet(input_channels=3)
-            self.interaction_model = torch.nn.DataParallel(self.interaction_model).cuda()
+            self.interaction_model = torch.nn.DataParallel(self.interaction_model).cpu()
 
             interaction_model_filename = self.config.get('interaction_model_filename', 'ckpt_0021.pth.tar')
             checkpoint = torch.load(os.path.join(gibson2.assets_path, 'networks', interaction_model_filename))
             self.interaction_model.load_state_dict(checkpoint['state_dict'])
             self.interaction_model.eval()
+            self.interaction_model = self.interaction_model.module
+            self.interaction_model = self.interaction_model.cpu()
 
             self.pretrain_pred_space = gym.spaces.Box(low=0.0,
                                                       high=1.0,
@@ -556,7 +558,7 @@ class NavigationEnv(BaseEnv):
                         transforms.ToTensor(),
                         normalize, ])
                 tensor = self.transform(
-                    Image.fromarray((self.get_rgb() * 255).astype(np.uint8))).cuda()
+                    Image.fromarray((self.get_rgb() * 255).astype(np.uint8))).cpu()
                 pretrain_pred,pretrain_feat = self.interaction_model(tensor[None, :, :, :])
                 pretrain_pred = nn.Softmax(dim=1)(pretrain_pred)
                 pretrain_pred = pretrain_pred[0].permute(1, 2, 0).cpu().numpy()
