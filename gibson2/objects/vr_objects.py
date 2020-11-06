@@ -35,6 +35,8 @@ class VrBody(Object):
         # Keep track of start x and y rotation so we can lock object to these values
         self.start_x_rot = 0.0
         self.start_y_rot = 0.0
+        # Need this extra factor to amplify HMD movement vector, since body doesn't reach HMD each frame (since constraints don't set position)
+        self.hmd_vec_amp = 3
 
     # TIMELINE: Call this after loading the VR body into the simulator
     def init_body(self, start_pos):
@@ -89,8 +91,8 @@ class VrBody(Object):
         curr_offset = s.get_vr_offset()
         # Translate VR offset using controller information
         translated_offset = translate_vr_position_by_vecs(rTouchX, rTouchY, right, forward, curr_offset, movement_speed)
-        # New player position calculated
-        new_player_pos = hmd_wp + translated_offset
+        # New player position calculated - amplify delta in HMD positiion to account for constraints not moving body exactly to new position each frame
+        new_player_pos = (hmd_wp - self.prev_hmd_wp) * self.hmd_vec_amp + translated_offset + self.prev_hmd_wp
         # Attempt to set the vr body to this new position (will stop if collides with wall, for example)
         # This involves setting translation and rotation constraint
         x, y, z = new_player_pos
@@ -104,7 +106,7 @@ class VrBody(Object):
 
         # Use starting x and y rotation so our body does not get knocked over when we collide with low objects
         new_rot = p.getQuaternionFromEuler([self.start_x_rot, self.start_y_rot, curr_z])
-        p.changeConstraint(self.movement_cid, [x, y, new_center], new_rot, maxForce=500)
+        p.changeConstraint(self.movement_cid, [x, y, new_center], new_rot, maxForce=2000)
 
         # Update previous HMD world position at end of frame
         self.prev_hmd_wp = hmd_wp
@@ -134,14 +136,15 @@ class VrHand(ArticulatedObject):
     Joint 16 has name Itip__Imiddle
     """
 
-    def __init__(self, hand='right'):
+    # VR hand can be one of three types - no_pbr (diffuse white/grey color), skin or metal
+    def __init__(self, hand='right', tex_type='no_pbr'):
         self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_hand')
         self.hand = hand
         if self.hand not in ['left', 'right']:
             print('ERROR: hand parameter must either be left or right!')
             return
 
-        self.filename = os.path.join(self.vr_hand_folder, 'vr_hand_{}.urdf'.format(self.hand))
+        self.filename = os.path.join(self.vr_hand_folder, tex_type, 'vr_hand_{}.urdf'.format(self.hand))
         super(VrHand, self).__init__(filename=self.filename, scale=1)
         # Hand needs to be rotated to visually align with VR controller
         if self.hand == 'right':

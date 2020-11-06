@@ -680,7 +680,7 @@ class Simulator:
         for instance in self.renderer.instances:
             if obj.body_id == instance.pybullet_uuid:
                 instance.hidden = hide
-                self.renderer.update_hidden_state(instance)
+                self.renderer.update_hidden_state([instance])
                 return
 
     @staticmethod
