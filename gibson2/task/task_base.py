@@ -50,6 +50,7 @@ class iGTNTask(TaskNetTask):
 
     # TODO def check_success(self): 
 
+    #### CHECKERS ####
     def onTop(self, objA, objB):
         '''
         Checks if one object is on top of another. TODO does it need to update TN object representation?
@@ -68,7 +69,6 @@ class iGTNTask(TaskNetTask):
         :param objB: simulator object 
         '''
         return aabb_contains_aabb(objA.body_id, objB.body_id)   # TODO do these need to be body_ids or the objects themselves 
-
 
     def nextTo(self, objA, objB):
         '''
@@ -111,7 +111,23 @@ class iGTNTask(TaskNetTask):
         
     def touching(self, objA, objB):
 
-        return body_collision(objA, objB)        
+        return body_collision(objA, objB)    
+
+    #### SAMPLERS ####
+    def sampleOnTop(self, objA, objB):
+        pass 
+    
+    def sampleInside(self, objA, objB):
+        pass
+    
+    def sampleNextTo(self, objA, objB):
+        pass
+
+    def sampleUnder(self, objA, objB):
+        pass
+    
+    def sampleTouching(self, objA, objB):
+        pass
 
 
 def main():
