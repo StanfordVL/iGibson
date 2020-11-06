@@ -48,7 +48,9 @@ class iGTNTask(TaskNetTask):
             self.simulator.import_object(obj)
             obj.set_position_orientation(obj_pos, obj_orn)
 
-    def onTop(objA, objB):
+    # TODO def check_success(self): 
+
+    def onTop(self, objA, objB):
         '''
         Checks if one object is on top of another. TODO does it need to update TN object representation?
                                                         We've been saying no.
@@ -56,9 +58,9 @@ class iGTNTask(TaskNetTask):
         :param objA: simulator object
         :param objB: simulator object 
         '''
-        return is_placement(objA, objB) or is_center_stable(objA, objB)
+        return is_placement(objA.body_id, objB.body_id) or is_center_stable(objA.body_id, objB.body_id)
 
-    def inside(objA, objB):
+    def inside(self, objA, objB):
         '''
         Checks if one object is inside another. 
         True iff the AABB of objA does not extend past the AABB of objB
@@ -68,7 +70,7 @@ class iGTNTask(TaskNetTask):
         return aabb_contains_aabb(objA.body_id, objB.body_id)   # TODO do these need to be body_ids or the objects themselves 
 
 
-    def nextTo(objA, objB, objA_link=None, objB_link=None):
+    def nextTo(self, objA, objB):
         '''
         Checks if one object is next to another. 
         True iff the distance between the objects is TODO less than 2/3 of the average
@@ -77,7 +79,7 @@ class iGTNTask(TaskNetTask):
         :param objB: simulator object 
         '''
         # Get distance 
-        objA_aabb, objB_aabb = get_aabb(objA, link=objA_link), get_aabb(objB, link=objB_link)
+        objA_aabb, objB_aabb = get_aabb(objA.body_id), get_aabb(objB.body_id)
         objA_upper, objA_lower = objA_aabb
         objB_upper, objB_lower = objB_aabb
         distance_vec = []
@@ -94,12 +96,12 @@ class iGTNTask(TaskNetTask):
 
         return distance <= (avg_aabb_length * (2./3.))      # TODO better function 
         
-    def under(objA, objB):
+    def under(self, objA, objB):
         '''
         Checks if one object is underneath another. 
         True iff the (x, y) coordinates of objA's AABB center are within the (x, y) projection
                  of objB's AABB, and the z-coordinate of objA's AABB upper is less than the 
-                 z-coordinate of objB's AABB lower. 
+                 z-coordinate of objB's AABB lower.
         :param objA: simulator object
         :param objB: simulator object 
         ''' 
@@ -107,7 +109,7 @@ class iGTNTask(TaskNetTask):
                                 get_aabb_center(get_aabb(objA)), 
                                 aabb2d_from_aabb(get_aabb(objB)))
         
-    def touching(objA, objB):
+    def touching(self, objA, objB):
 
         return body_collision(objA, objB)        
 

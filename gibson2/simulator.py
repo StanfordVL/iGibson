@@ -138,7 +138,7 @@ class Simulator:
                                      rendering_settings=self.rendering_settings)
 
 
-        print("******************PyBullet Logging Information:")
+        # print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:
             self.cid = p.connect(p.GUI)
         else:
@@ -146,7 +146,7 @@ class Simulator:
         p.setTimeStep(self.physics_timestep)
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
-        print("PyBullet Logging Information******************")
+        # print("PyBullet Logging Information******************")
 
 
         self.visual_objects = {}
@@ -744,8 +744,8 @@ class Simulator:
         clean up the simulator
         """
         if self.isconnected():
-            print("******************PyBullet Logging Information:")
+            # print("******************PyBullet Logging Information:")
             p.resetSimulation(physicsClientId=self.cid)
             p.disconnect(self.cid)
-            print("PyBullet Logging Information******************")
+            # print("PyBullet Logging Information******************")
         self.renderer.release()
