@@ -71,7 +71,7 @@ class Viewer:
             radius=0.04, rgba_color=[0, 0, 1, 1])
         self.constraint_marker2 = VisualMarker(visual_shape=p.GEOM_CAPSULE, radius=0.01, length=3,
                                                initial_offset=[0, 0, -1.5], rgba_color=[0, 0, 1, 1])
-        print('SIMULATOR:', self.simulator)
+        # print('SIMULATOR:', self.simulator)
         if self.simulator is not None:
             self.simulator.import_object(
                 self.constraint_marker2, use_pbr=False)
