@@ -63,11 +63,35 @@ public:
 	glm::mat4 leftEyeProj;
 	glm::mat4 leftEyePos;
 	glm::mat4 leftEyeView;
+	glm::vec3 leftEyeCameraPos;
 	glm::mat4 rightEyeProj;
 	glm::mat4 rightEyePos;
 	glm::mat4 rightEyeView;
+	glm::vec3 rightEyeCameraPos;
 
-	glm::mat4 gibToVR;
+	// Matrices that can transform between gibson and VR space
+	// VR and Gibson coordinate systems explained:
+	// VR coordinate system follows the OpenGL default:
+	// TODO: Finish explaining this! Also play around with coordinate systems!
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	glm::mat4 gibToVr;
 	glm::mat4 vrToGib;
 
 	// SRAnipal variables

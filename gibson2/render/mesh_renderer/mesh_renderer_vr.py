@@ -25,17 +25,20 @@ class MeshRendererVR(MeshRenderer):
     # Renders VR scenes and returns the left eye frame
     def render(self):
         if self.vr_mode:
-            left_proj, left_view, right_proj, right_view = self.vrsys.preRenderVR()
+            left_proj, left_view, left_cam_pos, right_proj, right_view, right_cam_pos = self.vrsys.preRenderVR()
 
             # Render and submit left eye
             self.V = left_view
             self.P = left_proj
+            # Set camera to be at the camera position of the VR eye
+            self.camera = left_cam_pos
             
             super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
             self.vrsys.postRenderVRForEye("left", self.color_tex_rgb)
             # Render and submit right eye
             self.V = right_view
             self.P = right_proj
+            self.camera = right_cam_pos
             
             # We don't need to render the shadow pass a second time for the second eye
             super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=False)

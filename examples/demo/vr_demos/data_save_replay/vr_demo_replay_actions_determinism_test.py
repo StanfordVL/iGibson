@@ -108,13 +108,20 @@ vr_body_action_path = 'vr_body'
 
 vr_reader = VRLogReader(log_filepath=vr_log_path)
 
+# Record mustard positions/orientations and save to a text file to test determinism
+mustard_data = []
+
 # In this demo, we feed actions into the simulator and simulate
 # everything else.
 while vr_reader.get_data_left_to_read():
-    # We need to read frame before step when doing replay
-    vr_reader.read_frame(s, fullReplay=False)
     # We set fullReplay to false so we only simulate using actions
+    vr_reader.read_frame(s, fullReplay=False)
     s.step()
+
+    # Save the mustard positions each frame to a text file
+    mustard_pos = mustard_list[0].get_position()
+    mustard_orn = mustard_list[0].get_orientation()
+    mustard_data.append(np.array(mustard_pos + mustard_orn))
 
     # Contains validity [0], trans [1-3], orn [4-7], trig_frac [8], touch coordinates (x and y) [9-10]
     vr_rh_actions = vr_reader.read_action(vr_right_hand_action_path)
@@ -152,6 +159,10 @@ while vr_reader.get_data_left_to_read():
         # Move gaze marker based on eye tracking data
         updated_marker_pos = [origin[0] + direction[0], origin[1] + direction[1], origin[2] + direction[2]]
         gaze_marker.set_position(updated_marker_pos)
+
+    print('Mustard data information:')
+    print('Length of array: {}'.format(len(mustard_data)))
+    print('First element: {}'.format(mustard_data[0]))
 
 # We always need to call end_log_session() at the end of a VRLogReader session
 vr_reader.end_log_session()
