@@ -5,4 +5,3 @@ ig_dataset
 scoreboard/0_VRDemoSettings.txt
 render/coord.npy
 render/model.pth
-global_config.yaml
