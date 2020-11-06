@@ -35,7 +35,6 @@ layout (location=2) in vec2 texCoords;
 layout (location=3) in vec3 tangent;
 layout (location=4) in vec3 bitangent;
 
-
 out vec2 theCoords;
 out vec3 Normal_world;
 out vec3 FragPos;

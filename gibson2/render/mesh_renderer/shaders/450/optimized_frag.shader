@@ -87,7 +87,9 @@ vec3 fresnelSchlick(vec3 F0, float cosTheta)
 void main() {
     float ambientStrength = 0.2;
     vec3 ambient = ambientStrength * light_color;
-    vec3 lightDir = vec3(0,0,1);
+    // TODO: Should we using the vector to the light position instead of 0,0,1?
+    //vec3 lightDir = normalize(light_position - FragPos);
+    vec3 lightDir = vec3(0, 0, 1);
     float diff = 0.5 + 0.5 * max(dot(Normal_world, lightDir), 0.0);
     vec3 diffuse = diff * light_color;
     vec4 curr_tex_data = tex_data[Draw_id];

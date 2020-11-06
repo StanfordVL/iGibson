@@ -97,8 +97,7 @@ vr_reader = VRLogReader(log_filepath=vr_log_path)
 
 # The VR reader automatically shuts itself down and performs cleanup once the while loop has finished running
 while vr_reader.get_data_left_to_read():
-    # Note: Please see the code in gibson2/utils/vr_logging.py to extract custom
-    # data for experiments
+    # We need to read frame before step for various reasons - one of them is that we need to set the camera
+    # matrix for this frame before rendering in step
     vr_reader.read_frame(s, fullReplay=True)
-    
     s.step()

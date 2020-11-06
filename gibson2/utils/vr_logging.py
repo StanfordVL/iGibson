@@ -337,7 +337,8 @@ class VRLogReader():
     def __init__(self, log_filepath):
         self.log_filepath = log_filepath
         # Frame counter keeping track of how many frames have been reproduced
-        self.frame_counter = 0
+        # The counter starts at -1 and is incremented to 0 at the start of the first replay frame
+        self.frame_counter = -1
         self.hf = h5py.File(self.log_filepath, 'r')
         self.pb_ids = self.extract_pb_ids()
         # Get total frame num (dataset row length) from an arbitary dataset
@@ -365,7 +366,9 @@ class VRLogReader():
                 If this value is set to false, we simply increment the frame counter each frame, 
                 and let the user take control of processing actions and simulating them
         """
-        # Note: Currently returns hmd position, as a test
+        # Increment frame counter
+        self.frame_counter += 1
+
         # Catch error where the user tries to keep reading a frame when all frames have been read
         if self.frame_counter >= self.total_frame_num:
             return
@@ -390,17 +393,14 @@ class VRLogReader():
                 for i in range(len(joint_data)):
                     p.resetJointState(pb_id, i, joint_data[i])
 
-        self.frame_counter += 1
-        if self.frame_counter >= self.total_frame_num:
+        if self.frame_counter >= self.total_frame_num - 1:
             self.data_left_to_read = False
-            self.end_log_session()
         
-        if fullReplay:
-            # Only sleep to simulate accurate timestep if doing full replay
-            read_duration = time.time() - read_start_time
-            # Sleep to match duration of this frame, to create an accurate replay
-            if read_duration < frame_duration:
-                time.sleep(frame_duration - read_duration)
+        # Sleep to simulate accurate timestep
+        read_duration = time.time() - read_start_time
+        # Sleep to match duration of this frame, to create an accurate replay
+        if read_duration < frame_duration:
+            time.sleep(frame_duration - read_duration)
 
     def read_value(self, value_path):
         """Reads any saved value at value_path for the current frame.
@@ -420,6 +420,10 @@ class VRLogReader():
                 an action that was previously registered with the VRLogWriter during data saving
         """
         full_action_path = 'action/' + action_path
+        if self.frame_counter == 0:
+            print('Printing first frame actions:')
+            print('Reading action at path {} for frame {}'.format(full_action_path, self.frame_counter))
+            print(self.hf[full_action_path][self.frame_counter])
         return self.hf[full_action_path][self.frame_counter]
     
     # TIMELINE: Use this as the while loop condition to keep reading frames!
@@ -428,7 +432,7 @@ class VRLogReader():
         return self.data_left_to_read
     
     def end_log_session(self):
-        """This is called once reading has finished to clean up resources used."""
+        """Call this once reading has finished to clean up resources used."""
         print('Ending frame reading session after reading {0} frames'.format(self.total_frame_num))
         self.hf.close()
         print('----- VRLogReader shutdown -----')
