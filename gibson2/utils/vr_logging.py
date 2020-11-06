@@ -1,9 +1,6 @@
 """
 VRLog classes that write/read iGibson VR data to/from HDF5.
 
-TODO: Save velocity/torque for algorithmic training? Not necessary for replay, but might be helpful.
-Can easily save velocity for joints, but might have to use link states for normal pybullet objects.
-
 HDF5 hierarchy:
 / (root)
 
@@ -85,7 +82,6 @@ class VRLogWriter():
         # If true, will print out time it takes to save to hd5
         self.profiling_mode = profiling_mode
         # PyBullet body ids to be saved
-        # TODO: Make sure this is the correct way to get the body ids!
         self.pb_ids = [p.getBodyUniqueId(i) for i in range(p.getNumBodies())]
         self.pb_id_data_len_map = dict()
         self.data_map = None
@@ -95,8 +91,8 @@ class VRLogWriter():
         self.frame_counter = 0
         # Counts number of frames and does not reset
         self.persistent_frame_count = 0
-        # Time when last frame ended (not valid for first frame, so set to 0)
-        self.last_frame_end_time = 0
+        # Time when last frame ended (not valid for first frame, set to current time to get a reasonable estimate)
+        self.last_frame_end_time = time.time()
         # Handle of HDF5 file
         self.hf = None
         # Name path data - used to extract data from data map and save to hd5
@@ -256,7 +252,7 @@ class VRLogWriter():
         self.data_map['vr']['vr_camera']['right_eye_proj'][self.frame_counter, ...] = s.renderer.P
 
         for device in ['hmd', 'left_controller', 'right_controller']:
-            is_valid, trans, rot = s.getDataForVRDevice(device)
+            is_valid, trans, rot = s.get_data_for_vr_device(device)
             if is_valid is not None:
                 data_list = [is_valid]
                 data_list.extend(trans)
@@ -264,11 +260,11 @@ class VRLogWriter():
                 self.data_map['vr']['vr_device_data'][device][self.frame_counter, ...] = np.array(data_list)
 
             if device == 'left_controller' or device == 'right_controller':
-                button_data_list = s.getButtonDataForController(device)
+                button_data_list = s.get_button_data_for_controller(device)
                 if button_data_list[0] is not None:
                     self.data_map['vr']['vr_button_data'][device][self.frame_counter, ...] = np.array(button_data_list)
 
-        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = s.getEyeTrackingData()
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = s.get_eye_tracking_data()
         if is_valid is not None:
             eye_data_list = [is_valid]
             eye_data_list.extend(origin)
@@ -341,7 +337,8 @@ class VRLogReader():
     def __init__(self, log_filepath):
         self.log_filepath = log_filepath
         # Frame counter keeping track of how many frames have been reproduced
-        self.frame_counter = 0
+        # The counter starts at -1 and is incremented to 0 at the start of the first replay frame
+        self.frame_counter = -1
         self.hf = h5py.File(self.log_filepath, 'r')
         self.pb_ids = self.extract_pb_ids()
         # Get total frame num (dataset row length) from an arbitary dataset
@@ -369,7 +366,9 @@ class VRLogReader():
                 If this value is set to false, we simply increment the frame counter each frame, 
                 and let the user take control of processing actions and simulating them
         """
-        # Note: Currently returns hmd position, as a test
+        # Increment frame counter
+        self.frame_counter += 1
+
         # Catch error where the user tries to keep reading a frame when all frames have been read
         if self.frame_counter >= self.total_frame_num:
             return
@@ -394,17 +393,24 @@ class VRLogReader():
                 for i in range(len(joint_data)):
                     p.resetJointState(pb_id, i, joint_data[i])
 
-        self.frame_counter += 1
-        if self.frame_counter >= self.total_frame_num:
+        if self.frame_counter >= self.total_frame_num - 1:
             self.data_left_to_read = False
-            self.end_log_session()
         
-        if fullReplay:
-            # Only sleep to simulate accurate timestep if doing full replay
-            read_duration = time.time() - read_start_time
-            # Sleep to match duration of this frame, to create an accurate replay
-            if read_duration < frame_duration:
-                time.sleep(frame_duration - read_duration)
+        # Sleep to simulate accurate timestep
+        read_duration = time.time() - read_start_time
+        # Sleep to match duration of this frame, to create an accurate replay
+        if read_duration < frame_duration:
+            time.sleep(frame_duration - read_duration)
+
+    def read_value(self, value_path):
+        """Reads any saved value at value_path for the current frame.
+
+        Args:
+            value_path: /-separated string representing the value to fetch. This should be one of the
+            values list in the comment at the top of this file.
+            Eg. vr/vr_button_data/right_controller
+        """
+        return self.hf[value_path][self.frame_counter]
 
     def read_action(self, action_path):
         """Reads the action at action_path for the current frame.
@@ -414,6 +420,10 @@ class VRLogReader():
                 an action that was previously registered with the VRLogWriter during data saving
         """
         full_action_path = 'action/' + action_path
+        if self.frame_counter == 0:
+            print('Printing first frame actions:')
+            print('Reading action at path {} for frame {}'.format(full_action_path, self.frame_counter))
+            print(self.hf[full_action_path][self.frame_counter])
         return self.hf[full_action_path][self.frame_counter]
     
     # TIMELINE: Use this as the while loop condition to keep reading frames!
@@ -422,7 +432,7 @@ class VRLogReader():
         return self.data_left_to_read
     
     def end_log_session(self):
-        """This is called once reading has finished to clean up resources used."""
+        """Call this once reading has finished to clean up resources used."""
         print('Ending frame reading session after reading {0} frames'.format(self.total_frame_num))
         self.hf.close()
         print('----- VRLogReader shutdown -----')

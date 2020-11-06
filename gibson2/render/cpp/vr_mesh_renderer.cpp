@@ -197,7 +197,7 @@ void VRRendererContext::initVR(bool useEyeTracking) {
 	rightEyeProj = getHMDEyeProjection(vr::Eye_Right);
 	rightEyePos = getHMDEyePose(vr::Eye_Right);
 
-	// Set gibToVR and vrToGib matrices
+	// Set gibToVr and vrToGib matrices
 	setCoordinateTransformMatrices();
 	// No VR system offset by default
 	vrOffsetVec = glm::vec3(0, 0, 0);
@@ -267,9 +267,10 @@ void VRRendererContext::postRenderVRUpdate(bool shouldHandoff) {
 }
 
 // Returns the projection and view matrices for the left and right eyes, to be used in rendering
-// Returns in order Left P, left V, right P, right V
-// Note: GLM is column-major, whereas numpy is row major, so we need to tranpose view matrices before conversion
-// Note 2: Projection matrices are passed in to OpenGL assuming they are column-major, so we don't need to transpose them
+// Also returns the camera position for each eye
+// The view matrix includes a transformation that maps gibson coordinates to the VR space
+// Returns in order Left P, left V, left eye camera position, right P, right V, right eye camera position
+// Note: the mesh renderer expects the view matrix to be transposed, so we need to tranpose upon returning
 // TIMELINE: Call before rendering so the camera is set properly
 py::list VRRendererContext::preRenderVR() {
 	py::array_t<float> leftEyeProjNp = py::array_t<float>({ 4,4 }, glm::value_ptr(leftEyeProj));
@@ -277,17 +278,33 @@ py::list VRRendererContext::preRenderVR() {
 
 	glm::mat4 worldToHead = glm::inverse(hmdData.deviceTransform);
 
-	leftEyeView = leftEyePos * worldToHead * gibToVR;
-	rightEyeView = rightEyePos * worldToHead * gibToVR;
+	leftEyeView = leftEyePos * worldToHead;
+	glm::mat4 camToWorldLeft = glm::inverse(leftEyeView);
+	glm::vec4 vrCamPosLeft = glm::vec4(camToWorldLeft[3][0], camToWorldLeft[3][1], camToWorldLeft[3][2], 1);
+	leftEyeCameraPos = glm::vec3(vrToGib * vrCamPosLeft);
+
+	// Once we have extracted the camera position, we can add the gibson to VR transformation matrix
+	leftEyeView = leftEyeView * gibToVr;
+
+	rightEyeView = rightEyePos * worldToHead;
+	glm::mat4 camToWorldRight = glm::inverse(rightEyeView);
+	glm::vec4 vrCamPosRight = glm::vec4(camToWorldRight[3][0], camToWorldRight[3][1], camToWorldRight[3][2], 1);
+	rightEyeCameraPos = glm::vec3(vrToGib * vrCamPosRight);
+	rightEyeView = rightEyeView * gibToVr;
 
 	py::array_t<float> leftEyeViewNp = py::array_t<float>({ 4,4 }, glm::value_ptr(glm::transpose(leftEyeView)));
+	py::array_t<float> leftEyeCameraPosNp = py::array_t<float>({ 3, }, glm::value_ptr(leftEyeCameraPos));
+
 	py::array_t<float> rightEyeViewNp = py::array_t<float>({ 4,4 }, glm::value_ptr(glm::transpose(rightEyeView)));
+	py::array_t<float> rightEyeCameraPosNp = py::array_t<float>({ 3, }, glm::value_ptr(rightEyeCameraPos));
 
 	py::list eyeMats;
 	eyeMats.append(leftEyeProjNp);
 	eyeMats.append(leftEyeViewNp);
+	eyeMats.append(leftEyeCameraPosNp);
 	eyeMats.append(rightEyeProjNp);
 	eyeMats.append(rightEyeViewNp);
+	eyeMats.append(rightEyeCameraPosNp);
 
 	return eyeMats;
 }
@@ -594,10 +611,10 @@ void VRRendererContext::processVREvent(vr::VREvent_t& vrEvent, std::string& devi
 
 // Sets coordinate transform matrices
 void VRRendererContext::setCoordinateTransformMatrices() {
-	gibToVR[0] = glm::vec4(0.0, 0.0, -1.0, 0.0);
-	gibToVR[1] = glm::vec4(-1.0, 0.0, 0.0, 0.0);
-	gibToVR[2] = glm::vec4(0.0, 1.0, 0.0, 0.0);
-	gibToVR[3] = glm::vec4(0.0, 0.0, 0.0, 1.0);
+	gibToVr[0] = glm::vec4(0.0, 0.0, -1.0, 0.0);
+	gibToVr[1] = glm::vec4(-1.0, 0.0, 0.0, 0.0);
+	gibToVr[2] = glm::vec4(0.0, 1.0, 0.0, 0.0);
+	gibToVr[3] = glm::vec4(0.0, 0.0, 0.0, 1.0);
 
 	vrToGib[0] = glm::vec4(0.0, -1.0, 0.0, 0.0);
 	vrToGib[1] = glm::vec4(0.0, 0.0, 1.0, 0.0);
@@ -753,6 +770,7 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("generateArrayTextures", &VRRendererContext::generateArrayTextures, "TBA");
 	pymodule.def("renderSetup", &VRRendererContext::renderSetup, "TBA");
 	pymodule.def("updateHiddenData", &VRRendererContext::updateHiddenData, "TBA");
+	pymodule.def("updateUVData", &VRRendererContext::updateUVData, "TBA");
 	pymodule.def("updateDynamicData", &VRRendererContext::updateDynamicData, "TBA");
 	pymodule.def("renderOptimized", &VRRendererContext::renderOptimized, "TBA");
 	pymodule.def("clean_meshrenderer_optimized", &VRRendererContext::clean_meshrenderer_optimized, "TBA");

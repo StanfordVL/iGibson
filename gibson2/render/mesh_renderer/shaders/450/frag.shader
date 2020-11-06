@@ -84,36 +84,36 @@ void main() {
     vec2 texelSize = 1.0 / textureSize(depthMap, 0);
 
     float shadow;
-        if (shadow_pass == 2) {
-            vec3 projCoords = FragPosLightSpace.xyz / FragPosLightSpace.w;
-            projCoords = projCoords * 0.5 + 0.5;
+    if (shadow_pass == 2) {
+        vec3 projCoords = FragPosLightSpace.xyz / FragPosLightSpace.w;
+        projCoords = projCoords * 0.5 + 0.5;
 
-            float cosTheta = dot(Normal_world, lightDir);
-            cosTheta = clamp(cosTheta, 0.0, 1.0);
-            float bias = 0.005*tan(acos(cosTheta));
-            bias = clamp(bias, 0.001 ,0.1);
-            float currentDepth = projCoords.z;
-            float closestDepth = 0;
+        float cosTheta = dot(Normal_world, lightDir);
+        cosTheta = clamp(cosTheta, 0.0, 1.0);
+        float bias = 0.005*tan(acos(cosTheta));
+        bias = clamp(bias, 0.001 ,0.1);
+        float currentDepth = projCoords.z;
+        float closestDepth = 0;
 
-            shadow = 0.0;
-            float current_shadow = 0;
+        shadow = 0.0;
+        float current_shadow = 0;
 
-            for(int x = -2; x <= 2; ++x)
+        for(int x = -2; x <= 2; ++x)
+        {
+            for (int y = -2; y <= 2; ++y)
             {
-                for (int y = -2; y <= 2; ++y)
-                {
-                    closestDepth = texture(depthMap, projCoords.xy + vec2(x, y) * texelSize).b * 0.5 + 0.5;
-                    current_shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
-                    if ((projCoords.z > 1.0) || (projCoords.x > 1.0) || (projCoords.y > 1.0)
-                    || (projCoords.x < 0) || (projCoords.y < 0)) current_shadow = 0.0;
-                    shadow += current_shadow;
-                }
+                closestDepth = texture(depthMap, projCoords.xy + vec2(x, y) * texelSize).b * 0.5 + 0.5;
+                current_shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+                if ((projCoords.z > 1.0) || (projCoords.x > 1.0) || (projCoords.y > 1.0)
+                || (projCoords.x < 0) || (projCoords.y < 0)) current_shadow = 0.0;
+                shadow += current_shadow;
             }
-            shadow /= 25.0;
         }
-        else {
-            shadow = 0.0;
-        }
+        shadow /= 25.0;
+    }
+    else {
+        shadow = 0.0;
+    }
 
     //not using pbr
     if (use_pbr == 0) {

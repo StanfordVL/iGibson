@@ -70,11 +70,14 @@ public:
 	GLuint uboTransformDataRot;
 	GLuint uboTransformDataTrans;
 	GLuint uboHidden;
+	GLuint uboUV;
 
 	int texColorDataSize;
 	int transformDataSize;
-    GLuint m_skybox_vbo;
-    GLuint m_skybox_ibo;
+
+	// Skybox data
+	GLuint m_skybox_vao;
+	GLuint m_skybox_vbo;
 
 #ifdef USE_CUDA
     cudaGraphicsResource* cuda_res[MAX_NUM_RESOURCES];
@@ -195,13 +198,17 @@ public:
 		py::array_t<float> mergedDiffuseData,
 		py::array_t<float> mergedPBRData,
 		py::array_t<float> mergedHiddenData,
+		py::array_t<float> mergedUVData,
 		int tex_id_1, int tex_id_2, GLuint fb,
-		float use_pbr);
+		float use_pbr,
+		int depth_tex_id);
 
 	void updateHiddenData(int shaderProgram, py::array_t<float> hidden_array);
 
+	void updateUVData(int shaderProgram, py::array_t<float> uv_data);
+
 	void updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array, py::array_t<float> pose_rot_array,
-	py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos) ;
+	py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightV, py::array_t<float> lightP, int shadow_pass, py::array_t<float> eye_pos);
 
 	void renderOptimized(GLuint VAO);
 

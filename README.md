@@ -147,7 +147,8 @@ Run vr_demo_save to save a demo to a log file, and vr_demo_replay to run it agai
 Please see the demos and gibson2/utils/vr_logging.py for more details on the data saving/replay system.
 
 To use the VR hand asset, please download and unzip the asset and put it into assets/models under the folder name 'vr_hand'.
-Link to VR hand: https://drive.google.com/file/d/117qb1r_YHHVdQuwLD83N_nd0la57j9hZ/view?usp=sharing
+The asset is stored in a drive folder and is entitled vr_hand.zip.
+Link to VR hand zip: https://drive.google.com/drive/folders/1zm3ZpPc7yHwyALEGfsb0_NybFMvV81Um?usp=sharing
 
 Have fun in VR!
 
