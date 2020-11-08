@@ -35,7 +35,7 @@ vr_rendering_settings = MeshRendererSettings(optimized=optimize,
                                             env_texture_filename2=hdr_texture2,
                                             env_texture_filename3=background_texture,
                                             light_modulation_map_filename=light_modulation_map_filename,
-                                            enable_shadow=True, 
+                                            enable_shadow=False, 
                                             enable_pbr=True,
                                             msaa=True,
                                             light_dimming_factor=1.0)
