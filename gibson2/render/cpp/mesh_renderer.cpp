@@ -968,20 +968,11 @@ int MeshRendererContext::allocateTexture(int w, int h) {
     return texture;
 }
 
-
-py::array_t<float>
-MeshRendererContext::readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id) {
+void MeshRendererContext::readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id) {
     glBindFramebuffer(GL_FRAMEBUFFER, fb2);
     glReadBuffer(GL_COLOR_ATTACHMENT3);
-    py::array_t<float> data = py::array_t<float>(3 * width * height);
-    py::buffer_info buf = data.request();
-    float *ptr = (float *) buf.ptr;
-    glReadPixels(0, 0, width, height, GL_RGB, GL_FLOAT, ptr);
-    glBindTexture(GL_TEXTURE_2D, texture_id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, ptr);
-    return data;
+	glCopyTextureSubImage2D(texture_id, 0, 0, 0, 0, 0, width, height);
 }
-
 
 py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures, int smallTexBucketSize) {
 		int num_textures = filenames.size();
