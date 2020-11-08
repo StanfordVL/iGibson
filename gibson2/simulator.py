@@ -2,7 +2,7 @@ from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
 from gibson2.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
-from gibson2.render.viewer import Viewer, ViewerVR
+from gibson2.render.viewer import Viewer, ViewerVR, ViewerSimple
 from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
 import pybullet as p
 import gibson2
@@ -75,6 +75,9 @@ class Simulator:
 
         if self.mode in ['vr']:
             self.use_vr_renderer = True
+
+        if self.mode in ['simple']:
+            self.use_simple_viewer = True
                    
         # renderer + VR
         self.vr_eye_tracking = vr_eye_tracking
@@ -104,8 +107,9 @@ class Simulator:
         """
         if self.use_vr_renderer:
             self.viewer = ViewerVR()
+        elif self.use_simple_viewer:
+            self.viewer = ViewerSimple()
         else:
-            # self.viewer = Viewer()
             self.viewer = Viewer(simulator=self, renderer=self.renderer)
         self.viewer.renderer = self.renderer
 
@@ -153,7 +157,7 @@ class Simulator:
         self.robots = []
         self.scene = None
         self.next_class_id = 0
-        if (self.use_ig_renderer or self.use_vr_renderer) and not self.render_to_tensor:
+        if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and not self.render_to_tensor:
             self.add_viewer()
 
 
@@ -560,7 +564,7 @@ class Simulator:
         for instance in self.renderer.get_instances():
             if instance.dynamic:
                 self.update_position(instance)
-        if (self.use_ig_renderer or self.use_vr_renderer) and not self.viewer is None:
+        if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and not self.viewer is None:
             self.viewer.update()
     
     # Returns event data as list of lists. Each sub-list contains deviceType and eventType. List is empty is all 

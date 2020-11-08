@@ -41,7 +41,11 @@ relative_movement_device = 'hmd'
 movement_speed = 0.03
 
 # Initialize simulator with specific rendering settings
-s = Simulator(mode='iggui', image_width=1512, image_height=1680)
+s = Simulator(mode='simple', image_width=504, image_height=560,
+            rendering_settings=MeshRendererSettings(optimized=optimize, fullscreen=fullscreen, enable_pbr=False))
+#s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, 
+#            rendering_settings=MeshRendererSettings(optimized=optimize, fullscreen=fullscreen, enable_pbr=False),
+#            vr_eye_tracking=use_eye_tracking, vr_mode=False)
 scene = StaticIndoorScene('Placida')
 s.import_scene(scene)
 
@@ -85,9 +89,6 @@ for i in range(len(mass_list)):
 
 if optimize:
     s.optimize_vertex_and_texture()
-
-# Start user close to counter for interaction
-s.set_vr_offset([-0.5, 0.0, -0.5])
 
 # Note: the VRLogReader plays back the demo at the recorded fps, so there is not need to set this
 vr_log_path = 'vr_logs/vr_demo_save_states.h5'
