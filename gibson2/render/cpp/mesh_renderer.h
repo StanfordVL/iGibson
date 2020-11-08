@@ -185,7 +185,7 @@ public:
 
     int allocateTexture(int w, int h);
 
-    py::array_t<float> readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id);
+    void readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id);
 
     // Generates large and small array textures and returns handles to the user (cutoff based on user variable), as well as index - tex num/layer mapping
 	py::list generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures,
