@@ -1358,6 +1358,15 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glActiveTexture(GL_TEXTURE7);
 		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT2.id);
 
+		glActiveTexture(GL_TEXTURE8);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_default_metallic_texture.id);
+
+		glActiveTexture(GL_TEXTURE9);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_default_roughness_texture.id);
+
+		glActiveTexture(GL_TEXTURE10);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_default_normal_texture.id);
+
 		glActiveTexture(GL_TEXTURE11);
 		if (m_use_two_light_probe) {
 			glBindTexture(GL_TEXTURE_2D, m_light_modulation_map.id);
@@ -1375,6 +1384,10 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture2"), 5);
 		glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture2"), 6);
 		glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 7);
+
+		glUniform1i(glGetUniformLocation(shaderProgram, "defaultMetallicTexture"), 8);
+		glUniform1i(glGetUniformLocation(shaderProgram, "defaultRoughnessTexture"), 9);
+		glUniform1i(glGetUniformLocation(shaderProgram, "defaultNormalTexture"), 10);
 
 		glUniform1i(glGetUniformLocation(shaderProgram, "lightModulationMap"), 11);
 

@@ -1243,10 +1243,10 @@ class MeshRenderer(object):
         if self.enable_shadow and render_shadow_pass:
             # shadow pass
 
-            V = np.copy(self.V)
-            P = np.copy(self.P)
-            self.V = np.copy(self.lightV)
-            self.P = np.copy(self.lightP)
+            # V = np.copy(self.V)
+            # P = np.copy(self.P)
+            # self.V = np.copy(self.lightV)
+            # self.P = np.copy(self.lightP)
             if self.msaa:
                 self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
             else:
@@ -1280,8 +1280,8 @@ class MeshRenderer(object):
 
             self.r.readbuffer_meshrenderer_shadow_depth(
                 self.width, self.height, self.fbo, self.depth_tex_shadow)
-            self.V = np.copy(V)
-            self.P = np.copy(P)
+            # self.V = np.copy(V)
+            # self.P = np.copy(P)
         # main pass
 
         if self.msaa:
