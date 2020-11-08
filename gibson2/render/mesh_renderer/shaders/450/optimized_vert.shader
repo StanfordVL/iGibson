@@ -28,6 +28,7 @@ uniform mat4 lightP;
 
 uniform vec3 instance_color;
 uniform vec3 diffuse_color;
+uniform int shadow_pass;
 
 layout (location=0) in vec3 position;
 layout (location=1) in vec3 normal;
@@ -52,15 +53,32 @@ void main() {
     mat4 pose_rot = transpose(pose_rot_array[gl_DrawID]);
     // Hidden is stored in the x element of the vector - y, z and w are currently unused and set to 1.0
     float hidden = hidden_array[gl_DrawID].x;
-    gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1) * (1 - hidden);
-    vec4 world_position4 = pose_trans * pose_rot * vec4(position, 1);
-    FragPos = vec3(world_position4.xyz / world_position4.w); // in world coordinate
-    Normal_world = normalize(mat3(pose_rot) * normal); // in world coordinate
-    Normal_cam = normalize(mat3(V) * mat3(pose_rot) * normal); // in camera coordinate
-    vec4 pos_cam4_projected = P * V * pose_trans * pose_rot * vec4(position, 1);
-    Pos_cam_projected = pos_cam4_projected.xyz / pos_cam4_projected.w;
-    vec4 pos_cam4 = V * pose_trans * pose_rot * vec4(position, 1);
+    vec4 world_position4;
+    vec4 pos_cam4_projected;
+    vec4 pos_cam4;
+
+    if (shadow_pass == 1) {
+        gl_Position = lightP * lightV * pose_trans * pose_rot * vec4(position, 1) * (1 - hidden);
+        world_position4 = pose_trans * pose_rot * vec4(position, 1);
+        FragPos = vec3(world_position4.xyz / world_position4.w);// in world coordinate
+        Normal_world = normalize(mat3(pose_rot) * normal);// in world coordinate
+        Normal_cam = normalize(mat3(lightV) * mat3(pose_rot) * normal);// in camera coordinate
+        pos_cam4_projected = lightP * lightV * pose_trans * pose_rot * vec4(position, 1);
+        pos_cam4 = lightV * pose_trans * pose_rot * vec4(position, 1);
+    } else {
+        gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1) * (1 - hidden);
+        world_position4 = pose_trans * pose_rot * vec4(position, 1);
+        FragPos = vec3(world_position4.xyz / world_position4.w);// in world coordinate
+        Normal_world = normalize(mat3(pose_rot) * normal);// in world coordinate
+        Normal_cam = normalize(mat3(V) * mat3(pose_rot) * normal);// in camera coordinate
+        pos_cam4_projected = P * V * pose_trans * pose_rot * vec4(position, 1);
+        pos_cam4 = V * pose_trans * pose_rot * vec4(position, 1);
+
+    }
+
     Pos_cam = pos_cam4.xyz / pos_cam4.w;
+    Pos_cam_projected = pos_cam4_projected.xyz / pos_cam4_projected.w;
+
 
     theCoords.x = (cos(uv_transform_param[gl_DrawID][2]) * texCoords.x * uv_transform_param[gl_DrawID][0])
                    - (sin(uv_transform_param[gl_DrawID][2]) * texCoords.y * uv_transform_param[gl_DrawID][1]);
