@@ -43,7 +43,8 @@ vr_rendering_settings = MeshRendererSettings(optimized=optimize,
 s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, rendering_settings=vr_rendering_settings,
             vr_eye_tracking=False, vr_mode=True)
 scene = InteractiveIndoorScene('Beechwood_0_int')
-#scene._set_first_n_objects(10)
+scene._set_first_n_objects(10)
+p.setGravity(0, 0, 0)
 s.import_ig_scene(scene)
 
 # Position that is roughly in the middle of the kitchen - used to help place objects
@@ -112,7 +113,7 @@ for item in pack_items:
         elif item == 'water':
             item_scale = 0.8
         item_ob = ArticulatedObject(fpath, scale=item_scale)
-        s.import_object(item_ob, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+        s.import_object(item_ob) #, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
         item_ob.set_position([kitchen_middle[0] + x_offset, kitchen_middle[1] + y_offset, item_height])
         all_items.append(item_ob)
         bid = item_ob.body_id

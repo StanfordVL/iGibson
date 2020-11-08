@@ -35,13 +35,15 @@ vr_rendering_settings = MeshRendererSettings(optimized=optimize,
                                             env_texture_filename2=hdr_texture2,
                                             env_texture_filename3=background_texture,
                                             light_modulation_map_filename=light_modulation_map_filename,
-                                            enable_shadow=False, 
+                                            enable_shadow=True, 
                                             enable_pbr=True,
                                             msaa=True,
                                             light_dimming_factor=1.0)
 # Initialize simulator with specific rendering settings
 s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, rendering_settings=vr_rendering_settings,
             vr_eye_tracking=False, vr_mode=vr_mode)
+#s = Simulator(mode='iggui', image_width=512, image_height=512, physics_timestep = 1/90.0, render_timestep = 1/90.0, rendering_settings=vr_rendering_settings,
+#            vr_eye_tracking=False, vr_mode=vr_mode)
 scene = InteractiveIndoorScene('Rs_int')
 # Turn this on when debugging to speed up loading
 scene._set_first_n_objects(10)
