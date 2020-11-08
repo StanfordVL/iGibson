@@ -30,6 +30,9 @@ layout (std140) uniform PBRData {
     vec4 pbr_data[MAX_ARRAY_SIZE];
 };
 
+uniform sampler2D depthMap;
+uniform int shadow_pass;
+
 in vec2 theCoords;
 in vec3 Normal_world;
 in vec3 Normal_cam;
@@ -39,6 +42,7 @@ in vec3 Pos_cam;
 in vec3 Pos_cam_projected;
 in vec3 Diffuse_color;
 in mat3 TBN;
+in vec4 FragPosLightSpace;
 flat in int Draw_id;
 
 const float PI = 3.141592;
@@ -83,7 +87,9 @@ vec3 fresnelSchlick(vec3 F0, float cosTheta)
 void main() {
     float ambientStrength = 0.2;
     vec3 ambient = ambientStrength * light_color;
-    vec3 lightDir = normalize(light_position - FragPos);
+    // TODO: Should we using the vector to the light position instead of 0,0,1?
+    //vec3 lightDir = normalize(light_position - FragPos);
+    vec3 lightDir = vec3(0, 0, 1);
     float diff = 0.5 + 0.5 * max(dot(Normal_world, lightDir), 0.0);
     vec3 diffuse = diff * light_color;
     vec4 curr_tex_data = tex_data[Draw_id];
@@ -92,9 +98,40 @@ void main() {
     float instance_color = curr_tex_data.z;
     vec4 curr_pbr_data = pbr_data[Draw_id];
     int use_pbr = int(curr_pbr_data.x);
-    // TODO: Implement pbr mapping and shadow casting using the variables below
-    int use_pbr_mapping = int(curr_pbr_data.y);
-    int shadow_caster = int(curr_pbr_data.z);
+    vec2 texelSize = 1.0 / textureSize(depthMap, 0);
+
+    float shadow = 0.0;
+
+    if (shadow_pass == 2) {
+        vec3 projCoords = FragPosLightSpace.xyz / FragPosLightSpace.w;
+        projCoords = projCoords * 0.5 + 0.5;
+
+        float cosTheta = dot(Normal_world, lightDir);
+        cosTheta = clamp(cosTheta, 0.0, 1.0);
+        float bias = 0.005*tan(acos(cosTheta));
+        bias = clamp(bias, 0.001 ,0.1);
+        float currentDepth = projCoords.z;
+        float closestDepth = 0;
+
+        shadow = 0.0;
+        float current_shadow = 0;
+
+        for(int x = -2; x <= 2; ++x)
+        {
+            for (int y = -2; y <= 2; ++y)
+            {
+                closestDepth = texture(depthMap, projCoords.xy + vec2(x, y) * texelSize).b * 0.5 + 0.5;
+                current_shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+                if ((projCoords.z > 1.0) || (projCoords.x > 1.0) || (projCoords.y > 1.0)
+                || (projCoords.x < 0) || (projCoords.y < 0)) current_shadow = 0.0;
+                shadow += current_shadow;
+            }
+        }
+        shadow /= 25.0;
+    }
+    else {
+        shadow = 0.0;
+    }
 
     if (use_pbr == 1) {
         int normal_tex_num = int(tex_normal_data[Draw_id].x);
@@ -166,5 +203,10 @@ void main() {
     }
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
     InstanceColour = vec4(Instance_color,1);
-    PCColour = vec4(Pos_cam,1);
+    if (shadow_pass == 1) {
+        PCColour = vec4(Pos_cam_projected, 1);
+    } else {
+        PCColour = vec4(Pos_cam, 1);
+    }
+    outputColour = outputColour *  (1 - shadow * 0.5);
 }
