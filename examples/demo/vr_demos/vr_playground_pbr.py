@@ -71,12 +71,13 @@ vr_rendering_settings = MeshRendererSettings(optimized=optimize,
 s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, rendering_settings=vr_rendering_settings,
             vr_eye_tracking=use_eye_tracking, vr_mode=True)
 scene = InteractiveIndoorScene('Rs_int')
+# Turn this on when debugging to speed up loading
+# scene._set_first_n_objects(10)
 s.import_ig_scene(scene)
 
 # Player body is represented by a translucent blue cylinder
 if enable_vr_body:
     vr_body = VrBody()
-    print("Importing body!")
     s.import_object(vr_body, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
     vr_body.init_body([0,0])
 
@@ -117,7 +118,7 @@ if optimize:
     s.optimize_vertex_and_texture()
 
 # Set VR starting position in the scene
-s.set_vr_offset([0, 0, -0.8])
+s.set_vr_offset([0, 0, -0.6])
 
 # State of can hiding, toggled by a menu press
 hide_can = False

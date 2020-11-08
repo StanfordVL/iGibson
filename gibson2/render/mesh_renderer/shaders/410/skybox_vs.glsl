@@ -8,5 +8,5 @@ uniform mat4 P;
 void main()
 {
 	texCoord = position;
-	gl_Position   = P * V  * vec4(position, 1.0);
+	gl_Position = P * V  * vec4(position, 1.0);
 }
