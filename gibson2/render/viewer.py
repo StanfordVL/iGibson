@@ -50,6 +50,7 @@ class Viewer:
         self.renderer = renderer
         self.simulator = simulator
         self.cid = []
+        self.dist = 0
 
         # Flag to control if the mouse interface is in navigation or manipulation mode
         self.manipulation_mode = False
@@ -70,7 +71,7 @@ class Viewer:
             radius=0.04, rgba_color=[0, 0, 1, 1])
         self.constraint_marker2 = VisualMarker(visual_shape=p.GEOM_CAPSULE, radius=0.01, length=3,
                                                initial_offset=[0, 0, -1.5], rgba_color=[0, 0, 1, 1])
-        print('SIMULATOR:', self.simulator)
+        # print('SIMULATOR:', self.simulator)
         if self.simulator is not None:
             self.simulator.import_object(
                 self.constraint_marker2, use_pbr=False)
@@ -167,6 +168,9 @@ class Viewer:
         self.constraint_marker2.set_position([0, 0, 100])
 
     def move_constraint(self, x, y):
+        # no constraint created but move_constraint called
+        if len(self.cid) == 0:
+            return
         camera_pose = np.array([self.px, self.py, self.pz])
         self.renderer.set_camera(
             camera_pose, camera_pose + self.view_direction, self.up)
@@ -189,6 +193,9 @@ class Viewer:
         self.interaction_x, self.interaction_y = x, y
 
     def move_constraint_z(self, dy):
+        # no constraint created but move_constraint called
+        if len(self.cid) == 0:
+            return
         x, y = self.interaction_x, self.interaction_y
         camera_pose = np.array([self.px, self.py, self.pz])
         self.renderer.set_camera(
@@ -303,6 +310,21 @@ class Viewer:
                 elif (self.left_down or self.middle_down) and flags & cv2.EVENT_FLAG_CTRLKEY:
                     dy = (y - self._mouse_iy) / 500.0
                     self.move_constraint_z(dy)
+
+    def reset(self):
+        self.px = 0
+        self.py = 0
+        self.pz = 1.2
+        self.theta = 0
+        self.phi = 0
+        self.view_direction = np.array([np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(
+                            self.phi), np.sin(self.phi)])
+        self.left_down = False
+        self.right_down = False
+        self.middle_down = False
+        self.remove_constraint()
+        self.renderer.reset_camera()
+
 
     def update(self):
         camera_pose = np.array([self.px, self.py, self.pz])
@@ -459,7 +481,9 @@ class Viewer:
                 self.middle_down = False
                 self.right_down = False
                 self.manipulation_mode = True
-
+        elif q == ord('l'):
+            # reset
+            self.reset()
         if self.recording and not self.pause_recording:
             cv2.imwrite(os.path.join(self.video_folder, '{:05d}.png'.format(self.frame_idx)),
                         (frame * 255).astype(np.uint8))
