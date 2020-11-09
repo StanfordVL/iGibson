@@ -47,8 +47,16 @@ class iGTNTask(TaskNetTask):
         for obj, obj_pos, obj_orn in self.sampled_simulator_objects:
             self.simulator.import_object(obj)
             obj.set_position_orientation(obj_pos, obj_orn)
+        
+        # Match IDs of simulator and DSL objects 
+        for sim_obj, dsl_obj in zip(self.sampled_simulator_objects, self.sampled_dsl_objects):
+            dsl_obj.body_id = sim_obj.body_id
+            print(dsl_obj.body_id)
+            print(dsl_obj.category)
 
-    # TODO def check_success(self): 
+        sys.exit()
+
+    # def check_success(self): 
 
     #### CHECKERS ####
     def onTop(self, objA, objB):
@@ -59,7 +67,18 @@ class iGTNTask(TaskNetTask):
         :param objA: simulator object
         :param objB: simulator object 
         '''
-        return is_placement(objA.body_id, objB.body_id) or is_center_stable(objA.body_id, objB.body_id)
+        center, extent = get_center_extent(objA.body_id) # TODO: approximate_as_prism
+        bottom_aabb = get_aabb(objB.body_id)
+
+        base_center = center - np.array([0, 0, extent[2]])/2
+        top_z_min = base_center[2]
+        bottom_z_max = bottom_aabb[1][2]
+        height_correct = (bottom_z_max - abs(below_epsilon)) <= top_z_min <= (bottom_z_max + abs(above_epsilon))
+        bbox_contain = (aabb_contains_point(base_center[:2], aabb2d_from_aabb(bottom_aabb)))
+        touching = body_collision(objA.body_id, objB.body_id)
+
+        return height_correct and bbox_contain and touching 
+        # return is_placement(objA.body_id, objB.body_id) or is_center_stable(objA.body_id, objB.body_id)
 
     def inside(self, objA, objB):
         '''
@@ -68,7 +87,7 @@ class iGTNTask(TaskNetTask):
         :param objA: simulator object
         :param objB: simulator object 
         '''
-        return aabb_contains_aabb(objA.body_id, objB.body_id)   # TODO do these need to be body_ids or the objects themselves 
+        return aabb_contains_aabb(objA.body_id, objB.body_id)
 
     def nextTo(self, objA, objB):
         '''
@@ -78,23 +97,20 @@ class iGTNTask(TaskNetTask):
         :param objA: simulator object
         :param objB: simulator object 
         '''
-        # Get distance 
         objA_aabb, objB_aabb = get_aabb(objA.body_id), get_aabb(objB.body_id)
-        objA_upper, objA_lower = objA_aabb
-        objB_upper, objB_lower = objB_aabb
+        objA_lower, objA_upper = objA_aabb
+        objB_lower, objB_upper = objB_aabb
         distance_vec = []
         for dim in range(3):
             glb = max(objA_lower[dim], objB_lower[dim])
             lub = min(objA_upper[dim], objB_upper[dim])
-            distance_vec.append(min(0, glb - lub))
+            distance_vec.append(max(0, glb - lub))
         distance = np.linalg.norm(np.array(distance_vec))
-       
-        # Get size - based on AABB edge lengths, since we conceptualize distance as 1D
         objA_dims = objA_upper - objA_lower
         objB_dims = objB_upper - objB_lower
         avg_aabb_length = np.mean(objA_dims + objB_dims)
 
-        return distance <= (avg_aabb_length * (2./3.))      # TODO better function 
+        return distance <= (avg_aabb_length * (2./3.))  # TODO better function
         
     def under(self, objA, objB):
         '''
@@ -105,13 +121,21 @@ class iGTNTask(TaskNetTask):
         :param objA: simulator object
         :param objB: simulator object 
         ''' 
-        return aabb_contains_point(
-                                get_aabb_center(get_aabb(objA)), 
-                                aabb2d_from_aabb(get_aabb(objB)))
+        within = aabb_contains_point(
+                                get_aabb_center(get_aabb(objA.body_id))[:2], 
+                                aabb2d_from_aabb(get_aabb(objB.body_id)))
+        objA_aabb = get_aabb(objA.body_id)
+        objB_aabb = get_aabb(objB.body_id)
+        
+        within = aabb_contains_point(
+                                get_aabb_center(objA_aabb)[:2],
+                                aabb2d_from_aabb(objB_aabb))
+        below = objA_aabb[1][2] <= objB_aabb[0][2]
+        return within and below 
         
     def touching(self, objA, objB):
 
-        return body_collision(objA, objB)    
+        return body_collision(objA.body_id, objB.body_id)    
 
     #### SAMPLERS ####
     def sampleOnTop(self, objA, objB):
@@ -131,7 +155,7 @@ class iGTNTask(TaskNetTask):
 
 
 def main():
-    igtn_task = iGTNTask('demo2_1')
+    igtn_task = iGTNTask('kinematic_checker_testing')
     igtn_task.initialize_scene()
 
     for i in range(500):
