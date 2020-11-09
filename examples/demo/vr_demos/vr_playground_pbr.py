@@ -2,7 +2,7 @@
 to experiment with the VR experience in iGibson. This playground operates in a
 PBR scene. Please see vr_playground_no_pbr.py for a non-PBR experience.
 
-Important: VR functionality and where to find it:
+Important - VR functionality and where to find it:
 
 1) Most VR functions can be found in the gibson2/simulator.py
 2) VR utility functions are found in gibson2/utils/vr_utils.py
