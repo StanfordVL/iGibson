@@ -1,4 +1,4 @@
-""" Lunch packing demo - initial conditions - Eric """
+""" Lunch packing demo - initial conditions - Kent """
 
 import numpy as np
 import os
@@ -47,35 +47,23 @@ kitchen_middle = [-4.5, -3.5, 1.5]
 # List of object names to filename mapping
 lunch_pack_folder = os.path.join(gibson2.assets_path, 'pack_lunch')
 lunch_pack_files = {
-    'sandwich': os.path.join(lunch_pack_folder, 'cereal', 'cereal01', 'rigid_body.urdf'),
     'chip': os.path.join(lunch_pack_folder, 'food', 'snack', 'chips', 'chips0', 'rigid_body.urdf'),
     'fruit': os.path.join(lunch_pack_folder, 'food', 'fruit', 'pear', 'pear00', 'rigid_body.urdf'),
-    'bread': os.path.join(lunch_pack_folder, 'granola', 'granola00', 'rigid_body.urdf'),
-    'yogurt': os.path.join(lunch_pack_folder, 'food', 'dairy', 'yogurt', 'yogurt00_dannonbananacarton', 'rigid_body.urdf'),
     'water': os.path.join(lunch_pack_folder, 'drink', 'soda', 'soda23_mountaindew710mL', 'rigid_body.urdf'),
     'eggs': os.path.join(lunch_pack_folder, 'eggs', 'eggs00_eggland', 'rigid_body.urdf'),
     'container': os.path.join(lunch_pack_folder, 'dish', 'casserole_dish', 'casserole_dish00', 'rigid_body.urdf')
 }
 
 item_scales = {
-    'sandwich': 0.7,
     'chip': 1,
     'fruit': 0.9,
-    'bread': 0.7,
-    'yogurt': 1,
     'water': 0.8,
     'eggs': 0.5,
-    'container': 0.3
+    'container': 0.5
 }
 
 # A list of start positions and orientations for the objects - determined by placing objects in VR
 item_start_pos_orn = {
-    'sandwich': [
-        [(-5.24, -1.6, 0.97), (0, 0.71, 0.71, 0)],
-        [(-5.24, -1.7, 0.97), (0, 0.71, 0.71, 0)],
-        [(-5.24, -1.8, 0.97), (0, 0.71, 0.71, 0)],
-        [(-5.24, -1.9, 0.97), (0, 0.71, 0.71, 0)],
-    ],
     'chip': [
         [(-5.39, -1.62, 1.42), (-0.14, -0.06, 0.71, 0.69)],
         [(-5.39, -1.62, 1.49), (-0.14, -0.06, 0.71, 0.69)],
@@ -88,23 +76,11 @@ item_start_pos_orn = {
         [(-4.8, -3.85, 0.97), (0, 0, 0, 1)],
         [(-4.8, -4.0, 0.97), (0, 0, 0, 1)],
     ],
-    'bread': [
-        [(-5.39, -1.6, 0.97), (0, 0.71, 0.71, 0)],
-        [(-5.39, -1.7, 0.97), (0, 0.71, 0.71, 0)],
-        [(-5.39, -1.8, 0.97), (0, 0.71, 0.71, 0)],
-        [(-5.39, -1.9, 0.97), (0, 0.71, 0.71, 0)],
-    ],
-    'yogurt': [
-        [(-5.43, -1.64, 1.68), (0.57, 0.42, 0.42, 0.57)],
-        [(-5.32, -1.64, 1.68), (0.57, 0.42, 0.42, 0.57)],
-        [(-5.2, -1.64, 1.68), (0.57, 0.42, 0.42, 0.57)],
-        [(-5.1, -1.64, 1.68), (0.57, 0.42, 0.42, 0.57)],
-    ],
     'water': [
-        [(-4.61, -1.69, 1.73), (0.68, -0.18, -0.18, 0.68)],
-        [(-4.69, -1.69, 1.73), (0.68, -0.18, -0.18, 0.68)],
-        [(-4.8, -1.69, 1.73), (0.68, -0.18, -0.18, 0.68)],
-        [(-4.9, -1.69, 1.73), (0.68, -0.18, -0.18, 0.68)],
+        [(-5.0, -3.55, 1.03), (0.68, -0.18, -0.18, 0.68)],
+        [(-5.0, -3.7, 1.03), (0.68, -0.18, -0.18, 0.68)],
+        [(-5.0, -3.85, 1.03), (0.68, -0.18, -0.18, 0.68)],
+        [(-5.0, -4.0, 1.03), (0.68, -0.18, -0.18, 0.68)],
     ],
     'eggs': [
         [(-4.65, -1.58, 1.40), (0.72, 0, 0, 0.71)],
@@ -114,9 +90,9 @@ item_start_pos_orn = {
     ],
     'container': [
         [(-4.1, -1.82, 0.87), (0.71, 0, 0, 0.71)],
-        [(-4.4, -1.82, 0.87), (0.71, 0, 0, 0.71)],
-        [(-4.7, -1.82, 0.87), (0.71, 0, 0, 0.71)],
-        [(-5.0, -1.82, 0.87), (0.71, 0, 0, 0.71)],
+        [(-4.5, -1.82, 0.87), (0.71, 0, 0, 0.71)],
+        [(-4.9, -1.82, 0.87), (0.71, 0, 0, 0.71)],
+        [(-5.3, -1.82, 0.87), (0.71, 0, 0, 0.71)],
     ]
 }
 

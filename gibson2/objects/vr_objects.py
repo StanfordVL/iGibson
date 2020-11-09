@@ -36,7 +36,7 @@ class VrBody(Object):
         self.start_x_rot = 0.0
         self.start_y_rot = 0.0
         # Need this extra factor to amplify HMD movement vector, since body doesn't reach HMD each frame (since constraints don't set position)
-        self.hmd_vec_amp = 3
+        self.hmd_vec_amp = 2
 
     # TIMELINE: Call this after loading the VR body into the simulator
     def init_body(self, start_pos):

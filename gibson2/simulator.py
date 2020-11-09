@@ -66,6 +66,7 @@ class Simulator:
         self.use_pb_renderer = False
         self.use_ig_renderer = False
         self.use_vr_renderer = False
+        self.use_simple_viewer = False
         
         if self.mode in ['gui', 'iggui']:
             self.use_ig_renderer = True
