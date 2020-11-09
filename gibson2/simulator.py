@@ -754,3 +754,11 @@ class Simulator:
             p.disconnect(self.cid)
             # print("PyBullet Logging Information******************")
         self.renderer.release()
+
+    def disconnect_pybullet(self):
+        """
+        Disconnects only pybullet - used for multi-user VR
+        """
+        if self.isconnected():
+            p.resetSimulation(physicsClientId=self.cid)
+            p.disconnect(self.cid)
