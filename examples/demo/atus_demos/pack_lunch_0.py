@@ -95,7 +95,7 @@ for i in range(4):
     category = 'dish\\casserole_dish'
     instance = 'casserole_dish00'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
-    obj = ArticulatedObject(filename=modelpath, scale=.3)
+    obj = ArticulatedObject(filename=modelpath, scale=.34)
     s.import_object(obj)
     p.changeDynamics(obj.body_id, -1, mass=8., lateralFriction=0.9)
     obj.set_position_orientation([-5.8 - .3 * i, -5.6, 1.1], [0, 0, 0, 1])
@@ -105,7 +105,7 @@ for i in range(2):
     category = 'dish\\bowl\\'
     instance = 'bowl02'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
-    obj = ArticulatedObject(filename=modelpath, scale=.2)
+    obj = ArticulatedObject(filename=modelpath, scale=.25)
     s.import_object(obj)
     p.changeDynamics(obj.body_id, -1, mass=6., lateralFriction=0.9)
     obj.set_position_orientation([-5.9 - .2 * i, -5.8, 1.5], [0, 0, 0, 1])
@@ -115,10 +115,9 @@ for i in range(2):
     category = 'dish\\bowl\\'
     instance = 'bowl02'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
-    obj = ArticulatedObject(filename=modelpath, scale=.2)
+    obj = ArticulatedObject(filename=modelpath, scale=.25)
     s.import_object(obj)
     p.changeDynamics(obj.body_id, -1, mass=6., lateralFriction=0.9)
-    # obj.set_position_orientation([-5., -5.4 + .5 * i, .5 + .1 * i], [0, 0, 0, 1])
     obj.set_position_orientation([-6.4 - .2 * i, -5.8, 1.5], [0, 0, 0, 1])
     objects.append(obj)
 
@@ -143,7 +142,7 @@ for i in range(4):
     category = 'food\\vegetable\\corn\\'
     instance = 'corn00'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
-    obj = ArticulatedObject(filename=modelpath, scale=.5)
+    obj = ArticulatedObject(filename=modelpath, scale=.45)
     s.import_object(obj)
     obj.set_position_orientation([-6.3 - 0.1*i, -5.9, 1.7], [0, 0, 0, 1])
     objects.append(obj)
@@ -170,7 +169,7 @@ for i in range(2):
     category = 'food\\vegetable\\pepper\\'
     instance = 'pepper00'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
-    obj = ArticulatedObject(filename=modelpath, scale=1)
+    obj = ArticulatedObject(filename=modelpath, scale=.85)
     s.import_object(obj)
     obj.set_position_orientation([-5.3 - .1*i, -5.9, .6], [0, 0, 0, 1])
     objects.append(obj)
@@ -179,7 +178,7 @@ for i in range(2):
     category = 'food\\vegetable\\pepper\\'
     instance = 'pepper00'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
-    obj = ArticulatedObject(filename=modelpath, scale=1)
+    obj = ArticulatedObject(filename=modelpath, scale=.85)
     s.import_object(obj)
     obj.set_position_orientation([-5.3 - .1*i, -5.75, .6], [0, 0, 0, 1])
     objects.append(obj)
