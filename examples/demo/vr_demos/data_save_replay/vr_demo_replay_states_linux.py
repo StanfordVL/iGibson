@@ -43,9 +43,6 @@ movement_speed = 0.03
 # Initialize simulator with specific rendering settings
 s = Simulator(mode='simple', image_width=504, image_height=560,
             rendering_settings=MeshRendererSettings(optimized=optimize, fullscreen=fullscreen, enable_pbr=False))
-#s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, 
-#            rendering_settings=MeshRendererSettings(optimized=optimize, fullscreen=fullscreen, enable_pbr=False),
-#            vr_eye_tracking=use_eye_tracking, vr_mode=False)
 scene = StaticIndoorScene('Placida')
 s.import_scene(scene)
 

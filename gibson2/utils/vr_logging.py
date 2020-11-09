@@ -374,7 +374,7 @@ class VRLogReader():
             return
 
         # Get recorded frame duration for this frame
-        frame_duration = self.hf['frame_data']['last_frame_duration'][self.frame_counter]
+        frame_duration = self.hf['frame_data']['last_frame_duration'][self.frame_counter][0]
 
         read_start_time = time.time()
         # Each frame we first set the camera data
