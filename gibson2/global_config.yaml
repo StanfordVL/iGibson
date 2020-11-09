@@ -1,0 +1,3 @@
+assets_path: assets # put either absolute path or relative to current directory
+dataset_path: dataset
+ig_dataset_path: ig_dataset
