@@ -159,7 +159,7 @@ class BaseEnv(gym.Env):
                 trav_map_type=self.config.get('trav_map_type', 'with_obj'),
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
-            first_n =  self.config.get('_set_first_n_objects', -1)
+            first_n = self.config.get('_set_first_n_objects', -1)
             if first_n != -1:
                 scene._set_first_n_objects(first_n)
             self.simulator.import_ig_scene(scene)

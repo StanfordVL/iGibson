@@ -10,6 +10,8 @@ import pybullet as p
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.utils import rotate_vector_2d
 import time
+import json
+from IPython import embed
 
 
 class Viewer:
@@ -56,7 +58,15 @@ class Viewer:
         self.create_visual_object()
         self.planner = None
         self.block_command = False
+        self.reset_fn = None
+        self.record_demo = False
+        self.demo_idx = 0
+        self.demo_data = []
+        self.update_idx = 0
 
+    def add_demo_data(self, data):
+        if self.record_demo:
+            self.demo_data.append(data)
 
     def setup_motion_planner(self, planner: None):
         self.planner = planner
@@ -165,10 +175,10 @@ class Viewer:
 
         position_cam = np.array([(x - self.renderer.width / 2) / float(self.renderer.width / 2) * np.tan(
             self.renderer.horizontal_fov / 2.0 / 180.0 * np.pi),
-                                 -(y - self.renderer.height / 2) / float(self.renderer.height / 2) * np.tan(
-                                     self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
-                                 -1,
-                                 1])
+            -(y - self.renderer.height / 2) / float(self.renderer.height / 2) * np.tan(
+            self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
+            -1,
+            1])
         position_cam[:3] *= 5
 
         print(position_cam)
@@ -307,11 +317,14 @@ class Viewer:
                 self._mouse_ix, self._mouse_iy = x, y
                 self.left_down = True
                 self.create_constraint(x, y, fixed=False)
+                self.demo_data = []
+                self.record_demo = True
             elif event == cv2.EVENT_LBUTTONUP:  # left mouse button released
                 self.left_down = False
                 self.right_down = False
                 self.middle_down = False
                 self.remove_constraint()
+                self.record_demo = False
             elif event == cv2.EVENT_MBUTTONUP:  # middle mouse button released
                 self.left_down = False
                 self.right_down = False
@@ -333,12 +346,14 @@ class Viewer:
 
             if event == cv2.EVENT_LBUTTONUP:
                 hit_pos, _ = self.get_hit(x, y)
-                target_yaw = np.arctan2(hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
+                target_yaw = np.arctan2(
+                    hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
                 self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
                 self.left_down = False
                 if hit_pos is not None:
                     self.block_command = True
-                    plan = self.planner.plan_base_motion([self.hit_pos[0], self.hit_pos[1], target_yaw])
+                    plan = self.planner.plan_base_motion(
+                        [self.hit_pos[0], self.hit_pos[1], target_yaw])
                     print(plan)
                     if plan is not None and len(plan) > 0:
                         self.planner.dry_run_base_plan(plan)
@@ -347,15 +362,19 @@ class Viewer:
             if event == cv2.EVENT_MOUSEMOVE:
                 if self.left_down:
                     hit_pos, _ = self.get_hit(x, y)
-                    target_yaw = np.arctan2(hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
-                    self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
+                    target_yaw = np.arctan2(
+                        hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
+                    self.planner.set_marker_position_yaw(
+                        self.hit_pos, target_yaw)
 
             if event == cv2.EVENT_MBUTTONDOWN:
                 hit_pos, hit_normal = self.get_hit(x, y)
                 if hit_pos is not None:
                     self.block_command = True
-                    plan = self.planner.plan_arm_push(hit_pos, -np.array(hit_normal))
-                    self.planner.execute_arm_push(plan, hit_pos, -np.array(hit_normal))
+                    plan = self.planner.plan_arm_push(
+                        hit_pos, -np.array(hit_normal))
+                    self.planner.execute_arm_push(
+                        plan, hit_pos, -np.array(hit_normal))
                     self.block_command = False
 
     def update(self):
@@ -440,6 +459,8 @@ class Viewer:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
                 self.show_help -= 1
         cv2.imshow('ExternalView', frame)
+        # cv2.imwrite(f'bc_videos/third_person_v3/{self.update_idx:04}.png',
+        #             (frame * 255).astype(np.uint8))
 
         # We keep some double functinality for "backcompatibility"
         q = cv2.waitKey(1)
@@ -448,6 +469,15 @@ class Viewer:
         move_vec = move_vec / np.linalg.norm(move_vec) * 0.05
         if q == ord('h'):
             self.show_help = 300
+        elif q == ord('n'):
+            if self.reset_fn is not None:
+                self.reset_fn()
+        elif q == ord('j'):
+            with open('bc_data2/demo_{}.json'.format(self.demo_idx), 'w+') as f:
+                json.dump(self.demo_data, f)
+            print('demo {} saved, length: {}'.format(
+                self.demo_idx, len(self.demo_data)))
+            self.demo_idx += 1
         elif q in [ord('w'), ord('s'), ord('a'), ord('d')]:
             if q == ord('w'):
                 yaw = 0.0
@@ -513,12 +543,15 @@ class Viewer:
                         (frame * 255).astype(np.uint8))
             self.frame_idx += 1
 
-        if not self.renderer is None:
+        if self.renderer is not None:
             frames = self.renderer.render_robot_cameras(modes=('rgb'))
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(
                     frames, axis=1), cv2.COLOR_RGB2BGR)
                 cv2.imshow('RobotView', frame)
+                # cv2.imwrite(f'bc_videos/first_person_v3/{self.update_idx:04}.png',
+                #             (frame * 255).astype(np.uint8))
+                # self.update_idx += 1
 
 
 if __name__ == '__main__':

@@ -2597,8 +2597,8 @@ def any_link_pair_collision(body1, links1, body2, links2=None, **kwargs):
 
 def body_collision(body1, body2, max_distance=MAX_DISTANCE):  # 10000
     # TODO: confirm that this doesn't just check the base link
-    
-    #for i in range(p.getNumJoints(body1)):
+
+    # for i in range(p.getNumJoints(body1)):
     #    for j in range(p.getNumJoints(body2)):
     #        #if len(p.getContactPoints(body1, body2, i, j)) > 0:
     #            #print('body {} {} collide with body {} {}'.format(body1, i, body2, j))
@@ -3160,7 +3160,7 @@ def plan_base_motion(body, end_conf, base_limits, obstacles=[], direct=False,
 
 def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, grid_resolution, robot_footprint_radius_in_map,
                         obstacles=[], weights=1 * np.ones(3), resolutions=0.05 * np.ones(3),
-                        max_distance=MAX_DISTANCE, min_goal_dist = 0.02, algorithm='birrt', optimize_iter=0, 
+                        max_distance=MAX_DISTANCE, min_goal_dist=0.02, algorithm='birrt', optimize_iter=0,
                         **kwargs):
     def sample_fn():
         x, y = np.random.uniform(*base_limits)
@@ -3242,23 +3242,27 @@ def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, gr
     if collision_fn(end_conf):
         # print("Warning: end configuration is in collision")
         return None
-    
+
     if algorithm == 'direct':
         path = direct_path(start_conf, end_conf, extend_fn, collision_fn)
     elif algorithm == 'birrt':
         path = birrt(start_conf, end_conf, distance_fn,
                      sample_fn, extend_fn, collision_fn, **kwargs)
     elif algorithm == 'rrt_star':
-        path = rrt_star(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, max_iterations=5000, **kwargs)
+        path = rrt_star(start_conf, end_conf, distance_fn, sample_fn,
+                        extend_fn, collision_fn, max_iterations=5000, **kwargs)
     elif algorithm == 'rrt':
-        path = rrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, iterations=5000, **kwargs)
+        path = rrt(start_conf, end_conf, distance_fn, sample_fn,
+                   extend_fn, collision_fn, iterations=5000, **kwargs)
     elif algorithm == 'lazy_prm':
-        path = lazy_prm_replan_loop(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, [250, 500, 1000, 2000, 4000, 4000], **kwargs)
+        path = lazy_prm_replan_loop(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, [
+                                    250, 500, 1000, 2000, 4000, 4000], **kwargs)
     else:
         path = None
 
     if optimize_iter > 0 and path is not None:
-        path = optimize_path(path, extend_fn, collision_fn, iterations=optimize_iter)
+        path = optimize_path(path, extend_fn, collision_fn,
+                             iterations=optimize_iter)
 
     return path
 
@@ -3557,20 +3561,20 @@ def control_joint(body, joint, value):
                                    physicsClientId=CLIENT)
 
 
-def control_joints(body, joints, positions):
+def control_joints(body, joints, positions, max_forces=None):
     # TODO: the whole PR2 seems to jitter
     #kp = 1.0
     #kv = 0.3
-    forces = [get_max_force(body, joint) * 100 for joint in joints]
-    #forces = [5000]*len(joints)
-    #forces = [20000]*len(joints)
+    if max_forces is None:
+        max_forces = [20000] * len(joints)
+    # forces = [get_max_force(body, joint) * 100 for joint in joints]
+    # forces = [5000]*len(joints)
+    # forces = [20000]*len(joints)
     return p.setJointMotorControlArray(body, joints, p.POSITION_CONTROL,
                                        targetPositions=positions,
                                        targetVelocities=[0.0] * len(joints),
-                                       physicsClientId=CLIENT, forces=forces)  # ,
-    #positionGains=[kp] * len(joints),
-    # velocityGains=[kv] * len(joints),)
-    # forces=forces)
+                                       physicsClientId=CLIENT, forces=max_forces)
+    # positionGains=[kp] * len(joints), velocityGains=[kv] * len(joints))
 
 
 def joint_controller(body, joints, target, tolerance=1e-3):

@@ -12,7 +12,7 @@ from gibson2.external.pybullet_tools.utils import get_min_limits
 from gibson2.external.pybullet_tools.utils import plan_joint_motion
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.external.pybullet_tools.utils import joints_from_names
-from gibson2.external.pybullet_tools.utils import set_joint_positions
+from gibson2.external.pybullet_tools.utils import set_joint_positions, set_joint_position
 from gibson2.external.pybullet_tools.utils import get_sample_fn
 from gibson2.external.pybullet_tools.utils import set_base_values_with_z
 from gibson2.external.pybullet_tools.utils import get_base_values
@@ -26,6 +26,7 @@ from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.visual_marker import VisualMarker
 from transforms3d import euler
+from IPython import embed
 
 import pybullet as p
 
@@ -41,18 +42,18 @@ class MotionPlanningWrapper(object):
         Get planning related parameters.
         """
         self.env = env
-        assert 'occupancy_grid' in self.env.output
+        # assert 'occupancy_grid' in self.env.output
         # get planning related parameters from env
         self.robot_id = self.env.robots[0].robot_ids[0]
         # self.mesh_id = self.scene.mesh_body_id
         # mesh id should not be used
         self.map_size = self.env.scene.trav_map_original_size * \
-                        self.env.scene.trav_map_default_resolution
+            self.env.scene.trav_map_default_resolution
 
-        self.grid_resolution = self.env.grid_resolution
-        self.occupancy_range = self.env.occupancy_range
-        self.robot_footprint_radius = self.env.robot_footprint_radius
-        self.robot_footprint_radius_in_map = self.env.robot_footprint_radius_in_map
+        # self.grid_resolution = self.env.grid_resolution
+        # self.occupancy_range = self.env.occupancy_range
+        # self.robot_footprint_radius = self.env.robot_footprint_radius
+        # self.robot_footprint_radius_in_map = self.env.robot_footprint_radius_in_map
         self.robot = self.env.robots[0]
         self.base_mp_algo = base_mp_algo
         self.arm_mp_algo = arm_mp_algo
@@ -70,6 +71,8 @@ class MotionPlanningWrapper(object):
             self.setup_arm_mp()
 
         self.arm_interaction_length = 0.2
+        self.arm_max_force = 200.0
+        self.gripper_max_force = 2.0
 
         self.marker = None
         self.marker_direction = None
@@ -78,10 +81,13 @@ class MotionPlanningWrapper(object):
             self.marker = VisualMarker(
                 radius=0.04, rgba_color=[0, 0, 1, 1])
             self.marker_direction = VisualMarker(visual_shape=p.GEOM_CAPSULE, radius=0.01, length=0.2,
-                                                   initial_offset=[0, 0, -0.1], rgba_color=[0, 0, 1, 1])
+                                                 initial_offset=[0, 0, -0.1], rgba_color=[0, 0, 1, 1])
+            # self.marker.load()
+            # self.marker_direction.load()
             self.env.simulator.import_object(
                 self.marker, use_pbr=False)
-            self.env.simulator.import_object(self.marker_direction, use_pbr=False)
+            self.env.simulator.import_object(
+                self.marker_direction, use_pbr=False)
 
     def set_marker_position(self, pos):
         self.marker.set_position(pos)
@@ -118,6 +124,9 @@ class MotionPlanningWrapper(object):
                                                        'wrist_flex_joint',
                                                        'wrist_roll_joint'
                                                    ])
+            self.gripper_default_joint_positions = (0.05, 0.05)
+            self.gripper_joint_ids = joints_from_names(
+                self.robot_id, ['l_gripper_finger_joint', 'r_gripper_finger_joint'])
         elif self.robot_type == 'Movo':
             self.arm_default_joint_positions = (0.205, -1.50058731470836, -1.3002625076695704, 0.5204845864369407,
                                                 -2.6923805472917626, -0.02678584326934146, 0.5065742552588746,
@@ -132,17 +141,20 @@ class MotionPlanningWrapper(object):
                                                     "right_wrist_spherical_2_joint",
                                                     "right_wrist_3_joint",
                                                     ])
-        self.arm_joint_ids_all = get_moving_links(self.robot_id, self.arm_joint_ids)
+        self.arm_joint_ids_all = get_moving_links(
+            self.robot_id, self.arm_joint_ids)
         self.arm_joint_ids_all = [item for item in self.arm_joint_ids_all if
                                   item != self.robot.end_effector_part_index()]
-        self.arm_ik_threshold = 0.05
+        # self.arm_ik_threshold = 0.05
+        self.arm_ik_threshold = 0.01
 
         self.mp_obstacles = []
         if type(self.env.scene) == StaticIndoorScene:
             if self.env.scene.mesh_body_id is not None:
                 self.mp_obstacles.append(self.env.scene.mesh_body_id)
         elif type(self.env.scene) == InteractiveIndoorScene:
-                self.mp_obstacles.extend(self.env.scene.get_body_ids())
+            self.mp_obstacles.extend(self.env.scene.get_body_ids())
+
     def plan_base_motion(self, goal):
         if self.marker is not None:
             self.set_marker_position_yaw([goal[0], goal[1], 0.05], goal[2])
@@ -180,12 +192,10 @@ class MotionPlanningWrapper(object):
 
     def simulator_sync(self):
         """When the scene is updated, propagate it to renderer."""
-
         self.env.simulator.sync()
 
     def simulator_step(self):
         """When the scene is updated, propagate it to renderer."""
-
         self.env.simulator.step()
         self.env.simulator.sync()
 
@@ -200,7 +210,7 @@ class MotionPlanningWrapper(object):
                          way_point[2]],
                         z=self.initial_height)
                     self.simulator_sync()
-                    sleep(0.02) # for animation
+                    sleep(0.02)  # for animation
             else:
                 set_base_values_with_z(
                     self.robot_id,
@@ -210,16 +220,19 @@ class MotionPlanningWrapper(object):
                     z=self.initial_height)
 
     def get_ik_parameters(self):
-        max_limits, min_limits, rest_position, joint_range, joint_damping = None, None, None, None , None
+        max_limits, min_limits, rest_position, joint_range, joint_damping = None, None, None, None, None
         if self.robot_type == 'Fetch':
             max_limits = [0., 0.] + \
-                         get_max_limits(self.robot_id, self.arm_joint_ids)
+                get_max_limits(
+                    self.robot_id, self.arm_joint_ids) + [0.05, 0.05]
             min_limits = [0., 0.] + \
-                         get_min_limits(self.robot_id, self.arm_joint_ids)
+                get_min_limits(
+                    self.robot_id, self.arm_joint_ids) + [0.0, 0.0]
             # increase torso_lift_joint lower limit to 0.02 to avoid self-collision
             min_limits[2] += 0.02
             rest_position = [0., 0.] + \
-                            list(get_joint_positions(self.robot_id, self.arm_joint_ids))
+                list(get_joint_positions(self.robot_id,
+                                         self.arm_joint_ids)) + [0.05, 0.05]
             joint_range = list(np.array(max_limits) - np.array(min_limits))
             joint_range = [item + 1 for item in joint_range]
             joint_damping = [0.1 for _ in joint_range]
@@ -227,7 +240,8 @@ class MotionPlanningWrapper(object):
         elif self.robot_type == 'Movo':
             max_limits = get_max_limits(self.robot_id, self.robot.all_joints)
             min_limits = get_min_limits(self.robot_id, self.robot.all_joints)
-            rest_position = list(get_joint_positions(self.robot_id, self.robot.all_joints))
+            rest_position = list(get_joint_positions(
+                self.robot_id, self.robot.all_joints))
             joint_range = list(np.array(max_limits) - np.array(min_limits))
             joint_range = [item + 1 for item in joint_range]
             joint_damping = [0.1 for _ in joint_range]
@@ -254,7 +268,7 @@ class MotionPlanningWrapper(object):
         sample_fn = get_sample_fn(self.robot_id, self.arm_joint_ids)
         base_pose = get_base_values(self.robot_id)
         state_id = p.saveState()
-        #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+        # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         # find collision-free IK solution for arm_subgoal
         while n_attempt < max_attempt:
             if self.robot_type == 'Movo':
@@ -265,7 +279,7 @@ class MotionPlanningWrapper(object):
                 self.robot_id,
                 self.robot.end_effector_part_index(),
                 targetPosition=arm_ik_goal,
-                # targetOrientation=self.robots[0].get_orientation(),
+                targetOrientation=[-0.5, 0.5, 0.5, 0.5],
                 lowerLimits=min_limits,
                 upperLimits=max_limits,
                 jointRanges=joint_range,
@@ -273,7 +287,6 @@ class MotionPlanningWrapper(object):
                 jointDamping=joint_damping,
                 solver=p.IK_DLS,
                 maxNumIterations=100)
-
 
             if self.robot_type == 'Fetch':
                 arm_joint_positions = arm_joint_positions[2:10]
@@ -326,18 +339,17 @@ class MotionPlanningWrapper(object):
                 print('gripper has collision')
                 continue
 
-            #self.episode_metrics['arm_ik_time'] += time() - ik_start
-            #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+            # self.episode_metrics['arm_ik_time'] += time() - ik_start
+            # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
             p.restoreState(state_id)
             p.removeState(state_id)
             return arm_joint_positions
 
-        #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+        # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         p.restoreState(state_id)
         p.removeState(state_id)
-        #self.episode_metrics['arm_ik_time'] += time() - ik_start
+        # self.episode_metrics['arm_ik_time'] += time() - ik_start
         return None
-
 
     def plan_arm_motion(self, arm_joint_positions):
         """
@@ -362,38 +374,38 @@ class MotionPlanningWrapper(object):
         elif self.robot_type == 'Movo':
             disabled_collisions = {
                 (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_shoulder_link')),
+                 link_from_name(self.robot_id, 'right_shoulder_link')),
                 (link_from_name(self.robot_id, 'right_base_link'),
-                link_from_name(self.robot_id,'linear_actuator_fixed_link')),
+                 link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
                 (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_arm_half_1_link')),
+                 link_from_name(self.robot_id, 'right_arm_half_1_link')),
                 (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_arm_half_2_link')),
+                 link_from_name(self.robot_id, 'right_arm_half_2_link')),
                 (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_forearm_link')),
+                 link_from_name(self.robot_id, 'right_forearm_link')),
                 (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_wrist_spherical_1_link')),
+                 link_from_name(self.robot_id, 'right_wrist_spherical_1_link')),
                 (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_wrist_spherical_2_link')),
+                 link_from_name(self.robot_id, 'right_wrist_spherical_2_link')),
                 (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_wrist_3_link')),
+                 link_from_name(self.robot_id, 'right_wrist_3_link')),
                 (link_from_name(self.robot_id, 'right_wrist_spherical_2_link'),
-                link_from_name(self.robot_id, 'right_robotiq_coupler_link')),
+                 link_from_name(self.robot_id, 'right_robotiq_coupler_link')),
                 (link_from_name(self.robot_id, 'right_shoulder_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                 link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
                 (link_from_name(self.robot_id, 'left_base_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                 link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
                 (link_from_name(self.robot_id, 'left_shoulder_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                 link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
                 (link_from_name(self.robot_id, 'left_arm_half_2_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                 link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
                 (link_from_name(self.robot_id, 'right_arm_half_2_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                 link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
                 (link_from_name(self.robot_id, 'right_arm_half_1_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+                 link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
                 (link_from_name(self.robot_id, 'left_arm_half_1_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
-                }
+                 link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
+            }
 
         if self.fine_motion_plan:
             self_collisions = True
@@ -408,9 +420,10 @@ class MotionPlanningWrapper(object):
 
         allow_collision_links = []
         if self.robot_type == 'Fetch':
-            allow_collision_links = [19]
+            # allow_collision_links = [19]
+            allow_collision_links = []
         elif self.robot_type == 'Movo':
-            allow_collision_links = [23,24]
+            allow_collision_links = [23, 24]
 
         arm_path = plan_joint_motion(
             self.robot_id,
@@ -421,7 +434,7 @@ class MotionPlanningWrapper(object):
             obstacles=mp_obstacles,
             algorithm=self.arm_mp_algo,
             allow_collision_links=allow_collision_links,
-            )
+        )
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         p.restoreState(state_id)
         p.removeState(state_id)
@@ -437,7 +450,7 @@ class MotionPlanningWrapper(object):
                     set_base_values_with_z(
                         self.robot_id, base_pose, z=self.initial_height)
                     self.simulator_sync()
-                    sleep(0.02)  # animation
+                    # sleep(0.02)  # animation
             else:
                 set_joint_positions(
                     self.robot_id, self.arm_joint_ids, arm_path[-1])
@@ -455,16 +468,17 @@ class MotionPlanningWrapper(object):
             self.set_marker_position_direction(hit_pos, hit_normal)
         joint_positions = self.get_arm_joint_positions(hit_pos)
 
-        #print('planned JP', joint_positions)
+        # print('planned JP', joint_positions)
         set_joint_positions(self.robot_id, self.arm_joint_ids,
                             self.arm_default_joint_positions)
+        set_joint_positions(self.robot_id, self.gripper_joint_ids,
+                            self.gripper_default_joint_positions)
         self.simulator_sync()
         if joint_positions is not None:
             plan = self.plan_arm_motion(joint_positions)
             return plan
         else:
             return None
-
 
     def interact(self, push_point, push_direction):
         """
@@ -484,7 +498,7 @@ class MotionPlanningWrapper(object):
         steps = 50
         for i in range(steps):
             push_goal = np.array(push_point) + \
-                        push_vector * (i + 1) / float(steps)
+                push_vector * (i + 1) / float(steps)
 
             joint_positions = p.calculateInverseKinematics(
                 self.robot_id,
@@ -505,7 +519,7 @@ class MotionPlanningWrapper(object):
                 joint_positions = joint_positions[:8]
 
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
-            #if self.robot_type == 'Movo':
+            # if self.robot_type == 'Movo':
             #    self.robot.control_tuck_left()
             self.simulator_step()
             set_base_values_with_z(
@@ -517,9 +531,123 @@ class MotionPlanningWrapper(object):
     def execute_arm_push(self, plan, hit_pos, hit_normal):
         if not plan is None:
             self.dry_run_arm_plan(plan)
-
             self.interact(hit_pos, hit_normal)
-
             set_joint_positions(self.robot_id, self.arm_joint_ids,
                                 self.arm_default_joint_positions)
             self.simulator_sync()
+
+    def close_gripper(self):
+        # close the gripper
+        control_joints(self.robot_id,
+                       self.gripper_joint_ids,
+                       [0.0, 0.0],
+                       max_forces=[self.gripper_max_force] * len(self.gripper_joint_ids))
+        # keep the rest of the body still
+        control_joints(self.robot_id,
+                       self.arm_joint_ids,
+                       get_joint_positions(self.robot_id, self.arm_joint_ids),
+                       max_forces=[self.arm_max_force] * len(self.arm_joint_ids))
+        base_pose = get_base_values(self.robot_id)
+        # close for 1.0 seconds
+        for _ in range(int(1.0 / self.env.simulator.render_timestep)):
+            # p.stepSimulation()
+            self.simulator_step()
+            set_base_values_with_z(
+                self.robot_id, base_pose, z=self.initial_height)
+
+            # already closed
+            if sum(get_joint_positions(self.robot_id, self.gripper_joint_ids)) < 0.012:
+                break
+            # if self.mode in ['pbgui', 'iggui', 'gui']:
+            #     sleep(0.02)  # for visualization
+        self.simulator_sync()
+
+    def open_gripper(self):
+        # open the gripper
+        control_joints(self.robot_id,
+                       self.gripper_joint_ids,
+                       [0.05, 0.05],
+                       max_forces=[self.gripper_max_force] * len(self.gripper_joint_ids))
+        # keep the rest of the body still
+        control_joints(self.robot_id,
+                       self.arm_joint_ids,
+                       get_joint_positions(self.robot_id, self.arm_joint_ids),
+                       max_forces=[self.arm_max_force] * len(self.arm_joint_ids))
+        base_pose = get_base_values(self.robot_id)
+        # open for 1.0 seconds
+        for _ in range(int(1.0 / self.env.simulator.render_timestep)):
+            # p.stepSimulation()
+            self.simulator_step()
+            set_base_values_with_z(
+                self.robot_id, base_pose, z=self.initial_height)
+
+            # already open, break
+            if sum(get_joint_positions(self.robot_id, self.gripper_joint_ids)) > 0.099:
+                break
+
+            # if self.mode in ['pbgui', 'iggui', 'gui']:
+            #     sleep(0.02)  # for visualization
+        self.simulator_sync()
+
+    def set_gain(self, position_gain, velocity_gain):
+        self.position_gain = position_gain
+        self.velocity_gain = velocity_gain
+
+    def set_arm_max_force(self, arm_max_force):
+        self.arm_max_force = arm_max_force
+
+    def set_gripper_max_force(self, gripper_max_force):
+        self.gripper_max_force = gripper_max_force
+
+    def move_gripper(self, delta_goal):
+        """
+        Move the arm according to push_vector and physically
+        simulate the interaction
+        :param action: policy output
+        :param arm_subgoal: starting location of the interaction
+        :return: None
+        """
+        steps = int(self.env.simulator.render_timestep /
+                    self.env.simulator.physics_timestep)
+        initial_point = np.array(self.robot.get_end_effector_position())
+        base_pose = get_base_values(self.robot_id)
+
+        for i in range(steps):
+            move_goal = initial_point + delta_goal * (i + 1) / float(steps)
+            max_limits, min_limits, rest_position, joint_range, joint_damping = \
+                self.get_ik_parameters()
+
+            joint_positions = p.calculateInverseKinematics(
+                self.robot_id,
+                self.robot.end_effector_part_index(),
+                targetPosition=move_goal,
+                targetOrientation=[-0.5, 0.5, 0.5, 0.5],
+                lowerLimits=min_limits,
+                upperLimits=max_limits,
+                jointRanges=joint_range,
+                restPoses=rest_position,
+                jointDamping=joint_damping,
+                solver=p.IK_DLS,
+                maxNumIterations=500)
+
+            if self.robot_type == 'Fetch':
+                joint_positions = joint_positions[2:10]
+            elif self.robot_type == 'Movo':
+                joint_positions = joint_positions[:8]
+
+            control_joints(self.robot_id,
+                           self.arm_joint_ids,
+                           joint_positions,
+                           max_forces=[self.arm_max_force] * len(self.arm_joint_ids))
+
+            control_joints(self.robot_id,
+                           self.gripper_joint_ids,
+                           [0.0, 0.0],
+                           max_forces=[self.gripper_max_force] * len(self.gripper_joint_ids))
+            p.stepSimulation()
+            set_base_values_with_z(
+                self.robot_id, base_pose, z=self.initial_height)
+
+            # if self.mode in ['pbgui', 'iggui', 'gui']:
+            #     sleep(0.02)  # for visualization
+        self.simulator_sync()
