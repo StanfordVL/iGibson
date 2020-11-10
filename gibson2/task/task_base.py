@@ -14,6 +14,7 @@ from gibson2.external.pybullet_tools.utils import *
 class iGTNTask(TaskNetTask):
     def __init__(self, atus_activity):
         super().__init__(atus_activity)
+        self.initial_conditions = 
 
     def initialize_scene(self):             # NOTE can't have the same method name right? Should TaskNetTask.initialize() be a private method so that this can be initialize()?  
         '''
@@ -152,7 +153,6 @@ class iGTNTask(TaskNetTask):
     
     def sampleTouching(self, objA, objB):
         pass
-
 
 def main():
     igtn_task = iGTNTask('kinematic_checker_testing')
