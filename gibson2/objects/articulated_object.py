@@ -58,6 +58,7 @@ class URDFObject(Object):
                  scale=None,
                  avg_obj_dims=None,
                  joint_friction=None,
+                 in_rooms=None,
                  ):
         """
 
@@ -74,6 +75,7 @@ class URDFObject(Object):
         self.name = name
         self.category = category
         self.model = model
+        self.in_rooms = in_rooms
 
         # If we merge the fixed joints into single link to improve performance
         self.merge_fj = False
