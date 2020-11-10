@@ -2,7 +2,7 @@
 to experiment with the VR experience in iGibson. This playground operates in a
 PBR scene. Please see vr_playground_no_pbr.py for a non-PBR experience.
 
-Important: VR functionality and where to find it:
+Important - VR functionality and where to find it:
 
 1) Most VR functions can be found in the gibson2/simulator.py
 2) VR utility functions are found in gibson2/utils/vr_utils.py
@@ -63,7 +63,7 @@ vr_rendering_settings = MeshRendererSettings(optimized=optimize,
                                             env_texture_filename2=hdr_texture2,
                                             env_texture_filename3=background_texture,
                                             light_modulation_map_filename=light_modulation_map_filename,
-                                            enable_shadow=False, 
+                                            enable_shadow=True, 
                                             enable_pbr=True,
                                             msaa=True,
                                             light_dimming_factor=1.0)
@@ -78,18 +78,18 @@ s.import_ig_scene(scene)
 # Player body is represented by a translucent blue cylinder
 if enable_vr_body:
     vr_body = VrBody()
-    s.import_object(vr_body, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+    s.import_object(vr_body, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
     vr_body.init_body([0,0])
 
 # The hand can either be 'right' or 'left'
 # It has enough friction to pick up the basket and the mustard bottles
 r_hand = VrHand(hand='right')
-s.import_object(r_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+s.import_object(r_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 # This sets the hand constraints so it can move with the VR controller
 r_hand.set_start_state(start_pos=[0, 0, 1.5])
 
 l_hand = VrHand(hand='left')
-s.import_object(l_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+s.import_object(l_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 # This sets the hand constraints so it can move with the VR controller
 l_hand.set_start_state(start_pos=[0, 0.5, 1.5])
 
@@ -101,7 +101,7 @@ if use_eye_tracking:
 
 basket_path = os.path.join(sample_urdf_folder, 'object_ZU6u5fvE8Z1.urdf')
 basket = ArticulatedObject(basket_path, scale=0.8)
-s.import_object(basket, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+s.import_object(basket)
 basket.set_position([-1, 1.55, 1.2])
 p.changeDynamics(basket.body_id, -1, mass=5)
 
@@ -111,7 +111,7 @@ cans = []
 for i in range (len(can_pos)):
     can_1 = ArticulatedObject(can_1_path, scale=0.6)
     cans.append(can_1)
-    s.import_object(can_1, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+    s.import_object(can_1)
     can_1.set_position(can_pos[i])
 
 if optimize:

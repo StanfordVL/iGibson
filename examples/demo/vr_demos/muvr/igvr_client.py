@@ -2,19 +2,31 @@
 
 
 import numpy as np
-from pickle import dumps, loads
-from time import sleep
+
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGroup
 
 from PodSixNet.Connection import connection, ConnectionListener
 
 
 class IGVRClient(ConnectionListener):
+    # Setup methods
     def __init__(self, host, port):
         """
         Connects the client to an IGVRServer at a specified host and port
         """
+        self.is_connected = False
         self.Connect((host, port))
+        self.is_connected = True
         print("IGVRClient started")
+
+    def register_sim_renderer(self, sim):
+        """
+        Register the simulator and renderer which the clients need to render
+
+        :param renderer: the renderer from which we extract visual data
+        """
+        self.s = sim
+        self.renderer = sim.renderer
     
     # Custom server callbacks
     def Network_syncframe(self, data):
@@ -23,9 +35,34 @@ class IGVRClient(ConnectionListener):
         
         data is a dictionary containing frame data at key=frame_data
         """
-        print("Frame data arrived from the server!")
-        frame_data = np.array(data["frame_data"])
-        print("Shape: {0}".format(frame_data.shape))
+        frame_data = data["frame_data"]
+
+        # First sync data in the renderer
+        # TODO: Send other things including hidden state of objects for the client renderer to ingest
+        for instance in self.renderer.get_instances():
+            data = frame_data[instance.pybullet_uuid]
+            if isinstance(instance, Instance):
+                trans = np.array(data[0])
+                rot = np.array(data[1])
+                instance.pose_trans = trans
+                instance.pose_rot = rot
+            elif isinstance(instance, InstanceGroup):
+                poses_trans = []
+                poses_rot = []
+                data_trans = data[0]
+                data_rot = data[1]
+                num_links = len(data_trans)
+                for i in range(num_links):
+                    next_trans = np.array(data_trans[i])
+                    next_rot = np.array(data_rot[i])
+                    poses_trans.append(np.ascontiguousarray(next_trans))
+                    poses_rot.append(np.ascontiguousarray(next_rot))
+
+                instance.poses_trans = poses_trans
+                instance.poses_rot = poses_rot
+
+        # Then render the frame
+        self.s.viewer.update()
     
     # Standard methods for networking diagnostics
     def Network_connected(self, data):
@@ -41,43 +78,19 @@ class IGVRClient(ConnectionListener):
         print("Server disconnected")
         exit()
         
-    # Methods for sending data to server
+    # Methods for interacting with the server        
+    def refresh_frame_data(self):
+        """
+        Refreshes frame data that was sent from the server.
+        """
+        # TODO: Is double-pumping causing an issue?
+        if self.is_connected:
+            self.Pump()
+
     def send_vr_data(self, vr_data):
         """
-        Sends VR data to the IGVRServer.
-        
-        For this simple example, vr_data is a random numpy array.
+        Sends vr data over to the server.
         """
-        # Note: this actually uses connection to send data
-        print("Sending fake VR data of size: {0}".format(vr_data.shape))
-        self.Send({"action":"vrdata", "vr_data":vr_data.tolist()})
-        
-    # Main loop that queries server and pushes data to it
-    def update_client(self, render_fps):
-        """
-        Updates VR rendering as frequently as possible.
-        """
-        # Query server for data
-        connection.Pump()
-        self.Pump()
-        
-        # Push data to the server
-        # TODO: Respond to each frame data with a VR data - much easier loop?
-        rand_vr_data = np.random.rand(5,100)
-        self.send_vr_data(rand_vr_data)
-        
-        # Sleep to enable easy debugging
-        sleep(1.0/render_fps)
-   
-   
-def run_mock_igvr_client(host, port):
-    """
-    Runs a simple mock IGVR server on the specified host and port.
-    """
-    c = IGVRClient(host, port)
-    while True:
-        c.update_client(render_fps=300)
-   
-   
-if __name__ == '__main__':
-    run_mock_igvr_client("localhost", 8887)
+        if self.is_connected:
+            self.Send({"action":"vrdata", "vr_data":vr_data})
+            connection.Pump()
