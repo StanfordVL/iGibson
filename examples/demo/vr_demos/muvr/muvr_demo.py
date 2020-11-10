@@ -62,8 +62,9 @@ def run_muvr(mode='server', host='localhost', port='8887'):
     # Import 4 mustard bottles
     mass_list = [5, 10, 100, 500]
     mustard_start = [1, -0.2, 1]
+    m = None
     for i in range(len(mass_list)):
-        mustard = YCBObject('006_mustard_bottle')
+        m = mustard = YCBObject('006_mustard_bottle')
         s.import_object(mustard)
         mustard.set_position([mustard_start[0], mustard_start[1] - i * 0.2, mustard_start[2]])
         p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
@@ -96,6 +97,9 @@ def run_muvr(mode='server', host='localhost', port='8887'):
             # Server is the one that steps the physics simulation, not the client
             s.step()
 
+            # TODO: Remove jittery mustard
+            m.set_position([1, -0.8 + float(np.sin(sin_accumulator)) / 2.0, 1])
+            
             # Send the current frame to be rendered by the client,
             # and also ingest new client data
             vr_server.refresh_server()
