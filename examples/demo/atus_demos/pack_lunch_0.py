@@ -16,13 +16,13 @@ from gibson2.utils.vr_utils import move_player_no_body
 from gibson2 import assets_path
 sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
 groceries_folder = os.path.join(assets_path, 'models', 'groceries')
-pack_lunch_assets_folder = 'd:\\gibson2_assets\\processed\\pack_lunch'  # TODO change 
+pack_lunch_assets_folder = 'd:\\Gibson\\pack_lunch'  # TODO change 
 
 
 # Playground configuration: edit this to change functionality
 optimize = True
 # Toggles fullscreen companion window
-fullscreen = False
+fullscreen = True
 # Toggles SRAnipal eye tracking
 use_eye_tracking = False
 # Enables the VR collision body
@@ -32,7 +32,7 @@ touchpad_movement = True
 # Set to one of hmd, right_controller or left_controller to move relative to that device
 relative_movement_device = 'hmd'
 # Movement speed for touchpad-based movement
-movement_speed = 0.03
+movement_speed = 0.1
 # Whether we should hide a can bottle when the menu button is presed
 hide_can_on_press = True
 
@@ -60,9 +60,9 @@ vr_rendering_settings = MeshRendererSettings(optimized=optimize,
 # Initialize simulator with specific rendering settings
 s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, rendering_settings=vr_rendering_settings,
             vr_eye_tracking=use_eye_tracking, vr_mode=True)
-scene = InteractiveIndoorScene('Rs_int')
+scene = InteractiveIndoorScene('Beechwood_0_int')
 # Turn this on when debugging to speed up loading
-# scene._set_first_n_objects(10)
+#scene._set_first_n_objects(10)
 s.import_ig_scene(scene)
 
 # Player body is represented by a translucent blue cylinder
@@ -88,6 +88,8 @@ if use_eye_tracking:
     gaze_marker = VisualMarker(radius=0.03)
     s.import_object(gaze_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
     gaze_marker.set_position([0,0,1.5])
+
+objects = []
 
 # Lunch packing objects 
 filename = 'rigid_body.urdf'
@@ -188,7 +190,7 @@ if optimize:
     s.optimize_vertex_and_texture()
 
 # Set VR starting position in the scene
-s.set_vr_offset([0, 0, -0.6])
+s.set_vr_offset([0, 0, 0])
 
 # State of can hiding, toggled by a menu press
 hide_can = False
