@@ -36,13 +36,14 @@ movement_speed = 0.03
 # Whether we should hide a can bottle when the menu button is presed
 hide_can_on_press = True
 
+scene = 'Beechwood_0_int'
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
 hdr_texture2 = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
 light_modulation_map_filename = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+    gibson2.ig_dataset_path, 'scenes', scene, 'layout', 'floor_lighttype_0.png')
 background_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
@@ -60,7 +61,7 @@ vr_rendering_settings = MeshRendererSettings(optimized=optimize,
 # Initialize simulator with specific rendering settings
 s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, rendering_settings=vr_rendering_settings,
             vr_eye_tracking=use_eye_tracking, vr_mode=True)
-scene = InteractiveIndoorScene('Beechwood_0_int')
+scene = InteractiveIndoorScene(scene)
 # Turn this on when debugging to speed up loading
 # scene._set_first_n_objects(10)
 s.import_ig_scene(scene)

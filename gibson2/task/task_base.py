@@ -12,52 +12,69 @@ from gibson2.external.pybullet_tools.utils import *
 
 
 class iGTNTask(TaskNetTask):
-    def __init__(self, atus_activity):
-        super().__init__(atus_activity)
-        self.initial_conditions = 
+    def __init__(self, atus_activity, task_instance=0):
+        '''
+        Initialize simulator with appropriate scene and sampled objects. 
+        :param atus_activity: string, official ATUS activity label 
+        :param task_instance: int, specific instance of atus_activity init/final conditions 
+                                   optional, randomly generated if not specified 
+        '''
+        super().__init__(atus_activity, task_instance=task_instance)
 
-    def initialize_scene(self):             # NOTE can't have the same method name right? Should TaskNetTask.initialize() be a private method so that this can be initialize()?  
+    def initialize_simulator(self,
+                             handmade_simulator=None, 
+                             handmade_sim_objs=None,
+                             handmade_dsl_objs=None):            
         '''
         Get scene populated with objects such that scene satisfies initial conditions 
+        :param handmade_simulator: Simulator class, populated simulator that should completely 
+                                   replace this function. Use if you would like to bypass internal
+                                   Simulator instantiation and population based on initial conditions
+                                   and use your own. Warning that if you use this option, we cannot 
+                                   guarantee that the final conditions will be reachable.
+        :param handmade_sim_objs:
+        :param handmade_dsl_objs:
         '''
         # Set self.scene_name, self.scene, self.sampled_simulator_objects, and self.sampled_dsl_objects
-        self.initialize(InteractiveIndoorScene, ArticulatedObject)
+        if handmade_simulator is None:
+            self.initialize(InteractiveIndoorScene, ArticulatedObject)
 
-        hdr_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-        hdr_texture2 = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
-        light_modulation_map_filename = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', self.scene_name, 'layout', 'floor_lighttype_0.png')
-        background_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+            hdr_texture = os.path.join(
+                gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+            hdr_texture2 = os.path.join(
+                gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+            light_modulation_map_filename = os.path.join(
+                gibson2.ig_dataset_path, 'scenes', self.scene_name, 'layout', 'floor_lighttype_0.png')
+            background_texture = os.path.join(
+                gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
-        settings = MeshRendererSettings(env_texture_filename=hdr_texture,
-                                        env_texture_filename2=hdr_texture2,
-                                        env_texture_filename3=background_texture,
-                                        light_modulation_map_filename=light_modulation_map_filename,
-                                        enable_shadow=True, msaa=True,
-                                        light_dimming_factor=1.0)
-        self.simulator = Simulator(mode='iggui', image_width=960, image_height=720, device_idx=0, rendering_settings=settings)
-    
-        self.simulator.viewer.min_cam_z = 1.0
-        self.simulator.import_ig_scene(self.scene)
-
-        # NOTE not making a separate add_objects function since users shouldn't be able to add extra tasks,
-        # that could make the final conditions unsatisfiable or otherwise vacuous. Can change if needed.
-        for obj, obj_pos, obj_orn in self.sampled_simulator_objects:
-            self.simulator.import_object(obj)
-            obj.set_position_orientation(obj_pos, obj_orn)
+            settings = MeshRendererSettings(env_texture_filename=hdr_texture,
+                                            env_texture_filename2=hdr_texture2,
+                                            env_texture_filename3=background_texture,
+                                            light_modulation_map_filename=light_modulation_map_filename,
+                                            enable_shadow=True, msaa=True,
+                                            light_dimming_factor=1.0)
+            self.simulator = Simulator(mode='iggui', image_width=960, image_height=720, device_idx=0, rendering_settings=settings)
         
-        # Match IDs of simulator and DSL objects 
-        for sim_obj, dsl_obj in zip(self.sampled_simulator_objects, self.sampled_dsl_objects):
-            dsl_obj.body_id = sim_obj.body_id
-            print(dsl_obj.body_id)
-            print(dsl_obj.category)
+            self.simulator.viewer.min_cam_z = 1.0
+            self.simulator.import_ig_scene(self.scene)
 
-        sys.exit()
-
-    # def check_success(self): 
+            # NOTE not making a separate add_objects function since users shouldn't be able to add extra tasks,
+            # that could make the final conditions unsatisfiable or otherwise vacuous. Can change if needed.
+            for obj, obj_pos, obj_orn in self.sampled_simulator_objects:
+                self.simulator.import_object(obj)
+                obj.set_position_orientation(obj_pos, obj_orn)
+        
+            # Match IDs of simulator and DSL objects 
+            for sim_obj, dsl_obj in zip(self.sampled_simulator_objects, self.sampled_dsl_objects):
+                dsl_obj.body_id = sim_obj.body_id
+                print(dsl_obj.body_id)
+                print(dsl_obj.category)
+        
+        else:
+            self.simulator = handmade_simulator
+            self.sampled_simulator_objects = handmade_sim_objs
+            self.sampled_dsl_objects = handmade_dsl_objs
 
     #### CHECKERS ####
     def onTop(self, objA, objB):
@@ -84,11 +101,17 @@ class iGTNTask(TaskNetTask):
     def inside(self, objA, objB):
         '''
         Checks if one object is inside another. 
-        True iff the AABB of objA does not extend past the AABB of objB
+        True iff the AABB of objA does not extend past the AABB of objB TODO this might not be the right spec anymore
         :param objA: simulator object
         :param objB: simulator object 
         '''
-        return aabb_contains_aabb(objA.body_id, objB.body_id)
+        # return aabb_contains_aabb(get_aabb(objA.body_id), get_aabb(objB.body_id))
+        aabbA, aabbB = get_aabb(objA.body_id), get_aabb(objB.body_id)
+        center_inside = aabb_contains_point(get_aabb_center(aabbA), aabbB)
+        volume_lesser = get_aabb_volume(aabbA) < get_aabb_volume(aabbB)
+        extentA, extentB = get_aabb_extent(aabbA), get_aabb_extent(aabbB)
+        two_dimensions_lesser = np.sum(np.less_equal(extentA, extentB)) >= 2
+        return center_inside and volume_lesser and two_dimensions_lesser
 
     def nextTo(self, objA, objB):
         '''
@@ -111,7 +134,7 @@ class iGTNTask(TaskNetTask):
         objB_dims = objB_upper - objB_lower
         avg_aabb_length = np.mean(objA_dims + objB_dims)
 
-        return distance <= (avg_aabb_length * (2./3.))  # TODO better function
+        return distance <= (avg_aabb_length * (1./6.))  # TODO better function
         
     def under(self, objA, objB):
         '''
@@ -156,11 +179,14 @@ class iGTNTask(TaskNetTask):
 
 def main():
     igtn_task = iGTNTask('kinematic_checker_testing')
-    igtn_task.initialize_scene()
+    igtn_task.initialize_simulator()
 
     for i in range(500):
         igtn_task.simulator.step()
-    print('TASK SUCCESS:', igtn_task.check_success())
+    success, failed_conditions = igtn_task.check_success()
+    print('TASK SUCCESS:', success)
+    if not success:
+        print('FAILED CONDITIONS:', failed_conditions)
     igtn_task.simulator.disconnect()
                 
     
