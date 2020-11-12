@@ -750,7 +750,7 @@ class MeshRenderer(object):
     def set_light_position_direction(self, position, target):
         self.lightpos = position
         self.lightV = lookat(self.lightpos, target, [0, 1, 0])
-        self.lightP = ortho(-5, 5, -5, 5, -10, 20.0)
+        self.lightP = ortho(-1, 1, -1, 1, -5, 10)
 
     def setup_framebuffer(self):
         """
