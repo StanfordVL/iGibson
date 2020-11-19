@@ -49,14 +49,12 @@ class ReachingRandomTask(PointNavRandomTask):
 
     def get_task_obs(self, env):
         task_obs = super(ReachingRandomTask, self).get_task_obs(env)
-        goal_z_local = self.global_to_local(self.target_pos)[2]
+        goal_z_local = self.global_to_local(env, self.target_pos)[2]
         end_effector_pos_local = self.global_to_local(
+            env,
             env.robots[0].get_end_effector_position())
 
         task_obs = np.append(task_obs, goal_z_local)
         task_obs = np.append(task_obs, end_effector_pos_local)
 
-        assert task_obs.shape[0] == env.task_obs_dim, \
-            'task obs dimension mismatch {} v.s. {}'.format(
-                task_obs.shape[0], self.task_obs_dim)
         return task_obs

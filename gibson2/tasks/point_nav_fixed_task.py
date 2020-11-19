@@ -136,33 +136,31 @@ class PointNavFixedTask(BaseTask):
 
         return done, info
 
-    def global_to_local(self, pos):
+    def global_to_local(self, env, pos):
         """
         Convert a 3D point in global frame to agent's local frame
         :param pos: a 3D point in global frame
         :return: the same 3D point in agent's local frame
         """
-        return rotate_vector_3d(pos - self.robots[0].get_position(), *self.robots[0].get_rpy())
+        return rotate_vector_3d(pos - env.robots[0].get_position(),
+                                *env.robots[0].get_rpy())
 
     def get_task_obs(self, env):
-        task_obs = self.global_to_local(self.target_pos)[:2]
+        task_obs = self.global_to_local(env, self.target_pos)[:2]
         if self.goal_format == 'polar':
             task_obs = np.array(cartesian_to_polar(task_obs[0], task_obs[1]))
 
         # linear velocity along the x-axis
         linear_velocity = rotate_vector_3d(
-            self.robots[0].get_linear_velocity(),
-            *self.robots[0].get_rpy())[0]
+            env.robots[0].get_linear_velocity(),
+            *env.robots[0].get_rpy())[0]
         # angular velocity along the z-axis
         angular_velocity = rotate_vector_3d(
-            self.robots[0].get_angular_velocity(),
-            *self.robots[0].get_rpy())[2]
+            env.robots[0].get_angular_velocity(),
+            *env.robots[0].get_rpy())[2]
         task_obs = np.append(
             task_obs, [linear_velocity, angular_velocity])
 
-        assert task_obs.shape[0] == env.task_obs_dim, \
-            'task obs dimension mismatch {} v.s. {}'.format(
-                task_obs.shape[0], self.task_obs_dim)
         return task_obs
 
     def get_shortest_path(self,

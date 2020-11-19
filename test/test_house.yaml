@@ -1,6 +1,6 @@
 # scene
 scene: gibson
-scene_id: Rs_int
+scene_id: Rs
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
