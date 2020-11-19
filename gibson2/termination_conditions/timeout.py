@@ -7,7 +7,7 @@ class Timeout(BaseTerminationCondition):
         super(Timeout, self).__init__(config)
         self.max_step = self.config.get('max_step', 500)
 
-    def get_termination(self, env):
+    def get_termination(self, task, env):
         done = env.current_step >= self.max_step
         success = False
         return done, success

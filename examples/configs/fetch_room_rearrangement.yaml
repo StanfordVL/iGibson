@@ -1,6 +1,6 @@
 # scene
 scene: igibson
-scene_id: Beechwood_0_int
+scene_id: Rs_int
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
@@ -19,24 +19,27 @@ wheel_velocity: 0.8
 torso_lift_velocity: 0.8
 arm_velocity: 0.8
 
-# task, observation and action
+# task
 task: room_rearrangement
-initial_pos_z_offset: 0.1
-additional_states_dim: 4
 
 # reward
+potential_reward_weight: 1.0
 prismatic_joint_reward_scale: 3.0
 revolute_joint_reward_scale: 1.0
 
 # discount factor
-discount_factor: 0.9995
+discount_factor: 0.99
 
 # termination condition
 max_step: 500
 max_collisions_allowed: 500
 
+# misc config
+initial_pos_z_offset: 0.1
+collision_ignore_link_a_ids: [0, 1, 2]
+
 # sensor spec
-output: [sensor, rgb, depth]
+output: [rgb, depth, scan]
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
@@ -65,4 +68,3 @@ scan_noise_rate: 0.0
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
-

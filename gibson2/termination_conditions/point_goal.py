@@ -8,9 +8,9 @@ class PointGoal(BaseTerminationCondition):
         super(PointGoal, self).__init__(config)
         self.dist_tol = self.config.get('dist_tol', 0.5)
 
-    def get_termination(self, env):
+    def get_termination(self, task, env):
         done = l2_distance(
             env.robots[0].get_position()[:2],
-            env.target_pos[:2]) < self.dist_tol
+            task.target_pos[:2]) < self.dist_tol
         success = done
         return done, success

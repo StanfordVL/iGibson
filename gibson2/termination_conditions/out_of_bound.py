@@ -9,7 +9,7 @@ class OutOfBound(BaseTerminationCondition):
         self.fall_off_thresh = self.config.get(
             'fall_off_thresh', 0.03)
 
-    def get_termination(self, env):
+    def get_termination(self, task, env):
         done = False
         # fall off the cliff of valid region
         if isinstance(env.scene, InteractiveIndoorScene):

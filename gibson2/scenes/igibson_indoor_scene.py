@@ -60,7 +60,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                               object_randomization_idx)
         else:
             fname = '{}_best'.format(scene_id)
-        self.is_interactive = True
         self.scene_file = os.path.join(
             get_ig_scene_path(scene_id), "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)

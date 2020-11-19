@@ -58,9 +58,11 @@ class StaticIndoorScene(IndoorScene):
         """
         Load floor metadata
         """
-        floor_height_path = os.path.join(get_scene_path(self.scene_id), 'floors.txt')
+        floor_height_path = os.path.join(
+            get_scene_path(self.scene_id), 'floors.txt')
         if not os.path.isfile(floor_height_path):
-            raise Exception('floor_heights.txt cannot be found in model: {}'.format(self.scene_id))
+            raise Exception(
+                'floor_heights.txt cannot be found in model: {}'.format(self.scene_id))
         with open(floor_height_path, 'r') as f:
             self.floor_heights = sorted(list(map(float, f.readlines())))
             logging.debug('Floors {}'.format(self.floor_heights))
@@ -69,59 +71,53 @@ class StaticIndoorScene(IndoorScene):
         """
         Load scene mesh
         """
-        filename = os.path.join(get_scene_path(self.scene_id), "mesh_z_up_downsampled.obj")
+        filename = os.path.join(get_scene_path(
+            self.scene_id), "mesh_z_up_downsampled.obj")
         if not os.path.isfile(filename):
-            filename = os.path.join(get_scene_path(self.scene_id), "mesh_z_up.obj")
+            filename = os.path.join(get_scene_path(
+                self.scene_id), "mesh_z_up.obj")
 
-        collision_id = p.createCollisionShape(p.GEOM_MESH,
-                                              fileName=filename,
-                                              flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
+        collision_id = p.createCollisionShape(
+            p.GEOM_MESH,
+            fileName=filename,
+            flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
         if self.pybullet_load_texture:
-            visual_id = p.createVisualShape(p.GEOM_MESH,
-                                            fileName=filename)
-            texture_filename = get_texture_file(filename)
-            if texture_filename is not None:
-                texture_id = p.loadTexture(texture_filename)
-            else:
-                texture_id = -1
+            visual_id = p.createVisualShape(
+                p.GEOM_MESH,
+                fileName=filename)
         else:
             visual_id = -1
-            texture_id = -1
 
-        self.mesh_body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
-                                              baseVisualShapeIndex=visual_id)
+        self.mesh_body_id = p.createMultiBody(
+            baseCollisionShapeIndex=collision_id,
+            baseVisualShapeIndex=visual_id)
         p.changeDynamics(self.mesh_body_id, -1, lateralFriction=1)
 
         if self.pybullet_load_texture:
-            if texture_id != -1:
-                p.changeVisualShape(self.mesh_body_id,
-                                    -1,
-                                    textureUniqueId=texture_id)
+            texture_filename = get_texture_file(filename)
+            if texture_filename is not None:
+                texture_id = p.loadTexture(texture_filename)
+                p.changeVisualShape(
+                    self.mesh_body_id,
+                    -1,
+                    textureUniqueId=texture_id)
 
     def load_floor_planes(self):
         # load the default floor plane (only once) and later reset it to different floor heiights
-        plane_name = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+        plane_name = os.path.join(
+            pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
         floor_body_id = p.loadMJCF(plane_name)[0]
         p.resetBasePositionAndOrientation(floor_body_id,
                                           posObj=[0, 0, 0],
                                           ornObj=[0, 0, 0, 1])
-        p.setCollisionFilterPair(self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
+        p.setCollisionFilterPair(
+            self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
         self.floor_body_ids.append(floor_body_id)
-
-    def load_scene_urdf(self):
-        self.mesh_body_id = p.loadURDF(os.path.join(
-            get_scene_path(self.scene_id), 'scene.urdf'))
-
-    def has_scene_urdf(self):
-        return os.path.exists(os.path.join(get_scene_path(self.scene_id), 'scene.urdf'))
 
     def load(self):
         self.load_floor_metadata()
-        if self.has_scene_urdf():
-            self.load_scene_urdf()
-        else:
-            self.load_scene_mesh()
-            self.load_floor_planes()
+        self.load_scene_mesh()
+        self.load_floor_planes()
 
         self.load_trav_map(get_scene_path(self.scene_id))
         return [self.mesh_body_id] + self.floor_body_ids
@@ -130,9 +126,15 @@ class StaticIndoorScene(IndoorScene):
         return np.random.randint(0, high=len(self.floor_heights))
 
     def reset_floor(self, floor=0, additional_elevation=0.02, height=None):
-
-        height = height if height is not None else self.floor_heights[floor] + \
-                                                   additional_elevation
+        """
+        Resets the ground plane to a new floor
+        :param floor: Integer identifying the floor to move the ground plane to
+        :param additional_elevation: Additional elevation with respect to the height of the floor
+        :param height: Alternative parameter to control directly the height of the ground plane
+        :return: None
+        """
+        height = height if height is not None \
+            else self.floor_heights[floor] + additional_elevation
         p.resetBasePositionAndOrientation(self.floor_body_ids[0],
                                           posObj=[0, 0, height],
                                           ornObj=[0, 0, 0, 1])

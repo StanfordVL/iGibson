@@ -8,7 +8,7 @@ class MaxCollision(BaseTerminationCondition):
         self.max_collisions_allowed = self.config.get(
             'max_collisions_allowed', 500)
 
-    def get_termination(self, env):
+    def get_termination(self, task, env):
         done = env.collision_step > self.max_collisions_allowed
         success = False
         return done, success
