@@ -5,6 +5,8 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.termination_conditions.max_collision import MaxCollision
 from gibson2.termination_conditions.timeout import Timeout
 from gibson2.termination_conditions.out_of_bound import OutOfBound
+from gibson2.reward_functions.potential_reward import PotentialReward
+
 import logging
 import random
 import numpy as np
@@ -13,6 +15,8 @@ import numpy as np
 class RoomRearrangementTask(BaseTask):
     def __init__(self, env):
         super(RoomRearrangementTask, self).__init__(env)
+        assert isinstance(env.scene, InteractiveIndoorScene), \
+            'room rearrangement can only be done in InteractiveIndoorScene'
         self.prismatic_joint_reward_scale = self.config.get(
             'prismatic_joint_reward_scale', 1.0)
         self.revolute_joint_reward_scale = self.config.get(
@@ -22,26 +26,12 @@ class RoomRearrangementTask(BaseTask):
             Timeout(self.config),
             OutOfBound(self.config),
         ]
-        self.initial_pos_region = {
-            'Rs_int': [{
-                'x': [0.8, 0.8],
-                'y': [1.0, 3.2],
-            }],
-            'Beechwood_0_int': [{
-                'x': [-7, -3],
-                'y': [-6, -2.5],
-            }],
-            'Ihlen_1_int': [{
-                'x': [-4, -1.5],
-                'y': [4, 5],
-            }],
-            'Merom_1_int': [{
-                'x': [-1.5, -1],
-                'y': [3, 6.5],
-            }],
-        }
+        self.reward_functions = [
+            PotentialReward(self.config),
+        ]
+        self.floor_num = 0
 
-    def get_task_potential(self):
+    def get_potential(self, env):
         task_potential = 0.0
         for (body_id, joint_id) in self.body_joint_pairs:
             j_type = p.getJointInfo(body_id, joint_id)[2]
@@ -53,6 +43,7 @@ class RoomRearrangementTask(BaseTask):
         return task_potential
 
     def reset_scene(self, env):
+        env.scene.reset_scene_objects()
         env.scene.force_wakeup_scene_objects()
         self.body_joint_pairs = env.scene.open_all_objs_by_categories(
             ['bottom_cabinet',
@@ -65,18 +56,9 @@ class RoomRearrangementTask(BaseTask):
              'washer'
              'dryer',
              ], mode='random', prob=0.5)
-        self.task_potential = self.get_task_potential()
 
     def sample_initial_pose(self, env):
-        initial_pos_regs = self.initial_pos_region[env.scene.scene_id]
-        initial_pos_reg = random.choice(initial_pos_regs)
-        initial_pos = np.array([
-            np.random.uniform(
-                initial_pos_reg['x'][0], initial_pos_reg['x'][1]),
-            np.random.uniform(
-                initial_pos_reg['y'][0], initial_pos_reg['y'][1]),
-            0.0
-        ])
+        _, initial_pos = env.scene.get_random_point(floor=self.floor_num)
         initial_orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
         return initial_pos, initial_orn
 
@@ -85,6 +67,7 @@ class RoomRearrangementTask(BaseTask):
         max_trials = 100
 
         # cache pybullet state
+        # TODO: p.saveState takes a few seconds, need to speed up
         state_id = p.saveState()
         for _ in range(max_trials):
             initial_pos, initial_orn = self.sample_initial_pose(env)
@@ -100,25 +83,8 @@ class RoomRearrangementTask(BaseTask):
         env.land('robot', env.robots[0], initial_pos, initial_orn)
         p.removeState(state_id)
 
-    def get_reward(self, env, collision_links=[], action=None, info={}):
-        collision_links_flatten = [
-            item for sublist in collision_links for item in sublist]
-        env.collision_step += int(len(collision_links_flatten) > 0)
+        for reward_function in self.reward_functions:
+            reward_function.reset(self, env)
 
-        new_task_potential = self.get_task_potential()
-        reward = self.task_potential - new_task_potential
-        self.task_potential = new_task_potential
-
-        return reward, info
-
-    def get_termination(self, env, collision_links=[], action=None, info={}):
-        done = False
-        success = False
-        for condition in self.termination_conditions:
-            d, s = condition.get_termination(env)
-            done = done or d
-            success = success or s
-
-        info['success'] = success
-
-        return done, info
+    def get_task_obs(self):
+        return

@@ -9,7 +9,7 @@ class ObjectGoal(BaseTerminationCondition):
         self.success_thresh = self.config.get('success_thresh', 0.05)
         self.goal_class_id = self.config.get('goal_class_id', 255)
 
-    def get_termination(self, env):
+    def get_termination(self, task, env):
         seg = env.simulator.renderer.render_robot_cameras(modes='seg')[
             0][:, :, 0:1]
         seg = np.round(seg * 255.0)

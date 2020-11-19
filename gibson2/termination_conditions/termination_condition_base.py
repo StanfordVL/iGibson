@@ -6,5 +6,5 @@ class BaseTerminationCondition(ABC):
         self.config = config
 
     @abstractmethod
-    def get_termination(self, env):
+    def get_termination(self, task, env):
         raise NotImplementedError()
