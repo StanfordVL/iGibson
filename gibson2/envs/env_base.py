@@ -154,6 +154,11 @@ class BaseEnv(gym.Env):
                 object_randomization_idx=self.object_randomization_idx,
                 should_open_all_doors=self.config.get(
                     'should_open_all_doors', False),
+                load_object_categories=self.config.get(
+                    'load_object_categories', None),
+                load_room_types=self.config.get('load_room_types', None),
+                load_room_instances=self.config.get(
+                    'load_room_instances', None),
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
             self.simulator.import_ig_scene(scene)
