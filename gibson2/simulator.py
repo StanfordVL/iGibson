@@ -535,11 +535,9 @@ class Simulator:
         """
         Update positions in renderer without stepping the simulation. Usually used in the reset() function
         """
-        p.submitProfileTiming("renderer_sync_func")
         for instance in self.renderer.instances:
             if instance.dynamic:
                 self.update_position(instance)
-        p.submitProfileTiming()
         if self.use_ig_renderer and self.viewer is not None:
             self.viewer.update()
 
@@ -594,12 +592,10 @@ class Simulator:
                         _, _, _, _, pos, orn = p.getLinkState(
                             instance.pybullet_uuid, link_id)
 
-                print(instance.pybullet_uuid, link_id, activation_state)
+                #print(instance.pybullet_uuid, link_id, activation_state)
                 if activation_state == 1:
-                    p.submitProfileTiming("set_pose_in_renderer")
                     instance.poses_rot[j] = quat2rotmat(xyzw2wxyz(orn))
                     instance.poses_trans[j] = xyz2mat(pos)
-                    p.submitProfileTiming()
 
 
     def isconnected(self):
