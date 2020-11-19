@@ -201,11 +201,11 @@ class iGibsonEnv(BaseEnv):
         if 'task_obs' in self.output:
             state['task_obs'] = self.task.get_task_obs(self)
         if 'vision' in self.sensors:
-            vision_obs = self.sensors['vision'].get_obs(env)
+            vision_obs = self.sensors['vision'].get_obs(self)
             for modality in vision_obs:
                 state[modality] = vision_obs[modality]
         if 'scan' in self.sensors:
-            state['scan'] = self.sensors['scan'].get_obs(env)
+            state['scan'] = self.sensors['scan'].get_obs(self)
 
         return state
 
