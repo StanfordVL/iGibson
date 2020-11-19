@@ -667,6 +667,8 @@ class NavigationEnv(BaseEnv):
         reset_success = False
         max_trials = 100
 
+        # move robot away from the scene
+        self.robots[0].set_position([100.0, 100.0, 100.0])
         # cache pybullet state
         state_id = p.saveState()
         for _ in range(max_trials):

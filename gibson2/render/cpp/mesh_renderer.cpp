@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 #include <fstream>
 
 #ifdef USE_GLAD
@@ -276,6 +278,9 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int heig
     int color_tex_3d = texture_ptr[3];
     int depth_tex = texture_ptr[4];
     glBindTexture(GL_TEXTURE_2D, color_tex_rgb);
+    // Note: VR textures need these settings, otherwise they won't display on the HMD
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, color_tex_normal);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -963,20 +968,11 @@ int MeshRendererContext::allocateTexture(int w, int h) {
     return texture;
 }
 
-
-py::array_t<float>
-MeshRendererContext::readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id) {
+void MeshRendererContext::readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id) {
     glBindFramebuffer(GL_FRAMEBUFFER, fb2);
     glReadBuffer(GL_COLOR_ATTACHMENT3);
-    py::array_t<float> data = py::array_t<float>(3 * width * height);
-    py::buffer_info buf = data.request();
-    float *ptr = (float *) buf.ptr;
-    glReadPixels(0, 0, width, height, GL_RGB, GL_FLOAT, ptr);
-    glBindTexture(GL_TEXTURE_2D, texture_id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, ptr);
-    return data;
+	glCopyTextureSubImage2D(texture_id, 0, 0, 0, 0, 0, width, height);
 }
-
 
 py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures, int smallTexBucketSize) {
 		int num_textures = filenames.size();
@@ -996,6 +992,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 			unsigned char* image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb); // force to 3 channels
 			if (image == nullptr)
 				throw(std::string("Failed to load texture"));
+			std::cout << "Size is w: " << w << " by h: " << h << std::endl;
 			comp = 3;
 			image_data.push_back(image);
 			texHeights.push_back(h);
@@ -1036,8 +1033,13 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 			py::list tex_info_i;
 
 			// Texture goes in larger bucket if larger than cutoff
-			if (score >= texCutoff) {
-				std::cout << "Appending texture with name: " << filenames[i] << " to large bucket" << std::endl;
+			// We also put wall, floor and ceiling textures in the larger bucket since they cover a large surface area,
+			// so should look good! Note: this method will also catch some objects that have they keywords in them,
+			// but it should never be enough to overload VRAM :)
+			std::string tex_filename = filenames[i];
+			bool contains_keyword = tex_filename.find("floor") != std::string::npos || tex_filename.find("wall") != std::string::npos || tex_filename.find("ceiling") != std::string::npos;
+			if (score >= texCutoff || contains_keyword) {
+				std::cout << "Appending texture with name: " << tex_filename << " to large bucket" << std::endl;
 				texIndices[0].push_back(i);
 				tex_info_i.append(0);
 				tex_info_i.append(firstTexLayerNum);
@@ -1046,7 +1048,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 				firstTexLayerNum++;
 			}
 			else {
-				std::cout << "Appending texture with name: " << filenames[i] << " to small bucket" << std::endl;
+				std::cout << "Appending texture with name: " << tex_filename << " to small bucket" << std::endl;
 				texIndices[1].push_back(i);
 				tex_info_i.append(1);
 				tex_info_i.append(secondTexLayerNum);
@@ -1180,8 +1182,11 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		py::array_t<int> indices, py::array_t<float> mergedFragData, py::array_t<float> mergedFragRMData,
 		py::array_t<float> mergedFragNData,
 		py::array_t<float> mergedDiffuseData,
+		py::array_t<float> mergedPBRData,
+		py::array_t<float> mergedHiddenData,
+		py::array_t<float> mergedUVData,
 		int tex_id_1, int tex_id_2, GLuint fb,
-		float use_pbr) {
+		float use_pbr, int depth_tex_id) {
 		// First set up VAO and corresponding attributes
 		GLuint VAO;
 		glGenVertexArrays(1, &VAO);
@@ -1205,22 +1210,22 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glBufferData(GL_ARRAY_BUFFER, mergedVertexData.size() * sizeof(float), mergedVertexDataPtr, GL_STATIC_DRAW);
 
 		GLuint positionAttrib = glGetAttribLocation(shaderProgram, "position");
-        GLuint normalAttrib = glGetAttribLocation(shaderProgram, "normal");
-        GLuint coordsAttrib = glGetAttribLocation(shaderProgram, "texCoords");
-        GLuint tangentlAttrib = glGetAttribLocation(shaderProgram, "tangent");
-        GLuint bitangentAttrib = glGetAttribLocation(shaderProgram, "bitangent");
+		GLuint normalAttrib = glGetAttribLocation(shaderProgram, "normal");
+		GLuint coordsAttrib = glGetAttribLocation(shaderProgram, "texCoords");
+		GLuint tangentlAttrib = glGetAttribLocation(shaderProgram, "tangent");
+		GLuint bitangentAttrib = glGetAttribLocation(shaderProgram, "bitangent");
 
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glEnableVertexAttribArray(2);
-        glEnableVertexAttribArray(3);
-        glEnableVertexAttribArray(4);
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+		glEnableVertexAttribArray(3);
+		glEnableVertexAttribArray(4);
 
-        glVertexAttribPointer(positionAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 0);
-        glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 12);
-        glVertexAttribPointer(coordsAttrib, 2, GL_FLOAT, GL_TRUE, 56, (void *) 24);
-        glVertexAttribPointer(tangentlAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 32);
-        glVertexAttribPointer(bitangentAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void *) 44);
+		glVertexAttribPointer(positionAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void*)0);
+		glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void*)12);
+		glVertexAttribPointer(coordsAttrib, 2, GL_FLOAT, GL_TRUE, 56, (void*)24);
+		glVertexAttribPointer(tangentlAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void*)32);
+		glVertexAttribPointer(bitangentAttrib, 3, GL_FLOAT, GL_FALSE, 56, (void*)44);
 
 		glBindVertexArray(0);
 
@@ -1241,7 +1246,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 
 		// Set up shaders
 		float* fragData = (float*)mergedFragData.request().ptr;
-        float* fragRMData = (float*)mergedFragRMData.request().ptr;
+		float* fragRMData = (float*)mergedFragRMData.request().ptr;
 		float* fragNData = (float*)mergedFragNData.request().ptr;
 		float* diffuseData = (float*)mergedDiffuseData.request().ptr;
 		int fragDataSize = mergedFragData.size();
@@ -1258,8 +1263,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
-        glUniform1f(glGetUniformLocation(shaderProgram, "use_pbr"), use_pbr);
-        glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
+		glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
 
 		printf("multidrawcount %d\n", multidrawCount);
 
@@ -1271,24 +1275,60 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glUniformBlockBinding(shaderProgram, texColorDataIdx, 0);
 		glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboTexColorData);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, fragDataSize * sizeof(float), fragData);
-        glBufferSubData(GL_UNIFORM_BUFFER, 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragRMData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragRMData);
 		glBufferSubData(GL_UNIFORM_BUFFER, 2 * 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragNData);
 		glBufferSubData(GL_UNIFORM_BUFFER, 3 * 16 * MAX_ARRAY_SIZE, diffuseDataSize * sizeof(float), diffuseData);
 
+		float* pbrData = (float*)mergedPBRData.request().ptr;
+		int pbrDataSize = mergedPBRData.size();
+
+		glGenBuffers(1, &uboPbrData);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboPbrData);
+		int pbrDataMaxSize = 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, pbrDataMaxSize, NULL, GL_STATIC_DRAW);
+		GLuint pbrDataIdx = glGetUniformBlockIndex(shaderProgram, "PBRData");
+		glUniformBlockBinding(shaderProgram, pbrDataIdx, 1);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 1, uboPbrData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, pbrDataSize * sizeof(float), pbrData);
+
 		glGenBuffers(1, &uboTransformDataTrans);
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformDataTrans);
-		transformDataSize = 2 * 64 * MAX_ARRAY_SIZE;
+		transformDataSize = 64 * MAX_ARRAY_SIZE;
 		glBufferData(GL_UNIFORM_BUFFER, transformDataSize, NULL, GL_DYNAMIC_DRAW);
 		GLuint transformDataTransIdx = glGetUniformBlockIndex(shaderProgram, "TransformDataTrans");
-		glUniformBlockBinding(shaderProgram, transformDataTransIdx, 1);
-		glBindBufferBase(GL_UNIFORM_BUFFER, 1, uboTransformDataTrans);
+		glUniformBlockBinding(shaderProgram, transformDataTransIdx, 2);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 2, uboTransformDataTrans);
 
 		glGenBuffers(1, &uboTransformDataRot);
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformDataRot);
 		glBufferData(GL_UNIFORM_BUFFER, transformDataSize, NULL, GL_DYNAMIC_DRAW);
 		GLuint transformDataRotIdx = glGetUniformBlockIndex(shaderProgram, "TransformDataRot");
-		glUniformBlockBinding(shaderProgram, transformDataRotIdx, 2);
-		glBindBufferBase(GL_UNIFORM_BUFFER, 2, uboTransformDataRot);
+		glUniformBlockBinding(shaderProgram, transformDataRotIdx, 3);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 3, uboTransformDataRot);
+
+		float *hiddenData = (float*)mergedHiddenData.request().ptr;
+		int hiddenDataSize = mergedHiddenData.size();
+
+		glGenBuffers(1, &uboHidden);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboHidden);
+		int hiddenDataMaxSize = 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, hiddenDataMaxSize, NULL, GL_DYNAMIC_DRAW);
+		GLuint hiddenIdx = glGetUniformBlockIndex(shaderProgram, "Hidden");
+		glUniformBlockBinding(shaderProgram, hiddenIdx, 4);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 4, uboHidden);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(float), hiddenData);
+
+		float* uvData = (float*)mergedUVData.request().ptr;
+		int uvDataSize = mergedUVData.size();
+
+		glGenBuffers(1, &uboUV);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboUV);
+		int uvMaxDataSize = 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, uvMaxDataSize, NULL, GL_DYNAMIC_DRAW);
+		GLuint uvIdx = glGetUniformBlockIndex(shaderProgram, "UVData");
+		glUniformBlockBinding(shaderProgram, uvIdx, 5);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 5, uboUV);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, uvDataSize * sizeof(float), uvData);
 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
@@ -1300,39 +1340,58 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D_ARRAY, tex_id_2);
 
-        glActiveTexture(GL_TEXTURE2);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture.id);
+		glActiveTexture(GL_TEXTURE2);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture.id);
 
-        glActiveTexture(GL_TEXTURE3);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture.id);
+		glActiveTexture(GL_TEXTURE3);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture.id);
 
-        glActiveTexture(GL_TEXTURE4);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT.id);
+		glActiveTexture(GL_TEXTURE4);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT.id);
 
-        glActiveTexture(GL_TEXTURE5);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture2.id);
+		glActiveTexture(GL_TEXTURE5);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture2.id);
 
-        glActiveTexture(GL_TEXTURE6);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture2.id);
+		glActiveTexture(GL_TEXTURE6);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_CUBE_MAP, m_irmapTexture2.id);
 
-        glActiveTexture(GL_TEXTURE7);
-        if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT2.id);
+		glActiveTexture(GL_TEXTURE7);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_spBRDF_LUT2.id);
 
-        if (m_use_two_light_probe) {
-            glBindTexture(GL_TEXTURE_2D, m_light_modulation_map.id);
-        }
+		glActiveTexture(GL_TEXTURE8);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_default_metallic_texture.id);
+
+		glActiveTexture(GL_TEXTURE9);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_default_roughness_texture.id);
+
+		glActiveTexture(GL_TEXTURE10);
+		if (use_pbr == 1) glBindTexture(GL_TEXTURE_2D, m_default_normal_texture.id);
+
+		glActiveTexture(GL_TEXTURE11);
+		if (m_use_two_light_probe) {
+			glBindTexture(GL_TEXTURE_2D, m_light_modulation_map.id);
+		}
+
+		glActiveTexture(GL_TEXTURE12);
+		glBindTexture(GL_TEXTURE_2D, depth_tex_id);
 
 		glUniform1i(bigTexLoc, 0);
 		glUniform1i(smallTexLoc, 1);
 		glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture"), 2);
-        glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 3);
-        glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 4);
+		glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture"), 3);
+		glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT"), 4);
 
-        glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture2"), 5);
-        glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture2"), 6);
-        glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 7);
+		glUniform1i(glGetUniformLocation(shaderProgram, "specularTexture2"), 5);
+		glUniform1i(glGetUniformLocation(shaderProgram, "irradianceTexture2"), 6);
+		glUniform1i(glGetUniformLocation(shaderProgram, "specularBRDF_LUT2"), 7);
 
-        glUniform1i(glGetUniformLocation(shaderProgram, "lightModulationMap"), 11);
+		glUniform1i(glGetUniformLocation(shaderProgram, "defaultMetallicTexture"), 8);
+		glUniform1i(glGetUniformLocation(shaderProgram, "defaultRoughnessTexture"), 9);
+		glUniform1i(glGetUniformLocation(shaderProgram, "defaultNormalTexture"), 10);
+
+		glUniform1i(glGetUniformLocation(shaderProgram, "lightModulationMap"), 11);
+
+		glUniform1i(glGetUniformLocation(shaderProgram, "depthMap"), 12);
 
 		glUseProgram(0);
 
@@ -1344,17 +1403,42 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		return renderData;
 	}
 
+	// Updates hidden states in vertex shader
+	void MeshRendererContext::updateHiddenData(int shaderProgram, py::array_t<float> hidden_array) {
+		glUseProgram(shaderProgram);
+
+		float* hiddenData = (float*)hidden_array.request().ptr;
+		int hiddenDataSize = hidden_array.size();
+
+		glBindBuffer(GL_UNIFORM_BUFFER, uboHidden);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(float), hiddenData);
+
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
+
+	// Updates UV data in vertex shader
+	void MeshRendererContext::updateUVData(int shaderProgram, py::array_t<float> uv_data) {
+		glUseProgram(shaderProgram);
+
+		float* uvData = (float*)uv_data.request().ptr;
+		int uvDataSize = uv_data.size();
+
+		glBindBuffer(GL_UNIFORM_BUFFER, uboUV);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, uvDataSize * sizeof(float), uvData);
+
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
+
 	// Updates positions and rotations in vertex shader
 	void MeshRendererContext::updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array,
-	py::array_t<float> pose_rot_array, py::array_t<float> V, py::array_t<float> P, py::array_t<float> eye_pos) {
+	py::array_t<float> pose_rot_array, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightV, py::array_t<float> lightP, int shadow_pass,
+		py::array_t<float> eye_pos) {
 		glUseProgram(shaderProgram);
 
 		float* transPtr = (float*)pose_trans_array.request().ptr;
 		float* rotPtr = (float*)pose_rot_array.request().ptr;
 		int transDataSize = pose_trans_array.size();
 		int rotDataSize = pose_rot_array.size();
-
-        //printf("transDataSize %d\n", transDataSize);
 
         if (transDataSize > MAX_ARRAY_SIZE * 16) transDataSize = MAX_ARRAY_SIZE * 16;
         if (rotDataSize > MAX_ARRAY_SIZE * 16) rotDataSize = MAX_ARRAY_SIZE * 16;
@@ -1369,12 +1453,16 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 
 		float* Vptr = (float*)V.request().ptr;
 		float* Pptr = (float*)P.request().ptr;
+		float* lightVptr = (float*)lightV.request().ptr;
+		float* lightPptr = (float*)lightP.request().ptr;
         float *eye_pos_ptr = (float *) eye_pos.request().ptr;
 
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "V"), 1, GL_TRUE, Vptr);
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "P"), 1, GL_FALSE, Pptr);
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightV"), 1, GL_TRUE, lightVptr);
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightP"), 1, GL_FALSE, lightPptr);
+		glUniform1i(glGetUniformLocation(shaderProgram, "shadow_pass"), shadow_pass);
         glUniform3f(glGetUniformLocation(shaderProgram, "eyePosition"), eye_pos_ptr[0], eye_pos_ptr[1], eye_pos_ptr[2]);
-
 	}
 
 	// Optimized rendering function that is called once per frame for all merged data
@@ -1396,50 +1484,77 @@ void MeshRendererContext::clean_meshrenderer_optimized(std::vector<GLuint> color
 		glDeleteBuffers(vbos.size(), vbos.data());
 		glDeleteBuffers(ebos.size(), ebos.data());
 		glDeleteBuffers(1, &uboTexColorData);
+		glDeleteBuffers(1, &uboPbrData);
 		glDeleteBuffers(1, &uboTransformDataTrans);
 		glDeleteBuffers(1, &uboTransformDataRot);
+		glDeleteBuffers(1, &uboHidden);
+		// Delete skybox VAO and buffers
+		glDeleteVertexArrays(1, &m_skybox_vao);
+		glDeleteBuffers(1, &m_skybox_vbo);
 	}
 
 
-void MeshRendererContext::loadSkyBox(int shaderProgram, float skybox_size){
-    GLint vertex = glGetAttribLocation(shaderProgram, "position");
-    GLfloat cube_vertices[] = {
-	  -1.0,  1.0,  1.0,
-	  -1.0, -1.0,  1.0,
-	   1.0, -1.0,  1.0,
-	   1.0,  1.0,  1.0,
-	  -1.0,  1.0, -1.0,
-	  -1.0, -1.0, -1.0,
-	   1.0, -1.0, -1.0,
-	   1.0,  1.0, -1.0,
+void MeshRendererContext::loadSkyBox(int shaderProgram, float skybox_size) {
+	// First set up VAO and corresponding attributes
+	glGenVertexArrays(1, &m_skybox_vao);
+	glBindVertexArray(m_skybox_vao);
+
+	float cube_vertices[] = {
+		-1.0f,  1.0f, -1.0f,
+		-1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+
+		-1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f,  1.0f,
+		-1.0f, -1.0f,  1.0f,
+
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+
+		-1.0f, -1.0f,  1.0f,
+		-1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f,  1.0f,
+
+		-1.0f,  1.0f, -1.0f,
+		 1.0f,  1.0f, -1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		-1.0f,  1.0f,  1.0f,
+		-1.0f,  1.0f, -1.0f,
+
+		-1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f,  1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f,  1.0f,
+		 1.0f, -1.0f,  1.0f
 	};
-	for (int i = 0; i < 24; i++) cube_vertices[i] *= skybox_size;
-	GLuint vbo_cube_vertices;
-	glGenBuffers(1, &vbo_cube_vertices);
-	m_skybox_vbo = vbo_cube_vertices;
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+	// Scale cube vertices up to skybox size
+	for (int i = 0; i < 108; i++) cube_vertices[i] *= skybox_size;
+	glGenBuffers(1, &m_skybox_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, m_skybox_vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(vertex);
-    glVertexAttribPointer(vertex, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	GLuint vertexAttrib = glGetAttribLocation(shaderProgram, "position");
+	glEnableVertexAttribArray(vertexAttrib);
+	glVertexAttribPointer(vertexAttrib, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// cube indices for index buffer object
-	GLushort cube_indices[] = {
-	  0, 1, 2, 3,
-	  3, 2, 6, 7,
-	  7, 6, 5, 4,
-	  4, 5, 1, 0,
-	  0, 3, 7, 4,
-	  1, 2, 6, 5,
-	};
-	GLuint ibo_cube_indices;
-	glGenBuffers(1, &ibo_cube_indices);
-	m_skybox_ibo = ibo_cube_indices;
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_cube_indices);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_indices), cube_indices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
+	glBindVertexArray(0);
 }
+
 void MeshRendererContext::renderSkyBox(int shaderProgram, py::array_t<float> V, py::array_t<float> P){
     glUseProgram(shaderProgram);
     float* Vptr = (float*)V.request().ptr;
@@ -1450,12 +1565,7 @@ void MeshRendererContext::renderSkyBox(int shaderProgram, py::array_t<float> V, 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, m_envTexture3.id);
     glUniform1i(glGetUniformLocation(shaderProgram, "envTexture"), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, m_skybox_vbo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_skybox_ibo);
 
-    glDrawElements(GL_QUADS, 24, GL_UNSIGNED_SHORT, 0);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
+	glBindVertexArray(m_skybox_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
 }
