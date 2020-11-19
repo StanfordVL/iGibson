@@ -535,9 +535,11 @@ class Simulator:
         """
         Update positions in renderer without stepping the simulation. Usually used in the reset() function
         """
+        p.submitProfileTiming("renderer_sync_func")
         for instance in self.renderer.instances:
             if instance.dynamic:
                 self.update_position(instance)
+        p.submitProfileTiming()
         if self.use_ig_renderer and self.viewer is not None:
             self.viewer.update()
 
@@ -558,7 +560,7 @@ class Simulator:
             # what our own renderer keeps track of
             # Based on pyullet docuementation:
             # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
-            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
+            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
                 p.getDynamicsInfo(instance.pybullet_uuid, -1)
             inv_inertial_pos, inv_inertial_orn =\
                 p.invertTransform(inertial_pos, inertial_orn)
@@ -568,28 +570,29 @@ class Simulator:
             instance.set_position(pos)
             instance.set_rotation(xyzw2wxyz(orn))
         elif isinstance(instance, InstanceGroup):
-            poses_rot = []
-            poses_trans = []
-            for link_id in instance.link_ids:
+            for j, link_id in enumerate(instance.link_ids):
                 if link_id == -1:
                     # same conversion is needed as above
                     pos, orn = p.getBasePositionAndOrientation(
                         instance.pybullet_uuid)
-                    _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
+                    _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
                         p.getDynamicsInfo(instance.pybullet_uuid, -1)
                     inv_inertial_pos, inv_inertial_orn =\
                         p.invertTransform(inertial_pos, inertial_orn)
                     pos, orn = p.multiplyTransforms(
                         pos, orn, inv_inertial_pos, inv_inertial_orn)
                 else:
+                    activation_state = p.getDynamicsInfo(instance.pybullet_uuid, link_id)[-1]
                     _, _, _, _, pos, orn = p.getLinkState(
                         instance.pybullet_uuid, link_id)
-                poses_rot.append(np.ascontiguousarray(
-                    quat2rotmat(xyzw2wxyz(orn))))
-                poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
-            instance.poses_rot = poses_rot
-            instance.poses_trans = poses_trans
+                print(activation_state)
+                if activation_state != 2:
+                    p.submitProfileTiming("set_pose_in_renderer")
+                    instance.poses_rot[j] = quat2rotmat(xyzw2wxyz(orn))
+                    instance.poses_trans[j] = xyz2mat(pos)
+                    p.submitProfileTiming()
+
 
     def isconnected(self):
         """
