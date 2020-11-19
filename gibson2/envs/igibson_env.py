@@ -57,7 +57,7 @@ class iGibsonEnv(BaseEnv):
 
     def load_task_setup(self):
         """
-        Load task setup, including initialization, termination conditino, reward, collision checking, discount factor
+        Load task setup
         """
         self.initial_pos_z_offset = self.config.get(
             'initial_pos_z_offset', 0.1)
@@ -84,6 +84,7 @@ class iGibsonEnv(BaseEnv):
         self.object_randomization_freq = self.config.get(
             'object_randomization_freq', None)
 
+        # task
         if self.config['task'] == 'point_nav_fixed':
             self.task = PointNavFixedTask(self)
         elif self.config['task'] == 'point_nav_random':
@@ -108,10 +109,11 @@ class iGibsonEnv(BaseEnv):
         self.image_height = self.config.get('image_height', 128)
         observation_space = OrderedDict()
         if 'task_obs' in self.output:
-            self.task_obs_space = gym.spaces.Box(low=-np.inf,
-                                                 high=np.inf,
-                                                 shape=(self.task_obs_dim,),
-                                                 dtype=np.float32)
+            self.task_obs_space = gym.spaces.Box(
+                low=-np.inf,
+                high=np.inf,
+                shape=(self.task.task_obs_dim,),
+                dtype=np.float32)
             observation_space['task_obs'] = self.task_obs_space
         if 'rgb' in self.output:
             self.rgb_space = gym.spaces.Box(low=0.0,
@@ -306,7 +308,7 @@ class iGibsonEnv(BaseEnv):
         """
         state = OrderedDict()
         if 'task_obs' in self.output:
-            state['task_obs'] = self.task.get_task_obs()
+            state['task_obs'] = self.task.get_task_obs(self)
         if 'rgb' in self.output:
             state['rgb'] = self.get_rgb()
         if 'depth' in self.output:

@@ -20,7 +20,7 @@ torso_lift_velocity: 0.8
 arm_velocity: 0.8
 
 # task
-task: reaching
+task: reaching_random
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar

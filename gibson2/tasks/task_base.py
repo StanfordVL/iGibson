@@ -6,6 +6,7 @@ class BaseTask(ABC):
         self.config = env.config
         self.reward_functions = []
         self.termination_conditions = []
+        self.task_obs_dim = self.config.get('task_obs_dim', 0)
 
     @abstractmethod
     def reset_scene(self, env):
