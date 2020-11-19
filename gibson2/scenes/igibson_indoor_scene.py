@@ -12,6 +12,7 @@ import random
 import json
 from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path
 from IPython import embed
+from PIL import Image
 
 
 class InteractiveIndoorScene(StaticIndoorScene):
@@ -37,6 +38,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  object_randomization=False,
                  object_randomization_idx=None,
                  should_open_all_doors=False,
+                 load_object_categories=None,
+                 load_room_types=None,
+                 load_room_instances=None,
+                 seg_map_resolution=0.1,
                  ):
 
         super().__init__(
@@ -77,6 +82,13 @@ class InteractiveIndoorScene(StaticIndoorScene):
             '{}_{}_{}'.format(timestr, random.getrandbits(64), os.getpid()))
         os.makedirs(self.scene_instance_folder, exist_ok=True)
 
+        # Load room semantic and instance segmentation map
+        self.load_room_sem_ins_seg_map(seg_map_resolution)
+
+        # Decide which room(s) and object categories to load
+        self.filter_rooms_and_object_categories(
+            load_object_categories, load_room_types, load_room_instances)
+
         # Load average object density if exists
         self.avg_obj_dims = self.load_avg_obj_dims()
 
@@ -89,17 +101,33 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):
             if 'category' in link.attrib:
-
                 # Extract category and model from the link entry
                 category = link.attrib["category"]
-                model = link.attrib['model']
+                model = link.attrib["model"]
+
+                # An object can in multiple rooms, seperated by commas,
+                # or None if the object is one of the walls, floors or ceilings
+                in_rooms = link.attrib.get('room', None)
+                if in_rooms is not None:
+                    in_rooms = in_rooms.split(',')
 
                 # Find the urdf file that defines this object
                 if category in ["walls", "floors", "ceilings"]:
                     model_path = get_ig_scene_path(model)
                     filename = os.path.join(
                         model_path, "urdf", model + "_" + category + ".urdf")
-                else:  # For other objects
+
+                # For other objects
+                else:
+                    # This object does not belong to one of the selected object categories, skip
+                    if self.load_object_categories is not None and \
+                            category not in self.load_object_categories:
+                        continue
+                    # This object is not located in one of the selected rooms, skip
+                    if self.load_room_instances is not None and \
+                            len(set(self.load_room_instances) & set(in_rooms)) == 0:
+                        continue
+
                     category_path = get_ig_category_path(category)
                     assert len(os.listdir(category_path)) != 0, \
                         "There are no models in category folder {}".format(
@@ -182,10 +210,106 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                 position=joint_xyz,
                                 orientation_rpy=joint_rpy,
                                 joint_name=joint_name,
-                                joint_parent=joint_parent)
+                                joint_parent=joint_parent,
+                                in_rooms=in_rooms)
             elif link.attrib["name"] != "world":
                 logging.error(
                     "iGSDF should only contain links that represent embedded URDF objects")
+
+    def filter_rooms_and_object_categories(self,
+                                           load_object_categories,
+                                           load_room_types,
+                                           load_room_instances):
+
+        if isinstance(load_object_categories, str):
+            load_object_categories = [load_object_categories]
+        self.load_object_categories = load_object_categories
+
+        if load_room_instances is not None:
+            if isinstance(load_room_instances, str):
+                load_room_instances = [load_room_instances]
+            load_room_instances_filtered = []
+            for room_instance in load_room_instances:
+                if room_instance in self.room_ins_name_to_ins_id:
+                    load_room_instances_filtered.append(room_instance)
+                else:
+                    logging.warning(
+                        'room_instance [{}] does not exist.'.format(room_instance))
+            self.load_room_instances = load_room_instances_filtered
+        elif load_room_types is not None:
+            if isinstance(load_room_types, str):
+                load_room_types = [load_room_types]
+            load_room_instances_filtered = []
+            for room_type in load_room_types:
+                if room_type in self.room_sem_name_to_ins_name:
+                    load_room_instances_filtered.extend(
+                        self.room_sem_name_to_ins_name[room_type])
+                else:
+                    logging.warning(
+                        'room_type [{}] does not exist.'.format(room_type))
+            self.load_room_instances = load_room_instances_filtered
+        else:
+            self.load_room_instances = None
+
+    def load_room_sem_ins_seg_map(self, seg_map_resolution):
+        layout_dir = os.path.join(get_ig_scene_path(self.scene_id), "layout")
+        room_seg_imgs = os.path.join(layout_dir, 'floor_insseg_0.png')
+        img_ins = Image.open(room_seg_imgs)
+        room_seg_imgs = os.path.join(layout_dir, 'floor_semseg_0.png')
+        img_sem = Image.open(room_seg_imgs)
+        height, width = img_ins.size
+        assert height == width, 'room seg map is not a square'
+        assert img_ins.size == img_sem.size, 'semantic and instance seg maps have different sizes'
+        self.seg_map_default_resolution = 0.01
+        self.seg_map_resolution = seg_map_resolution
+        self.seg_map_size = int(height *
+                                self.seg_map_default_resolution /
+                                self.seg_map_resolution)
+        img_ins = np.array(img_ins.resize(
+            (self.seg_map_size, self.seg_map_size), Image.NEAREST))
+        img_sem = np.array(img_sem.resize(
+            (self.seg_map_size, self.seg_map_size), Image.NEAREST))
+
+        room_categories = os.path.join(
+            gibson2.ig_dataset_path, 'metadata/room_categories.txt')
+        with open(room_categories, 'r') as fp:
+            room_cats = [line.rstrip() for line in fp.readlines()]
+
+        sem_id_to_ins_id = {}
+        unique_ins_ids = np.unique(img_ins)
+        unique_ins_ids = np.delete(unique_ins_ids, 0)
+        for ins_id in unique_ins_ids:
+            # find one pixel for each ins id
+            x, y = np.where(img_ins == ins_id)
+            # retrieve the correspounding sem id
+            sem_id = img_sem[x[0], y[0]]
+            if sem_id not in sem_id_to_ins_id:
+                sem_id_to_ins_id[sem_id] = []
+            sem_id_to_ins_id[sem_id].append(ins_id)
+
+        room_sem_name_to_sem_id = {}
+        room_ins_name_to_ins_id = {}
+        room_sem_name_to_ins_name = {}
+        for sem_id, ins_ids in sem_id_to_ins_id.items():
+            sem_name = room_cats[sem_id - 1]
+            room_sem_name_to_sem_id[sem_name] = sem_id
+            for i, ins_id in enumerate(ins_ids):
+                # valid class start from 1
+                ins_name = "{}_{}".format(sem_name, i)
+                room_ins_name_to_ins_id[ins_name] = ins_id
+                if sem_name not in room_sem_name_to_ins_name:
+                    room_sem_name_to_ins_name[sem_name] = []
+                room_sem_name_to_ins_name[sem_name].append(ins_name)
+
+        self.room_sem_name_to_sem_id = room_sem_name_to_sem_id
+        self.room_sem_id_to_sem_name = {
+            value: key for key, value in room_sem_name_to_sem_id.items()}
+        self.room_ins_name_to_ins_id = room_ins_name_to_ins_id
+        self.room_ins_id_to_ins_name = {
+            value: key for key, value in room_ins_name_to_ins_id.items()}
+        self.room_sem_name_to_ins_name = room_sem_name_to_ins_name
+        self.room_ins_map = img_ins
+        self.room_sem_map = img_sem
 
     def load_avg_obj_dims(self):
         avg_obj_dim_file = os.path.join(
@@ -218,6 +342,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                    joint_parent=None,
                    position=None,
                    orientation_rpy=None,
+                   in_rooms=None,
                    ):
         """
         "Adds an object to the scene
@@ -247,7 +372,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                   filename=filename,
                                   bounding_box=bounding_box,
                                   scale=scale,
-                                  avg_obj_dims=self.avg_obj_dims.get(category))
+                                  avg_obj_dims=self.avg_obj_dims.get(category),
+                                  in_rooms=in_rooms)
         # Add object to database
         self.objects_by_name[object_name] = added_object
         if category not in self.objects_by_category.keys():
@@ -333,6 +459,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # sofas and coffee tables)
         overlapped_body_ids = []
         for obj1_name, obj2_name in self.overlapped_bboxes:
+            if obj1_name not in self.objects_by_name or obj2_name not in self.objects_by_name:
+                # This could happen if only part of the scene is loaded (e.g. only a subset of rooms)
+                continue
             for obj1_body_id in self.objects_by_name[obj1_name].body_ids:
                 for obj2_body_id in self.objects_by_name[obj2_name].body_ids:
                     overlapped_body_ids.append((obj1_body_id, obj2_body_id))
@@ -573,3 +702,69 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
     def get_num_objects(self):
         return len(self.objects_by_name)
+
+    def get_random_point_by_room_type(self, room_type):
+        if room_type not in self.room_sem_name_to_sem_id:
+            logging.warning('room_type [{}] does not exist.'.format(room_type))
+            return None, None
+
+        sem_id = self.room_sem_name_to_sem_id[room_type]
+        valid_idx = np.array(np.where(self.room_sem_map == sem_id))
+        random_point_map = valid_idx[:, np.random.randint(valid_idx.shape[1])]
+
+        x, y = self.seg_map_to_world(random_point_map)
+        # assume only 1 floor
+        floor = 0
+        z = self.floor_heights[floor]
+        return floor, np.array([x, y, z])
+
+    def get_random_point_by_room_instance(self, room_instance):
+        if room_instance not in self.room_ins_name_to_ins_id:
+            logging.warning(
+                'room_instance [{}] does not exist.'.format(room_instance))
+            return None, None
+
+        ins_id = self.room_ins_name_to_ins_id[room_instance]
+        valid_idx = np.array(np.where(self.room_ins_map == ins_id))
+        random_point_map = valid_idx[:, np.random.randint(valid_idx.shape[1])]
+
+        x, y = self.seg_map_to_world(random_point_map)
+        # assume only 1 floor
+        floor = 0
+        z = self.floor_heights[floor]
+        return floor, np.array([x, y, z])
+
+    def seg_map_to_world(self, xy):
+        """
+        Transforms a 2D point in map reference frame into world (simulator) reference frame
+        :param xy: 2D location in seg map reference frame (image)
+        :return: 2D location in world reference frame (metric)
+        """
+        axis = 0 if len(xy.shape) == 1 else 1
+        return np.flip((xy - self.seg_map_size / 2.0) * self.seg_map_resolution, axis=axis)
+
+    def world_to_seg_map(self, xy):
+        """
+        Transforms a 2D point in world (simulator) reference frame into map reference frame
+        :param xy: 2D location in world reference frame (metric)
+        :return: 2D location in seg map reference frame (image)
+        """
+        return np.flip((xy / self.seg_map_resolution + self.seg_map_size / 2.0)).astype(np.int)
+
+    def get_room_type_by_point(self, xy):
+        x, y = self.world_to_seg_map(xy)
+        sem_id = self.room_sem_map[x, y]
+        # room boundary
+        if sem_id == 0:
+            return None
+        else:
+            return self.room_sem_id_to_sem_name[sem_id]
+
+    def get_room_instance_by_point(self, xy):
+        x, y = self.world_to_seg_map(xy)
+        ins_id = self.room_ins_map[x, y]
+        # room boundary
+        if ins_id == 0:
+            return None
+        else:
+            return self.room_ins_id_to_ins_name[ins_id]
