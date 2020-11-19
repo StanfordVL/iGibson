@@ -21,6 +21,17 @@ arm_velocity: 0.8
 
 # task
 task: room_rearrangement
+load_object_categories: [
+  bottom_cabinet,
+  bottom_cabinet_no_top,
+  top_cabinet,
+  dishwasher,
+  fridge,
+  microwave,
+  oven,
+  washer
+  dryer,
+]
 
 # reward
 potential_reward_weight: 1.0
