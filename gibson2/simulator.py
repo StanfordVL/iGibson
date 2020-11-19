@@ -48,6 +48,9 @@ class Simulator:
         self.render_timestep = render_timestep
         self.mode = mode
 
+        # TODO: remove this, currently used for testing only
+        self.objects = []
+
         plt = platform.system()
         if plt == 'Darwin' and self.mode == 'gui':
             self.mode = 'iggui'  # for mac os disable pybullet rendering
@@ -163,6 +166,7 @@ class Simulator:
         # Load the scene. Returns a list of pybullet ids of the objects loaded that we can use to
         # load them in the renderer
         new_object_pb_ids = scene.load()
+        self.objects += new_object_pb_ids
 
         # Load the objects in the renderer
         for new_object_pb_id in new_object_pb_ids:
@@ -180,6 +184,7 @@ class Simulator:
         :return: ids from scene.load function
         """
         new_object_ids = scene.load()
+        self.objects += new_object_ids
         if scene.texture_randomization:
             # use randomized texture
             for body_id, visual_mesh_to_material in \
@@ -230,6 +235,7 @@ class Simulator:
 
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
         new_object_pb_id = obj.load()
+        self.objects += [new_object_pb_id]
         if obj.__class__ in [ArticulatedObject, URDFObject]:
             self.load_articulated_object_in_renderer(new_object_pb_id,
                                                      class_id,
