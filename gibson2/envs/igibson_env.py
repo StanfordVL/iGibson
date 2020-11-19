@@ -7,6 +7,8 @@ from gibson2.tasks.point_nav_random_task import PointNavRandomTask
 from gibson2.tasks.interactive_nav_random_task import InteractiveNavRandomTask
 from gibson2.tasks.dynamic_nav_random_task import DynamicNavRandomTask
 from gibson2.tasks.reaching_random_task import ReachingRandomTask
+from gibson2.sensors.scan_sensor import ScanSensor
+from gibson2.sensors.vision_sensor import VisionSensor
 
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -100,6 +102,13 @@ class iGibsonEnv(BaseEnv):
         else:
             self.task = None
 
+    def build_obs_space(self, shape, low, high):
+        return gym.spaces.Box(
+            low=low,
+            high=high,
+            shape=shape,
+            dtype=np.float32)
+
     def load_observation_space(self):
         """
         Load observation space
@@ -108,79 +117,55 @@ class iGibsonEnv(BaseEnv):
         self.image_width = self.config.get('image_width', 128)
         self.image_height = self.config.get('image_height', 128)
         observation_space = OrderedDict()
+        sensors = OrderedDict()
+        vision_modalities = []
         if 'task_obs' in self.output:
-            self.task_obs_space = gym.spaces.Box(
-                low=-np.inf,
-                high=np.inf,
-                shape=(self.task.task_obs_dim,),
-                dtype=np.float32)
-            observation_space['task_obs'] = self.task_obs_space
+            observation_space['task_obs'] = self.build_obs_space(
+                shape=(self.task.task_obs_dim,), low=-np.inf, high=-np.inf)
         if 'rgb' in self.output:
-            self.rgb_space = gym.spaces.Box(low=0.0,
-                                            high=1.0,
-                                            shape=(self.image_height,
-                                                   self.image_width, 3),
-                                            dtype=np.float32)
-            observation_space['rgb'] = self.rgb_space
+            observation_space['rgb'] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 3),
+                low=0.0, high=1.0)
+            vision_modalities.append('rgb')
         if 'depth' in self.output:
-            self.depth_noise_rate = self.config.get('depth_noise_rate', 0.0)
-            self.depth_low = self.config.get('depth_low', 0.5)
-            self.depth_high = self.config.get('depth_high', 5.0)
-            self.depth_space = gym.spaces.Box(low=0.0,
-                                              high=1.0,
-                                              shape=(self.image_height,
-                                                     self.image_width, 1),
-                                              dtype=np.float32)
-            observation_space['depth'] = self.depth_space
-        if 'rgbd' in self.output:
-            self.rgbd_space = gym.spaces.Box(low=0.0,
-                                             high=1.0,
-                                             shape=(self.image_height,
-                                                    self.image_width, 4),
-                                             dtype=np.float32)
-            observation_space['rgbd'] = self.rgbd_space
+            observation_space['depth'] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 1),
+                low=0.0, high=1.0)
+            vision_modalities.append('depth')
+        if 'pc' in self.output:
+            observation_space['pc'] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 3),
+                low=-np.inf, high=np.inf)
+            vision_modalities.append('pc')
+        if 'normal' in self.output:
+            observation_space['normal'] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 3),
+                low=-np.inf, high=np.inf)
+            vision_modalities.append('normal')
         if 'seg' in self.output:
-            self.seg_space = gym.spaces.Box(low=0.0,
-                                            high=1.0,
-                                            shape=(self.image_height,
-                                                   self.image_width, 1),
-                                            dtype=np.float32)
-            observation_space['seg'] = self.seg_space
+            observation_space['seg'] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 1),
+                low=0.0, high=1.0)
+            vision_modalities.append('seg')
+        if 'rgb_filled' in self.output:  # use filler
+            observation_space['rgb_filled'] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 3),
+                low=0.0, high=1.0)
+            vision_modalities.append('rgb_filled')
         if 'scan' in self.output:
-            self.scan_noise_rate = self.config.get('scan_noise_rate', 0.0)
             self.n_horizontal_rays = self.config.get('n_horizontal_rays', 128)
             self.n_vertical_beams = self.config.get('n_vertical_beams', 1)
             assert self.n_vertical_beams == 1, 'scan can only handle one vertical beam for now'
-            self.laser_linear_range = self.config.get(
-                'laser_linear_range', 10.0)
-            self.laser_angular_range = self.config.get(
-                'laser_angular_range', 180.0)
-            self.min_laser_dist = self.config.get('min_laser_dist', 0.05)
-            self.laser_link_name = self.config.get(
-                'laser_link_name', 'scan_link')
-            self.scan_space = gym.spaces.Box(low=0.0,
-                                             high=1.0,
-                                             shape=(self.n_horizontal_rays *
-                                                    self.n_vertical_beams, 1),
-                                             dtype=np.float32)
-            observation_space['scan'] = self.scan_space
-        if 'rgb_filled' in self.output:  # use filler
-            try:
-                import torch.nn as nn
-                import torch
-                from torchvision import datasets, transforms
-                from gibson2.learn.completion import CompletionNet
-            except:
-                raise Exception(
-                    'Trying to use rgb_filled ("the goggle"), but torch is not installed. Try "pip install torch torchvision".')
+            observation_space['scan'] = self.build_obs_space(
+                shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
+                low=0.0, high=1.0)
+            sensors['scan'] = ScanSensor(self)
 
-            self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
-            self.comp = torch.nn.DataParallel(self.comp).cuda()
-            self.comp.load_state_dict(
-                torch.load(os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
-            self.comp.eval()
+        if len(vision_modalities) > 0:
+            sensors['vision'] = VisionSensor(self, vision_modalities)
 
         self.observation_space = gym.spaces.Dict(observation_space)
+        self.sensors = sensors
 
     def load_action_space(self):
         """
@@ -207,100 +192,6 @@ class iGibsonEnv(BaseEnv):
         self.load_action_space()
         self.load_miscellaneous_variables()
 
-    def add_naive_noise_to_sensor(self, sensor_reading, noise_rate, noise_value=1.0):
-        """
-        Add naive sensor dropout to perceptual sensor, such as RGBD and LiDAR scan
-        :param sensor_reading: raw sensor reading, range must be between [0.0, 1.0]
-        :param noise_rate: how much noise to inject, 0.05 means 5% of the data will be replaced with noise_value
-        :param noise_value: noise_value to overwrite raw sensor reading
-        :return: sensor reading corrupted with noise
-        """
-        if noise_rate <= 0.0:
-            return sensor_reading
-
-        assert len(sensor_reading[(sensor_reading < 0.0) | (sensor_reading > 1.0)]) == 0,\
-            'sensor reading has to be between [0.0, 1.0]'
-
-        valid_mask = np.random.choice(2, sensor_reading.shape, p=[
-                                      noise_rate, 1.0 - noise_rate])
-        sensor_reading[valid_mask == 0] = noise_value
-        return sensor_reading
-
-    def get_depth(self):
-        """
-        :return: depth sensor reading, normalized to [0.0, 1.0]
-        """
-        depth = - \
-            self.simulator.renderer.render_robot_cameras(modes=('3d'))[
-                0][:, :, 2:3]
-        # 0.0 is a special value for invalid entries
-        depth[depth < self.depth_low] = 0.0
-        depth[depth > self.depth_high] = 0.0
-
-        # re-scale depth to [0.0, 1.0]
-        depth /= self.depth_high
-        depth = self.add_naive_noise_to_sensor(
-            depth, self.depth_noise_rate, noise_value=0.0)
-
-        return depth
-
-    def get_rgb(self):
-        """
-        :return: RGB sensor reading, normalized to [0.0, 1.0]
-        """
-        return self.simulator.renderer.render_robot_cameras(modes=('rgb'))[0][:, :, :3]
-
-    def get_pc(self):
-        """
-        :return: pointcloud sensor reading
-        """
-        return self.simulator.renderer.render_robot_cameras(modes=('3d'))[0]
-
-    def get_normal(self):
-        """
-        :return: surface normal reading
-        """
-        return self.simulator.renderer.render_robot_cameras(modes='normal')[0][:, :, :3]
-
-    def get_seg(self):
-        """
-        :return: semantic segmentation mask, normalized to [0.0, 1.0]
-        """
-        seg = self.simulator.renderer.render_robot_cameras(modes='seg')[
-            0][:, :, 0:1]
-        if self.num_object_classes is not None:
-            seg = np.clip(seg * 255.0 / self.num_object_classes, 0.0, 1.0)
-        return seg
-
-    def get_scan(self):
-        """
-        :return: LiDAR sensor reading, normalized to [0.0, 1.0]
-        """
-        laser_angular_half_range = self.laser_angular_range / 2.0
-        if self.laser_link_name not in self.robots[0].parts:
-            raise Exception('Trying to simulate LiDAR sensor, but laser_link_name cannot be found in the robot URDF file. Please add a link named laser_link_name at the intended laser pose. Feel free to check out assets/models/turtlebot/turtlebot.urdf and examples/configs/turtlebot_p2p_nav.yaml for examples.')
-        laser_pose = self.robots[0].parts[self.laser_link_name].get_pose()
-        angle = np.arange(-laser_angular_half_range / 180 * np.pi,
-                          laser_angular_half_range / 180 * np.pi,
-                          self.laser_angular_range / 180.0 * np.pi / self.n_horizontal_rays)
-        unit_vector_local = np.array(
-            [[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
-        transform_matrix = quat2mat(
-            [laser_pose[6], laser_pose[3], laser_pose[4], laser_pose[5]])  # [x, y, z, w]
-        unit_vector_world = transform_matrix.dot(unit_vector_local.T).T
-
-        start_pose = np.tile(laser_pose[:3], (self.n_horizontal_rays, 1))
-        start_pose += unit_vector_world * self.min_laser_dist
-        end_pose = laser_pose[:3] + unit_vector_world * self.laser_linear_range
-        results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
-
-        # hit fraction = [0.0, 1.0] of self.laser_linear_range
-        hit_fraction = np.array([item[2] for item in results])
-        hit_fraction = self.add_naive_noise_to_sensor(
-            hit_fraction, self.scan_noise_rate)
-        scan = np.expand_dims(hit_fraction, 1)
-        return scan
-
     def get_state(self, collision_links=[]):
         """
         :param collision_links: collisions from last time step
@@ -309,29 +200,12 @@ class iGibsonEnv(BaseEnv):
         state = OrderedDict()
         if 'task_obs' in self.output:
             state['task_obs'] = self.task.get_task_obs(self)
-        if 'rgb' in self.output:
-            state['rgb'] = self.get_rgb()
-        if 'depth' in self.output:
-            state['depth'] = self.get_depth()
-        if 'pc' in self.output:
-            state['pc'] = self.get_pc()
-        if 'rgbd' in self.output:
-            rgb = self.get_rgb()
-            depth = self.get_depth()
-            state['rgbd'] = np.concatenate((rgb, depth), axis=2)
-        if 'normal' in self.output:
-            state['normal'] = self.get_normal()
-        if 'seg' in self.output:
-            state['seg'] = self.get_seg()
-        if 'rgb_filled' in self.output:
-            with torch.no_grad():
-                tensor = transforms.ToTensor()(
-                    (state['rgb'] * 255).astype(np.uint8)).cuda()
-                rgb_filled = self.comp(tensor[None, :, :, :])[
-                    0].permute(1, 2, 0).cpu().numpy()
-                state['rgb_filled'] = rgb_filled
-        if 'scan' in self.output:
-            state['scan'] = self.get_scan()
+        if 'vision' in self.sensors:
+            vision_obs = self.sensors['vision'].get_obs(env)
+            for modality in vision_obs:
+                state[modality] = vision_obs[modality]
+        if 'scan' in self.sensors:
+            state['scan'] = self.sensors['scan'].get_obs(env)
 
         return state
 
@@ -396,6 +270,7 @@ class iGibsonEnv(BaseEnv):
         if done and self.automatic_reset:
             info['last_observation'] = state
             state = self.reset()
+
         return state, reward, done, info
 
     def check_collision(self, body_id):
