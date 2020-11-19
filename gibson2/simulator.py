@@ -551,43 +551,51 @@ class Simulator:
         :param instance: Instance in the renderer
         """
         if isinstance(instance, Instance):
-            # pos and orn of the inertial frame of the base link,
-            # instead of the base link frame
-            pos, orn = p.getBasePositionAndOrientation(
-                instance.pybullet_uuid)
-
-            # Need to convert to the base link frame because that is
-            # what our own renderer keeps track of
-            # Based on pyullet docuementation:
-            # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
             _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
                 p.getDynamicsInfo(instance.pybullet_uuid, -1)
-            inv_inertial_pos, inv_inertial_orn =\
-                p.invertTransform(inertial_pos, inertial_orn)
-            # Now pos and orn are converted to the base link frame
-            pos, orn = p.multiplyTransforms(
-                pos, orn, inv_inertial_pos, inv_inertial_orn)
-            instance.set_position(pos)
-            instance.set_rotation(xyzw2wxyz(orn))
+
+            if activation_state == 1:
+                # pos and orn of the inertial frame of the base link,
+                # instead of the base link frame
+                pos, orn = p.getBasePositionAndOrientation(
+                    instance.pybullet_uuid)
+
+                # Need to convert to the base link frame because that is
+                # what our own renderer keeps track of
+                # Based on pyullet docuementation:
+                # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
+
+                inv_inertial_pos, inv_inertial_orn =\
+                    p.invertTransform(inertial_pos, inertial_orn)
+                # Now pos and orn are converted to the base link frame
+                pos, orn = p.multiplyTransforms(
+                    pos, orn, inv_inertial_pos, inv_inertial_orn)
+
+                instance.set_position(pos)
+                instance.set_rotation(xyzw2wxyz(orn))
         elif isinstance(instance, InstanceGroup):
             for j, link_id in enumerate(instance.link_ids):
                 if link_id == -1:
-                    # same conversion is needed as above
-                    pos, orn = p.getBasePositionAndOrientation(
-                        instance.pybullet_uuid)
                     _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
                         p.getDynamicsInfo(instance.pybullet_uuid, -1)
-                    inv_inertial_pos, inv_inertial_orn =\
-                        p.invertTransform(inertial_pos, inertial_orn)
-                    pos, orn = p.multiplyTransforms(
-                        pos, orn, inv_inertial_pos, inv_inertial_orn)
+
+                    if activation_state == 1:
+                        # same conversion is needed as above
+                        pos, orn = p.getBasePositionAndOrientation(
+                            instance.pybullet_uuid)
+
+                        inv_inertial_pos, inv_inertial_orn =\
+                            p.invertTransform(inertial_pos, inertial_orn)
+                        pos, orn = p.multiplyTransforms(
+                            pos, orn, inv_inertial_pos, inv_inertial_orn)
                 else:
                     activation_state = p.getDynamicsInfo(instance.pybullet_uuid, link_id)[-1]
-                    _, _, _, _, pos, orn = p.getLinkState(
-                        instance.pybullet_uuid, link_id)
+                    if activation_state == 1:
+                        _, _, _, _, pos, orn = p.getLinkState(
+                            instance.pybullet_uuid, link_id)
 
-                print(activation_state)
-                if activation_state != 2:
+                print(instance.pybullet_uuid, link_id, activation_state)
+                if activation_state == 1:
                     p.submitProfileTiming("set_pose_in_renderer")
                     instance.poses_rot[j] = quat2rotmat(xyzw2wxyz(orn))
                     instance.poses_trans[j] = xyz2mat(pos)
