@@ -555,8 +555,8 @@ class URDFObject(Object):
             orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
             logging.info("Moving URDF to (pos,ori): " +
                          np.array_str(pos) + ", " + np.array_str(orn))
-            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
-                p.getDynamicsInfo(body_id, -1)
+            dynamics_info = p.getDynamicsInfo(body_id, -1)
+            inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
             pos, orn = p.multiplyTransforms(
                 pos, orn, inertial_pos, inertial_orn)
             p.resetBasePositionAndOrientation(body_id, pos, orn)
@@ -582,8 +582,8 @@ class URDFObject(Object):
             orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
             logging.info("Resetting URDF to (pos,ori): " +
                          np.array_str(pos) + ", " + np.array_str(orn))
-            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
-                p.getDynamicsInfo(body_id, -1)
+            dynamics_info = p.getDynamicsInfo(body_id, -1)
+            inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
             pos, orn = p.multiplyTransforms(
                 pos, orn, inertial_pos, inertial_orn)
             p.resetBasePositionAndOrientation(body_id, pos, orn)
