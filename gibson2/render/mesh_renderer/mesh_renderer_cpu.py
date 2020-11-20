@@ -255,10 +255,6 @@ class Instance(object):
         # Indices into optimized buffers such as color information and transformation buffer
         # These values are used to set buffer information during simulation
         self.or_buffer_indices = None
-<<<<<<< HEAD
-
-=======
->>>>>>> profile_physics
 
     def render(self, shadow_pass=0):
         """
