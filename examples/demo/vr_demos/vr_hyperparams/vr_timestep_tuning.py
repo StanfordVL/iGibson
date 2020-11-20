@@ -68,7 +68,7 @@ s = Simulator(mode='vr', rendering_settings=vr_rendering_settings,
             vr_eye_tracking=use_eye_tracking, vr_mode=True)
 scene = InteractiveIndoorScene('Beechwood_0_int')
 # Turn this on when debugging to speed up loading
-#scene._set_first_n_objects(10)
+scene._set_first_n_objects(10)
 s.import_ig_scene(scene)
 
 # The hand can either be 'right' or 'left'
@@ -108,7 +108,7 @@ if optimize:
     s.optimize_vertex_and_texture()
 
 # Set VR starting position in the scene
-s.set_vr_offset([-4.34, -2.68, -0.1])
+s.set_vr_offset([0, 0, -0.1])
 
 while True:
     s.step(print_time=True)
