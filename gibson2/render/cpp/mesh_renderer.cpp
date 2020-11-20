@@ -1499,7 +1499,7 @@ void MeshRendererContext::loadSkyBox(int shaderProgram, float skybox_size) {
 	glGenVertexArrays(1, &m_skybox_vao);
 	glBindVertexArray(m_skybox_vao);
 
-	float cube_vertices[] = {    
+	float cube_vertices[] = {
 		-1.0f,  1.0f, -1.0f,
 		-1.0f, -1.0f, -1.0f,
 		 1.0f, -1.0f, -1.0f,

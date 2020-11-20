@@ -726,47 +726,54 @@ class Simulator:
         :param instance: Instance in the renderer
         """
         if isinstance(instance, Instance):
-            # pos and orn of the inertial frame of the base link,
-            # instead of the base link frame
-            pos, orn = p.getBasePositionAndOrientation(
-                instance.pybullet_uuid)
-
-            # Need to convert to the base link frame because that is
-            # what our own renderer keeps track of
-            # Based on pyullet docuementation:
-            # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
-            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
+            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
                 p.getDynamicsInfo(instance.pybullet_uuid, -1)
-            inv_inertial_pos, inv_inertial_orn =\
-                p.invertTransform(inertial_pos, inertial_orn)
-            # Now pos and orn are converted to the base link frame
-            pos, orn = p.multiplyTransforms(
-                pos, orn, inv_inertial_pos, inv_inertial_orn)
-            instance.set_position(pos)
-            instance.set_rotation(xyzw2wxyz(orn))
-        elif isinstance(instance, InstanceGroup):
-            poses_rot = []
-            poses_trans = []
-            for link_id in instance.link_ids:
-                if link_id == -1:
-                    # same conversion is needed as above
-                    pos, orn = p.getBasePositionAndOrientation(
-                        instance.pybullet_uuid)
-                    _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _ = \
-                        p.getDynamicsInfo(instance.pybullet_uuid, -1)
-                    inv_inertial_pos, inv_inertial_orn =\
-                        p.invertTransform(inertial_pos, inertial_orn)
-                    pos, orn = p.multiplyTransforms(
-                        pos, orn, inv_inertial_pos, inv_inertial_orn)
-                else:
-                    _, _, _, _, pos, orn = p.getLinkState(
-                        instance.pybullet_uuid, link_id)
-                poses_rot.append(np.ascontiguousarray(
-                    quat2rotmat(xyzw2wxyz(orn))))
-                poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
-            instance.poses_rot = poses_rot
-            instance.poses_trans = poses_trans
+            if activation_state == 1:
+                # pos and orn of the inertial frame of the base link,
+                # instead of the base link frame
+                pos, orn = p.getBasePositionAndOrientation(
+                    instance.pybullet_uuid)
+
+                # Need to convert to the base link frame because that is
+                # what our own renderer keeps track of
+                # Based on pyullet docuementation:
+                # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
+
+                inv_inertial_pos, inv_inertial_orn =\
+                    p.invertTransform(inertial_pos, inertial_orn)
+                # Now pos and orn are converted to the base link frame
+                pos, orn = p.multiplyTransforms(
+                    pos, orn, inv_inertial_pos, inv_inertial_orn)
+
+                instance.set_position(pos)
+                instance.set_rotation(xyzw2wxyz(orn))
+        elif isinstance(instance, InstanceGroup):
+            for j, link_id in enumerate(instance.link_ids):
+                if link_id == -1:
+                    _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
+                        p.getDynamicsInfo(instance.pybullet_uuid, -1)
+
+                    if activation_state == 1:
+                        # same conversion is needed as above
+                        pos, orn = p.getBasePositionAndOrientation(
+                            instance.pybullet_uuid)
+
+                        inv_inertial_pos, inv_inertial_orn =\
+                            p.invertTransform(inertial_pos, inertial_orn)
+                        pos, orn = p.multiplyTransforms(
+                            pos, orn, inv_inertial_pos, inv_inertial_orn)
+                else:
+                    activation_state = p.getDynamicsInfo(instance.pybullet_uuid, link_id)[-1]
+                    if activation_state == 1:
+                        _, _, _, _, pos, orn = p.getLinkState(
+                            instance.pybullet_uuid, link_id)
+
+                #print(instance.pybullet_uuid, link_id, activation_state)
+                if activation_state == 1:
+                    instance.poses_rot[j] = quat2rotmat(xyzw2wxyz(orn))
+                    instance.poses_trans[j] = xyz2mat(pos)
+
 
     def isconnected(self):
         """
