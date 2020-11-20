@@ -181,7 +181,7 @@ void main() {
         } else {
             metallic_sampled = texture(smallTex, vec3(theCoords.x, theCoords.y, metallic_tex_layer)).r;
         }
-      
+
         vec3 Fdielectric = vec3(0.04);
         vec3 F0 = mix(Fdielectric, albedo, metallic_sampled);
         vec3 irradiance = texture(irradianceTexture, N).rgb;
