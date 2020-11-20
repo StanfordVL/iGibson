@@ -35,16 +35,12 @@ optimize = True
 fullscreen = False
 # Toggles SRAnipal eye tracking
 use_eye_tracking = True
-# Enables the VR collision body
-enable_vr_body = True
 # Toggles movement with the touchpad (to move outside of play area)
 touchpad_movement = True
 # Set to one of hmd, right_controller or left_controller to move relative to that device
 relative_movement_device = 'hmd'
 # Movement speed for touchpad-based movement
 movement_speed = 0.03
-# Whether we should hide a can bottle when the menu button is presed
-hide_can_on_press = True
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -68,18 +64,12 @@ vr_rendering_settings = MeshRendererSettings(optimized=optimize,
                                             msaa=True,
                                             light_dimming_factor=1.0)
 # Initialize simulator with specific rendering settings
-s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, rendering_settings=vr_rendering_settings,
+s = Simulator(mode='vr', rendering_settings=vr_rendering_settings,
             vr_eye_tracking=use_eye_tracking, vr_mode=True)
 scene = InteractiveIndoorScene('Rs_int')
 # Turn this on when debugging to speed up loading
-# scene._set_first_n_objects(10)
+scene._set_first_n_objects(10)
 s.import_ig_scene(scene)
-
-# Player body is represented by a translucent blue cylinder
-if enable_vr_body:
-    vr_body = VrBody()
-    s.import_object(vr_body, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
-    vr_body.init_body([0,0])
 
 # The hand can either be 'right' or 'left'
 # It has enough friction to pick up the basket and the mustard bottles
@@ -120,22 +110,8 @@ if optimize:
 # Set VR starting position in the scene
 s.set_vr_offset([0, 0, -0.1])
 
-# State of can hiding, toggled by a menu press
-hide_can = False
-
 while True:
-    # Demonstrates how to call VR events - replace pass with custom logic
-    # See pollVREvents description in simulator for full list of events
-    event_list = s.poll_vr_events()
-    for event in event_list:
-        device_type, event_type = event
-        if device_type == 'right_controller':
-            if event_type == 'menu_press' and hide_can_on_press:
-                # Toggle mustard hidden state
-                hide_can = not hide_can
-                s.set_hidden_state(cans[2], hide=hide_can)
-
-    s.step()
+    s.step(print_time=True)
 
     # VR device data
     hmd_is_valid, hmd_trans, hmd_rot = s.get_data_for_vr_device('hmd')
@@ -153,13 +129,6 @@ while True:
             # Move gaze marker based on eye tracking data
             updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
             gaze_marker.set_position(updated_marker_pos)
-
-    if enable_vr_body:
-        if not r_is_valid:
-            # See VrBody class for more details on this method
-            vr_body.move_body(s, 0, 0, movement_speed, relative_movement_device)
-        else:
-            vr_body.move_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
 
     if r_is_valid:
         r_hand.move(r_trans, r_rot)

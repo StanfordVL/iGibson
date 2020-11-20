@@ -91,6 +91,11 @@ class Simulator:
         self.render_to_tensor = render_to_tensor
         self.auto_sync = auto_sync
         self.rendering_settings = rendering_settings
+
+        # Settings for adjusting physics and render timestep in vr
+        # Fraction to multiple previous render timestep by in low-pass filter
+        self.lp_filter_frac = 0.9
+
         self.load()
 
     def set_timestep(self, physics_timestep, render_timestep):
@@ -548,15 +553,29 @@ class Simulator:
             if instance.dynamic:
                 self.update_position(instance)
 
-    def step(self):
+    def step(self, print_time=False):
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
-        for _ in range(int(self.render_timestep / self.physics_timestep)):
+        physics_start_time = time.time()
+        physics_timestep_num = int(self.render_timestep / self.physics_timestep)
+        for _ in range(physics_timestep_num):
             p.stepSimulation()
+        physics_dur = time.time() - physics_start_time
 
+        render_start_time = time.time()
         if self.auto_sync:
             self.sync()
+        render_dur = time.time() - render_start_time
+        self.render_timestep = self.lp_filter_frac * self.render_timestep + (1 - self.lp_filter_frac) * render_dur
+        frame_dur = physics_dur + render_dur
+
+        if print_time:
+            print("Total frame duration: {} and FPS: {}".format(round(frame_dur, 2), round(1/max(frame_dur, 0.002), 2)))
+            print("Total physics duration: {} and FPS: {}".format(round(physics_dur, 2), round(1/max(physics_dur, 0.002), 2)))
+            print("Number of 1/120 physics steps: {}".format(physics_timestep_num))
+            print("Total render duration: {} and FPS: {}".format(round(render_dur, 2), round(1/max(render_dur, 0.002), 2)))
+            print("-------------------------")
 
     def sync(self):
         """
@@ -687,6 +706,17 @@ class Simulator:
                 instance.hidden = hide
                 self.renderer.update_hidden_state([instance])
                 return
+
+    def get_floor_ids(self):
+        """
+        Gets the body ids for all floor objects in the scene. This is used internally
+        by the VrBody class to disable collisions with the floor.
+        """
+        floor_ids = []
+        for body_id in self.objects:
+            if body_id in self.scene.objects_by_id.keys() and self.scene.objects_by_id[body_id].category == 'floors':
+                floor_ids.append(body_id)
+        return floor_ids
 
     @staticmethod
     def update_position(instance):
