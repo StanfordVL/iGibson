@@ -1,5 +1,5 @@
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
-from gibson2.utils.semantics_utils import get_class_name_to_class_id
+from gibson2.utils.semantics_utils import get_class_name_to_class_id, SemanticClass
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer
@@ -10,7 +10,6 @@ import os
 import numpy as np
 import platform
 import logging
-from IPython import embed
 
 
 class Simulator:
@@ -152,7 +151,7 @@ class Simulator:
                      texture_scale=1.0,
                      load_texture=True,
                      render_floor_plane=False,
-                     class_id=3,
+                     class_id=SemanticClass.SCENE_OBJS,
                      ):
         """
         Import a scene into the simulator. A scene could be a synthetic one or a realistic Gibson Environment.
@@ -212,8 +211,6 @@ class Simulator:
                     shadow_caster = False
                 class_id = self.class_name_to_class_id.get(
                     scene.objects_by_id[body_id].category, 3)
-                print('class_id',
-                      scene.objects_by_id[body_id].category, class_id)
                 self.load_articulated_object_in_renderer(
                     body_id,
                     class_id=body_id,
@@ -225,7 +222,7 @@ class Simulator:
         return new_object_ids
 
     @load_without_pybullet_vis
-    def import_object(self, obj, class_id=2, use_pbr=True, use_pbr_mapping=True, shadow_caster=True):
+    def import_object(self, obj, class_id=SemanticClass.USER_ADDED_OBJS, use_pbr=True, use_pbr_mapping=True, shadow_caster=True):
         """
         Import an object into the simulator
 
@@ -424,7 +421,7 @@ class Simulator:
                                          shadow_caster=shadow_caster)
 
     @load_without_pybullet_vis
-    def import_robot(self, robot, class_id=1):
+    def import_robot(self, robot, class_id=SemanticClass.ROBOTS):
         """
         Import a robot into the simulator
 

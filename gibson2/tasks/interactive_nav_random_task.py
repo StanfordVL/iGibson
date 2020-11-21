@@ -1,18 +1,6 @@
 from gibson2.tasks.point_nav_random_task import PointNavRandomTask
-from IPython import embed
 import pybullet as p
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.termination_conditions.max_collision import MaxCollision
-from gibson2.termination_conditions.timeout import Timeout
-from gibson2.termination_conditions.out_of_bound import OutOfBound
-from gibson2.termination_conditions.point_goal import PointGoal
-from gibson2.utils.utils import l2_distance, rotate_vector_3d, cartesian_to_polar
-from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.ycb_object import YCBObject
-
-import logging
-import random
 import numpy as np
 
 
@@ -55,10 +43,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
             for _ in range(max_trials):
                 _, pos = env.scene.get_random_point(floor=self.floor_num)
                 orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
-                # raise the object off the ground
-                # TODO: raise the object by the z extent of bounding box
-                pos[2] += 0.2
-                reset_success = env.test_valid_position('obj', obj, pos, orn)
+                reset_success = env.test_valid_position(obj, pos, orn)
                 p.restoreState(state_id)
                 if reset_success:
                     break
@@ -66,7 +51,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
             if not reset_success:
                 print("WARNING: Failed to reset interactive obj without collision")
 
-            env.land('obj', obj, pos, orn)
+            env.land(obj, pos, orn)
 
     def reset_scene(self, env):
         super(InteractiveNavRandomTask, self).reset_scene(env)

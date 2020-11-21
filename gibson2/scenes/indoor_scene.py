@@ -105,6 +105,7 @@ class IndoorScene(Scene):
                 self.build_trav_graph(maps_path, floor, trav_map)
             self.floor_map.append(trav_map)
 
+    # TODO: refactor into C++ for speedup
     def build_trav_graph(self, maps_path, floor, trav_map):
         graph_file = os.path.join(maps_path, 'floor_trav_{}.p'.format(floor))
         if os.path.isfile(graph_file):

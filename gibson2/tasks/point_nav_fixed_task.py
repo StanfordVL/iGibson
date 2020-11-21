@@ -1,5 +1,4 @@
 from gibson2.tasks.task_base import BaseTask
-from IPython import embed
 import pybullet as p
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
@@ -14,9 +13,6 @@ from gibson2.reward_functions.point_goal_reward import PointGoalReward
 from gibson2.utils.utils import l2_distance, rotate_vector_3d, cartesian_to_polar
 from gibson2.objects.visual_marker import VisualMarker
 
-
-import logging
-import random
 import numpy as np
 
 
@@ -116,7 +112,7 @@ class PointNavFixedTask(BaseTask):
             env.scene.reset_floor(floor=self.floor_num)
 
     def reset_agent(self, env):
-        env.land('robot', env.robots[0], self.initial_pos, self.initial_orn)
+        env.land(env.robots[0], self.initial_pos, self.initial_orn)
         self.path_length = 0.0
         self.robot_pos = self.initial_pos[:2]
         self.geodesic_dist = self.get_geodesic_potential(env)

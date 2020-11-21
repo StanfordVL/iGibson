@@ -1,4 +1,3 @@
-import gibson2
 from gibson2.utils.utils import quatToXYZW
 from gibson2.envs.env_base import BaseEnv
 from gibson2.tasks.room_rearrangement_task import RoomRearrangementTask
@@ -9,14 +8,14 @@ from gibson2.tasks.dynamic_nav_random_task import DynamicNavRandomTask
 from gibson2.tasks.reaching_random_task import ReachingRandomTask
 from gibson2.sensors.scan_sensor import ScanSensor
 from gibson2.sensors.vision_sensor import VisionSensor
+from gibson2.robots.robot_base import BaseRobot
+from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
 
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
 import argparse
-from transforms3d.quaternions import quat2mat
 import gym
 import numpy as np
-import os
 import pybullet as p
 import time
 import logging
@@ -63,12 +62,10 @@ class iGibsonEnv(BaseEnv):
         """
         self.initial_pos_z_offset = self.config.get(
             'initial_pos_z_offset', 0.1)
-        check_collision_distance = self.initial_pos_z_offset * 0.5
         # s = 0.5 * G * (t ** 2)
-        check_collision_distance_time = np.sqrt(
-            check_collision_distance / (0.5 * 9.8))
-        self.check_collision_loop = int(
-            check_collision_distance_time / self.action_timestep)
+        drop_distance = 0.5 * 9.8 * (self.action_timestep ** 2)
+        assert drop_distance < self.initial_pos_z_offset, \
+            'initial_pos_z_offset is too small for collision checking'
 
         # ignore the agent's collision with these body ids
         self.collision_ignore_body_b_ids = set(
@@ -278,18 +275,15 @@ class iGibsonEnv(BaseEnv):
         :param body_id: pybullet body id
         :return: whether the given body_id has no collision
         """
-        for _ in range(self.check_collision_loop):
-            self.simulator_step()
-            collisions = list(p.getContactPoints(bodyA=body_id))
+        self.simulator_step()
+        collisions = list(p.getContactPoints(bodyA=body_id))
 
-            if logging.root.level <= logging.DEBUG:  # Only going into this if it is for logging --> efficiency
-                for item in collisions:
-                    logging.debug('bodyA:{}, bodyB:{}, linkA:{}, linkB:{}'.format(
-                        item[1], item[2], item[3], item[4]))
+        if logging.root.level <= logging.DEBUG:  # Only going into this if it is for logging --> efficiency
+            for item in collisions:
+                logging.debug('bodyA:{}, bodyB:{}, linkA:{}, linkB:{}'.format(
+                    item[1], item[2], item[3], item[4]))
 
-            if len(collisions) > 0:
-                return False
-        return True
+        return len(collisions) == 0
 
     def set_pos_orn_with_z_offset(self, obj, pos, orn=None, offset=None):
         """
@@ -305,47 +299,52 @@ class iGibsonEnv(BaseEnv):
         if offset is None:
             offset = self.initial_pos_z_offset
 
-        obj.set_position_orientation([pos[0], pos[1], pos[2] + offset],
-                                     quatToXYZW(euler2quat(*orn), 'wxyz'))
+        is_robot = isinstance(obj, BaseRobot)
+        body_id = obj.robot_ids[0] if is_robot else obj.body_id
+        # first set the correct orientation
+        obj.set_position_orientation(pos, quatToXYZW(euler2quat(*orn), 'wxyz'))
+        # compute stable z based on this orientation
+        stable_z = stable_z_on_aabb(body_id, [pos, pos])
+        # change the z-value of position with stable_z + additional offset
+        # in case the surface is not perfect smooth (has bumps)
+        obj.set_position([pos[0], pos[1], stable_z + offset])
 
-    def test_valid_position(self, obj_type, obj, pos, orn=None):
+    def test_valid_position(self, obj, pos, orn=None):
         """
         Test if the robot or the object can be placed with no collision
-        :param obj_type: string "robot" or "obj"
         :param obj: an instance of robot or object
         :param pos: position
         :param orn: orientation
         :return: validity
         """
-        assert obj_type in ['robot', 'obj']
+        is_robot = isinstance(obj, BaseRobot)
 
         self.set_pos_orn_with_z_offset(obj, pos, orn)
 
-        if obj_type == 'robot':
+        if is_robot:
             obj.robot_specific_reset()
             obj.keep_still()
 
-        body_id = obj.robot_ids[0] if obj_type == 'robot' else obj.body_id
+        body_id = obj.robot_ids[0] if is_robot else obj.body_id
         has_collision = self.check_collision(body_id)
         return has_collision
 
-    def land(self, obj_type, obj, pos, orn):
+    def land(self, obj, pos, orn):
         """
         Land the robot or the object onto the floor, given a valid position and orientation
-        :param obj_type: string "robot" or "obj"
         :param obj: an instance of robot or object
         :param pos: position
         :param orn: orientation
         """
-        assert obj_type in ['robot', 'obj']
+        is_robot = isinstance(obj, BaseRobot)
 
         self.set_pos_orn_with_z_offset(obj, pos, orn)
 
-        if obj_type == 'robot':
+        if is_robot:
             obj.robot_specific_reset()
             obj.keep_still()
 
-        body_id = obj.robot_ids[0] if obj_type == 'robot' else obj.body_id
+        body_id = obj.robot_ids[0] if is_robot else obj.body_id
 
         land_success = False
         # land for maximum 1 second, should fall down ~5 meters
@@ -359,7 +358,7 @@ class iGibsonEnv(BaseEnv):
         if not land_success:
             print("WARNING: Failed to land")
 
-        if obj_type == 'robot':
+        if is_robot:
             obj.robot_specific_reset()
             obj.keep_still()
 

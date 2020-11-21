@@ -1,24 +1,10 @@
 from gibson2.tasks.point_nav_random_task import PointNavRandomTask
-from IPython import embed
-import pybullet as p
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.termination_conditions.max_collision import MaxCollision
-from gibson2.termination_conditions.timeout import Timeout
-from gibson2.termination_conditions.out_of_bound import OutOfBound
 from gibson2.termination_conditions.point_goal import PointGoal
 from gibson2.termination_conditions.reaching_goal import ReachingGoal
 from gibson2.reward_functions.point_goal_reward import PointGoalReward
 from gibson2.reward_functions.reaching_goal_reward import ReachingGoalReward
+from gibson2.utils.utils import l2_distance
 
-from gibson2.utils.utils import l2_distance, rotate_vector_3d, cartesian_to_polar
-from gibson2.objects.visual_marker import VisualMarker
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.robots.turtlebot_robot import Turtlebot
-
-
-import logging
-import random
 import numpy as np
 
 

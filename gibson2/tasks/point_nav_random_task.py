@@ -1,18 +1,7 @@
 from gibson2.tasks.point_nav_fixed_task import PointNavFixedTask
-from IPython import embed
+from gibson2.utils.utils import l2_distance
 import pybullet as p
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.termination_conditions.max_collision import MaxCollision
-from gibson2.termination_conditions.timeout import Timeout
-from gibson2.termination_conditions.out_of_bound import OutOfBound
-from gibson2.termination_conditions.point_goal import PointGoal
-from gibson2.utils.utils import l2_distance, rotate_vector_3d, cartesian_to_polar
-from gibson2.objects.visual_marker import VisualMarker
-
-
 import logging
-import random
 import numpy as np
 
 
@@ -57,9 +46,9 @@ class PointNavRandomTask(PointNavFixedTask):
             initial_pos, initial_orn, target_pos = \
                 self.sample_initial_pose_and_target_pos(env)
             reset_success = env.test_valid_position(
-                'robot', env.robots[0], initial_pos, initial_orn) and \
+                env.robots[0], initial_pos, initial_orn) and \
                 env.test_valid_position(
-                'robot', env.robots[0], target_pos)
+                    env.robots[0], target_pos)
             p.restoreState(state_id)
             if reset_success:
                 break
