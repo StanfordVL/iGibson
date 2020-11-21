@@ -32,10 +32,11 @@ pipeline {
                 sh 'pytest test/test_pbr.py --junitxml=test_result/test_pbr.py.xml'
                 sh 'pytest test/test_object.py --junitxml=test_result/test_object.py.xml'
                 sh 'pytest test/test_simulator.py --junitxml=test_result/test_simulator.py.xml'
-                sh 'pytest test/test_navigate_env.py --junitxml=test_result/test_navigate_env.py.xml'
+                sh 'pytest test/test_igibson_env.py --junitxml=test_result/test_igibson_env.py.xml'
                 sh 'pytest test/test_scene_importing.py --junitxml=test_result/test_scene_importing.py.xml'
                 sh 'pytest test/test_robot.py --junitxml=test_result/test_robot.py.xml'
                 sh 'pytest test/test_igsdf_scene_importing.py --junitxml=test_result/test_igsdf_scene_importing.py.xml'
+                sh 'pytest test/test_sensors.py --junitxml=test_result/test_sensors.py.xml'
             }
         }
 

@@ -70,24 +70,22 @@ class IndoorScene(Scene):
 
         self.floor_map = []
         self.floor_graph = []
-        for f in range(len(self.floor_heights)):
+        for floor in range(len(self.floor_heights)):
             if self.trav_map_type == 'with_obj':
                 trav_map = np.array(Image.open(
-                    os.path.join(maps_path,
-                                 'floor_trav_{}.png'.format(f))
+                    os.path.join(maps_path, 'floor_trav_{}.png'.format(floor))
                 ))
                 obstacle_map = np.array(Image.open(
-                    os.path.join(maps_path,
-                                 'floor_{}.png'.format(f))
+                    os.path.join(maps_path, 'floor_{}.png'.format(floor))
                 ))
             else:
                 trav_map = np.array(Image.open(
-                    os.path.join(maps_path,
-                                 'floor_trav_no_obj_{}.png'.format(f))
+                    os.path.join(
+                        maps_path, 'floor_trav_no_obj_{}.png'.format(floor))
                 ))
                 obstacle_map = np.array(Image.open(
-                    os.path.join(maps_path,
-                                 'floor_no_obj_{}.png'.format(f))
+                    os.path.join(
+                        maps_path, 'floor_no_obj_{}.png'.format(floor))
                 ))
             if self.trav_map_original_size is None:
                 height, width = trav_map.shape
@@ -104,42 +102,49 @@ class IndoorScene(Scene):
             trav_map[trav_map < 255] = 0
 
             if self.build_graph:
-                graph_file = os.path.join(
-                    maps_path, 'floor_trav_{}.p'.format(f))
-                if os.path.isfile(graph_file):
-                    logging.info("Loading traversable graph")
-                    with open(graph_file, 'rb') as pfile:
-                        g = pickle.load(pfile)
-                else:
-                    logging.info("Building traversable graph")
-                    g = nx.Graph()
-                    for i in range(self.trav_map_size):
-                        for j in range(self.trav_map_size):
-                            if trav_map[i, j] > 0:
-                                g.add_node((i, j))
-                                # 8-connected graph
-                                neighbors = [
-                                    (i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
-                                for n in neighbors:
-                                    if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and trav_map[n[0], n[1]] > 0:
-                                        g.add_edge(
-                                            n, (i, j), weight=l2_distance(n, (i, j)))
-
-                    # only take the largest connected component
-                    largest_cc = max(nx.connected_components(g), key=len)
-                    g = g.subgraph(largest_cc).copy()
-                    with open(graph_file, 'wb') as pfile:
-                        pickle.dump(g, pfile, protocol=pickle.HIGHEST_PROTOCOL)
-
-                self.floor_graph.append(g)
-                # update trav_map accordingly
-                trav_map[:, :] = 0
-                for node in g.nodes:
-                    trav_map[node[0], node[1]] = 255
-
+                self.build_trav_graph(maps_path, floor, trav_map)
             self.floor_map.append(trav_map)
 
-    def get_random_point(self, floor=None, random_height=False):
+    # TODO: refactor into C++ for speedup
+    def build_trav_graph(self, maps_path, floor, trav_map):
+        graph_file = os.path.join(maps_path, 'floor_trav_{}.p'.format(floor))
+        if os.path.isfile(graph_file):
+            logging.info("Loading traversable graph")
+            with open(graph_file, 'rb') as pfile:
+                g = pickle.load(pfile)
+        else:
+            logging.info("Building traversable graph")
+            g = nx.Graph()
+            for i in range(self.trav_map_size):
+                for j in range(self.trav_map_size):
+                    if trav_map[i, j] == 0:
+                        continue
+                    g.add_node((i, j))
+                    # 8-connected graph
+                    neighbors = [
+                        (i - 1, j - 1), (i, j - 1),
+                        (i + 1, j - 1), (i - 1, j)]
+                    for n in neighbors:
+                        if 0 <= n[0] < self.trav_map_size and \
+                            0 <= n[1] < self.trav_map_size and \
+                                trav_map[n[0], n[1]] > 0:
+                            g.add_edge(
+                                n, (i, j), weight=l2_distance(n, (i, j)))
+
+            # only take the largest connected component
+            largest_cc = max(nx.connected_components(g), key=len)
+            g = g.subgraph(largest_cc).copy()
+            with open(graph_file, 'wb') as pfile:
+                pickle.dump(g, pfile, protocol=pickle.HIGHEST_PROTOCOL)
+
+        self.floor_graph.append(g)
+
+        # update trav_map accordingly
+        trav_map[:, :] = 0
+        for node in g.nodes:
+            trav_map[node[0], node[1]] = 255
+
+    def get_random_point(self, floor=None):
         if floor is None:
             floor = self.get_random_floor()
         trav = self.floor_map[floor]
@@ -148,8 +153,6 @@ class IndoorScene(Scene):
         xy_map = np.array([trav_space[0][idx], trav_space[1][idx]])
         x, y = self.map_to_world(xy_map)
         z = self.floor_heights[floor]
-        if random_height:
-            z += np.random.uniform(0.4, 0.8)
         return floor, np.array([x, y, z])
 
     def map_to_world(self, xy):
