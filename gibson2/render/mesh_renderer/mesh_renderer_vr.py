@@ -1,4 +1,6 @@
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
+from gibson2.utils.mesh_util import lookat
+import numpy as np
 
 class MeshRendererVR(MeshRenderer):
     """
@@ -32,6 +34,8 @@ class MeshRendererVR(MeshRenderer):
             self.P = left_proj
             # Set camera to be at the camera position of the VR eye
             self.camera = left_cam_pos
+            # Set camera once for both VR eyes - use the right eye since this is what we save in data save and replay
+            self.set_light_position_direction([right_cam_pos[0], right_cam_pos[1], 10], [right_cam_pos[0], right_cam_pos[1], 0])
             
             super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
             self.vrsys.postRenderVRForEye("left", self.color_tex_rgb)
