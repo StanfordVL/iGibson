@@ -93,7 +93,7 @@ if optimize:
     s.optimize_vertex_and_texture()
 
 # Start user close to counter for interaction
-s.set_vr_offset([-0.5, 0.0, -0.5])
+s.set_vr_offset([-0.5, 0.0, 0])
 
 # State of mustard hiding, toggled by a menu press
 hide_mustard = False
@@ -131,17 +131,20 @@ while True:
             updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
             gaze_marker.set_position(updated_marker_pos)
 
+    if enable_vr_body:
+        if not r_is_valid:
+            # See VrBody class for more details on this method
+            vr_body.move_body(s, 0, 0, movement_speed, relative_movement_device)
+        else:
+            vr_body.move_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
+
     if r_is_valid:
         r_hand.move(r_trans, r_rot)
         r_hand.set_close_fraction(r_trig)
 
-        if enable_vr_body:
-            # See VrBody class for more details on this method
-            vr_body.move_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
-        else:
-            # Right hand used to control movement
-            # Move VR system based on device coordinate system and touchpad press location
-            move_player_no_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
+        # Right hand used to control movement
+        # Move VR system based on device coordinate system and touchpad press location
+        move_player_no_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
 
         # Trigger haptic pulse on right touchpad, modulated by trigger close fraction
         # Close the trigger to create a stronger pulse

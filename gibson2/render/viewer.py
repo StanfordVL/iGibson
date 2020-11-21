@@ -3,12 +3,14 @@ import random
 import subprocess
 from threading import Thread
 import logging
+import time
 
 import cv2
 import numpy as np
 import pybullet as p
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
+from gibson2.utils.utils import rotate_vector_2d
 
 class ViewerVR:
     def __init__(self):
@@ -18,8 +20,29 @@ class ViewerVR:
         self.renderer.render()
         # Viewer is responsible for calling companion window rendering function
         self.renderer.render_companion_window()
-from gibson2.utils.utils import rotate_vector_2d
-import time
+
+
+class ViewerSimple:
+    """Viewer class that just renders - V and P matrices are updated using the VRLogger."""
+    def __init__(self,
+                 simulator = None,
+                 renderer = None,
+                 ):
+        self.renderer = renderer
+        self.simulator = simulator
+
+        cv2.namedWindow('ExternalView')
+        cv2.moveWindow("ExternalView", 0,0)
+        
+    def update(self):
+        if not self.renderer is None:
+            frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=('rgb')), axis=1),
+                                 cv2.COLOR_RGB2BGR)
+        else:
+            frame = np.zeros((300, 300, 3)).astype(np.uint8)
+
+        cv2.imshow('Renderer Output', frame)
+        q = cv2.waitKey(1)
 
 
 class Viewer:
