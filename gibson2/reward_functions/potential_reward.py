@@ -1,4 +1,3 @@
-from abc import abstractmethod, ABC
 from gibson2.reward_functions.reward_function_base import BaseRewardFunction
 
 

@@ -6,7 +6,6 @@ from gibson2.utils.assets_utils import download_assets, download_demo_data
 
 
 def test_env():
-    print("Test env")
     download_assets()
     download_demo_data()
     config_filename = os.path.join(
@@ -47,3 +46,32 @@ def test_env_reload():
                     break
     finally:
         env.close()
+
+
+def test_env_reset():
+    download_assets()
+    download_demo_data()
+    config_filename = os.path.join(
+        gibson2.root_path, '../test/test_house.yaml')
+    env = iGibsonEnv(config_file=config_filename, mode='headless')
+
+    class DummyTask(object):
+        def __init__(self):
+            self.reset_scene_called = False
+            self.reset_agent_called = False
+            self.get_task_obs_called = False
+
+        def get_task_obs(self, env):
+            self.get_task_obs_called = True
+
+        def reset_scene(self, env):
+            self.reset_scene_called = True
+
+        def reset_agent(self, env):
+            self.reset_agent_called = True
+
+    env.task = DummyTask()
+    env.reset()
+    assert env.task.reset_scene_called
+    assert env.task.reset_agent_called
+    assert env.task.get_task_obs_called

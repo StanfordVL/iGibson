@@ -1,5 +1,4 @@
 from gibson2.tasks.task_base import BaseTask
-from IPython import embed
 import pybullet as p
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.termination_conditions.max_collision import MaxCollision
@@ -8,7 +7,6 @@ from gibson2.termination_conditions.out_of_bound import OutOfBound
 from gibson2.reward_functions.potential_reward import PotentialReward
 
 import logging
-import random
 import numpy as np
 
 
@@ -72,7 +70,7 @@ class RoomRearrangementTask(BaseTask):
         for _ in range(max_trials):
             initial_pos, initial_orn = self.sample_initial_pose(env)
             reset_success = env.test_valid_position(
-                'robot', env.robots[0], initial_pos, initial_orn)
+                env.robots[0], initial_pos, initial_orn)
             p.restoreState(state_id)
             if reset_success:
                 break
@@ -80,7 +78,7 @@ class RoomRearrangementTask(BaseTask):
         if not reset_success:
             logging.warning("WARNING: Failed to reset robot without collision")
 
-        env.land('robot', env.robots[0], initial_pos, initial_orn)
+        env.land(env.robots[0], initial_pos, initial_orn)
         p.removeState(state_id)
 
         for reward_function in self.reward_functions:
