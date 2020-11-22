@@ -74,6 +74,7 @@ class Simulator:
         self.auto_sync = auto_sync
         self.optimized_renderer = rendering_settings.optimized
         self.rendering_settings = rendering_settings
+        self.viewer = None
         self.load()
 
         self.class_name_to_class_id = get_class_name_to_class_id()
@@ -192,7 +193,7 @@ class Simulator:
                 if scene.objects_by_id[body_id].category == 'ceilings':
                     shadow_caster = False
                 class_id = self.class_name_to_class_id.get(
-                    scene.objects_by_id[body_id].category, 3)
+                    scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
                 self.load_articulated_object_in_renderer(
                     body_id,
                     class_id=class_id,
@@ -210,7 +211,7 @@ class Simulator:
                 if scene.objects_by_id[body_id].category == 'ceilings':
                     shadow_caster = False
                 class_id = self.class_name_to_class_id.get(
-                    scene.objects_by_id[body_id].category, 3)
+                    scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
                 self.load_articulated_object_in_renderer(
                     body_id,
                     class_id=body_id,
