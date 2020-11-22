@@ -1,11 +1,17 @@
 # scene
-scene: gibson
-scene_id: Rs
+scene: igibson
+scene_id: Rs_int
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
+trav_map_type: no_obj
 trav_map_resolution: 0.1
 trav_map_erosion: 2
+should_open_all_doors: true
+
+# domain randomization
+texture_randomization_freq: null
+object_randomization_freq: null
 
 # robot
 robot: Turtlebot

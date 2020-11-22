@@ -574,6 +574,12 @@ class URDFObject(Object):
             self.body_ids.append(body_id)
         return self.body_ids
 
+    def force_wakeup(self):
+        for body_id in self.body_ids:
+            for joint_id in range(p.getNumJoints(body_id)):
+                p.changeDynamics(body_id, joint_id,
+                                 activationState=p.ACTIVATION_STATE_WAKE_UP)
+
     def reset(self):
         for idx in range(len(self.body_ids)):
             body_id = self.body_ids[idx]

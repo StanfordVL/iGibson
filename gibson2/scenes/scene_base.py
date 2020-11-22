@@ -1,11 +1,3 @@
-import os
-import inspect
-
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-os.sys.path.insert(0, parentdir)
-
-
 class Scene:
     """
     Base class for all Scene objects
@@ -13,7 +5,6 @@ class Scene:
     """
 
     def __init__(self):
-        self.is_interactive = False  # TODO: remove, it is deprecated
         self.build_graph = False  # Indicates if a graph for shortest path has been built
         self.floor_body_ids = []  # List of ids of the floor_heights
 
@@ -34,11 +25,10 @@ class Scene:
         """
         return 0
 
-    def get_random_point(self, floor=None, random_height=False):
+    def get_random_point(self, floor=None):
         """
         Sample a random valid location in the given floor
         :param floor: integer indicating the floor, or None if randomly sampled
-        :param random_height: if the height should be randomly sampled or not
         :return: A tuple of random floor and random valid point (3D) in that floor
         """
         raise NotImplementedError()
@@ -62,13 +52,3 @@ class Scene:
         """
         del floor
         return 0.0
-
-    def reset_floor(self, floor=0, additional_elevation=0.02, height=None):
-        """
-        Resets the ground plane to a new floor
-        :param floor: Integer identifying the floor to move the ground plane to
-        :param additional_elevation: Additional elevation with respect to the height of the floor
-        :param height: Alternative parameter to control directly the height of the ground plane
-        :return: None
-        """
-        return
