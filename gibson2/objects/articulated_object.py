@@ -12,9 +12,7 @@ import trimesh
 
 from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import RandomizedMaterial
-
-from IPython import embed
+from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 
 
 class ArticulatedObject(Object):
