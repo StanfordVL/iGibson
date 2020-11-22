@@ -41,8 +41,8 @@ def test_scan_sensor():
     config_filename = os.path.join(
         gibson2.root_path, '../test/test_house.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='headless')
-    scan_sensor = ScanSensor(env)
-    scan_obs = scan_sensor.get_obs(env)
+    scan_sensor = ScanSensor(env, ['scan'])
+    scan_obs = scan_sensor.get_obs(env)['scan']
 
     assert scan_obs.shape == (scan_sensor.n_horizontal_rays,
                               scan_sensor.n_vertical_beams)

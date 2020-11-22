@@ -116,6 +116,8 @@ class iGibsonEnv(BaseEnv):
         observation_space = OrderedDict()
         sensors = OrderedDict()
         vision_modalities = []
+        scan_modalities = []
+
         if 'task_obs' in self.output:
             observation_space['task_obs'] = self.build_obs_space(
                 shape=(self.task.task_obs_dim,), low=-np.inf, high=-np.inf)
@@ -156,10 +158,16 @@ class iGibsonEnv(BaseEnv):
             observation_space['scan'] = self.build_obs_space(
                 shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
                 low=0.0, high=1.0)
-            sensors['scan'] = ScanSensor(self)
+            scan_modalities.append('scan')
+
+
+
 
         if len(vision_modalities) > 0:
             sensors['vision'] = VisionSensor(self, vision_modalities)
+
+        if len(scan_modalities) > 0:
+            sensors['scan_occ'] = ScanSensor(self, scan_modalities)
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.sensors = sensors
@@ -201,8 +209,10 @@ class iGibsonEnv(BaseEnv):
             vision_obs = self.sensors['vision'].get_obs(self)
             for modality in vision_obs:
                 state[modality] = vision_obs[modality]
-        if 'scan' in self.sensors:
-            state['scan'] = self.sensors['scan'].get_obs(self)
+        if 'scan_occ' in self.sensors:
+            scan_obs = self.sensors['scan_occ'].get_obs(self)
+            for modality in scan_obs:
+                state[modality] = scan_obs[modality]
 
         return state
 
