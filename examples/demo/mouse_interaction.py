@@ -25,7 +25,7 @@ def test_import_igsdf():
 
     scene = InteractiveIndoorScene(
         'Beechwood_0_int', texture_randomization=False, object_randomization=False)
-    scene._set_first_n_objects(10)
+    #scene._set_first_n_objects(10)
     settings = MeshRendererSettings(env_texture_filename=hdr_texture,
                                     env_texture_filename2=hdr_texture2,
                                     env_texture_filename3=background_texture,
