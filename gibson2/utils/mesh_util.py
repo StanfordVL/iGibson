@@ -49,6 +49,7 @@ def ortho(left, right, bottom, top, znear, zfar):
 
 def perspective(fovy, aspect, znear, zfar):
     """Create perspective projection matrix."""
+    # fovy is in degree
     assert znear != zfar
     h = np.tan(fovy / 360.0 * np.pi) * znear
     w = h * aspect

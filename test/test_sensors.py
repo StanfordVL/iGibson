@@ -3,6 +3,7 @@ from gibson2.envs.igibson_env import iGibsonEnv
 from gibson2.utils.assets_utils import download_assets, download_demo_data
 from gibson2.sensors.scan_sensor import ScanSensor
 from gibson2.sensors.vision_sensor import VisionSensor
+from gibson2.sensors.velodyne_sensor import VelodyneSensor
 import numpy as np
 import os
 
@@ -47,3 +48,13 @@ def test_scan_sensor():
     assert scan_obs.shape == (scan_sensor.n_horizontal_rays,
                               scan_sensor.n_vertical_beams)
     assert np.all(0 <= scan_obs) and np.all(scan_obs <= 1.0)
+
+def test_velodyne():
+    download_assets()
+    download_demo_data()
+    config_filename = os.path.join(
+        gibson2.root_path, '../test/test_house.yaml')
+    env = iGibsonEnv(config_file=config_filename, mode='headless')
+    velodyne_sensor = VelodyneSensor(env)
+    velodyne_obs = velodyne_sensor.get_obs(env)
+    assert(velodyne_obs.shape[1] == 3)
