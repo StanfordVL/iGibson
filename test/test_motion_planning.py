@@ -22,7 +22,7 @@ def test_occupancy_grid():
     ts = nav_env.step(action)
     assert np.sum(ts[0]['occupancy_grid'] == 0) > 0
     assert np.sum(ts[0]['occupancy_grid'] == 1) > 0
-    plt.imshow(ts[0]['occupancy_grid'])
+    plt.imshow(ts[0]['occupancy_grid'][:,:,0])
     plt.colorbar()
     plt.savefig('occupancy_grid.png')
     nav_env.clean()
