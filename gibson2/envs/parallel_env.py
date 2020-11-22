@@ -10,7 +10,6 @@ import os
 
 class ParallelNavEnv(NavigationEnv):
     """Batch together environments and simulate them in external processes.
-
   The environments are created in external processes by calling the provided
   callables. This can be an environment class, or a function creating the
   environment and potentially wrapping it. The returned environment should not
@@ -19,16 +18,13 @@ class ParallelNavEnv(NavigationEnv):
 
     def __init__(self, env_constructors, blocking=False, flatten=False):
         """Batch together environments and simulate them in external processes.
-
     The environments can be different but must use the same action and
     observation specs.
-
     Args:
       env_constructors: List of callables that create environments.
       blocking: Whether to step environments one after another.
       flatten: Boolean, whether to use flatten action and time_steps during
         communication to reduce overhead.
-
     Raises:
       ValueError: If the action or observation specs don't match.
     """
@@ -56,7 +52,6 @@ class ParallelNavEnv(NavigationEnv):
 
     def reset(self):
         """Reset all environments and combine the resulting observation.
-
     Returns:
       Time step with batch dimension.
     """
@@ -67,13 +62,10 @@ class ParallelNavEnv(NavigationEnv):
 
     def step(self, actions):
         """Forward a batch of actions to the wrapped environments.
-
     Args:
       actions: Batched action, possibly nested, to apply to the environment.
-
     Raises:
       ValueError: Invalid actions.
-
     Returns:
       Batch of observations, rewards, and done flags.
     """
@@ -99,39 +91,6 @@ class ParallelNavEnv(NavigationEnv):
         if not self._blocking:
             time_steps = [promise() for promise in time_steps]
         return time_steps
-
-    #def _stack_time_steps(self, time_steps):
-    #  """Given a list of TimeStep, combine to one with a batch dimension."""
-    #  if self._flatten:
-    #    return fast_map_structure_flatten(lambda *arrays: np.stack(arrays),
-    #                                      self._time_step_spec,
-    #                                      *time_steps)
-    #  else:
-    #    return fast_map_structure(lambda *arrays: np.stack(arrays), *time_steps)
-
-    #def _unstack_actions(self, batched_actions):
-    #  """Returns a list of actions from potentially nested batch of actions."""
-    #  flattened_actions = nest.flatten(batched_actions)
-    #  if self._flatten:
-    #    unstacked_actions = zip(*flattened_actions)
-    #  else:
-    #    unstacked_actions = [nest.pack_sequence_as(batched_actions, actions)
-    #                         for actions in zip(*flattened_actions)]
-    #  return unstacked_actions
-
-
-## TODO(sguada) Move to utils.
-#def fast_map_structure_flatten(func, structure, *flat_structure):
-#  entries = zip(*flat_structure)
-#  return nest.pack_sequence_as(structure, [func(*x) for x in entries])
-
-#def fast_map_structure(func, *structure):
-#  flat_structure = [nest.flatten(s) for s in structure]
-#  entries = zip(*flat_structure)
-
-#  return nest.pack_sequence_as(
-#      structure[0], [func(*x) for x in entries])
-
 
 class ProcessPyEnvironment(object):
     """Step a single env in a separate process for lock free paralellism."""
