@@ -5,7 +5,7 @@ import os
 from gibson2.utils.assets_utils import download_assets, download_demo_data
 from gibson2.utils.motion_planning_wrapper import MotionPlanningWrapper
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 def test_occupancy_grid():
     print("Test env")
@@ -22,7 +22,9 @@ def test_occupancy_grid():
     ts = nav_env.step(action)
     assert np.sum(ts[0]['occupancy_grid'] == 0) > 0
     assert np.sum(ts[0]['occupancy_grid'] == 1) > 0
-
+    plt.imshow(ts[0]['occupancy_grid'])
+    plt.colorbar()
+    plt.savefig('occupancy_grid.png')
     nav_env.clean()
 
 
