@@ -37,6 +37,7 @@ pipeline {
                 sh 'pytest test/test_robot.py --junitxml=test_result/test_robot.py.xml'
                 sh 'pytest test/test_igsdf_scene_importing.py --junitxml=test_result/test_igsdf_scene_importing.py.xml'
                 sh 'pytest test/test_sensors.py --junitxml=test_result/test_sensors.py.xml'
+                sh 'pytest test/test_motion_planning.py --junitxml=test_result/test_motion_planning.py.xml'
             }
         }
 

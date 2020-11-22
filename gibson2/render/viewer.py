@@ -42,7 +42,7 @@ class Viewer:
         self.cid = []
 
         # Flag to control if the mouse interface is in navigation or manipulation mode
-        self.manipulation_mode = False
+        self.manipulation_mode = 0
 
         # Video recording
         self.recording = False  # Boolean if we are recording frames from the viewer
@@ -54,6 +54,12 @@ class Viewer:
         cv2.namedWindow('RobotView')
         cv2.setMouseCallback('ExternalView', self.change_dir)
         self.create_visual_object()
+        self.planner = None
+        self.block_command = False
+
+
+    def setup_motion_planner(self, planner: None):
+        self.planner = planner
 
     def create_visual_object(self):
         self.constraint_marker = VisualMarker(
@@ -149,6 +155,32 @@ class Viewer:
             self.cid.append(cid)
             self.interaction_x, self.interaction_y = x, y
 
+    def get_hit(self, x, y):
+        camera_pose = np.array([self.px, self.py, self.pz])
+        self.renderer.set_camera(
+            camera_pose, camera_pose + self.view_direction, self.up)
+        # #pos = self.renderer.get_3d_point(x,y)
+        # frames = self.renderer.render(modes=('3d'))
+        # position_cam_org = frames[0][y, x]
+
+        position_cam = np.array([(x - self.renderer.width / 2) / float(self.renderer.width / 2) * np.tan(
+            self.renderer.horizontal_fov / 2.0 / 180.0 * np.pi),
+                                 -(y - self.renderer.height / 2) / float(self.renderer.height / 2) * np.tan(
+                                     self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
+                                 -1,
+                                 1])
+        position_cam[:3] *= 5
+
+        print(position_cam)
+        position_world = np.linalg.inv(self.renderer.V).dot(position_cam)
+        position_eye = camera_pose
+        res = p.rayTest(position_eye, position_world[:3])
+        hit_pos = None
+        hit_normal = None
+        if len(res) > 0 and res[0][0] != -1:
+            object_id, link_id, _, hit_pos, hit_normal = res[0]
+        return hit_pos, hit_normal
+
     def remove_constraint(self):
         for cid in self.cid:
             p.removeConstraint(cid)
@@ -203,7 +235,7 @@ class Viewer:
         self.constraint_marker2.set_position(position_world[:3])
 
     def change_dir(self, event, x, y, flags, param):
-        if not self.manipulation_mode:
+        if self.manipulation_mode == 0:
             if flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_CTRLKEY and not self.right_down:
                 # Only once, when pressing left mouse while cntrl key is pressed
                 self._mouse_ix, self._mouse_iy = x, y
@@ -264,7 +296,7 @@ class Viewer:
                     self.py += (motion_along_vx[1] + motion_along_vy[1])
                     self.pz += (motion_along_vx[2] + motion_along_vy[2])
                     self.pz = max(self.min_cam_z, self.pz)
-        else:
+        elif self.manipulation_mode == 1:
             if (event == cv2.EVENT_MBUTTONDOWN) or (flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down):
                 # Middle mouse button press or only once, when pressing left mouse while shift key is pressed (Mac
                 # compatibility)
@@ -293,6 +325,38 @@ class Viewer:
                 elif (self.left_down or self.middle_down) and flags & cv2.EVENT_FLAG_CTRLKEY:
                     dy = (y - self._mouse_iy) / 500.0
                     self.move_constraint_z(dy)
+        elif self.manipulation_mode == 2 and not self.block_command:
+            if event == cv2.EVENT_LBUTTONDOWN:  # left mouse button press
+                self._mouse_ix, self._mouse_iy = x, y
+                self.left_down = True
+                self.hit_pos, _ = self.get_hit(x, y)
+
+            if event == cv2.EVENT_LBUTTONUP:
+                hit_pos, _ = self.get_hit(x, y)
+                target_yaw = np.arctan2(hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
+                self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
+                self.left_down = False
+                if hit_pos is not None:
+                    self.block_command = True
+                    plan = self.planner.plan_base_motion([self.hit_pos[0], self.hit_pos[1], target_yaw])
+                    print(plan)
+                    if plan is not None and len(plan) > 0:
+                        self.planner.dry_run_base_plan(plan)
+                    self.block_command = False
+
+            if event == cv2.EVENT_MOUSEMOVE:
+                if self.left_down:
+                    hit_pos, _ = self.get_hit(x, y)
+                    target_yaw = np.arctan2(hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
+                    self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
+
+            if event == cv2.EVENT_MBUTTONDOWN:
+                hit_pos, hit_normal = self.get_hit(x, y)
+                if hit_pos is not None:
+                    self.block_command = True
+                    plan = self.planner.plan_arm_push(hit_pos, -np.array(hit_normal))
+                    self.planner.execute_arm_push(plan, hit_pos, -np.array(hit_normal))
+                    self.block_command = False
 
     def update(self):
         camera_pose = np.array([self.px, self.py, self.pz])
@@ -312,7 +376,7 @@ class Viewer:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, cv2.LINE_AA)
         cv2.putText(frame, "[{:1.1f} {:1.1f} {:1.1f}]".format(*self.view_direction), (10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, cv2.LINE_AA)
-        cv2.putText(frame, ["nav mode", "manip mode"][self.manipulation_mode], (10, 60),
+        cv2.putText(frame, ["nav mode", "manip mode", "planning mode"][self.manipulation_mode], (10, 60),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, cv2.LINE_AA)
         if self.show_help >= 0:
             if self.show_help >= 150:
@@ -396,22 +460,22 @@ class Viewer:
             move_vec = rotate_vector_2d(move_vec, yaw)
             self.px += move_vec[0]
             self.py += move_vec[1]
-            if self.manipulation_mode:
+            if self.manipulation_mode == 1:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
         elif q == ord('q'):
             self.theta += np.pi/32
             self.view_direction = np.array([np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(
                 self.phi), np.sin(self.phi)])
-            if self.manipulation_mode:
+            if self.manipulation_mode == 1:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
         elif q == ord('e'):
             self.theta -= np.pi/64
             self.view_direction = np.array([np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(
                 self.phi), np.sin(self.phi)])
-            if self.manipulation_mode:
+            if self.manipulation_mode == 1:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
         elif q == 27:
-            if self.video_folder is not "":
+            if self.video_folder != "":
                 logging.info("You recorded a video. To compile the frames into a mp4 go to the corresponding subfolder" +
                              " in /tmp and execute: ")
                 logging.info(
@@ -439,16 +503,10 @@ class Viewer:
             else:
                 self.pause_recording = True
         elif q == ord('m'):  # Switch between Manipulation and Navigation modes
-            if self.manipulation_mode:
-                self.left_down = False
-                self.middle_down = False
-                self.right_down = False
-                self.manipulation_mode = False
-            else:
-                self.left_down = False
-                self.middle_down = False
-                self.right_down = False
-                self.manipulation_mode = True
+            self.left_down = False
+            self.middle_down = False
+            self.right_down = False
+            self.manipulation_mode = (self.manipulation_mode + 1) % 3
 
         if self.recording and not self.pause_recording:
             cv2.imwrite(os.path.join(self.video_folder, '{:05d}.png'.format(self.frame_idx)),
