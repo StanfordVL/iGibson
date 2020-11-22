@@ -4,6 +4,16 @@ import argparse
 import random
 import subprocess
 import json
+from collections import defaultdict
+
+def get_ig_category_ids():
+    ig_dataset_path = gibson2.ig_dataset_path
+    ig_categories_files = os.path.join(ig_dataset_path, 'metadata', 'categories.txt')
+    name_to_id = {}
+    with open(ig_categories_files, 'r') as fp:
+        for i,l in enumerate(fp.readlines()):
+            name_to_id[l.rstrip()] = i
+    return defaultdict(lambda : 255, name_to_id)
 
 
 def get_ig_scene_path(scene_name):

@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 import random
 import json
-from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path
+from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids
 from IPython import embed
 from PIL import Image
 
@@ -73,6 +73,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.objects_by_category = {}
         self.objects_by_name = {}
         self.objects_by_id = {}
+        self.category_ids = get_ig_category_ids()
 
         # Current time string to use to save the temporal urdfs
         timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -768,3 +769,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
             return None
         else:
             return self.room_ins_id_to_ins_name[ins_id]
+
+    def get_body_ids(self):
+        ids = []
+        for obj_name in self.objects_by_name:
+            if self.objects_by_name[obj_name].body_id is not None:
+                ids.extend(self.objects_by_name[obj_name].body_id)
+        return ids
