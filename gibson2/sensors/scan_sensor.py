@@ -4,7 +4,7 @@ from gibson2.sensors.dropout_sensor_noise import DropoutSensorNoise
 import numpy as np
 from transforms3d.quaternions import quat2mat
 import pybullet as p
-
+import cv2
 
 class ScanSensor(BaseSensor):
     def __init__(self, env, modalities):
@@ -24,6 +24,75 @@ class ScanSensor(BaseSensor):
         self.noise_model = DropoutSensorNoise(env)
         self.noise_model.set_noise_rate(self.scan_noise_rate)
         self.noise_model.set_noise_value(1.0)
+
+        self.laser_pose = env.robots[0].parts[self.laser_link_name].get_pose()
+        self.base_pose = env.robots[0].parts['base_link'].get_pose()
+
+        if 'occupancy_grid' in self.modalities:
+            self.grid_resolution = self.config.get('grid_resolution', 128)
+            self.occupancy_range = self.config.get('occupancy_range', 5)  # m
+            self.robot_footprint_radius = self.config.get('robot_footprint_radius', 0.32)
+            self.robot_footprint_radius_in_map = int(
+                self.robot_footprint_radius / self.occupancy_range *
+                self.grid_resolution)
+
+    def get_local_occupancy_grid(self, scan):
+
+        laser_linear_range = self.laser_linear_range
+        laser_angular_range = self.laser_angular_range
+        min_laser_dist = self.min_laser_dist
+        laser_link_name = self.laser_link_name
+
+        laser_angular_half_range = laser_angular_range / 2.0
+
+
+        angle = np.arange(
+            -np.radians(laser_angular_half_range),
+            np.radians(laser_angular_half_range),
+            np.radians(laser_angular_range) / self.n_horizontal_rays
+        )
+        unit_vector_laser = np.array(
+            [[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+
+
+        scan_laser = unit_vector_laser * \
+                     (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
+
+        laser_translation = self.laser_pose[:3]
+        laser_rotation = quat2mat(
+            [self.laser_pose[6], self.laser_pose[3], self.laser_pose[4], self.laser_pose[5]])
+        scan_world = laser_rotation.dot(scan_laser.T).T + laser_translation
+
+        base_translation = self.base_pose[:3]
+        base_rotation = quat2mat(
+            [self.base_pose[6], self.base_pose[3], self.base_pose[4], self.base_pose[5]])
+        scan_local = base_rotation.T.dot((scan_world - base_translation).T).T
+        scan_local = scan_local[:, :2]
+        scan_local = np.concatenate(
+            [np.array([[0, 0]]), scan_local, np.array([[0, 0]])], axis=0)
+
+        # flip y axis
+        scan_local[:, 1] *= -1
+
+        occupancy_grid = np.zeros(
+            (self.grid_resolution, self.grid_resolution)).astype(np.uint8)
+        scan_local_in_map = scan_local / self.occupancy_range * \
+                            self.grid_resolution + (self.grid_resolution / 2)
+        scan_local_in_map = scan_local_in_map.reshape(
+            (1, -1, 1, 2)).astype(np.int32)
+
+        cv2.fillPoly(img=occupancy_grid,
+                     pts=scan_local_in_map,
+                     color=True,
+                     lineType=1)
+        cv2.circle(img=occupancy_grid,
+                   center=(self.grid_resolution // 2,
+                           self.grid_resolution // 2),
+                   radius=int(self.robot_footprint_radius_in_map),
+                   color=1,
+                   thickness=-1)
+
+        return occupancy_grid[:, :, None].astype(np.float32)
 
     def get_obs(self, env):
         """
@@ -55,4 +124,6 @@ class ScanSensor(BaseSensor):
 
         state = {}
         state['scan'] = scan
+        if 'occupancy_grid' in self.modalities:
+            state['occupancy_grid'] = self.get_local_occupancy_grid(scan)
         return state

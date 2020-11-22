@@ -159,9 +159,14 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.n_horizontal_rays * self.n_vertical_beams, 1),
                 low=0.0, high=1.0)
             scan_modalities.append('scan')
-
-
-
+        if 'occupancy_grid' in self.output:
+            self.grid_resolution = self.config.get('grid_resolution', 128)
+            self.occupancy_grid_space = gym.spaces.Box(low=0.0,
+                                                       high=1.0,
+                                                       shape=(self.grid_resolution,
+                                                              self.grid_resolution, 1))
+            observation_space['occupancy_grid'] = self.occupancy_grid_space
+            scan_modalities.append('occupancy_grid')
 
         if len(vision_modalities) > 0:
             sensors['vision'] = VisionSensor(self, vision_modalities)
