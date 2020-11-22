@@ -571,6 +571,7 @@ class MeshRendererSettings(object):
                  fullscreen=False,
                  glfw_gl_version=None,
                  texture_scale=1.0,
+                 hide_robot=True,
                  ):
         self.use_fisheye = use_fisheye
         self.msaa = msaa
@@ -585,6 +586,8 @@ class MeshRendererSettings(object):
         self.enable_pbr = enable_pbr
         self.fullscreen = fullscreen
         self.texture_scale = texture_scale
+        self.hide_robot=hide_robot
+
         if glfw_gl_version is not None:
             self.glfw_gl_version = glfw_gl_version
         else:
@@ -1449,7 +1452,10 @@ class MeshRenderer(object):
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos +
                                 view_direction, [0, 0, 1])
-                for item in self.render(modes=modes):
+                hidden_instances = []
+                if self.rendering_settings.hide_robot:
+                    hidden_instances.append(instance)
+                for item in self.render(modes=modes, hidden=hidden_instances):
                     frames.append(item)
         return frames
 

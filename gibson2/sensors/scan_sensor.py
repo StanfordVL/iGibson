@@ -7,8 +7,9 @@ import pybullet as p
 
 
 class ScanSensor(BaseSensor):
-    def __init__(self, env):
+    def __init__(self, env, modalities):
         super(ScanSensor, self).__init__(env)
+        self.modalities = modalities
         self.scan_noise_rate = self.config.get('scan_noise_rate', 0.0)
         self.n_horizontal_rays = self.config.get('n_horizontal_rays', 128)
         self.n_vertical_beams = self.config.get('n_vertical_beams', 1)
@@ -51,4 +52,7 @@ class ScanSensor(BaseSensor):
         hit_fraction = np.array([item[2] for item in results])
         hit_fraction = self.noise_model.add_noise(hit_fraction)
         scan = np.expand_dims(hit_fraction, 1)
-        return scan
+
+        state = {}
+        state['scan'] = scan
+        return state
