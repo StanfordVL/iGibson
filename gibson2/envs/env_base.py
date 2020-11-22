@@ -146,6 +146,7 @@ class BaseEnv(gym.Env):
                 trav_map_resolution=self.config.get(
                     'trav_map_resolution', 0.1),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
+                trav_map_type=self.config.get('trav_map_type', 'with_obj'),
                 pybullet_load_texture=self.config.get(
                     'pybullet_load_texture', False),
                 texture_randomization=self.texture_randomization_freq is not None,
@@ -153,7 +154,11 @@ class BaseEnv(gym.Env):
                 object_randomization_idx=self.object_randomization_idx,
                 should_open_all_doors=self.config.get(
                     'should_open_all_doors', False),
-                trav_map_type=self.config.get('trav_map_type', 'with_obj'),
+                load_object_categories=self.config.get(
+                    'load_object_categories', None),
+                load_room_types=self.config.get('load_room_types', None),
+                load_room_instances=self.config.get(
+                    'load_room_instances', None),
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
             self.simulator.import_ig_scene(scene)
@@ -191,6 +196,12 @@ class BaseEnv(gym.Env):
         """
         if self.simulator is not None:
             self.simulator.disconnect()
+
+    def close(self):
+        """
+        Synonymous function with clean
+        """
+        self.clean()
 
     def simulator_step(self):
         """

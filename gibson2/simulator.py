@@ -1,4 +1,5 @@
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
+from gibson2.utils.semantics_utils import get_class_name_to_class_id, SemanticClass
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer
@@ -9,7 +10,7 @@ import os
 import numpy as np
 import platform
 import logging
-from IPython import embed
+
 
 class Simulator:
     def __init__(self,
@@ -24,7 +25,6 @@ class Simulator:
                  render_to_tensor=False,
                  auto_sync=True,
                  rendering_settings=MeshRendererSettings()):
-
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
         both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
@@ -47,7 +47,7 @@ class Simulator:
         self.render_timestep = render_timestep
         self.mode = mode
 
-        #Todo: eliminate this
+        # TODO: remove this, currently used for testing only
         self.objects = []
 
         plt = platform.system()
@@ -75,6 +75,8 @@ class Simulator:
         self.optimized_renderer = rendering_settings.optimized
         self.rendering_settings = rendering_settings
         self.load()
+
+        self.class_name_to_class_id = get_class_name_to_class_id()
 
     def set_timestep(self, physics_timestep, render_timestep):
         """
@@ -110,11 +112,10 @@ class Simulator:
                                             rendering_settings=self.rendering_settings)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
-                                     height=self.image_height,
-                                     vertical_fov=self.vertical_fov,
-                                     device_idx=self.device_idx,
-                                     rendering_settings=self.rendering_settings)
-
+                                         height=self.image_height,
+                                         vertical_fov=self.vertical_fov,
+                                         device_idx=self.device_idx,
+                                         rendering_settings=self.rendering_settings)
 
         print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:
@@ -129,7 +130,6 @@ class Simulator:
         self.visual_objects = {}
         self.robots = []
         self.scene = None
-        self.next_class_id = 0
 
         if self.use_ig_renderer and not self.render_to_tensor:
             self.add_viewer()
@@ -151,7 +151,7 @@ class Simulator:
                      texture_scale=1.0,
                      load_texture=True,
                      render_floor_plane=False,
-                     class_id=None,
+                     class_id=SemanticClass.SCENE_OBJS,
                      ):
         """
         Import a scene into the simulator. A scene could be a synthetic one or a realistic Gibson Environment.
@@ -186,16 +186,16 @@ class Simulator:
         self.objects += new_object_ids
         if scene.texture_randomization:
             # use randomized texture
-
-
             for body_id, visual_mesh_to_material in \
                     zip(new_object_ids, scene.visual_mesh_to_material):
                 shadow_caster = True
                 if scene.objects_by_id[body_id].category == 'ceilings':
                     shadow_caster = False
-
+                class_id = self.class_name_to_class_id.get(
+                    scene.objects_by_id[body_id].category, 3)
                 self.load_articulated_object_in_renderer(
-                    body_id, class_id=body_id,
+                    body_id,
+                    class_id=class_id,
                     visual_mesh_to_material=visual_mesh_to_material,
                     shadow_caster=shadow_caster)
         else:
@@ -204,24 +204,27 @@ class Simulator:
                 use_pbr = True
                 use_pbr_mapping = True
                 shadow_caster = True
-
                 if scene.objects_by_id[body_id].category in ['walls', 'floors', 'ceilings']:
                     use_pbr = False
                     use_pbr_mapping = False
                 if scene.objects_by_id[body_id].category == 'ceilings':
                     shadow_caster = False
-                self.load_articulated_object_in_renderer(body_id, class_id=body_id,
-                                                         use_pbr=use_pbr,
-                                                         use_pbr_mapping=use_pbr_mapping,
-                                                         shadow_caster=shadow_caster)
+                class_id = self.class_name_to_class_id.get(
+                    scene.objects_by_id[body_id].category, 3)
+                self.load_articulated_object_in_renderer(
+                    body_id,
+                    class_id=body_id,
+                    use_pbr=use_pbr,
+                    use_pbr_mapping=use_pbr_mapping,
+                    shadow_caster=shadow_caster)
         self.scene = scene
 
         return new_object_ids
 
     @load_without_pybullet_vis
-    def import_object(self, obj, class_id=None, use_pbr=True, use_pbr_mapping=True, shadow_caster=True):
+    def import_object(self, obj, class_id=SemanticClass.USER_ADDED_OBJS, use_pbr=True, use_pbr_mapping=True, shadow_caster=True):
         """
-        Import a non-articulated object into the simulator
+        Import an object into the simulator
 
         :param obj: Object to load
         :param class_id: Class id for rendering semantic segmentation
@@ -260,10 +263,6 @@ class Simulator:
                                 use_pbr_mapping=True,
                                 shadow_caster=True
                                 ):
-
-        if class_id is None:
-            class_id = self.next_class_id
-        self.next_class_id += 1
 
         for shape in p.getVisualShapeData(object_pb_id):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
@@ -344,10 +343,6 @@ class Simulator:
                                             use_pbr_mapping=True,
                                             shadow_caster=True):
 
-        if class_id is None:
-            class_id = self.next_class_id
-        self.next_class_id += 1
-
         visual_objects = []
         link_ids = []
         poses_rot = []
@@ -369,7 +364,7 @@ class Simulator:
                         scale=np.array(dimensions),
                         overwrite_material=overwrite_material)
                     self.visual_objects[(filename, (*dimensions))
-                    ] = len(self.renderer.visual_objects) - 1
+                                        ] = len(self.renderer.visual_objects) - 1
                 visual_objects.append(
                     self.visual_objects[(filename, (*dimensions))])
                 link_ids.append(link_id)
@@ -426,7 +421,7 @@ class Simulator:
                                          shadow_caster=shadow_caster)
 
     @load_without_pybullet_vis
-    def import_robot(self, robot, class_id=None):
+    def import_robot(self, robot, class_id=SemanticClass.ROBOTS):
         """
         Import a robot into the simulator
 
@@ -434,11 +429,6 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         :return: pybullet id
         """
-
-        if class_id is None:
-            class_id = self.next_class_id
-        self.next_class_id += 1
-
         ids = robot.load()
         visual_objects = []
         link_ids = []
