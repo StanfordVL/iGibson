@@ -54,9 +54,12 @@ class BaseEnv(gym.Env):
 
         enable_shadow = self.config.get('enable_shadow', False)
         enable_pbr = self.config.get('enable_pbr', True)
+        texture_scale = self.config.get('texture_scale', 1.0)
+
         settings = MeshRendererSettings(enable_shadow=enable_shadow,
                                         enable_pbr=enable_pbr,
-                                        msaa=False)
+                                        msaa=False,
+                                        texture_scale=texture_scale)
 
         self.simulator = Simulator(mode=mode,
                                    physics_timestep=physics_timestep,
@@ -161,6 +164,9 @@ class BaseEnv(gym.Env):
                     'load_room_instances', None),
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
+            first_n =  self.config.get('_set_first_n_objects', -1)
+            if first_n != -1:
+                scene._set_first_n_objects(first_n)
             self.simulator.import_ig_scene(scene)
 
         if self.config['robot'] == 'Turtlebot':

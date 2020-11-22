@@ -606,7 +606,7 @@ void MeshRendererContext::cglUseProgram(int shaderProgram) {
     glUseProgram(shaderProgram);
 }
 
-int MeshRendererContext::loadTexture(std::string filename) {
+int MeshRendererContext::loadTexture(std::string filename, float texture_scale) {
     //width, height = img.size
     // glTexImage2D expects the first element of the image data to be the
     // bottom-left corner of the image.  Subsequent elements go left to right,
@@ -623,10 +623,17 @@ int MeshRendererContext::loadTexture(std::string filename) {
     int comp;
     stbi_set_flip_vertically_on_load(true);
     unsigned char *image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb);
-
     if (image == nullptr)
         throw (std::string("ERROR: Failed to load texture"));
 
+    int new_w = (int)(w * texture_scale);
+    int new_h = (int)(h * texture_scale);
+
+    unsigned char *resized_image = (unsigned char *)malloc(w*h*comp);
+    stbir_resize_uint8(image, w, h, 0, resized_image, new_w, new_h, 0, comp);
+//    STBIRDEF int stbir_resize_uint8(     const unsigned char *input_pixels , int input_w , int input_h , int input_stride_in_bytes,
+//                                           unsigned char *output_pixels, int output_w, int output_h, int output_stride_in_bytes,
+//                                     int num_channels);
 
     GLuint texture;
     glGenTextures(1, &texture);
@@ -636,10 +643,11 @@ int MeshRendererContext::loadTexture(std::string filename) {
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB,
-                 GL_UNSIGNED_BYTE, image);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, new_w, new_h, 0, GL_RGB,
+                 GL_UNSIGNED_BYTE, resized_image);
     glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(image);
+    stbi_image_free(resized_image);
     return texture;
 }
 
