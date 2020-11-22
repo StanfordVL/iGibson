@@ -570,6 +570,7 @@ class MeshRendererSettings(object):
                  light_dimming_factor=1.0,
                  fullscreen=False,
                  glfw_gl_version=None,
+                 texture_scale=1.0,
                  ):
         self.use_fisheye = use_fisheye
         self.msaa = msaa
@@ -583,6 +584,7 @@ class MeshRendererSettings(object):
         self.light_dimming_factor = light_dimming_factor
         self.enable_pbr = enable_pbr
         self.fullscreen = fullscreen
+        self.texture_scale = texture_scale
         if glfw_gl_version is not None:
             self.glfw_gl_version = glfw_gl_version
         else:
@@ -825,7 +827,7 @@ class MeshRenderer(object):
             # assume optimized renderer will have texture id starting from 0
             texture_id = len(self.texture_files)
         else:
-            texture_id = self.r.loadTexture(tex_filename)
+            texture_id = self.r.loadTexture(tex_filename, self.rendering_settings.texture_scale)
             self.textures.append(texture_id)
 
         self.texture_files[tex_filename] = texture_id
@@ -1145,7 +1147,9 @@ class MeshRenderer(object):
                       poses_trans=poses_trans,
                       poses_rot=poses_rot,
                       dynamic=dynamic,
-                      robot=robot)
+                      robot=robot,
+                      use_pbr=False,
+                      use_pbr_mapping=False)
         self.instances.append(robot)
 
     def set_camera(self, camera, target, up):
@@ -1445,7 +1449,7 @@ class MeshRenderer(object):
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos +
                                 view_direction, [0, 0, 1])
-                for item in self.render(modes=modes, hidden=[instance]):
+                for item in self.render(modes=modes):
                     frames.append(item)
         return frames
 

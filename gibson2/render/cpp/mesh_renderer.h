@@ -145,7 +145,7 @@ public:
 
     void cglUseProgram(int shaderProgram);
 
-    int loadTexture(std::string filename);
+    int loadTexture(std::string filename, float texture_scale);
 
     void setup_pbr(std::string shader_path,
     std::string env_texture_filename,
