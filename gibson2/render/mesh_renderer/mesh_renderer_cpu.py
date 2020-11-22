@@ -245,6 +245,8 @@ class MeshRenderer(object):
         if not self.platform == 'Darwin' and rendering_settings.enable_pbr:
             self.setup_pbr()
 
+        self.setup_lidar_param()
+
     def setup_pbr(self):
         if os.path.exists(self.rendering_settings.env_texture_filename) or \
                 os.path.exists(self.rendering_settings.env_texture_filename2) or \
@@ -1197,3 +1199,69 @@ class MeshRenderer(object):
         for instance in self.instances:
             instance.use_pbr = use_pbr
             instance.use_pbr_mapping = use_pbr_mapping
+
+    def setup_lidar_param(self):
+        lidar_vertical_low = -15 / 180. * np.pi
+        lidar_vertical_high = 15 / 180. * np.pi
+        lidar_vertical_n_beams = 16
+        lidar_vertical_beams = np.arange(lidar_vertical_low, lidar_vertical_high +
+            (lidar_vertical_high - lidar_vertical_low) / (lidar_vertical_n_beams-1),
+            (lidar_vertical_high - lidar_vertical_low) / (lidar_vertical_n_beams-1))
+
+
+        lidar_horizontal_low = -45 / 180. * np.pi
+        lidar_horizontal_high = 45 / 180. * np.pi
+        lidar_horizontal_n_beams = 468
+        lidar_horizontal_beams = np.arange(lidar_horizontal_low, lidar_horizontal_high,
+            (lidar_horizontal_high - lidar_horizontal_low) / (lidar_horizontal_n_beams))
+
+        xx,yy = np.meshgrid(lidar_vertical_beams, lidar_horizontal_beams)
+        xx = xx.flatten()
+        yy = yy.flatten()
+
+        x_samples = (np.tan(xx) / np.cos(yy) * self.height//2 + self.height//2).astype(np.int)
+        y_samples = (np.tan(yy) * self.height//2 + self.height//2).astype(np.int)
+
+        self.x_samples = x_samples.flatten()
+        self.y_samples = y_samples.flatten()
+
+    def get_lidar_from_depth(self):
+        lidar_readings = self.render(modes=('3d'))[0]
+        lidar_readings = lidar_readings[self.x_samples, self.y_samples,:3]
+        dist = np.linalg.norm(lidar_readings, axis=1)
+        lidar_readings = lidar_readings[dist > 0]
+        return lidar_readings
+
+    def get_lidar_all(self, offset_with_camera=np.array([0,0,0])):
+
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                camera_pos = instance.robot.eyes.get_position()
+                orn = instance.robot.eyes.get_orientation()
+                mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+                view_direction = mat.dot(np.array([1, 0, 0]))
+                self.set_camera(camera_pos, camera_pos +
+                                view_direction, [0, 0, 1])
+
+        original_fov = self.vertical_fov
+        self.set_fov(90)
+        lidar_readings = []
+        view_direction = np.array([1,0,0])
+        r2 = np.array(
+            [[np.cos(-np.pi / 2), -np.sin(-np.pi / 2), 0], [np.sin(-np.pi / 2), np.cos(-np.pi / 2), 0], [0, 0, 1]])
+        r3 = np.array(
+            [[np.cos(-np.pi / 2), 0, -np.sin(-np.pi / 2)], [0, 1, 0],  [np.sin(-np.pi / 2), 0, np.cos(-np.pi / 2)]])
+        transformatiom_matrix = np.eye(3)
+
+        for i in range(4):
+            self.set_camera(np.array(self.camera) + offset_with_camera,
+                            np.array(self.camera) + offset_with_camera + view_direction, [0, 0, 1])
+            lidar_one_view = self.get_lidar_from_depth()
+            lidar_readings.append(lidar_one_view.dot(transformatiom_matrix))
+            view_direction = r2.dot(view_direction)
+            transformatiom_matrix = r3.dot(transformatiom_matrix)
+
+        lidar_readings = np.concatenate(lidar_readings, axis=0)
+
+        self.set_fov(original_fov)
+        return lidar_readings
