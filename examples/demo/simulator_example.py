@@ -10,7 +10,7 @@ from gibson2.render.profiler import Profiler
 
 def main():
     config = parse_config('../configs/turtlebot_demo.yaml')
-    settings = MeshRendererSettings(enable_shadow=True, msaa=False)
+    settings = MeshRendererSettings(enable_shadow=False, msaa=False)
     s = Simulator(mode='gui', image_width=256, image_height=256, rendering_settings=settings)
 
     scene = StaticIndoorScene('Rs',
@@ -26,12 +26,6 @@ def main():
         obj.set_position_orientation(np.random.uniform(low=0, high=2, size=3), [0,0,0,1])
 
     print(s.renderer.instances)
-
-    for item in s.renderer.instances[1:]:
-        item.use_pbr = True
-        item.use_pbr_mapping = False
-        item.metalness = np.random.random()
-        item.roughness = np.random.random()
 
     for i in range(10000):
         with Profiler('Simulator step'):
