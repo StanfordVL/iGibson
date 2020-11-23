@@ -29,4 +29,28 @@ def test_render_pbr():
     renderer.set_camera([1.5,1.5,1.5], [0,0,0], [0, 0, 1])
     frame = renderer.render(modes=('rgb', 'normal'))
     Image.fromarray((255*np.concatenate(frame, axis=1)[:,:,:3]).astype(np.uint8)).save('test_render.png')
+    renderer.release()
 
+def test_render_pbr_optimized():
+    hdr_texture = os.path.join(gibson2.ig_dataset_path, 'scenes', 'background', 'quattro_canti_4k.hdr')
+    model_path = os.path.join(get_ig_model_path('sink', 'sink_1'), 'shape', 'visual')
+    settings = MeshRendererSettings(msaa=True, enable_shadow=True, env_texture_filename=hdr_texture, env_texture_filename3=hdr_texture,
+        optimized=True)
+    renderer = MeshRenderer(width=1024, height=1024, vertical_fov=90, rendering_settings=settings)
+    renderer.set_light_position_direction([0,0,10], [0,0,0])
+    i = 0
+
+    for fn in os.listdir(model_path):
+        if fn.endswith('obj'):
+            renderer.load_object(os.path.join(model_path, fn), scale=[1, 1, 1])
+            renderer.add_instance(i)
+            i += 1
+            renderer.instances[-1].use_pbr = True
+            renderer.instances[-1].use_pbr_mapping = True
+
+    renderer.optimize_vertex_and_texture()
+    renderer.set_camera([1.5,1.5,1.5], [0,0,0], [0, 0, 1])
+    frame = renderer.render(modes=('rgb', 'normal'))
+    Image.fromarray((255*np.concatenate(frame, axis=1)[:,:,:3]).astype(np.uint8)).save('test_render_optimized.png')
+
+    renderer.release()
