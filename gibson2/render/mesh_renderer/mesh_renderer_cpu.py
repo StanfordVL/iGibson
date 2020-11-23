@@ -106,8 +106,8 @@ class MeshRenderer(object):
         self.optimized = rendering_settings.optimized
         self.texture_files = {}
         self.enable_shadow = rendering_settings.enable_shadow
-
         self.platform = platform.system()
+        self.optimization_process_executed = False
 
         device = None
         """
@@ -341,6 +341,11 @@ class MeshRenderer(object):
         :param load_texture: load texture or not
         :return: VAO_ids
         """
+        if self.optimization_process_executed and self.optimized:
+            logging.error("Using optimized renderer and optimization process is already excuted, cannot add new "
+                          "objects")
+            return
+
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
         ret = reader.ParseFromFile(obj_path)
@@ -547,6 +552,11 @@ class MeshRenderer(object):
         """
         Create instance for a visual object and link it to pybullet
         """
+        if self.optimization_process_executed and self.optimized:
+            logging.error("Using optimized renderer and optimization process is already excuted, cannot add new "
+                          "objects")
+            return
+
         use_pbr = use_pbr and self.rendering_settings.enable_pbr
         use_pbr_mapping = use_pbr_mapping and self.rendering_settings.enable_pbr
 
@@ -579,6 +589,11 @@ class MeshRenderer(object):
         Create an instance group for a list of visual objects and link it to pybullet
         """
 
+        if self.optimization_process_executed and self.optimized:
+            logging.error("Using optimized renderer and optimization process is already excuted, cannot add new "
+                          "objects")
+            return
+
         use_pbr = use_pbr and self.rendering_settings.enable_pbr
         use_pbr_mapping = use_pbr_mapping and self.rendering_settings.enable_pbr
 
@@ -608,6 +623,11 @@ class MeshRenderer(object):
         """
             Create an instance group (a robot) for a list of visual objects and link it to pybullet
         """
+        if self.optimization_process_executed and self.optimized:
+            logging.error("Using optimized renderer and optimization process is already excuted, cannot add new "
+                          "objects")
+            return
+
         robot = Robot([self.visual_objects[object_id] for object_id in object_ids],
                       id=len(self.instances),
                       link_ids=link_ids,
@@ -717,7 +737,10 @@ class MeshRenderer(object):
             render the window and don't return the frame buffers as numpy arrays (to increase speed)
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-        import time
+
+        # run optimization process the first time render is called
+        if self.optimized and not self.optimization_process_executed:
+            self.optimize_vertex_and_texture()
 
         if self.enable_shadow and render_shadow_pass:
             # shadow pass
@@ -1156,6 +1179,7 @@ class MeshRenderer(object):
                                                                                         float(
                                                                                             self.rendering_settings.enable_pbr),
                                                                                         self.depth_tex_shadow)
+        self.optimization_process_executed = True
 
     def update_hidden_state(self, instances):
         """
