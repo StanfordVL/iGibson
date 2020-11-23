@@ -36,8 +36,6 @@ def benchmark_scene(scene_name, optimized=False, first_n=200):
     s.import_robot(turtlebot)
 
     s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
-    if optimized:
-        s.optimize_vertex_and_texture()
     fps = []
     physics_fps = []
     render_fps = []

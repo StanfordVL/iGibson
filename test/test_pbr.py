@@ -48,7 +48,6 @@ def test_render_pbr_optimized():
             renderer.instances[-1].use_pbr = True
             renderer.instances[-1].use_pbr_mapping = True
 
-    renderer.optimize_vertex_and_texture()
     renderer.set_camera([1.5,1.5,1.5], [0,0,0], [0, 0, 1])
     frame = renderer.render(modes=('rgb', 'normal'))
     Image.fromarray((255*np.concatenate(frame, axis=1)[:,:,:3]).astype(np.uint8)).save('test_render_optimized.png')
