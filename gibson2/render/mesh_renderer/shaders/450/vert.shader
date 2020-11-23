@@ -1,10 +1,13 @@
 #version 450
 uniform mat4 V;
+uniform mat4 last_V;
 uniform mat4 lightV;
 uniform mat4 P;
 uniform mat4 lightP;
 uniform mat4 pose_rot;
 uniform mat4 pose_trans;
+uniform mat4 last_rot;
+uniform mat4 last_trans;
 uniform vec3 instance_color;
 uniform vec3 diffuse_color;
 uniform vec3 uv_transform_param;
@@ -26,6 +29,8 @@ out vec3 Pos_cam_projected;
 out vec3 Diffuse_color;
 out mat3 TBN;
 out vec4 FragPosLightSpace;
+out vec3 Pos_cam_prev;
+out vec2 Optical_flow;
 
 
 void main() {
@@ -34,6 +39,8 @@ void main() {
     Normal_world = normalize(mat3(pose_rot) * normal);// in world coordinate
     vec4 pos_cam4_projected;
     vec4 pos_cam4;
+    vec4 Position_prev;
+    vec4 pos_cam_prev4;
 
     if (shadow_pass == 1)
     {
@@ -41,11 +48,20 @@ void main() {
         Normal_cam = normalize(mat3(lightV) * mat3(pose_rot) * normal);// in camera coordinate
         pos_cam4_projected = lightP * lightV * pose_trans * pose_rot * vec4(position, 1);
         pos_cam4 = lightV * pose_trans * pose_rot * vec4(position, 1);
+        // dummy values for shadow pass
+        Optical_flow = vec2(0,0);
+        Position_prev = vec4(0,0,0,0);
+        pos_cam_prev4 = vec4(0,0,0,0);
+        Pos_cam_prev = vec3(0,0,0);
     } else {
         gl_Position = P * V * pose_trans * pose_rot * vec4(position, 1);
         Normal_cam = normalize(mat3(V) * mat3(pose_rot) * normal);// in camera coordinate
         pos_cam4_projected = P * V * pose_trans * pose_rot * vec4(position, 1);
         pos_cam4 = V * pose_trans * pose_rot * vec4(position, 1);
+        Position_prev = P * last_V * last_trans * last_rot * vec4(position, 1);
+        pos_cam_prev4 = last_V * last_trans * last_rot * vec4(position, 1);
+        Pos_cam_prev = pos_cam_prev4.xyz / pos_cam_prev4.w;
+        Optical_flow = gl_Position.xy/gl_Position.w - Position_prev.xy/Position_prev.w;
     }
 
     Pos_cam = pos_cam4.xyz / pos_cam4.w;

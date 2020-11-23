@@ -69,6 +69,8 @@ public:
 	GLuint uboPbrData;
 	GLuint uboTransformDataRot;
 	GLuint uboTransformDataTrans;
+    GLuint uboTransformDataLastRot;
+	GLuint uboTransformDataLastTrans;
 	GLuint uboHidden;
 	GLuint uboUV;
 
@@ -130,12 +132,12 @@ public:
                                 int normal_texture_id, int depth_texture_id, int vao, int face_size,
                                 py::array_t<unsigned int> faces, GLuint fb);
 
-    void initvar(int shaderProgram, py::array_t<float> V, py::array_t<float> lightV, int shadow_pass,
-                                py::array_t<float> P, py::array_t<float> lightP, py::array_t<float> eye_pos,
-                                py::array_t<float> lightpos,
-                                py::array_t<float> lightcolor);
+    void initvar(int shaderProgram, py::array_t<float> V, py::array_t<float> last_V, py::array_t<float> lightV, int
+                                shadow_pass, py::array_t<float> P, py::array_t<float> lightP, py::array_t<float>
+                                eye_pos, py::array_t<float> lightpos, py::array_t<float> lightcolor);
 
-    void init_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot);
+    void init_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
+                           py::array_t<float> last_trans, py::array_t<float> last_rot);
 
     void render_tensor_pre(bool msaa, GLuint fb1, GLuint fb2);
 
@@ -207,8 +209,12 @@ public:
 
 	void updateUVData(int shaderProgram, py::array_t<float> uv_data);
 
-	void updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array, py::array_t<float> pose_rot_array,
-	py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightV, py::array_t<float> lightP, int shadow_pass, py::array_t<float> eye_pos);
+    void updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array,
+        py::array_t<float> pose_rot_array, py::array_t<float> last_trans_array,
+        py::array_t<float> last_rot_array, py::array_t<float> V, py::array_t<float> last_V, py::array_t<float> P,
+        py::array_t<float> lightV,
+        py::array_t<float> lightP, int shadow_pass,
+		py::array_t<float> eye_pos);
 
 	void renderOptimized(GLuint VAO);
 

@@ -61,6 +61,8 @@ class InstanceGroup(object):
         # Indices into optimized buffers such as color information and transformation buffer
         # These values are used to set buffer information during simulation
         self.or_buffer_indices = None
+        self.last_trans = [np.copy(item) for item in poses_trans]
+        self.last_rot = [np.copy(item) for item in poses_rot]
 
     def render(self, shadow_pass=0):
         """
@@ -83,7 +85,9 @@ class InstanceGroup(object):
             for object_idx in visual_object.VAO_ids:
                 self.renderer.r.init_pos_instance(self.renderer.shaderProgram,
                                                   self.poses_trans[i],
-                                                  self.poses_rot[i])
+                                                  self.poses_rot[i],
+                                                  self.last_trans[i],
+                                                  self.last_rot[i])
                 current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
                 self.renderer.r.init_material_instance(self.renderer.shaderProgram,
                                                        float(
@@ -143,16 +147,38 @@ class InstanceGroup(object):
         :param pos: New translations
         """
 
-        self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
+        self.last_trans = [np.copy(item) for item in self.poses_trans]
+        self.poses_trans = pos
 
-    def set_rotation(self, quat):
+    def set_rotation(self, rot):
         """
         Set rotations for each part of this InstanceGroup
 
-        :param quat: New quaternion in w,x,y,z
+        :param rot, rotation matrix
         """
 
-        self.pose_rot = np.ascontiguousarray(quat2rotmat(quat))
+        self.last_rot = [np.copy(item) for item in self.poses_rot]
+        self.poses_rot = rot
+
+    def set_position_for_part(self, pos, j):
+        """
+        Set positions for each part of this InstanceGroup
+
+        :param pos: New translations
+        """
+
+        self.last_trans[j] = np.copy(self.poses_trans[j])
+        self.poses_trans[j] = pos
+
+    def set_rotation_for_part(self, rot, j):
+        """
+        Set rotations for each part of this InstanceGroup
+
+        :param rot, rotation matrix
+        """
+
+        self.last_rot[j] = np.copy(self.poses_rot[j])
+        self.poses_rot[j] = rot
 
     def dump(self):
         vertices_info = []
@@ -211,6 +237,8 @@ class Instance(object):
         # Indices into optimized buffers such as color information and transformation buffer
         # These values are used to set buffer information during simulation
         self.or_buffer_indices = None
+        self.last_trans = np.copy(pose_trans)
+        self.last_rot = np.copy(pose_rot)
 
     def render(self, shadow_pass=0):
         """
@@ -245,6 +273,8 @@ class Instance(object):
             # transform and rotation already included in mesh data
             self.pose_trans = np.eye(4)
             self.pose_rot = np.eye(4)
+            self.last_trans = np.eye(4)
+            self.last_rot = np.eye(4)
 
             # update buffer data into VBO
             self.renderer.r.render_softbody_instance(
@@ -252,6 +282,7 @@ class Instance(object):
 
         self.renderer.r.initvar(self.renderer.shaderProgram,
                                 self.renderer.V,
+                                self.renderer.last_V,
                                 self.renderer.lightV,
                                 shadow_pass,
                                 self.renderer.P,
@@ -262,7 +293,9 @@ class Instance(object):
 
         self.renderer.r.init_pos_instance(self.renderer.shaderProgram,
                                           self.pose_trans,
-                                          self.pose_rot)
+                                          self.pose_rot,
+                                          self.last_trans,
+                                          self.last_rot)
 
         for object_idx in self.object.VAO_ids:
             current_material = self.renderer.materials_mapping[
@@ -319,13 +352,15 @@ class Instance(object):
         return pose
 
     def set_position(self, pos):
+        self.last_trans = np.copy(self.pose_trans)
         self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
 
-    def set_rotation(self, quat):
+    def set_rotation(self, rot):
         """
-        :param quat: New quaternion in w,x,y,z
+        :param rot: rotation matrix
         """
-        self.pose_rot = np.ascontiguousarray(quat2rotmat(quat))
+        self.last_rot = np.copy(self.pose_rot)
+        self.pose_rot = rot
 
     def dump(self):
         vertices_info = []

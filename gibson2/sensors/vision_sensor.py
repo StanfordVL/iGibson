@@ -49,6 +49,10 @@ class VisionSensor(BaseSensor):
             raw_modalities.append('seg')
         if 'normal' in modalities:
             raw_modalities.append('normal')
+        if 'optical_flow' in modalities:
+            raw_modalities.append('optical_flow')
+        if 'scene_flow' in modalities:
+            raw_modalities.append('scene_flow')
         return raw_modalities
 
     def get_rgb(self, raw_vision_obs):
@@ -85,6 +89,18 @@ class VisionSensor(BaseSensor):
         """
         return raw_vision_obs['3d'][:, :, :3]
 
+    def get_optical_flow(self, raw_vision_obs):
+        """
+        :return: optical flow sensor reading
+        """
+        return raw_vision_obs['optical_flow'][:, :, :3]
+
+    def get_scene_flow(self, raw_vision_obs):
+        """
+        :return: scene flow sensor reading
+        """
+        return raw_vision_obs['scene_flow'][:, :, :3]
+
     def get_normal(self, raw_vision_obs):
         """
         :return: surface normal reading
@@ -119,6 +135,10 @@ class VisionSensor(BaseSensor):
             vision_obs['depth'] = self.get_depth(raw_vision_obs)
         if 'pc' in self.modalities:
             vision_obs['pc'] = self.get_pc(raw_vision_obs)
+        if 'optical_flow' in self.modalities:
+            vision_obs['optical_flow'] = self.get_optical_flow(raw_vision_obs)
+        if 'scene_flow' in self.modalities:
+            vision_obs['scene_flow'] = self.get_scene_flow(raw_vision_obs)
         if 'normal' in self.modalities:
             vision_obs['normal'] = self.get_normal(raw_vision_obs)
         if 'seg' in self.modalities:

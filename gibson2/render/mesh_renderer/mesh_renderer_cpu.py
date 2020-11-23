@@ -90,6 +90,7 @@ class MeshRenderer(object):
         self.windowShaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
+        self.color_tex_scene_flow, self.color_tex_optical_flow = None, None
         self.depth_tex = None
         self.VAOs = []
         self.VBOs = []
@@ -108,6 +109,10 @@ class MeshRenderer(object):
         self.enable_shadow = rendering_settings.enable_shadow
         self.platform = platform.system()
         self.optimization_process_executed = False
+        self.pose_trans_array = None
+        self.pose_rot_array = None
+        self.last_trans_array = None
+        self.last_rot_array = None
 
         device = None
         """
@@ -232,6 +237,9 @@ class MeshRenderer(object):
         V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
+        self.last_V = np.copy(self.V)
+        self.cache = np.copy(self.V)
+
         self.P = np.ascontiguousarray(P, np.float32)
         self.materials_mapping = {}
         self.mesh_materials = []
@@ -274,11 +282,12 @@ class MeshRenderer(object):
         Set up RGB, surface normal, depth and segmentation framebuffers for the renderer
         """
         [self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
+         self.color_tex_scene_flow, self.color_tex_optical_flow,
          self.depth_tex] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
 
         if self.msaa:
             [self.fbo_ms, self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms,
-             self.color_tex_3d_ms,
+             self.color_tex_3d_ms, self.color_tex_scene_flow_ms, self.color_tex_optical_flow_ms,
              self.depth_tex_ms] = self.r.setup_framebuffer_meshrenderer_ms(self.width, self.height)
 
         self.depth_tex_shadow = self.r.allocateTexture(self.width, self.height)
@@ -520,24 +529,6 @@ class MeshRenderer(object):
         self.visual_objects.append(new_obj)
         return VAO_ids
 
-    def update_dynamic_positions(self):
-        """
-        A function to update all dynamic positions.
-        """
-        trans_data = []
-        rot_data = []
-
-        for instance in self.instances:
-            if isinstance(instance, Instance):
-                trans_data.append(instance.pose_trans)
-                rot_data.append(instance.pose_rot)
-            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
-                trans_data.extend(instance.poses_trans)
-                rot_data.extend(instance.poses_rot)
-
-        self.pose_trans_array = np.ascontiguousarray(np.concatenate(trans_data, axis=0))
-        self.pose_rot_array = np.ascontiguousarray(np.concatenate(rot_data, axis=0))
-
     def add_instance(self,
                      object_id,
                      pybullet_uuid=None,
@@ -641,15 +632,20 @@ class MeshRenderer(object):
                       use_pbr_mapping=False)
         self.instances.append(robot)
 
-    def set_camera(self, camera, target, up):
+    def set_camera(self, camera, target, up, cache=False):
         self.camera = camera
         self.target = target
         self.up = up
+        if cache:
+            self.last_V = np.copy(self.cache)
+
         V = lookat(self.camera, self.target, up=self.up)
         self.V = np.ascontiguousarray(V, np.float32)
         # change shadow mapping camera to be above the real camera
         self.set_light_position_direction([self.camera[0], self.camera[1], 10],
                                           [self.camera[0], self.camera[1], 0])
+        if cache:
+            self.cache = self.V
 
     def set_z_near_z_far(self, znear, zfar):
         self.znear = znear
@@ -704,7 +700,7 @@ class MeshRenderer(object):
         P[3, 2] = (2 * zfar * znear) / (znear - zfar)
         self.P = P
 
-    def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d')):
+    def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d', 'scene_flow', 'optical_flow')):
         """
         Read framebuffer of rendering.
 
@@ -718,7 +714,7 @@ class MeshRenderer(object):
             modes = [modes]
 
         for mode in modes:
-            if mode not in ['rgb', 'normal', 'seg', '3d']:
+            if mode not in ['rgb', 'normal', 'seg', '3d','scene_flow', 'optical_flow']:
                 raise Exception('unknown rendering mode: {}'.format(mode))
             frame = self.r.readbuffer_meshrenderer(
                 mode, self.width, self.height, self.fbo)
@@ -726,7 +722,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d'), hidden=(), return_buffer=True, render_shadow_pass=True):
+    def render(self, modes=('rgb', 'normal', 'seg', '3d', 'scene_flow', 'optical_flow'), hidden=(), return_buffer=True, render_shadow_pass=True):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -745,10 +741,6 @@ class MeshRenderer(object):
         if self.enable_shadow and render_shadow_pass:
             # shadow pass
 
-            # V = np.copy(self.V)
-            # P = np.copy(self.P)
-            # self.V = np.copy(self.lightV)
-            # self.P = np.copy(self.lightP)
             if self.msaa:
                 self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
             else:
@@ -763,9 +755,12 @@ class MeshRenderer(object):
                     instance.hidden = True
                 self.update_hidden_state(shadow_hidden_instances)
                 self.update_dynamic_positions()
+                print(self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
+                    self.last_rot_array)
                 self.r.updateDynamicData(
-                    self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P, self.lightV,
-                    self.lightP, 1, self.camera)
+                    self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
+                    self.last_rot_array, self.V, self.last_V, self.P,
+                    self.lightV, self.lightP, 1, self.camera)
                 self.r.renderOptimized(self.optimized_VAO)
                 for instance in shadow_hidden_instances:
                     instance.hidden = False
@@ -783,8 +778,7 @@ class MeshRenderer(object):
 
             self.r.readbuffer_meshrenderer_shadow_depth(
                 self.width, self.height, self.fbo, self.depth_tex_shadow)
-            # self.V = np.copy(V)
-            # self.P = np.copy(P)
+
         # main pass
 
         if self.msaa:
@@ -796,14 +790,19 @@ class MeshRenderer(object):
             self.r.renderSkyBox(self.skyboxShaderProgram, self.V, self.P)
 
         if self.optimized:
-            self.update_dynamic_positions()
+            #self.update_dynamic_positions()
             if self.enable_shadow:
-                self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P,
-                                         self.lightV, self.lightP, 2, self.camera)
+                self.r.updateDynamicData(
+                    self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
+                    self.last_rot_array, self.V, self.last_V, self.P,
+                    self.lightV, self.lightP, 2, self.camera)
             else:
-                self.r.updateDynamicData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.V, self.P,
-                                         self.lightV, self.lightP, 0, self.camera)
-
+                self.r.updateDynamicData(
+                    self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
+                    self.last_rot_array, self.V, self.last_V, self.P,
+                    self.lightV, self.lightP, 0, self.camera)
+            print(self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
+                  self.last_rot_array)
             self.r.renderOptimized(self.optimized_VAO)
         else:
             for instance in self.instances:
@@ -853,6 +852,8 @@ class MeshRenderer(object):
         return len(self.objects)
 
     def set_pose(self, pose, idx):
+        self.instances[idx].last_rot = np.copy(self.instances[idx].pose_rot)
+        self.instances[idx].last_trans = np.copy(self.instances[idx].pose_trans)
         self.instances[idx].pose_rot = np.ascontiguousarray(
             quat2rotmat(pose[3:]))
         self.instances[idx].pose_trans = np.ascontiguousarray(
@@ -872,13 +873,13 @@ class MeshRenderer(object):
         """
         clean_list = [
             self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-            self.depth_tex
+            self.depth_tex, self.color_tex_scene_flow, self.color_tex_optical_flow
         ]
         fbo_list = [self.fbo]
         if self.msaa:
             clean_list += [
                 self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
-                self.depth_tex_ms
+                self.depth_tex_ms, self.color_tex_scene_flow_ms, self.color_tex_optical_flow_ms
             ]
             fbo_list += [self.fbo_ms]
 
@@ -892,6 +893,8 @@ class MeshRenderer(object):
         self.color_tex_normal = None
         self.color_tex_semantics = None
         self.color_tex_3d = None
+        self.color_tex_scene_flow = None
+        self.color_tex_optical_flow = None
         self.depth_tex = None
         self.fbo = None
         self.VAOs = []
@@ -940,7 +943,7 @@ class MeshRenderer(object):
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos +
-                                view_direction, [0, 0, 1])
+                                view_direction, [0, 0, 1], cache=True)
                 hidden_instances = []
                 if self.rendering_settings.hide_robot:
                     hidden_instances.append(instance)
@@ -1215,6 +1218,15 @@ class MeshRenderer(object):
                     continue
                 self.trans_data[buf_idxs] = np.array(instance.poses_trans)
                 self.rot_data[buf_idxs] = np.array(instance.poses_rot)
+
+        if self.pose_trans_array is not None:
+            self.last_trans_array = np.copy(self.pose_trans_array)
+        else:
+            self.last_trans_array = np.ascontiguousarray(np.concatenate(self.trans_data, axis=0))
+        if self.pose_rot_array is not None:
+            self.last_rot_array = np.copy(self.pose_rot_array)
+        else:
+            self.last_rot_array = np.ascontiguousarray(np.concatenate(self.rot_data, axis=0))
 
         self.pose_trans_array = np.ascontiguousarray(self.trans_data)
         self.pose_rot_array = np.ascontiguousarray(self.rot_data)

@@ -559,7 +559,7 @@ class Simulator:
                     pos, orn, inv_inertial_pos, inv_inertial_orn)
 
                 instance.set_position(pos)
-                instance.set_rotation(xyzw2wxyz(orn))
+                instance.set_rotation(quat2rotmat(xyzw2wxyz(orn)))
         elif isinstance(instance, InstanceGroup):
             for j, link_id in enumerate(instance.link_ids):
                 if link_id == -1:
@@ -583,9 +583,8 @@ class Simulator:
 
                 #print(instance.pybullet_uuid, link_id, activation_state)
                 if activation_state == 1:
-                    instance.poses_rot[j] = quat2rotmat(xyzw2wxyz(orn))
-                    instance.poses_trans[j] = xyz2mat(pos)
-
+                    instance.set_position_for_part(xyz2mat(pos), j)
+                    instance.set_rotation_for_part(quat2rotmat(xyzw2wxyz(orn)), j)
 
     def isconnected(self):
         """
