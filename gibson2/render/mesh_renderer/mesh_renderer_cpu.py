@@ -760,8 +760,6 @@ class MeshRenderer(object):
                 self.update_hidden_state(shadow_hidden_instances)
                 need_flow_info = 'optical_flow' in modes or 'scene_flow' in modes
                 self.update_dynamic_positions(need_flow_info=need_flow_info)
-                print(self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
-                    self.last_rot_array)
                 self.r.updateDynamicData(
                     self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
                     self.last_rot_array, self.V, self.last_V, self.P,
@@ -805,8 +803,6 @@ class MeshRenderer(object):
                     self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
                     self.last_rot_array, self.V, self.last_V, self.P,
                     self.lightV, self.lightP, 0, self.camera)
-            print(self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
-                  self.last_rot_array)
             self.r.renderOptimized(self.optimized_VAO)
         else:
             for instance in self.instances:
