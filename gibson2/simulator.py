@@ -170,7 +170,8 @@ class Simulator:
         # Load the objects in the renderer
         for new_object_pb_id in new_object_pb_ids:
             self.load_object_in_renderer(new_object_pb_id, class_id=class_id, texture_scale=texture_scale,
-                                         load_texture=load_texture, render_floor_plane=render_floor_plane)
+                                         load_texture=load_texture, render_floor_plane=render_floor_plane,
+                                         use_pbr=False, use_pbr_mapping=False)
 
         self.scene = scene
         return new_object_pb_ids
