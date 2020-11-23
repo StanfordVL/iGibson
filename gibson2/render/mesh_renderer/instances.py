@@ -73,6 +73,7 @@ class InstanceGroup(object):
 
         self.renderer.r.initvar(self.renderer.shaderProgram,
                                 self.renderer.V,
+                                self.renderer.last_V,
                                 self.renderer.lightV,
                                 shadow_pass,
                                 self.renderer.P,

@@ -32,7 +32,7 @@ def test_import_igsdf():
                                     light_modulation_map_filename=light_modulation_map_filename,
                                     enable_shadow=True, msaa=True,
                                     light_dimming_factor=1.0)
-    s = Simulator(mode='headless', image_width=960,
+    s = Simulator(mode='iggui', image_width=960,
                   image_height=720, device_idx=0, rendering_settings=settings)
 
     #s.viewer.min_cam_z = 1.0
