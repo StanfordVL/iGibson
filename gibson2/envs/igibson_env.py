@@ -136,6 +136,16 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.image_height, self.image_width, 3),
                 low=-np.inf, high=np.inf)
             vision_modalities.append('pc')
+        if 'optical_flow' in self.output:
+            observation_space['optical_flow'] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 2),
+                low=-np.inf, high=np.inf)
+            vision_modalities.append('optical_flow')
+        if 'scene_flow' in self.output:
+            observation_space['scene_flow'] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 3),
+                low=-np.inf, high=np.inf)
+            vision_modalities.append('scene_flow')
         if 'normal' in self.output:
             observation_space['normal'] = self.build_obs_space(
                 shape=(self.image_height, self.image_width, 3),
