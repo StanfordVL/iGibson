@@ -758,7 +758,8 @@ class MeshRenderer(object):
                 for instance in shadow_hidden_instances:
                     instance.hidden = True
                 self.update_hidden_state(shadow_hidden_instances)
-                self.update_dynamic_positions()
+                need_flow_info = 'optical_flow' in modes or 'scene_flow' in modes
+                self.update_dynamic_positions(need_flow_info=need_flow_info)
                 print(self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
                     self.last_rot_array)
                 self.r.updateDynamicData(
@@ -794,7 +795,6 @@ class MeshRenderer(object):
             self.r.renderSkyBox(self.skyboxShaderProgram, self.V, self.P)
 
         if self.optimized:
-            #self.update_dynamic_positions()
             if self.enable_shadow:
                 self.r.updateDynamicData(
                     self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
@@ -1202,7 +1202,7 @@ class MeshRenderer(object):
             self.merged_hidden_data[vec4_buf_idxs] = float(instance.hidden)
         self.r.updateHiddenData(self.shaderProgram, np.ascontiguousarray(self.merged_hidden_data, dtype=np.float32))
 
-    def update_dynamic_positions(self):
+    def update_dynamic_positions(self, need_flow_info=False):
         """
         A function to update all dynamic positions.
         """
@@ -1223,17 +1223,24 @@ class MeshRenderer(object):
                 self.trans_data[buf_idxs] = np.array(instance.poses_trans)
                 self.rot_data[buf_idxs] = np.array(instance.poses_rot)
 
-        if self.pose_trans_array is not None:
-            self.last_trans_array = np.copy(self.pose_trans_array)
+        if need_flow_info:
+            # this part could be expensive
+            if self.pose_trans_array is not None:
+                self.last_trans_array = np.copy(self.pose_trans_array)
+            else:
+                self.last_trans_array = np.ascontiguousarray(np.concatenate(self.trans_data, axis=0))
+            if self.pose_rot_array is not None:
+                self.last_rot_array = np.copy(self.pose_rot_array)
+            else:
+                self.last_rot_array = np.ascontiguousarray(np.concatenate(self.rot_data, axis=0))
         else:
-            self.last_trans_array = np.ascontiguousarray(np.concatenate(self.trans_data, axis=0))
-        if self.pose_rot_array is not None:
-            self.last_rot_array = np.copy(self.pose_rot_array)
-        else:
-            self.last_rot_array = np.ascontiguousarray(np.concatenate(self.rot_data, axis=0))
+            # dummy pose for zero flow
+            self.last_rot_array = self.pose_rot_array
+            self.last_trans_array = self.pose_trans_array
 
         self.pose_trans_array = np.ascontiguousarray(self.trans_data)
         self.pose_rot_array = np.ascontiguousarray(self.rot_data)
+
 
     def use_pbr(self, use_pbr, use_pbr_mapping):
         for instance in self.instances:
