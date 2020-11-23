@@ -48,7 +48,7 @@ class Image {
 public:
     static std::shared_ptr<Image> fromFile(const std::string &filename, int channels) {
         std::printf("Loading image: %s\n", filename.c_str());
-
+        stbi_set_flip_vertically_on_load(false);
         std::shared_ptr<Image> image{new Image};
 
         if (stbi_is_hdr(filename.c_str())) {
