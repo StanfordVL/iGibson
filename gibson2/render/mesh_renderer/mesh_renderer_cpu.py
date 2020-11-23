@@ -139,6 +139,10 @@ class MeshRenderer(object):
                 else:
                     logging.info(
                         "Device index is larger than number of devices, falling back to use 0")
+                    logging.info(
+                        "If you have trouble using EGL, please visit our trouble shooting guide",
+                        "at http://svl.stanford.edu/igibson/docs/issues.html")
+
                     device = 0
 
         self.device_idx = device_idx

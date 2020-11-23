@@ -79,6 +79,7 @@ class Simulator:
         self.load()
 
         self.class_name_to_class_id = get_class_name_to_class_id()
+        self.body_links_awake = 0
 
     def set_timestep(self, physics_timestep, render_timestep):
         """
@@ -524,9 +525,10 @@ class Simulator:
         """
         Update positions in renderer without stepping the simulation. Usually used in the reset() function
         """
+        self.body_links_awake = 0
         for instance in self.renderer.instances:
             if instance.dynamic:
-                self.update_position(instance)
+                self.body_links_awake += self.update_position(instance)
         if self.use_ig_renderer and self.viewer is not None:
             self.viewer.update()
 
@@ -537,6 +539,7 @@ class Simulator:
 
         :param instance: Instance in the renderer
         """
+        body_links_awake = 0
         if isinstance(instance, Instance):
             _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
                 p.getDynamicsInfo(instance.pybullet_uuid, -1)
@@ -560,6 +563,7 @@ class Simulator:
 
                 instance.set_position(pos)
                 instance.set_rotation(quat2rotmat(xyzw2wxyz(orn)))
+                body_links_awake += 1
         elif isinstance(instance, InstanceGroup):
             for j, link_id in enumerate(instance.link_ids):
                 if link_id == -1:
@@ -585,6 +589,8 @@ class Simulator:
                 if activation_state == 1:
                     instance.set_position_for_part(xyz2mat(pos), j)
                     instance.set_rotation_for_part(quat2rotmat(xyzw2wxyz(orn)), j)
+                    body_links_awake += 1
+        return body_links_awake
 
     def isconnected(self):
         """
