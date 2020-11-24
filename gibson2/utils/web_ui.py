@@ -15,32 +15,25 @@ from io import BytesIO
 import base64
 import binascii
 
+app = Flask(__name__)
+
+
 def pil_image_to_base64(pil_image):
     buf = BytesIO()
     pil_image.save(buf, format="JPEG")
     return base64.b64encode(buf.getvalue())
 
 
-app = Flask(__name__)
-
-port = "5552"
-if len(sys.argv) > 1:
-    port = sys.argv[1]
-
-if len(sys.argv) > 2:
-    port_web = sys.argv[2]
-    port_web = int(port_web)
-else:
-    port_web = 5001
-
 @app.route('/')
 def index():
     return render_template('index.html')
 
+
 def gen():
     config = parse_config('../../examples/configs/turtlebot_demo.yaml')
     settings = MeshRendererSettings(enable_shadow=True, msaa=False)
-    s = Simulator(mode='headless', image_width=256, image_height=256, rendering_settings=settings)
+    s = Simulator(mode='headless', image_width=256,
+                  image_height=256, rendering_settings=settings)
     scene = StaticIndoorScene('Rs',
                               build_graph=True,
                               pybullet_load_texture=True)
@@ -51,14 +44,15 @@ def gen():
     for _ in range(10):
         obj = YCBObject('003_cracker_box')
         s.import_object(obj)
-        obj.set_position_orientation(np.random.uniform(low=0, high=2, size=3), [0, 0, 0, 1])
+        obj.set_position_orientation(np.random.uniform(
+            low=0, high=2, size=3), [0, 0, 0, 1])
     print(s.renderer.instances)
 
     while True:
         turtlebot.apply_action([0.1, -0.1])
         s.step()
         frame = s.renderer.render_robot_cameras(modes=('rgb'))[0]
-        frame = (frame[:,:,:3] * 255).astype(np.uint8)
+        frame = (frame[:, :, :3] * 255).astype(np.uint8)
         frame = pil_image_to_base64(Image.fromarray(frame))
         frame = binascii.a2b_base64(frame)
         yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
@@ -68,5 +62,16 @@ def gen():
 def video_feed():
     return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+
 if __name__ == '__main__':
+    app = Flask(__name__)
+    port = "5552"
+    if len(sys.argv) > 1:
+        port = sys.argv[1]
+
+    if len(sys.argv) > 2:
+        port_web = sys.argv[2]
+        port_web = int(port_web)
+    else:
+        port_web = 5001
     app.run(host='0.0.0.0', port=port_web, debug=False)

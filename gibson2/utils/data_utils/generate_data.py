@@ -7,10 +7,6 @@ import os
 import time
 from multiprocessing import Pool
 
-dll = np.ctypeslib.load_library('../render/render_cuda_f', '')
-
-# In[6]:
-
 
 def render(imgs, depths, pose, poses, tdepth):
     global fps
@@ -28,18 +24,17 @@ def render(imgs, depths, pose, poses, tdepth):
     rpose[1, -1] = 2
     rpose[2, -1] = 1
 
-    pose_after = [rpose.dot(poses[i]).astype(np.float32) for i in range(len(imgs))]
+    pose_after = [rpose.dot(poses[i]).astype(np.float32)
+                  for i in range(len(imgs))]
     pose_after = np.array(pose_after)
 
     dll.render(ct.c_int(len(imgs)), ct.c_int(imgs[0].shape[0]), ct.c_int(imgs[0].shape[1]),
                ct.c_int(1), ct.c_int(1), imgs.ctypes.data_as(ct.c_void_p),
-               depths.ctypes.data_as(ct.c_void_p), pose_after.ctypes.data_as(ct.c_void_p),
+               depths.ctypes.data_as(
+                   ct.c_void_p), pose_after.ctypes.data_as(ct.c_void_p),
                show.ctypes.data_as(ct.c_void_p), target_depth.ctypes.data_as(ct.c_void_p))
 
     return show, target_depth
-
-
-# In[7]:
 
 
 def generate_data(args):
@@ -51,7 +46,7 @@ def generate_data(args):
     filename = "%s/data_%d.npz" % (outf, idx)
     if not os.path.isfile(filename):
         print(idx)
-        data = d[idx]    ## This operation stalls 95% of the time, CPU heavy
+        data = d[idx]  # This operation stalls 95% of the time, CPU heavy
         sources = data[0]
         target = data[1]
         source_depths = data[2]
@@ -70,24 +65,27 @@ def generate_data(args):
     return
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--debug', action='store_true', help='debug mode')
-parser.add_argument('--dataroot', required=True, help='dataset path')
-parser.add_argument('--outf', type=str, default='', help='path of output folder')
-opt = parser.parse_args()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--debug', action='store_true', help='debug mode')
+    parser.add_argument('--dataroot', required=True, help='dataset path')
+    parser.add_argument('--outf', type=str, default='',
+                        help='path of output folder')
+    opt = parser.parse_args()
+    dll = np.ctypeslib.load_library('../render/render_cuda_f', '')
 
-d = ViewDataSet3D(root=opt.dataroot,
-                  transform=np.array,
-                  mist_transform=np.array,
-                  seqlen=5,
-                  off_3d=False,
-                  train=False)
-print(len(d))
+    d = ViewDataSet3D(root=opt.dataroot,
+                      transform=np.array,
+                      mist_transform=np.array,
+                      seqlen=5,
+                      off_3d=False,
+                      train=False)
+    print(len(d))
 
-p = Pool(10)
-p.map(generate_data, [(idx, d, opt.outf) for idx in range(len(d))])
+    p = Pool(10)
+    p.map(generate_data, [(idx, d, opt.outf) for idx in range(len(d))])
 
-#for i in range(len(d)):
+# for i in range(len(d)):
 #    filename = "%s/data_%d.npz" % (opt.outf, i)
 #    print(filename)
 #    if not os.path.isfile(filename):
