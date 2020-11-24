@@ -1,6 +1,7 @@
 import numpy as np
 import time
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import sys
 import os
 import cv2
