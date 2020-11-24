@@ -1,31 +1,31 @@
-import sys, os
+import random
+from mathutils import Matrix, Vector, Euler
+from tqdm import tqdm
+import json
+import numpy as np
+import argparse
+import sys
+import os
 import os.path as osp
 import subprocess
-with open('path.txt', 'r') as f:
-    for line in f:
-        sys.path.insert(0, line.strip())
-sys.path.insert(0, osp.dirname(osp.abspath(__file__)))
+import bpy
 
-## The only way to get outer python env from inside blender
+# with open('path.txt', 'r') as f:
+#     for line in f:
+#         sys.path.insert(0, line.strip())
+# sys.path.insert(0, osp.dirname(osp.abspath(__file__)))
+
+# The only way to get outer python env from inside blender
 python_path = subprocess.check_output(["which", "python"]).decode("utf-8")
 virenv_path = python_path[:python_path.index("/bin")]
 add_on_path = os.path.join(virenv_path, "lib", "python3.5", "site-packages")
 sys.path.append(add_on_path)
 os.sys.path.insert(0, add_on_path)
 
-import bpy
-import argparse
-import numpy as np
-import json
-from tqdm import tqdm
-from mathutils import Matrix, Vector, Euler
-import json
-import random
-
 
 def import_obj(file_loc):
     imported_object = bpy.ops.import_scene.obj(filepath=file_loc)
-    obj_object = bpy.context.selected_objects[0]    ####<--Fix
+    obj_object = bpy.context.selected_objects[0]  # <--Fix
     print('Imported name: ', obj_object.name)
     model = bpy.context.object
     return model
@@ -47,7 +47,8 @@ def visualize(path):
     end_loc = [end[0], end[1], end[2]]
     end_obj = bpy.ops.mesh.primitive_uv_sphere_add(location=end_loc, size=0.5)
     setMaterial("Sphere", d2)
-    start_obj = bpy.ops.mesh.primitive_uv_sphere_add(location=start_loc, size=0.5)
+    start_obj = bpy.ops.mesh.primitive_uv_sphere_add(
+        location=start_loc, size=0.5)
     '''setMaterial("Sphere", d2)
     setMaterial("Sphere", d3)'''
     for loc in path[1:-1]:
@@ -140,7 +141,8 @@ def get_model_camera_vals(filepath):
     max_x, min_x = (max(all_x), min(all_x))
     max_y, min_y = (max(all_y), min(all_y))
     max_z, min_z = (max(all_z), min(all_z))
-    center = Vector(((max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2))
+    center = Vector(
+        ((max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2))
     return (max_x, min_x), (max_y, min_y), (max_z, min_z), center
 
 
@@ -153,7 +155,8 @@ def join_objects():
     ctx = bpy.context.copy()
     ctx['active_object'] = obs[0]
     ctx['selected_objects'] = obs
-    ctx['selected_editable_bases'] = [scene.object_bases[ob.name] for ob in obs]
+    ctx['selected_editable_bases'] = [
+        scene.object_bases[ob.name] for ob in obs]
     bpy.ops.object.join(ctx)
 
 
@@ -228,9 +231,12 @@ def parse_local_args(args):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--filepath', required=True, help='trajectory file path', type=str)
-parser.add_argument('--datapath', required=True, help='gibson dataset path', type=str)
-parser.add_argument('--renderpath', help='visualization output path', default=None, type=str)
+parser.add_argument('--filepath', required=True,
+                    help='trajectory file path', type=str)
+parser.add_argument('--datapath', required=True,
+                    help='gibson dataset path', type=str)
+parser.add_argument(
+    '--renderpath', help='visualization output path', default=None, type=str)
 parser.add_argument('--model', required=True, type=str)
 parser.add_argument('--idx', default=0, type=int)
 
@@ -253,12 +259,16 @@ def main():
     join_objects()
     obj_model, cobj = bpy.data.objects[1], None
     moveFromCenter(obj_model)
-    (max_x, min_x), (max_y, min_y), (max_z, min_z), _ = get_model_camera_vals(camera_pose)
-    dist = max(((max_x - min_x), (max_y - min_y), (max_z - min_z))) / (2 * np.tan(np.pi / 10))
-    cent = Vector(((max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2))
+    (max_x, min_x), (max_y, min_y), (max_z,
+                                     min_z), _ = get_model_camera_vals(camera_pose)
+    dist = max(((max_x - min_x), (max_y - min_y), (max_z - min_z))
+               ) / (2 * np.tan(np.pi / 10))
+    cent = Vector(
+        ((max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2))
 
     renderpath = opt.filepath if opt.renderpath is None else opt.renderpath
-    capture_top(renderpath, opt.model, obj_model, cent, waypoints, opt.idx, dist)
+    capture_top(renderpath, opt.model, obj_model,
+                cent, waypoints, opt.idx, dist)
 
 
 if __name__ == '__main__':
