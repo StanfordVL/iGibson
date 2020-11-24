@@ -139,10 +139,6 @@ public:
     void init_pos_instance(int shaderProgram, py::array_t<float> pose_trans, py::array_t<float> pose_rot,
                            py::array_t<float> last_trans, py::array_t<float> last_rot);
 
-    void render_tensor_pre(bool msaa, GLuint fb1, GLuint fb2);
-
-    void render_tensor_post();
-
     void cglBindVertexArray(int vao);
 
     void cglUseProgram(int shaderProgram);
