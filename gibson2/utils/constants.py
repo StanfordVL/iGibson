@@ -1,3 +1,54 @@
+from enum import IntEnum
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+import gibson2
+import os
+
+
+class SemanticClass(IntEnum):
+    BACKGROUND = 0
+    ROBOTS = 1
+    USER_ADDED_OBJS = 2
+    SCENE_OBJS = 3
+
+hdr_texture = os.path.join(
+    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+hdr_texture2 = os.path.join(
+    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+light_modulation_map_filename = os.path.join(
+    gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+background_texture = os.path.join(
+    gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+
+NamedRenderingPresets = {
+    'NO_PBR': MeshRendererSettings(enable_pbr=False, enable_shadow=False),
+    'PBR_NOSHADOW': MeshRendererSettings(enable_pbr=True, enable_shadow=True),
+    'PBR_SHADOW_MSAA': MeshRendererSettings(enable_pbr=True, enable_shadow=True,
+                                                msaa=True),
+
+    'NO_PBR_OPT': MeshRendererSettings(enable_pbr=False, enable_shadow=False, optimized=True),
+    'PBR_NOSHADOW_OPT': MeshRendererSettings(enable_pbr=True, enable_shadow=True, optimized=True),
+    'PBR_SHADOW_MSAA_OPT': MeshRendererSettings(enable_pbr=True, enable_shadow=True,
+                                                msaa=True, optimized=True),
+
+
+    'HQ_WITH_BG': MeshRendererSettings(env_texture_filename=hdr_texture,
+                                    env_texture_filename2=hdr_texture2,
+                                    env_texture_filename3=background_texture,
+                                    light_modulation_map_filename=light_modulation_map_filename,
+                                    enable_shadow=True, msaa=True,
+                                    light_dimming_factor=1.0),
+
+    'HQ_WITH_BG_OPT':
+        MeshRendererSettings(env_texture_filename=hdr_texture,
+                                                           env_texture_filename2=hdr_texture2,
+                                                           env_texture_filename3=background_texture,
+                                                           light_modulation_map_filename=light_modulation_map_filename,
+                                                           enable_shadow=True, msaa=True,
+                                                           light_dimming_factor=1.0,
+                                                           optimized=True)
+}
+
+AVAILABLE_MODALITIES = ('rgb', 'normal', '3d', 'seg', 'optical_flow', 'scene_flow')
 # Encodings
 RAW_ENCODING = 0
 COPY_RECTANGLE_ENCODING = 1

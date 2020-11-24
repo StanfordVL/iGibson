@@ -13,7 +13,7 @@ from gibson2.scenes.stadium_scene import StadiumScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import gym
 
 

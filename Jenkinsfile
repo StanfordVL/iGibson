@@ -56,6 +56,8 @@ pipeline {
             archiveArtifacts artifacts: 'test_result/*.xml', fingerprint: true
             archiveArtifacts artifacts: '*.pdf'
             archiveArtifacts artifacts: '*.png'
+            archiveArtifacts artifacts: '*.pkl'
+
 
             publishHTML (target: [
               allowMissing: true,

@@ -1,6 +1,7 @@
 import numpy as np
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
 from gibson2.render.mesh_renderer.get_available_devices import get_cuda_device
+from gibson2.utils.constants import AVAILABLE_MODALITIES
 import logging
 
 
@@ -25,7 +26,7 @@ try:
                 self.optical_flow_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
                 self.scene_flow_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
 
-        def readbuffer_to_tensor(self, modes=('rgb', 'normal', 'seg', '3d', 'optical_flow', 'scene_flow')):
+        def readbuffer_to_tensor(self, modes=AVAILABLE_MODALITIES):
             results = []
 
             # single mode
@@ -34,7 +35,7 @@ try:
 
             with torch.cuda.device(self.cuda_idx):
                 for mode in modes:
-                    if mode not in ['rgb', 'normal', 'seg', '3d', 'optical_flow', 'scene_flow']:
+                    if mode not in AVAILABLE_MODALITIES:
                         raise Exception('unknown rendering mode: {}'.format(mode))
                     if mode == 'rgb':
                         self.r.map_tensor(int(self.color_tex_rgb), int(self.width), int(self.height),
@@ -63,7 +64,7 @@ try:
 
             return results
 
-        def render(self, modes=('rgb', 'normal', 'seg', '3d', 'optical_flow', 'scene_flow'), hidden=(),
+        def render(self, modes=AVAILABLE_MODALITIES, hidden=(),
                    return_buffer=True, render_shadow_pass=True):
             """
             A function to render all the instances in the renderer and read the output from framebuffer into pytorch tensor.

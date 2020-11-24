@@ -6,6 +6,7 @@ import gibson2.render.mesh_renderer as mesh_renderer
 from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
 from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz, ortho, transform_vertex
+from gibson2.utils.constants import AVAILABLE_MODALITIES
 import numpy as np
 import os
 import sys
@@ -13,62 +14,10 @@ from gibson2.render.mesh_renderer.materials import Material, RandomizedMaterial
 from gibson2.render.mesh_renderer.instances import Instance, InstanceGroup, Robot
 from gibson2.render.mesh_renderer.visual_object import VisualObject
 from PIL import Image
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 Image.MAX_IMAGE_PIXELS = None
 
 
-class MeshRendererSettings(object):
-    def __init__(self,
-                 use_fisheye=False,
-                 msaa=False,
-                 enable_shadow=False,
-                 enable_pbr=True,
-                 env_texture_filename=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background',
-                                                   'photo_studio_01_2k.hdr'),
-                 env_texture_filename2=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background',
-                                                    'photo_studio_01_2k.hdr'),
-                 env_texture_filename3=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background',
-                                                    'photo_studio_01_2k.hdr'),
-                 light_modulation_map_filename='',
-                 optimized=False,
-                 skybox_size=20.,
-                 light_dimming_factor=1.0,
-                 fullscreen=False,
-                 glfw_gl_version=None,
-                 texture_scale=1.0,
-                 hide_robot=True,
-                 ):
-        self.use_fisheye = use_fisheye
-        self.msaa = msaa
-        self.enable_shadow = enable_shadow
-        self.env_texture_filename = env_texture_filename
-        self.env_texture_filename2 = env_texture_filename2
-        self.env_texture_filename3 = env_texture_filename3
-        self.optimized = optimized
-        self.skybox_size = skybox_size
-        self.light_modulation_map_filename = light_modulation_map_filename
-        self.light_dimming_factor = light_dimming_factor
-        self.enable_pbr = enable_pbr
-        self.fullscreen = fullscreen
-        self.texture_scale = texture_scale
-        self.hide_robot=hide_robot
-
-        if glfw_gl_version is not None:
-            self.glfw_gl_version = glfw_gl_version
-        else:
-            if platform.system() == 'Darwin':
-                self.glfw_gl_version = [4, 1]
-            else:
-                self.glfw_gl_version = [4, 5]
-
-    def get_fastest(self):
-        self.msaa = False
-        self.enable_shadow = False
-        return self
-
-    def get_best(self):
-        self.msaa = True
-        self.enable_shadow = True
-        return self
 
 
 class MeshRenderer(object):
@@ -704,7 +653,7 @@ class MeshRenderer(object):
         P[3, 2] = (2 * zfar * znear) / (znear - zfar)
         self.P = P
 
-    def readbuffer(self, modes=('rgb', 'normal', 'seg', '3d', 'scene_flow', 'optical_flow')):
+    def readbuffer(self, modes=AVAILABLE_MODALITIES):
         """
         Read framebuffer of rendering.
 
@@ -718,7 +667,7 @@ class MeshRenderer(object):
             modes = [modes]
 
         for mode in modes:
-            if mode not in ['rgb', 'normal', 'seg', '3d','scene_flow', 'optical_flow']:
+            if mode not in AVAILABLE_MODALITIES:
                 raise Exception('unknown rendering mode: {}'.format(mode))
             frame = self.r.readbuffer_meshrenderer(
                 mode, self.width, self.height, self.fbo)
@@ -726,7 +675,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-    def render(self, modes=('rgb', 'normal', 'seg', '3d', 'scene_flow', 'optical_flow'), hidden=(), return_buffer=True, render_shadow_pass=True):
+    def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -741,6 +690,8 @@ class MeshRenderer(object):
         # run optimization process the first time render is called
         if self.optimized and not self.optimization_process_executed:
             self.optimize_vertex_and_texture()
+
+        render_shadow_pass = render_shadow_pass and 'rgb' in modes
 
         if self.enable_shadow and render_shadow_pass:
             # shadow pass
