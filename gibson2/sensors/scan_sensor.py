@@ -1,6 +1,6 @@
 from gibson2.sensors.sensor_base import BaseSensor
 from gibson2.sensors.dropout_sensor_noise import DropoutSensorNoise
-
+from gibson2.utils.constants import OccupancyGridState
 import numpy as np
 from transforms3d.quaternions import quat2mat
 import pybullet as p
@@ -74,8 +74,10 @@ class ScanSensor(BaseSensor):
         # flip y axis
         scan_local[:, 1] *= -1
 
-        occupancy_grid = np.ones(
+        occupancy_grid = np.zeros(
             (self.grid_resolution, self.grid_resolution)).astype(np.uint8)
+
+        occupancy_grid.fill(int(OccupancyGridState.UNKNOWN * 2.0))
         scan_local_in_map = scan_local / self.occupancy_range * \
                             self.grid_resolution + (self.grid_resolution / 2)
         scan_local_in_map = scan_local_in_map.reshape(
@@ -85,17 +87,17 @@ class ScanSensor(BaseSensor):
                        center=(scan_local_in_map[0,i,0,0],
                                scan_local_in_map[0,i,0,1]),
                        radius=2,
-                       color=0,
+                       color=int(OccupancyGridState.OBSTACLES * 2.0),
                        thickness=-1)
         cv2.fillPoly(img=occupancy_grid,
                      pts=scan_local_in_map,
-                     color=2,
+                     color=int(OccupancyGridState.FREESPACE * 2.0),
                      lineType=1)
         cv2.circle(img=occupancy_grid,
                    center=(self.grid_resolution // 2,
                            self.grid_resolution // 2),
                    radius=int(self.robot_footprint_radius_in_map),
-                   color=2,
+                   color=int(OccupancyGridState.FREESPACE * 2.0),
                    thickness=-1)
 
         return occupancy_grid[:, :, None].astype(np.float32) / 2.0
