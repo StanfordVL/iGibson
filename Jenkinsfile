@@ -20,6 +20,7 @@ pipeline {
 
         stage('Build Docs') {
             steps {
+                sh 'sphinx-apidoc -o docs/apidoc gibson2 gibson2/external gibson2/utils/data_utils/'
                 sh 'sphinx-build -b html docs _sites'
             }
         }
