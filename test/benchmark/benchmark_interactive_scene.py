@@ -81,7 +81,6 @@ def benchmark_scene(scene_name, optimized=False):
     plt.savefig('scene_benchmark_{}_o_{}.pdf'.format(
         scene_name, optimized))
 
-
 def main():
     benchmark_scene('Rs_int', True)
 

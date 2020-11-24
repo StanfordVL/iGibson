@@ -18,8 +18,6 @@ from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 Image.MAX_IMAGE_PIXELS = None
 
 
-
-
 class MeshRenderer(object):
     """
     MeshRenderer is a lightweight OpenGL renderer. It manages a set of visual objects, and instances of those objects.
