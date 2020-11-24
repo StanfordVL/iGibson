@@ -32,20 +32,20 @@ NamedRenderingPresets = {
 
 
     'HQ_WITH_BG': MeshRendererSettings(env_texture_filename=hdr_texture,
-                                    env_texture_filename2=hdr_texture2,
-                                    env_texture_filename3=background_texture,
-                                    light_modulation_map_filename=light_modulation_map_filename,
-                                    enable_shadow=True, msaa=True,
-                                    light_dimming_factor=1.0),
+                                        env_texture_filename2=hdr_texture2,
+                                        env_texture_filename3=background_texture,
+                                        light_modulation_map_filename=light_modulation_map_filename,
+                                        enable_shadow=True, msaa=True,
+                                        light_dimming_factor=1.0),
 
     'HQ_WITH_BG_OPT':
         MeshRendererSettings(env_texture_filename=hdr_texture,
-                                                           env_texture_filename2=hdr_texture2,
-                                                           env_texture_filename3=background_texture,
-                                                           light_modulation_map_filename=light_modulation_map_filename,
-                                                           enable_shadow=True, msaa=True,
-                                                           light_dimming_factor=1.0,
-                                                           optimized=True)
+                               env_texture_filename2=hdr_texture2,
+                               env_texture_filename3=background_texture,
+                               light_modulation_map_filename=light_modulation_map_filename,
+                               enable_shadow=True, msaa=True,
+                               light_dimming_factor=1.0,
+                               optimized=True)
 }
 
 AVAILABLE_MODALITIES = ('rgb', 'normal', '3d', 'seg', 'optical_flow', 'scene_flow')
