@@ -31,7 +31,7 @@ def index():
 
 def gen():
     config = parse_config('../../examples/configs/turtlebot_demo.yaml')
-    settings = MeshRendererSettings(enable_shadow=True, msaa=False)
+    settings = MeshRendererSettings(enable_shadow=False, msaa=False)
     s = Simulator(mode='headless', image_width=256,
                   image_height=256, rendering_settings=settings)
     scene = StaticIndoorScene('Rs',
