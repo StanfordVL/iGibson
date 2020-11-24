@@ -25,6 +25,7 @@ def benchmark_rendering(scene_list, rendering_presets_list, modality_list):
         for rendering_preset in rendering_presets_list:
             scene = InteractiveIndoorScene(
                 scene_name, texture_randomization=False, object_randomization=False)
+            scene._set_first_n_objects(10)
             settings = NamedRenderingPresets[rendering_preset]
             s = Simulator(mode='headless',
                           image_width=512,
@@ -56,9 +57,12 @@ def main():
     )
     print(result)
     plt.figure(figsize=(5,30))
+    fig, ax = plt.subplots()
     plt.tight_layout()
-    plt.barh(["-".join(item) for item in result.keys()], result.values())
-    plt.xlabdel('fps')
+    ax.barh(["-".join(item) for item in result.keys()], result.values())
+    for i, v in enumerate(result.values()):
+        ax.text(v + 3, i + .25, '{:.1f}'.format(v), color='blue', fontweight='bold')
+    plt.xlabel('fps')
     plt.savefig('benchmark_rendering.pdf', bbox_inches = "tight")
     pkl.dump(result, open('rendering_benchmark_results.pkl', 'wb'))
 
