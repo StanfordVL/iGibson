@@ -3,12 +3,21 @@ from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 import gibson2
 import os
 
-
 class SemanticClass(IntEnum):
     BACKGROUND = 0
     ROBOTS = 1
     USER_ADDED_OBJS = 2
     SCENE_OBJS = 3
+
+class ShadowPass(IntEnum):
+    NO_SHADOW = 0
+    HAS_SHADOW_RENDER_SHADOW = 1
+    HAS_SHADOW_RENDER_SCENE = 2
+
+class OccupancyGridState(object):
+    OBSTACLES = 0.0
+    UNKNOWN = 0.5
+    FREESPACE = 1.0
 
 hdr_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')

@@ -6,7 +6,7 @@ import gibson2.render.mesh_renderer as mesh_renderer
 from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
 from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz, ortho, transform_vertex
-from gibson2.utils.constants import AVAILABLE_MODALITIES
+from gibson2.utils.constants import AVAILABLE_MODALITIES, ShadowPass
 import numpy as np
 import os
 import sys
@@ -712,7 +712,7 @@ class MeshRenderer(object):
                 self.r.updateDynamicData(
                     self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
                     self.last_rot_array, self.V, self.last_V, self.P,
-                    self.lightV, self.lightP, 1, self.camera)
+                    self.lightV, self.lightP, ShadowPass.HAS_SHADOW_RENDER_SHADOW, self.camera)
                 self.r.renderOptimized(self.optimized_VAO)
                 for instance in shadow_hidden_instances:
                     instance.hidden = False
@@ -720,7 +720,7 @@ class MeshRenderer(object):
             else:
                 for instance in self.instances:
                     if (not instance in hidden) and instance.shadow_caster:
-                        instance.render(shadow_pass=1)
+                        instance.render(shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SHADOW)
 
             self.r.render_meshrenderer_post()
 
@@ -746,20 +746,20 @@ class MeshRenderer(object):
                 self.r.updateDynamicData(
                     self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
                     self.last_rot_array, self.V, self.last_V, self.P,
-                    self.lightV, self.lightP, 2, self.camera)
+                    self.lightV, self.lightP, ShadowPass.HAS_SHADOW_RENDER_SCENE, self.camera)
             else:
                 self.r.updateDynamicData(
                     self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
                     self.last_rot_array, self.V, self.last_V, self.P,
-                    self.lightV, self.lightP, 0, self.camera)
+                    self.lightV, self.lightP, ShadowPass.NO_SHADOW, self.camera)
             self.r.renderOptimized(self.optimized_VAO)
         else:
             for instance in self.instances:
                 if not instance in hidden:
                     if self.enable_shadow:
-                        instance.render(shadow_pass=2)
+                        instance.render(shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SCENE)
                     else:
-                        instance.render(shadow_pass=0)
+                        instance.render(shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SCENE)
 
         self.r.render_meshrenderer_post()
 
