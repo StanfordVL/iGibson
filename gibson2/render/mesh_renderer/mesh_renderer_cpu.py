@@ -776,6 +776,8 @@ class MeshRenderer(object):
             self.optimize_vertex_and_texture()
 
         render_shadow_pass = render_shadow_pass and 'rgb' in modes
+        need_flow_info = 'optical_flow' in modes or 'scene_flow' in modes
+        self.update_dynamic_positions(need_flow_info=need_flow_info)
 
         if self.enable_shadow and render_shadow_pass:
             # shadow pass
@@ -794,8 +796,6 @@ class MeshRenderer(object):
                 for instance in shadow_hidden_instances:
                     instance.hidden = True
                 self.update_hidden_state(shadow_hidden_instances)
-                need_flow_info = 'optical_flow' in modes or 'scene_flow' in modes
-                self.update_dynamic_positions(need_flow_info=need_flow_info)
                 self.r.updateDynamicData(
                     self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
                     self.last_rot_array, self.V, self.last_V, self.P,
