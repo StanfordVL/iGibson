@@ -752,13 +752,7 @@ class MeshRenderer(object):
             modes = [modes]
 
         for mode in modes:
-
-
-<< << << < HEAD
-            if mode not in ['rgb', 'normal', 'seg', '3d', 'scene_flow', 'optical_flow']:
-== == == =
             if mode not in AVAILABLE_MODALITIES:
->>>>>> > 6bb7a86b3fb79fb871961460b165a457dddcb6e2
                 raise Exception('unknown rendering mode: {}'.format(mode))
             frame = self.r.readbuffer_meshrenderer(
                 mode, self.width, self.height, self.fbo)
@@ -766,16 +760,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-<<<<<<< HEAD
-    def render(self,
-               modes=('rgb', 'normal', 'seg', '3d',
-                      'scene_flow', 'optical_flow'),
-               hidden=(),
-               return_buffer=True,
-               render_shadow_pass=True):
-=======
     def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True):
->>>>>>> 6bb7a86b3fb79fb871961460b165a457dddcb6e2
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -821,13 +806,9 @@ class MeshRenderer(object):
                 self.update_hidden_state(shadow_hidden_instances)
             else:
                 for instance in self.instances:
-<<<<<<< HEAD
-                    if instance not in hidden and instance.shadow_caster:
-                        instance.render(shadow_pass=1)
-=======
-                    if (not instance in hidden) and instance.shadow_caster:
-                        instance.render(shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SHADOW)
->>>>>>> 6bb7a86b3fb79fb871961460b165a457dddcb6e2
+                    if (instance not in hidden) and instance.shadow_caster:
+                        instance.render(
+                            shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SHADOW)
 
             self.r.render_meshrenderer_post()
 
@@ -863,9 +844,11 @@ class MeshRenderer(object):
             for instance in self.instances:
                 if instance not in hidden:
                     if self.enable_shadow:
-                        instance.render(shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SCENE)
+                        instance.render(
+                            shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SCENE)
                     else:
-                        instance.render(shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SCENE)
+                        instance.render(
+                            shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SCENE)
 
         self.r.render_meshrenderer_post()
 
