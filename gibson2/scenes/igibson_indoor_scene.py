@@ -774,6 +774,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.visual_mesh_to_material = visual_mesh_to_material
         self.check_scene_quality(body_ids, fixed_body_ids)
 
+        # force wake up each body once
+        self.force_wakeup_scene_objects()
         return body_ids
 
     def force_wakeup_scene_objects(self):
