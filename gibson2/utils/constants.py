@@ -27,6 +27,10 @@ class OccupancyGridState(object):
     FREESPACE = 1.0
 
 
+class PyBulletSleepState(IntEnum):
+    AWAKE = 1
+
+
 hdr_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
 hdr_texture2 = os.path.join(
