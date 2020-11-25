@@ -14,6 +14,11 @@ import logging
 
 
 class Simulator:
+    """
+    Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
+    both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
+    """
+
     def __init__(self,
                  gravity=9.8,
                  physics_timestep=1 / 120.0,
@@ -24,12 +29,8 @@ class Simulator:
                  vertical_fov=90,
                  device_idx=0,
                  render_to_tensor=False,
-                 auto_sync=True,
                  rendering_settings=MeshRendererSettings()):
         """
-        Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
-        both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
-
         :param gravity: gravity on z direction.
         :param physics_timestep: timestep of physical simulation, p.stepSimulation()
         :param render_timestep: timestep of rendering, and Simulator.step() function
@@ -39,8 +40,7 @@ class Simulator:
         :param vertical_fov: vertical field of view of the camera image in degrees
         :param device_idx: GPU device index to run rendering on
         :param render_to_tensor: Render to GPU tensors
-        :param auto_sync: automatically sync object poses to gibson renderer, by default true,
-        disable it when you want to run multiple physics step but don't need to visualize each frame
+        :param rendering_settings: rendering setting
         """
         # physics simulator
         self.gravity = gravity
@@ -72,7 +72,6 @@ class Simulator:
         self.vertical_fov = vertical_fov
         self.device_idx = device_idx
         self.render_to_tensor = render_to_tensor
-        self.auto_sync = auto_sync
         self.optimized_renderer = rendering_settings.optimized
         self.rendering_settings = rendering_settings
         self.viewer = None
@@ -83,7 +82,10 @@ class Simulator:
 
     def set_timestep(self, physics_timestep, render_timestep):
         """
-        :param timestep: set timestep after the initialization of Simulator
+        Set physics timestep and render (action) timestep
+
+        :param physics_timestep: physics timestep for pybullet
+        :param render_timestep: rendering timestep for renderer
         """
         self.physics_timestep = physics_timestep
         self.render_timestep = render_timestep
@@ -91,8 +93,8 @@ class Simulator:
 
     def add_viewer(self):
         """
-        Attach a debugging viewer to the renderer. This will make the step much slower so should be avoided when
-        training agents
+        Attach a debugging viewer to the renderer.
+        This will make the step much slower so should be avoided when training agents
         """
         self.viewer = Viewer(simulator=self, renderer=self.renderer)
 
@@ -138,6 +140,9 @@ class Simulator:
             self.add_viewer()
 
     def load_without_pybullet_vis(load_func):
+        """
+        Load without pybullet visualizer
+        """
         def wrapped_load_func(*args, **kwargs):
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
             res = load_func(*args, **kwargs)
@@ -159,7 +164,9 @@ class Simulator:
         :param scene: Scene object
         :param texture_scale: Option to scale down the texture for rendering
         :param load_texture: If you don't need rgb output, texture loading could be skipped to make rendering faster
+        :param render_floor_plane: Whether to render the additionally added floor plane
         :param class_id: Class id for rendering semantic segmentation
+        :return: pybullet body ids from scene.load function
         """
 
         # Load the scene. Returns a list of pybullet ids of the objects loaded that we can use to
@@ -180,8 +187,9 @@ class Simulator:
     def import_ig_scene(self, scene):
         """
         Import scene from iGSDF class
+
         :param scene: iGSDFScene instance
-        :return: ids from scene.load function
+        :return: pybullet body ids from scene.load function
         """
         new_object_ids = scene.load()
         self.objects += new_object_ids
@@ -223,12 +231,20 @@ class Simulator:
         return new_object_ids
 
     @load_without_pybullet_vis
-    def import_object(self, obj, class_id=SemanticClass.USER_ADDED_OBJS, use_pbr=True, use_pbr_mapping=True, shadow_caster=True):
+    def import_object(self,
+                      obj,
+                      class_id=SemanticClass.USER_ADDED_OBJS,
+                      use_pbr=True,
+                      use_pbr_mapping=True,
+                      shadow_caster=True):
         """
         Import an object into the simulator
 
         :param obj: Object to load
         :param class_id: Class id for rendering semantic segmentation
+        :param use_pbr: Whether to use pbr
+        :param use_pbr_mapping: Whether to use pbr mapping
+        :param shadow_caster: Whether to cast shadow
         """
 
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
@@ -264,7 +280,19 @@ class Simulator:
                                 use_pbr_mapping=True,
                                 shadow_caster=True
                                 ):
+        """
+        Load the object into renderer
 
+        :param object_pb_id: pybullet body id
+        :param class_id: Class id for rendering semantic segmentation
+        :param softbody: Whether the object is soft body
+        :param texture_scale: Texture scale
+        :param load_texture: If you don't need rgb output, texture loading could be skipped to make rendering faster
+        :param render_floor_plane: Whether to render the additionally added floor plane
+        :param use_pbr: Whether to use pbr
+        :param use_pbr_mapping: Whether to use pbr mapping
+        :param shadow_caster: Whether to cast shadow
+        """
         for shape in p.getVisualShapeData(object_pb_id):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             visual_object = None
@@ -343,6 +371,16 @@ class Simulator:
                                             use_pbr=True,
                                             use_pbr_mapping=True,
                                             shadow_caster=True):
+        """
+        Load the articulated object into renderer
+
+        :param object_pb_id: pybullet body id
+        :param class_id: Class id for rendering semantic segmentation
+        :param visual_mesh_to_material: mapping from visual mesh to randomizable materials
+        :param use_pbr: Whether to use pbr
+        :param use_pbr_mapping: Whether to use pbr mapping
+        :param shadow_caster: Whether to cast shadow
+        """
 
         visual_objects = []
         link_ids = []
@@ -413,8 +451,8 @@ class Simulator:
                                          link_ids=link_ids,
                                          pybullet_uuid=object_pb_id,
                                          class_id=class_id,
-                                         poses_rot=poses_rot,
                                          poses_trans=poses_trans,
+                                         poses_rot=poses_rot,
                                          dynamic=True,
                                          robot=None,
                                          use_pbr=use_pbr,
@@ -422,7 +460,9 @@ class Simulator:
                                          shadow_caster=shadow_caster)
 
     @load_without_pybullet_vis
-    def import_robot(self, robot, class_id=SemanticClass.ROBOTS):
+    def import_robot(self,
+                     robot,
+                     class_id=SemanticClass.ROBOTS):
         """
         Import a robot into the simulator
 
@@ -518,9 +558,7 @@ class Simulator:
         """
         for _ in range(int(self.render_timestep / self.physics_timestep)):
             p.stepSimulation()
-
-        if self.auto_sync:
-            self.sync()
+        self.sync()
 
     def sync(self):
         """
@@ -544,53 +582,55 @@ class Simulator:
         if isinstance(instance, Instance):
             _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
                 p.getDynamicsInfo(instance.pybullet_uuid, -1)
+            if activation_state != 1:
+                return body_links_awake
+            # pos and orn of the inertial frame of the base link,
+            # instead of the base link frame
+            pos, orn = p.getBasePositionAndOrientation(
+                instance.pybullet_uuid)
 
-            if activation_state == 1:
-                # pos and orn of the inertial frame of the base link,
-                # instead of the base link frame
-                pos, orn = p.getBasePositionAndOrientation(
-                    instance.pybullet_uuid)
+            # Need to convert to the base link frame because that is
+            # what our own renderer keeps track of
+            # Based on pyullet docuementation:
+            # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
 
-                # Need to convert to the base link frame because that is
-                # what our own renderer keeps track of
-                # Based on pyullet docuementation:
-                # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
+            inv_inertial_pos, inv_inertial_orn =\
+                p.invertTransform(inertial_pos, inertial_orn)
+            # Now pos and orn are converted to the base link frame
+            pos, orn = p.multiplyTransforms(
+                pos, orn, inv_inertial_pos, inv_inertial_orn)
 
-                inv_inertial_pos, inv_inertial_orn =\
-                    p.invertTransform(inertial_pos, inertial_orn)
-                # Now pos and orn are converted to the base link frame
-                pos, orn = p.multiplyTransforms(
-                    pos, orn, inv_inertial_pos, inv_inertial_orn)
-
-                instance.set_position(pos)
-                instance.set_rotation(quat2rotmat(xyzw2wxyz(orn)))
-                body_links_awake += 1
+            instance.set_position(pos)
+            instance.set_rotation(quat2rotmat(xyzw2wxyz(orn)))
+            body_links_awake += 1
         elif isinstance(instance, InstanceGroup):
             for j, link_id in enumerate(instance.link_ids):
                 if link_id == -1:
                     _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
                         p.getDynamicsInfo(instance.pybullet_uuid, -1)
 
-                    if activation_state == 1:
-                        # same conversion is needed as above
-                        pos, orn = p.getBasePositionAndOrientation(
-                            instance.pybullet_uuid)
+                    if activation_state != 1:
+                        continue
+                    # same conversion is needed as above
+                    pos, orn = p.getBasePositionAndOrientation(
+                        instance.pybullet_uuid)
 
-                        inv_inertial_pos, inv_inertial_orn =\
-                            p.invertTransform(inertial_pos, inertial_orn)
-                        pos, orn = p.multiplyTransforms(
-                            pos, orn, inv_inertial_pos, inv_inertial_orn)
+                    inv_inertial_pos, inv_inertial_orn =\
+                        p.invertTransform(inertial_pos, inertial_orn)
+                    pos, orn = p.multiplyTransforms(
+                        pos, orn, inv_inertial_pos, inv_inertial_orn)
                 else:
-                    activation_state = p.getDynamicsInfo(instance.pybullet_uuid, link_id)[-1]
-                    if activation_state == 1:
-                        _, _, _, _, pos, orn = p.getLinkState(
-                            instance.pybullet_uuid, link_id)
+                    activation_state = p.getDynamicsInfo(
+                        instance.pybullet_uuid, link_id)[-1]
+                    if activation_state != 1:
+                        continue
+                    _, _, _, _, pos, orn = p.getLinkState(
+                        instance.pybullet_uuid, link_id)
 
-                #print(instance.pybullet_uuid, link_id, activation_state)
-                if activation_state == 1:
-                    instance.set_position_for_part(xyz2mat(pos), j)
-                    instance.set_rotation_for_part(quat2rotmat(xyzw2wxyz(orn)), j)
-                    body_links_awake += 1
+                instance.set_position_for_part(xyz2mat(pos), j)
+                instance.set_rotation_for_part(
+                    quat2rotmat(xyzw2wxyz(orn)), j)
+                body_links_awake += 1
         return body_links_awake
 
     def isconnected(self):
@@ -601,7 +641,7 @@ class Simulator:
 
     def disconnect(self):
         """
-        clean up the simulator
+        Clean up the simulator
         """
         if self.isconnected():
             print("******************PyBullet Logging Information:")

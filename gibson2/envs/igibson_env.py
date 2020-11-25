@@ -40,7 +40,7 @@ class iGibsonEnv(BaseEnv):
         """
         :param config_file: config_file path
         :param scene_id: override scene_id in config file
-        :param mode: headless or gui mode
+        :param mode: headless, gui, iggui
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
         :param device_idx: which GPU to run the simulation and rendering on
@@ -100,6 +100,9 @@ class iGibsonEnv(BaseEnv):
             self.task = None
 
     def build_obs_space(self, shape, low, high):
+        """
+        Helper function that builds individual observation spaces
+        """
         return gym.spaces.Box(
             low=low,
             high=high,
@@ -214,7 +217,9 @@ class iGibsonEnv(BaseEnv):
 
     def get_state(self, collision_links=[]):
         """
-        :param collision_links: collisions from last time step
+        Get the current observation
+
+        :param collision_links: collisions from last physics timestep
         :return: observation as a dictionary
         """
         state = OrderedDict()
@@ -234,7 +239,8 @@ class iGibsonEnv(BaseEnv):
     def run_simulation(self):
         """
         Run simulation for one action timestep (same as one render timestep in Simulator class)
-        :return: collisions from this simulation
+
+        :return: collision_links: collisions from last physics timestep
         """
         self.simulator_step()
         collision_links = list(p.getContactPoints(
@@ -244,6 +250,7 @@ class iGibsonEnv(BaseEnv):
     def filter_collision_links(self, collision_links):
         """
         Filter out collisions that should be ignored
+
         :param collision_links: original collisions, a list of collisions
         :return: filtered collisions
         """
@@ -264,14 +271,23 @@ class iGibsonEnv(BaseEnv):
         return new_collision_links
 
     def populate_info(self, info):
+        """
+        Populate info dictionary with any useful information
+        """
         info['episode_length'] = self.current_step
         info['collision_step'] = self.collision_step
 
     def step(self, action):
         """
-        apply robot's action and get state, reward, done and info, following OpenAI gym's convention
-        :param action: a list of control signals
-        :return: state, reward, done, info
+        Apply robot's action.
+        Returns the next state, reward, done and info,
+        following OpenAI Gym's convention
+
+        :param action: robot actions
+        :return: state: next observation
+        :return: reward: reward of this time step
+        :return: done: whether the episode is terminated
+        :return: info: info dictionary with any useful information
         """
         self.current_step += 1
         if action is not None:
@@ -297,6 +313,8 @@ class iGibsonEnv(BaseEnv):
 
     def check_collision(self, body_id):
         """
+        Check with the given body_id has any collision after one simulator step
+
         :param body_id: pybullet body id
         :return: whether the given body_id has no collision
         """
@@ -313,6 +331,7 @@ class iGibsonEnv(BaseEnv):
     def set_pos_orn_with_z_offset(self, obj, pos, orn=None, offset=None):
         """
         Reset position and orientation for the robot or the object
+
         :param obj: an instance of robot or object
         :param pos: position
         :param orn: orientation
@@ -337,6 +356,7 @@ class iGibsonEnv(BaseEnv):
     def test_valid_position(self, obj, pos, orn=None):
         """
         Test if the robot or the object can be placed with no collision
+
         :param obj: an instance of robot or object
         :param pos: position
         :param orn: orientation
@@ -357,6 +377,7 @@ class iGibsonEnv(BaseEnv):
     def land(self, obj, pos, orn):
         """
         Land the robot or the object onto the floor, given a valid position and orientation
+
         :param obj: an instance of robot or object
         :param pos: position
         :param orn: orientation
@@ -397,6 +418,11 @@ class iGibsonEnv(BaseEnv):
         self.collision_links = []
 
     def randomize_domain(self):
+        """
+        Domain randomization
+        Object randomization loads new object models with the same poses
+        Texture randomization loads new materials and textures for the same object models
+        """
         if self.object_randomization_freq is not None:
             if self.current_episode % self.object_randomization_freq == 0:
                 self.reload_model_object_randomization()

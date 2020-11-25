@@ -6,7 +6,8 @@ import numpy as np
 
 class InstanceGroup(object):
     """
-    InstanceGroup is a set of visual objects, it is grouped together because they are kinematically connected.
+    InstanceGroup is a set of visual objects.
+    It is grouped together because they are kinematically connected.
     Robots and articulated objects are represented as instance groups.
     """
 
@@ -26,16 +27,18 @@ class InstanceGroup(object):
                  ):
         """
         :param objects: visual objects
-        :param id: id this instance_group
+        :param id: id of this instance_group
         :param link_ids: link_ids in pybullet
         :param pybullet_uuid: body id in pybullet
         :param class_id: class_id to render semantics
         :param poses_trans: initial translations for each visual object
         :param poses_rot: initial rotation matrix for each visual object
-        :param dynamic: is the instance group dynamic or not
+        :param dynamic: whether the instance group is dynamic
         :param robot: The robot associated with this InstanceGroup
+        :param use_pbr: whether to use PBR
+        :param use_pbr_mapping: whether to use PBR mapping
+        :param shadow_caster: whether to cast shadow
         """
-        # assert(len(objects) > 0) # no empty instance group
         self.objects = objects
         self.poses_trans = poses_trans
         self.poses_rot = poses_rot
@@ -67,7 +70,11 @@ class InstanceGroup(object):
     def render(self, shadow_pass=0):
         """
         Render this instance group
-        """
+        shadow_pass = 0: normal rendering mode, disable shadow
+        shadow_pass = 1: enable_shadow, rendering depth map from light space
+        shadow_pass = 2: use rendered depth map to calculate shadow
+
+        :param shadow_pass: shadow pass mode        """
         if self.renderer is None:
             return
 
@@ -89,14 +96,17 @@ class InstanceGroup(object):
                                                   self.poses_rot[i],
                                                   self.last_trans[i],
                                                   self.last_rot[i])
-                current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
+                current_material = self.renderer.materials_mapping[
+                    self.renderer.mesh_materials[object_idx]]
                 self.renderer.r.init_material_instance(self.renderer.shaderProgram,
                                                        float(
                                                            self.class_id) / 255.0,
                                                        current_material.kd,
-                                                       float(current_material.is_texture()),
+                                                       float(
+                                                           current_material.is_texture()),
                                                        float(self.use_pbr),
-                                                       float(self.use_pbr_mapping),
+                                                       float(
+                                                           self.use_pbr_mapping),
                                                        float(self.metalness),
                                                        float(self.roughness),
                                                        current_material.transform_param
@@ -122,7 +132,8 @@ class InstanceGroup(object):
                     else:
                         buffer = self.renderer.fbo
                     self.renderer.r.draw_elements_instance(
-                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(
+                        ),
                         texture_id,
                         metallic_texture_id,
                         roughness_texture_id,
@@ -137,6 +148,9 @@ class InstanceGroup(object):
         self.renderer.r.cglUseProgram(0)
 
     def get_pose_in_camera(self):
+        """
+        Get instance group pose in camera reference frame
+        """
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
         pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
         return pose
@@ -145,7 +159,7 @@ class InstanceGroup(object):
         """
         Set positions for each part of this InstanceGroup
 
-        :param pos: New translations
+        :param pos: positions
         """
 
         self.last_trans = [np.copy(item) for item in self.poses_trans]
@@ -155,7 +169,7 @@ class InstanceGroup(object):
         """
         Set rotations for each part of this InstanceGroup
 
-        :param rot, rotation matrix
+        :param rot: rotation matrix
         """
 
         self.last_rot = [np.copy(item) for item in self.poses_rot]
@@ -163,9 +177,10 @@ class InstanceGroup(object):
 
     def set_position_for_part(self, pos, j):
         """
-        Set positions for each part of this InstanceGroup
+        Set positions for one part of this InstanceGroup
 
-        :param pos: New translations
+        :param pos: position
+        :param j: part index
         """
 
         self.last_trans[j] = np.copy(self.poses_trans[j])
@@ -173,15 +188,19 @@ class InstanceGroup(object):
 
     def set_rotation_for_part(self, rot, j):
         """
-        Set rotations for each part of this InstanceGroup
+        Set rotations for one part of this InstanceGroup
 
-        :param rot, rotation matrix
+        :param rot: rotation matrix
+        :param j: part index
         """
 
         self.last_rot[j] = np.copy(self.poses_rot[j])
         self.poses_rot[j] = rot
 
     def dump(self):
+        """
+        Dump vertex and face information
+        """
         vertices_info = []
         faces_info = []
         for i, visual_obj in enumerate(self.objects):
@@ -201,6 +220,10 @@ class InstanceGroup(object):
 
 
 class Robot(InstanceGroup):
+    """
+    A specfial type of InstanceGroup used for Robots
+    """
+
     def __init__(self, *args, **kwargs):
         super(Robot, self).__init__(*args, **kwargs)
 
@@ -211,14 +234,36 @@ class Robot(InstanceGroup):
 
 class Instance(object):
     """
-    Instance is one instance of a visual object. One visual object can have multiple instances to save memory.
+    Instance is one instance of a visual object.
+    One visual object can have multiple instances to save memory.
     """
 
-    def __init__(self, object, id, class_id, pybullet_uuid, pose_trans, pose_rot, dynamic, softbody,
+    def __init__(self,
+                 object,
+                 id,
+                 pybullet_uuid,
+                 class_id,
+                 pose_trans,
+                 pose_rot,
+                 dynamic,
+                 softbody,
                  use_pbr=True,
                  use_pbr_mapping=True,
                  shadow_caster=True
                  ):
+        """
+        :param object: visual object
+        :param id: id of this instance_group
+        :param pybullet_uuid: body id in pybullet
+        :param class_id: class_id to render semantics
+        :param pose_trans: initial translations for the visual object
+        :param pose_rot: initial rotation matrix for the visual object
+        :param dynamic: whether the instance is dynamic
+        :param softbody: whether the instance is soft body
+        :param use_pbr: whether to use PBR
+        :param use_pbr_mapping: whether to use PBR mapping
+        :param shadow_caster: whether to cast shadow
+        """
         self.object = object
         self.pose_trans = pose_trans
         self.pose_rot = pose_rot
@@ -247,6 +292,8 @@ class Instance(object):
         shadow_pass = 0: normal rendering mode, disable shadow
         shadow_pass = 1: enable_shadow, rendering depth map from light space
         shadow_pass = 2: use rendered depth map to calculate shadow
+
+        :param shadow_pass: shadow pass mode
         """
         if self.renderer is None:
             return
@@ -302,9 +349,11 @@ class Instance(object):
             current_material = self.renderer.materials_mapping[
                 self.renderer.mesh_materials[object_idx]]
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
-                                                   float(self.class_id) / 255.0,
+                                                   float(
+                                                       self.class_id) / 255.0,
                                                    current_material.kd,
-                                                   float(current_material.is_texture()),
+                                                   float(
+                                                       current_material.is_texture()),
                                                    float(self.use_pbr),
                                                    float(self.use_pbr_mapping),
                                                    float(self.metalness),
@@ -332,7 +381,8 @@ class Instance(object):
                     buffer = self.renderer.fbo
 
                 self.renderer.r.draw_elements_instance(
-                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(
+                    ),
                     texture_id,
                     metallic_texture_id,
                     roughness_texture_id,
@@ -348,22 +398,35 @@ class Instance(object):
         self.renderer.r.cglUseProgram(0)
 
     def get_pose_in_camera(self):
+        """
+        Get instance pose in camera reference frame
+        """
         mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
         pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
         return pose
 
     def set_position(self, pos):
+        """
+        Set position
+
+        :param pos: position
+        """
         self.last_trans = np.copy(self.pose_trans)
         self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
 
     def set_rotation(self, rot):
         """
+        Set orientation
+
         :param rot: rotation matrix
         """
         self.last_rot = np.copy(self.pose_rot)
         self.pose_rot = rot
 
     def dump(self):
+        """
+        Dump vertex and face information
+        """
         vertices_info = []
         faces_info = []
         for vertex_data_index, face_index in zip(self.object.vertex_data_indices, self.object.face_indices):

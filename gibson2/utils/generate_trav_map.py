@@ -20,7 +20,11 @@ for file in ../../gibson2/ig_dataset/scenes/*
 
 """
 
+
 def generate_trav_map(scene_name, load_full_scene=True):
+    """
+    Generate trav map for InteractiveIndoorScene
+    """
     random.seed(0)
     scene = InteractiveIndoorScene(scene_name, texture_randomization=False)
     if not load_full_scene:
@@ -28,7 +32,7 @@ def generate_trav_map(scene_name, load_full_scene=True):
     s = Simulator(mode='headless', image_width=512,
                   image_height=512, device_idx=0)
     s.import_ig_scene(scene)
-    
+
     if load_full_scene:
         scene.open_all_doors()
 
@@ -46,13 +50,14 @@ def generate_trav_map(scene_name, load_full_scene=True):
         obstacle_map_filename_format = 'floor_no_obj_{}.png'
 
     gen_trav_map(vertices_info, faces_info, output_folder=os.path.join(get_ig_scene_path(scene_name), 'layout'),
-        trav_map_filename_format = trav_map_filename_format,
-        obstacle_map_filename_format =obstacle_map_filename_format)
+                 trav_map_filename_format=trav_map_filename_format,
+                 obstacle_map_filename_format=obstacle_map_filename_format)
 
 
 def main():
     generate_trav_map(sys.argv[1], False)
     generate_trav_map(sys.argv[1], True)
+
 
 if __name__ == "__main__":
     main()

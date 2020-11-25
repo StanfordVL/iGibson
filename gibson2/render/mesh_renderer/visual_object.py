@@ -1,13 +1,15 @@
 class VisualObject(object):
     """
-    A visual object manages a set of VAOs and textures, one wavefront obj file loads into openGL, and managed
-    by a VisualObject
+    A visual object manages a set of VAOs and textures
+    A wavefront obj file is loaded into openGL and managed by a VisualObject
     """
 
     def __init__(self, filename, VAO_ids, vertex_data_indices, face_indices, id, renderer):
         """
         :param filename: filename of the obj file
         :param VAO_ids: VAO_ids in OpenGL
+        :param vertex_data_indices: vertex data indices
+        :param face_indices: face data indices
         :param id: renderer maintains a list of visual objects, id is the handle of a visual object
         :param renderer: pointer to the renderer
         """

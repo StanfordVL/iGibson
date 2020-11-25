@@ -10,9 +10,10 @@ class Scene:
 
     def load(self):
         """
-        Function to load all elements into physics engine and renderer
-        The elements to load may include: floor, building, objects
-        :return: A list of elements composing the scene, including the ground, the building and objects
+        Load the scene into pybullet
+        The elements to load may include: floor, building, objects, etc
+
+        :return: A list of pybullet ids of elements composing the scene, including floors, buildings and objects
         """
         raise NotImplementedError()
 
@@ -21,6 +22,7 @@ class Scene:
         Sample a random floor among all existing floor_heights in the scene
         While Gibson v1 scenes can have several floor_heights, the EmptyScene, StadiumScene and scenes from iGibson
         have only a single floor
+
         :return: An integer between 0 and NumberOfFloors-1
         """
         return 0
@@ -28,6 +30,7 @@ class Scene:
     def get_random_point(self, floor=None):
         """
         Sample a random valid location in the given floor
+
         :param floor: integer indicating the floor, or None if randomly sampled
         :return: A tuple of random floor and random valid point (3D) in that floor
         """
@@ -36,6 +39,7 @@ class Scene:
     def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
         """
         Query the shortest path between two points in the given floor
+
         :param floor: Floor to compute shortest path in
         :param source_world: Initial location in world reference frame
         :param target_world: Target location in world reference frame
@@ -47,6 +51,7 @@ class Scene:
     def get_floor_height(self, floor=0):
         """
         Get the height of the given floor
+
         :param floor: Integer identifying the floor
         :return: Height of the given floor
         """

@@ -1,17 +1,16 @@
 import pybullet as p
-import gym, gym.spaces, gym.utils
+import gym
+import gym.spaces
+import gym.utils
 import numpy as np
-import os, inspect
+import os
+import inspect
 import pybullet_data
 from transforms3d.euler import euler2quat
 from transforms3d import quaternions
 from gibson2.utils.utils import quatFromXYZW, quatToXYZW
 import gibson2
 import logging
-
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-os.sys.path.insert(0, parentdir)
 
 
 class BaseRobot(object):
@@ -25,7 +24,7 @@ class BaseRobot(object):
         :param model_file: model filename
         :param base_name: name of the base link
         :param scale: scale, default to 1
-        :param self_collision: use self collision or not
+        :param self_collision: whether to enable self collision
         """
         self.parts = None
         self.jdict = None
@@ -52,6 +51,7 @@ class BaseRobot(object):
     def load(self):
         """
         Load the robot model into pybullet
+
         :return: body id in pybullet
         """
         flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL
@@ -59,11 +59,14 @@ class BaseRobot(object):
             flags = flags | p.URDF_USE_SELF_COLLISION | p.URDF_USE_SELF_COLLISION_EXCLUDE_PARENT
 
         if self.model_type == "MJCF":
-            self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file), flags=flags)
+            self.robot_ids = p.loadMJCF(os.path.join(
+                self.physics_model_dir, self.model_file), flags=flags)
         if self.model_type == "URDF":
-            self.robot_ids = (p.loadURDF(os.path.join(self.physics_model_dir, self.model_file), globalScaling=self.scale, flags=flags),)
+            self.robot_ids = (p.loadURDF(os.path.join(
+                self.physics_model_dir, self.model_file), globalScaling=self.scale, flags=flags),)
 
-        self.parts, self.jdict, self.ordered_joints, self.robot_body, self.robot_mass = self.parse_robot(self.robot_ids)
+        self.parts, self.jdict, self.ordered_joints, self.robot_body, self.robot_mass = self.parse_robot(
+            self.robot_ids)
 
         assert "eyes" in self.parts, 'Please add a link named "eyes" in your robot URDF file with the same pose as the onboard camera. Feel free to check out assets/models/turtlebot/turtlebot.urdf for an example.'
         self.eyes = self.parts["eyes"]
@@ -73,6 +76,7 @@ class BaseRobot(object):
     def parse_robot(self, bodies):
         """
         Parse the robot to get properties including joint information and mass
+
         :param bodies: body ids in pybullet
         :return: parts, joints, ordered_joints, robot_body, robot_mass
         """
@@ -118,7 +122,8 @@ class BaseRobot(object):
                                     force=0)
             _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, part_name, _, _, _, _ = \
                 p.getJointInfo(bodies[0], j)
-            logging.debug('Robot joint: {}'.format(p.getJointInfo(bodies[0], j)))
+            logging.debug('Robot joint: {}'.format(
+                p.getJointInfo(bodies[0], j)))
             joint_name = joint_name.decode("utf8")
             part_name = part_name.decode("utf8")
 
@@ -151,13 +156,24 @@ class BaseRobot(object):
         return parts, joints, ordered_joints, self.robot_body, robot_mass
 
     def robot_specific_reset(self):
+        """
+        Reset function for each specific robot. Overwritten by subclasses
+        """
         raise NotImplementedError
 
     def calc_state(self):
+        """
+        Calculate proprioceptive states for each specific robot.
+        Overwritten by subclasses
+        """
         raise NotImplementedError
 
 
 class BodyPart:
+    """
+    Body part (link) of Robots
+    """
+
     def __init__(self, body_name, bodies, body_index, body_part_index):
         self.bodies = bodies
         self.body_name = body_name
@@ -167,6 +183,7 @@ class BodyPart:
         self.initialOrientation = self.get_orientation()
 
     def get_name(self):
+        """Get name of body part"""
         return self.body_name
 
     def _state_fields_of_pose_of(self, body_id, link_id=-1):
@@ -174,14 +191,17 @@ class BodyPart:
         if link_id == -1:
             (x, y, z), (a, b, c, d) = p.getBasePositionAndOrientation(body_id)
         else:
-            _, _, _, _, (x, y, z), (a, b, c, d) = p.getLinkState(body_id, link_id)
+            _, _, _, _, (x, y, z), (a, b, c, d) = p.getLinkState(
+                body_id, link_id)
         return np.array([x, y, z, a, b, c, d])
 
     def _set_fields_of_pose_of(self, pos, orn):
         """Set pose of body part"""
-        p.resetBasePositionAndOrientation(self.bodies[self.body_index], pos, orn)
+        p.resetBasePositionAndOrientation(
+            self.bodies[self.body_index], pos, orn)
 
     def get_pose(self):
+        """Get pose of body part"""
         return self._state_fields_of_pose_of(self.bodies[self.body_index], self.body_part_index)
 
     def get_position(self):
@@ -208,24 +228,33 @@ class BodyPart:
         self._set_fields_of_pose_of(self.current_position(), orientation)
 
     def set_pose(self, position, orientation):
+        """Set pose of body part"""
         self._set_fields_of_pose_of(position, orientation)
 
-    def current_position(self):  # Synonym method
+    def current_position(self):
+        """Synonym method for get_position"""
         return self.get_position()
 
-    def current_orientation(self):  # Synonym method
+    def current_orientation(self):
+        """Synonym method for get_orientation"""
         return self.get_orientation()
 
     def reset_position(self, position):  # Backward compatibility
+        """Synonym method for set_position"""
         self.set_position(position)
 
     def reset_orientation(self, orientation):  # Backward compatibility
+        """Synonym method for set_orientation"""
         self.set_orientation(orientation)
 
     def reset_pose(self, position, orientation):  # Backward compatibility
+        """Synonym method for set_pose"""
         self.set_pose(position, orientation)
 
     def get_linear_velocity(self):
+        """
+        Get linear velocity of the body part
+        """
         if self.body_part_index == -1:
             (vx, vy, vz), _ = p.getBaseVelocity(self.bodies[self.body_index])
         else:
@@ -234,6 +263,9 @@ class BodyPart:
         return np.array([vx, vy, vz])
 
     def get_angular_velocity(self):
+        """
+        Get angular velocity of the body part
+        """
         if self.body_part_index == -1:
             _, (vr, vp, vyaw) = p.getBaseVelocity(self.bodies[self.body_index])
         else:
@@ -242,10 +274,17 @@ class BodyPart:
         return np.array([vr, vp, vyaw])
 
     def contact_list(self):
+        """
+        Get contact points of the body part
+        """
         return p.getContactPoints(self.bodies[self.body_index], -1, self.body_part_index, -1)
 
 
 class Joint:
+    """
+    Joint of Robots
+    """
+
     def __init__(self, joint_name, bodies, body_index, joint_index):
         self.bodies = bodies
         self.body_index = body_index
@@ -277,10 +316,12 @@ class Joint:
 
     def get_state(self):
         """Get state of joint"""
-        x, vx, _, trq = p.getJointState(self.bodies[self.body_index], self.joint_index)
+        x, vx, _, trq = p.getJointState(
+            self.bodies[self.body_index], self.joint_index)
         return x, vx, trq
 
     def get_relative_state(self):
+        """Get normalized state of joint"""
         pos, vel, trq = self.get_state()
 
         # normalize position to [-1, 1]
@@ -315,6 +356,7 @@ class Joint:
                                 targetVelocity=velocity)
 
     def set_torque(self, torque):
+        """Set torque of joint"""
         torque = np.clip(torque, -self.max_torque, self.max_torque)
         p.setJointMotorControl2(bodyIndex=self.bodies[self.body_index],
                                 jointIndex=self.joint_index,
@@ -325,10 +367,14 @@ class Joint:
         """
         Reset pos and vel of joint
         """
-        p.resetJointState(self.bodies[self.body_index], self.joint_index, targetValue=pos, targetVelocity=vel)
+        p.resetJointState(
+            self.bodies[self.body_index], self.joint_index, targetValue=pos, targetVelocity=vel)
         self.disable_motor()
 
     def disable_motor(self):
+        """
+        disable the motor of joint
+        """
         p.setJointMotorControl2(self.bodies[self.body_index],
                                 self.joint_index,
                                 controlMode=p.POSITION_CONTROL,
@@ -339,29 +385,37 @@ class Joint:
                                 force=0)
 
     def get_joint_relative_state(self):  # Synonym method
+        """Synonym method for get_relative_state"""
         return self.get_relative_state()
 
     def set_motor_position(self, pos):  # Synonym method
+        """Synonym method for set_position"""
         return self.set_position(pos)
 
     def set_motor_torque(self, torque):  # Synonym method
+        """Synonym method for set_torque"""
         return self.set_torque(torque)
 
     def set_motor_velocity(self, vel):  # Synonym method
+        """Synonym method for set_velocity"""
         return self.set_velocity(vel)
 
     def reset_joint_state(self, position, velocity):  # Synonym method
+        """Synonym method for reset_state"""
         return self.reset_state(position, velocity)
 
     def current_position(self):  # Backward compatibility
+        """Synonym method for get_state"""
         return self.get_state()
 
     def current_relative_position(self):  # Backward compatibility
+        """Synonym method for get_relative_state"""
         return self.get_relative_state()
 
     def reset_current_position(self, position, velocity):  # Backward compatibility
+        """Synonym method for reset_state"""
         self.reset_state(position, velocity)
 
     def reset_position(self, position, velocity):  # Backward compatibility
+        """Synonym method for reset_state"""
         self.reset_state(position, velocity)
-

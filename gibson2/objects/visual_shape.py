@@ -3,11 +3,15 @@ import pybullet as p
 
 
 class VisualShape(Object):
+    """
+    Visual shape created with mesh file
+    """
+
     def __init__(self,
                  filename,
                  scale=1.0):
         """
-        create a visual shape to show in pybullet and MeshRenderer
+        Create a visual shape to show in pybullet and MeshRenderer
 
         :param filename: obj filename
         """
@@ -16,6 +20,9 @@ class VisualShape(Object):
         self.scale = scale
 
     def _load(self):
+        """
+        Load the object into pybullet
+        """
         visual_id = p.createVisualShape(p.GEOM_MESH,
                                         fileName=self.filename,
                                         meshScale=[self.scale] * 3)

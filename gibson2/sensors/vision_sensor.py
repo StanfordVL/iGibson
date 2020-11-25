@@ -8,6 +8,10 @@ from collections import OrderedDict
 
 
 class VisionSensor(BaseSensor):
+    """
+    Vision sensor (including rgb, rgb_filled, depth, 3d, seg, normal, optical flow, scene flow)
+    """
+
     def __init__(self, env, modalities):
         super(VisionSensor, self).__init__(env)
         self.modalities = modalities
@@ -40,6 +44,11 @@ class VisionSensor(BaseSensor):
             self.comp.eval()
 
     def get_raw_modalities(self, modalities):
+        """
+        Helper function that gathers raw modalities (e.g. depth is based on 3d)
+
+        :return: raw modalities to query the renderer
+        """
         raw_modalities = []
         if 'rgb' in modalities or 'rgb_filled' in modalities:
             raw_modalities.append('rgb')
@@ -62,6 +71,9 @@ class VisionSensor(BaseSensor):
         return raw_vision_obs['rgb'][:, :, :3]
 
     def get_rgb_filled(self, raw_vision_obs):
+        """
+        :return: RGB-filled sensor reading by passing through the "Goggle" neural network
+        """
         rgb = self.get_rgb(raw_vision_obs)
         with torch.no_grad():
             tensor = transforms.ToTensor()((rgb * 255).astype(np.uint8)).cuda()
@@ -109,13 +121,15 @@ class VisionSensor(BaseSensor):
 
     def get_seg(self, raw_vision_obs):
         """
-        :return: semantic segmentation mask
+        :return: semantic segmentation mask, normalized to [0.0, 1.0]
         """
         seg = raw_vision_obs['seg'][:, :, 0:1]
         return seg
 
     def get_obs(self, env):
         """
+        Get vision sensor reading
+
         :return: vision sensor reading
         """
         raw_vision_obs = env.simulator.renderer.render_robot_cameras(

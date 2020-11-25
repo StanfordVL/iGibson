@@ -17,6 +17,11 @@ import numpy as np
 
 
 class PointNavFixedTask(BaseTask):
+    """
+    Point Nav Fixed Task
+    The goal is to navigate to a fixed goal position
+    """
+
     def __init__(self, env):
         super(PointNavFixedTask, self).__init__(env)
         self.reward_type = self.config.get('reward_type', 'l2')
@@ -51,6 +56,8 @@ class PointNavFixedTask(BaseTask):
     def load_visualization(self, env):
         """
         Load visualization, such as initial and target position, shortest path, etc
+
+        :param env: environment instance
         """
         if env.mode != 'gui':
             return
@@ -90,28 +97,53 @@ class PointNavFixedTask(BaseTask):
 
     def get_geodesic_potential(self, env):
         """
+        Get potential based on geodesic distance
+
+        :param env: environment instance
         :return: geodesic distance to the target position
         """
         _, geodesic_dist = self.get_shortest_path(env)
         return geodesic_dist
 
     def get_l2_potential(self, env):
+        """
+        Get potential based on L2 distance
+
+        :param env: environment instance
+        :return: L2 distance to the target position
+        """
         return l2_distance(env.robots[0].get_position()[:2],
                            self.target_pos[:2])
 
     def get_potential(self, env):
+        """
+        Compute task-specific potential: distance to the goal
+
+        :param env: environment instance
+        :return: task potential
+        """
         if self.reward_type == 'l2':
             return self.get_l2_potential(env)
         elif self.reward_type == 'geodesic':
             return self.get_geodesic_potential(env)
 
     def reset_scene(self, env):
+        """
+        Task-specific scene reset: reset scene objects or floor plane
+
+        :param env: environment instance
+        """
         if isinstance(env.scene, InteractiveIndoorScene):
             env.scene.reset_scene_objects()
         elif isinstance(env.scene, StaticIndoorScene):
             env.scene.reset_floor(floor=self.floor_num)
 
     def reset_agent(self, env):
+        """
+        Task-specific agent reset: land the robot to initial pose, compute initial potential
+
+        :param env: environment instance
+        """
         env.land(env.robots[0], self.initial_pos, self.initial_orn)
         self.path_length = 0.0
         self.robot_pos = self.initial_pos[:2]
@@ -120,6 +152,9 @@ class PointNavFixedTask(BaseTask):
             reward_function.reset(self, env)
 
     def get_termination(self, env, collision_links=[], action=None, info={}):
+        """
+        Aggreate termination conditions and fill info
+        """
         done, info = super(PointNavFixedTask, self).get_termination(
             env, collision_links, action, info)
 
@@ -135,6 +170,8 @@ class PointNavFixedTask(BaseTask):
     def global_to_local(self, env, pos):
         """
         Convert a 3D point in global frame to agent's local frame
+
+        :param env: environment instance
         :param pos: a 3D point in global frame
         :return: the same 3D point in agent's local frame
         """
@@ -142,6 +179,12 @@ class PointNavFixedTask(BaseTask):
                                 *env.robots[0].get_rpy())
 
     def get_task_obs(self, env):
+        """
+        Get task-specific observation, including goal position, current velocities, etc.
+
+        :param env: environment instance
+        :return: task-specific observation
+        """
         task_obs = self.global_to_local(env, self.target_pos)[:2]
         if self.goal_format == 'polar':
             task_obs = np.array(cartesian_to_polar(task_obs[0], task_obs[1]))
@@ -164,6 +207,9 @@ class PointNavFixedTask(BaseTask):
                           from_initial_pos=False,
                           entire_path=False):
         """
+        Get the shortest path and geodesic distance from the robot or the initial position to the target position
+
+        :param env: environment instance
         :param from_initial_pos: whether source is initial position rather than current position
         :param entire_path: whether to return the entire shortest path
         :return: shortest path and geodesic distance to the target position
@@ -177,6 +223,11 @@ class PointNavFixedTask(BaseTask):
             self.floor_num, source, target, entire_path=entire_path)
 
     def step_visualization(self, env):
+        """
+        Step visualization
+
+        :param env: environment instance
+        """
         if env.mode != 'gui':
             return
 
@@ -197,6 +248,11 @@ class PointNavFixedTask(BaseTask):
                     pos=np.array([0.0, 0.0, 100.0]))
 
     def step(self, env):
+        """
+        Perform task-specific step: step visualization and aggregate path length
+
+        :param env: environment instance
+        """
         self.step_visualization(env)
         new_robot_pos = env.robots[0].get_position()[:2]
         self.path_length += l2_distance(self.robot_pos, new_robot_pos)

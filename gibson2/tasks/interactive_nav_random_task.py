@@ -5,6 +5,11 @@ import numpy as np
 
 
 class InteractiveNavRandomTask(PointNavRandomTask):
+    """
+    Interactive Navigation Random Task
+    The goal is to navigate to a random goal position, in the presence of interactive objects that are small and light
+    """
+
     def __init__(self, env):
         super(InteractiveNavRandomTask, self).__init__(env)
         self.interactive_objects = self.load_interactive_objects(env)
@@ -13,7 +18,9 @@ class InteractiveNavRandomTask(PointNavRandomTask):
 
     def load_interactive_objects(self, env):
         """
-        Load interactive objects
+        Load interactive objects (YCB objects)
+
+        :param env: environment instance
         :return: a list of interactive objects
         """
         interactive_objects = []
@@ -34,6 +41,8 @@ class InteractiveNavRandomTask(PointNavRandomTask):
     def reset_interactive_objects(self, env):
         """
         Reset the poses of interactive objects to have no collisions with the scene or the robot
+
+        :param env: environment instance
         """
         max_trials = 100
 
@@ -54,5 +63,10 @@ class InteractiveNavRandomTask(PointNavRandomTask):
             env.land(obj, pos, orn)
 
     def reset_scene(self, env):
+        """
+        Task-specific scene reset: reset the interactive objects after scene and agent reset
+
+        :param env: environment instance
+        """
         super(InteractiveNavRandomTask, self).reset_scene(env)
         self.reset_interactive_objects(env)

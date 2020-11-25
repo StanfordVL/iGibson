@@ -6,7 +6,12 @@ from transforms3d.quaternions import quat2mat
 import pybullet as p
 import cv2
 
+
 class ScanSensor(BaseSensor):
+    """
+    1D LiDAR scanner sensor and occupancy grid sensor
+    """
+
     def __init__(self, env, modalities):
         super(ScanSensor, self).__init__(env)
         self.modalities = modalities
@@ -31,20 +36,24 @@ class ScanSensor(BaseSensor):
         if 'occupancy_grid' in self.modalities:
             self.grid_resolution = self.config.get('grid_resolution', 128)
             self.occupancy_range = self.config.get('occupancy_range', 5)  # m
-            self.robot_footprint_radius = self.config.get('robot_footprint_radius', 0.32)
+            self.robot_footprint_radius = self.config.get(
+                'robot_footprint_radius', 0.32)
             self.robot_footprint_radius_in_map = int(
                 self.robot_footprint_radius / self.occupancy_range *
                 self.grid_resolution)
 
     def get_local_occupancy_grid(self, scan):
+        """
+        Get local occupancy grid based on current 1D scan
 
+        :param: 1D LiDAR scan
+        :return: local occupancy grid
+        """
         laser_linear_range = self.laser_linear_range
         laser_angular_range = self.laser_angular_range
         min_laser_dist = self.min_laser_dist
-        laser_link_name = self.laser_link_name
 
         laser_angular_half_range = laser_angular_range / 2.0
-
 
         angle = np.arange(
             -np.radians(laser_angular_half_range),
@@ -54,9 +63,8 @@ class ScanSensor(BaseSensor):
         unit_vector_laser = np.array(
             [[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
 
-
         scan_laser = unit_vector_laser * \
-                     (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
+            (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
 
         laser_translation = self.laser_pose[:3]
         laser_rotation = quat2mat(
@@ -77,13 +85,13 @@ class ScanSensor(BaseSensor):
         occupancy_grid = np.ones(
             (self.grid_resolution, self.grid_resolution)).astype(np.uint8)
         scan_local_in_map = scan_local / self.occupancy_range * \
-                            self.grid_resolution + (self.grid_resolution / 2)
+            self.grid_resolution + (self.grid_resolution / 2)
         scan_local_in_map = scan_local_in_map.reshape(
             (1, -1, 1, 2)).astype(np.int32)
         for i in range(scan_local_in_map.shape[1]):
             cv2.circle(img=occupancy_grid,
-                       center=(scan_local_in_map[0,i,0,0],
-                               scan_local_in_map[0,i,0,1]),
+                       center=(scan_local_in_map[0, i, 0, 0],
+                               scan_local_in_map[0, i, 0, 1]),
                        radius=2,
                        color=0,
                        thickness=-1)
@@ -102,7 +110,9 @@ class ScanSensor(BaseSensor):
 
     def get_obs(self, env):
         """
-        :return: LiDAR sensor reading, normalized to [0.0, 1.0]
+        Get current LiDAR sensor reading and occupancy grid (optional)
+
+        :return: LiDAR sensor reading and local occupancy grid, normalized to [0.0, 1.0]
         """
         laser_angular_half_range = self.laser_angular_range / 2.0
         if self.laser_link_name not in env.robots[0].parts:

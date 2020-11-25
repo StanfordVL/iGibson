@@ -6,12 +6,23 @@ import numpy as np
 
 
 class PointNavRandomTask(PointNavFixedTask):
+    """
+    Point Nav Random Task
+    The goal is to navigate to a random goal position
+    """
+
     def __init__(self, env):
         super(PointNavRandomTask, self).__init__(env)
         self.target_dist_min = self.config.get('target_dist_min', 1.0)
         self.target_dist_max = self.config.get('target_dist_max', 10.0)
 
     def sample_initial_pose_and_target_pos(self, env):
+        """
+        Sample robot initial pose and target position
+
+        :param env: environment instance
+        :return: initial pose and target position
+        """
         _, initial_pos = env.scene.get_random_point(floor=self.floor_num)
         max_trials = 100
         dist = 0.0
@@ -32,10 +43,21 @@ class PointNavRandomTask(PointNavFixedTask):
         return initial_pos, initial_orn, target_pos
 
     def reset_scene(self, env):
+        """
+        Task-specific scene reset: get a random floor number first
+
+        :param env: environment instance
+        """
         self.floor_num = env.scene.get_random_floor()
         super(PointNavRandomTask, self).reset_scene(env)
 
     def reset_agent(self, env):
+        """
+        Reset robot initial pose.
+        Sample initial pose and target position, check validity, and land it.
+
+        :param env: environment instance
+        """
         reset_success = False
         max_trials = 100
 

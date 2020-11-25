@@ -5,6 +5,11 @@ from gibson2.robots.robot_locomotor import LocomotorRobot
 
 
 class Ant(LocomotorRobot):
+    """
+    OpenAI Ant Robot
+    Uses joint torque control
+    """
+
     def __init__(self, config):
         self.config = config
         self.torque = config.get("torque", 1.0)
@@ -19,6 +24,9 @@ class Ant(LocomotorRobot):
         )
 
     def set_up_continuous_action_space(self):
+        """
+        Set up continuous action space
+        """
         self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
@@ -27,4 +35,7 @@ class Ant(LocomotorRobot):
         self.action_low = -self.action_high
 
     def set_up_discrete_action_space(self):
+        """
+        Set up discrete action space
+        """
         assert False, "Ant does not support discrete actions"

@@ -4,6 +4,11 @@ import numpy as np
 
 
 class ShapeNetObject(Object):
+    """
+    ShapeNet object
+    Reference: https://www.shapenet.org/
+    """
+
     def __init__(self, path, scale=1., position=[0, 0, 0], orientation=[0, 0, 0]):
         super(ShapeNetObject, self).__init__()
         self.filename = path
@@ -27,6 +32,9 @@ class ShapeNetObject(Object):
         }
 
     def _load(self):
+        """
+        Load the object into pybullet
+        """
         collision_id = p.createCollisionShape(p.GEOM_MESH,
                                               fileName=self.filename,
                                               meshScale=self.scale)

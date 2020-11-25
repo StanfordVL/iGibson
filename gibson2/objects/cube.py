@@ -5,6 +5,10 @@ import pybullet as p
 
 
 class Cube(Object):
+    """
+    Cube shape primitive
+    """
+
     def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], visual_only=False, mass=1000, color=[1, 1, 1, 1]):
         super(Cube, self).__init__()
         self.basePos = pos
@@ -14,6 +18,9 @@ class Cube(Object):
         self.color = color
 
     def _load(self):
+        """
+        Load the object into pybullet
+        """
         baseOrientation = [0, 0, 0, 1]
         colBoxId = p.createCollisionShape(
             p.GEOM_BOX, halfExtents=self.dimension)
@@ -31,8 +38,3 @@ class Cube(Object):
             body_id, self.basePos, baseOrientation)
 
         return body_id
-
-
-def round_up(n, decimals=0):
-    multiplier = 10 ** decimals
-    return math.ceil(n * multiplier) / multiplier

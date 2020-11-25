@@ -1,3 +1,7 @@
+"""
+Constant Definitions
+"""
+
 # Encodings
 RAW_ENCODING = 0
 COPY_RECTANGLE_ENCODING = 1
@@ -8,7 +12,7 @@ ZLIB_ENCODING = 6
 TIGHT_ENCODING = 7
 ZLIBHEX_ENCODING = 8
 ZRLE_ENCODING = 16
-#0xffffff00 to 0xffffffff tight options
+# 0xffffff00 to 0xffffffff tight options
 PSEUDO_CURSOR_ENCODING = -239
 
 # Keycodes
