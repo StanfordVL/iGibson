@@ -255,12 +255,6 @@ PYBIND11_MODULE(EGLRendererContext, m) {
                  "read pixel buffer");
     pymodule.def("allocateTexture", &EGLRendererContext::allocateTexture, "load texture function");
 
-    // class MeshRendererG2G
-    pymodule.def("render_tensor_pre", &EGLRendererContext::render_tensor_pre,
-                 "pre-executed functions in MeshRendererG2G.render");
-    pymodule.def("render_tensor_post", &EGLRendererContext::render_tensor_post,
-                 "post-executed functions in MeshRendererG2G.render");
-
     // class Instance
     pymodule.def("render_softbody_instance", &EGLRendererContext::render_softbody_instance,
                  "render softbody in instance.render");

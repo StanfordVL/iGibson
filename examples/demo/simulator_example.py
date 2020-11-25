@@ -3,7 +3,7 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import numpy as np
 from gibson2.render.profiler import Profiler
 

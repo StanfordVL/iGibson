@@ -1,6 +1,6 @@
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import iGSDFScene
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from gibson2.render.profiler import Profiler
 import argparse
 
