@@ -19,7 +19,9 @@ import gym
 
 class BaseEnv(gym.Env):
     '''
-    a basic environment, step, observation and reward not implemented
+    Base Env class, follows OpenAI Gym interface
+    Handles loading scene and robot
+    Functions like reset and step are not implemented
     '''
 
     def __init__(self,
@@ -72,14 +74,13 @@ class BaseEnv(gym.Env):
                                        'vertical_fov', 90),
                                    device_idx=device_idx,
                                    render_to_tensor=render_to_tensor,
-                                   rendering_settings=settings,
-                                   auto_sync=True)
-
+                                   rendering_settings=settings)
         self.load()
 
     def reload(self, config_file):
         """
-        Reload another config file, this allows one to change the environment on the fly
+        Reload another config file
+        Thhis allows one to change the configuration on the fly
 
         :param config_file: new config file path
         """
@@ -89,7 +90,9 @@ class BaseEnv(gym.Env):
 
     def reload_model(self, scene_id):
         """
-        Reload another model, this allows one to change the environment on the fly
+        Reload another scene model
+        This allows one to change the scene on the fly
+
         :param scene_id: new scene_id
         """
         self.config['scene_id'] = scene_id
@@ -108,6 +111,9 @@ class BaseEnv(gym.Env):
         self.load()
 
     def get_next_scene_random_seed(self):
+        """
+        Get the next scene random seed
+        """
         if self.object_randomization_freq is None:
             return None
         return self.scene_random_seeds[self.scene_random_seed_idx]
@@ -164,7 +170,7 @@ class BaseEnv(gym.Env):
                     'load_room_instances', None),
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
-            first_n =  self.config.get('_set_first_n_objects', -1)
+            first_n = self.config.get('_set_first_n_objects', -1)
             if first_n != -1:
                 scene._set_first_n_objects(first_n)
             self.simulator.import_ig_scene(scene)
@@ -211,7 +217,9 @@ class BaseEnv(gym.Env):
 
     def simulator_step(self):
         """
-        Step the simulation, this is different from environment step where one can get observation and reward
+        Step the simulation.
+        This is different from environment step that returns the next
+        observation, reward, done, info.
         """
         self.simulator.step()
 
@@ -228,4 +236,7 @@ class BaseEnv(gym.Env):
         return NotImplementedError()
 
     def set_mode(self, mode):
+        """
+        Set simulator mode
+        """
         self.simulator.mode = mode

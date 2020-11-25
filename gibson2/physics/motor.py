@@ -12,7 +12,8 @@ MOTOR_SPEED_LIMIT = MOTOR_VOLTAGE / \
 
 
 class MotorModel(object):
-    """The accurate motor model, which is based on the physics of DC motors.
+    """
+    The accurate motor model, which is based on the physics of DC motors.
 
     The motor model support two types of control: position control and torque
     control. In position control mode, a desired motor angle is specified, and a
@@ -34,51 +35,49 @@ class MotorModel(object):
         self._viscous_damping = MOTOR_VISCOUS_DAMPING
         self._current_table = [0, 10, 20, 30, 40, 50, 60]
         self._torque_table = [0, 1, 1.9, 2.45, 3.0, 3.25, 3.5]
-        # self._torque_table = [0, 2, 3.8, 4.9, 6.0, 6.5, 7.0]
 
-        def set_voltage(self, voltage):
-            self._voltage = voltage
+    def set_voltage(self, voltage):
+        self._voltage = voltage
 
-        def get_voltage(self):
-            return self._voltage
+    def get_voltage(self):
+        return self._voltage
 
-        def set_viscous_damping(self, viscous_damping):
-            self._viscous_damping = viscous_damping
+    def set_viscous_damping(self, viscous_damping):
+        self._viscous_damping = viscous_damping
 
-        def get_viscous_dampling(self):
-            return self._viscous_damping
+    def get_viscous_dampling(self):
+        return self._viscous_damping
 
-        def convert_to_torque(self, motor_commands, current_motor_angle, current_motor_velocity):
-            """Convert the commands (position control or torque control) to torque.
+    def convert_to_torque(self, motor_commands,
+                          current_motor_angle, current_motor_velocity):
+        """Convert the commands (position control or torque control) to torque.
 
-            Args:
-            motor_commands: The desired motor angle if the motor is in position
-                control mode. The pwm signal if the motor is in torque control mode.
-            current_motor_angle: The motor angle at the current time step.
-            current_motor_velocity: The motor velocity at the current time step.
-            Returns:
-            actual_torque: The torque that needs to be applied to the motor.
-            observed_torque: The torque observed by the sensor.
-            """
-            if self._torque_control_enabled:
-                pwm = motor_commands
-            else:
-                pwm = (-self._kp * (current_motor_angle - motor_commands) -
-                       self._kd * current_motor_velocity)
-            pwm = np.clip(pwm, -1.0, 1.0)
-            return self._convert_to_torque_from_pwm(pwm, current_motor_velocity)
+        :param motor_commands: The desired motor angle if the motor is in position
+            control mode. The pwm signal if the motor is in torque control mode.
+        :param current_motor_angle: The motor angle at the current time step.
+        :param current_motor_velocity: The motor velocity at the current time step.
+        :return actual_torque: The torque that needs to be applied to the motor.
+        :return observed_torque: The torque observed by the sensor.
+        """
+        if self._torque_control_enabled:
+            pwm = motor_commands
+        else:
+            pwm = (-self._kp * (current_motor_angle - motor_commands) -
+                   self._kd * current_motor_velocity)
+        pwm = np.clip(pwm, -1.0, 1.0)
+        return self._convert_to_torque_from_pwm(pwm, current_motor_velocity)
 
-        def _convert_to_torque_from_pwm(self, pwm, current_motor_velocity):
-            """Convert the pwm signal to torque.
-            Args:
-            pwm: The pulse width modulation.
-            current_motor_velocity: The motor velocity at the current time step.
-            Returns:
-            actual_torque: The torque that needs to be applied to the motor.
-            observed_torque: The torque observed by the sensor.
-            """
-        observed_torque = np.clip(self._torque_constant * (pwm * self._voltage / self._resistance),
-                                  -OBSERVED_TORQUE_LIMIT, OBSERVED_TORQUE_LIMIT)
+    def _convert_to_torque_from_pwm(self, pwm, current_motor_velocity):
+        """Convert the pwm signal to torque.
+        :param pwm: The pulse width modulation.
+        :param current_motor_velocity: The motor velocity at the current time step.
+        :return actual_torque: The torque that needs to be applied to the motor.
+        :return observed_torque: The torque observed by the sensor.
+        """
+        observed_torque = np.clip(self._torque_constant *
+                                  (pwm * self._voltage / self._resistance),
+                                  -OBSERVED_TORQUE_LIMIT,
+                                  OBSERVED_TORQUE_LIMIT)
 
         # Net voltage is clipped at 50V by diodes on the motor controller.
         voltage_net = np.clip(

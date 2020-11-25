@@ -26,6 +26,10 @@ class AdaptiveNorm2d(nn.Module):
 
 
 class CompletionNet(nn.Module):
+    """
+    The "Goggle" neural network from Gibson v1
+    """
+
     def __init__(self, norm=AdaptiveNorm2d, nf=64, skip_first_bn=False):
         super(CompletionNet, self).__init__()
 
@@ -51,19 +55,24 @@ class CompletionNet(nn.Module):
             nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, padding=1),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, dilation=2, padding=2),
+            nn.Conv2d(nf * 4, nf * 4, kernel_size=3,
+                      stride=1, dilation=2, padding=2),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, dilation=4, padding=4),
+            nn.Conv2d(nf * 4, nf * 4, kernel_size=3,
+                      stride=1, dilation=4, padding=4),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, dilation=8, padding=8),
+            nn.Conv2d(nf * 4, nf * 4, kernel_size=3,
+                      stride=1, dilation=8, padding=8),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, dilation=16, padding=16),
+            nn.Conv2d(nf * 4, nf * 4, kernel_size=3,
+                      stride=1, dilation=16, padding=16),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, dilation=32, padding=32),
+            nn.Conv2d(nf * 4, nf * 4, kernel_size=3,
+                      stride=1, dilation=32, padding=32),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
             nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, padding=1),
@@ -78,7 +87,8 @@ class CompletionNet(nn.Module):
             nn.Conv2d(nf, nf, kernel_size=3, stride=1, padding=1),
             norm(nf, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.ConvTranspose2d(nf, nf // 4, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(nf, nf // 4, kernel_size=4,
+                               stride=2, padding=1),
             norm(nf // 4, momentum=alpha),
             nn.LeakyReLU(0.1),
             nn.Conv2d(nf // 4, nf // 4, kernel_size=3, stride=1, padding=1),

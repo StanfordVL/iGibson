@@ -3,6 +3,10 @@ import pybullet as p
 
 
 class VisualMarker(Object):
+    """
+    Visual shape created with shape primitives
+    """
+
     def __init__(self,
                  visual_shape=p.GEOM_SPHERE,
                  rgba_color=[1, 0, 0, 0.5],
@@ -29,6 +33,9 @@ class VisualMarker(Object):
         self.initial_offset = initial_offset
 
     def _load(self):
+        """
+        Load the object into pybullet
+        """
         if self.visual_shape == p.GEOM_BOX:
             shape = p.createVisualShape(self.visual_shape,
                                         rgbaColor=self.rgba_color,
@@ -51,4 +58,9 @@ class VisualMarker(Object):
         return body_id
 
     def set_color(self, color):
+        """
+        Set the color of the marker
+
+        :param color: normalized rgba color
+        """
         p.changeVisualShape(self.body_id, -1, rgbaColor=color)

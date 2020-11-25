@@ -39,8 +39,7 @@ class StaticIndoorScene(IndoorScene):
         :param build_graph: build connectivity graph
         :param num_waypoints: number of way points returned
         :param waypoint_resolution: resolution of adjacent way points
-        :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and
-        does not affect robot's observations
+        :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect robot's observations
         """
         super().__init__(
             scene_id,
@@ -103,6 +102,9 @@ class StaticIndoorScene(IndoorScene):
                     textureUniqueId=texture_id)
 
     def load_floor_planes(self):
+        """
+        Load additional floor planes (because the scene mesh can have bumpy floor surfaces)
+        """
         # load the default floor plane (only once) and later reset it to different floor heiights
         plane_name = os.path.join(
             pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
@@ -115,6 +117,9 @@ class StaticIndoorScene(IndoorScene):
         self.floor_body_ids.append(floor_body_id)
 
     def load(self):
+        """
+        Load the scene (including scene mesh and floor plane) into pybullet
+        """
         self.load_floor_metadata()
         self.load_scene_mesh()
         self.load_floor_planes()
@@ -123,15 +128,20 @@ class StaticIndoorScene(IndoorScene):
         return [self.mesh_body_id] + self.floor_body_ids
 
     def get_random_floor(self):
+        """
+        Get a random floor
+
+        :return: random floor number
+        """
         return np.random.randint(0, high=len(self.floor_heights))
 
     def reset_floor(self, floor=0, additional_elevation=0.02, height=None):
         """
-        Resets the ground plane to a new floor
-        :param floor: Integer identifying the floor to move the ground plane to
+        Resets the floor plane to a new floor
+
+        :param floor: Integer identifying the floor to move the floor plane to
         :param additional_elevation: Additional elevation with respect to the height of the floor
         :param height: Alternative parameter to control directly the height of the ground plane
-        :return: None
         """
         height = height if height is not None \
             else self.floor_heights[floor] + additional_elevation
@@ -140,4 +150,9 @@ class StaticIndoorScene(IndoorScene):
                                           ornObj=[0, 0, 0, 1])
 
     def get_floor_height(self, floor=0):
+        """
+        Return the current floor height (in meter)
+
+        :return: current floor height
+        """
         return self.floor_heights[floor]

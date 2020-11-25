@@ -20,13 +20,12 @@ class ParallelNavEnv(iGibsonEnv):
         """Batch together environments and simulate them in external processes.
         The environments can be different but must use the same action and
         observation specs.
-        Args:
-            env_constructors: List of callables that create environments.
-            blocking: Whether to step environments one after another.
-            flatten: Boolean, whether to use flatten action and time_steps during
+
+        :param env_constructors: List of callables that create environments.
+        :param blocking: Whether to step environments one after another.
+        :param flatten: Boolean, whether to use flatten action and time_steps during
             communication to reduce overhead.
-        Raises:
-            ValueError: If the action or observation specs don't match.
+        :raise ValueError: If the action or observation specs don't match.
         """
         self._envs = [ProcessPyEnvironment(
             ctor, flatten=flatten) for ctor in env_constructors]
@@ -38,10 +37,11 @@ class ParallelNavEnv(iGibsonEnv):
         self._flatten = flatten
 
     def start(self):
-        #tf.logging.info('Starting all processes.')
+        """
+        Start all children processes
+        """
         for env in self._envs:
             env.start()
-        #tf.logging.info('All processes started.')
 
     @property
     def batched(self):
@@ -53,8 +53,8 @@ class ParallelNavEnv(iGibsonEnv):
 
     def reset(self):
         """Reset all environments and combine the resulting observation.
-        Returns:
-        Time step with batch dimension.
+
+        :return: a list of [next_obs, reward, done, info]
         """
         time_steps = [env.reset(self._blocking) for env in self._envs]
         if not self._blocking:
@@ -63,12 +63,9 @@ class ParallelNavEnv(iGibsonEnv):
 
     def step(self, actions):
         """Forward a batch of actions to the wrapped environments.
-        Args:
-        actions: Batched action, possibly nested, to apply to the environment.
-        Raises:
-        ValueError: Invalid actions.
-        Returns:
-        Batch of observations, rewards, and done flags.
+
+        :param actions: batched action, possibly nested, to apply to the environment.
+        :return: a list of [next_obs, reward, done, info]
         """
         time_steps = [env.step(action, self._blocking)
                       for env, action in zip(self._envs, actions)]
@@ -81,20 +78,6 @@ class ParallelNavEnv(iGibsonEnv):
         """Close all external process."""
         for env in self._envs:
             env.close()
-
-    def set_subgoal(self, subgoals):
-        time_steps = [env.set_subgoal(subgoal, self._blocking)
-                      for env, subgoal in zip(self._envs, subgoals)]
-        if not self._blocking:
-            time_steps = [promise() for promise in time_steps]
-        return time_steps
-
-    def set_subgoal_type(self, sg_types):
-        time_steps = [env.set_subgoal_type(np.array(
-            sg_type), self._blocking) for env, sg_type in zip(self._envs, sg_types)]
-        if not self._blocking:
-            time_steps = [promise() for promise in time_steps]
-        return time_steps
 
 
 class ProcessPyEnvironment(object):
@@ -116,21 +99,12 @@ class ProcessPyEnvironment(object):
         environment and potentially wrapping it. The returned environment should
         not access global variables.
 
-        Args:
-        env_constructor: Callable that creates and returns a Python environment.
-        flatten: Boolean, whether to assume flattened actions and time_steps
+        :param env_constructor: callable that creates and returns a Python environment.
+        :param flatten: boolean, whether to assume flattened actions and time_steps
         during communication to avoid overhead.
-
-        Attributes:
-        observation_spec: The cached observation spec of the environment.
-        action_spec: The cached action spec of the environment.
-        time_step_spec: The cached time step spec of the environment.
         """
         self._env_constructor = env_constructor
         self._flatten = flatten
-        #self._observation_spec = None
-        #self._action_spec = None
-        #self._time_step_spec = None
 
     def start(self):
         """Start the process."""
@@ -146,31 +120,13 @@ class ProcessPyEnvironment(object):
             raise result
         assert result is self._READY, result
 
-    # def observation_spec(self):
-    #  if not self._observation_spec:
-    #    self._observation_spec = self.call('observation_spec')()
-    #  return self._observation_spec
-
-    # def action_spec(self):
-    #  if not self._action_spec:
-    #    self._action_spec = self.call('action_spec')()
-    #  return self._action_spec
-
-    # def time_step_spec(self):
-    #  if not self._time_step_spec:
-    #    self._time_step_spec = self.call('time_step_spec')()
-    #  return self._time_step_spec
-
     def __getattr__(self, name):
         """Request an attribute from the environment.
         Note that this involves communication with the external process, so it can
         be slow.
 
-        Args:
-        name: Attribute to access.
-
-        Returns:
-        Value of the attribute.
+        :param name: attribute to access.
+        :return: value of the attribute.
         """
         self._conn.send((self._ACCESS, name))
         return self._receive()
@@ -178,13 +134,10 @@ class ProcessPyEnvironment(object):
     def call(self, name, *args, **kwargs):
         """Asynchronously call a method of the external environment.
 
-        Args:
-        name: Name of the method to call.
-        args: Positional arguments to forward to the method.
-        kwargs: Keyword arguments to forward to the method.
-
-        Returns:
-        Promise object that blocks and provides the return value when called.
+        :param name: name of the method to call.
+        :param args: positional arguments to forward to the method.
+        :param kwargs: keyword arguments to forward to the method.
+        :return: promise object that blocks and provides the return value when called.
         """
         payload = name, args, kwargs
         self._conn.send((self._CALL, payload))
@@ -202,12 +155,10 @@ class ProcessPyEnvironment(object):
 
     def step(self, action, blocking=True):
         """Step the environment.
-        Args:
-        action: The action to apply to the environment.
-        blocking: Whether to wait for the result.
 
-        Returns:
-        time step when blocking, otherwise callable that returns the time step.
+        :param action: the action to apply to the environment.
+        :param blocking: whether to wait for the result.
+        :return: (next_obs, reward, done, info) tuple when blocking, otherwise callable that returns that tuple
         """
         promise = self.call('step', action)
         if blocking:
@@ -217,28 +168,11 @@ class ProcessPyEnvironment(object):
 
     def reset(self, blocking=True):
         """Reset the environment.
-        Args:
-        blocking: Whether to wait for the result.
 
-        Returns:
-        New observation when blocking, otherwise callable that returns the new
-        observation.
+        :param blocking: whether to wait for the result.
+        :return: next_obs when blocking, otherwise callable that returns next_obs
         """
         promise = self.call('reset')
-        if blocking:
-            return promise()
-        else:
-            return promise
-
-    def set_subgoal(self, subgoal, blocking=True):
-        promise = self.call('set_subgoal', subgoal)
-        if blocking:
-            return promise()
-        else:
-            return promise
-
-    def set_subgoal_type(self, subgoal_type, blocking=True):
-        promise = self.call('set_subgoal_type', subgoal_type)
         if blocking:
             return promise()
         else:
@@ -247,15 +181,12 @@ class ProcessPyEnvironment(object):
     def _receive(self):
         """Wait for a message from the worker process and return its payload.
 
-        Raises:
-        Exception: An exception was raised inside the worker process.
-        KeyError: The reveived message is of an unknown type.
+        :raise Exception: an exception was raised inside the worker process.
+        :raise KeyError: the reveived message is of an unknown type.
 
-        Returns:
-        Payload object of the message.
+        :return: payload object of the message.
         """
         message, payload = self._conn.recv()
-        #print(message, payload)
         # Re-raise exceptions in the main process.
         if message == self._EXCEPTION:
             stacktrace = payload
@@ -269,22 +200,18 @@ class ProcessPyEnvironment(object):
     def _worker(self, conn, env_constructor, flatten=False):
         """The process waits for actions and sends back environment results.
 
-        Args:
-        conn: Connection for communication to the main process.
-        env_constructor: env_constructor for the OpenAI Gym environment.
-        flatten: Boolean, whether to assume flattened actions and time_steps
-        during communication to avoid overhead.
+        :param conn: connection for communication to the main process.
+        :param env_constructor: env_constructor for the OpenAI Gym environment.
+        :param flatten: boolean, whether to assume flattened actions and
+        time_steps during communication to avoid overhead.
 
-        Raises:
-        KeyError: When receiving a message of unknown type.
+        :raise KeyError: when receiving a message of unknown type.
         """
         try:
             np.random.seed()
             env = env_constructor()
-            #action_spec = env.action_spec()
             conn.send(self._READY)    # Ready.
             while True:
-                # print(len(self._conn._cache))
                 try:
                     # Only block for short times to have keyboard exceptions be raised.
                     if not conn.poll(0.1):
@@ -299,14 +226,8 @@ class ProcessPyEnvironment(object):
                     continue
                 if message == self._CALL:
                     name, args, kwargs = payload
-                    if name == 'step' or name == 'reset' or name == 'set_subgoal' or name == 'set_subgoal_type':
+                    if name == 'step' or name == 'reset':
                         result = getattr(env, name)(*args, **kwargs)
-                    #result = []
-                    # if flatten and name == 'step' or name == 'reset':
-                    #  args = [nest.pack_sequence_as(action_spec, args[0])]
-                    #  result = getattr(env, name)(*args, **kwargs)
-                    # if flatten and name in ['step', 'reset']:
-                    #  result = nest.flatten(result)
                     conn.send((self._RESULT, result))
                     continue
                 if message == self._CLOSE:

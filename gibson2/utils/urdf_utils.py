@@ -13,6 +13,9 @@ import math
 
 
 def parse_urdf(tree):
+    """
+    Parse URDF for spliting by floating joints later
+    """
     # map from name of child to name of its parent, joint name and type of connection
     parent_map = {}
     child_map = {}  # map from name of parent to list of names of children, joint names and types of connection
@@ -53,6 +56,9 @@ def parse_urdf(tree):
 
 
 def splitter(parent_map, child_map, joint_map, single_child_link):
+    """
+    Recursively split URDFs by floating joints
+    """
     new_single_child_link = []
     for (joint_name, joint_tuple) in joint_map.items():
         logging.debug("Joint: ", joint_name)
@@ -134,11 +140,20 @@ def splitter(parent_map, child_map, joint_map, single_child_link):
 
 
 def round_up(n, decimals=0):
+    """
+    Helper function to round a float
+    """
     multiplier = 10 ** decimals
     return math.ceil(n * multiplier) / multiplier
 
 
 def transform_element_xyzrpy(element, transformation):
+    """
+    Transform a URDF element by transformation
+
+    :param element: URDF XML element
+    :param transformation: transformation that should be applied to the element
+    """
     element_xyz = np.array(
         [float(val) for val in element.find("origin").attrib["xyz"].split(" ")])
     if 'rpy' in element.find("origin").attrib:
@@ -155,59 +170,10 @@ def transform_element_xyzrpy(element, transformation):
         *transform_rpy)
 
 
-def merge_fixed_joints(tree):
-    while True:
-        fixed_joints = [joint for joint in tree.findall(
-            "joint") if joint.attrib["type"] == "fixed"]
-        if len(fixed_joints) == 0:
-            break
-        else:
-            fixed_joint = fixed_joints[0]
-
-            joint_xyz = np.array(
-                [float(val) for val in fixed_joint.find("origin").attrib["xyz"].split(" ")])
-
-            if 'rpy' in fixed_joint.find("origin").attrib:
-                joint_rpy = np.array(
-                    [float(val) for val in fixed_joint.find("origin").attrib["rpy"].split(" ")])
-            else:
-                joint_rpy = np.array([0., 0., 0.])
-
-            joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
-
-            # The transformation needs to be applied to all positional elements defined with respect to the fixed_joint frame
-            # This includes:
-            #   - link elements (visual and geom, we ignore inertia)
-            #   - next joint elements
-            child_link_name = fixed_joint.find("child").attrib["link"]
-            child_link = [link for link in tree.findall(
-                "link") if link.attrib["name"] == child_link_name][0]
-            parent_link_name = fixed_joint.find("parent").attrib["link"]
-            parent_link = [link for link in tree.findall(
-                "link") if link.attrib["name"] == parent_link_name][0]
-            for visual_elem in child_link.iter("visual"):
-                transform_element_xyzrpy(visual_elem, joint_frame)
-                parent_link.append(visual_elem)
-
-            for collision_elem in child_link.iter("collision"):
-                transform_element_xyzrpy(collision_elem, joint_frame)
-                parent_link.append(collision_elem)
-
-            for joint2 in tree.iter("joint"):
-                parent_name = joint2.find("parent").attrib["link"]
-                # Search for a joint where the child of the "fixed" joint is the parent
-                if parent_name == child_link_name:
-                    transform_element_xyzrpy(joint2, joint_frame)
-                    joint2.find("parent").attrib["link"] = parent_link_name
-
-            tree.getroot().remove(child_link)
-            tree.getroot().remove(fixed_joint)
-
-
-def save_urdfs_without_floating_joints(tree, file_prefix, merge_fj):
-
-    if merge_fj:
-        merge_fixed_joints(tree)
+def save_urdfs_without_floating_joints(tree, file_prefix):
+    """
+    Split one URDF into multiple URDFs if there are floating joints and save them
+    """
 
     # Pybullet doesn't read floating joints
     # Find them and separate into different objects

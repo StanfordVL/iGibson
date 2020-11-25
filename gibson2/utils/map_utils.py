@@ -25,12 +25,8 @@ def get_xy_floors(vertices, faces, dist_threshold=-0.98):
 def gen_trav_map(vertices, faces, output_folder, add_clutter=False,
                  trav_map_filename_format='floor_trav_{}.png',
                  obstacle_map_filename_format='floor_{}.png'):
-    """Generate traversability maps.
-    Args:
-    mp3d_dir: Root directory of Matterport3D or Gibson. Under this root directory should be
-    subdirectories, each of which represents a model/environment. Within each
-    subdirectory should be a file named 'mesh_z_up.obj'.
-    add_clutter: Boolean for whether to generate traversability maps with or without clutter.
+    """
+    Generate traversability maps.
     """
     floors = [0.0]
 

@@ -1,9 +1,12 @@
-''' A simple profiler for logging '''
 import logging
 import time
 
 
 class Profiler(object):
+    """
+    A simple profiler for logging and debugging
+    """
+
     def __init__(self, name, logger=None, level=logging.INFO, enable=True):
         self.name = name
         self.logger = logger
@@ -11,8 +14,9 @@ class Profiler(object):
         self.enable = enable
 
     def step(self, name):
-        """ Returns the duration and stepname since last step/start """
-        duration = self.summarize_step(start=self.step_start, step_name=name, level=self.level)
+        """ Returns the duration since last step/start """
+        duration = self.summarize_step(
+            start=self.step_start, step_name=name, level=self.level)
         now = time.time()
         self.step_start = now
         return duration
@@ -27,6 +31,9 @@ class Profiler(object):
             self.summarize_step(self.start)
 
     def summarize_step(self, start, level=None):
+        """
+        Summarize the step duration and fps
+        """
         duration = time.time() - start
         if self.logger:
             level = level or self.level

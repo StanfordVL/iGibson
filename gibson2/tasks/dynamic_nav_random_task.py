@@ -5,6 +5,11 @@ import numpy as np
 
 
 class DynamicNavRandomTask(PointNavRandomTask):
+    """
+    Dynamic Navigation Random Task
+    The goal is to navigate to a random goal position, in the presence of dynamic objects
+    """
+
     def __init__(self, env):
         super(DynamicNavRandomTask, self).__init__(env)
         self.num_dynamic_objects = self.config.get('num_dynamic_objects', 1)
@@ -18,7 +23,9 @@ class DynamicNavRandomTask(PointNavRandomTask):
 
     def load_dynamic_objects(self, env):
         """
-        Load interactive objects
+        Load dynamic objects (Turtlebots)
+
+        :param env: environment instance
         :return: a list of interactive objects
         """
         dynamic_objects = []
@@ -31,6 +38,8 @@ class DynamicNavRandomTask(PointNavRandomTask):
     def reset_dynamic_objects(self, env):
         """
         Reset the poses of dynamic objects to have no collisions with the scene or the robot
+
+        :param env: environment instance
         """
         max_trials = 100
         for robot in self.dynamic_objects:
@@ -50,10 +59,20 @@ class DynamicNavRandomTask(PointNavRandomTask):
             env.land(robot, pos, orn)
 
     def reset_scene(self, env):
+        """
+        Task-specific scene reset: reset the dynamic objects after scene and agent reset
+
+        :param env: environment instance
+        """
         super(DynamicNavRandomTask, self).reset_scene(env)
         self.reset_dynamic_objects(env)
 
     def step(self, env):
+        """
+        Perform task-specific step: move the dynamic objects with action repeat
+
+        :param env: environment instance
+        """
         super(DynamicNavRandomTask, self).step(env)
         if env.current_step % self.dynamic_objects_action_repeat == 0:
             self.dynamic_objects_last_actions = [

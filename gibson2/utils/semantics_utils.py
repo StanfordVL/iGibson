@@ -11,6 +11,11 @@ class SemanticClass(IntEnum):
 
 
 def get_class_name_to_class_id(starting_class_id=SemanticClass.SCENE_OBJS):
+    """
+    Get mapping from semantic class name to class id
+
+    :param starting_class_id: starting class id for scene objects
+    """
     category_txt = os.path.join(gibson2.ig_dataset_path,
                                 'metadata/categories.txt')
     class_name_to_class_id = dict()

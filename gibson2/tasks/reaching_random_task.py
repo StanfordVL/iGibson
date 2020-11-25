@@ -9,6 +9,11 @@ import numpy as np
 
 
 class ReachingRandomTask(PointNavRandomTask):
+    """
+    Reaching Random Task
+    The goal is to reach a random goal position with the robot's end effector
+    """
+
     def __init__(self, env):
         super(ReachingRandomTask, self).__init__(env)
         self.target_height_range = self.config.get(
@@ -20,13 +25,31 @@ class ReachingRandomTask(PointNavRandomTask):
         self.reward_functions[-1] = ReachingGoalReward(self.config)
 
     def get_l2_potential(self, env):
+        """
+        L2 distance to the goal
+
+        :param env: environment instance
+        :return: potential based on L2 distance to goal
+        """
         return l2_distance(env.robots[0].get_end_effector_position(),
                            self.target_pos)
 
     def get_potential(self, env):
+        """
+        Compute task-specific potential: distance to the goal
+
+        :param env: environment instance
+        :return: task potential
+        """
         return self.get_l2_potential(env)
 
     def sample_initial_pose_and_target_pos(self, env):
+        """
+        Sample robot initial pose and target position
+
+        :param env: environment instance
+        :return: initial pose and target position
+        """
         initial_pos, initial_orn, target_pos = \
             super(ReachingRandomTask, self).sample_initial_pose_and_target_pos(env)
         target_pos += np.random.uniform(self.target_height_range[0],
@@ -34,6 +57,12 @@ class ReachingRandomTask(PointNavRandomTask):
         return initial_pos, initial_orn, target_pos
 
     def get_task_obs(self, env):
+        """
+        Get task-specific observation, including goal position, end effector position, etc.
+
+        :param env: environment instance
+        :return: task-specific observation
+        """
         task_obs = super(ReachingRandomTask, self).get_task_obs(env)
         goal_z_local = self.global_to_local(env, self.target_pos)[2]
         end_effector_pos_local = self.global_to_local(
