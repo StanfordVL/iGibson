@@ -617,25 +617,6 @@ void MeshRendererContext::init_pos_instance(int shaderProgram, py::array_t<float
 }
 
 
-void MeshRendererContext::render_tensor_pre(bool msaa, GLuint fb1, GLuint fb2) {
-
-    glBindFramebuffer(GL_FRAMEBUFFER, fb2);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    if (msaa) {
-        glBindFramebuffer(GL_FRAMEBUFFER, fb1);
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    }
-    glEnable(GL_DEPTH_TEST);
-}
-
-
-void MeshRendererContext::render_tensor_post() {
-    glDisable(GL_DEPTH_TEST);
-}
-
 void MeshRendererContext::cglBindVertexArray(int vao) {
     glBindVertexArray(vao);
 }

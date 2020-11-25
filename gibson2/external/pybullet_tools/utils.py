@@ -22,6 +22,7 @@ from gibson2.external.motion.motion_planners.rrt_star import rrt_star
 from gibson2.external.motion.motion_planners.lazy_prm import lazy_prm_replan_loop
 from gibson2.external.motion.motion_planners.rrt import rrt
 from gibson2.external.motion.motion_planners.smoothing import optimize_path
+from gibson2.utils.constants import OccupancyGridState
 #from ..motion.motion_planners.rrt_connect import birrt, direct_path
 import cv2
 
@@ -3233,8 +3234,9 @@ def plan_base_motion_2d(body, end_conf, base_limits, map_2d, occupancy_range, gr
         cv2.circle(mask, (robot_footprint_radius_in_map, robot_footprint_radius_in_map), robot_footprint_radius_in_map,
                    1, -1)
         mask = mask.astype(np.bool)
-        return np.any(map_2d[pts[0] - robot_footprint_radius_in_map:pts[0] + robot_footprint_radius_in_map + 1,
-                             pts[1] - robot_footprint_radius_in_map:pts[1] + robot_footprint_radius_in_map + 1][mask] == 0)
+        return not np.all(map_2d[pts[0] - robot_footprint_radius_in_map:pts[0] + robot_footprint_radius_in_map + 1,
+                             pts[1] - robot_footprint_radius_in_map:pts[1] + robot_footprint_radius_in_map + 1][mask]
+                      == OccupancyGridState.FREESPACE)
 
     if collision_fn(start_conf):
         # print("Warning: initial configuration is in collision")

@@ -2,7 +2,7 @@
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import os
 import gibson2
 import time

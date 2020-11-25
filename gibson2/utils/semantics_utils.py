@@ -1,14 +1,6 @@
 import gibson2
 import os
-from enum import IntEnum
-
-
-class SemanticClass(IntEnum):
-    BACKGROUND = 0
-    ROBOTS = 1
-    USER_ADDED_OBJS = 2
-    SCENE_OBJS = 3
-
+from gibson2.utils.constants import SemanticClass
 
 def get_class_name_to_class_id(starting_class_id=SemanticClass.SCENE_OBJS):
     """
