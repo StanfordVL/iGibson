@@ -848,7 +848,7 @@ class MeshRenderer(object):
                             shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SCENE)
                     else:
                         instance.render(
-                            shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SCENE)
+                            shadow_pass=ShadowPass.NO_SHADOW)
 
         self.r.render_meshrenderer_post()
 
