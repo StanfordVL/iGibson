@@ -2,8 +2,42 @@
   <head>
     <title>iGibson Video Streaming</title>
   </head>
+   <style>
+    .img {
+      width: 512px;
+      height: 512px;
+      border:2px solid #fff;
+      box-shadow: 10px 10px 5px #ccc;
+      -moz-box-shadow: 10px 10px 5px #ccc;
+      -webkit-box-shadow: 10px 10px 5px #ccc;
+      -khtml-box-shadow: 10px 10px 5px #ccc;
+    }
+    .center {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      
+    }
+  </style>
   <body>
     <h1>iGibson Video Streaming</h1>
-    <img id="bg" src="{{ url_for('video_feed') }}">
+    <img class="img center" id="bg" src="{{ url_for('video_feed') }}">
   </body>
+  <script>
+    document.addEventListener('keydown', (event) => {
+            console.log(`key=${event.key},code=${event.code}`);
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', "{{ url_for('video_feed') }}?key=" + `${event.key}`, true);
+            xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            xhr.onload = function () {
+                // do something to response
+                console.log(this.responseText);
+            };
+            xhr.send('');
+
+
+           
+        });
+
+  </script>
 </html>
