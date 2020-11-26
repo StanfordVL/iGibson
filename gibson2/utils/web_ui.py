@@ -25,6 +25,8 @@ import time
 import cv2
 import uuid
 
+interactive = True
+
 def pil_image_to_base64(pil_image):
     buf = BytesIO()
     pil_image.save(buf, format="JPEG")
@@ -184,7 +186,6 @@ class ProcessPyEnvironment(object):
         finally:
             conn.close()
 
-
 class ToyEnv(object):
     def __init__(self):
         config = parse_config('../../examples/configs/turtlebot_demo.yaml')
@@ -233,13 +234,63 @@ class ToyEnv(object):
     def close(self):
         self.s.disconnect()
 
+
+
+class ToyEnvInt(object):
+    def __init__(self):
+        config = parse_config('../../examples/configs/turtlebot_demo.yaml')
+        hdr_texture = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+        hdr_texture2 = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+        light_modulation_map_filename = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+        background_texture = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+
+        scene = InteractiveIndoorScene(
+            'Rs_int', texture_randomization=False, object_randomization=False)
+
+        settings = MeshRendererSettings(env_texture_filename=hdr_texture,
+                                        env_texture_filename2=hdr_texture2,
+                                        env_texture_filename3=background_texture,
+                                        light_modulation_map_filename=light_modulation_map_filename,
+                                        enable_shadow=True, msaa=True,
+                                        light_dimming_factor=1.0,
+                                        optimized=True)
+
+        self.s = Simulator(mode='headless', image_width=400,
+                      image_height=400, rendering_settings=settings)
+        self.s.import_ig_scene(scene)
+        self.turtlebot = Turtlebot(config)
+        self.s.import_robot(self.turtlebot)
+
+        for _ in range(5):
+            obj = YCBObject('003_cracker_box')
+            self.s.import_object(obj)
+            obj.set_position_orientation(np.random.uniform(
+                low=0, high=2, size=3), [0, 0, 0, 1])
+        print(self.s.renderer.instances)
+
+    def step(self, a):
+        self.turtlebot.apply_action(a)
+        self.s.step()
+        frame = self.s.renderer.render_robot_cameras(modes=('rgb'))[0]
+        return frame
+
+    def close(self):
+        self.s.disconnect()
+
 class iGFlask(Flask):
     def __init__(self, args, **kwargs):
         super(iGFlask, self).__init__(args, **kwargs)
         self.action= {}
         self.envs = {}
     def prepare_app(self, uuid):
-        self.envs[uuid] = ProcessPyEnvironment(ToyEnv)
+        if interactive:
+            self.envs[uuid] = ProcessPyEnvironment(ToyEnvInt)
+        else:
+            self.envs[uuid] = ProcessPyEnvironment(ToyEnv)
         self.envs[uuid].start()
     def stop_app(self, uuid):
         self.envs[uuid].close()
@@ -270,7 +321,11 @@ def gen(app, unique_id):
             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + loading_frame + b'\r\n\r\n')
         app.prepare_app(id)
         start_time = time.time()
-        while time.time() - start_time < 30:
+        if interactive:
+            timeout = 200
+        else:
+            timeout = 30
+        while time.time() - start_time < timeout:
             frame = app.envs[id].step(app.action[id])
             frame = (frame[:, :, :3] * 255).astype(np.uint8)
             frame = pil_image_to_base64(Image.fromarray(frame))
