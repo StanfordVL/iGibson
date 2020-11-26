@@ -1,9 +1,13 @@
-from flask import Flask, render_template, Response, request
+from flask import Flask, render_template, Response, request, session
 import sys
 import pickle
 from gibson2.robots.turtlebot_robot import Turtlebot
 from gibson2.simulator import Simulator
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+import gibson2
+import os
+
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.utils.utils import parse_config
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
@@ -17,8 +21,9 @@ import binascii
 import multiprocessing
 import traceback
 import atexit
-
-
+import time
+import cv2
+import uuid
 
 def pil_image_to_base64(pil_image):
     buf = BytesIO()
@@ -166,6 +171,7 @@ class ProcessPyEnvironment(object):
                     conn.send((self._RESULT, result))
                     continue
                 if message == self._CLOSE:
+                    getattr(env, 'close')()
                     assert payload is None
                     break
                 raise KeyError(
@@ -174,7 +180,6 @@ class ProcessPyEnvironment(object):
             etype, evalue, tb = sys.exc_info()
             stacktrace = ''.join(traceback.format_exception(etype, evalue, tb))
             message = 'Error in environment process: {}'.format(stacktrace)
-            # tf.logging.error(message)
             conn.send((self._EXCEPTION, stacktrace))
         finally:
             conn.close()
@@ -183,14 +188,32 @@ class ProcessPyEnvironment(object):
 class ToyEnv(object):
     def __init__(self):
         config = parse_config('../../examples/configs/turtlebot_demo.yaml')
-        settings = MeshRendererSettings(enable_shadow=False, enable_pbr=False,
-            msaa=False)
+        hdr_texture = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+        hdr_texture2 = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+        light_modulation_map_filename = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+        background_texture = os.path.join(
+            gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+
+        # scene = InteractiveIndoorScene(
+        #     'Rs_int', texture_randomization=False, object_randomization=False)
+
+        settings = MeshRendererSettings(enable_shadow=False, enable_pbr=False)
+        # settings = MeshRendererSettings(env_texture_filename=hdr_texture,
+        #                                 env_texture_filename2=hdr_texture2,
+        #                                 env_texture_filename3=background_texture,
+        #                                 light_modulation_map_filename=light_modulation_map_filename,
+        #                                 enable_shadow=True, msaa=True,
+        #                                 light_dimming_factor=1.0,
+        #                                 optimized=True)
+
         self.s = Simulator(mode='headless', image_width=400,
                       image_height=400, rendering_settings=settings)
-        scene = StaticIndoorScene('Rs',
-                                  build_graph=True,
-                                  pybullet_load_texture=True)
+        scene = StaticIndoorScene('Rs')
         self.s.import_scene(scene)
+        #self.s.import_ig_scene(scene)
         self.turtlebot = Turtlebot(config)
         self.s.import_robot(self.turtlebot)
 
@@ -203,55 +226,85 @@ class ToyEnv(object):
 
     def step(self, a):
         self.turtlebot.apply_action(a)
-        frame = self.s.renderer.render_robot_cameras(modes=('rgb'))[0]
         self.s.step()
+        frame = self.s.renderer.render_robot_cameras(modes=('rgb'))[0]
         return frame
 
+    def close(self):
+        self.s.disconnect()
 
 class iGFlask(Flask):
     def __init__(self, args, **kwargs):
         super(iGFlask, self).__init__(args, **kwargs)
-        self.sim_env = None
-        self.action= [0,0]
-    def prepare_app(self):
-        self.sim_env = ProcessPyEnvironment(ToyEnv)
-        self.sim_env.start()
+        self.action= {}
+        self.envs = {}
+    def prepare_app(self, uuid):
+        self.envs[uuid] = ProcessPyEnvironment(ToyEnv)
+        self.envs[uuid].start()
+    def stop_app(self, uuid):
+        self.envs[uuid].close()
+        del self.envs[uuid]
 
 app = iGFlask(__name__)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    id = uuid.uuid4()
+    return render_template('index.html', uuid=id)
 
-def gen(app):
-    app.prepare_app()
-    while True:
-        frame = app.sim_env.step(app.action)
-        frame = (frame[:, :, :3] * 255).astype(np.uint8)
-        frame = pil_image_to_base64(Image.fromarray(frame))
-        frame = binascii.a2b_base64(frame)
-        yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+def gen(app, unique_id):
+    image = np.array(Image.open("templates/loading.jpg").resize((400, 400))).astype(np.uint8)
+    loading_frame = pil_image_to_base64(Image.fromarray(image))
+    loading_frame = binascii.a2b_base64(loading_frame)
+
+    image = np.array(Image.open("templates/waiting.jpg").resize((400, 400))).astype(np.uint8)
+    waiting_frame = pil_image_to_base64(Image.fromarray(image))
+    waiting_frame = binascii.a2b_base64(waiting_frame)
+
+    image = np.array(Image.open("templates/finished.jpg").resize((400, 400))).astype(np.uint8)
+    finished_frame = pil_image_to_base64(Image.fromarray(image))
+    finished_frame = binascii.a2b_base64(finished_frame)
+    id = unique_id
+    if len(app.envs) < 3:
+        for i in range(5):
+            yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + loading_frame + b'\r\n\r\n')
+        app.prepare_app(id)
+        start_time = time.time()
+        while time.time() - start_time < 30:
+            frame = app.envs[id].step(app.action[id])
+            frame = (frame[:, :, :3] * 255).astype(np.uint8)
+            frame = pil_image_to_base64(Image.fromarray(frame))
+            frame = binascii.a2b_base64(frame)
+            yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+
+        app.stop_app(id)
+        for i in range(5):
+            yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + finished_frame + b'\r\n\r\n')
+    else:
+        for i in range(5):
+            yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + waiting_frame + b'\r\n\r\n')
 
 @app.route('/video_feed', methods=['POST', 'GET'])
 def video_feed():
-    print(request)
+    unique_id = request.args['uuid']
+    print(unique_id)
     if request.method == 'POST':
         key = request.args['key']
         if key == 'w':
-            app.action = [1,1]
+            app.action[unique_id] = [1,1]
         if key == 's':
-            app.action = [-1,-1]
+            app.action[unique_id] = [-1,-1]
         if key == 'd':
-            app.action = [0.3,-0.3]
+            app.action[unique_id] = [0.3,-0.3]
         if key == 'a':
-            app.action = [-0.3,0.3]
+            app.action[unique_id] = [-0.3,0.3]
         if key == 'f':
-            app.action = [0,0]
+            app.action[unique_id] = [0,0]
         return ""
     else:
-        app.action = [0,0]
-        return Response(gen(app), mimetype='multipart/x-mixed-replace; boundary=frame')
-
+        app.action[unique_id] = [0,0]
+        return Response(gen(app, unique_id), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0")
+    port = int(sys.argv[1])
+    app.run(host="0.0.0.0", port=port)
