@@ -4,8 +4,7 @@ from gibson2.utils.utils import parse_config
 import os
 import gibson2
 
-from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_category_path
-
+from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_category_path, get_3dfront_scene_path,get_cubicasa_scene_path
 import argparse
 import xml.etree.ElementTree as ET
 import json
@@ -28,19 +27,29 @@ missing_models = set([
     'closet',
     'ac_engine',
     'water_hearter',
+    'ceiling_lamp',
     'clutter'
 ])
 
 
-def convert_scene(scene_name, select_best=False):
+def convert_scene(scene_name, 
+                  select_best=False,
+                  threedfront=False,
+                  cubicasa=False):
+    if not threedfront and not cubicasa:
+        scene_dir = get_ig_scene_path(scene_name)
+    elif threedfront:
+        scene_dir = get_3dfront_scene_path(scene_name)
+    elif cubicasa:
+        scene_dir = get_cubicasa_scene_path(scene_name)
 
     scene_file = os.path.join(
-            get_ig_scene_path(scene_name), "urdf", "{}_orig.urdf".format(scene_name))
+            scene_dir, "urdf", "{}_orig.urdf".format(scene_name))
     scene_tree = ET.parse(scene_file)
-    bbox_dir = os.path.join(get_ig_scene_path(scene_name), "bbox")
+    bbox_dir = os.path.join(scene_dir, "bbox")
     os.makedirs(bbox_dir, exist_ok=True)
 
-    with open(get_ig_scene_path(scene_name) + '/misc/all_objs.json', 'r') as all_objs_file:
+    with open(os.path.join(scene_dir, 'misc', 'all_objs.json'), 'r') as all_objs_file:
         all_objs = json.load(all_objs_file)
 
         total = 0
@@ -142,8 +151,7 @@ def convert_scene(scene_name, select_best=False):
             # print(total)
 
     fname = scene_name if not select_best else "{}_best".format(scene_name)
-    scene_file_out = os.path.join(get_ig_scene_path(
-        scene_name), "urdf", "{}.urdf".format(fname))
+    scene_file_out = os.path.join( scene_dir, "urdf", "{}.urdf".format(fname))
     scene_tree.write(scene_file_out, xml_declaration=True)
     print('all categories:', categories)
 
@@ -218,11 +226,18 @@ def main():
                         nargs='+', help='The name of the scene to process')
     parser.add_argument('--select_best', dest='select_best',
                         action='store_true')
+    parser.add_argument('--3dfront', dest='threedfront',
+                        action='store_true')
+    parser.add_argument('--cubicasa', dest='cubicasa',
+                        action='store_true')
 
     args = parser.parse_args()
+    if args.threedfront and args.cubicasa:
+        raise ValueError('3D-Front and Cubicasa flagged at the same time.')
     for scene_name in args.scene_names:
-        convert_scene(scene_name, select_best=args.select_best)
-
+        convert_scene(scene_name, select_best=args.select_best, 
+                      threedfront=args.threedfront,
+                      cubicasa=args.cubicasa)
 
 if __name__ == "__main__":
     main()

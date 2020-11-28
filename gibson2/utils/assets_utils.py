@@ -37,6 +37,34 @@ def get_ig_scene_path(scene_name):
     return os.path.join(ig_scenes_path, scene_name)
 
 
+def get_3dfront_scene_path(scene_name):
+    """
+    Get 3D-FRONT scene path
+
+    :param scene_name: scene name
+    :return: file path to the scene name
+    """
+    threedfront_dataset_path = gibson2.threedfront_dataset_path
+    threedfront_dataset_path = os.path.join( threedfront_dataset_path, "scenes")
+    assert scene_name in os.listdir(
+        threedfront_dataset_path), "Scene {} does not exist".format(scene_name)
+    return os.path.join(threedfront_dataset_path, scene_name)
+
+
+def get_cubicasa_scene_path(scene_name):
+    """
+    Get cubicasa scene path
+
+    :param scene_name: scene name
+    :return: file path to the scene name
+    """
+    cubicasa_dataset_path = gibson2.cubicasa_dataset_path
+    cubicasa_dataset_path= os.path.join( cubicasa_dataset_path, "scenes")
+    assert scene_name in os.listdir(
+        cubicasa_dataset_path), "Scene {} does not exist".format(scene_name)
+    return os.path.join(cubicasa_dataset_path, scene_name)
+
+
 def get_ig_category_path(category_name):
     """
     Get iGibson object category path
