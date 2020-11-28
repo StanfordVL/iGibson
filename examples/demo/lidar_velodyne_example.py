@@ -11,9 +11,11 @@ from IPython import embed
 
 def main():
     config = parse_config('../configs/turtlebot_demo.yaml')
-    settings = MeshRendererSettings(enable_shadow=False, msaa=False)
-    s = Simulator(mode='gui', image_width=256,
-                  image_height=256, rendering_settings=settings)
+    settings = MeshRendererSettings()
+    s = Simulator(mode='gui',
+                  image_width=256,
+                  image_height=256,
+                  rendering_settings=settings)
 
     scene = StaticIndoorScene('Rs',
                               build_graph=True,
@@ -22,19 +24,14 @@ def main():
     turtlebot = Turtlebot(config)
     s.import_robot(turtlebot)
 
-    for _ in range(10):
-        obj = YCBObject('003_cracker_box')
-        s.import_object(obj)
-        obj.set_position_orientation(np.random.uniform(
-            low=0, high=2, size=3), [0, 0, 0, 1])
-
-    print(s.renderer.instances)
-
     for i in range(10000):
         with Profiler('Simulator step'):
-            turtlebot.apply_action([0.1, 0.1])
+            turtlebot.apply_action([0.1, -0.1])
             s.step()
-            rgb = s.renderer.render_robot_cameras(modes=('rgb'))
+            lidar = s.renderer.get_lidar_all()
+            print(lidar.shape)
+            # TODO: visualize lidar scen
+
     s.disconnect()
 
 
