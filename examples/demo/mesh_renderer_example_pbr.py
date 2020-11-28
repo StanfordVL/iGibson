@@ -8,6 +8,7 @@ from gibson2.render.profiler import Profiler
 from gibson2.utils.assets_utils import get_scene_path
 from PIL import Image
 
+
 def load_obj_np(filename_obj, normalization=False, texture_size=4, load_texture=False,
                 texture_wrapping='REPEAT', use_bilinear=True):
     """Load Wavefront .obj file into numpy array
@@ -75,14 +76,15 @@ def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:
-        model_path = os.path.join(get_scene_path('Rs_int'), 'mesh_z_up.obj')
+        model_path = os.path.join(get_scene_path('Rs'), 'mesh_z_up.obj')
     settings = MeshRendererSettings(msaa=True, enable_shadow=True)
-    renderer = MeshRenderer(width=512, height=512, vertical_fov=90, rendering_settings=settings)
-    renderer.set_light_position_direction([0,0,10], [0,0,0])
+    renderer = MeshRenderer(width=512, height=512,
+                            vertical_fov=90, rendering_settings=settings)
+    renderer.set_light_position_direction([0, 0, 10], [0, 0, 0])
 
-    renderer.load_object('plane/plane_z_up_0.obj', scale=[3,3,3])
+    renderer.load_object('plane/plane_z_up_0.obj', scale=[3, 3, 3])
     renderer.add_instance(0)
-    renderer.set_pose([0,0,-1.5,1, 0, 0.0, 0.0], -1)
+    renderer.set_pose([0, 0, -1.5, 1, 0, 0.0, 0.0], -1)
 
     i = 1
 
@@ -94,24 +96,23 @@ def main():
 
     v = np.vstack(v)
     print(v.shape)
-    xlen = np.max(v[:,0]) - np.min(v[:,0])
-    ylen = np.max(v[:,1]) - np.min(v[:,1])
+    xlen = np.max(v[:, 0]) - np.min(v[:, 0])
+    ylen = np.max(v[:, 1]) - np.min(v[:, 1])
     scale = 1.0/(max(xlen, ylen))
 
     for fn in os.listdir(model_path):
         if fn.endswith('obj'):
-            renderer.load_object(os.path.join(model_path, fn), scale=[scale, scale, scale])
+            renderer.load_object(os.path.join(
+                model_path, fn), scale=[scale, scale, scale])
             renderer.add_instance(i)
             i += 1
             renderer.instances[-1].use_pbr = True
             renderer.instances[-1].use_pbr_mapping = True
             renderer.instances[-1].metalness = 1
             renderer.instances[-1].roughness = 0.1
-            
 
     print(renderer.visual_objects, renderer.instances)
     print(renderer.materials_mapping, renderer.mesh_materials)
-    
 
     px = 1
     py = 1
@@ -149,12 +150,15 @@ def main():
     imgs = []
     for i in range(60):
         theta += np.pi*2/60
-        renderer.set_pose([0,0,-1.5,np.cos(-theta/2), 0, 0.0, np.sin(-theta/2)], 0)
+        renderer.set_pose([0, 0, -1.5, np.cos(-theta/2),
+                           0, 0.0, np.sin(-theta/2)], 0)
         with Profiler('Render'):
             frame = renderer.render(modes=('rgb'))
-        cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
+        cv2.imshow('test', cv2.cvtColor(
+            np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
 
-        imgs.append(Image.fromarray((255*np.concatenate(frame, axis=1)[:,:,:3]).astype(np.uint8)))
+        imgs.append(Image.fromarray(
+            (255*np.concatenate(frame, axis=1)[:, :, :3]).astype(np.uint8)))
 
         q = cv2.waitKey(1)
         if q == ord('w'):
@@ -171,11 +175,12 @@ def main():
         px = r*np.sin(theta)
         py = r*np.cos(theta)
         camera_pose = np.array([px, py, pz])
-        renderer.set_camera(camera_pose, [0,0,0], [0, 0, 1])
+        renderer.set_camera(camera_pose, [0, 0, 0], [0, 0, 1])
 
     renderer.release()
     imgs[0].save('{}.gif'.format('/data2/gifs/' + model_path.replace('/', '_')),
-                   save_all=True, append_images=imgs[1:], optimize=False, duration=40, loop=0)
+                 save_all=True, append_images=imgs[1:], optimize=False, duration=40, loop=0)
+
 
 if __name__ == '__main__':
     main()

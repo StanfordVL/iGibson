@@ -182,6 +182,21 @@ def download_dataset(url):
     # these datasets comes as folders, in these folder there are scenes, so --strip-components are needed.
 
 
+def download_ig_dataset(url):
+    """
+    Download iGibson dataset
+    """
+    if not os.path.exists(gibson2.ig_dataset_path):
+        os.makedirs(gibson2.ig_dataset_path)
+
+    file_name = url.split('/')[-1]
+    os.system(
+        'wget -c --retry-connrefused --tries=5 --timeout=5 {} -O /tmp/{}'.format(url, file_name))
+    os.system(
+        'tar -zxf /tmp/{} --strip-components=1 --directory {}'.format(file_name, gibson2.ig_dataset_path))
+    # these datasets comes as folders, in these folder there are scenes, so --strip-components are needed.
+
+
 def download_ig_dataset():
     """
     Download iGibson dataset

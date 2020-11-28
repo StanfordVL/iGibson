@@ -13,41 +13,19 @@ In this example, we show an environment wrapper of [TF-Agents](https://github.co
 ```python
 def load(config_file,
          scene_id=None,
-         env_type='gibson',
-         sim2real_track='static',
          env_mode='headless',
-         action_timestep=1.0 / 5.0,
+         action_timestep=1.0 / 10.0,
          physics_timestep=1.0 / 40.0,
          device_idx=0,
-         random_position=False,
-         random_height=False,
          gym_env_wrappers=(),
          env_wrappers=(),
          spec_dtype_map=None):
     config_file = os.path.join(os.path.dirname(gibson2.__file__), config_file)
-    if env_type == 'gibson':
-        if random_position:
-            env = NavigateRandomEnv(config_file=config_file,
-                                    mode=env_mode,
-                                    action_timestep=action_timestep,
-                                    physics_timestep=physics_timestep,
-                                    device_idx=device_idx,
-                                    random_height=random_height)
-        else:
-            env = NavigateEnv(config_file=config_file,
-                              mode=env_mode,
-                              action_timestep=action_timestep,
-                              physics_timestep=physics_timestep,
-                              device_idx=device_idx)
-    elif env_type == 'gibson_sim2real':
-        env = NavigateRandomEnvSim2Real(config_file=config_file,
-                                        mode=env_mode,
-                                        action_timestep=action_timestep,
-                                        physics_timestep=physics_timestep,
-                                        device_idx=device_idx,
-                                        track=sim2real_track)
-    else:
-        assert False, 'unknown env_type: {}'.format(env_type)
+    env = iGibson(config_file=config_file,
+                  mode=env_mode,
+                  action_timestep=action_timestep,
+                  physics_timestep=physics_timestep,
+                  device_idx=device_idx)
 
     discount = env.discount_factor
     max_episode_steps = env.max_step
