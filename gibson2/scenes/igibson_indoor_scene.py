@@ -10,10 +10,11 @@ import xml.etree.ElementTree as ET
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 import random
 import json
-from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids
+from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
 from IPython import embed
 from PIL import Image
 
+SCENE_SOURCE=['IG','CUBICASA','THREEDFRONT']
 
 class InteractiveIndoorScene(StaticIndoorScene):
     """
@@ -42,6 +43,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  load_room_types=None,
                  load_room_instances=None,
                  seg_map_resolution=0.1,
+                 scene_source="IG",
                  ):
         """
         :param scene_id: Scene id
@@ -61,6 +63,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param load_room_types: only load objects in these room types into the scene (a list of str)
         :param load_room_instances: only load objects in these room instances into the scene (a list of str)
         :param seg_map_resolution: room segmentation map resolution
+        :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT 
         """
 
         super().__init__(
@@ -84,8 +87,17 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                               object_randomization_idx)
         else:
             fname = '{}_best'.format(scene_id)
+        if scene_source not in SCENE_SOURCE:
+            raise ValueError('Unsupported scene source: {}'.format(scene_source))
+        if scene_source == "IG":
+            scene_dir = get_ig_scene_path(scene_id)
+        elif scene_source == "CUBICASA":
+            scene_dir = get_cubicasa_scene_path(scene_id)
+        else:
+            scene_dir = get_3dfront_scene_path(scene_id)
+        self.scene_dir = scene_dir 
         self.scene_file = os.path.join(
-            get_ig_scene_path(scene_id), "urdf", "{}.urdf".format(fname))
+            scene_dir, "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
         self.first_n_objects = np.inf
         self.random_groups = {}
@@ -284,7 +296,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         :param seg_map_resolution: room segmentation map resolution
         """
-        layout_dir = os.path.join(get_ig_scene_path(self.scene_id), "layout")
+        layout_dir = os.path.join(self.scene_dir, "layout")
         room_seg_imgs = os.path.join(layout_dir, 'floor_insseg_0.png')
         img_ins = Image.open(room_seg_imgs)
         room_seg_imgs = os.path.join(layout_dir, 'floor_semseg_0.png')
@@ -361,7 +373,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         E.g. a dining table usually has overlaps with the surrounding dining chairs
         """
         bbox_overlap_file = os.path.join(
-            get_ig_scene_path(self.scene_id), 'misc', 'bbox_overlap.json')
+            self.scene_dir, 'misc', 'bbox_overlap.json')
         if os.path.isfile(bbox_overlap_file):
             with open(bbox_overlap_file) as f:
                 return json.load(f)
@@ -768,7 +780,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     0, 0, enableCollision=0)
 
         # Load the traversability map
-        maps_path = os.path.join(get_ig_scene_path(self.scene_id), "layout")
+        maps_path = os.path.join(self.scene_dir, "layout")
         self.load_trav_map(maps_path)
 
         self.visual_mesh_to_material = visual_mesh_to_material
