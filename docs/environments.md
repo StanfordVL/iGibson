@@ -228,7 +228,3 @@ if __name__ == "__main__":
 ```
 
 You actually have already run this in [Quickstart](quickstart.md)!
-
-#### Interactive Environments
-In this example, we show how to instantiate `iGibsobEnv` with a fully interactive scene `Rs_int`. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: [examples/demo/env_interactive_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/env_interactive_example.py).
-
