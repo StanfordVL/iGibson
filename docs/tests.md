@@ -3,7 +3,7 @@
 We provide tests in [test](https://github.com/StanfordVL/iGibson/tree/master/test). You can run them by this:
 ```bash
 cd test
-pytest
+pytest --ignore disabled --ignore benchmark
 ```
 It will take a few minutes. If all tests pass, you will see something like this
 ```bash
@@ -22,5 +22,4 @@ test_scene_importing.py ....                                                 [ 9
 test_simulator.py .                                                          [ 96% ]
 test_viewer.py
 ```
-We will further improve our test coverage in the next few weeks.
 
