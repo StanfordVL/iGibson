@@ -90,6 +90,12 @@ python -m gibson2.utils.assets_utils --download_demo_data
 
 The full Gibson and iGibson dataset can be downloaded using the following command, this script automatically download, decompress, and put the dataset to correct place. You will get `URL` after filling in the agreement form.
 
+Download iGibson dataset
+```bash
+python -m gibson2.utils.assets_utils --download_ig_dataset
+```
+
+Download Gibson dataset (agreement signing required tp get `URL`)
 ```bash
 python -m gibson2.utils.assets_utils --download_dataset URL
 ```
