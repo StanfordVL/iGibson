@@ -16,7 +16,7 @@ The fifteen fully interactive models are visualized below.
 
 ![placeholder.jpg](images/ig_scene.png)
 
-#### Download Instruction:
+#### Download Instruction
 To download the dataset, you need to first configure where the dataset is to be stored. You can change it in
  `your_installation_path/gibson2/global_config.yaml` (default and recommended: `ig_dataset: your_installation_path/gibson2/ig_dataset`). iGibson scenes can be downloaded with one single line:
 
