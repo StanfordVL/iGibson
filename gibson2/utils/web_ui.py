@@ -25,7 +25,7 @@ import time
 import cv2
 import uuid
 
-interactive = True
+interactive = False
 
 def pil_image_to_base64(pil_image):
     buf = BytesIO()
@@ -286,15 +286,27 @@ class iGFlask(Flask):
         super(iGFlask, self).__init__(args, **kwargs)
         self.action= {}
         self.envs = {}
+        self.envs_inception_time = {}
+    def cleanup(self):
+        print(self.envs)
+        for k,v in self.envs_inception_time.items():
+            if time.time() - v > 200:
+                # clean up an old environment
+                self.stop_app(k)
+
     def prepare_app(self, uuid):
+        self.cleanup()
         if interactive:
             self.envs[uuid] = ProcessPyEnvironment(ToyEnvInt)
         else:
             self.envs[uuid] = ProcessPyEnvironment(ToyEnv)
         self.envs[uuid].start()
+        self.envs_inception_time[uuid] = time.time()
+
     def stop_app(self, uuid):
         self.envs[uuid].close()
         del self.envs[uuid]
+        del self.envs_inception_time[uuid]
 
 app = iGFlask(__name__)
 
@@ -320,19 +332,22 @@ def gen(app, unique_id):
         for i in range(5):
             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + loading_frame + b'\r\n\r\n')
         app.prepare_app(id)
-        start_time = time.time()
-        if interactive:
-            timeout = 200
-        else:
-            timeout = 30
-        while time.time() - start_time < timeout:
-            frame = app.envs[id].step(app.action[id])
-            frame = (frame[:, :, :3] * 255).astype(np.uint8)
-            frame = pil_image_to_base64(Image.fromarray(frame))
-            frame = binascii.a2b_base64(frame)
-            yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
-
-        app.stop_app(id)
+        try:
+            start_time = time.time()
+            if interactive:
+                timeout = 200
+            else:
+                timeout = 30
+            while time.time() - start_time < timeout:
+                frame = app.envs[id].step(app.action[id])
+                frame = (frame[:, :, :3] * 255).astype(np.uint8)
+                frame = pil_image_to_base64(Image.fromarray(frame))
+                frame = binascii.a2b_base64(frame)
+                yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+        except:
+            pass
+        finally:
+            app.stop_app(id)
         for i in range(5):
             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + finished_frame + b'\r\n\r\n')
     else:
