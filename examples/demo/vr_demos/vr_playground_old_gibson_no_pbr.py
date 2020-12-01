@@ -33,7 +33,7 @@ fullscreen = False
 use_eye_tracking = True
 # Enables the VR collision body
 # TODO: Re-enable VR body once I get it working!
-enable_vr_body = False
+enable_vr_body = True
 # Toggles movement with the touchpad (to move outside of play area)
 touchpad_movement = True
 # Set to one of hmd, right_controller or left_controller to move relative to that device
@@ -125,13 +125,17 @@ while True:
     hmd_is_valid, hmd_trans, hmd_rot = s.get_data_for_vr_device('hmd')
     l_is_valid, l_trans, l_rot = s.get_data_for_vr_device('left_controller')
     r_is_valid, r_trans, r_rot = s.get_data_for_vr_device('right_controller')
+    # TODO: Remove this test
+    if hmd_is_valid and enable_vr_body:
+        vr_body.set_position(hmd_trans)
+        _, _, hmd_z = p.getEulerFromQuaternion(hmd_rot)
+        curr_x, curr_y, _ = p.getEulerFromQuaternion(vr_body.get_orientation())
+        new_rot = p.getQuaternionFromEuler([curr_x, curr_y, hmd_z])
+        vr_body.set_orientation(new_rot)
 
     # VR button data
     l_trig, l_touch_x, l_touch_y = s.get_button_data_for_controller('left_controller')
     r_trig, r_touch_x, r_touch_y = s.get_button_data_for_controller('right_controller')
-
-    print("right controller data:")
-    print(r_is_valid, r_trans)
 
     # VR eye tracking data
     if use_eye_tracking:
@@ -141,12 +145,13 @@ while True:
             updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
             gaze_marker.set_position(updated_marker_pos)
 
-    if enable_vr_body:
-        if not r_is_valid:
-            # See VrBody class for more details on this method
-            vr_body.move_body(s, 0, 0, movement_speed, relative_movement_device)
-        else:
-            vr_body.move_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
+    # TODO: Re-enable this once the VR body is working
+    #if enable_vr_body:
+    #    if not r_is_valid:
+    #        # See VrBody class for more details on this method
+    #        vr_body.move_body(s, 0, 0, movement_speed, relative_movement_device)
+    #    else:
+    #        vr_body.move_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
 
     if r_is_valid:
         r_hand.move(r_trans, r_rot)
