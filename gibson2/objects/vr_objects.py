@@ -173,7 +173,9 @@ class VrHand(ArticulatedObject):
     """
 
     # VR hand can be one of three types - no_pbr (diffuse white/grey color), skin or metal
-    def __init__(self, hand='right', tex_type='no_pbr'):
+    def __init__(self, sim, hand='right', tex_type='no_pbr'):
+        # We store a reference to the simulator so that VR data can be acquired under the hood
+        self.sim = sim
         self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_hand')
         self.hand = hand
         if self.hand not in ['left', 'right']:
@@ -187,6 +189,7 @@ class VrHand(ArticulatedObject):
             self.base_rot = p.getQuaternionFromEuler([0, 160, -80])
         else:
             self.base_rot = p.getQuaternionFromEuler([0, 160, 80])
+        self.vr_device = '{}_controller'.format(self.hand)
         # Lists of joint indices for hand part
         self.base_idxs = [0]
         # Proximal indices for non-thumb fingers
@@ -204,8 +207,11 @@ class VrHand(ArticulatedObject):
         # Closed positions for all joints
         self.close_pos = [0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 1.2, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8]
 
-    def set_start_state(self, start_pos):
-        """Call after importing the hand."""
+    def hand_setup(self):
+        """Call after importing the hand. This sets the hand constraints and starting position"""
+        # Set the hand to z=100 so it won't interfere with physics upon loading
+        x_coord = 10 if self.hand == 'right' else -10
+        start_pos = [x_coord, 0, 100]
         self.set_position(start_pos)
         for jointIndex in range(p.getNumJoints(self.body_id)):
             # Make masses larger for greater stability
@@ -217,6 +223,20 @@ class VrHand(ArticulatedObject):
         p.changeDynamics(self.body_id, -1, mass=0.2, lateralFriction=2)
         # Create constraint that can be used to move the hand
         self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], start_pos)
+
+    def reset_hand_transform(self):
+        """
+        Resets the transform of the VR hand by setting its position and orientation to that of the VR controller.
+        The hand's transform will only be set if the controller data is valid.
+        """
+        is_valid, trans, rot = self.sim.get_data_for_vr_device(self.vr_device)
+        if is_valid:
+            self.set_position(trans)
+            # Apply base rotation first so the virtual controller is properly aligned with the real controller
+            final_rot = multQuatLists(rot, self.base_rot)
+            self.set_orientation(final_rot)
+            # We also need to update the hand's constraint to its new location
+            p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=2000)
 
     # TODO: Get this working!
     def set_hand_no_collision(self, no_col_id):
@@ -245,5 +265,12 @@ class VrHand(ArticulatedObject):
             p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos, force=2000)
 
     def move(self, trans, rot):
-        final_rot = multQuatLists(rot, self.base_rot)
-        p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=2000)
+        # If the hand is more than 2 meters away from the target, it will not move
+        # We have a reset button to deal with this case, and we don't want to disturb the physics by trying to reconnect
+        # the hand to the body when it might be stuck behind a wall/in an object
+        curr_pos = np.array(self.get_position())
+        dest = np.array(trans)
+        dist_to_dest = np.linalg.norm(curr_pos - dest)
+        if dist_to_dest < 2.0:
+            final_rot = multQuatLists(rot, self.base_rot)
+            p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=2000)

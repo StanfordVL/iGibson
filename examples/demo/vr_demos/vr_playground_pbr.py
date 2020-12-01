@@ -83,15 +83,15 @@ if enable_vr_body:
 
 # The hand can either be 'right' or 'left'
 # It has enough friction to pick up the basket and the mustard bottles
-r_hand = VrHand(hand='right')
+r_hand = VrHand(s, hand='right')
 s.import_object(r_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 # This sets the hand constraints so it can move with the VR controller
-r_hand.set_start_state(start_pos=[0, 0, 1.5])
+r_hand.hand_setup()
 
-l_hand = VrHand(hand='left')
+l_hand = VrHand(s, hand='left')
 s.import_object(l_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 # This sets the hand constraints so it can move with the VR controller
-l_hand.set_start_state(start_pos=[0, 0.5, 1.5])
+l_hand.hand_setup()
 
 if use_eye_tracking:
     # Eye tracking visual marker - a red marker appears in the scene to indicate gaze direction
@@ -134,6 +134,13 @@ while True:
                 # Toggle mustard hidden state
                 hide_can = not hide_can
                 s.set_hidden_state(cans[2], hide=hide_can)
+
+        # Hands can be reset by pressing the grip on the corresponding controller
+        if event_type == 'grip_press':
+            if device_type == 'left_controller':
+                l_hand.reset_hand_transform()
+            else:
+                r_hand.reset_hand_transform()
 
     s.step()
 
