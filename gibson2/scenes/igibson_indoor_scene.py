@@ -3,7 +3,7 @@ import gibson2
 import logging
 import numpy as np
 from gibson2.objects.articulated_object import URDFObject
-from gibson2.utils.utils import get_transform_from_xyz_rpy, quatXYZWFromRotMat, rotate_vector_2d
+from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
 import pybullet as p
 import os
 import xml.etree.ElementTree as ET
@@ -11,10 +11,10 @@ from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 import random
 import json
 from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
-from IPython import embed
 from PIL import Image
 
-SCENE_SOURCE=['IG','CUBICASA','THREEDFRONT']
+SCENE_SOURCE = ['IG', 'CUBICASA', 'THREEDFRONT']
+
 
 class InteractiveIndoorScene(StaticIndoorScene):
     """
@@ -88,14 +88,15 @@ class InteractiveIndoorScene(StaticIndoorScene):
         else:
             fname = '{}_best'.format(scene_id)
         if scene_source not in SCENE_SOURCE:
-            raise ValueError('Unsupported scene source: {}'.format(scene_source))
+            raise ValueError(
+                'Unsupported scene source: {}'.format(scene_source))
         if scene_source == "IG":
             scene_dir = get_ig_scene_path(scene_id)
         elif scene_source == "CUBICASA":
             scene_dir = get_cubicasa_scene_path(scene_id)
         else:
             scene_dir = get_3dfront_scene_path(scene_id)
-        self.scene_dir = scene_dir 
+        self.scene_dir = scene_dir
         self.scene_file = os.path.join(
             scene_dir, "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
@@ -145,7 +146,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
                 # Find the urdf file that defines this object
                 if category in ["walls", "floors", "ceilings"]:
-                    model_path = get_ig_scene_path(model)
+                    model_path = self.scene_dir
                     filename = os.path.join(
                         model_path, "urdf", model + "_" + category + ".urdf")
 
