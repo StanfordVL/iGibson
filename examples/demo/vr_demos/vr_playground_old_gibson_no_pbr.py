@@ -32,19 +32,19 @@ fullscreen = False
 # Toggles SRAnipal eye tracking
 use_eye_tracking = True
 # Enables the VR collision body
-enable_vr_body = True
+# TODO: Re-enable VR body once I get it working!
+enable_vr_body = False
 # Toggles movement with the touchpad (to move outside of play area)
 touchpad_movement = True
 # Set to one of hmd, right_controller or left_controller to move relative to that device
 relative_movement_device = 'hmd'
 # Movement speed for touchpad-based movement
-movement_speed = 0.03
+movement_speed = 0.02
 # Whether we should hide a mustard bottle when the menu button is presed
 hide_mustard_on_press = True
 
 # Initialize simulator with specific rendering settings
-s = Simulator(mode='vr', physics_timestep = 1/90.0, render_timestep = 1/90.0, 
-            rendering_settings=MeshRendererSettings(optimized=optimize, fullscreen=fullscreen, enable_pbr=False),
+s = Simulator(mode='vr', rendering_settings=MeshRendererSettings(optimized=optimize, fullscreen=fullscreen, enable_pbr=False),
             vr_eye_tracking=use_eye_tracking, vr_mode=True)
 scene = StaticIndoorScene('Placida')
 s.import_scene(scene)
@@ -57,15 +57,15 @@ if enable_vr_body:
 
 # The hand can either be 'right' or 'left'
 # It has enough friction to pick up the basket and the mustard bottles
-r_hand = VrHand(hand='right')
-s.import_object(r_hand)
+r_hand = VrHand(s, hand='right')
+s.import_object(r_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 # This sets the hand constraints so it can move with the VR controller
-r_hand.set_start_state(start_pos=[0, 0, 1.5])
+r_hand.hand_setup()
 
-l_hand = VrHand(hand='left')
-s.import_object(l_hand)
+l_hand = VrHand(s, hand='left')
+s.import_object(l_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 # This sets the hand constraints so it can move with the VR controller
-l_hand.set_start_state(start_pos=[0, 0.5, 1.5])
+l_hand.hand_setup()
 
 if use_eye_tracking:
     # Eye tracking visual marker - a red marker appears in the scene to indicate gaze direction
@@ -111,6 +111,13 @@ while True:
                 hide_mustard = not hide_mustard
                 s.set_hidden_state(mustard_list[2], hide=hide_mustard)
 
+        # Hands can be reset by pressing the grip on the corresponding controller
+        if event_type == 'grip_press':
+            if device_type == 'left_controller':
+                l_hand.reset_hand_transform()
+            else:
+                r_hand.reset_hand_transform()
+
     # Step the simulator - this needs to be done every frame to actually run the simulation
     s.step()
 
@@ -122,6 +129,9 @@ while True:
     # VR button data
     l_trig, l_touch_x, l_touch_y = s.get_button_data_for_controller('left_controller')
     r_trig, r_touch_x, r_touch_y = s.get_button_data_for_controller('right_controller')
+
+    print("right controller data:")
+    print(r_is_valid, r_trans)
 
     # VR eye tracking data
     if use_eye_tracking:
