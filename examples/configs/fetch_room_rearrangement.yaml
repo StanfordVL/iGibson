@@ -47,7 +47,7 @@ max_collisions_allowed: 500
 
 # misc config
 initial_pos_z_offset: 0.1
-collision_ignore_link_a_ids: [0, 1, 2]
+collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
 
 # sensor spec
 output: [rgb, depth, scan]
