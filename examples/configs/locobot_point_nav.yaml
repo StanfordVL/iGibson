@@ -14,7 +14,7 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # robot
-robot: Turtlebot
+robot: Locobot
 is_discrete: false
 linear_velocity: 0.5
 angular_velocity: 1.5707963267948966
