@@ -30,7 +30,7 @@ def main():
             s.step()
             lidar = s.renderer.get_lidar_all()
             print(lidar.shape)
-            # TODO: visualize lidar scen
+            # TODO: visualize lidar scan
 
     s.disconnect()
 

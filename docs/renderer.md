@@ -62,7 +62,6 @@ You may translate the camera by pressing "WASD" on your keyboard and rotate the 
 
 #### Velodyne VLP-16 Example
 In this example, we show a demo of 16-beam Velodyne VLP-16 LiDAR placed on top of a virtual Turtlebot. The code can be found in [examples/demo/lidar_velodyne_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/lidar_velodyne_example.py).
-`TODO @fei add Velodyne LiDAR visualization to lidar_velodyne_example.py`
 
 The Velodyne VLP-16 LiDAR visualization will look like this:
 ![lidar_velodyne.png](images/lidar_velodyne.png)
