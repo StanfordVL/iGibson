@@ -19,6 +19,7 @@ dev/transfer.c
 *.zip
 .*.swp
 
+docs/apidoc
 
 # vscode
 .vscode/
@@ -29,11 +30,8 @@ physics/*.json
 # Physics assets
 physics/models
 
-
 */events*
 0_VRDemoSettings.txt
-
-
 
 cnn_policy*
 *ppo_policy*
@@ -42,7 +40,6 @@ checkpoint
 *.log.*
 *.model.*
 examples/train/models/
-
 
 log_*/
 baselines/
@@ -60,11 +57,7 @@ gibson/cpp-household
 # Plotting
 examples/scripts/plot*
 
-
-#pycharm
-.idea*
-
-#models
+# Models
 nav_models
 
 gibson/assets

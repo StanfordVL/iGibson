@@ -33,7 +33,5 @@ If you want to know more about iGibson, you can also check out [our webpage](htt
 ### Dowloading Dataset of 3D Environments
 There are several datasets of 3D reconstructed large real-world environments (homes and offices) that you can download and use with iGibson. All of them will be accessible once you fill in this [form](https://forms.gle/36TW9uVpjrE1Mkf9A).
 
-You will have access to ten environments with annotated instances of furniture (chairs, tables, desks, doors, sofas) that can be interacted with, and to the original 572 reconstructed 3D environments without annotated objects from [Gibson v1](http://github.com/StanfordVL/GibsonEnv/).
-
-You will also have access to a [fully annotated environment: Rs_interactive](https://storage.googleapis.com/gibson_scenes/Rs_interactive.tar.gz) where close to 200 articulated objects are placed in their original locations of a real house and ready for interaction. ([The original environment: Rs](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) is also available). More info can be found in the [installation guide](installation.md).
+You will have access to **fifteen** fully interactive environments populated with a wide variety of furniture and objects that can be actuated, and to the original 572 reconstructed, static 3D environments from [Gibson v1](http://github.com/StanfordVL/GibsonEnv/). More info can be found in the [installation guide](installation.md).
 

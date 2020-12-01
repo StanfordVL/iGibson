@@ -49,6 +49,8 @@ python benchmark.py
 
 ## Benchmarks
 
+`TODO: @fei update code and documentation`
+
 Performance is a big designing focus for iGibson. We provide a few scripts to benchmark the rendering and physics
 simulation framerate in iGibson.
 

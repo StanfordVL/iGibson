@@ -179,22 +179,7 @@ def download_dataset(url):
         'wget -c --retry-connrefused --tries=5 --timeout=5 {} -O /tmp/{}'.format(url, file_name))
     os.system(
         'tar -zxf /tmp/{} --strip-components=1 --directory {}'.format(file_name, gibson2.dataset_path))
-    # these datasets comes as folders, in these folder there are scenes, so --strip-components are needed.
-
-
-def download_ig_dataset(url):
-    """
-    Download iGibson dataset
-    """
-    if not os.path.exists(gibson2.ig_dataset_path):
-        os.makedirs(gibson2.ig_dataset_path)
-
-    file_name = url.split('/')[-1]
-    os.system(
-        'wget -c --retry-connrefused --tries=5 --timeout=5 {} -O /tmp/{}'.format(url, file_name))
-    os.system(
-        'tar -zxf /tmp/{} --strip-components=1 --directory {}'.format(file_name, gibson2.ig_dataset_path))
-    # these datasets comes as folders, in these folder there are scenes, so --strip-components are needed.
+    # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 
 
 def download_ig_dataset():
@@ -209,7 +194,7 @@ def download_ig_dataset():
         'wget -c --retry-connrefused --tries=5 --timeout=5 {} -O /tmp/{}'.format(url, file_name))
     os.system(
         'tar -zxf /tmp/{} --strip-components=1 --directory {}'.format(file_name, gibson2.ig_dataset_path))
-    # these datasets comes as folders, in these folder there are scenes, so --strip-components are needed.
+    # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 
 
 if __name__ == "__main__":
@@ -217,7 +202,7 @@ if __name__ == "__main__":
     parser.add_argument('--download_assets',
                         action='store_true', help='download assets file')
     parser.add_argument('--download_demo_data', action='store_true',
-                        help='download demo data Rs and Rs_interactive')
+                        help='download demo data Rs')
     parser.add_argument('--download_dataset', type=str,
                         help='download dataset file given an URL')
     parser.add_argument('--download_ig_dataset', action='store_true',

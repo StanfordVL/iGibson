@@ -25,8 +25,7 @@ python -m gibson2.utils.assets_utils --download_ig_dataset
 ```
 
 #### Dataset Format
-The new dataset format can be found [here](https://docs.google.com/document/d/1OU5eqcg8P1tFifthX6PVwNsHbbKth-9H3yrOpkd4a-c)
-`TODO: @eric clean up the google doc`
+The new dataset format can be found [here](https://docs.google.com/document/d/14YUww8ztyTj0xjdX8WNOJpqNW-yKq-n9moqc43rfyMg)
 
 
 #### Cubikasa / 3D Front Dataset
@@ -46,10 +45,9 @@ Files included in this distribution:
 
 1. All scenes, 572 scenes (108GB): gibson_v2_all.tar.gz
 2. 4+ partition, 106 scenes, with textures better packed (2.6GB): gibson_v2_4+.tar.gz
-3. 10 scenes with interactive objects, 10 Scenes (`TODO size?`): ig_dataset.tar.gz
-4. Demo scene `Rs`
+3. Demo scene `Rs`
 
-To download 1,2 and 3, you need to fill in the agreement and get the download link `URL`, after which you can
+To download 1 and 2, you need to fill in the agreement and get the download link `URL`, after which you can
  manually download and store them in the path set in `your_installation_path/gibson2/global_config.yaml` (default and
   recommended: `dataset: your_installation_path/gibson2/dataset`). You can run a single command to download the dataset
   , this script automatically download, decompress, and put the dataset to correct place.
@@ -57,7 +55,7 @@ To download 1,2 and 3, you need to fill in the agreement and get the download li
 python -m gibson2.utils.assets_utils --download_dataset URL
 ```
 
-To download 4, you can run:
+To download 3, you can run:
 
 ```bash
 python -m gibson2.utils.assets_utils --download_demo_data
