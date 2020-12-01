@@ -49,11 +49,15 @@ class VrBody(ArticulatedObject):
         Initialize VR body to start in a specific location.
         Start pos should just contain an x and y value
         """
+        self.set_position([0, 0, 1])
         # TODO: Change this constraint to add rotation from the hmd!
-        x, y = start_pos
-        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, 
-                                            [0, 0, 0], [0, 0, 0], [x, y, self.start_height])
-        self.start_rot = self.get_orientation()
+        # TODO: Make the body spawn above the scene and only come down once HMD is valid - just like the controllers
+        #x, y = start_pos
+        #self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, 
+        #                                    [0, 0, 0], [0, 0, 0], [x, y, self.start_height])
+        #self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, 
+        #                                    [0, 0, 0], [0, 0, 0], [0, 0, 1.2])
+        #self.start_rot = self.get_orientation()
 
     def rotate_offset_vec(self, offset_vec, theta):
         """
@@ -238,7 +242,7 @@ class VrHand(ArticulatedObject):
             # We also need to update the hand's constraint to its new location
             p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=2000)
 
-    # TODO: Get this working!
+    # TODO: Use this code to get the VR body working and then remove it!
     def set_hand_no_collision(self, no_col_id):
         """
         Sets VrHand to not collide with the body specified by no_col_id.
