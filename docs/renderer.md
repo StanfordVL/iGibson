@@ -58,7 +58,19 @@ You may translate the camera by pressing "WASD" on your keyboard and rotate the 
 
 #### PBR (Physics-Based Rendering) Example
 
-`TODO: @fei fix mesh_renderer_example_pbr.py`
+You can test the physically based renderer with the PBR demo. You can render any objects included in iG dataset, here
+ we show a sink for example, as it includes different materials. You need to pass in a folder, since it will load all
+  obj files in the folder.
+
+```bash
+cd examples/demo
+python mesh_renderer_example_pbr.py <path to ig_dataset>/objects/sink/sink_1/shape/visual
+```
+![pbr_renderer.png](images/pbr_render.png)
+
+You will get a nice rendering of the sink, and should see the metal parts have specular highlgihts, and shadows
+ should be casted. 
+ 
 
 #### Velodyne VLP-16 Example
 In this example, we show a demo of 16-beam Velodyne VLP-16 LiDAR placed on top of a virtual Turtlebot. The code can be found in [examples/demo/lidar_velodyne_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/lidar_velodyne_example.py).
