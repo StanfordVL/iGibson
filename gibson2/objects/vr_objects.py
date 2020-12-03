@@ -10,146 +10,73 @@ from gibson2.utils.vr_utils import translate_vr_position_by_vecs
 
 class VrBody(ArticulatedObject):
     """
-    A simple cylinder representing a VR user's body. This stops
+    A simple ellipsoid representing a VR user's body. This stops
     them from moving through physical objects and wall, as well
     as other VR users.
     """
-    def __init__(self):
+    def __init__(self, s):
         self.vr_body_fpath = os.path.join(assets_path, 'models', 'vr_body', 'vr_body.urdf')
         super(VrBody, self).__init__(filename=self.vr_body_fpath, scale=1)
-        # Height of VR body - this is relatively tall since we have disabled collision with the floor
-        # TODO: Fine tune this height variable!
-        self.height = 0.8
-        # Distance between shoulders
-        self.shoulder_width = 0.1
-        # Width of body from front to back
-        self.body_width = 0.01
-        # This is the start that center of the body will float at
-        # We give it 0.2m of room off the floor to avoid any collisions
-        self.start_height = self.height/2 + 0.2
-        # This is the distance of the top of the body below the HMD, so as to not obscure vision
-        self.dist_below_hmd = 0.4
-        # Body needs to keep track of first frame so it can set itself to the player's
-        # coordinates on that first frame
+        self.sim = s
         self.first_frame = True
-        # Keep track of previous hmd world position for movement calculations
-        self.prev_hmd_wp = None
-        # Keep track of start x and y rotation so we can lock object to these values
-        self.start_x_rot = 0.0
-        self.start_y_rot = 0.0
-        # Need this extra factor to amplify HMD movement vector, since body doesn't reach HMD each frame (since constraints don't set position)
-        self.hmd_vec_amp = 2
-        # This is multiplication factor for backwards distance behind the HMD - this is the distance in m that the torso will be behind the HMD
-        # TODO: Change this back after experimenting 
-        self.back_disp_factor = 0.2
+        # Start body far above the scene so it doesn't interfere with physics
+        self.start_pos = [0, 0, 150]
 
     # TIMELINE: Call this after loading the VR body into the simulator
-    def init_body(self, start_pos):
+    def init_body(self, use_constraints=True):
         """
         Initialize VR body to start in a specific location.
-        Start pos should just contain an x and y value
+        use_contraints specifies whether we want to move the VR body with
+        constraints. This is True by default, but we set it to false
+        when doing state replay, so constraints do not interfere with the replay.
         """
-        self.set_position([0, 0, 1])
-        # TODO: Change this constraint to add rotation from the hmd!
-        # TODO: Make the body spawn above the scene and only come down once HMD is valid - just like the controllers
-        #x, y = start_pos
-        #self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, 
-        #                                    [0, 0, 0], [0, 0, 0], [x, y, self.start_height])
-        #self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, 
-        #                                    [0, 0, 0], [0, 0, 0], [0, 0, 1.2])
-        #self.start_rot = self.get_orientation()
+        self.set_position(self.start_pos)
+        if use_constraints:
+            self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, 
+                                                [0, 0, 0], [0, 0, 0], self.start_pos)
+        self.set_body_collision_filters()
 
-    def rotate_offset_vec(self, offset_vec, theta):
+    def set_body_collision_filters(self):
         """
-        Rotate offset vector by an angle theta in the xy plane (z axis rotation). This offset vector has a z component of 0.
+        Sets VrBody's collision filters.
         """
-        x = offset_vec[0]
-        y = offset_vec[1]
-        x_new = x * np.cos(theta) - y * np.sin(theta)
-        y_new = y * np.cos(theta) + x * np.sin(theta)
-        return np.array([x_new, y_new, 0])
+        # Get body ids of the floor
+        floor_ids = self.sim.get_floor_ids()
+        body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.body_id))]
+
+        for f_id in floor_ids:
+            floor_link_idxs = [-1] + [i for i in range(p.getNumJoints(f_id))]
+            for body_link_idx in body_link_idxs:
+                for floor_link_idx in floor_link_idxs:
+                    p.setCollisionFilterPair(self.body_id, f_id, body_link_idx, floor_link_idx, 0)
     
-    def move_body(self, s, rTouchX, rTouchY, movement_speed, relative_device):
+    # TIMELINE: Call this after all other VR movement has been calculated in main while loop
+    def update_body(self):
         """
-        Moves VrBody to new position, via constraints. Takes in the simulator, s, so that
-        it can obtain the VR data needed to perform the movement calculation. Also takes
-        in right touchpad information, movement speed and the device relative to which movement
-        is calculated.
+        Updates VrBody to new position and rotation, via constraints.
         """
-        # Calculate right and forward vectors relative to input device
-        right, _, forward = s.get_device_coordinate_system(relative_device)
-        # Backwards HMD direction
-        back_dir = np.array(forward) * -1
-        # Project backwards direction onto horizontal plane to get body direction - just remove z component
-        back_dir[2] = 0.0
-        # Normalize back dir
-        back_dir = back_dir / np.linalg.norm(back_dir)
-        back_dir = back_dir * self.back_disp_factor
-        
         # Get HMD data
-        hmd_is_valid, hmd_trans, hmd_rot = s.get_data_for_vr_device('hmd')
-        # Set the body to the HMD position on the first frame that it is valid, to aid calculation accuracy
-        if self.first_frame and hmd_is_valid:
-            body_pos = hmd_trans + back_dir
-            # TODO: Need to do the rotation here as well
-            self.set_position(body_pos)
+        hmd_is_valid, _, hmd_rot = self.sim.get_data_for_vr_device('hmd')
+        hmd_pos = self.sim.get_vr_pos()
 
-            # Set collision filter between body and floor so we can bend down without any obstruction
-            # This is an alternative solution to scaling the body height as the player bends down
-            #self.floor_ids = s.get_floor_ids()
-            #for f_id in self.floor_ids:
-            #    p.setCollisionFilterPair(f_id, self.body_id, -1, -1, 0) # the last argument is 0 for disabling collision, 1 for enabling collision
-
-            #for obj_id in s.objects:
-            #    p.setCollisionFilterPair(obj_id, self.body_id, -1, -1, 0) # the last argument is 0 for disabling collision, 1 for enabling collision
-
-            # TODO: Disable collision with VR hands as well
-
-            self.first_frame = False
-
-        # First frame will not register HMD offset, since no previous hmd position has been recorded
-        if self.prev_hmd_wp is None:
-                self.prev_hmd_wp = s.get_hmd_world_pos()
-
-        # Get offset to VR body
-        #    offset_to_body = self.get_position() - self.prev_hmd_wp - back_dir
-        # Move the HMD to be aligned with the VR body
-        # Set x and y coordinate offsets, but keep current system height (otherwise we teleport into the VR body)
-        #    s.set_vr_offset([offset_to_body[0], offset_to_body[1], s.get_vr_offset()[2]])
-            
-        # Get current HMD world position and VR offset
-        hmd_wp = s.get_hmd_world_pos()
-        #  curr_offset = s.get_vr_offset()
-        # Translate VR offset using controller information
-        #  translated_offset = translate_vr_position_by_vecs(rTouchX, rTouchY, right, forward, curr_offset, movement_speed)
-        # New player position calculated - amplify delta in HMD positiion to account for constraints not moving body exactly to new position each frame
-        #    new_player_pos = (hmd_wp - self.prev_hmd_wp) * self.hmd_vec_amp + translated_offset + self.prev_hmd_wp + back_dir
-        new_body_pos = hmd_wp + back_dir
-        # Attempt to set the vr body to this new position (will stop if collides with wall, for example)
-        # This involves setting translation and rotation constraint
-        x, y, z = new_body_pos
-        new_center = z - self.dist_below_hmd - self.height/2
-
-        # Extract only z rotation from HMD so we can spin the body on the vertical axis
-        _, _, old_body_z = p.getEulerFromQuaternion(self.get_orientation())
-        delta_hmd_z = 0
+        # Only update the body if the HMD data is valid - this also only teleports the body to the player
+        # once the HMD has started tracking when they first load into a scene
         if hmd_is_valid:
-            _, _, hmd_z = p.getEulerFromQuaternion(hmd_rot)
-            delta_hmd_z = hmd_z - old_body_z
+            # Set body to HMD on the first frame
+            if self.first_frame:
+                self.set_position(hmd_pos)
+                self.first_frame = False
 
-        # Use starting x and y rotation so our body does not get knocked over when we collide with low objects
-        new_rot = p.getQuaternionFromEuler([self.start_x_rot, self.start_y_rot, old_body_z + delta_hmd_z])
-        # Finally move the body based on the rotation - it pivots around the HMD in a circle whose circumference
-        # is defined by self.back_disp_factor. We can calculate this translation vector by drawing a vector triangle
-        # where the two radii are back_dir and the angle is delta_hmd_z. Some 2D trigonometry gets us the final result
-        self.rot_trans_vec = self.rotate_offset_vec(back_dir, -1 * delta_hmd_z) - back_dir
-        # Add translated vector to current offset value
-        x += self.rot_trans_vec[0]
-        y += self.rot_trans_vec[1]
-        p.changeConstraint(self.movement_cid, [x, y, new_center], new_rot, maxForce=2000)
+            hmd_x, hmd_y, hmd_z = p.getEulerFromQuaternion(hmd_rot)
+            right, _, forward = self.sim.get_device_coordinate_system('hmd')
+            print("hmd z: {}".format(hmd_z))
+            print("Forward: {}".format(forward))
+            print("------------------------------")
 
-        # Update previous HMD world position at end of frame
-        self.prev_hmd_wp = hmd_wp
+            new_body_rot = p.getQuaternionFromEuler([0, 0, hmd_z])
+
+            # Update body transform constraint
+            p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
 
 
 class VrHand(ArticulatedObject):
@@ -241,22 +168,6 @@ class VrHand(ArticulatedObject):
             self.set_orientation(final_rot)
             # We also need to update the hand's constraint to its new location
             p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=2000)
-
-    # TODO: Use this code to get the VR body working and then remove it!
-    def set_hand_no_collision(self, no_col_id):
-        """
-        Sets VrHand to not collide with the body specified by no_col_id.
-        """
-        p.setCollisionFilterPair(self.body_id, no_col_id, -1, -1, 0)
-        hand_joint_num = p.getNumJoints(self.body_id)
-        no_col_joint_num = p.getNumJoints(no_col_id)
-        # Set all links to ignore collision, if no_col_id has joints
-        if no_col_joint_num == 0:
-            return
-
-        for i in range(hand_joint_num):
-            for j in range(no_col_joint_num):
-                p.setCollisionFilterPair(self.body_id, no_col_id, i, j, 0)
 
     # Close frac of 1 indicates fully closed joint, and close frac of 0 indicates fully open joint
     # Joints move smoothly between their values in self.open_pos and self.close_pos

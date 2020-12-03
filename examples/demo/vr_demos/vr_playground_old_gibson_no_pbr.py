@@ -21,7 +21,7 @@ from gibson2.objects.vr_objects import VrBody, VrHand
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
-from gibson2.utils.vr_utils import move_player_no_body
+from gibson2.utils.vr_utils import move_player
 from gibson2 import assets_path
 sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
 
@@ -32,7 +32,6 @@ fullscreen = False
 # Toggles SRAnipal eye tracking
 use_eye_tracking = True
 # Enables the VR collision body
-# TODO: Re-enable VR body once I get it working!
 enable_vr_body = True
 # Toggles movement with the touchpad (to move outside of play area)
 touchpad_movement = True
@@ -51,9 +50,9 @@ s.import_scene(scene)
 
 # Player body is represented by a translucent blue cylinder
 if enable_vr_body:
-    vr_body = VrBody()
+    vr_body = VrBody(s)
     s.import_object(vr_body)
-    vr_body.init_body([0,0])
+    vr_body.init_body()
 
 # The hand can either be 'right' or 'left'
 # It has enough friction to pick up the basket and the mustard bottles
@@ -125,13 +124,6 @@ while True:
     hmd_is_valid, hmd_trans, hmd_rot = s.get_data_for_vr_device('hmd')
     l_is_valid, l_trans, l_rot = s.get_data_for_vr_device('left_controller')
     r_is_valid, r_trans, r_rot = s.get_data_for_vr_device('right_controller')
-    # TODO: Remove this test
-    if hmd_is_valid and enable_vr_body:
-        vr_body.set_position(hmd_trans)
-        _, _, hmd_z = p.getEulerFromQuaternion(hmd_rot)
-        curr_x, curr_y, _ = p.getEulerFromQuaternion(vr_body.get_orientation())
-        new_rot = p.getQuaternionFromEuler([curr_x, curr_y, hmd_z])
-        vr_body.set_orientation(new_rot)
 
     # VR button data
     l_trig, l_touch_x, l_touch_y = s.get_button_data_for_controller('left_controller')
@@ -145,21 +137,13 @@ while True:
             updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
             gaze_marker.set_position(updated_marker_pos)
 
-    # TODO: Re-enable this once the VR body is working
-    #if enable_vr_body:
-    #    if not r_is_valid:
-    #        # See VrBody class for more details on this method
-    #        vr_body.move_body(s, 0, 0, movement_speed, relative_movement_device)
-    #    else:
-    #        vr_body.move_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
-
     if r_is_valid:
         r_hand.move(r_trans, r_rot)
         r_hand.set_close_fraction(r_trig)
 
         # Right hand used to control movement
         # Move VR system based on device coordinate system and touchpad press location
-        move_player_no_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
+        move_player(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
 
         # Trigger haptic pulse on right touchpad, modulated by trigger close fraction
         # Close the trigger to create a stronger pulse
@@ -171,5 +155,8 @@ while True:
         l_hand.move(l_trans, l_rot)
         l_hand.set_close_fraction(l_trig)
         s.trigger_haptic_pulse('left_controller', l_trig if l_trig > 0.1 else 0)
+
+    if enable_vr_body:
+        vr_body.update_body()
 
 s.disconnect()

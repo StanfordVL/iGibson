@@ -3,8 +3,8 @@
 import numpy as np
 from gibson2.utils.utils import normalizeListVec
 
-def move_player_no_body(s, rTouchX, rTouchY, movement_speed, relative_device):
-    """Moves the VR player when they are not using a VR body. Takes in the simulator,
+def move_player(s, rTouchX, rTouchY, movement_speed, relative_device):
+    """Moves the VR player. Takes in the simulator,
     information from the right touchpad, player movement speed and the device relative to which
     we would like to move."""
     curr_offset = s.get_vr_offset()
