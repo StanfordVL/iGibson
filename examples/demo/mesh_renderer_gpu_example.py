@@ -1,10 +1,9 @@
-import cv2
 import sys
 import os
 import numpy as np
-from gibson2.core.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
-from gibson2.core.render.profiler import Profiler
-from gibson2.utils.assets_utils import get_model_path
+from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
+from gibson2.render.profiler import Profiler
+from gibson2.utils.assets_utils import get_scene_path
 import matplotlib.pyplot as plt
 
 
@@ -12,7 +11,7 @@ def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:
-        model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
+        model_path = os.path.join(get_scene_path('Rs'), 'mesh_z_up.obj')
 
     renderer = MeshRendererG2G(width=512, height=512, device_idx=0)
     renderer.load_object(model_path)
@@ -29,8 +28,10 @@ def main():
             frame = renderer.render(modes=('rgb', 'normal', '3d'))
 
     print(frame)
-    img_np = frame[0].flip(0).data.cpu().numpy().reshape(renderer.height, renderer.width, 4)
-    normal_np = frame[1].flip(0).data.cpu().numpy().reshape(renderer.height, renderer.width, 4)
+    img_np = frame[0].flip(0).data.cpu().numpy().reshape(
+        renderer.height, renderer.width, 4)
+    normal_np = frame[1].flip(0).data.cpu().numpy().reshape(
+        renderer.height, renderer.width, 4)
     plt.imshow(np.concatenate([img_np, normal_np], axis=1))
     plt.show()
 

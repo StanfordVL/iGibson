@@ -28,7 +28,7 @@ Welcome to iGibson's documentation!
    robots.md
    simulators.md
    environments.md
-   algorithms.md
+   learning_framework.md
    ros_integration.md
    tests.md
 
@@ -36,12 +36,7 @@ Welcome to iGibson's documentation!
    :maxdepth: 1
    :caption: API
 
-   api_mesh_renderer.rst
-   api_simulator.rst
-   api_envs.rst
-   api_scene.rst
-   api_robot.rst
-   api_object.rst
+   apidoc/modules.rst
 
 .. toctree::
    :maxdepth: 1

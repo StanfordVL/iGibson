@@ -1,6 +1,5 @@
-from gibson2.core.physics.scene import StadiumScene
+from gibson2.scenes.stadium_scene import StadiumScene
 import pybullet as p
-import numpy as np
 import time
 
 def main():

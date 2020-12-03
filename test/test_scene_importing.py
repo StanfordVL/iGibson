@@ -1,20 +1,20 @@
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import BuildingScene, StadiumScene
-from gibson2.core.physics.robot_locomotors import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova
-import yaml
+from gibson2.simulator import Simulator
+from gibson2.scenes.stadium_scene import StadiumScene
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
+from gibson2.robots.turtlebot_robot import Turtlebot
 from gibson2.utils.utils import parse_config
 import os
 import gibson2
 
 from gibson2.utils.assets_utils import download_assets, download_demo_data
 
-download_assets()
-download_demo_data()
-config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
 
 def test_import_building():
+    download_assets()
+    download_demo_data()
+
     s = Simulator(mode='headless')
-    scene = BuildingScene('Rs')
+    scene = StaticIndoorScene('Rs')
     s.import_scene(scene, texture_scale=0.4)
     for i in range(15):
         s.step()
@@ -23,14 +23,20 @@ def test_import_building():
 
 
 def test_import_building_big():
+    download_assets()
+    download_demo_data()
+
     s = Simulator(mode='headless')
-    scene = BuildingScene('Rs')
+    scene = StaticIndoorScene('Rs')
     s.import_scene(scene, texture_scale=1)
     assert s.objects == list(range(2))
     s.disconnect()
 
 
 def test_import_stadium():
+    download_assets()
+    download_demo_data()
+
     s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
@@ -40,8 +46,13 @@ def test_import_stadium():
 
 
 def test_import_building_viewing():
+    download_assets()
+    download_demo_data()
+    config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
+
+
     s = Simulator(mode='headless')
-    scene = BuildingScene('Rs')
+    scene = StaticIndoorScene('Rs')
     s.import_scene(scene)
     assert s.objects == list(range(2))
 

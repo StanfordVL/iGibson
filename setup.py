@@ -60,9 +60,9 @@ class CMakeBuild(build_ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
         cmake_args = [
             '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/core/render/mesh_renderer'),
+            os.path.join(extdir, 'gibson2/render/mesh_renderer'),
             '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/core/render/mesh_renderer', 'build'),
+            os.path.join(extdir, 'gibson2/render/mesh_renderer', 'build'),
             '-DPYTHON_EXECUTABLE=' + sys.executable
         ]
 
@@ -121,7 +121,7 @@ setup(
             'gym>=0.12',
             'numpy>=1.16.0',
             'scipy>=1.2.1',
-            'pybullet>=2.6.4',
+            'pybullet @ https://github.com/StanfordVL/bullet3/archive/master.zip',
             'transforms3d>=0.3.1',
             'opencv-python>=3.4.8',
             'Pillow>=5.4.0',
@@ -135,13 +135,18 @@ setup(
             'ipython',
             'pytest',
             'future',
+            'trimesh',
+            'sphinx_markdown_tables',
+            'sphinx==2.2.1',
+            'recommonmark',
+            'sphinx_rtd_theme'
     ],
-    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/core/render')],
+    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/render')],
     cmdclass=dict(build_ext=CMakeBuild),
     tests_require=[],
     package_data={'': [
     'gibson2/global_config.yaml',
-    'gibson2/core/render/mesh_renderer/shaders/*'
+    'gibson2/render/mesh_renderer/shaders/*'
     ]},
     include_package_data=True,
 )   #yapf: disable

@@ -1,27 +1,19 @@
-import yaml
-from gibson2.core.physics.robot_locomotors import Turtlebot, JR2_Kinova, Fetch
-from gibson2.core.simulator import Simulator
-from gibson2.core.physics.scene import EmptyScene
-from gibson2.core.physics.interactive_objects import InteractiveObj, BoxShape, YCBObject
+from gibson2.robots.fetch_robot import Fetch
+from gibson2.simulator import Simulator
+from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.utils.utils import parse_config
-from gibson2.core.render.profiler import Profiler
+from gibson2.render.profiler import Profiler
 
-import pytest
 import pybullet as p
-import numpy as np
-from gibson2.external.pybullet_tools.utils import set_base_values, joint_from_name, set_joint_position, \
-    set_joint_positions, add_data_path, connect, plan_base_motion, plan_joint_motion, enable_gravity, \
-    joint_controller, dump_body, load_model, joints_from_names, user_input, disconnect, get_joint_positions, \
-    get_link_pose, link_from_name, HideOutput, get_pose, wait_for_user, dump_world, plan_nonholonomic_motion, \
-    set_point, create_box, stable_z, control_joints, get_max_limits, get_min_limits, get_sample_fn
+from gibson2.external.pybullet_tools.utils import set_joint_positions, joints_from_names, get_joint_positions, \
+    get_max_limits, get_min_limits, get_sample_fn
 
-import time
 import numpy as np
 
 
 def main():
     config = parse_config('../configs/fetch_p2p_nav.yaml')
-    s = Simulator(mode='gui', timestep=1 / 240.0)
+    s = Simulator(mode='gui', physics_timestep=1 / 240.0)
     scene = EmptyScene()
     s.import_scene(scene)
     fetch = Fetch(config)

@@ -44,7 +44,7 @@ assets
 
 ## Models
 
-The robots folders correspond to [robot](robots.md) models. 
+The robots folders correspond to [robot](./robots.md) models. 
 
 | Agent Name     | Folder | 
 |:-------------: | :-------------: |
@@ -59,7 +59,7 @@ The robots folders correspond to [robot](robots.md) models.
 | JackRabbot      |  `jr2_urdf` |
 | LocoBot         |   `locobot` |
 
-We also include [YCB objects](http://www.ycbbenchmarks.com/object-models/) in `ycb` folder, [RBO models](https://tu-rbo.github.io/articulated-objects/) in `rbo` folder, and a few commonly used primitives for home environments such as doors (in `scene_components`) and cabinets (in `cabinet` and `cabinet2`). You can refer to [objects](objects.md) page to see how to use these models in gibson scenes. Don't forget to cite related papers when using these assets.
+We also include [YCB objects](http://www.ycbbenchmarks.com/object-models/) in `ycb` folder, [RBO models](https://tu-rbo.github.io/articulated-objects/) in `rbo` folder, and a few commonly used primitives for home environments such as doors (in `scene_components`) and cabinets (in `cabinet` and `cabinet2`). You can refer to [objects](./objects.md) page to see how to use these models in gibson scenes. Don't forget to cite related papers when using these assets.
 
 ## Pretrained network
 
