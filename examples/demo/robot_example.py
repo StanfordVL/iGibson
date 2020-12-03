@@ -1,4 +1,7 @@
-from gibson2.core.physics.robot_locomotors import Locobot, Turtlebot, JR2_Kinova, Fetch
+from gibson2.robots.locobot_robot import Locobot
+from gibson2.robots.turtlebot_robot import Turtlebot
+from gibson2.robots.jr2_kinova_robot import JR2_Kinova
+from gibson2.robots.fetch_robot import Fetch
 from gibson2.utils.utils import parse_config
 import os
 import time
@@ -6,9 +9,10 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 
+
 def main():
     p.connect(p.GUI)
-    p.setGravity(0,0,-9.8)
+    p.setGravity(0, 0, -9.8)
     p.setTimeStep(1./240.)
 
     floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
@@ -60,4 +64,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
