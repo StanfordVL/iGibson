@@ -100,12 +100,12 @@ It benchmarks two use cases, one for training visual RL agents (low resolution, 
  ```python
  'VISUAL_RL': MeshRendererSettings(enable_pbr=True, enable_shadow=False, msaa=False, optimized=True),
  'PERCEPTION': MeshRendererSettings(env_texture_filename=hdr_texture,
-                                       env_texture_filename2=hdr_texture2,
-                                       env_texture_filename3=background_texture,
-                                       light_modulation_map_filename=light_modulation_map_filename,
-                                       enable_shadow=True, msaa=True,
-                                       light_dimming_factor=1.0,
-                                       optimized=True)
+                                    env_texture_filename2=hdr_texture2,
+                                    env_texture_filename3=background_texture,
+                                    light_modulation_map_filename=light_modulation_map_filename,
+                                    enable_shadow=True, msaa=True,
+                                    light_dimming_factor=1.0,
+                                    optimized=True)
 
 ```
 It will generate a report like below:
