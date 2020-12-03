@@ -766,6 +766,8 @@ class Simulator:
         Gets the body ids for all floor objects in the scene. This is used internally
         by the VrBody class to disable collisions with the floor.
         """
+        if not hasattr(self.scene, 'objects_by_id'):
+            return []
         floor_ids = []
         for body_id in self.objects:
             if body_id in self.scene.objects_by_id.keys() and self.scene.objects_by_id[body_id].category == 'floors':

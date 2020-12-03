@@ -24,7 +24,7 @@ from gibson2.objects.vr_objects import VrBody, VrHand
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
-from gibson2.utils.vr_utils import move_player_no_body
+from gibson2.utils.vr_utils import move_player
 from gibson2 import assets_path
 sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
 groceries_folder = os.path.join(assets_path, 'models', 'groceries')
@@ -77,9 +77,9 @@ s.import_ig_scene(scene)
 
 # Player body is represented by a translucent blue cylinder
 if enable_vr_body:
-    vr_body = VrBody()
+    vr_body = VrBody(s)
     s.import_object(vr_body, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
-    vr_body.init_body([0,0])
+    vr_body.init_body()
 
 # The hand can either be 'right' or 'left'
 # It has enough friction to pick up the basket and the mustard bottles
@@ -161,20 +161,13 @@ while True:
             updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
             gaze_marker.set_position(updated_marker_pos)
 
-    if enable_vr_body:
-        if not r_is_valid:
-            # See VrBody class for more details on this method
-            vr_body.move_body(s, 0, 0, movement_speed, relative_movement_device)
-        else:
-            vr_body.move_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
-
     if r_is_valid:
         r_hand.move(r_trans, r_rot)
         r_hand.set_close_fraction(r_trig)
 
         # Right hand used to control movement
         # Move VR system based on device coordinate system and touchpad press location
-        move_player_no_body(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
+        move_player(s, r_touch_x, r_touch_y, movement_speed, relative_movement_device)
 
         # Trigger haptic pulse on right touchpad, modulated by trigger close fraction
         # Close the trigger to create a stronger pulse
@@ -186,5 +179,7 @@ while True:
         l_hand.move(l_trans, l_rot)
         l_hand.set_close_fraction(l_trig)
         s.trigger_haptic_pulse('left_controller', l_trig if l_trig > 0.1 else 0)
+
+    vr_body.update_body()
 
 s.disconnect()
