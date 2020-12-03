@@ -11,6 +11,6 @@ Furthermore, we have **Scene**, **Object**, **Robot**, and **Simulator**. **Scen
 
 Moreover, we have **Task**, **Sensor** and **Environment**. **Task** defines the task setup and includes a list of **Reward Function** and **Termination Condition**. It also provides task-specific reset functions and task-relevant observation definition. **Sensor** provides a light wrapper around **Render** to retrieve sensory observation. **Environment** follows the [OpenAI gym](https://github.com/openai/gym) convention and provides an API interface for external applications. More info can be found here: [Environment](environments.md).
 
-Finally, any learning framework (e.g. RL, IL) or planning and control framework (e.g. ROS) can be used with **Environment** as long as they accommodate OpenAI gym interface. We provide tight integration with **ROS** that allows for evaluation and visualization of, say, ROS Navigation Stack, in iGibson. More info can be found here: [Algorithm](algorithms.md) and [ROS](ros_integration.md).
+Finally, any learning framework (e.g. RL, IL) or planning and control framework (e.g. ROS) can be used with **Environment** as long as they accommodate OpenAI gym interface. We provide tight integration with **ROS** that allows for evaluation and visualization of, say, ROS Navigation Stack, in iGibson. More info can be found here: [Learning Framework](learning_framework.md) and [ROS](ros_integration.md).
 
 We highly recommend you go through each of the Modules below for more details and code examples.
