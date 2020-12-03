@@ -782,7 +782,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Load the traversability map
         maps_path = os.path.join(self.scene_dir, "layout")
-        self.load_trav_map(maps_path)
+        if self.build_graph:
+            self.load_trav_map(maps_path)
 
         self.visual_mesh_to_material = visual_mesh_to_material
         self.check_scene_quality(body_ids, fixed_body_ids)
