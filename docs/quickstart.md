@@ -49,12 +49,14 @@ python benchmark.py
 
 ## Benchmarks
 
+
 Performance is a big designing focus for iGibson. We provide a few scripts to benchmark the rendering and physics
 simulation framerate in iGibson.
 
+### Benchmark static scene (Gibson scenes)
 ```bash
-cd examples/demo
-python benchmark.py
+cd test/benchmark
+python benchmark_static_scene.py
 ```
 
 You will see output similar to:
@@ -70,3 +72,42 @@ Rendering 3d, resolution 512, render_to_tensor False: 292.0761459884919 fps
 Rendering normal, resolution 512, render_to_tensor False: 265.70666134193806 fps
 
 ```
+
+### Benchmark physics simulation in interactive scenes (iGibson scene)
+
+```bash
+cd test/benchmark
+python benchmark_interactive_scene.py
+```
+
+It will generate a report like below:
+
+![](images/scene_benchmark_Rs_int_o_True_r_True.png)
+
+
+### Benchmark rendering in interactive scenes
+
+To run a comprehensive benchmark for all rendering in all iGibson scenes, you can excute the following command:
+
+```bash
+cd test/benchmark
+python benchmark_interactive_scene_rendering.py
+```
+
+It benchmarks two use cases, one for training visual RL agents (low resolution, shadow mapping off), another one for
+ training perception tasks, with highest quality of graphics possible.
+ 
+ ```python
+ 'VISUAL_RL': MeshRendererSettings(enable_pbr=True, enable_shadow=False, msaa=False, optimized=True),
+ 'PERCEPTION': MeshRendererSettings(env_texture_filename=hdr_texture,
+                                    env_texture_filename2=hdr_texture2,
+                                    env_texture_filename3=background_texture,
+                                    light_modulation_map_filename=light_modulation_map_filename,
+                                    enable_shadow=True, msaa=True,
+                                    light_dimming_factor=1.0,
+                                    optimized=True)
+
+```
+It will generate a report like below:
+![](images/benchmark_rendering.png)
+

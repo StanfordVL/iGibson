@@ -11,7 +11,7 @@ import rospkg
 import numpy as np
 from cv_bridge import CvBridge
 import tf
-from gibson2.envs.locomotor_env import NavigationEnv
+from gibson2.envs.igibson import iGibsonEnv
 
 
 class SimNode:
@@ -24,15 +24,19 @@ class SimNode:
         self.cmdx = 0.0
         self.cmdy = 0.0
 
-        self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
-        self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
-        self.lidar_pub = rospy.Publisher("/gibson_ros/lidar/points", PointCloud2, queue_size=10)
+        self.image_pub = rospy.Publisher(
+            "/gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
+        self.depth_pub = rospy.Publisher(
+            "/gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
+        self.lidar_pub = rospy.Publisher(
+            "/gibson_ros/lidar/points", PointCloud2, queue_size=10)
 
         self.depth_raw_pub = rospy.Publisher("/gibson_ros/camera/depth/image_raw",
                                              ImageMsg,
                                              queue_size=10)
         self.odom_pub = rospy.Publisher("/odom", Odometry, queue_size=10)
-        self.gt_odom_pub = rospy.Publisher("/ground_truth_odom", Odometry, queue_size=10)
+        self.gt_odom_pub = rospy.Publisher(
+            "/ground_truth_odom", Odometry, queue_size=10)
 
         self.camera_info_pub = rospy.Publisher("/gibson_ros/camera/depth/camera_info",
                                                CameraInfo,
@@ -40,13 +44,14 @@ class SimNode:
         self.bridge = CvBridge()
         self.br = tf.TransformBroadcaster()
 
-        self.env = NavigationEnv(config_file=config_filename,
-                                 mode='headless',
-                                 action_timestep=1 / 30.0)    # assume a 30Hz simulation
+        self.env = iGibsonEnv(config_file=config_filename,
+                              mode='headless',
+                              action_timestep=1 / 30.0)    # assume a 30Hz simulation
         print(self.env.config)
 
         obs = self.env.reset()
-        rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
+        rospy.Subscriber("/mobile_base/commands/velocity",
+                         Twist, self.cmd_callback)
         rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
 
         self.tp_time = None
@@ -71,8 +76,10 @@ class SimNode:
             depth = obs["depth"].astype(np.float32)
             image_message = self.bridge.cv2_to_imgmsg(rgb, encoding="rgb8")
             depth_raw_image = (obs["depth"] * 1000).astype(np.uint16)
-            depth_raw_message = self.bridge.cv2_to_imgmsg(depth_raw_image, encoding="passthrough")
-            depth_message = self.bridge.cv2_to_imgmsg(depth, encoding="passthrough")
+            depth_raw_message = self.bridge.cv2_to_imgmsg(
+                depth_raw_image, encoding="passthrough")
+            depth_message = self.bridge.cv2_to_imgmsg(
+                depth, encoding="passthrough")
 
             now = rospy.Time.now()
 
@@ -103,7 +110,8 @@ class SimNode:
                 lidar_header = Header()
                 lidar_header.stamp = now
                 lidar_header.frame_id = 'scan_link'
-                lidar_message = pc2.create_cloud_xyz32(lidar_header, lidar_points.tolist())
+                lidar_message = pc2.create_cloud_xyz32(
+                    lidar_header, lidar_points.tolist())
                 self.lidar_pub.publish(lidar_message)
 
             # odometry
@@ -116,7 +124,8 @@ class SimNode:
             ]
 
             self.br.sendTransform((odom[0][0], odom[0][1], 0),
-                                  tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]),
+                                  tf.transformations.quaternion_from_euler(
+                                      0, 0, odom[-1][-1]),
                                   rospy.Time.now(), 'base_footprint', "odom")
             odom_msg = Odometry()
             odom_msg.header.stamp = rospy.Time.now()
@@ -126,10 +135,12 @@ class SimNode:
             odom_msg.pose.pose.position.x = odom[0][0]
             odom_msg.pose.pose.position.y = odom[0][1]
             odom_msg.pose.pose.orientation.x, odom_msg.pose.pose.orientation.y, odom_msg.pose.pose.orientation.z, \
-            odom_msg.pose.pose.orientation.w = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1])
+                odom_msg.pose.pose.orientation.w = tf.transformations.quaternion_from_euler(
+                    0, 0, odom[-1][-1])
 
             odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
-            odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
+            odom_msg.twist.twist.angular.z = (
+                self.cmdy - self.cmdx) * 5 * 8.695652173913043
             self.odom_pub.publish(odom_msg)
 
             # Ground truth pose
@@ -151,16 +162,20 @@ class SimNode:
                     rpy[2])
 
             gt_odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
-            gt_odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
+            gt_odom_msg.twist.twist.angular.z = (
+                self.cmdy - self.cmdx) * 5 * 8.695652173913043
             self.gt_odom_pub.publish(gt_odom_msg)
 
     def cmd_callback(self, data):
-        self.cmdx = data.linear.x / 10.0 - data.angular.z / (10 * 8.695652173913043)
-        self.cmdy = data.linear.x / 10.0 + data.angular.z / (10 * 8.695652173913043)
+        self.cmdx = data.linear.x / 10.0 - \
+            data.angular.z / (10 * 8.695652173913043)
+        self.cmdy = data.linear.x / 10.0 + \
+            data.angular.z / (10 * 8.695652173913043)
 
     def tp_robot_callback(self, data):
         rospy.loginfo('Teleporting robot')
-        position = [data.pose.position.x, data.pose.position.y, data.pose.position.z]
+        position = [data.pose.position.x,
+                    data.pose.position.y, data.pose.position.z]
         orientation = [
             data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z,
             data.pose.orientation.w

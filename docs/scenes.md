@@ -1,20 +1,27 @@
 # Scenes
 
 ### Overview
-We provide three types of scenes.
-- `EmptyScene` and `StadiumScene`: they are simple scenes with flat grounds and no obstacles, very good for debugging.
-- `BuildingScene`: it loads realistic 3D scenes from `gibson2.dataset_path`.
+We provide four types of scenes.
+- `EmptyScene` and `StadiumScene`: they are simple scenes with flat grounds and no obstacles, useful for debugging purposes.
+- `StaticIndoorScene`: it loads static 3D scenes from `gibson2.dataset_path`.
+- `InteractiveIndoorScene`: it loads fully interactive 3D scenes from `gibson2.ig_dataset_path`.
 
-Typically, they take in the `scene_id` of a scene and provide a `load` function that be invoked externally (usually by `import_scene` of the `Simulator`).
+Typically, they take in the `scene_id` of a scene and provide a `load` function that be invoked externally (usually by `import_scene` and `import_ig_scene` of the `Simulator`).
 
-To be more specific, the `load` function of `BuildingScene`
+To be more specific, the `load` function of `StaticIndoorScene`
 - stores the floor information (we have many multistory houses in our dataset)
 - loads the scene mesh into PyBullet
 - builds an internal traversability graph for each floor based on the traversability maps stored in the scene folder (e.g. `dataset/Rs/floor_trav_0.png`)
-- loads the scene objects and places them in their original locations if the scene is interactive
 - provides APIs for sampling a random location in the scene, and for computing the shortest path between two locations in the scene.
 
-Most of the code can be found here: [gibson2/physics/scene.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/physics/scene.py).
+In addition to everything mentioned above, the `load` function of `InteractiveIndoorScene` also
+- provides material/texture randomization functionality: randomize the material, texture and dynamic property of scene object models
+- provides object randomization functionality: randomize scene object models while keeping object poses and categories intact
+- provides scene quality check: check if object models have collisions and if fixed, articulated objects can extend their joints fully without collision
+- provides partial scene loading functionality: 1) only load objects of certain categories, 2) only load objects in certain room types, 3) only load objects in certain room instances.
+- provides APIs for changing the state of articulated objects (e.g. open all "fridges" and "ovens" in the scene)
+
+Most of the code can be found here: [gibson2/scenes](https://github.com/StanfordVL/iGibson/blob/master/gibson2/scenes).
 
 ### Examples
 
@@ -93,13 +100,53 @@ if __name__ == '__main__':
 ```
 
 #### Interactive Building Scenes
+In this example, we import a fully interactive scene, and randomly sample points given a room type such as "living_room". This can be useful for tasks that require the robot to always be spawned in certain room types. We support fifteen such scenes right now as part of the new iGibson Dataset. The code can be found here: [examples/demo/scene_interactive_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/scene_interactive_example.py).
 
-In this example, we import an interactive scene. We support ten such scenes right now (the list can be found in `dataset/gibson_list`). All you need to do is to turn on the flag `is_interactive=True` when you initialize `BuildingScene`. The code can be found here: [examples/demo/scene_interactive_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/scene_interactive_example.py).
+Note that all objects in these scenes can be interacted realistically.
+![scene_interactive.png](images/scene_interactive.png)
 
-The interactive scene will replace the annotated objects with very similar CAD models with their original texture, aligned to their original poses. Because removing the annotated objects will inevitably create holes on the floor, we add additional floor planes with the original floor texture as well.
+```python
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from gibson2.simulator import Simulator
+import numpy as np
 
-For example, in the scene `Placida` below, the couches, the coffee table, the dining table and the dining chairs are all interactive objects.
-![scene_interactive](images/scene_interactive.png)
+
+def main():
+    s = Simulator(mode='gui', image_width=512,
+                  image_height=512, device_idx=0)
+    scene = InteractiveIndoorScene(
+        'Rs_int', texture_randomization=False, object_randomization=False)
+    s.import_ig_scene(scene)
+
+    np.random.seed(0)
+    for _ in range(10):
+        pt = scene.get_random_point_by_room_type('living_room')[1]
+        print('random point in living_room', pt)
+
+    for _ in range(1000):
+        s.step()
+    s.disconnect()
+
+
+if __name__ == '__main__':
+    main()
+
+```
+
+##### Texture Randomization
+In this example, we demonstrate material/texture randomization functionality of `InteractiveIndoorScene`. The goal is to randomize the material, texture and dynamic properties of all scene objects by calling `scene.randomize_texture` on-demand. The code can be found here: [examples/demo/scene_interactive_texture_rand_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/scene_interactive_texture_rand_example.py).
+
+The randomized materials in the `ExternalView` window should look like this.
+![scene_interactive_texture_rand](images/scene_interactive_texture_rand.png)
+
+##### Object Randomization
+In this example, we demonstrate object randomization functionality of `InteractiveIndoorScene`. The goal is to randomize the object models while maintaining their poses and categories. Note that when object models are randomized, there is no guarantee that they have no collisions or the fixed, articulated objects can extend their joints without collision. We provide `scene.check_scene_quality` functionality to check scene quality and you should do object model re-sampling if this function returns `False`. An alternative way (recommended) is to use randoml object model configuration that we provide (10 for each scenes) which guarantees scene quality, by passing in `object_randomization_idx=[0-9]`. Finally, object randomization can be expensive because the new object models need to be loaded to the simulator each time, so we recommend only using it occasionally (e.g. every 1000 training episodes). The code can be found here: [examples/demo/scene_interactive_object_rand_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/scene_interactive_object_rand_example.py).
+
+The randomized object models in the `ExternalView` window should look like this.
+![scene_interactive_object_rand](images/scene_interactive_object_rand.png)
+
+##### Partial Scene Loading
+In this example, we demonstrate partial scene loading functionality of `InteractiveIndoorScene`. Specifically in this example we only load "chairs" in "living rooms". This can be useful for tasks that only require certain object categories or rooms. The code can be found here: [examples/demo/scene_interactive_partial_loading_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/scene_interactive_partial_loading_example.py).
 
 #### Visualize Traversability Map
 

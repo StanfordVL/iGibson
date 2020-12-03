@@ -1,11 +1,12 @@
 # scene
-scene: igibson
-scene_id: Rs_int
-build_graph: true
+scene: stadium
+build_graph: false
 load_texture: true
 pybullet_load_texture: true
+trav_map_type: no_obj
 trav_map_resolution: 0.1
 trav_map_erosion: 2
+should_open_all_doors: true
 
 # domain randomization
 texture_randomization_freq: null
@@ -16,20 +17,18 @@ robot: Turtlebot
 is_discrete: false
 velocity: 1.0
 
-# task, observation and action
-task: pointgoal # pointgoal|objectgoal|areagoal|reaching
+# task
+task: point_nav_random
 target_dist_min: 1.0
 target_dist_max: 10.0
-initial_pos_z_offset: 0.1
-additional_states_dim: 4
+goal_format: polar
+task_obs_dim: 4
 
 # reward
-reward_type: geodesic
+reward_type: l2
 success_reward: 10.0
-slack_reward: -0.01
 potential_reward_weight: 1.0
 collision_reward_weight: -0.1
-collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collisions with these robot links
 
 # discount factor
 discount_factor: 0.99
@@ -38,16 +37,19 @@ discount_factor: 0.99
 dist_tol: 0.36  # body width
 max_step: 500
 max_collisions_allowed: 500
-goal_format: polar
+
+# misc config
+initial_pos_z_offset: 0.1
+collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collisions with these robot links
 
 # sensor spec
-output: [sensor, rgb, depth, scan]
+output: [task_obs, rgb, depth, scan]
 # image
 # ASUS Xtion PRO LIVE
 # https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE
 fisheye: false
-image_width: 640
-image_height: 480
+image_width: 160
+image_height: 120
 vertical_fov: 45
 # depth
 depth_low: 0.8
@@ -70,4 +72,3 @@ scan_noise_rate: 0.0
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
-
