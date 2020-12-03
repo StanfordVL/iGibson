@@ -1,12 +1,43 @@
 Dataset
 ==========================================
 
+In dataset we include two parts. First we introduce the new iGibson dataset in this release. Secondly, we introduce
+ how to download previous Gibson dataset, which is updated and compatible with iGibson.
+
+- [Download iGibson Data](#download-igibson-data)
+- [Download Gibson Data](#download-gibson-data)
+
 Download iGibson Data
 ------------------------
 
-The link will first take you to the license agreement and then to the data.
+We annotate fifteen 3D reconstructions of real-world scans and convert them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets ([ShapeNet Dataset](https://www.shapenet.org/), [Motion Dataset](http://motiondataset.zbuaa.com/), [SAPIEN Dataset](https://sapien.ucsd.edu/)) enriched with annotations of material and dynamic properties. 
 
-[[ Get download link for iGibson Data ]](https://forms.gle/36TW9uVpjrE1Mkf9A)
+The fifteen fully interactive models are visualized below. 
+
+![placeholder.jpg](images/ig_scene.png)
+
+#### Download Instruction
+To download the dataset, you need to first configure where the dataset is to be stored. You can change it in
+ `your_installation_path/gibson2/global_config.yaml` (default and recommended: `ig_dataset: your_installation_path/gibson2/ig_dataset`). iGibson scenes can be downloaded with one single line:
+
+```bash
+python -m gibson2.utils.assets_utils --download_ig_dataset
+```
+
+#### Dataset Format
+The new dataset format can be found [here](https://docs.google.com/document/d/14YUww8ztyTj0xjdX8WNOJpqNW-yKq-n9moqc43rfyMg)
+
+
+#### Cubikasa / 3D Front Dataset
+`TODO: @will fill in`
+
+
+Download Gibson Data
+------------------------
+Original Gibson Environment Dataset has been updated to use with iGibson simulator. The link will first take you to
+ the license agreement and then to the data. 
+
+[[ Get download link for Gibson Data ]](https://forms.gle/36TW9uVpjrE1Mkf9A)
 
 License Note: The dataset license is included in the above link. The license in this repository covers only the provided software.
 
@@ -14,50 +45,25 @@ Files included in this distribution:
 
 1. All scenes, 572 scenes (108GB): gibson_v2_all.tar.gz
 2. 4+ partition, 106 scenes, with textures better packed (2.6GB): gibson_v2_4+.tar.gz
-3. 10 scenes with interactive objects, 10 Scenes (<1GB): interactive_dataset.tar.gz
-4. Demo scenes, `Rs` and `Rs_interactive`
+3. Demo scene `Rs`
 
-To download 1,2 and 3, you need to fill in the agreement and get the download link `URL`, after which you can manually download and store them in the path set in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/dataset`). You can run a single command to download the dataset, this script automatically download, decompress, and put the dataset to correct place.
-
+To download 1 and 2, you need to fill in the agreement and get the download link `URL`, after which you can
+ manually download and store them in the path set in `your_installation_path/gibson2/global_config.yaml` (default and
+  recommended: `dataset: your_installation_path/gibson2/dataset`). You can run a single command to download the dataset
+  , this script automatically download, decompress, and put the dataset to correct place.
 ```bash
 python -m gibson2.utils.assets_utils --download_dataset URL
 ```
 
-To download 4, you can run:
+To download 3, you can run:
 
 ```bash
 python -m gibson2.utils.assets_utils --download_demo_data
 ```
 
-New Interactive Gibson Environment Dataset
---------------------------------------------------
 
-Using a semi-automatic pipeline introduced in our [ICRA20 paper](https://ieeexplore.ieee.org/document/8954627), we annotated for five object categories (chairs, desks, doors, sofas, and tables) in ten buildings (more coming soon!)
+### Original Gibson Environment Dataset Description (Non-interactive)
 
-Replaced objects are visualized in these topdown views:
-
-![topdown.jpg](images/topdown.jpg)
-
-#### Dataset Format
-
-The dataset format is similar to original gibson dataset, with additional of cleaned scene mesh, floor plane and replaced objects. Files in one folder are listed as below:
-
-```
-mesh_z_up.obj               # 3d mesh of the environment, it is also associated with an mtl file and a texture file, omitted here
-mesh_z_up_cleaned.obj       # 3d mesh of the environment, with annotated furnitures removed
-alignment_centered_{}.urdf  # replaced furniture models as urdf files
-pos_{}.txt                  # xyz position to load above urdf models
-floors.txt                  # floor height
-plane_z_up_{}.obj           # floor plane for each floor, used for filling holes
-floor_render_{}.png         # top down views of each floor
-floor_{}.png                # top down views of obstacles for each floor
-floor_trav_{}.png           # top down views of traversable areas for each floor  
-```
-
-Original Gibson Environment Dataset (Non-interactive)
--------------------------------------------------------
-
-Original Gibson Environment Dataset has been updated to use with iGibson simulator.
 
 Full Gibson Environment Dataset consists of 572 models and 1440 floors. We cover a diverse set of models including households, offices, hotels, venues, museums, hospitals, construction sites, etc. A diverse set of visualization of all spaces in Gibson can be seen [here](http://gibsonenv.stanford.edu/database/).
  

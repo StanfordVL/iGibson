@@ -28,7 +28,7 @@ Welcome to iGibson's documentation!
    robots.md
    simulators.md
    environments.md
-   algorithms.md
+   learning_framework.md
    ros_integration.md
    tests.md
 

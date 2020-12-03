@@ -24,9 +24,10 @@ task: reaching_random
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
-task_obs_dim: 8
+task_obs_dim: 4
 
 # reward
+reward_type: l2
 success_reward: 10.0
 potential_reward_weight: 1.0
 collision_reward_weight: -0.1
@@ -35,13 +36,13 @@ collision_reward_weight: -0.1
 discount_factor: 0.99
 
 # termination condition
-dist_tol: 0.1
+dist_tol: 0.36  # body width
 max_step: 500
 max_collisions_allowed: 500
 
 # misc config
 initial_pos_z_offset: 0.1
-collision_ignore_link_a_ids: [0, 1, 2]
+collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
 
 # sensor spec
 output: [task_obs, rgb, depth, scan]
