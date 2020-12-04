@@ -1,5 +1,5 @@
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
-from gibson2.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
+from gibson2.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR, VrSettings
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer, ViewerVR, ViewerSimple
@@ -26,8 +26,7 @@ class Simulator:
                  render_to_tensor=False,
                  auto_sync=True,
                  rendering_settings=MeshRendererSettings(),
-		         vr_eye_tracking=False,
-                 vr_mode=True):
+                 vr_settings=VrSettings()):
 
         """
         Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
@@ -45,8 +44,7 @@ class Simulator:
         :param auto_sync: automatically sync object poses to gibson renderer, by default true,
         disable it when you want to run multiple physics step but don't need to visualize each frame
         :param rendering_settings: settings to use for mesh renderer
-        :param vr_eye_tracking: whether to use eye tracking in VR
-        :param vr_mode: whether to render to the VR headset as well as the screen
+        :param vr_settings: settings to use for VR in simulator and MeshRendererVR
         """
         # physics simulator
         self.gravity = gravity
@@ -80,9 +78,6 @@ class Simulator:
         if self.mode in ['simple']:
             self.use_simple_viewer = True
                    
-        # renderer + VR
-        self.vr_eye_tracking = vr_eye_tracking
-        self.vr_mode = vr_mode
         # Starting position for the VR (default set to None if no starting position is specified by the user)
         self.vr_start_pos = None
         self.max_haptic_duration = 4000
@@ -93,6 +88,9 @@ class Simulator:
         self.render_to_tensor = render_to_tensor
         self.auto_sync = auto_sync
         self.rendering_settings = rendering_settings
+        self.vr_settings = vr_settings
+        # We must be using the Simulator's vr mode and have use_vr set to true in the settings to access the VR context
+        self.can_access_vr_context = self.use_vr_renderer and self.vr_settings.use_vr
 
         # Settings for adjusting physics and render timestep in vr
         # Fraction to multiple previous render timestep by in low-pass filter
@@ -151,9 +149,7 @@ class Simulator:
                                             device_idx=self.device_idx,
                                             rendering_settings=self.rendering_settings)
         elif self.use_vr_renderer:
-            self.renderer = MeshRendererVR(rendering_settings=self.rendering_settings,
-                                        use_eye_tracking=self.vr_eye_tracking,
-                                        vr_mode=self.vr_mode)
+            self.renderer = MeshRendererVR(rendering_settings=self.rendering_settings, vr_settings=self.vr_settings)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                      height=self.image_height,
@@ -571,6 +567,10 @@ class Simulator:
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
+        # First poll VR events and store them
+        if self.can_access_vr_context:
+            self.vr_event_data = self.poll_vr_events()
+
         physics_start_time = time.time()
         physics_timestep_num = int(self.render_timestep / self.physics_timestep)
         for _ in range(physics_timestep_num):
@@ -626,24 +626,31 @@ class Simulator:
                 self.set_vr_offset(offset_to_start)
                 self.vr_start_pos = None
     
-    # Returns event data as list of lists. Each sub-list contains deviceType and eventType. List is empty is all 
-    # events are invalid. 
+    # Returns VR event data as list of lists. Each sub-list contains deviceType and eventType. 
+    # List is empty if all events are invalid. 
     # deviceType: left_controller, right_controller
     # eventType: grip_press, grip_unpress, trigger_press, trigger_unpress, touchpad_press, touchpad_unpress,
     # touchpad_touch, touchpad_untouch, menu_press, menu_unpress (menu is the application button)
     def poll_vr_events(self):
-        if not self.use_vr_renderer:
-            return []
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
-        eventData = self.renderer.vrsys.pollVREvents()
-        return eventData
+        return self.renderer.vrsys.pollVREvents()
+
+    # Queries system for a VR event, and returns true if that event happened this frame
+    def query_vr_event(self, device, event):
+        for ev_data in self.vr_event_data:
+            if device == ev_data[0] and event == ev_data[1]:
+                return True
+        
+        return False
 
     # Call this after step - returns all VR device data for a specific device
     # Device can be hmd, left_controller or right_controller
     # Returns isValid (indicating validity of data), translation and rotation in Gibson world space
     def get_data_for_vr_device(self, deviceName):
-        if not self.use_vr_renderer:
-            return [None, None, None]
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
         # Use fourth variable in list to get actual hmd position in space
         isValid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(deviceName)
@@ -651,8 +658,8 @@ class Simulator:
 
     # Get world position of HMD without offset
     def get_hmd_world_pos(self):
-        if not self.use_vr_renderer:
-            return None
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
         
         _, _, _, hmd_world_pos = self.renderer.vrsys.getDataForVRDevice('hmd')
         return hmd_world_pos
@@ -664,8 +671,8 @@ class Simulator:
     # Trigger data: 1 (closed) <------> 0 (open)
     # Analog data: X: -1 (left) <-----> 1 (right) and Y: -1 (bottom) <------> 1 (top)
     def get_button_data_for_controller(self, controllerName):
-        if not self.use_vr_renderer:
-            return [None, None, None]
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
         
         trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(controllerName)
         return [trigger_fraction, touch_x, touch_y]
@@ -673,16 +680,16 @@ class Simulator:
     # Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
     # Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
     def get_eye_tracking_data(self):
-        if not self.use_vr_renderer or not self.vr_eye_tracking:
-            return [None, None, None, None, None]
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
             
         is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
         return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
 
     # Sets the starting position of the VR system in iGibson space
     def set_vr_start_pos(self, start_pos=None, vr_height_offset=None):
-        if not self.use_vr_renderer or not start_pos:
-            return
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
         # The VR headset will actually be set to this position during the first frame.
         # This is because we need to know where the headset is in space when it is first picked
@@ -696,8 +703,8 @@ class Simulator:
 
     # Sets the world position of the VR system in iGibson space
     def set_vr_pos(self, pos=None):
-        if not self.use_vr_renderer or not pos:
-            return
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
         offset_to_pos = np.array(pos) - self.get_hmd_world_pos()
         self.set_vr_offset(offset_to_pos)
@@ -710,15 +717,15 @@ class Simulator:
     # Can be used for many things, including adjusting height and teleportation-based movement
     # Input must be a list of three floats, corresponding to x, y, z in Gibson coordinate space
     def set_vr_offset(self, pos=None):
-        if not self.use_vr_renderer:
-            return
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
         self.renderer.vrsys.setVROffset(-pos[1], pos[2], -pos[0])
 
     # Gets the current VR offset vector in list form: x, y, z (in Gibson coordinates)
     def get_vr_offset(self):
-        if not self.use_vr_renderer:
-            return [None, None, None]
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
         x, y, z = self.renderer.vrsys.getVROffset()
         return [x, y, z]
@@ -727,8 +734,8 @@ class Simulator:
     # List contains "right", "up" and "forward" vectors in that order
     # Device can be one of "hmd", "left_controller" or "right_controller"
     def get_device_coordinate_system(self, device):
-        if not self.use_vr_renderer:
-            return [None, None, None]
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
         vec_list = []
 
@@ -741,10 +748,10 @@ class Simulator:
     # Triggers a haptic pulse of the specified strength (0 is weakest, 1 is strongest)
     # Device can be one of "hmd", "left_controller" or "right_controller"
     def trigger_haptic_pulse(self, device, strength):
-        if not self.use_vr_renderer:
-            print("Error: can't use haptics without VR system!")
-        else:
-            self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+      
+        self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
 
     # Note: this function must be called after optimize_vertex_and_texture is called
     # Note: this function currently only works with the optimized renderer - please use the renderer hidden list
@@ -760,6 +767,14 @@ class Simulator:
                 instance.hidden = hide
                 self.renderer.update_hidden_state([instance])
                 return
+
+    def get_hidden_state(self, obj):
+        """
+        Returns the current hidden state of the object - hidden (True) or not hidden (False).
+        """
+        for instance in self.renderer.instances:
+            if obj.body_id == instance.pybullet_uuid:
+                return instance.hidden 
 
     def get_floor_ids(self):
         """
