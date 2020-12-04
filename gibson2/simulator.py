@@ -621,8 +621,12 @@ class Simulator:
             hmd_is_valid, _, _, _ = self.renderer.vrsys.getDataForVRDevice('hmd')
             if hmd_is_valid:
                 offset_to_start = np.array(self.vr_start_pos) - self.get_hmd_world_pos()
-                if self.vr_height_offset:
+                print(self.get_hmd_world_pos())
+                print(self.vr_start_pos)
+                if self.vr_height_offset is not None:
                     offset_to_start[2] = self.vr_height_offset
+                    print(self.vr_height_offset)
+                print(offset_to_start)
                 self.set_vr_offset(offset_to_start)
                 self.vr_start_pos = None
     
@@ -697,7 +701,7 @@ class Simulator:
         self.vr_start_pos = start_pos
         # This value can be set to specify a height offset instead of an absolute height.
         # We might want to adjust the height of the camera based on the height of the person using VR,
-        # but still offset this height. When this option is non-zero it offsets the height by the amount
+        # but still offset this height. When this option is not None it offsets the height by the amount
         # specified instead of overwriting the VR system height output.
         self.vr_height_offset = vr_height_offset
 
