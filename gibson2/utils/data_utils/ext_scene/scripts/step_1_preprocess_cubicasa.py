@@ -18,7 +18,7 @@ from shapely.geometry import Polygon as shape_poly
 from collections import defaultdict
 from PIL import Image, ImageDraw
 
-from utils.utils import BBox,polygon_to_bbox,has_overlap,get_volume
+from utils.utils import BBox,polygon_to_bbox,has_overlap,get_volume, semmap_to_lightmap
 from utils.svg_utils import PolygonWall, get_polygon, get_icon, get_points, get_direction
 from utils.semantics import *
 
@@ -389,6 +389,14 @@ def main():
 
         ins_image.save(os.path.join(layout_dir, 'floor_insseg_0.png'))
         sem_image.save(os.path.join(layout_dir, 'floor_semseg_0.png'))
+
+        padded_image = Image.new('L', (3000, 3000), 0)
+        og_size = sem_image.size
+        padded_image.paste(sem_image, 
+                            ((3000-og_size[0])//2,
+                             (3000-og_size[1])//2))
+        light_image = semmap_to_lightmap(np.array(padded_image))
+        light_image.save(os.path.join(layout_dir, 'floor_lighttype_0.png'))
 
         if args.viz:
             from mpl_toolkits.axes_grid1 import make_axes_locatable

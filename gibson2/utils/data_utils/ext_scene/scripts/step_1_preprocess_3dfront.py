@@ -419,6 +419,13 @@ def gen_room_maps(model_id, viz=False):
         d1.polygon(list(zip(hull_pts[:,0],hull_pts[:,1])),fill=i+1)
         d2.polygon(list(zip(hull_pts[:,0],hull_pts[:,1])),fill=room_id+1)
 
+    padded_image = Image.new('L', (3000, 3000), 0)
+    og_size = sem_image.size
+    padded_image.paste(sem_image, 
+                        ((3000-og_size[0])//2,
+                         (3000-og_size[1])//2))
+    light_image = semmap_to_lightmap(np.array(padded_image))
+
     if viz:
         from mpl_toolkits.axes_grid1 import make_axes_locatable
         fig,ax= plt.subplots(nrows=1,ncols=2,figsize=(13,5))
@@ -433,7 +440,8 @@ def gen_room_maps(model_id, viz=False):
         fig.colorbar(im, cax=cax, orientation='vertical')
 
         plt.show()
-    return ins_image, sem_image
+
+    return ins_image, sem_image, light_image
 
 def get_z_overlaps(z1, z2):
     bottom = max(z1[0], z2[0])
@@ -576,9 +584,10 @@ def main():
 
     layout_dir = os.path.join(save_dir, 'layout')
     os.makedirs(layout_dir, exist_ok=True)
-    ins_image,sem_image = gen_room_maps(json_path)
+    ins_image,sem_image,light_image = gen_room_maps(json_path)
     ins_image.save(os.path.join(layout_dir, 'floor_insseg_0.png'))
     sem_image.save(os.path.join(layout_dir, 'floor_semseg_0.png'))
+    light_image.save(os.path.join(layout_dir, 'floor_lighttype_0.png'))
 
 if __name__ == '__main__':
     main()

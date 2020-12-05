@@ -189,7 +189,7 @@ void main() {
 
             if (use_two_light_probe == 1) {
                 vec4 room = texture(lightModulationMap, vec2((FragPos.x + 15.0)/30.0,
-                (-FragPos.y + 15.0)/30.0));
+                (FragPos.y + 15.0)/30.0));
                 modulate_factor = room.r;
             } else {
                 modulate_factor = 1.0;
