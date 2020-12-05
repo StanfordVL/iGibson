@@ -3,6 +3,9 @@
 The iG Dataset v1.0 includes:
 
 **15 large scenes (100+ rooms):**
+
+![ig_scenes](images/scenes.gif)
+
 - Scenes are the result of converting 3D reconstructions of real homes into fully interactive simulatable environments. 
 - Each scene corresponds to one floor of a real world home. 
 - The scenes are annotated with bounding box location and size of different objects, mostly furniture, e.g. cabinets, doors, stoves, tables, chairs, beds, showers, toilets, sinks...
