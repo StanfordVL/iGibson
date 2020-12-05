@@ -22,7 +22,7 @@ Below, we describe:
 1. **data format** for both [scene](#igibson-scene-data-format) and [object](#igibson-object-data-format).
 2. how to **customize your own scene** by adding more iGibson objects to an existing iGibson scene.
 
-We also include:
+We also include instruction to **import data from external sources** :
 1. [instructions](ext_object) on how to import your own objects to iGibson.
 2. [instructions](ext_scene) on how to import scenes from existing datasets ([CubiCasa5k](https://github.com/CubiCasa/CubiCasa5k) and [3D-FRONT](https://tianchi.aliyun.com/specials/promotion/alibaba-3d-scene-dataset)) to iGibson.
 

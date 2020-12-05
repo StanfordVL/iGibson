@@ -23,3 +23,4 @@ python step_3_add_mtl.py --input_dir \
 python step_4_convert_to_ig.py --select_best \
     --source THREEDFRONT $THREEDFRONT_ID
 python step_4_convert_to_ig.py --source THREEDFRONT $THREEDFRONT_ID
+python step_5_generate_trav_map.py --source THREEDFRONT $THREEDFRONT_ID

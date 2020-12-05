@@ -21,4 +21,5 @@ for scene in $CUBICASA_DIR/scenes/"$CUBICASA_ID"_*; do
     python step_4_convert_to_ig.py --select_best \
         --source CUBICASA $(basename $scene) 
     python step_4_convert_to_ig.py --source CUBICASA $(basename $scene) 
+    python step_5_generate_trav_map.py --source CUBICASA $(basename $scene) 
 done
