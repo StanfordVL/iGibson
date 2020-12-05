@@ -12,6 +12,7 @@ from gibson2.simulator import Simulator
 from gibson2.utils.utils import parse_config
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from gibson2.utils.assets_utils import get_ig_scene_path,get_cubicasa_scene_path,get_3dfront_scene_path
 # human interaction demo
 
 
@@ -20,9 +21,16 @@ def test_import_igsdf(scene_name, scene_source):
         gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
     hdr_texture2 = os.path.join(
         gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+
+    if scene_source == "IG":
+        scene_dir = get_ig_scene_path(scene_name)
+    elif scene_source == "CUBICASA":
+        scene_dir = get_cubicasa_scene_path(scene_name)
+    else:
+        scene_dir = get_3dfront_scene_path(scene_name)
+
     light_modulation_map_filename = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', scene_name, 
-        'layout', 'floor_lighttype_0.png')
+        scene_dir, 'layout', 'floor_lighttype_0.png')
     background_texture = os.path.join(
         gibson2.ig_dataset_path, 'scenes', 'background', 
         'urban_street_01.jpg')
