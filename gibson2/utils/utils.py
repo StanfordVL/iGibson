@@ -15,6 +15,7 @@ scipy_version = version.parse(scipy.version.version)
 
 
 def parse_config(config):
+
     """
     Parse iGibson config file / object
     """
