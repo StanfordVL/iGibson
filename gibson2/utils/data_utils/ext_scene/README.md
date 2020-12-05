@@ -1,15 +1,22 @@
 # Import an scene into iGibson
 
-iGibson scene assets follows the format below. We provide instructions and scripts to process and import scenes from the following sources into iGibson:
+To use external scenes in iGibson, it needs be converted to the scene format described here: [data format](../README.md).
+
+Here we provide an automated pipeline to execute this conversion from:
 1. [CubiCasa5k](https://github.com/CubiCasa/CubiCasa5k): A Dataset and an Improved Multi-Task Model for Floorplan Image Analysis. (Kalervo, Ahti, et al.)
 2. [3D-FRONT](https://tianchi.aliyun.com/specials/promotion/alibaba-3d-scene-dataset): 3D Furnished Rooms with layOuts and semaNTics. (Fu, Huanl, et al.)
+by running a provided script. This script makes use of the software Blender, which needs to be installed first. You won't need to use blender directly, as the script calls it automatically.
 
-The process involves the following steps:
+The example script executes the following steps
 - Preprocess scene data from CubiCasa5k or 3D-FRONT into scene components.
 - Generate the visual and collision meshes of the walls, floors and ceiling of the scene. Generate the bounding box annotations of the objects in scene. Generate the base scene URDFs.
 - Generate the iGSDF (iGibson Scene Definition Format), an extension of URDF, for the scene. Generate travserability map.
 
-We currently only offer support for processing on Linux.
+![ignition_toy](images/ext_scenes.jpg)
+
+Above shows some example scenes from CubiCasa5K (first row) and 3D-Front(second row).
+
+We currently only offer support for Linux.
 
 ## Installing Blender
 
