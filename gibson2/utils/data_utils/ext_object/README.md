@@ -1,6 +1,14 @@
 # Import an object into iGibson
 
-We provide instructions and scripts here to include your own model (rigid body without articulation) to iGibson. 
+To use your own object model in iGibson, it needs be converted to the object format described here: [data format](../README.md).
+
+Here we provide an automated pipeline to execute this conversion (from *.obj* to iGibson format) by running a provided script. This script makes use of the software Blender, which needs to be installed first. You won't need to use blender directly, as the script calls it automatically.
+
+The example script executes 5 main steps, outlined below. It ends by generating a video of the new object rendered in iGibson. For example:
+
+![ignition_toy](images/ignition.gif)
+
+Above shows the result of processing an object from [Google Ignition](https://app.ignitionrobotics.org/GoogleResearch/fuel/models/Vtech_Stack_Sing_Rings_636_Months)
 
 We currently only offer support for Linux.
 
@@ -10,15 +18,20 @@ We use Blender 2.82 for mesh processing. Follow the instruction here: [blender_u
 
 ## Prerequisites on object data
 
+First, each individual object model should have all of its files in a single folder. And each object model should have its own separate folder. 
+
 To import a rigid-body object, the following files and properties are needed as prerequisite:
-1. all relevant files (meshes, textures) are in the same folder 
-2. **Mesh(es)**: the object can consist of a single *.obj* file or a list of *.obj* files. The materials (*.mtl*, and textures files) are correctly linked. All *.obj* should be in the same directory, and the directory should contain *.obj*s only from the given object. 
+1. **Mesh(es)**: the object can consist of a single *.obj* file or a list of *.obj* files. 
+2. **Material** (optional): The material (*.mtl*, and textures files) are correctly linked. All *.obj* should be in the same directory, and the directory should contain *.obj*s only from the given object. 
 3. **Pose**: meshes are correctly facing forward (e.g. a camera's lens is front-facing)
 4. **Scale**: meshes have correct scale.
-5. **Category**: the label (string) of the object is available.
+5. **Category**: in iGibson, we need the object category label to render semantics. The label is required here as an input to the processing scripts. 
+
 Note: You can make sure the meshes are correct by importing the meshes into MeshLab/Blender.
 
 ## Default end-to-end processing of the data
+
+In order 
 
 Our processing on the data consists of various components each of which can be customized. We provide a simple script that uses default options for all steps. 
 
