@@ -12,7 +12,7 @@ The example script executes the following steps
 - Generate the visual and collision meshes of the walls, floors and ceiling of the scene. Generate the bounding box annotations of the objects in scene. Generate the base scene URDFs.
 - Generate the iGSDF (iGibson Scene Definition Format), an extension of URDF, for the scene. Generate travserability map.
 
-![ignition_toy](images/ext_scenes.png)
+![ignition_toy](images/ext_scenes.jpg)
 
 Above shows some example scenes from CubiCasa5K (first row) and 3D-Front(second row).
 
