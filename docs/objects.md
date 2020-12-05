@@ -17,6 +17,12 @@ Typically, they take in the name or the path of an object (in `gibson2.assets_pa
 
 Most of the code can be found here: [gibson2/objects](https://github.com/StanfordVL/iGibson/blob/master/gibson2/objects).
 
+### Adding other objects to iGibson
+We provide detailed instructions and scripts to import your own objects (non-articulated) into iGibson. 
+
+Instruction can be found here: [External Objects](https://github.com/StanfordVL/iGibson/blob/master/gibson2/utils/data_utils/ext_object). 
+
+
 ### Examples
 In this example, we import three objects into PyBullet, two of which are articulated objects. The code can be found here: [examples/demo/object_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/object_example.py).
 

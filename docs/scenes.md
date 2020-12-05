@@ -23,6 +23,14 @@ In addition to everything mentioned above, the `load` function of `InteractiveIn
 
 Most of the code can be found here: [gibson2/scenes](https://github.com/StanfordVL/iGibson/blob/master/gibson2/scenes).
 
+### Adding other scenes to iGibson
+We provide detailed instructions and scripts to import scenes from the following sources into iGibson:
+1. [CubiCasa5k](https://github.com/CubiCasa/CubiCasa5k): A Dataset and an Improved Multi-Task Model for Floorplan Image Analysis. (Kalervo, Ahti, et al.)
+2. [3D-FRONT](https://tianchi.aliyun.com/specials/promotion/alibaba-3d-scene-dataset): 3D Furnished Rooms with layOuts and semaNTics. (Fu, Huanl, et al.)
+
+Instruction can be found here: [External Scenes](https://github.com/StanfordVL/iGibson/blob/master/gibson2/utils/data_utils/ext_scene). 
+
+
 ### Examples
 
 #### Stadium Scenes
