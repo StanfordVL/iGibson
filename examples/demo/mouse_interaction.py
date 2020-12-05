@@ -1,31 +1,38 @@
 #!/usr/bin/env python
-from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import os
-import gibson2
+import sys
 import time
 import random
-import sys
-import matplotlib.pyplot as plt
+import gibson2
+import argparse
+import numpy as np
 import pybullet as p
+import matplotlib.pyplot as plt
+from gibson2.simulator import Simulator
+from gibson2.utils.utils import parse_config
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 # human interaction demo
 
 
-def test_import_igsdf():
+def test_import_igsdf(scene_name, scene_source):
     hdr_texture = os.path.join(
         gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
     hdr_texture2 = os.path.join(
         gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
     light_modulation_map_filename = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+        gibson2.ig_dataset_path, 'scenes', scene_name, 
+        'layout', 'floor_lighttype_0.png')
     background_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+        gibson2.ig_dataset_path, 'scenes', 'background', 
+        'urban_street_01.jpg')
 
     scene = InteractiveIndoorScene(
-        'Beechwood_0_int', texture_randomization=False, object_randomization=False)
-    #scene._set_first_n_objects(10)
+                    scene_name, 
+                    texture_randomization=False, 
+                    object_randomization=False,
+                    scene_source=scene_source)
+
     settings = MeshRendererSettings(env_texture_filename=hdr_texture,
                                     env_texture_filename2=hdr_texture2,
                                     env_texture_filename3=background_texture,
@@ -35,10 +42,15 @@ def test_import_igsdf():
     s = Simulator(mode='iggui', image_width=960,
                   image_height=720, device_idx=0, rendering_settings=settings)
 
-    #s.viewer.min_cam_z = 1.0
-
     s.import_ig_scene(scene)
     fpss = []
+
+    np.random.seed(0)
+    _,(px,py,pz) = scene.get_random_point()
+    s.viewer.px = px
+    s.viewer.py = py
+    s.viewer.pz = 1.7
+    s.viewer.update()
     
     for i in range(3000):
         if i == 2500:
@@ -57,7 +69,16 @@ def test_import_igsdf():
     plt.show()
 
 def main():
-    test_import_igsdf()
+    parser = argparse.ArgumentParser(
+        description='Open a scene with iGibson interactive viewer.')
+    parser.add_argument('--scene', dest='scene_name', 
+                        type=str, default='Rs_int',
+                        help='The name of the scene to load')
+    parser.add_argument('--source', dest='scene_source',
+                        type=str, default='IG',
+                        help='The name of the source dataset, among [IG,CUBICASA,THREEDFRONT]')
+    args = parser.parse_args()
+    test_import_igsdf(args.scene_name, args.scene_source)
 
 
 if __name__ == "__main__":
