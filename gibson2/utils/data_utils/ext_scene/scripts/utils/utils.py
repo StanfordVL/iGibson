@@ -1,55 +1,52 @@
 from xml.dom import minidom
-
 from shapely.geometry import Polygon as shape_poly
 from shapely.geometry import LineString as shape_string
 import numpy as np
 import random
 import os
-import open3d as o3d
+import cv2
+from PIL import Image
+
 
 def angle_between(p1, p2):
     ang1 = np.arctan2(*p1[::-1])
     ang2 = np.arctan2(*p2[::-1])
     return (ang2 - ang1) % (2 * np.pi)
 
-# def getCenter(p):
-    # return reduce((lambda x, y: x + y), p) / len(p)
+def pad_to(im, size = 3000):
+    row, col = im.shape[:2]
+    pad_r = (size - row) // 2
+    pad_c = (size - col) // 2
+    border = cv2.copyMakeBorder(
+        im,
+        top=pad_r,
+        bottom=pad_r,
+        left=pad_c,
+        right=pad_c,
+        borderType=cv2.BORDER_CONSTANT,
+        value=[0]
+    )
+    return border
+def semmap_to_lightmap(sem):
+    def gkern(l=10, sig=5):
+        """\
+        creates gaussian kernel with side length l and a sigma of sig
+        """
 
-# def getShapeRotationVertex(pts):
-    # if pts[0].x() > pts[1].x(): id1, id2 = 1, 0
-    # else: id1, id2 = 0, 1
+        ax = np.linspace(-(l - 1) / 2., (l - 1) / 2., l)
+        xx, yy = np.meshgrid(ax, ax)
 
-    # if len(pts) >= 4:
-        # eucl = lambda a : (a.x()**2. + a.y()**2.)**.5
-        # vec_points = pts[id1] - pts[id2]
-        # dist_points = eucl(vec_points)
-        # if dist_points > 0:
-            # # compute size of the shape
-            # d = self.point_size / self.scale
-            # des_len = 5 * d
-            # # compute the normal vector and add it to the center of the two points
-            # nrm = QPointF(-(vec_points.y() * des_len / dist_points),
-                         # vec_points.x() * des_len / dist_points)
-            # center_shape = self.getCenter()
-            # center_points = (pts[id1] + pts[id2])/2
-            # # find the candidate that lies farest from the center
-            # candidate1 = center_points + nrm
-            # candidate2 = center_points - nrm
-            # d1 = eucl(candidate1 - center_shape)
-            # d2 = eucl(candidate2 - center_shape)
-            # c2 = d1 < d2
-            # return (candidate2 if c2 else candidate1), d, c2, center_shape
-    # return None
+        kernel = np.exp(-0.5 * (np.square(xx) + np.square(yy)) / np.square(sig))
 
-        # if self.pts[0,0] > self.pts[1,0]: 
-            # # self.origin = 0 if self.flip_factor == 1 else 3
-            # self.origin = self.pts[0 if self.flip_factor == 1 else 3]
-            # self.edge_x = self.pts[1, :] - self.pts[0, :]
-            # self.edge_y = self.flip_factor*(self.pts[3, :] - self.pts[0, :])
-        # else:
-            # self.origin = self.pts[1 if self.flip_factor == 1 else 2]
-            # self.edge_x = self.pts[0, :] - self.pts[1, :]
-            # self.edge_y = self.flip_factor*(self.pts[3, :] - self.pts[0, :])
+        return kernel / np.sum(kernel)
+    kernel = gkern()
+    sem_map = np.array(sem)
+    kitchen_bathroom = np.logical_or(np.logical_or(sem_map == 10, sem_map == 1), sem_map==19)
+    kitchen_bathroom_filtered = cv2.dilate(kitchen_bathroom.astype(np.float32),   
+                                           kernel.astype(np.float32))
+    kitchen_bathroom_filtered = cv2.filter2D(kitchen_bathroom_filtered.astype(np.float32), 
+                                             -1,   kernel.astype(np.float32))
+    return Image.fromarray((kitchen_bathroom_filtered * 255).astype(np.uint8))
 
 class BBox(object):
     
@@ -223,16 +220,6 @@ def squash_to_size(bbox,scale):
         bbox.edge_x = bbox.edge_x / np.linalg.norm(bbox.edge_x) * size
     else:
         bbox.edge_y = bbox.edge_y / np.linalg.norm(bbox.edge_y) * size
-    # print(bbox.get_scale())
-
-    # x_range = xmax-xmin
-    # y_range = ymax-ymin
-    # if x_range < y_range:
-        # x_mean = (xmin+xmax)/2.
-        # return x_mean-size/2.,x_mean+size/2.,ymin,ymax
-    # else:
-        # y_mean = (ymin+ymax)/2.
-        # return xmin,xmax,y_mean-size/2.,y_mean+size/2.
 
 def get_unique(doc, val):
     it = doc.getElementsByTagName(val)
@@ -242,31 +229,17 @@ def get_unique(doc, val):
 
 
 def snap_out_of_wall(obj, wall, obj_poly, wall_poly):
-    # wall_bbox = wall[:4]
-    # xmin,xmax,ymin,ymax = wall_bbox
-    # wall_poly = shape_poly(list(zip([xmin, xmax, xmax, xmin], [ymin, ymin, ymax, ymax])))
-    
-    # obj_bbox = obj[1:5]
-    # xmin,xmax,ymin,ymax = obj_bbox
-    # obj_poly = shape_poly(list(zip([xmin, xmax, xmax, xmin], [ymin, ymin, ymax, ymax])))
-
     intersection = wall_poly.intersection(obj_poly)
     if type(intersection) == shape_string:
         overlap_margin = 0.001
         for move in [(overlap_margin, 0), (-overlap_margin, 0), 
                      (0, overlap_margin), (0, -overlap_margin)]:
-            # obj_poly = shape_poly(np.array(list(zip([xmin, xmax, xmax, xmin], 
-                                               # [ymin, ymin, ymax, ymax]))) + move)
             temp_obj = shape_poly(obj.get_coords() + move)
             if not temp_obj.intersects(wall_poly):
                 obj.center += move
                 return
-                # return (obj[0],xmin+move[0],xmax+move[0],
-                        # ymin+move[1],ymax+move[1],obj[5],obj[6],obj[7])
-        
     elif type(intersection) == shape_poly:
         xy = np.array(intersection.exterior.coords.xy)
-        #print(x_size,y_size, obj)
         ptp = xy.ptp(axis=1) + 0.001
         for move in [(ptp[0], 0), (-ptp[0], 0), 
                      (0, ptp[1]), (0, -ptp[1])]:
@@ -276,20 +249,12 @@ def snap_out_of_wall(obj, wall, obj_poly, wall_poly):
                 return
 
 def snap_on_wall(obj, wall, obj_poly, wall_poly):
-    # wall_bbox = wall[:4]
-    # xmin,xmax,ymin,ymax = wall_bbox
-    # wall_poly = shape_poly(list(zip([xmin, xmax, xmax, xmin], [ymin, ymin, ymax, ymax])))
-    
-    # obj_bbox = obj[1:5]
-    # xmin,xmax,ymin,ymax = obj_bbox
-    # obj_poly = shape_poly(list(zip([xmin, xmax, xmax, xmin], [ymin, ymin, ymax, ymax])))
     if wall_poly.intersects(obj_poly):
         intersection = wall_poly.intersection(obj_poly)
         if type(intersection) == shape_string:
             return
         elif type(intersection) == shape_poly:
             xy = np.array(intersection.exterior.coords.xy)
-            #print(x_size,y_size, obj)
             ptp = xy.ptp(axis=1)
             for move in [(ptp[0], 0), (-ptp[0], 0), 
                          (0, ptp[1]), (0, -ptp[1])]:
@@ -321,15 +286,6 @@ def gen_cube_obj(bbox, file_path, is_color=False, should_save=True):
         vertices.append((x,y,bbox.z[1]))
     for x,y in [a,b,d,c]:
         vertices.append((x,y,bbox.z[0]))
-    # ymin,ymax,xmin,xmax,zmin,zmax = bbox
-    # vertices = [(xmin,ymin,zmin),
-                # (xmin,ymin,zmax),
-                # (xmin,ymax,zmin),
-                # (xmin,ymax,zmax),
-                # (xmax,ymin,zmin),
-                # (xmax,ymin,zmax),
-                # (xmax,ymax,zmin),
-                # (xmax,ymax,zmax)]
     c=np.random.rand(3)
     faces = [(1,2,3),
              (2,4,3),
@@ -355,74 +311,12 @@ def gen_cube_obj(bbox, file_path, is_color=False, should_save=True):
                 else:
                     v1,v2,v3 = v
                     fp.write('v {} {} {}\n'.format(v1, v2, v3))
-            # for v in vertices:
-                # fp.write('v {} {} {}\n'.format(*v))
 
             for f in faces:
                 fp.write('f {} {} {}\n'.format(*f[:-1]))
 
     return vertices, faces
 
-
-
-def align_CAD_to_bbox(mesh_path, orient_box, articulation_root=None, save_dir=None, idx=0):
-    if articulation_root != None:
-        mesh_dir = mesh_path
-        mesh_path = os.path.join(mesh_dir, articulation_root)
-        meshes = [f for f in os.listdir(mesh_dir) if f[-4:] == '.obj' and f != articulation_root]
-    else:
-        meshes = []
-
-    mesh = o3d.io.read_triangle_mesh(mesh_path)
-    mverts = np.asarray(mesh.vertices)
-    mfaces = np.array(mesh.triangles) + 1
-    mesh.clear()
-
-    #scale 
-    box_size = mverts.ptp(axis=0)
-    x,y,z = orient_box.get_scale()
-    scale = np.array([x,y,z]) / box_size
-    mverts = mverts * scale
-
-    # rotation
-    theta = orient_box.get_rotation_angle()
-    rotation = np.array([[np.cos(theta),-np.sin(theta),0],
-                         [np.sin(theta),np.cos(theta),0],
-                         [0,0,1]])
-    mverts = mverts.dot(rotation)
-
-    # translate
-    box_min = mverts.min(axis=0)
-    # box_min = box_min.dot(rotation)
-    x,y  = (orient_box.center - 
-            np.abs(orient_box.edge_x)/2-
-            np.abs(orient_box.edge_y)/2)
-    translate = np.array([x,y,orient_box.z[0]]) - box_min
-    mverts = mverts + translate 
-    
-    
-    if save_dir is not None:
-        save_path = os.path.join(save_dir, '{}_{}'.format(idx, os.path.basename(mesh_path)))
-        with open(save_path, 'w') as fp:
-            for v in mverts:
-                fp.write('v {} {} {}\n'.format(*v))
-            for f in mfaces:
-                fp.write('f {} {} {}\n'.format(*f))
-        for m in meshes:
-            mesh = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, m))
-            mverts = np.asarray(mesh.vertices)
-            mfaces = np.array(mesh.triangles) + 1
-            mesh.clear()
-
-            mverts = (mverts * scale).dot(rotation) + translate
-            save_path = os.path.join(save_dir, '{}_{}'.format(idx, m))
-            with open(save_path, 'w') as fp:
-                for v in mverts:
-                    fp.write('v {} {} {}\n'.format(*v))
-                for f in mfaces:
-                    fp.write('f {} {} {}\n'.format(*f))
-    return scale, rotation, translate
-            
 def get_coords(edge_x, edge_y, center):
     '''
     Return the vertices of the bounding box, in order of BL,BR,TR,TL
