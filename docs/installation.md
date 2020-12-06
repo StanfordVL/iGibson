@@ -85,11 +85,11 @@ First, configure where iGibson's assets (robotic agents, objects, 3D environment
 
 To make things easier, the default place to store the data is:
 ```bash
-assets_path: your_installation_path/gibson2/assets 
-g_dataset_path: your_installation_path/gibson2/assets/g_dataset
-ig_dataset_path: your_installation_path/gibson2/assets/ig_dataset
-threedfront_dataset_path: your_installation_path/gibson2/assets/threedfront_dataset 
-cubicasa_dataset_path: your_installation_path/gibson2/assetscubicasa_dataset 
+assets_path: your_installation_path/gibson2/data/assets 
+g_dataset_path: your_installation_path/gibson2/data/g_dataset
+ig_dataset_path: your_installation_path/gibson2/data/ig_dataset
+threedfront_dataset_path: your_installation_path/gibson2/data/threedfront_dataset 
+cubicasa_dataset_path: your_installation_path/gibson2/data/assetscubicasa_dataset 
 ```
 
 If you are happy with the default path, you don't have to do anything, otherwise you can run this script:
@@ -104,7 +104,7 @@ python -m gibson2.utils.assets_utils --download_assets
 ```
 
 
-Third, you need to download some large 3D reconstructed real-world environments (e.g. houses and offices) from [our dataset](dataset.md) for your agents to be trained in. Create a new folder for those environments and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/assets/g_dataset` and `your_installation_path/gibson2/assets/ig_dataset`). You can get access and download the Gibson and iGibson datasets by filling up the following [license agreement](https://forms.gle/36TW9uVpjrE1Mkf9A). In addition, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo purposes.
+Third, you need to download some large 3D reconstructed real-world environments (e.g. houses and offices) from [our dataset](dataset.md) for your agents to be trained in. Create a new folder for those environments and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/data/g_dataset` and `your_installation_path/gibson2/data/ig_dataset`). You can get access and download the Gibson and iGibson datasets by filling up the following [license agreement](https://forms.gle/36TW9uVpjrE1Mkf9A). In addition, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo purposes.
 
 To download the demo data, run:
 
@@ -136,4 +136,3 @@ For a full suite of tests and benchmarks, you can refer to [tests](tests.md) for
 
 ## Uninstalling
 Uninstalling iGibson is easy: `pip uninstall gibson2`
-
