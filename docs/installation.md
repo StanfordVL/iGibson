@@ -23,10 +23,13 @@ We provide 3 methods to install the simulator.
 iGibson's simulator can be installed as a python package using pip:
 
 ```bash
-pip install gibson2
+pip install gibson2  # This step takes about 4 minutes
 # run the demo
 python -m gibson2.scripts.demo_static
 ```
+
+Note: we use a custom version of pybullet, so if you have a previous version of pybullet installed, it will not be compabile with iGibson. We recommend you start from a fresh virtualenv/conda environment. Since install iGibson(`gibson`) requires compiling pybullet, it takes about 4 minutes. 
+
 
 ### 2. Docker image
 
@@ -59,16 +62,19 @@ cd iGibson/docker/headless-gui
 
 ### 3. Compile from source
 
-Alternatively, iGibson can be compiled from source: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson)
+Alternatively, iGibson can be compiled from source: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson). First, you need to install anaconda following the guide on [their website](https://www.anaconda.com/). 
 
 ```bash
 git clone https://github.com/StanfordVL/iGibson --recursive
 cd iGibson
 
-conda create -n py3-igibson python=3.6 anaconda
+conda create -n py3-igibson python=3.6 anaconda # we support python 3.5, 3.6, 3.7, 3.8
 source activate py3-igibson
-pip install -e .
+pip install -e . # This step takes about 4 minutes
 ```
+
+Note: we use a custom version of pybullet, so if you have a previous version of pybullet installed, it will not be compabile with iGibson. We recommend you start from a fresh virtualenv/conda environment. Since install iGibson(`gibson`) requires compiling pybullet, it takes about 4 minutes. 
+
 We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
 
 
@@ -99,7 +105,16 @@ Download Gibson dataset (agreement signing required to get `URL`)
 python -m gibson2.utils.assets_utils --download_dataset URL
 ```
 
+## Testing 
 
-### Uninstalling
+To test gibson2 is properly installed, you can run 
+```bash
+python
+>> import gibson2
+```
+
+For a full suite of tests and benchmarks, you can refer to [tests](tests.md) for more details. 
+
+## Uninstalling
 Uninstalling iGibson is easy: `pip uninstall gibson2`
 

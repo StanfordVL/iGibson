@@ -37,7 +37,7 @@ Download Gibson Data
 Original Gibson Environment Dataset has been updated to use with iGibson simulator. The link will first take you to
  the license agreement and then to the data. 
 
-[[ Get download link for Gibson Data ]](https://forms.gle/36TW9uVpjrE1Mkf9A)
+<a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[[ Get download link for Gibson Data ]]</a>.
 
 License Note: The dataset license is included in the above link. The license in this repository covers only the provided software.
 
