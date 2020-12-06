@@ -178,7 +178,7 @@ class iGTNTask(TaskNetTask):
         pass
 
 def main():
-    igtn_task = iGTNTask('kinematic_checker_testing')
+    igtn_task = iGTNTask('kinematic_checker_testing', 2)
     igtn_task.initialize_simulator()
 
     for i in range(500):
