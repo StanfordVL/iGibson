@@ -3,7 +3,7 @@ pipeline {
     agent {
         docker {
             image 'gibsonchallenge/gibsonv2:jenkins'
-            args '--runtime=nvidia -u root:root -v ${WORKSPACE}/../ig_dataset:${WORKSPACE}/gibson2/ig_dataset'
+            args '--runtime=nvidia -u root:root -v ${WORKSPACE}/../ig_dataset:${WORKSPACE}/gibson2/assets/ig_dataset'
         }
     }
 

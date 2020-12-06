@@ -1,7 +1,7 @@
 # Quickstart
 
 ## iGibson in Action
-Let's get our hands dirty and see iGibson in action.
+Assume you finished installation and assets downloading. Let's get our hands dirty and see iGibson in action.
 
 ```bash
 cd examples/demo
