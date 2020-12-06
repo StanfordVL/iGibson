@@ -9,18 +9,13 @@ iGibson, the Interactive Gibson Environment, is a simulation environment providi
 If you use iGibson or its assets and models, consider citing the following publication:
 
 ```
-@article{xia2020interactive,
-         title={Interactive Gibson Benchmark: A Benchmark for Interactive Navigation in Cluttered Environments},
-         author={Xia, Fei and Shen, William B and Li, Chengshu and Kasimbeg, Priya and Tchapmi, Micael Edmond and Toshev, Alexander and Mart{\'\i}n-Mart{\'\i}n, Roberto and Savarese, Silvio},
-         journal={IEEE Robotics and Automation Letters},
-         volume={5},
-         number={2},
-         pages={713--720},
-         year={2020},
-         publisher={IEEE}
+@article{shenigibson,
+  title={iGibson, a Simulation Environment for Interactive Tasks in Large Realistic Scenes},
+  author={Shen, Bokui and Xia, Fei and Li, Chengshu and Mart{\i}n-Mart{\i}n, Roberto and Fan, Linxi and Wang, Guanzhi and Buch, Shyamal and D’Arpino, Claudia and Srivastava, Sanjana and Tchapmi, Lyne P and  Vainio, Kent and Fei-Fei, Li and Savarese, Silvio},
+  journal={arXiv preprint},
+  year={2020}
 }
 ```
-
 
 ### Code Release
 The GitHub repository of iGibson can be found here: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson). Bug reports, suggestions for improvement, as well as community developments are encouraged and appreciated. The support for our previous version of the environment, [Gibson v1](http://github.com/StanfordVL/GibsonEnv/), will be moved there.
@@ -28,10 +23,11 @@ The GitHub repository of iGibson can be found here: [iGibson GitHub Repo](https:
 ### Documentation
 This is the documentation webpage for iGibson. It includes installation guide (including data download), quickstart guide, code examples, and APIs.
 
-If you want to know more about iGibson, you can also check out [our webpage](http://svl.stanford.edu/igibson), [our RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442) and [our (outdated) technical report](http://svl.stanford.edu/igibson/assets/gibsonv2paper.pdf).
+If you want to know more about iGibson, you can also check out [our webpage](http://svl.stanford.edu/igibson),  [our
+ updated technical report](TBA) and [our RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442) and.
 
 ### Dowloading Dataset of 3D Environments
-There are several datasets of 3D reconstructed large real-world environments (homes and offices) that you can download and use with iGibson. All of them will be accessible once you fill in this [form](https://forms.gle/36TW9uVpjrE1Mkf9A).
+There are several datasets of 3D reconstructed large real-world environments (homes and offices) that you can download and use with iGibson. All of them will be accessible once you fill in this <a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[form]</a>.
 
-You will have access to **fifteen** fully interactive environments populated with a wide variety of furniture and objects that can be actuated, and to the original 572 reconstructed, static 3D environments from [Gibson v1](http://github.com/StanfordVL/GibsonEnv/). More info can be found in the [installation guide](installation.md).
+You will have access to **fifteen** fully interactive environments populated with a wide variety of furniture and objects that can be actuated, and to the original 572 reconstructed, static 3D environments from [Gibson v1](http://github.com/StanfordVL/GibsonEnv/). We provide download utilities in the [installation guide](installation.md).
 
