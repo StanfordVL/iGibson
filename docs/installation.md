@@ -11,6 +11,7 @@ The minimum system requirements are the following:
 - Nvidia GPU with VRAM > 6.0GB
 - Nvidia driver >= 384
 - CUDA >= 9.0, CuDNN >= v7
+- CMake >= 2.8.12 (can install with `pip install cmake`)
 
 Other system configurations may work, but we haven't tested them extensively and we probably won't be able to provide as much support as we want.
 
@@ -80,16 +81,34 @@ We recommend the third method if you plan to modify iGibson in your project. If 
 
 ## Downloading the Assets
 
-First, create a folder to contain all the iGibson's assets (robotic agents, objects, 3D environments, etc.) and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/assets`).
+First, configure where iGibson's assets (robotic agents, objects, 3D environments, etc.) is going to be stored. It is configured in `your_installation_path/gibson2/global_config.yaml`
 
-Second, you can download our robot models and objects from [here](https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz) and unpack it in the assets folder.
+To make things easier, the default place to store the data is:
+```bash
+assets_path: your_installation_path/gibson2/assets 
+g_dataset_path: your_installation_path/gibson2/assets/g_dataset
+ig_dataset_path: your_installation_path/gibson2/assets/ig_dataset
+threedfront_dataset_path: your_installation_path/gibson2/assets/threedfront_dataset 
+cubicasa_dataset_path: your_installation_path/gibson2/assetscubicasa_dataset 
+```
 
-Third, you need to download some large 3D reconstructed real-world environments (e.g. houses and offices) from [our dataset](dataset.md) for your agents to be trained in. Create a new folder for those environments and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/dataset` and `your_installation_path/gibson2/ig_dataset`). You can get access and download the Gibson and iGibson datasets by filling up the following [license agreement](https://forms.gle/36TW9uVpjrE1Mkf9A). In addition, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo purposes.
+If you are happy with the default path, you don't have to do anything, otherwise you can run this script:
+```bash
+python -m gibson2.utils.assets_utils --change_data_path
+```
 
-The robot and object models, together with the R's scene can be downloaded and extracted in the assets folder indicated in `your_installation_path/gibson2/global_config.yaml` with two commands:
+Second, you can download our robot models and objects from [here](https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz) and unpack it in the assets folder, or simply run this download script:
 
 ```bash
 python -m gibson2.utils.assets_utils --download_assets
+```
+
+
+Third, you need to download some large 3D reconstructed real-world environments (e.g. houses and offices) from [our dataset](dataset.md) for your agents to be trained in. Create a new folder for those environments and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/assets/g_dataset` and `your_installation_path/gibson2/assets/ig_dataset`). You can get access and download the Gibson and iGibson datasets by filling up the following [license agreement](https://forms.gle/36TW9uVpjrE1Mkf9A). In addition, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo purposes.
+
+To download the demo data, run:
+
+```bash
 python -m gibson2.utils.assets_utils --download_demo_data
 ```
 
@@ -100,7 +119,7 @@ Download iGibson dataset
 python -m gibson2.utils.assets_utils --download_ig_dataset
 ```
 
-Download Gibson dataset (agreement signing required to get `URL`)
+Download Gibson dataset ([agreement signing](https://forms.gle/36TW9uVpjrE1Mkf9A) required to get `URL`)
 ```bash
 python -m gibson2.utils.assets_utils --download_dataset URL
 ```
