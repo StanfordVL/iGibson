@@ -17,7 +17,7 @@ The fifteen fully interactive models are visualized below.
 ![placeholder.jpg](images/ig_scene.png)
 
 #### Download Instruction
-To download the dataset, you need to first configure where the dataset is to be stored. You can change it in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `ig_dataset: your_installation_path/gibson2/assets/ig_dataset`). iGibson scenes can be downloaded with one single line:
+To download the dataset, you need to first configure where the dataset is to be stored. You can change it in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `ig_dataset: your_installation_path/gibson2/data/ig_dataset`). iGibson scenes can be downloaded with one single line:
 
 ```bash
 python -m gibson2.utils.assets_utils --download_ig_dataset
@@ -46,7 +46,7 @@ Files included in this distribution:
 
 To download 1 and 2, you need to fill in the agreement and get the download link `URL`, after which you can
  manually download and store them in the path set in `your_installation_path/gibson2/global_config.yaml` (default and
-  recommended: `dataset: your_installation_path/gibson2/assets/g_dataset`). You can run a single command to download the dataset
+  recommended: `dataset: your_installation_path/gibson2/data/g_dataset`). You can run a single command to download the dataset
   , this script automatically download, decompress, and put the dataset to correct place.
 ```bash
 python -m gibson2.utils.assets_utils --download_dataset URL

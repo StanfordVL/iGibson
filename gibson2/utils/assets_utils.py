@@ -173,6 +173,9 @@ def download_assets():
     """
     Download iGibson assets
     """
+    if not os.path.exists(os.path.dirname(gibson2.assets_path)):
+        os.makedirs(os.path.dirname(gibson2.assets_path))
+
     if not os.path.exists(gibson2.assets_path):
         os.system(
             'wget -c --retry-connrefused --tries=5 --timeout=5 '
