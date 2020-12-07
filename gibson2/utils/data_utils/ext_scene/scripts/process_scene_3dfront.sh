@@ -14,7 +14,7 @@ echo $THREEDFRONT_ID
 
 python step_2_generate_scene.py --model_dir \
     $THREEDFRONT_DIR/scenes/$THREEDFRONT_ID
-blender -b --python step_3_uv_unwrap.py \
+blender -b --python step_3_uv_unwrap.py -- \
     $THREEDFRONT_DIR/scenes/$THREEDFRONT_ID
 python step_3_add_mtl.py --input_dir \
     $THREEDFRONT_DIR/scenes/$THREEDFRONT_ID
