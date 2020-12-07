@@ -7,6 +7,7 @@
 iGibson, the Interactive Gibson Environment, is a simulation environment providing fast visual rendering and physics simulation (based on Bullet). It is packed with a dataset with hundreds of large 3D environments reconstructed from real homes and offices, and interactive objects that can be pushed and actuated. iGibson allows researchers to train and evaluate robotic agents that use RGB images and/or other visual sensors to solve indoor (interactive) navigation and manipulation tasks such as opening doors, picking and placing objects, or searching in cabinets.
 
 ### Latest Updates
+[12/4/2020] We created a [Slack workspace](https://join.slack.com/t/igibsonuser/shared_invite/zt-jz8x6wgh-2usPj6nMz7mawWyr1tmNfQ) to support iGibson users.
 
 [12/1/2020] Major update to iGibson to reach iGibson v1.0, for details please refer to our [technical report](TBA). 
 
@@ -25,7 +26,9 @@ If you use iGibson or its assets and models, consider citing the following publi
 ```
 @article{shenigibson,
   title={iGibson, a Simulation Environment for Interactive Tasks in Large Realistic Scenes},
-  author={Shen, Bokui and Xia, Fei and Li, Chengshu and Mart{\i}n-Mart{\i}n, Roberto and Fan, Linxi and Wang, Guanzhi and Buch, Shyamal and D’Arpino, Claudia and Srivastava, Sanjana and Tchapmi, Lyne P and others}
+  author={Shen, Bokui and Xia, Fei and Li, Chengshu and Mart{\i}n-Mart{\i}n, Roberto and Fan, Linxi and Wang, Guanzhi and Buch, Shyamal and D’Arpino, Claudia and Srivastava, Sanjana and Tchapmi, Lyne P and  Vainio, Kent and Fei-Fei, Li and Savarese, Silvio},
+  journal={arXiv preprint},
+  year={2020}
 }
 ```
 
@@ -44,7 +47,7 @@ If you want to know more about iGibson, you can also check out [our webpage](htt
  updated technical report](TBA) and [our RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442) and.
 
 ### Dowloading Dataset of 3D Environments
-There are several datasets of 3D reconstructed large real-world environments (homes and offices) that you can download and use with iGibson. All of them will be accessible once you fill in this [form](https://forms.gle/36TW9uVpjrE1Mkf9A).
+There are several datasets of 3D reconstructed large real-world environments (homes and offices) that you can download and use with iGibson. All of them will be accessible once you fill in this <a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[form]</a>.
 
 Additionally, with iGibson v1.0 release, you will have access to 15 fully interactive scenes (100+ rooms) that can be
  used in simulation. As a highlight, here
@@ -61,5 +64,4 @@ The scenes are annotated with bounding box location and size of different object
  associated materials
 
  
- More info can be found in the [installation guide](http://svl.stanford.edu/igibson/docs/installation.html).
-
+For instructions to install iGibson and download dataset, you can visit [installation guide](http://svl.stanford.edu/igibson/docs/installation.html).

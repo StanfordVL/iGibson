@@ -17,27 +17,24 @@ The fifteen fully interactive models are visualized below.
 ![placeholder.jpg](images/ig_scene.png)
 
 #### Download Instruction
-To download the dataset, you need to first configure where the dataset is to be stored. You can change it in
- `your_installation_path/gibson2/global_config.yaml` (default and recommended: `ig_dataset: your_installation_path/gibson2/ig_dataset`). iGibson scenes can be downloaded with one single line:
+To download the dataset, you need to first configure where the dataset is to be stored. You can change it in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `ig_dataset: your_installation_path/gibson2/data/ig_dataset`). iGibson scenes can be downloaded with one single line:
 
 ```bash
 python -m gibson2.utils.assets_utils --download_ig_dataset
 ```
 
 #### Dataset Format
-The new dataset format can be found [here](https://docs.google.com/document/d/14YUww8ztyTj0xjdX8WNOJpqNW-yKq-n9moqc43rfyMg)
+The new dataset format can be found [here](https://github.com/StanfordVL/iGibson/tree/master/gibson2/utils/data_utils). 
 
-
-#### Cubikasa / 3D Front Dataset
-`TODO: @will fill in`
-
+#### Cubicasa / 3D Front Dataset
+We provide support for Cubicasa and 3D Front Dataset, to import them into iGibson, follow the guide [here](https://github.com/StanfordVL/iGibson/tree/master/gibson2/utils/data_utils/ext_scene). 
 
 Download Gibson Data
 ------------------------
 Original Gibson Environment Dataset has been updated to use with iGibson simulator. The link will first take you to
  the license agreement and then to the data. 
 
-[[ Get download link for Gibson Data ]](https://forms.gle/36TW9uVpjrE1Mkf9A)
+<a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[[ Get download link for Gibson Data ]]</a>.
 
 License Note: The dataset license is included in the above link. The license in this repository covers only the provided software.
 
@@ -49,7 +46,7 @@ Files included in this distribution:
 
 To download 1 and 2, you need to fill in the agreement and get the download link `URL`, after which you can
  manually download and store them in the path set in `your_installation_path/gibson2/global_config.yaml` (default and
-  recommended: `dataset: your_installation_path/gibson2/dataset`). You can run a single command to download the dataset
+  recommended: `dataset: your_installation_path/gibson2/data/g_dataset`). You can run a single command to download the dataset
   , this script automatically download, decompress, and put the dataset to correct place.
 ```bash
 python -m gibson2.utils.assets_utils --download_dataset URL
