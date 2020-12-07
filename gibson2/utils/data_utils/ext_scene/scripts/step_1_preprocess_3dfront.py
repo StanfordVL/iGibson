@@ -258,13 +258,8 @@ def write_3dfront_obj(xyz, faces, normals, uvs, savepath):
             
 def gen_static_cabinet_info(save_dir, save_name):
     urdf_dir = os.path.join(save_dir, 'urdf')
+    os.makedirs(urdf_dir, exist_ok=True)
     model_name = os.path.basename(os.path.normpath(save_dir))
-    with open(os.path.join(urdf_dir, 
-                '{}_{}s.urdf'.format(model_name,save_name)), 'w') as fp:
-        fp.write(gen_scene_urdf(save_dir, model_name, save_name))
-    with open(os.path.join(urdf_dir, 
-                '{}_orig.urdf'.format(model_name)), 'w') as fp:
-        fp.write(gen_orig_urdf_with_cabinet(model_name,save_name))
     vm_path = os.path.join(save_dir, 'shape', 'visual', 
                            '{}_vm.obj'.format(save_name))
     cm_path = os.path.join(save_dir, 'shape', 'collision', 
@@ -279,6 +274,12 @@ def gen_static_cabinet_info(save_dir, save_name):
         cmd = 'cp {} {}'.format(vm_path, cm_path)
         subprocess.call(cmd,shell=True,
                     stdout=subprocess.DEVNULL)
+    with open(os.path.join(urdf_dir, 
+                '{}_{}s.urdf'.format(model_name,save_name)), 'w') as fp:
+        fp.write(gen_scene_urdf(save_dir, model_name, save_name))
+    with open(os.path.join(urdf_dir, 
+                '{}_orig.urdf'.format(model_name)), 'w') as fp:
+        fp.write(gen_orig_urdf_with_cabinet(model_name,save_name))
 
 
 
@@ -307,6 +308,8 @@ def export_visu_mesh(model_id, save_dir):
                 floors.append(m)
     obj_dir = os.path.join(save_dir, 'shape', 'visual')
     os.makedirs(obj_dir, exist_ok=True)
+    col_obj_dir = os.path.join(save_dir, 'shape', 'collision')
+    os.makedirs(col_obj_dir, exist_ok=True)
     concatenate_meshes(walls, os.path.join(obj_dir, 'wall_vm.obj'))
     concatenate_meshes(ceilings, os.path.join(obj_dir, 'ceiling_vm.obj'))
     if len(cabinets) > 0:
