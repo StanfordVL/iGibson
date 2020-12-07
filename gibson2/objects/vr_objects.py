@@ -65,6 +65,9 @@ class VrBody(ArticulatedObject):
         self.first_frame = True
         # Start body far above the scene so it doesn't interfere with physics
         self.start_pos = [0, 0, 150]
+        # Number of degrees of forward axis away from +/- z axis at which HMD stops rotating body
+        self.min_z = 20.0
+        self.max_z = 45.0
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         self.init_body()
 
@@ -112,10 +115,38 @@ class VrBody(ArticulatedObject):
                 self.first_frame = False
 
             hmd_x, hmd_y, hmd_z = p.getEulerFromQuaternion(hmd_rot)
+            _, _, curr_z = p.getEulerFromQuaternion(self.get_orientation())
             right, _, forward = self.sim.get_device_coordinate_system('hmd')
 
-            # TODO: Add a system that limits rotation when HMD has large X (or Y?) angle offset
-            new_body_rot = p.getQuaternionFromEuler([0, 0, hmd_z])
+            # Check whether angle between forward vector and pos/neg z direction is less than self.z_rot_thresh, and only
+            # update if this condition is fulfilled - this stops large body angle swings when HMD is pointed up/down
+            _, _, forward = self.sim.get_device_coordinate_system('hmd')
+            n_forward = np.array(forward)
+            # Normalized forward direction and z direction
+            n_forward = n_forward / np.linalg.norm(n_forward)
+            n_z = np.array([0.0, 0.0, 1.0])
+            # Calculate angle and convert to degrees
+            theta_z = np.arccos(np.dot(n_forward, n_z)) / np.pi * 180
+
+            # Move theta into range 0 to max_z
+            if theta_z > (180.0 - self.max_z):
+                theta_z = 180.0 - theta_z
+
+            # If we are out of range, get how much we are out of range between 0 and threshold angle
+            # Then apply linear falloff of z_multiplier in that range
+            z_mult = 1.0
+            if self.min_z < theta_z and theta_z < self.max_z:
+                # Apply the following quadratic to get faster falloff closer to the poles:
+                # y = -1/(min_z - max_z)^2 * x*2 + 2 * max_z / (min_z - max_z) ^2 * x + (min_z^2 - 2 * min_z * max_z) / (min_z - max_z) ^2
+                d = (self.min_z - self.max_z) ** 2
+                z_mult = -1/d * theta_z ** 2 + 2*self.max_z/d * theta_z + (self.min_z ** 2 - 2*self.min_z*self.max_z)/d
+            elif theta_z < self.min_z:
+                z_mult = 0.0
+
+            delta_z = hmd_z - curr_z
+            # Modulate rotation fraction by z_mult
+            new_z = curr_z + delta_z * z_mult
+            new_body_rot = p.getQuaternionFromEuler([0, 0, new_z])
 
             # Update body transform constraint
             p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
@@ -199,7 +230,7 @@ class VrHand(ArticulatedObject):
         for jointIndex in range(p.getNumJoints(self.body_id)):
             # Make masses larger for greater stability
             # Mass is in kg, friction is coefficient
-            p.changeDynamics(self.body_id, jointIndex, mass=0.2, lateralFriction=4)
+            p.changeDynamics(self.body_id, jointIndex, mass=0.2, lateralFriction=2)
             open_pos = self.open_pos[jointIndex]
             p.resetJointState(self.body_id, jointIndex, open_pos)
             p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=open_pos, force=500)
@@ -238,7 +269,7 @@ class VrHand(ArticulatedObject):
                 move_player(self.sim, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
 
             # TODO: Detect collisions and add haptic rumble here - larger rumble for greater mass?
-            self.sim.trigger_haptic_pulse(self.vr_device, trig_frac if trig_frac > 0.1 else 0)
+            # self.sim.trigger_haptic_pulse(self.vr_device, trig_frac if trig_frac > 0.1 else 0)
 
     # Note: This function can be called manually during data replay
     def move(self, trans, rot):
