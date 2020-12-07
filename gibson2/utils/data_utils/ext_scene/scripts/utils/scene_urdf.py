@@ -50,6 +50,36 @@ orig_urdf='''<?xml version="1.0" ?>
 </robot>
 '''
 
+orig_urdf_with_cabinet='''<?xml version="1.0" ?>
+<robot name="igibson_scene">
+	<link name="world"/>
+	<link category="walls" model="{model_name}" name="walls"/>
+	<link category="floors" model="{model_name}" name="floors"/>
+	<link category="ceilings" model="{model_name}" name="ceilings"/>
+	<link category="{save_name}" model="{model_name}" name="{save_name}"/>
+	<joint name="fix_to_world_walls" type="fixed">
+		<origin rpy="0 0 0" xyz="0 0 0"/>
+		<child link="walls"/>
+		<parent link="world"/>
+	</joint>
+	<joint name="fix_to_world_floors" type="fixed">
+		<origin rpy="0 0 0" xyz="0 0 0"/>
+		<child link="floors"/>
+		<parent link="world"/>
+	</joint>
+	<joint name="fix_to_world_ceilings" type="fixed">
+		<origin rpy="0 0 0" xyz="0 0 0"/>
+		<child link="ceilings"/>
+		<parent link="world"/>
+	</joint>
+	<joint name="fix_to_world_{save_name}" type="fixed">
+		<origin rpy="0 0 0" xyz="0 0 0"/>
+		<child link="{save_name}"/>
+		<parent link="world"/>
+	</joint>
+</robot>
+'''
+
 
 structure_base_template = '''<?xml version="1.0" ?>
 <robot name="igibson_scene_{}">
@@ -96,4 +126,9 @@ def gen_scene_urdf(model_dir, model_name,component=None):
 
 def gen_orig_urdf(model_name):
     return orig_urdf.format(model_name=model_name)
+
+def gen_orig_urdf_with_cabinet(model_name,save_name):
+    return orig_urdf_with_cabinet.format(
+                            model_name=model_name,
+                            save_name=save_name)
 
