@@ -151,6 +151,11 @@ class VrBody(ArticulatedObject):
             # Update body transform constraint
             p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
 
+            # Use 100% strength haptic pulse in both controlelrs for vr body collisions - this should notify the user immediately
+            if len(p.getContactPoints(self.body_id)) > 0:
+                self.sim.trigger_haptic_pulse('left_controller', 1.0)
+                self.sim.trigger_haptic_pulse('right_controller', 1.0)
+
 
 class VrHand(ArticulatedObject):
     """
@@ -268,8 +273,9 @@ class VrHand(ArticulatedObject):
             if self.vr_settings.touchpad_movement and self.hand == self.vr_settings.movement_controller:
                 move_player(self.sim, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
 
-            # TODO: Detect collisions and add haptic rumble here - larger rumble for greater mass?
-            # self.sim.trigger_haptic_pulse(self.vr_device, trig_frac if trig_frac > 0.1 else 0)
+            # Use 30% strength haptic pulse for general collisions with controller
+            if len(p.getContactPoints(self.body_id)) > 0:
+                self.sim.trigger_haptic_pulse(self.vr_device, 0.3)
 
     # Note: This function can be called manually during data replay
     def move(self, trans, rot):
