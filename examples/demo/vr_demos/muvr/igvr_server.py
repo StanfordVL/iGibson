@@ -56,14 +56,19 @@ class IGVRServer(Server):
         # This server manages a single vr client
         self.vr_client = None
 
-    def register_data(self, sim, vr_agents):
+    def has_client(self):
+        """
+        Returns whether the server has a client connected.
+        """
+        return self.vr_client is not None
+
+    def register_data(self, sim, client_agent):
         """
         Register the simulator and renderer and VrAgent objects from which the server will collect frame data
         """
         self.s = sim
         self.renderer = sim.renderer
-        self.client_agent = vr_agents[0]
-        self.server_agent = vr_agents[1]
+        self.client_agent = client_agent
 
     def update_client_vr_data(self, vr_data):
         """
@@ -72,17 +77,8 @@ class IGVRServer(Server):
         """
         # Only update if there is data to read - when the client is in non-vr mode, it sends empty lists
         if vr_data:
-            print("Updating client data!")
-            # TODO: Extend this to work with all the other VR objects, including left hand, body and gaze marker
-
-            # TODO: This function will get the following VR data:
-            # left controller - ALL data
-            # right controller - ALL data
-            # HMD - ALL data
-            # eye tracking - ALL data
-            #right_hand_pos = vr_data['right_hand'][0]
-            #right_hand_orn = vr_data['right_hand'][1]
-            #self.vr_objects['right_hand'].move(right_hand_pos, right_hand_orn)
+            # Delegate manual updates to the VrAgent class
+            self.client_agent.update(vr_data)
     
     def Connected(self, channel, addr):
         """

@@ -34,10 +34,9 @@ LOAD_PARTIAL = True
 PRINT_FPS = False
 
 # Note: This is where the VR configuration for the MUVR experience can be changed.
-# The current configuration runs the server in VR mode and the client in non-VR mode.
 RUN_SETTINGS = {
-    'client': VrSettings(use_vr=False),
-    'server': VrSettings(use_vr=True)
+    'client': VrSettings(use_vr=True),
+    'server': VrSettings(use_vr=False)
 }
 
 
@@ -87,8 +86,10 @@ def run_muvr(mode='server', host='localhost', port='8885'):
         s.renderer.set_fov(90)
 
     # Spawn two agents - one for client and one for the server
-    client_agent = VrAgent(s, agent_num=1)
-    server_agent = VrAgent(s, agent_num=2)
+    # The client loads the agents in with MUVR set to true - this allows the VrAgent to
+    # be set up just for rendering, with no physics or constraints
+    client_agent = VrAgent(s, agent_num=1, muvr=not is_server)
+    server_agent = VrAgent(s, agent_num=2, muvr=not is_server)
 
     # Objects to interact with
     basket_path = os.path.join(sample_urdf_folder, 'object_ZU6u5fvE8Z1.urdf')
@@ -102,21 +103,29 @@ def run_muvr(mode='server', host='localhost', port='8885'):
     # Setup client/server
     if is_server:
         vr_server = IGVRServer(localaddr=(host, port))
-        vr_server.register_data(s, [client_agent, server_agent])
+        vr_server.register_data(s, client_agent)
     else:
         vr_client = IGVRClient(host, port)
-        vr_client.register_data(s, [client_agent, server_agent])
-        # Disconnect pybullet since client only renders
+        vr_client.register_data(s, client_agent)
+        # Disconnect pybullet since the client only renders
         s.disconnect_pybullet()
 
     # Run main networking/rendering/physics loop
+    run_start_time = time.time()
     while True:
         if is_server:
+            # Only step the server if a client has been connected
+            if not vr_server.has_client():
+                if int(time.time() - run_start_time) % 5 == 0:
+                    print('SERVER MESSAGE: Waiting for client to connect...')
+                continue
+
             # Server is the one that steps the physics simulation, not the client
             s.step(print_time=PRINT_FPS)
 
             # Update VR agent on server-side
-            server_agent.update()
+            if s.vr_settings.use_vr:
+                server_agent.update()
             
             # Send the current frame to be rendered by the client,
             # and also ingest new client data
