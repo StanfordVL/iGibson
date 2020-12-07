@@ -5,6 +5,7 @@ import random
 import subprocess
 import json
 from collections import defaultdict
+import yaml
 
 
 def get_ig_category_ids():
@@ -137,7 +138,7 @@ def get_scene_path(scene_id):
     :param scene_id: scene id
     :return: scene path for this scene_id
     """
-    data_path = gibson2.dataset_path
+    data_path = gibson2.g_dataset_path
     assert scene_id in os.listdir(
         data_path) or scene_id == 'stadium', "Scene {} does not exist".format(scene_id)
     return os.path.join(data_path, scene_id)
@@ -172,6 +173,9 @@ def download_assets():
     """
     Download iGibson assets
     """
+    if not os.path.exists(os.path.dirname(gibson2.assets_path)):
+        os.makedirs(os.path.dirname(gibson2.assets_path))
+
     if not os.path.exists(gibson2.assets_path):
         os.system(
             'wget -c --retry-connrefused --tries=5 --timeout=5 '
@@ -184,29 +188,29 @@ def download_demo_data():
     """
     Download iGibson demo dataset
     """
-    if not os.path.exists(gibson2.dataset_path):
-        os.makedirs(gibson2.dataset_path)
+    if not os.path.exists(gibson2.g_dataset_path):
+        os.makedirs(gibson2.g_dataset_path)
 
-    if not os.path.exists(os.path.join(gibson2.dataset_path, 'Rs')):
+    if not os.path.exists(os.path.join(gibson2.g_dataset_path, 'Rs')):
         os.system(
             'wget -c --retry-connrefused --tries=5 --timeout=5  '
             'https://storage.googleapis.com/gibson_scenes/Rs.tar.gz -O /tmp/Rs.tar.gz')
         os.system(
-            'tar -zxf /tmp/Rs.tar.gz --directory {}'.format(gibson2.dataset_path))
+            'tar -zxf /tmp/Rs.tar.gz --directory {}'.format(gibson2.g_dataset_path))
 
 
 def download_dataset(url):
     """
     Download Gibson dataset
     """
-    if not os.path.exists(gibson2.dataset_path):
-        os.makedirs(gibson2.dataset_path)
+    if not os.path.exists(gibson2.g_dataset_path):
+        os.makedirs(gibson2.g_dataset_path)
 
     file_name = url.split('/')[-1]
     os.system(
         'wget -c --retry-connrefused --tries=5 --timeout=5 {} -O /tmp/{}'.format(url, file_name))
     os.system(
-        'tar -zxf /tmp/{} --strip-components=1 --directory {}'.format(file_name, gibson2.dataset_path))
+        'tar -zxf /tmp/{} --strip-components=1 --directory {}'.format(file_name, gibson2.g_dataset_path))
     # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 
 
@@ -214,6 +218,9 @@ def download_ig_dataset():
     """
     Download iGibson dataset
     """
+    while input("Do you agree to the terms for using iGibson dataset (http://svl.stanford.edu/gibson2/assets/GDS_agreement.pdf)? [y/n]") != "y":
+        print("You need to agree to the terms for using iGibson dataset.")
+
     if not os.path.exists(gibson2.ig_dataset_path):
         os.makedirs(gibson2.ig_dataset_path)
     url = "https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz"
@@ -224,6 +231,23 @@ def download_ig_dataset():
         'tar -zxf /tmp/{} --strip-components=1 --directory {}'.format(file_name, gibson2.ig_dataset_path))
     # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 
+def change_data_path():
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'global_config.yaml')) as f:
+        global_config = yaml.load(f, Loader=yaml.FullLoader)
+    print("Current dataset path:")
+    for k, v in global_config.items():
+        print("{}: {}".format(k,v))
+    for k,v in global_config.items():
+        new_path = input("Change {} from {} to: ".format(k, v))
+        global_config[k] = new_path
+
+    print("New dataset path:")
+    for k, v in global_config.items():
+        print("{}: {}".format(k,v))
+    response = input("Save? [y/n]")
+    if response == "y":
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'global_config.yaml'), 'w') as f:
+            yaml.dump(global_config, f)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -236,6 +260,9 @@ if __name__ == "__main__":
     parser.add_argument('--download_ig_dataset', action='store_true',
                         help='download iG Dataset')
 
+    parser.add_argument('--change_data_path', action='store_true',
+                        help='change the path to store assets and datasert')
+
     args = parser.parse_args()
 
     if args.download_assets:
@@ -246,3 +273,5 @@ if __name__ == "__main__":
         download_dataset(args.download_dataset)
     elif args.download_ig_dataset:
         download_ig_dataset()
+    elif args.change_data_path:
+        change_data_path()

@@ -3,7 +3,7 @@
 ### Overview
 We provide four types of scenes.
 - `EmptyScene` and `StadiumScene`: they are simple scenes with flat grounds and no obstacles, useful for debugging purposes.
-- `StaticIndoorScene`: it loads static 3D scenes from `gibson2.dataset_path`.
+- `StaticIndoorScene`: it loads static 3D scenes from `gibson2.g_dataset_path`.
 - `InteractiveIndoorScene`: it loads fully interactive 3D scenes from `gibson2.ig_dataset_path`.
 
 Typically, they take in the `scene_id` of a scene and provide a `load` function that be invoked externally (usually by `import_scene` and `import_ig_scene` of the `Simulator`).
