@@ -24,6 +24,7 @@ from utils.semantics import *
 
 import gibson2
 
+
 parser = argparse.ArgumentParser("Convert Cubicasa5k...")
 
 parser.add_argument('--model_dir', dest='model_dir')
@@ -201,7 +202,8 @@ def main():
     overlaps = defaultdict(lambda : [])
     for i in range(len(furniture_bboxes)):
         for j in range(i+1, len(furniture_bboxes)):
-            if has_overlap(furniture_bboxes[i][1].as_dict(),furniture_bboxes[j][1].as_dict()):
+            if has_overlap(furniture_bboxes[i][1],
+                           furniture_bboxes[j][1]):
                 overlaps[(i,furniture_bboxes[i][1])].append((j,furniture_bboxes[j][1]))
                 overlaps[(j,furniture_bboxes[j][1])].append((i,furniture_bboxes[i][1]))
 
@@ -224,7 +226,7 @@ def main():
             bbox.edge_x = edge_x_og * scale
             overlap = False
             for i in o[1]:
-                if has_overlap(bbox.as_dict(), i[1].as_dict()):
+                if has_overlap(bbox, i[1]):
                     overlap=True
                     break
             if not overlap:
@@ -235,7 +237,7 @@ def main():
             bbox.edge_y = edge_y_og * scale
             overlap = False
             for i in o[1]:
-                if has_overlap(bbox.as_dict(), i[1].as_dict()):
+                if has_overlap(bbox, i[1]):
                     overlap=True
                     break
             if not overlap:
@@ -247,18 +249,17 @@ def main():
             bbox.edge_x = edge_x_og * scale
             overlap = False
             for i in o[1]:
-                if has_overlap(bbox.as_dict(), i[1].as_dict()):
+                if has_overlap(bbox, i[1]):
                     overlap=True
                     break
             if not overlap:
                 shrink_success = True
                 break
-            
+
         if shrink_success:
             furniture_bboxes[o[0][0]] = (furniture_bboxes[o[0][0]][0], bbox)
         else:
             # add to delete
-            # print('deleting ', o[0])
             to_delete.append(o[0][0])
         # update graph
         for j in o[1]:
@@ -267,6 +268,7 @@ def main():
 
     for i in sorted(to_delete, reverse=True):
         del furniture_bboxes[i]
+
 
     ##################################
     # Splitting into separate floors #

@@ -356,20 +356,44 @@ def check_point_in_obj_xy(obj, pt):
         triangles_area += get_triangle_area(bbox[i], bbox[j], pt)
     return np.abs(triangles_area - bbox_area) < 1e-5
 
-def has_overlap(obj1, obj2):
-    obj1_bbox = get_oriented_bbox(obj1)
-    obj2_bbox = get_oriented_bbox(obj2)
-    in_xy = False
-    for i in range(4):
-        if check_point_in_obj_xy(obj2, obj1_bbox[i]):
-            in_xy = True
-    for i in range(4):
-        if check_point_in_obj_xy(obj1, obj2_bbox[i]):
-            in_xy = True
-    obj1_z = obj1['z']
-    obj2_z = obj2['z']
-    in_z = obj1_z[0] < obj2_z[1] and obj2_z[0] < obj1_z[1]
-    return in_xy and in_z
+def has_overlap(bbox_i, bbox_j):
+    coord_i_xy = shape_poly(bbox_i.get_coords())
+    i_z = bbox_i.z
+    coord_j_xy = shape_poly(bbox_j.get_coords())
+    j_z = bbox_j.z
+    if coord_i_xy.intersects(coord_j_xy):
+        z_overlap = get_z_overlaps(i_z, j_z)
+        return coord_i_xy.intersection(coord_j_xy).area * z_overlap
+    return 0
+
+# def has_overlap(obj1, obj2):
+    # obj1_bbox = get_oriented_bbox(obj1)
+    # obj2_bbox = get_oriented_bbox(obj2)
+    # in_xy = False
+    # for i in range(4):
+        # if check_point_in_obj_xy(obj2, obj1_bbox[i]):
+            # in_xy = True
+    # for i in range(4):
+        # if check_point_in_obj_xy(obj1, obj2_bbox[i]):
+            # in_xy = True
+    # obj1_z = obj1['z']
+    # obj2_z = obj2['z']
+    # in_z = obj1_z[0] < obj2_z[1] and obj2_z[0] < obj1_z[1]
+    # return in_xy and in_z
+def get_z_overlaps(z1, z2):
+    bottom = max(z1[0], z2[0])
+    top = min(z1[-1], z2[-1])
+    return max(0, top - bottom)
+
+def overlaps(bbox_i, bbox_j):
+    coord_i_xy = shape_poly(bbox_i[1].get_coords())
+    i_z = bbox_i[1].z
+    coord_j_xy = shape_poly(bbox_j[1].get_coords())
+    j_z = bbox_j[1].z
+    if coord_i_xy.intersects(coord_j_xy):
+        z_overlap = get_z_overlaps(i_z, j_z)
+        return coord_i_xy.intersection(coord_j_xy).area * z_overlap
+    return 0
 
 def get_volume(bbox):
     x,y,z = bbox.get_scale()
