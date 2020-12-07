@@ -46,7 +46,7 @@ threads = []
 for o in objs:
     in_f = os.path.join(input_dir, o)
     out_f = os.path.join(tmp_dir, o)
-    cmd = './vhacd --input {} --output {}'.format(in_f, out_f)
+    cmd = '../../blender_utils/vhacd --input {} --output {}'.format(in_f, out_f)
     thread = threading.Thread(target=vhacd, args=(cmd,))
     thread.start()
     threads.append(thread)
