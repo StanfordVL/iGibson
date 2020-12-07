@@ -56,30 +56,33 @@ class IGVRServer(Server):
         # This server manages a single vr client
         self.vr_client = None
 
-    def register_sim_renderer(self, sim):
+    def register_data(self, sim, vr_agents):
         """
-        Register the simulator and renderer from which the server will collect frame data
-
-        :param renderer: the renderer from which we extract visual data
+        Register the simulator and renderer and VrAgent objects from which the server will collect frame data
         """
         self.s = sim
         self.renderer = sim.renderer
+        self.client_agent = vr_agents[0]
+        self.server_agent = vr_agents[1]
 
-    def register_vr_objects(self, vr_objects):
-        """
-        Register the list of vr objects whose transform data the client will send over each frame.
-        """
-        self.vr_objects = vr_objects
-
-    def update_vr_objects(self, vr_data):
+    def update_client_vr_data(self, vr_data):
         """
         Updates VR objects based on data sent by client. This function is called from the asynchronous
         Network_vrdata that is first called by the client channel.
         """
-        # TODO: Extend this to work with all the other VR objects, including left hand, body and gaze marker
-        right_hand_pos = vr_data['right_hand'][0]
-        right_hand_orn = vr_data['right_hand'][1]
-        self.vr_objects['right_hand'].move(right_hand_pos, right_hand_orn)
+        # Only update if there is data to read - when the client is in non-vr mode, it sends empty lists
+        if vr_data:
+            print("Updating client data!")
+            # TODO: Extend this to work with all the other VR objects, including left hand, body and gaze marker
+
+            # TODO: This function will get the following VR data:
+            # left controller - ALL data
+            # right controller - ALL data
+            # HMD - ALL data
+            # eye tracking - ALL data
+            #right_hand_pos = vr_data['right_hand'][0]
+            #right_hand_orn = vr_data['right_hand'][1]
+            #self.vr_objects['right_hand'].move(right_hand_pos, right_hand_orn)
     
     def Connected(self, channel, addr):
         """
@@ -87,7 +90,7 @@ class IGVRServer(Server):
         """
         print("New connection:", channel)
         self.vr_client = channel
-        self.vr_client.set_vr_data_callback(self.update_vr_objects)
+        self.vr_client.set_vr_data_callback(self.update_client_vr_data)
         
     def generate_frame_data(self):
         """

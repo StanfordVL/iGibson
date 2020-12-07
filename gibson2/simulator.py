@@ -653,8 +653,8 @@ class Simulator:
             raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
         # Use fourth variable in list to get actual hmd position in space
-        isValid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(deviceName)
-        return [isValid, translation, rotation]
+        is_valid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(deviceName)
+        return [is_valid, translation, rotation]
 
     # Get world position of HMD without offset
     def get_hmd_world_pos(self):
