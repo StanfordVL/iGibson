@@ -9,6 +9,48 @@ from gibson2.utils.utils import multQuatLists
 from gibson2.utils.vr_utils import move_player, translate_vr_position_by_vecs
 
 
+class VrAgent(object):
+    """
+    A class representing all the VR objects comprising a single agent.
+    The individual parts of an agent can be used separately, however
+    use of this class is recommended for most VR applications, especially if you
+    just want to get a VR scene up and running quickly.
+    """
+    def __init__(self, sim, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True):
+        """
+        Initializes VR body:
+        sim - iGibson simulator object
+        use_constraints - whether to use constraints to move agent (normally set to True - set to false in state replay mode)
+        hands - list containing left, right or no hands
+        use_body - true if using VrBody
+        use_gaze_marker - true if we want to visualize gaze point
+        """
+        self.sim = sim
+        self.use_constraints = use_constraints
+        self.hands = hands
+        self.use_body = use_body
+        self.use_gaze_marker = use_gaze_marker
+
+        # Dictionary of vr object names to objects
+        self.vr_dict = dict()
+
+        if 'left' in self.hands:
+            self.vr_dict['left_hand'] = VrHand(self.sim, hand='left', use_constraints=self.use_constraints)
+        if 'right' in self.hands:
+            self.vr_dict['right_hand'] = VrHand(self.sim, hand='right', use_constraints=self.use_constraints)
+        if self.use_body:
+            self.vr_dict['body'] = VrBody(self.sim, use_constraints=self.use_constraints)
+        if self.use_gaze_marker:
+            self.vr_dict['gaze_marker'] = VrGazeMarker(self.sim)
+
+    def update(self):
+        """
+        Updates VR agent - transforms of all objects managed by this class.
+        """
+        for vr_obj in self.vr_dict.values():
+            vr_obj.update()
+
+
 class VrBody(ArticulatedObject):
     """
     A simple ellipsoid representing a VR user's body. This stops
@@ -53,7 +95,7 @@ class VrBody(ArticulatedObject):
                 for floor_link_idx in floor_link_idxs:
                     p.setCollisionFilterPair(self.body_id, f_id, body_link_idx, floor_link_idx, 0)
     
-    def update_body(self):
+    def update(self):
         """
         Updates VrBody to new position and rotation, via constraints.
         """
@@ -167,7 +209,7 @@ class VrHand(ArticulatedObject):
             self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], start_pos)
 
     # TIMELINE: Call after step in main while loop
-    def update_hand(self):
+    def update(self):
         """
         Updates position and close fraction of hand, and also moves player.
         """
@@ -237,7 +279,7 @@ class VrGazeMarker(VisualMarker):
         # Set high above scene initially
         self.set_position([0, 0, 200])
 
-    def update_marker(self):
+    def update(self):
         if not self.sim.vr_settings.eye_tracking:
             raise RuntimeError('ERROR: Unable to set vr gaze marker when eye tracking is not enabled.')
 

@@ -621,12 +621,8 @@ class Simulator:
             hmd_is_valid, _, _, _ = self.renderer.vrsys.getDataForVRDevice('hmd')
             if hmd_is_valid:
                 offset_to_start = np.array(self.vr_start_pos) - self.get_hmd_world_pos()
-                print(self.get_hmd_world_pos())
-                print(self.vr_start_pos)
                 if self.vr_height_offset is not None:
                     offset_to_start[2] = self.vr_height_offset
-                    print(self.vr_height_offset)
-                print(offset_to_start)
                 self.set_vr_offset(offset_to_start)
                 self.vr_start_pos = None
     

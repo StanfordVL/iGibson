@@ -17,7 +17,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.vr_objects import VrBody, VrHand, VrGazeMarker
+from gibson2.objects.vr_objects import VrAgent
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
@@ -31,13 +31,9 @@ s = Simulator(mode='vr',
 scene = StaticIndoorScene('Placida')
 s.import_scene(scene)
 
-# VR objects automatically import themselves into simulator and perform setup
-# use_constraints allows the body and hands to be controlled by PyBullet's constraint system
-# This is turned off during full-state data replay
-vr_body = VrBody(s, use_constraints=True)
-r_hand = VrHand(s, hand='right', use_constraints=True)
-l_hand = VrHand(s, hand='left', use_constraints=True)
-gaze_marker = VrGazeMarker(s)
+# The VR agent manages both vr hands, the vr body and gaze marking
+# Please see vr_objects.py in gibson2/objects for more details on this class
+vr_agent = VrAgent(s)
 
 # Import objects to interact with
 basket_path = os.path.join(sample_urdf_folder, 'object_ZU6u5fvE8Z1.urdf')
@@ -66,9 +62,6 @@ while True:
     s.step()
 
     # Update VR objects
-    gaze_marker.update_marker()
-    r_hand.update_hand()
-    l_hand.update_hand()
-    vr_body.update_body()
+    vr_agent.update()
 
 s.disconnect()
