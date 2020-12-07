@@ -2,7 +2,7 @@
 
 
 import numpy as np
-from time import sleep
+import time
 
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGroup
 
@@ -55,6 +55,7 @@ class IGVRServer(Server):
         print('IGVR server launched!')
         # This server manages a single vr client
         self.vr_client = None
+        self.last_comm_time = time.time()
 
     def has_client(self):
         """
@@ -75,6 +76,10 @@ class IGVRServer(Server):
         Updates VR objects based on data sent by client. This function is called from the asynchronous
         Network_vrdata that is first called by the client channel.
         """
+        time_since_last_comm = time.time() - self.last_comm_time
+        self.last_comm_time = time.time()
+        print("Time since last comm: {}".format(time_since_last_comm))
+        print("Comm fps: {}".format(1/time_since_last_comm))
         # Only update if there is data to read - when the client is in non-vr mode, it sends empty lists
         if vr_data:
             # Delegate manual updates to the VrAgent class
@@ -120,7 +125,7 @@ class IGVRServer(Server):
         Pumps the server to refresh incoming/outgoing connections.
         """
         self.Pump()
-        frame_data = self.generate_frame_data()
 
         if self.vr_client:
+            frame_data = self.generate_frame_data()
             self.vr_client.send_frame_data(frame_data)
