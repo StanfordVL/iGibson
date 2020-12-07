@@ -18,7 +18,7 @@ cd scripts
 ##################
 # Generate visual meshes 
 ##################
-blender -b --python step_1_visual_mesh.py --source_dir $DIRECTORY --dest_dir $OBJECT_EXPORT_DIR #--up Z --forward X 
+blender -b --python step_1_visual_mesh.py -- --source_dir $DIRECTORY --dest_dir $OBJECT_EXPORT_DIR #--up Z --forward X 
 
 ##################
 # Generate collision meshes
