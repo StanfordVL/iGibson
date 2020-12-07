@@ -3,6 +3,7 @@
 import os
 import json
 import math
+import shutil
 import gibson2
 import argparse
 import numpy as np
@@ -152,8 +153,15 @@ def convert_scene(scene_name, scene_source, select_best=False):
 
     fname = scene_name if not select_best else "{}_best".format(scene_name)
     scene_file_out = os.path.join( scene_dir, "urdf", "{}.urdf".format(fname))
-    print(scene_file_out)
     scene_tree.write(scene_file_out, xml_declaration=True)
+    if select_best and scene_source == 'THREEDFRONT':
+        urdf_dir = os.path.join(
+                gibson2.threedfront_dataset_path, 
+                'no_col_urdfs')
+        urdf_no_col = os.path.join(urdf_dir, 
+                        "{}_best_no_col.urdf".format(scene_name))
+        if os.path.isfile(urdf_no_col):
+            shutil.copyfile(urdf_no_col, scene_file_out)
     print('all categories:', categories)
 
 
