@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 
 BASEDIR=$(dirname "$0")
-echo "$BASEDIR"
 cd $BASEDIR
 
 THREEDFRONT_DIR=$(python -c "import gibson2; print(gibson2.threedfront_dataset_path)" | tail -1)
 JSON_PATH=$1
 
 python step_1_preprocess_3dfront.py --model_path $JSON_PATH
-echo $JSON_PATH
 
 JSON_PATH=$(basename $JSON_PATH)
 THREEDFRONT_ID="${JSON_PATH%.*}"

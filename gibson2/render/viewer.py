@@ -450,7 +450,7 @@ class Viewer:
             help_text = "'q','e': turn left, turn right (any mode)"
             cv2.putText(frame, help_text, (10, 120),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
-            help_text = "'m': Toggle mouse mode between navigation and manipulation"
+            help_text = "'m': switch control mode across navigation, manipulation, and planning"
             cv2.putText(frame, help_text, (10, 140),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
             help_text = "'r': Start/stop recording frames (results in \\tmp folder)"
@@ -467,22 +467,22 @@ class Viewer:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
         else:
             second_color = (255, 0, 255)
-            help_text = "Mouse controls in navigation mode:"
+            help_text = "Mouse control in navigation mode:"
             cv2.putText(frame, help_text, (10, 80),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
             help_text = "Left click and drag: rotate camera"
             cv2.putText(frame, help_text, (10, 100),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
-            help_text = "CNTRL + left click and drag: translate camera left/right"
+            help_text = "CTRL + left click and drag: translate camera"
             cv2.putText(frame, help_text, (10, 120),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
-            help_text = "Middle click and drag (linux) or left SHIFT + left click and drag: up/down of mouse"
+            help_text = "Middle click and drag (linux) or left SHIFT + left click and drag:"
             cv2.putText(frame, help_text, (10, 140),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
-            help_text = " translates camera forward/backwards"
+            help_text = "translate camera closer/further away in the viewing direction"
             cv2.putText(frame, help_text, (10, 160),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
-            help_text = "Mouse controls in manipulation mode:"
+            help_text = "Mouse control in manipulation mode:"
             cv2.putText(frame, help_text, (10, 180),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
             help_text = "Left click and drag: create ball-joint connection to clicked object and move it"
@@ -494,8 +494,23 @@ class Viewer:
             help_text = " to object and move it"
             cv2.putText(frame, help_text, (10, 240),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
-            help_text = "CNTRL + click and drag: up/down of the mouse moves object further/closer"
+            help_text = "CTRL + click and drag: up/down of the mouse moves object further/closer"
             cv2.putText(frame, help_text, (10, 260),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            help_text = "Mouse control in planning mode:"
+            cv2.putText(frame, help_text, (10, 280),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            help_text = "Left click: create (click), visualize (drag) and plan / execute (release) a base motion subgoal"
+            cv2.putText(frame, help_text, (10, 300),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            help_text = "for the robot base to reach the physical point that corresponds to the clicked pixel"
+            cv2.putText(frame, help_text, (10, 320),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            help_text = "Middle click: create, and plan / execute an arm motion subgoal"
+            cv2.putText(frame, help_text, (10, 340),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            help_text = "for the robot end-effector to reach the physical point that corresponds to the clicked pixel"
+            cv2.putText(frame, help_text, (10, 360),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
         self.show_help -= 1
 

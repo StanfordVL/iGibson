@@ -8,6 +8,7 @@ import subprocess
 import numpy as np
 import pybullet as p
 from PIL import Image
+from shutil import which
 from gibson2.simulator import Simulator
 from gibson2.render.profiler import Profiler
 from gibson2.objects.articulated_object import ArticulatedObject
@@ -85,10 +86,11 @@ def main():
                 255*np.concatenate(frame, axis=1)[:,:,:3]).astype(np.uint8))
         img.save(os.path.join(save_dir, '{:02d}.png'.format(i)))
 
-    cmd = 'ffmpeg -framerate 2 -i {s}/%2d.png -y -r 16 -c:v libx264 -pix_fmt yuvj420p {s}/{m}.mp4'.format(s=save_dir,m=model_id)
-    subprocess.call(cmd, shell=True)
-    cmd = 'rm {}/*.png'.format(save_dir)
-    subprocess.call(cmd, shell=True)
+    if which('ffmpeg') is not None:
+        cmd = 'ffmpeg -framerate 2 -i {s}/%2d.png -y -r 16 -c:v libx264 -pix_fmt yuvj420p {s}/{m}.mp4'.format(s=save_dir,m=model_id)
+        subprocess.call(cmd, shell=True)
+    # cmd = 'rm {}/*.png'.format(save_dir)
+    # subprocess.call(cmd, shell=True)
 
 if __name__ == '__main__':
     main()

@@ -215,9 +215,10 @@ class Simulator:
                 use_pbr = True
                 use_pbr_mapping = True
                 shadow_caster = True
-                if scene.objects_by_id[body_id].category in ['walls', 'floors', 'ceilings']:
-                    use_pbr = False
-                    use_pbr_mapping = False
+                if scene.scene_source == 'IG':
+                    if scene.objects_by_id[body_id].category in ['walls', 'floors', 'ceilings']:
+                        use_pbr = False
+                        use_pbr_mapping = False
                 if scene.objects_by_id[body_id].category == 'ceilings':
                     shadow_caster = False
                 class_id = self.class_name_to_class_id.get(
