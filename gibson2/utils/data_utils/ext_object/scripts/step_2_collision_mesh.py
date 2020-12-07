@@ -27,7 +27,7 @@ if args.split_merge:
     ########################
     # split to loose parts #
     ########################
-    cmd = 'cd {} && blender -b --python step_2_split.py {} {}'.format(
+    cmd = 'cd {} && blender -b --python step_2_split.py -- {} {}'.format(
             script_dir, args.input_dir, tmp_dir)
     subprocess.call(cmd, shell=True,
         stdout=subprocess.DEVNULL)
@@ -59,7 +59,7 @@ print('Merging V-HACD...')
 ###########################
 # Merge all V-HACD to one #
 ###########################
-cmd = 'cd {} && blender -b --python step_2_merge.py {} {} {}'.format(
+cmd = 'cd {} && blender -b --python step_2_merge.py -- {} {} {}'.format(
         script_dir, args.object_name, tmp_dir, args.output_dir)
 subprocess.call(cmd, shell=True,
     stdout=subprocess.DEVNULL)
