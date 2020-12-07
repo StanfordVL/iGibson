@@ -3,14 +3,16 @@
 import numpy as np
 from gibson2.utils.utils import normalizeListVec
 
-def move_player(s, rTouchX, rTouchY, movement_speed, relative_device):
+def move_player(s, touch_x, touch_y, movement_speed, relative_device):
     """Moves the VR player. Takes in the simulator,
     information from the right touchpad, player movement speed and the device relative to which
     we would like to move."""
+    s.set_vr_offset(calc_offset(s, touch_x, touch_y, movement_speed, relative_device))
+
+def calc_offset(s, touch_x, touch_y, movement_speed, relative_device):
     curr_offset = s.get_vr_offset()
     right, _, forward = s.get_device_coordinate_system(relative_device)
-    new_offset = translate_vr_position_by_vecs(rTouchX, rTouchY, right, forward, curr_offset, movement_speed)
-    s.set_vr_offset(new_offset)
+    return translate_vr_position_by_vecs(touch_x, touch_y, right, forward, curr_offset, movement_speed)
 
 def get_normalized_translation_vec(right_frac, forward_frac, right, forward):
     """Generates a normalized translation vector that is a linear combination of forward and right."""

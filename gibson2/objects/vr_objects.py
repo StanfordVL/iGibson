@@ -6,7 +6,7 @@ from gibson2 import assets_path
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.utils import multQuatLists
-from gibson2.utils.vr_utils import move_player, translate_vr_position_by_vecs
+from gibson2.utils.vr_utils import move_player, calc_offset, translate_vr_position_by_vecs
 
 
 class VrAgent(object):
@@ -16,7 +16,7 @@ class VrAgent(object):
     use of this class is recommended for most VR applications, especially if you
     just want to get a VR scene up and running quickly.
     """
-    def __init__(self, sim, agent_num=1, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True):
+    def __init__(self, sim, agent_num=1, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True, muvr=False):
         """
         Initializes VR body:
         sim - iGibson simulator object
@@ -25,6 +25,7 @@ class VrAgent(object):
         hands - list containing left, right or no hands
         use_body - true if using VrBody
         use_gaze_marker - true if we want to visualize gaze point
+        muvr - whether the VrAgent is a multi-user VR agent which is only to be renderered
         """
         self.sim = sim
         self.agent_num = agent_num
@@ -34,27 +35,54 @@ class VrAgent(object):
         self.hands = hands
         self.use_body = use_body
         self.use_gaze_marker = use_gaze_marker
+        self.muvr = muvr
 
         # Dictionary of vr object names to objects
         self.vr_dict = dict()
 
-        if 'left' in self.hands:
-            self.vr_dict['left_hand'] = VrHand(self.sim, hand='left', use_constraints=self.use_constraints)
-            self.vr_dict['left_hand'].hand_setup(self.z_coord)
-        if 'right' in self.hands:
-            self.vr_dict['right_hand'] = VrHand(self.sim, hand='right', use_constraints=self.use_constraints)
-            self.vr_dict['right_hand'].hand_setup(self.z_coord)
-        if self.use_body:
-            self.vr_dict['body'] = VrBody(self.sim, self.z_coord, use_constraints=self.use_constraints)
-        if self.use_gaze_marker:
+        if self.muvr:
+            self.vr_dict['left_hand'] = VrHand(self.sim, hand='left', use_constraints=False)
+            self.vr_dict['right_hand'] = VrHand(self.sim, hand='right', use_constraints=False)
+            self.vr_dict['body'] = VrBody(self.sim, self.z_coord, use_constraints=False)
             self.vr_dict['gaze_marker'] = VrGazeMarker(self.sim, self.z_coord)
+        else:
+            if 'left' in self.hands:
+                self.vr_dict['left_hand'] = VrHand(self.sim, hand='left', use_constraints=self.use_constraints)
+                self.vr_dict['left_hand'].hand_setup(self.z_coord)
+            if 'right' in self.hands:
+                self.vr_dict['right_hand'] = VrHand(self.sim, hand='right', use_constraints=self.use_constraints)
+                self.vr_dict['right_hand'].hand_setup(self.z_coord)
+            if self.use_body:
+                self.vr_dict['body'] = VrBody(self.sim, self.z_coord, use_constraints=self.use_constraints)
+            if self.use_gaze_marker:
+                self.vr_dict['gaze_marker'] = VrGazeMarker(self.sim, self.z_coord)
 
-    def update(self):
+    def update(self, vr_data=None):
         """
         Updates VR agent - transforms of all objects managed by this class.
+        If vr_data is set to a non-None value, we use this data and overwrite all data from the simulator.
         """
         for vr_obj in self.vr_dict.values():
-            vr_obj.update()
+            vr_obj.update(vr_data=vr_data)
+
+    def get_frame_offset(self):
+        """
+        Calculates the new VR offset after a single frame of VR interaction.
+        """
+        new_offset = s.get_vr_offset()
+        for hand in ['left', 'right']:
+            vr_device = '{}_controller'.format(hand)
+            is_valid, trans, rot = self.sim.get_data_for_vr_device(vr_device)
+            trig_frac, touch_x, touch_y = self.sim.get_button_data_for_controller(vr_device)
+            if hand == self.sim.vr_settings.movement_controller and self.sim.vr_settings.touchpad_movement:
+                new_offset = calc_offset(self.sim, touch_x, touch_y, self.sim.vr_settings.movement_speed, self.sim.vr_settings.relative_device)
+        
+            # Offset z coordinate using menu press
+            if self.s.query_vr_event(vr_device, 'menu_press'):
+                vr_z_offset = 0.01 if hand == 'right' else -0.01
+                new_offset = [new_offset[0], new_offset[1], new_offset[2] + vr_z_offset]
+        
+        return new_offset
 
 
 class VrBody(ArticulatedObject):
@@ -104,13 +132,18 @@ class VrBody(ArticulatedObject):
                 for floor_link_idx in floor_link_idxs:
                     p.setCollisionFilterPair(self.body_id, f_id, body_link_idx, floor_link_idx, 0)
     
-    def update(self):
+    def update(self, vr_data=None):
         """
         Updates VrBody to new position and rotation, via constraints.
+        If vr_data is passed in, uses this data to update the VrBody instead of the simulator's data.
         """
         # Get HMD data
-        hmd_is_valid, _, hmd_rot = self.sim.get_data_for_vr_device('hmd')
-        hmd_pos = self.sim.get_vr_pos()
+        if vr_data:
+            hmd_is_valid, _, hmd_rot = vr_data['hmd'][:3]
+            hmd_pos = vr_data['vr_pos']
+        else:
+            hmd_is_valid, _, hmd_rot = self.sim.get_data_for_vr_device('hmd')
+            hmd_pos = self.sim.get_vr_pos()
 
         # Only update the body if the HMD data is valid - this also only teleports the body to the player
         # once the HMD has started tracking when they first load into a scene
@@ -122,11 +155,14 @@ class VrBody(ArticulatedObject):
 
             hmd_x, hmd_y, hmd_z = p.getEulerFromQuaternion(hmd_rot)
             _, _, curr_z = p.getEulerFromQuaternion(self.get_orientation())
-            right, _, forward = self.sim.get_device_coordinate_system('hmd')
+
+            if vr_data:
+                right, _, forward = vr_data['hmd'][3:]
+            else:
+                right, _, forward = self.sim.get_device_coordinate_system('hmd')
 
             # Check whether angle between forward vector and pos/neg z direction is less than self.z_rot_thresh, and only
             # update if this condition is fulfilled - this stops large body angle swings when HMD is pointed up/down
-            _, _, forward = self.sim.get_device_coordinate_system('hmd')
             n_forward = np.array(forward)
             # Normalized forward direction and z direction
             n_forward = n_forward / np.linalg.norm(n_forward)
@@ -158,11 +194,13 @@ class VrBody(ArticulatedObject):
             p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
 
             # Use 100% strength haptic pulse in both controlelrs for vr body collisions - this should notify the user immediately
-            if len(p.getContactPoints(self.body_id)) > 0:
-                for controller in ['left_controller', 'right_controller']:
-                    is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
-                    if is_valid:
-                        self.sim.trigger_haptic_pulse(controller, 1.0)
+            # TODO: Add haptic support for MUVR, when vr_data is supplied
+            if not vr_data:
+                if len(p.getContactPoints(self.body_id)) > 0:
+                    for controller in ['left_controller', 'right_controller']:
+                        is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
+                        if is_valid:
+                            self.sim.trigger_haptic_pulse(controller, 1.0)
 
 
 class VrHand(ArticulatedObject):
@@ -233,6 +271,7 @@ class VrHand(ArticulatedObject):
         else:
             self.sim.import_object(self, use_pbr=True, use_pbr_mapping=True, shadow_caster=True)
 
+    # TODO: Need to do the setup only on the server, not the client
     def hand_setup(self, z_coord):
         """
         Called after hand is imported. This sets the hand constraints and starting position.
@@ -255,37 +294,57 @@ class VrHand(ArticulatedObject):
             self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], start_pos)
 
     # TIMELINE: Call after step in main while loop
-    def update(self):
+    def update(self, vr_data=None):
         """
         Updates position and close fraction of hand, and also moves player.
+        If vr_data is passed in, uses this data to update the hand instead of the simulator's data.
         """
-        is_valid, trans, rot = self.sim.get_data_for_vr_device(self.vr_device)
-        trig_frac, touch_x, touch_y = self.sim.get_button_data_for_controller(self.vr_device)
+        if vr_data:
+            controller_data = vr_data[self.vr_device]
+            transform_data = controller_data[:3]
+            touch_data = controller_data[3:]
+        else:
+            transform_data = self.sim.get_data_for_vr_device(self.vr_device)
+            touch_data = self.sim.get_button_data_for_controller(self.vr_device)
+
+        # Unpack transform and touch data
+        is_valid, trans, rot = transform_data
+        trig_frac, touch_x, touch_y = touch_data
+
         if is_valid:
+            # Detect hand-relevant VR events
+            if vr_data:
+                grip_press = [self.vr_device, 'grip_press'] in vr_data['event_data']
+            else:
+                grip_press = self.sim.query_vr_event(self.vr_device, 'grip_press')
+
             # Reset the hand if the grip has been pressed
-            if self.sim.query_vr_event(self.vr_device, 'grip_press'):
+            if grip_press:
                 self.set_position(trans)
                 # Apply base rotation first so the virtual controller is properly aligned with the real controller
                 final_rot = multQuatLists(rot, self.base_rot)
                 self.set_orientation(final_rot)
 
-            # Move the vr offset up/down if menu button is pressed - this can be used
-            # to adjust user height in the VR experience
-            if self.sim.query_vr_event(self.vr_device, 'menu_press'):
-                # Right menu button moves up, left menu button moves down
-                vr_z_offset = 0.01 if self.hand == 'right' else -0.01
-                curr_offset = self.sim.get_vr_offset()
-                self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
+            if not vr_data:
+                # Move the vr offset up/down if menu button is pressed - this can be used
+                # to adjust user height in the VR experience
+                if self.sim.query_vr_event(self.vr_device, 'menu_press'):
+                    # Right menu button moves up, left menu button moves down
+                    vr_z_offset = 0.01 if self.hand == 'right' else -0.01
+                    curr_offset = self.sim.get_vr_offset()
+                    self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
 
             self.move(trans, rot)
             self.set_close_fraction(trig_frac)
 
-            if self.vr_settings.touchpad_movement and self.hand == self.vr_settings.movement_controller:
-                move_player(self.sim, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
+            if not vr_data:
+                if self.vr_settings.touchpad_movement and self.hand == self.vr_settings.movement_controller:
+                    move_player(self.sim, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
 
-            # Use 30% strength haptic pulse for general collisions with controller
-            if len(p.getContactPoints(self.body_id)) > 0:
-                self.sim.trigger_haptic_pulse(self.vr_device, 0.3)
+                # Use 30% strength haptic pulse for general collisions with controller
+                # TODO: Add MUVR haptic support
+                if len(p.getContactPoints(self.body_id)) > 0:
+                    self.sim.trigger_haptic_pulse(self.vr_device, 0.3)
 
     # Note: This function can be called manually during data replay
     def move(self, trans, rot):
@@ -326,11 +385,17 @@ class VrGazeMarker(VisualMarker):
         # Set high above scene initially
         self.set_position([0, 0, z_coord])
 
-    def update(self):
-        if not self.sim.vr_settings.eye_tracking:
-            raise RuntimeError('ERROR: Unable to set vr gaze marker when eye tracking is not enabled.')
+    def update(self, vr_data=None):
+        """
+        Updates the gaze marker using simulator data - if vr_data is not None, we use this data instead.
+        """
+        if vr_data:
+            eye_data = vr_data_dict['eye_data']
+        else:
+            eye_data = self.sim.get_eye_tracking_data()
 
-        is_eye_data_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.sim.get_eye_tracking_data()
+        # Unpack eye tracking data
+        is_eye_data_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = eye_data
         if is_eye_data_valid:
             updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
             self.set_position(updated_marker_pos)
