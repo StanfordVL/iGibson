@@ -16,16 +16,20 @@ class VrAgent(object):
     use of this class is recommended for most VR applications, especially if you
     just want to get a VR scene up and running quickly.
     """
-    def __init__(self, sim, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True):
+    def __init__(self, sim, agent_num=1, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True):
         """
         Initializes VR body:
         sim - iGibson simulator object
+        agent_num - the number of the agent - used in multi-user VR
         use_constraints - whether to use constraints to move agent (normally set to True - set to false in state replay mode)
         hands - list containing left, right or no hands
         use_body - true if using VrBody
         use_gaze_marker - true if we want to visualize gaze point
         """
         self.sim = sim
+        self.agent_num = agent_num
+        # Start z coordinate for all VR objects belonging to this agent (they are spaced out along the x axis at a given height value)
+        self.z_coord = 50 * agent_num
         self.use_constraints = use_constraints
         self.hands = hands
         self.use_body = use_body
@@ -36,12 +40,14 @@ class VrAgent(object):
 
         if 'left' in self.hands:
             self.vr_dict['left_hand'] = VrHand(self.sim, hand='left', use_constraints=self.use_constraints)
+            self.vr_dict['left_hand'].hand_setup(self.z_coord)
         if 'right' in self.hands:
             self.vr_dict['right_hand'] = VrHand(self.sim, hand='right', use_constraints=self.use_constraints)
+            self.vr_dict['right_hand'].hand_setup(self.z_coord)
         if self.use_body:
-            self.vr_dict['body'] = VrBody(self.sim, use_constraints=self.use_constraints)
+            self.vr_dict['body'] = VrBody(self.sim, self.z_coord, use_constraints=self.use_constraints)
         if self.use_gaze_marker:
-            self.vr_dict['gaze_marker'] = VrGazeMarker(self.sim)
+            self.vr_dict['gaze_marker'] = VrGazeMarker(self.sim, self.z_coord)
 
     def update(self):
         """
@@ -57,14 +63,14 @@ class VrBody(ArticulatedObject):
     them from moving through physical objects and wall, as well
     as other VR users.
     """
-    def __init__(self, s, use_constraints=True):
+    def __init__(self, s, z_coord, use_constraints=True):
         self.vr_body_fpath = os.path.join(assets_path, 'models', 'vr_body', 'vr_body.urdf')
         self.sim = s
         self.use_constraints = use_constraints
         super(VrBody, self).__init__(filename=self.vr_body_fpath, scale=1)
         self.first_frame = True
         # Start body far above the scene so it doesn't interfere with physics
-        self.start_pos = [0, 0, 150]
+        self.start_pos = [30, 0, z_coord]
         # Number of degrees of forward axis away from +/- z axis at which HMD stops rotating body
         self.min_z = 20.0
         self.max_z = 45.0
@@ -153,8 +159,10 @@ class VrBody(ArticulatedObject):
 
             # Use 100% strength haptic pulse in both controlelrs for vr body collisions - this should notify the user immediately
             if len(p.getContactPoints(self.body_id)) > 0:
-                self.sim.trigger_haptic_pulse('left_controller', 1.0)
-                self.sim.trigger_haptic_pulse('right_controller', 1.0)
+                for controller in ['left_controller', 'right_controller']:
+                    is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
+                    if is_valid:
+                        self.sim.trigger_haptic_pulse(controller, 1.0)
 
 
 class VrHand(ArticulatedObject):
@@ -224,13 +232,15 @@ class VrHand(ArticulatedObject):
             self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         else:
             self.sim.import_object(self, use_pbr=True, use_pbr_mapping=True, shadow_caster=True)
-        self.hand_setup()
 
-    def hand_setup(self):
-        """Called after hand is imported. This sets the hand constraints and starting position"""
+    def hand_setup(self, z_coord):
+        """
+        Called after hand is imported. This sets the hand constraints and starting position.
+        The z coordinate of the hand can be specified - this is used by the VrAgent class.
+        """
         # Set the hand to z=100 so it won't interfere with physics upon loading
-        x_coord = 10 if self.hand == 'right' else -10
-        start_pos = [x_coord, 0, 100]
+        x_coord = 10 if self.hand == 'right' else 20
+        start_pos = [x_coord, 0, z_coord]
         self.set_position(start_pos)
         for jointIndex in range(p.getNumJoints(self.body_id)):
             # Make masses larger for greater stability
@@ -308,13 +318,13 @@ class VrGazeMarker(VisualMarker):
     """
     Represents the marker used for VR gaze tracking
     """
-    def __init__(self, s):
+    def __init__(self, s, z_coord):
         # We store a reference to the simulator so that VR data can be acquired under the hood
         self.sim = s
         super(VrGazeMarker, self).__init__(visual_shape=p.GEOM_SPHERE, radius=0.02)
-        s.import_object(self)
+        s.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
         # Set high above scene initially
-        self.set_position([0, 0, 200])
+        self.set_position([0, 0, z_coord])
 
     def update(self):
         if not self.sim.vr_settings.eye_tracking:
