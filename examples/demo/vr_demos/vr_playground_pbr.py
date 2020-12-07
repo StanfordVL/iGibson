@@ -20,7 +20,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.object_base import Object
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.vr_objects import VrBody, VrHand, VrGazeMarker
+from gibson2.objects.vr_objects import VrAgent
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
@@ -29,7 +29,9 @@ from gibson2 import assets_path
 sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
 
 # Set to false to load entire Rs_int scene
-LOAD_PARTIAL = False
+LOAD_PARTIAL = True
+# Set to true to print out render, physics and overall frame FPS
+PRINT_FPS = False
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -61,13 +63,7 @@ if LOAD_PARTIAL:
     scene._set_first_n_objects(10)
 s.import_ig_scene(scene)
 
-# VR objects automatically import themselves into simulator and perform setup
-# use_constraints allows the body and hands to be controlled by PyBullet's constraint system
-# This is turned off during full-state data replay
-vr_body = VrBody(s, use_constraints=True)
-r_hand = VrHand(s, hand='right', use_constraints=True)
-l_hand = VrHand(s, hand='left', use_constraints=True)
-gaze_marker = VrGazeMarker(s)
+vr_agent = VrAgent(s)
 
 # Objects to interact with
 basket_path = os.path.join(sample_urdf_folder, 'object_ZU6u5fvE8Z1.urdf')
@@ -83,16 +79,13 @@ s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
 
 # Main simulation loop
 while True:
-    s.step(print_time=True)
+    s.step(print_time=PRINT_FPS)
 
     # Example of querying VR events to hide object
     if s.query_vr_event('right_controller', 'touchpad_press'):
         s.set_hidden_state(basket, hide=not s.get_hidden_state(basket))
 
     # Update VR objects
-    gaze_marker.update_marker()
-    r_hand.update_hand()
-    l_hand.update_hand()
-    vr_body.update_body()
+    vr_agent.update()
 
 s.disconnect()
