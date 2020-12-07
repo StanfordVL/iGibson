@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 
 BASEDIR=$(dirname "$0")
-echo "$BASEDIR"
 cd $BASEDIR
 
 CUBICASA_DIR=$(python -c "import gibson2; print(gibson2.cubicasa_dataset_path)" | tail -1)
 DIRECTORY=$1
 
 python step_1_preprocess_cubicasa.py --model_dir $1
-echo $DIRECTORY
 
 CUBICASA_ID=$(basename $DIRECTORY)
 echo $CUBICASA_ID

@@ -1,20 +1,22 @@
 import os
 import sys
-import numpy as np
-from PIL import Image, ImageDraw
 import json
 import math
 import argparse
 import matplotlib
+import subprocess
+import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image, ImageDraw
+from collections import defaultdict 
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from scipy.spatial import ConvexHull, convex_hull_plot_2d
-from collections import defaultdict 
 from shapely.geometry import Polygon as shape_poly
 
 from utils.utils import *
 from utils.semantics import *
+from utils.scene_urdf import gen_scene_urdf,gen_orig_urdf,gen_orig_urdf_with_cabinet
 
 import gibson2
 
@@ -254,6 +256,32 @@ def write_3dfront_obj(xyz, faces, normals, uvs, savepath):
         for f in faces:
             fp.write('f {a}/{a} {b}/{b} {c}/{c}\n'.format(a=f[2],b=f[1],c=f[0]))
             
+def gen_static_cabinet_info(save_dir, save_name):
+    urdf_dir = os.path.join(save_dir, 'urdf')
+    model_name = os.path.basename(os.path.normpath(save_dir))
+    with open(os.path.join(urdf_dir, 
+                '{}_{}s.urdf'.format(model_name,save_name)), 'w') as fp:
+        fp.write(gen_scene_urdf(save_dir, model_name, save_name))
+    with open(os.path.join(urdf_dir, 
+                '{}_orig.urdf'.format(model_name)), 'w') as fp:
+        fp.write(gen_orig_urdf_with_cabinet(model_name,save_name))
+    vm_path = os.path.join(save_dir, 'shape', 'visual', 
+                           '{}_vm.obj'.format(save_name))
+    cm_path = os.path.join(save_dir, 'shape', 'collision', 
+                           '{}_cm.obj'.format(save_name))
+    cmd = '../../blender_utils/vhacd --input {} --output {}'.format(
+                           vm_path, cm_path)
+    subprocess.call(cmd,shell=True,
+                    stdout=subprocess.DEVNULL)
+    if not os.path.isfile:
+        # vhacd failed. the cabinet is likely corrupted
+        # using vm as cm
+        cmd = 'cp {} {}'.format(vm_path, cm_path)
+        subprocess.call(cmd,shell=True,
+                    stdout=subprocess.DEVNULL)
+
+
+
 def export_visu_mesh(model_id, save_dir):
     os.makedirs(save_dir, exist_ok=True)
     with open(model_id, 'r') as fp:
@@ -282,7 +310,10 @@ def export_visu_mesh(model_id, save_dir):
     concatenate_meshes(walls, os.path.join(obj_dir, 'wall_vm.obj'))
     concatenate_meshes(ceilings, os.path.join(obj_dir, 'ceiling_vm.obj'))
     if len(cabinets) > 0:
-        concatenate_meshes(cabinets, os.path.join(obj_dir, 'cabinet_vm.obj'))
+        save_name = 'static_cabinet'
+        vm_path = os.path.join(obj_dir, '{}_vm.obj'.format(save_name))
+        concatenate_meshes(cabinets, vm_path)
+        gen_static_cabinet_info(save_dir, save_name)
     for i,m in enumerate(floors):
         out_name = 'floor_{}_vm.obj'.format(i)
         out_path = os.path.join(obj_dir, out_name)
@@ -314,6 +345,7 @@ def get_all_objs(model_id):
         scene = data['scene']
         room = scene['room']
 
+    object_used = defaultdict(lambda : -1)
     free_objs = []
     for r in room:
         room_id = r['instanceid']
@@ -334,6 +366,9 @@ def get_all_objs(model_id):
             theta = np.arccos(np.dot(ref, rot[1:])) 
             og_cat = model_to_cat[obj_id]
             og_bbox = model_to_bbox[obj_id]
+            if obj_id not in object_used:
+                object_used[obj_id] = len(object_used) + 1
+            instance_id = object_used[obj_id]
 
             scale = c['scale']
             scaled_bbox = np.array(og_bbox) * scale
@@ -368,12 +403,13 @@ def get_all_objs(model_id):
                             center + x + y,
                             center - x + y])
 
-            free_objs.append((og_cat, {'edge_x':edge_y.tolist(), 
-                                       'edge_y':edge_x.tolist(), 
-                                       'center':center.tolist(), 
-                                       'normal':normal.tolist(),
-                                       'z':z.tolist(), 
-                                       'raw_pts':raw_pts.tolist()}))
+            free_objs.append(('{}={}'.format(og_cat, instance_id), 
+                            {'edge_x':edge_y.tolist(), 
+                             'edge_y':edge_x.tolist(), 
+                             'center':center.tolist(), 
+                             'normal':normal.tolist(),
+                             'z':z.tolist(), 
+                             'raw_pts':raw_pts.tolist()}))
     return free_objs
 
 def get_scene_range(model_id):
@@ -442,21 +478,6 @@ def gen_room_maps(model_id, viz=False):
         plt.show()
 
     return ins_image, sem_image, light_image
-
-def get_z_overlaps(z1, z2):
-    bottom = max(z1[0], z2[0])
-    top = min(z1[-1], z2[-1])
-    return max(0, top - bottom)
-
-def overlaps(bbox_i, bbox_j):
-    coord_i_xy = shape_poly(bbox_i[1].get_coords())
-    i_z = bbox_i[1].z
-    coord_j_xy = shape_poly(bbox_j[1].get_coords())
-    j_z = bbox_j[1].z
-    if coord_i_xy.intersects(coord_j_xy):
-        z_overlap = get_z_overlaps(i_z, j_z)
-        return coord_i_xy.intersection(coord_j_xy).area * z_overlap
-    return 0
 
 def get_bbox_vol(bbox):
     coord_xy = shape_poly(bbox[1].get_coords())
@@ -543,7 +564,7 @@ def main():
             bbox.edge_x = edge_x_og * scale
             overlap = False
             for i in o[1]:
-                if has_overlap(bbox.as_dict(), i[1].as_dict()):
+                if has_overlap(bbox, i[1]):
                     overlap=True
                     break
             if not overlap:
@@ -554,7 +575,7 @@ def main():
             bbox.edge_y = edge_y_og * scale
             overlap = False
             for i in o[1]:
-                if has_overlap(bbox.as_dict(), i[1].as_dict()):
+                if has_overlap(bbox, i[1]):
                     overlap=True
                     break
             if not overlap:
@@ -566,7 +587,7 @@ def main():
             bbox.edge_x = edge_x_og * scale
             overlap = False
             for i in o[1]:
-                if has_overlap(bbox.as_dict(), i[1].as_dict()):
+                if has_overlap(bbox, i[1]):
                     overlap=True
                     break
             if not overlap:
