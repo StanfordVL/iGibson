@@ -18,11 +18,12 @@ from shapely.geometry import Polygon as shape_poly
 from collections import defaultdict
 from PIL import Image, ImageDraw
 
-from utils.utils import BBox,polygon_to_bbox,has_overlap,get_volume
+from utils.utils import BBox,polygon_to_bbox,has_overlap,get_volume, semmap_to_lightmap
 from utils.svg_utils import PolygonWall, get_polygon, get_icon, get_points, get_direction
 from utils.semantics import *
 
 import gibson2
+
 
 parser = argparse.ArgumentParser("Convert Cubicasa5k...")
 
@@ -201,7 +202,8 @@ def main():
     overlaps = defaultdict(lambda : [])
     for i in range(len(furniture_bboxes)):
         for j in range(i+1, len(furniture_bboxes)):
-            if has_overlap(furniture_bboxes[i][1].as_dict(),furniture_bboxes[j][1].as_dict()):
+            if has_overlap(furniture_bboxes[i][1],
+                           furniture_bboxes[j][1]):
                 overlaps[(i,furniture_bboxes[i][1])].append((j,furniture_bboxes[j][1]))
                 overlaps[(j,furniture_bboxes[j][1])].append((i,furniture_bboxes[i][1]))
 
@@ -224,7 +226,7 @@ def main():
             bbox.edge_x = edge_x_og * scale
             overlap = False
             for i in o[1]:
-                if has_overlap(bbox.as_dict(), i[1].as_dict()):
+                if has_overlap(bbox, i[1]):
                     overlap=True
                     break
             if not overlap:
@@ -235,7 +237,7 @@ def main():
             bbox.edge_y = edge_y_og * scale
             overlap = False
             for i in o[1]:
-                if has_overlap(bbox.as_dict(), i[1].as_dict()):
+                if has_overlap(bbox, i[1]):
                     overlap=True
                     break
             if not overlap:
@@ -247,18 +249,17 @@ def main():
             bbox.edge_x = edge_x_og * scale
             overlap = False
             for i in o[1]:
-                if has_overlap(bbox.as_dict(), i[1].as_dict()):
+                if has_overlap(bbox, i[1]):
                     overlap=True
                     break
             if not overlap:
                 shrink_success = True
                 break
-            
+
         if shrink_success:
             furniture_bboxes[o[0][0]] = (furniture_bboxes[o[0][0]][0], bbox)
         else:
             # add to delete
-            # print('deleting ', o[0])
             to_delete.append(o[0][0])
         # update graph
         for j in o[1]:
@@ -267,6 +268,7 @@ def main():
 
     for i in sorted(to_delete, reverse=True):
         del furniture_bboxes[i]
+
 
     ##################################
     # Splitting into separate floors #
@@ -389,6 +391,14 @@ def main():
 
         ins_image.save(os.path.join(layout_dir, 'floor_insseg_0.png'))
         sem_image.save(os.path.join(layout_dir, 'floor_semseg_0.png'))
+
+        padded_image = Image.new('L', (3000, 3000), 0)
+        og_size = sem_image.size
+        padded_image.paste(sem_image, 
+                            ((3000-og_size[0])//2,
+                             (3000-og_size[1])//2))
+        light_image = semmap_to_lightmap(np.array(padded_image))
+        light_image.save(os.path.join(layout_dir, 'floor_lighttype_0.png'))
 
         if args.viz:
             from mpl_toolkits.axes_grid1 import make_axes_locatable

@@ -96,6 +96,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             scene_dir = get_cubicasa_scene_path(scene_id)
         else:
             scene_dir = get_3dfront_scene_path(scene_id)
+        self.scene_source = scene_source
         self.scene_dir = scene_dir
         self.scene_file = os.path.join(
             scene_dir, "urdf", "{}.urdf".format(fname))

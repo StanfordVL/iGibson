@@ -6,7 +6,6 @@ import time
 import random
 import gibson2
 import argparse
-
 from gibson2.simulator import Simulator
 from gibson2.utils.utils import parse_config
 from gibson2.utils.map_utils import gen_trav_map

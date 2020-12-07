@@ -31,23 +31,20 @@ Note: You can make sure the meshes are correct by importing the meshes into Mesh
 
 ## Default end-to-end processing of the data
 
-In order 
+Our processing on the data consists of various components each of which can be customized. For the ease of user, we provide a simple script that uses default options for all steps. 
 
-Our processing on the data consists of various components each of which can be customized. We provide a simple script that uses default options for all steps. 
-
-To process an object with default options, two parameters need to be specified:
-1. folder **$DIRECTORY** in which the files live.
-2. cateogry **$CATEGORY** label of the object.
-
-Additionally, the meshes are assumed to have **positive-Z axis pointing up** and **positive positive-X axis pointing forward**. (if not, you can pass in the correct axis in [Step 1](#step-1-visual-mesh-processing))
-
-You can run the following command:
+To process an object with default options, you can run the following command:
 ```
 ./process_object.sh $DIRECTORY $CATEGORY
 ```
+two parameters need to be specified:
+1. **$DIRECTORY**: the folder in which the original files live.
+2. **$CATEGORY**: a category label  of the object.
+
+Additionally, the meshes are assumed to have **positive-Z axis pointing up** and **positive positive-X axis pointing forward**. (if not, you can pass in the correct axis in [Step 1](#step-1-visual-mesh-processing))
+
 
 The script will perform the following operations:
-- Generate the object at location *$(gibson2.ig_dataset_path)/objects/$CATEGORY/$(os.path.basename($DIRECTORY))*.
 - [Step 1](#step-1-visual-mesh-processing): Process the original meshes using Blender and export as visual meshes to *shape/visual*.
 - [Step 2](#step-2-collision-mesh-processing): For all meshes, calculate the collision mesh in *shape/collision* using [V-HACD](https://github.com/kmammou/v-hacd) and optionally Blender.
 - [Step 3](#step-3-generating-object-link-data): Generate *misc/metadata.json, misc/material_groups.json*.
@@ -55,6 +52,10 @@ The script will perform the following operations:
 - [Step 5](#step-5-generating-visualization): Generate video visualization of object rendered in iGibson renderer.
 
 Each step will use the default options.
+
+The name of the object will be ```OBJECT_NAME= basename $DIRECTORY```. The object will be generated at location ```objects/$CATEGORY/OBJECT_NAME``` with in the directory containing iGibson assets, which is by default: ```gibson2/ig_dataset``` (see more on configuring dataset path [here](http://svl.stanford.edu/igibson/docs/dataset.html#download-igibson-data) )
+
+## (Optional) Details on individual steps:
 
 ### Step 1: visual mesh processing
 
@@ -139,7 +140,7 @@ python step_4_urdf.py --input_dir {PATH_TO_IGIBSON_ASSET}/objects/{OBJECT_CATEGO
 ### Step 5: generating visualization
  
 For step 5, the following script is used: [scripts/step_5_visualizations.py](scripts/step_5_visualizations.py). 
-The script generates a video visualization of the object rendered in iGibson.
+The script generates a visualization of the object rendered in iGibson. If ```ffmpeg``` is installed, it will create a mp4 video; else, 6 views will be stored as *.png* files.
 
 Required parameters:
 1. --input_dir: the root directory of the object, which should be: *$IGIBSON_ROOT/objects/$CATEGORY/$OBJECT_NAME*.
