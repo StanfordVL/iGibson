@@ -23,8 +23,7 @@ The GitHub repository of iGibson can be found here: [iGibson GitHub Repo](https:
 ### Documentation
 This is the documentation webpage for iGibson. It includes installation guide (including data download), quickstart guide, code examples, and APIs.
 
-If you want to know more about iGibson, you can also check out [our webpage](http://svl.stanford.edu/igibson),  [our
- updated technical report](TBA) and [our RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442) and.
+If you want to know more about iGibson, you can also check out [our webpage](http://svl.stanford.edu/igibson), [our updated technical report](TBA) and [our RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442).
 
 ### Dowloading Dataset of 3D Environments
 There are several datasets of 3D reconstructed large real-world environments (homes and offices) that you can download and use with iGibson. All of them will be accessible once you fill in this <a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[form]</a>.

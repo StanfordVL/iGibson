@@ -27,6 +27,7 @@ Welcome to iGibson's documentation!
    objects.md
    robots.md
    simulators.md
+   viewer.md
    environments.md
    learning_framework.md
    ros_integration.md
