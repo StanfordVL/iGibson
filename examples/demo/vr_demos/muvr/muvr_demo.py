@@ -100,6 +100,10 @@ def run_muvr(mode='server', host='localhost', port='8885'):
 
     s.optimize_vertex_and_texture()
 
+    # Start the two agents at different points so they don't collide upon entering the scene
+    if vr_settings.use_vr:
+        s.set_vr_start_pos([0.5, 0 if is_server else -1.5, 0], vr_height_offset=-0.1)
+
     # Setup client/server
     if is_server:
         vr_server = IGVRServer(localaddr=(host, port))
@@ -115,13 +119,9 @@ def run_muvr(mode='server', host='localhost', port='8885'):
     while True:
         if is_server:
             # Only step the server if a client has been connected
-            if not vr_server.has_client():
-                if int(time.time() - run_start_time) % 5 == 0:
-                    print('SERVER MESSAGE: Waiting for client to connect...')
-                continue
-
-            # Server is the one that steps the physics simulation, not the client
-            s.step(print_time=PRINT_FPS)
+            if vr_server.has_client():
+                # Server is the one that steps the physics simulation, not the client
+                s.step(print_time=PRINT_FPS)
 
             # Update VR agent on server-side
             if s.vr_settings.use_vr:

@@ -62,23 +62,29 @@ class VrAgent(object):
         Updates VR agent - transforms of all objects managed by this class.
         If vr_data is set to a non-None value, we use this data and overwrite all data from the simulator.
         """
-        for vr_obj in self.vr_dict.values():
-            vr_obj.update(vr_data=vr_data)
+        self.vr_dict['body'].update(vr_data=vr_data)
+        self.vr_dict['gaze_marker'].update(vr_data=vr_data)
+        #for vr_obj in self.vr_dict.values():
+        #    vr_obj.update(vr_data=vr_data)
 
     def get_frame_offset(self):
         """
         Calculates the new VR offset after a single frame of VR interaction.
         """
-        new_offset = s.get_vr_offset()
+        o = self.sim.get_vr_offset()
+        print(o)
+        return self.sim.get_vr_offset()
+
+        new_offset = self.sim.get_vr_offset()
         for hand in ['left', 'right']:
             vr_device = '{}_controller'.format(hand)
             is_valid, trans, rot = self.sim.get_data_for_vr_device(vr_device)
             trig_frac, touch_x, touch_y = self.sim.get_button_data_for_controller(vr_device)
             if hand == self.sim.vr_settings.movement_controller and self.sim.vr_settings.touchpad_movement:
-                new_offset = calc_offset(self.sim, touch_x, touch_y, self.sim.vr_settings.movement_speed, self.sim.vr_settings.relative_device)
+                new_offset = calc_offset(self.sim, touch_x, touch_y, self.sim.vr_settings.movement_speed, self.sim.vr_settings.relative_movement_device)
         
             # Offset z coordinate using menu press
-            if self.s.query_vr_event(vr_device, 'menu_press'):
+            if [vr_device, 'menu_press'] in self.sim.poll_vr_events():
                 vr_z_offset = 0.01 if hand == 'right' else -0.01
                 new_offset = [new_offset[0], new_offset[1], new_offset[2] + vr_z_offset]
         
@@ -140,7 +146,11 @@ class VrBody(ArticulatedObject):
         # Get HMD data
         if vr_data:
             hmd_is_valid, _, hmd_rot = vr_data['hmd'][:3]
+            print(hmd_is_valid, hmd_rot)
             hmd_pos = vr_data['vr_pos']
+            # TODO: Remove this quick hack
+            self.set_position(hmd_pos)
+            return
         else:
             hmd_is_valid, _, hmd_rot = self.sim.get_data_for_vr_device('hmd')
             hmd_pos = self.sim.get_vr_pos()
@@ -150,6 +160,7 @@ class VrBody(ArticulatedObject):
         if hmd_is_valid:
             # Set body to HMD on the first frame
             if self.first_frame:
+                print(hmd_pos)
                 self.set_position(hmd_pos)
                 self.first_frame = False
 
@@ -302,7 +313,7 @@ class VrHand(ArticulatedObject):
         if vr_data:
             controller_data = vr_data[self.vr_device]
             transform_data = controller_data[:3]
-            touch_data = controller_data[3:]
+            touch_data = controller_data[6:]
         else:
             transform_data = self.sim.get_data_for_vr_device(self.vr_device)
             touch_data = self.sim.get_button_data_for_controller(self.vr_device)
@@ -390,7 +401,7 @@ class VrGazeMarker(VisualMarker):
         Updates the gaze marker using simulator data - if vr_data is not None, we use this data instead.
         """
         if vr_data:
-            eye_data = vr_data_dict['eye_data']
+            eye_data = vr_data['eye_data']
         else:
             eye_data = self.sim.get_eye_tracking_data()
 

@@ -69,6 +69,8 @@ class IGVRClient(ConnectionListener):
 
         # Render the frame in VR
         self.s.viewer.update()
+        # Sets the VR starting position if one has been specified by the user
+        self.s.perform_vr_start_pos_move()
 
         # Update VR offset so updated value can be used in server
         self.vr_offset = self.client_agent.get_frame_offset()
@@ -117,7 +119,8 @@ class IGVRClient(ConnectionListener):
         vr_data_dict['eye_data'] = self.s.get_eye_tracking_data()
         vr_data_dict['event_data'] = self.s.poll_vr_events()
         vr_data_dict['vr_pos'] = self.s.get_vr_pos().tolist()
-        vr_data_dict['vr_offset'] = self.vr_offset
+        f_vr_offset = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
+        vr_data_dict['vr_offset'] = f_vr_offset
         # Note: eye tracking is enable by default
         vr_data_dict['vr_settings'] = [
             self.s.vr_settings.touchpad_movement,
