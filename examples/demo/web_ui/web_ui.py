@@ -2,6 +2,8 @@ from flask import Flask, render_template, Response, request, session
 import sys
 import pickle
 from gibson2.robots.turtlebot_robot import Turtlebot
+from gibson2.robots.fetch_robot import Fetch
+
 from gibson2.simulator import Simulator
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -25,7 +27,7 @@ import time
 import cv2
 import uuid
 
-interactive = False
+interactive = True
 
 def pil_image_to_base64(pil_image):
     buf = BytesIO()
@@ -188,7 +190,7 @@ class ProcessPyEnvironment(object):
 
 class ToyEnv(object):
     def __init__(self):
-        config = parse_config('../../examples/configs/turtlebot_demo.yaml')
+        config = parse_config('../../configs/turtlebot_demo.yaml')
         hdr_texture = os.path.join(
             gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
         hdr_texture2 = os.path.join(
@@ -198,25 +200,16 @@ class ToyEnv(object):
         background_texture = os.path.join(
             gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
-        # scene = InteractiveIndoorScene(
-        #     'Rs_int', texture_randomization=False, object_randomization=False)
-
         settings = MeshRendererSettings(enable_shadow=False, enable_pbr=False)
-        # settings = MeshRendererSettings(env_texture_filename=hdr_texture,
-        #                                 env_texture_filename2=hdr_texture2,
-        #                                 env_texture_filename3=background_texture,
-        #                                 light_modulation_map_filename=light_modulation_map_filename,
-        #                                 enable_shadow=True, msaa=True,
-        #                                 light_dimming_factor=1.0,
-        #                                 optimized=True)
+       
 
         self.s = Simulator(mode='headless', image_width=400,
                       image_height=400, rendering_settings=settings)
         scene = StaticIndoorScene('Rs')
         self.s.import_scene(scene)
         #self.s.import_ig_scene(scene)
-        self.turtlebot = Turtlebot(config)
-        self.s.import_robot(self.turtlebot)
+        self.robot = Turtlebot(config)
+        self.s.import_robot(self.robot)
 
         for _ in range(5):
             obj = YCBObject('003_cracker_box')
@@ -226,7 +219,7 @@ class ToyEnv(object):
         print(self.s.renderer.instances)
 
     def step(self, a):
-        self.turtlebot.apply_action(a)
+        self.robot.apply_action(a)
         self.s.step()
         frame = self.s.renderer.render_robot_cameras(modes=('rgb'))[0]
         return frame
@@ -237,8 +230,8 @@ class ToyEnv(object):
 
 
 class ToyEnvInt(object):
-    def __init__(self):
-        config = parse_config('../../examples/configs/turtlebot_demo.yaml')
+    def __init__(self, robot='turtlebot', scene='Rs_int'):
+        config = parse_config('../../configs/turtlebot_demo.yaml')
         hdr_texture = os.path.join(
             gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
         hdr_texture2 = os.path.join(
@@ -249,7 +242,9 @@ class ToyEnvInt(object):
             gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
         scene = InteractiveIndoorScene(
-            'Rs_int', texture_randomization=False, object_randomization=False)
+            scene, texture_randomization=False, object_randomization=False)
+        #scene._set_first_n_objects(5)
+        scene.open_all_doors()
 
         settings = MeshRendererSettings(env_texture_filename=hdr_texture,
                                         env_texture_filename2=hdr_texture2,
@@ -262,8 +257,13 @@ class ToyEnvInt(object):
         self.s = Simulator(mode='headless', image_width=400,
                       image_height=400, rendering_settings=settings)
         self.s.import_ig_scene(scene)
-        self.turtlebot = Turtlebot(config)
-        self.s.import_robot(self.turtlebot)
+        
+        if robot=='turtlebot':
+            self.robot = Turtlebot(config)
+        else:
+            self.robot = Fetch(config)
+
+        self.s.import_robot(self.robot)
 
         for _ in range(5):
             obj = YCBObject('003_cracker_box')
@@ -273,7 +273,15 @@ class ToyEnvInt(object):
         print(self.s.renderer.instances)
 
     def step(self, a):
-        self.turtlebot.apply_action(a)
+        action = np.zeros(self.robot.action_space.shape)
+        if isinstance(self.robot, Turtlebot):
+            action[0] = a[0]
+            action[1] = a[1]
+        else:
+            action[1] = a[0]
+            action[0] = a[1]
+
+        self.robot.apply_action(action)
         self.s.step()
         frame = self.s.renderer.render_robot_cameras(modes=('rgb'))[0]
         return frame
@@ -294,12 +302,16 @@ class iGFlask(Flask):
                 # clean up an old environment
                 self.stop_app(k)
 
-    def prepare_app(self, uuid):
+    def prepare_app(self, uuid, robot, scene):
         self.cleanup()
-        if interactive:
-            self.envs[uuid] = ProcessPyEnvironment(ToyEnvInt)
-        else:
-            self.envs[uuid] = ProcessPyEnvironment(ToyEnv)
+
+        def env_constructor():
+            if interactive:
+                return ToyEnvInt(robot=robot, scene=scene)
+            else:
+                return ToyEnv()
+
+        self.envs[uuid] = ProcessPyEnvironment(env_constructor)
         self.envs[uuid].start()
         self.envs_inception_time[uuid] = time.time()
 
@@ -315,7 +327,16 @@ def index():
     id = uuid.uuid4()
     return render_template('index.html', uuid=id)
 
-def gen(app, unique_id):
+@app.route('/demo')
+def demo():
+    args = request.args
+    id = uuid.uuid4()
+    robot = args['robot']
+    scene = args['scene']
+    return render_template('demo.html', uuid=id, robot=robot, scene=scene)
+
+
+def gen(app, unique_id, robot, scene):
     image = np.array(Image.open("templates/loading.jpg").resize((400, 400))).astype(np.uint8)
     loading_frame = pil_image_to_base64(Image.fromarray(image))
     loading_frame = binascii.a2b_base64(loading_frame)
@@ -331,7 +352,7 @@ def gen(app, unique_id):
     if len(app.envs) < 3:
         for i in range(5):
             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + loading_frame + b'\r\n\r\n')
-        app.prepare_app(id)
+        app.prepare_app(id, robot, scene)
         try:
             start_time = time.time()
             if interactive:
@@ -357,6 +378,10 @@ def gen(app, unique_id):
 @app.route('/video_feed', methods=['POST', 'GET'])
 def video_feed():
     unique_id = request.args['uuid']
+    if 'robot' in request.args.keys():
+        robot = request.args['robot']
+    if 'scene' in request.args.keys():
+        scene = request.args['scene']
     print(unique_id)
     if request.method == 'POST':
         key = request.args['key']
@@ -373,7 +398,7 @@ def video_feed():
         return ""
     else:
         app.action[unique_id] = [0,0]
-        return Response(gen(app, unique_id), mimetype='multipart/x-mixed-replace; boundary=frame')
+        return Response(gen(app, unique_id, robot, scene), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
     port = int(sys.argv[1])
