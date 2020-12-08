@@ -3,6 +3,7 @@
 
 from collections import defaultdict
 import numpy as np
+import time
 
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGroup
 from gibson2.utils.vr_utils import calc_offset
@@ -68,7 +69,8 @@ class IGVRClient(ConnectionListener):
                 instance.poses_rot = poses_rot
 
         # Render the frame in VR
-        self.s.viewer.update()
+        # TODO: Add this back in later
+        #self.s.viewer.update()
         # Sets the VR starting position if one has been specified by the user
         self.s.perform_vr_start_pos_move()
 
@@ -136,6 +138,7 @@ class IGVRClient(ConnectionListener):
         """
         Refreshes frame data that was sent from the server.
         """
+        print("Refresh time: {}".format(time.time()))
         if self.is_connected:
             self.Pump()
 
@@ -143,6 +146,7 @@ class IGVRClient(ConnectionListener):
         """
         Generates and sends vr data over to the server.
         """
+        print("Send time: {}".format(time.time()))
         # First generate VR data
         vr_data = self.generate_vr_data()
 
