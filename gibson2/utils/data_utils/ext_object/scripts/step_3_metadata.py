@@ -10,6 +10,45 @@ parser = argparse.ArgumentParser("Generate Mesh meta-data...")
 parser.add_argument('--input_dir', dest='input_dir')
 parser.add_argument('--material', dest='material', default='wood')
 
+use_mat = 'mtllib default.mtl\nusemtl default\n'
+default_mtl='''newmtl default
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd ../../material/DIFFUSE.png
+map_Pm ../../material/METALLIC.png
+map_Pr ../../material/ROUGHNESS.png
+map_bump ../../material/NORMAL.png
+'''
+
+def add_mat(input_mesh, output_mesh):
+    with open(input_mesh, 'r') as fin:
+        lines = fin.readlines()
+    for l in lines:
+        if l == 'mtllib default.mtl\n':
+            return
+    with open(output_mesh, 'w') as fout:
+        fout.write(use_mat)
+        for line in lines:
+            if not line.startswith('o') and not line.startswith('s'):
+                fout.write(line)
+
+def gen_object_mtl(model_dir):
+    mesh_dir = os.path.join(model_dir, 'shape', 'visual')
+    if not os.path.isdir(mesh_dir):
+        return
+    objs = glob.glob('{}/*.obj'.format(mesh_dir))
+    for o in objs:
+        add_mat(o,o)
+    mtl_path = os.path.join(mesh_dir, 'default.mtl')
+    with open(mtl_path, 'w') as fp:
+        fp.write(default_mtl)
+
 def load_obj(fn):
     fin = open(fn, 'r')
     lines = [line.rstrip() for line in fin]
@@ -80,3 +119,6 @@ if os.path.isdir(args.input_dir):
     os.makedirs(misc_dir, exist_ok=True)
     gen_bbox(args.input_dir)
     gen_material(args.input_dir, args.material)
+    bake_dir = os.path.join(args.input_dir, 'material')
+    if os.path.isdir(bake_dir) and os.listdir(bake_dir) == 4:
+        gen_object_mtl(args.input_dir)
