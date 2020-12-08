@@ -7,9 +7,8 @@
 iGibson, the Interactive Gibson Environment, is a simulation environment providing fast visual rendering and physics simulation (based on Bullet). It is packed with a dataset with hundreds of large 3D environments reconstructed from real homes and offices, and interactive objects that can be pushed and actuated. iGibson allows researchers to train and evaluate robotic agents that use RGB images and/or other visual sensors to solve indoor (interactive) navigation and manipulation tasks such as opening doors, picking and placing objects, or searching in cabinets.
 
 ### Latest Updates
-[12/4/2020] We created a [Slack workspace](https://join.slack.com/t/igibsonuser/shared_invite/zt-jz8x6wgh-2usPj6nMz7mawWyr1tmNfQ) to support iGibson users.
 
-[12/1/2020] Major update to iGibson to reach iGibson v1.0, for details please refer to our [technical report](TBA). 
+[12/1/2020] Major update to iGibson to reach iGibson v1.0, for details please refer to our [technical report](https://arxiv.org/abs/2012.02924). 
 
 - Release of iGibson dataset, which consists of 15 fully interactive scenes and 500+ object models.
 - New features of the Simulator: Physically based rendering; 1-beam and 16-beam lidar simulation; Domain
@@ -44,7 +43,7 @@ This is the repository for iGibson (pip package `gibson2`) 1.0 release. Bug repo
 The documentation for this repository can be found here: [iGibson Environment Documentation](http://svl.stanford.edu/igibson/docs/). It includes installation guide (including data download), quickstart guide, code examples, and APIs.
 
 If you want to know more about iGibson, you can also check out [our webpage](http://svl.stanford.edu/igibson),  [our
- updated technical report](https://arxiv.org/abs/2012.02924) and [our RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442) and.
+ updated technical report](https://arxiv.org/abs/2012.02924) and [our RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442).
 
 ### Dowloading Dataset of 3D Environments
 There are several datasets of 3D reconstructed large real-world environments (homes and offices) that you can download and use with iGibson. All of them will be accessible once you fill in this <a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[form]</a>.
