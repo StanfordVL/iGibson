@@ -110,7 +110,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='gibson2',
-    version='0.0.5',
+    version='1.0.0',
     author='Stanford University',
     long_description_content_type="text/markdown",
     long_description=long_description,
