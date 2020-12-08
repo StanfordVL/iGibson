@@ -13,6 +13,11 @@ tracking_camera = {'yaw': 20, 'z_offset': 0.3, 'distance': 2, 'pitch': -20}
 
 
 class MinitaurBase(LocomotorRobot):
+    """
+    Minitaur robot
+    Reference: https://www.ghostrobotics.io/
+    Uses joint position control
+    """
     model_type = "URDF"
     default_scale = 1
 
@@ -35,7 +40,7 @@ class MinitaurBase(LocomotorRobot):
     self_collision_enabled = True
     motor_velocity_limit = np.inf
 
-    #accurate_motor_model_enabled=False   ## (hzyjerry): affect speed?
+    # accurate_motor_model_enabled=False   ## (hzyjerry): affect speed?
     motor_kp = 1.00
     motor_kd = 0.2
     torque_control_enabled = False
@@ -79,10 +84,11 @@ class MinitaurBase(LocomotorRobot):
         self.model_type = "URDF"
         #self.robot_name = "quadruped"
         self.robot_name = "base_chassis_link"
-        scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
+        scale = config["robot_scale"] if "robot_scale" in config.keys(
+        ) else self.default_scale
 
         LocomotorRobot.__init__(self,
-                            "quadruped/minitaur.urdf",
+                                "quadruped/minitaur.urdf",
                                 self.robot_name,
                                 action_dim=8,
                                 sensor_dim=self.OBSERVATION_DIM,
@@ -96,7 +102,7 @@ class MinitaurBase(LocomotorRobot):
         self.r_f = 0.1
         self.time_step = config["speed"]["timestep"]
         self.pd_control_enabled = pd_control_enabled
-        self.minitaur = None    ## TODO: fix this
+        self.minitaur = None  # TODO: fix this
         self.accurate_motor_model_enabled = accurate_motor_model_enabled
         if self.accurate_motor_model_enabled:
             self._kp = self.motor_kp
@@ -138,27 +144,30 @@ class MinitaurBase(LocomotorRobot):
         self.fmax = [0] * 8
 
     def _RecordMassInfoFromURDF(self):
-        self._base_mass_urdf = p.getDynamicsInfo(self.minitaur, self.BASE_LINK_ID)[0]
+        self._base_mass_urdf = p.getDynamicsInfo(
+            self.minitaur, self.BASE_LINK_ID)[0]
         self._leg_masses_urdf = []
-        self._leg_masses_urdf.append(p.getDynamicsInfo(self.minitaur, self.LEG_LINK_ID[0])[0])
-        self._leg_masses_urdf.append(p.getDynamicsInfo(self.minitaur, self.MOTOR_LINK_ID[0])[0])
+        self._leg_masses_urdf.append(p.getDynamicsInfo(
+            self.minitaur, self.LEG_LINK_ID[0])[0])
+        self._leg_masses_urdf.append(p.getDynamicsInfo(
+            self.minitaur, self.MOTOR_LINK_ID[0])[0])
 
     def _BuildJointNameToIdDict(self):
         num_joints = p.getNumJoints(self.minitaur)
         self.joint_name_to_id = {}
         for i in range(num_joints):
             joint_info = p.getJointInfo(self.minitaur, i)
-            self.joint_name_to_id[joint_info[1].decode("UTF-8")] = joint_info[0]
+            self.joint_name_to_id[joint_info[1].decode(
+                "UTF-8")] = joint_info[0]
 
     def _BuildMotorIdList(self):
-        self._motor_id_list = [self.joint_name_to_id[motor_name] for motor_name in self.MOTOR_NAMES]
+        self._motor_id_list = [self.joint_name_to_id[motor_name]
+                               for motor_name in self.MOTOR_NAMES]
 
     def robot_specific_reset(self, reload_urdf=True):
         """Reset the minitaur to its initial states.
 
-        Args:
-          reload_urdf: Whether to reload the urdf file. If not, Reset() just place
-            the minitaur back to its starting position.
+        :param reload_urdf: whether to reload the urdf file. If not, reset() just place the minitaur back to its starting position.
         """
         if self.minitaur is None:
             self.minitaur = self.robot_ids[0]
@@ -191,17 +200,18 @@ class MinitaurBase(LocomotorRobot):
                                 force=self.max_force)
 
     def _SetDesiredMotorAngleByName(self, motor_name, desired_angle):
-        self._SetDesiredMotorAngleById(self.joint_name_to_id[motor_name], desired_angle)
+        self._SetDesiredMotorAngleById(
+            self.joint_name_to_id[motor_name], desired_angle)
 
     def calc_potential(self):
         return 0
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('s'), ): 0,    ## backward
-            (ord('w'), ): 1,    ## forward
-            (ord('d'), ): 2,    ## turn right
-            (ord('a'), ): 3,    ## turn left
+            (ord('s'), ): 0,  # backward
+            (ord('w'), ): 1,  # forward
+            (ord('d'), ): 2,  # turn right
+            (ord('a'), ): 3,  # turn left
             (): 4
         }
 
@@ -228,27 +238,34 @@ class MinitaurBase(LocomotorRobot):
 
         leg_position = self.LEG_POSITION[leg_id]
         p.resetJointState(self.minitaur,
-                          self.joint_name_to_id["motor_" + leg_position + "L_joint"],
+                          self.joint_name_to_id["motor_" +
+                                                leg_position + "L_joint"],
                           self.motor_direction[2 * leg_id] * half_pi,
                           targetVelocity=0)
         p.resetJointState(self.minitaur,
-                          self.joint_name_to_id["knee_" + leg_position + "L_link"],
+                          self.joint_name_to_id["knee_" +
+                                                leg_position + "L_link"],
                           self.motor_direction[2 * leg_id] * knee_angle,
                           targetVelocity=0)
         p.resetJointState(self.minitaur,
-                          self.joint_name_to_id["motor_" + leg_position + "R_joint"],
+                          self.joint_name_to_id["motor_" +
+                                                leg_position + "R_joint"],
                           self.motor_direction[2 * leg_id + 1] * half_pi,
                           targetVelocity=0)
         p.resetJointState(self.minitaur,
-                          self.joint_name_to_id["knee_" + leg_position + "R_link"],
+                          self.joint_name_to_id["knee_" +
+                                                leg_position + "R_link"],
                           self.motor_direction[2 * leg_id + 1] * knee_angle,
                           targetVelocity=0)
         if add_constraint:
             p.createConstraint(self.minitaur,
-                               self.joint_name_to_id["knee_" + leg_position + "R_link"],
+                               self.joint_name_to_id["knee_" +
+                                                     leg_position + "R_link"],
                                self.minitaur,
-                               self.joint_name_to_id["knee_" + leg_position + "L_link"],
-                               p.JOINT_POINT2POINT, [0, 0, 0], self.KNEE_CONSTRAINT_POINT_RIGHT,
+                               self.joint_name_to_id["knee_" +
+                                                     leg_position + "L_link"],
+                               p.JOINT_POINT2POINT, [
+                                   0, 0, 0], self.KNEE_CONSTRAINT_POINT_RIGHT,
                                self.KNEE_CONSTRAINT_POINT_LEFT)
 
         if self.accurate_motor_model_enabled or self.pd_control_enabled:
@@ -324,7 +341,8 @@ class MinitaurBase(LocomotorRobot):
                                                             )    # Joint velocity.
         upper_bound[2 * self.num_motors:3 * self.num_motors] = (motor.OBSERVED_TORQUE_LIMIT
                                                                 )    # Joint torque.
-        upper_bound[3 * self.num_motors:] = 1.0    # Quaternion of base orientation.
+        # Quaternion of base orientation.
+        upper_bound[3 * self.num_motors:] = 1.0
         return upper_bound
 
     def GetObservationLowerBound(self):
@@ -376,8 +394,10 @@ class MinitaurBase(LocomotorRobot):
         #print("motor commands 1", motor_commands)
         if self.motor_velocity_limit < np.inf:
             current_motor_angle = self.GetMotorAngles()
-            motor_commands_max = (current_motor_angle + self.time_step * self.motor_velocity_limit)
-            motor_commands_min = (current_motor_angle - self.time_step * self.motor_velocity_limit)
+            motor_commands_max = (current_motor_angle +
+                                  self.time_step * self.motor_velocity_limit)
+            motor_commands_min = (current_motor_angle -
+                                  self.time_step * self.motor_velocity_limit)
             #motor_commands = np.clip(motor_commands, motor_commands_min, motor_commands_max)
         #print("motor commands 2", motor_commands)
         if self.accurate_motor_model_enabled or self.pd_control_enabled:
@@ -390,7 +410,7 @@ class MinitaurBase(LocomotorRobot):
                 #print("motor commands", motor_commands)
                 #print("actual torque", actual_torque, "observed torque", observed_torque)
                 self.debug_count += 1
-                #if self.debug_count == 30:
+                # if self.debug_count == 30:
                 #    sys.exit()
                 for i in range(len(self.qmax)):
                     if q[i] > self.qmax[i]:
@@ -409,10 +429,11 @@ class MinitaurBase(LocomotorRobot):
                 # The torque is already in the observation space because we use
                 # GetMotorAngles and GetMotorVelocities.
                 self.observed_motor_torques = observed_torque
-                #actual_torque.fill(0.0)
+                # actual_torque.fill(0.0)
 
                 # Transform into the motor space when applying the torque.
-                self.applied_motor_torques = np.multiply(actual_torque, self.motor_direction)
+                self.applied_motor_torques = np.multiply(
+                    actual_torque, self.motor_direction)
                 for motor_id, motor_torque, motor_enabled in zip(self._motor_id_list,
                                                                  self.applied_motor_torques,
                                                                  self._motor_enabled_list):
@@ -427,7 +448,8 @@ class MinitaurBase(LocomotorRobot):
                 #print("F max", self.fmax)
 
             else:
-                torque_commands = -self._kp * (q - motor_commands) - self._kd * qdot
+                torque_commands = -self._kp * \
+                    (q - motor_commands) - self._kd * qdot
 
                 # The torque is already in the observation space because we use
                 # GetMotorAngles and GetMotorVelocities.
@@ -441,11 +463,13 @@ class MinitaurBase(LocomotorRobot):
                     self._SetMotorTorqueById(motor_id, motor_torque)
                 print("Apply motor", self.applied_motor_torques)
         else:
-            motor_commands_with_direction = np.multiply(motor_commands, self.motor_direction)
+            motor_commands_with_direction = np.multiply(
+                motor_commands, self.motor_direction)
             for motor_id, motor_command_with_direction in zip(self._motor_id_list,
                                                               motor_commands_with_direction):
                 print("command", motor_command_with_direction)
-                self._SetDesiredMotorAngleById(motor_id, motor_command_with_direction)
+                self._SetDesiredMotorAngleById(
+                    motor_id, motor_command_with_direction)
 
     def GetMotorAngles(self):
         """Get the eight motor angles at the current moment.
@@ -507,7 +531,8 @@ class MinitaurBase(LocomotorRobot):
             extension_component = (-1)**i * quater_pi * actions[action_idx]
             if i >= half_num_motors:
                 extension_component = -extension_component
-            motor_angle[i] = (math.pi + forward_backward_component + extension_component)
+            motor_angle[i] = (
+                math.pi + forward_backward_component + extension_component)
         return motor_angle
 
     def GetBaseMassFromURDF(self):
@@ -545,7 +570,8 @@ class MinitaurBase(LocomotorRobot):
             shared by all four feet.
         """
         for link_id in self.FOOT_LINK_ID:
-            p.changeDynamics(self.minitaur, link_id, lateralFriction=foot_friction)
+            p.changeDynamics(self.minitaur, link_id,
+                             lateralFriction=foot_friction)
 
     def SetBatteryVoltage(self, voltage):
         if self.accurate_motor_model_enabled:
@@ -558,7 +584,7 @@ class MinitaurBase(LocomotorRobot):
 
 class Minitaur(MinitaurBase):
     '''Wrapper class for gibson interface
-    
+
     Attribtues:
         self.eyes
         self.resolution
@@ -575,7 +601,8 @@ class Minitaur(MinitaurBase):
     '''
 
     def __init__(self, config, env, pd_control_enabled=True, accurate_motor_model_enabled=True):
-        MinitaurBase.__init__(self, config, env, pd_control_enabled, accurate_motor_model_enabled)
+        MinitaurBase.__init__(
+            self, config, env, pd_control_enabled, accurate_motor_model_enabled)
 
     def calc_state(self):
         MinitaurBase.GetObservation(self)

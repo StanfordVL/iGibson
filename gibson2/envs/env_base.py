@@ -13,13 +13,15 @@ from gibson2.scenes.stadium_scene import StadiumScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import gym
 
 
 class BaseEnv(gym.Env):
     '''
-    a basic environment, step, observation and reward not implemented
+    Base Env class, follows OpenAI Gym interface
+    Handles loading scene and robot
+    Functions like reset and step are not implemented
     '''
 
     def __init__(self,
@@ -54,9 +56,12 @@ class BaseEnv(gym.Env):
 
         enable_shadow = self.config.get('enable_shadow', False)
         enable_pbr = self.config.get('enable_pbr', True)
+        texture_scale = self.config.get('texture_scale', 1.0)
+
         settings = MeshRendererSettings(enable_shadow=enable_shadow,
                                         enable_pbr=enable_pbr,
-                                        msaa=False)
+                                        msaa=False,
+                                        texture_scale=texture_scale)
 
         self.simulator = Simulator(mode=mode,
                                    physics_timestep=physics_timestep,
@@ -69,14 +74,13 @@ class BaseEnv(gym.Env):
                                        'vertical_fov', 90),
                                    device_idx=device_idx,
                                    render_to_tensor=render_to_tensor,
-                                   rendering_settings=settings,
-                                   auto_sync=True)
-
+                                   rendering_settings=settings)
         self.load()
 
     def reload(self, config_file):
         """
-        Reload another config file, this allows one to change the environment on the fly
+        Reload another config file
+        Thhis allows one to change the configuration on the fly
 
         :param config_file: new config file path
         """
@@ -86,7 +90,9 @@ class BaseEnv(gym.Env):
 
     def reload_model(self, scene_id):
         """
-        Reload another model, this allows one to change the environment on the fly
+        Reload another scene model
+        This allows one to change the scene on the fly
+
         :param scene_id: new scene_id
         """
         self.config['scene_id'] = scene_id
@@ -105,6 +111,9 @@ class BaseEnv(gym.Env):
         self.load()
 
     def get_next_scene_random_seed(self):
+        """
+        Get the next scene random seed
+        """
         if self.object_randomization_freq is None:
             return None
         return self.scene_random_seeds[self.scene_random_seed_idx]
@@ -146,6 +155,7 @@ class BaseEnv(gym.Env):
                 trav_map_resolution=self.config.get(
                     'trav_map_resolution', 0.1),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
+                trav_map_type=self.config.get('trav_map_type', 'with_obj'),
                 pybullet_load_texture=self.config.get(
                     'pybullet_load_texture', False),
                 texture_randomization=self.texture_randomization_freq is not None,
@@ -153,9 +163,16 @@ class BaseEnv(gym.Env):
                 object_randomization_idx=self.object_randomization_idx,
                 should_open_all_doors=self.config.get(
                     'should_open_all_doors', False),
-                trav_map_type=self.config.get('trav_map_type', 'with_obj'),
+                load_object_categories=self.config.get(
+                    'load_object_categories', None),
+                load_room_types=self.config.get('load_room_types', None),
+                load_room_instances=self.config.get(
+                    'load_room_instances', None),
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
+            first_n = self.config.get('_set_first_n_objects', -1)
+            if first_n != -1:
+                scene._set_first_n_objects(first_n)
             self.simulator.import_ig_scene(scene)
 
         if self.config['robot'] == 'Turtlebot':
@@ -192,9 +209,17 @@ class BaseEnv(gym.Env):
         if self.simulator is not None:
             self.simulator.disconnect()
 
+    def close(self):
+        """
+        Synonymous function with clean
+        """
+        self.clean()
+
     def simulator_step(self):
         """
-        Step the simulation, this is different from environment step where one can get observation and reward
+        Step the simulation.
+        This is different from environment step that returns the next
+        observation, reward, done, info.
         """
         self.simulator.step()
 
@@ -211,4 +236,7 @@ class BaseEnv(gym.Env):
         return NotImplementedError()
 
     def set_mode(self, mode):
+        """
+        Set simulator mode
+        """
         self.simulator.mode = mode

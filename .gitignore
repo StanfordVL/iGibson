@@ -20,6 +20,7 @@ dev/transfer.c
 *.zip
 .*.swp
 
+docs/apidoc
 
 # vscode
 .vscode/
@@ -30,10 +31,8 @@ physics/*.json
 # Physics assets
 physics/models
 
-
 */events*
 0_VRDemoSettings.txt
-
 
 # VR
 # This is the folder where the pyd files get put after setup.py builds gibson
@@ -46,7 +45,6 @@ checkpoint
 *.log.*
 *.model.*
 examples/train/models/
-
 
 log_*/
 baselines/
@@ -64,11 +62,7 @@ gibson/cpp-household
 # Plotting
 examples/scripts/plot*
 
-
-#pycharm
-.idea*
-
-#models
+# Models
 nav_models
 
 gibson/assets

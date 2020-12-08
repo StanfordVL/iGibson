@@ -1,5 +1,5 @@
 from random import random
-
+import numpy as np
 from .utils import irange, argmin, RRT_ITERATIONS
 
 
@@ -45,6 +45,7 @@ def configs(nodes):
 
 
 def rrt(start, goal_sample, distance, sample, extend, collision, goal_test=lambda q: False, iterations=RRT_ITERATIONS, goal_probability=.2):
+    #goal_test = lambda q: np.linalg.norm(q - goal_sample) < 0.5
     if collision(start):
         return None
     if not callable(goal_sample):
@@ -61,7 +62,7 @@ def rrt(start, goal_sample, distance, sample, extend, collision, goal_test=lambd
                 break
             last = TreeNode(q, parent=last)
             nodes.append(last)
-            if goal_test(last.config):
+            if np.linalg.norm(np.array(last.config) - goal_sample()) < 0.5:#goal_test(last.config):
                 return configs(last.retrace())
         else:
             if goal:

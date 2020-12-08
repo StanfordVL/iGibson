@@ -3,6 +3,7 @@
 ## Introduction
 
 Assets includes necessary files for constructing a scene in iGibson simulator. The files include robot models, interactive objects, articulated objects and mesh files for tests. These files are too large to include in a version control system so we distribute them separately. The assets file can be downloaded to the path set in `your_installation_path/gibson2/global_config.yaml` (default to `your_installation_path/gibson2/assets`) with running 
+
 ```bash 
 python -m gibson2.utils.assets_utils --download_assets
 ```
@@ -44,7 +45,7 @@ assets
 
 ## Models
 
-The robots folders correspond to [robot](robots.md) models. 
+The robots folders correspond to [robot](./robots.md) models. 
 
 | Agent Name     | Folder | 
 |:-------------: | :-------------: |
@@ -59,7 +60,7 @@ The robots folders correspond to [robot](robots.md) models.
 | JackRabbot      |  `jr2_urdf` |
 | LocoBot         |   `locobot` |
 
-We also include [YCB objects](http://www.ycbbenchmarks.com/object-models/) in `ycb` folder, [RBO models](https://tu-rbo.github.io/articulated-objects/) in `rbo` folder, and a few commonly used primitives for home environments such as doors (in `scene_components`) and cabinets (in `cabinet` and `cabinet2`). You can refer to [objects](objects.md) page to see how to use these models in gibson scenes. Don't forget to cite related papers when using these assets.
+We also include [YCB objects](http://www.ycbbenchmarks.com/object-models/) in `ycb` folder, [RBO models](https://tu-rbo.github.io/articulated-objects/) in `rbo` folder, and a few commonly used primitives for home environments such as doors (in `scene_components`) and cabinets (in `cabinet` and `cabinet2`). You can refer to [objects](./objects.md) page to see how to use these models in gibson scenes. Don't forget to cite related papers when using these assets.
 
 ## Pretrained network
 

@@ -39,8 +39,7 @@ class IndoorScene(Scene):
         :param build_graph: build connectivity graph
         :param num_waypoints: number of way points returned
         :param waypoint_resolution: resolution of adjacent way points
-        :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and
-        does not affect robot's observations
+        :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect robot's observations
         """
         super().__init__()
         logging.info("IndoorScene model: {}".format(scene_id))
@@ -61,8 +60,8 @@ class IndoorScene(Scene):
     def load_trav_map(self, maps_path):
         """
         Loads the traversability maps for all floors
+
         :param maps_path: String with the path to the folder containing the traversability maps
-        :return: None
         """
         if not os.path.exists(maps_path):
             logging.warning('trav map does not exist: {}'.format(maps_path))
@@ -70,24 +69,22 @@ class IndoorScene(Scene):
 
         self.floor_map = []
         self.floor_graph = []
-        for f in range(len(self.floor_heights)):
+        for floor in range(len(self.floor_heights)):
             if self.trav_map_type == 'with_obj':
                 trav_map = np.array(Image.open(
-                    os.path.join(maps_path,
-                                 'floor_trav_{}.png'.format(f))
+                    os.path.join(maps_path, 'floor_trav_{}.png'.format(floor))
                 ))
                 obstacle_map = np.array(Image.open(
-                    os.path.join(maps_path,
-                                 'floor_{}.png'.format(f))
+                    os.path.join(maps_path, 'floor_{}.png'.format(floor))
                 ))
             else:
                 trav_map = np.array(Image.open(
-                    os.path.join(maps_path,
-                                 'floor_trav_no_obj_{}.png'.format(f))
+                    os.path.join(
+                        maps_path, 'floor_trav_no_obj_{}.png'.format(floor))
                 ))
                 obstacle_map = np.array(Image.open(
-                    os.path.join(maps_path,
-                                 'floor_no_obj_{}.png'.format(f))
+                    os.path.join(
+                        maps_path, 'floor_no_obj_{}.png'.format(floor))
                 ))
             if self.trav_map_original_size is None:
                 height, width = trav_map.shape
@@ -104,42 +101,63 @@ class IndoorScene(Scene):
             trav_map[trav_map < 255] = 0
 
             if self.build_graph:
-                graph_file = os.path.join(
-                    maps_path, 'floor_trav_{}.p'.format(f))
-                if os.path.isfile(graph_file):
-                    logging.info("Loading traversable graph")
-                    with open(graph_file, 'rb') as pfile:
-                        g = pickle.load(pfile)
-                else:
-                    logging.info("Building traversable graph")
-                    g = nx.Graph()
-                    for i in range(self.trav_map_size):
-                        for j in range(self.trav_map_size):
-                            if trav_map[i, j] > 0:
-                                g.add_node((i, j))
-                                # 8-connected graph
-                                neighbors = [
-                                    (i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
-                                for n in neighbors:
-                                    if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and trav_map[n[0], n[1]] > 0:
-                                        g.add_edge(
-                                            n, (i, j), weight=l2_distance(n, (i, j)))
-
-                    # only take the largest connected component
-                    largest_cc = max(nx.connected_components(g), key=len)
-                    g = g.subgraph(largest_cc).copy()
-                    with open(graph_file, 'wb') as pfile:
-                        pickle.dump(g, pfile, protocol=pickle.HIGHEST_PROTOCOL)
-
-                self.floor_graph.append(g)
-                # update trav_map accordingly
-                trav_map[:, :] = 0
-                for node in g.nodes:
-                    trav_map[node[0], node[1]] = 255
-
+                self.build_trav_graph(maps_path, floor, trav_map)
             self.floor_map.append(trav_map)
 
-    def get_random_point(self, floor=None, random_height=False):
+    # TODO: refactor into C++ for speedup
+    def build_trav_graph(self, maps_path, floor, trav_map):
+        """
+        Build traversibility graph and only take the largest connected component
+
+        :param maps_path: String with the path to the folder containing the traversability maps
+        :param floor: floor number
+        :param trav_map: traversability map
+        """
+        graph_file = os.path.join(maps_path, 'floor_trav_{}.p'.format(floor))
+        if os.path.isfile(graph_file):
+            logging.info("Loading traversable graph")
+            with open(graph_file, 'rb') as pfile:
+                g = pickle.load(pfile)
+        else:
+            logging.info("Building traversable graph")
+            g = nx.Graph()
+            for i in range(self.trav_map_size):
+                for j in range(self.trav_map_size):
+                    if trav_map[i, j] == 0:
+                        continue
+                    g.add_node((i, j))
+                    # 8-connected graph
+                    neighbors = [
+                        (i - 1, j - 1), (i, j - 1),
+                        (i + 1, j - 1), (i - 1, j)]
+                    for n in neighbors:
+                        if 0 <= n[0] < self.trav_map_size and \
+                            0 <= n[1] < self.trav_map_size and \
+                                trav_map[n[0], n[1]] > 0:
+                            g.add_edge(
+                                n, (i, j), weight=l2_distance(n, (i, j)))
+
+            # only take the largest connected component
+            largest_cc = max(nx.connected_components(g), key=len)
+            g = g.subgraph(largest_cc).copy()
+            with open(graph_file, 'wb') as pfile:
+                pickle.dump(g, pfile, protocol=pickle.HIGHEST_PROTOCOL)
+
+        self.floor_graph.append(g)
+
+        # update trav_map accordingly
+        trav_map[:, :] = 0
+        for node in g.nodes:
+            trav_map[node[0], node[1]] = 255
+
+    def get_random_point(self, floor=None):
+        """
+        Sample a random point on the given floor number. If not given, sample a random floor number.
+
+        :param floor: floor number
+        :return floor: floor number
+        :return point: randomly sampled point in [x, y, z]
+        """
         if floor is None:
             floor = self.get_random_floor()
         trav = self.floor_map[floor]
@@ -148,13 +166,12 @@ class IndoorScene(Scene):
         xy_map = np.array([trav_space[0][idx], trav_space[1][idx]])
         x, y = self.map_to_world(xy_map)
         z = self.floor_heights[floor]
-        if random_height:
-            z += np.random.uniform(0.4, 0.8)
         return floor, np.array([x, y, z])
 
     def map_to_world(self, xy):
         """
         Transforms a 2D point in map reference frame into world (simulator) reference frame
+
         :param xy: 2D location in map reference frame (image)
         :return: 2D location in world reference frame (metric)
         """
@@ -164,17 +181,34 @@ class IndoorScene(Scene):
     def world_to_map(self, xy):
         """
         Transforms a 2D point in world (simulator) reference frame into map reference frame
+
         :param xy: 2D location in world reference frame (metric)
         :return: 2D location in map reference frame (image)
         """
         return np.flip((xy / self.trav_map_resolution + self.trav_map_size / 2.0)).astype(np.int)
 
     def has_node(self, floor, world_xy):
+        """
+        Return whether the traversability graph contains a point
+
+        :param floor: floor number
+        :param world_xy: 2D location in world reference frame (metric)
+        """
         map_xy = tuple(self.world_to_map(world_xy))
         g = self.floor_graph[floor]
         return g.has_node(map_xy)
 
     def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
+        """
+        Get the shortest path from one point to another point.
+        If any of the given point is not in the graph, add it to the graph and
+        create an edge between it to its closest node.
+
+        :param floor: floor number
+        :param source_world: 2D source location in world reference frame (metric)
+        :param target_world: 2D target location in world reference frame (metric)
+        :param entire_path: whether to return the entire path
+        """
         assert self.build_graph, 'cannot get shortest path without building the graph'
         source_map = tuple(self.world_to_map(source_world))
         target_map = tuple(self.world_to_map(target_world))
