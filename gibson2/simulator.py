@@ -583,8 +583,14 @@ class Simulator:
         """
         body_links_awake = 0
         if isinstance(instance, Instance):
-            _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
-                p.getDynamicsInfo(instance.pybullet_uuid, -1)
+            dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
+            inertial_pos = dynamics_info[3]
+            inertial_orn = dynamics_info[4]
+            if len(dynamics_info) == 13:
+                activation_state = dynamics_info[12]
+            else:
+                activation_state = PyBulletSleepState.AWAKE
+
             if activation_state != PyBulletSleepState.AWAKE:
                 return body_links_awake
             # pos and orn of the inertial frame of the base link,
@@ -609,8 +615,13 @@ class Simulator:
         elif isinstance(instance, InstanceGroup):
             for j, link_id in enumerate(instance.link_ids):
                 if link_id == -1:
-                    _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
-                        p.getDynamicsInfo(instance.pybullet_uuid, -1)
+                    dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
+                    inertial_pos = dynamics_info[3]
+                    inertial_orn = dynamics_info[4]
+                    if len(dynamics_info) == 13:
+                        activation_state = dynamics_info[12]
+                    else:
+                        activation_state = PyBulletSleepState.AWAKE
 
                     if activation_state != PyBulletSleepState.AWAKE:
                         continue
@@ -623,8 +634,14 @@ class Simulator:
                     pos, orn = p.multiplyTransforms(
                         pos, orn, inv_inertial_pos, inv_inertial_orn)
                 else:
-                    activation_state = p.getDynamicsInfo(
-                        instance.pybullet_uuid, link_id)[-1]
+                    dynamics_info = p.getDynamicsInfo(
+                        instance.pybullet_uuid, link_id)
+
+                    if len(dynamics_info) == 13:
+                        activation_state = dynamics_info[12]
+                    else:
+                        activation_state = PyBulletSleepState.AWAKE
+
                     if activation_state != PyBulletSleepState.AWAKE:
                         continue
                     _, _, _, _, pos, orn = p.getLinkState(
