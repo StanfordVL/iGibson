@@ -5,6 +5,11 @@ import pybullet as p
 
 
 class YCBObject(Object):
+    """
+    YCB Object from assets/models/ycb
+    Reference: https://www.ycbbenchmarks.com/
+    """
+
     def __init__(self, name, scale=1):
         super(YCBObject, self).__init__()
         self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,

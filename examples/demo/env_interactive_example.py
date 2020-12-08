@@ -1,25 +1,28 @@
-from gibson2.envs.locomotor_env import NavigationRandomEnv
-from time import time
-import numpy as np
+from gibson2.envs.igibson_env import iGibsonEnv
 from time import time
 import gibson2
 import os
 from gibson2.render.profiler import Profiler
+import logging
 
 
 def main():
-    config_filename = os.path.join(os.path.dirname(gibson2.__file__),
-                                   '../examples/configs/turtlebot_interactive_demo.yaml')
-    nav_env = NavigationRandomEnv(config_file=config_filename, mode='iggui')
+    config_filename = os.path.join(
+        os.path.dirname(gibson2.__file__),
+        '../examples/configs/turtlebot_point_nav.yaml')
+    env = iGibsonEnv(config_file=config_filename, mode='gui')
     for j in range(10):
-        nav_env.reset()
+        env.reset()
         for i in range(100):
-            with Profiler('Env action step'):
-                action = nav_env.action_space.sample()
-                state, reward, done, info = nav_env.step(action)
+            with Profiler('Environment action step'):
+                action = env.action_space.sample()
+                state, reward, done, info = env.step(action)
                 if done:
-                    print("Episode finished after {} timesteps".format(i + 1))
+                    logging.info(
+                        "Episode finished after {} timesteps".format(i + 1))
                     break
+    env.close()
+
 
 if __name__ == "__main__":
     main()

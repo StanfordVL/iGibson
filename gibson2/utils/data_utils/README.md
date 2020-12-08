@@ -1,147 +1,172 @@
-# Full Gibson Environment Dataset
+# iG Dataset Content Description
 
-Full Gibson Environment Dataset consists of 572 models and 1440 floors. We cover a diverse set of models including households, offices, hotels, venues, museums, hospitals, construction sites, etc. A diverse set of visualization of all spaces in Gibson can be seen [here](http://gibsonenv.stanford.edu/database/).
- 
-<img src=../../misc/spaces.png width="800">
+The iG Dataset v1.0 includes:
 
-Table of contents
-=================
+**15 large scenes (100+ rooms):**
 
-   * [Download](#download)
-      * [Dataset Metadata](#dataset-metadata)
-      * [Dataset Modalities](#dataset-modalities)
-      * [Dataset Splits](#dataset-splits)
-   * [Navigation Benchmark Scenarios](#navigation-benchmark-scenarios)
-      * [Dataset Metrics](#dataset-metrics)
-      * [Navigation Waypoints](#navigation-waypoints)
+![ig_scenes](images/scenes.gif)
 
-# Download Gibson Database of Spaces
-The link will first take you to the license agreement and then to the data.
+- Scenes are the result of converting 3D reconstructions of real homes into fully interactive simulatable environments. 
+- Each scene corresponds to one floor of a real world home. 
+- The scenes are annotated with bounding box location and size of different objects, mostly furniture, e.g. cabinets, doors, stoves, tables, chairs, beds, showers, toilets, sinks...
+- Scenes include layout information (occupancy, semantics)
+- Each scene's lighting effect is designed manually, and the texture of the building elements (walls, floors, ceilings) is baked offline with high-performant ray-tracing
+- Scenes are defined in iGSDF (iGibson Scene Definition Format), an extension of URDF, and shapes are OBJ files with associated materials
 
-### [[ Download the full Gibson Database of Spaces ]](https://goo.gl/forms/OxAQHbl1v97BJ3Sg1)  [[ checksums ]](https://github.com/StanfordVL/GibsonEnv/wiki/Checksum-Values-for-Data.md)
+**More than 500 object models:**
+- The models have been collected from open source datasets (shapenet, partnet-mobility dataset...).
+- The models have been cleaned up (normals, small errors) and annotated with physics-based material information (diffuse, roughness, metallic, normal) and dynamics properties (weight, friction)
+- Objects with articulation can move, thanks to the partnet-mobility dataset annotation
+- Object models are defined as URDFs and shapes are OBJ files with associated materials
 
-License Note: The dataset license is included in the above link. The license in this repository covers only the provided software.
+We acknowledge [shapenet](https://www.shapenet.org/) and [partnet-mobility dataset](https://sapien.ucsd.edu/browse) for their contributions. If you use the iG Dataset in your research, please consider also citing them.
 
-**Stanford 2D-3D-Semantics Dataset:** the download link of 2D-3D-Semantics as Gibson asset files is included in the [same link ](https://goo.gl/forms/OxAQHbl1v97BJ3Sg1) as above. 
+Below, we describe:
+1. **data format** for both [scene](#igibson-scene-data-format) and [object](#igibson-object-data-format).
+2. how to **customize your own scene** by adding more iGibson objects to an existing iGibson scene.
 
-**Matterport3D Dataset:** Please fill and sign the corresponding [Terms of Use agreement](http://dovahkiin.stanford.edu/matterport/public/MP_TOS.pdf) form and send it to [matterport3d@googlegroups.com](matterport3d@googlegroups.com). Please put "use with GIBSON simulator" in your email. You'll then recieve a python script via email in response. Use the invocation `python download_mp.py --task_data gibson -o .` with the received script to download the data (39.09GB). Matterport3D webpage: [link](https://niessner.github.io/Matterport/).
+We also include instruction to **import data from external sources** :
+1. [instructions](ext_object) on how to import your own objects to iGibson.
+2. [instructions](ext_scene) on how to import scenes from existing datasets ([CubiCasa5k](https://github.com/CubiCasa/CubiCasa5k) and [3D-FRONT](https://tianchi.aliyun.com/specials/promotion/alibaba-3d-scene-dataset)) to iGibson.
 
-### Citation
-If you use Gibson's database or software please cite:
+## iGibson scene data format
+
 ```
-@inproceedings{xiazamirhe2018gibsonenv,
-  title={Gibson {Env}: real-world perception for embodied agents},
-  author={Xia, Fei and R. Zamir, Amir and He, Zhiyang and Sax, Alexander and Malik, Jitendra and Savarese, Silvio},
-  booktitle={Computer Vision and Pattern Recognition (CVPR), 2018 IEEE Conference on},
-  year={2018},
-  organization={IEEE}
-}
-```
-
-## Dataset Metadata
-Each space in the database has some metadata with the following attributes associated with it. The metadata is available in this [JSON file](https://raw.githubusercontent.com/StanfordVL/GibsonEnv/master/gibson/data/data.json). 
-```
-id                      # the name of the space, e.g. ""Albertville""
-area                    # total metric area of the building, e.g. "266.125" sq. meters
-floor                   # number of floors in the space, e.g. "4"
-navigation_complexity   # navigation complexity metric, e.g. "3.737" (see the paper for definition)
-room                    # number of rooms, e.g. "16"
-ssa                     # Specific Surface Area (A measure of clutter), e.g. "1.297" (see the paper for definition)
-split_full              # if the space is in train/val/test/none split of Full partition 
-split_full+             # if the space is in train/val/test/none split of Full+ partition 
-split_medium            # if the space is in train/val/test/none split of Medium partition 
-split_tiny              # if the space is in train/val/test/none split of Tiny partition 
-```
-
-## Dataset Modalities
-Each space in the database has its own folder. All the modalities and metadata for each space are contained in that folder. 
-```
-/pano
-  /points                 # camera metadata
-  /rgb                    # rgb images
-  /mist                   # depth images
-mesh.obj                  # 3d mesh
-mesh_z_up.obj             # 3d mesh for physics engine
-camera_poses.csv          # camera locations
-semantic.obj (optional)   # 3d mesh with semantic annotation
-```
-
-## Dataset Splits
-Due to the sheer size of the database, We provide four different standard partitions which are subsets of the full Gibson database of 572 models. We recommend starting with tiny partition and progressively adding more models if you wish. Each partition is divided into `training/validation/testing` splits. [You can download the standard split files here](https://storage.googleapis.com/gibsonassets/splits.tar.gz).
-
-| Split Name   |      Train     |  Val  |  Test | Hole Filled | Total Size |
-|----------|:-------------:|-------------:|------:| ------:| -------------:|
-| Tiny |  25 | 5 | 5 | 100% |  8 GiB |
-| Medium |  100 |  20 | 20 | 100% |  21 GiB |
-| Full | 360 | 70 | 70 | 100% | 65 GiB |
-| Full+ | 412 |  80 | 80 | 90.9% | 89 GiB |
-
-**Hole Filling**: We applied combination of automatic and manual hole-filling techniques on `tiny`, `medium` and `full` sets, to ensure that the models do not have severe reconstruction artifacts. `full+` contains the rest of the models that we are incapable of hole-filling, based on current techniques.  
-**Split Criteria**: In every split, we sort all 572 models by the linear combination of `loor number`, `area`, `ssa` and `navigation complexity`. We select a `tiny` as the set of models with the highest combination scores. We also set `medium` to be inclusive of `tiny`, and `full` to be inclusive of `mediuim`.
-
-# Navigation Benchmark Scenarios
-
-We provide standard point-to-point navigation episodes in [Gibson Standard Navigation Benchmark](https://storage.googleapis.com/gibsonassets/navigation_scenarios.tar.gz). See the figure below for visualization of a sample episode. Each space includes 100 episodes along with their ground truth near-optimal path and waypoints. You can see random standard episodes visualized for each space in the [database webpage](http://gibsonenv.stanford.edu/database/). See [this paper](https://arxiv.org/abs/1807.06757) for a discussion on the navigation episodes and their application. The following column values are provided for each episode:
-
-- `split`: `train`, `val`, or `test` indicating split for the episode.
-- `task`: string id for task type, currently restricted to `p` for `point_goal`.
-- `sceneId`: id of model within which episode takes place.
-- `level`: integer id of level (typically floor) within scene, starting from `0`.
-- `startX`, `startY`, `startZ`: coordinates of agent starting position in scene space.
-- `startAngle`, : azimuth angle (counter-clockwise from scene space +X axis) of agent starting state.
-- `goalRoomId`, `goalRoomType`: currently not available.
-- `goalObjectId`, `goalObjectType`: currently not available.
-- `goalX`, `goalY`, `goalZ`: coordinates of goal point in scene space. Required for all task types. Position of goal for `point_goal`.
-- `dist`, `pathDist`: Euclidean and geodesic (along shortest path) distance from agent start position to goal position
-- `pathNumDoors`, `pathDoorIds`: currently not available.
-- `pathNumRooms`, `pathRoomIndices`: currently not available.
-
-
-## Dataset Metrics
-
-**Floor Number** Total number of floors in each model.
-
-We calculate floor numbers using distinctive camera locations. We use `sklearn.cluster.DBSCAN` to cluster these locations by height and set minimum cluster size to `5`. This means areas with at least `5` sweeps are treated as one single floor. This helps us capture small building spaces such as backyard, attics, basements.
-
-**Area** Total floor area of each model.
-
-We calculate total floor area by summing up area of each floor. This is done by sampling point cloud locations based on floor height, and fitting a `scipy.spatial.ConvexHull` on sample locations.
-
-**SSA** Specific surface area. 
-
-The ratio of inner mesh surface and volume of convex hull of the mesh. This is a measure of clutter in the models: if the inner space is placed with large number of furnitures, objects, etc, the model will have high SSA. 
-
-**Navigation Complexity** The highest complexity of navigating between arbitrary points within the model.
-
-We sample arbitrary point pairs inside the model, and calculate `A∗` navigation distance between them. `Navigation Complexity` is equal to `A*` distance divide by `straight line distance` between the two points. We compute the highest navigation complexity for every model. Note that all point pairs are sample within the *same floor*.
-
-**Subjective Attributes**
-
-We examine each model manually, and note the subjective attributes of them. This includes their furnishing style, house shapes, whether they have long stairs, etc.
-
-
-## Navigation Waypoints
-
-For every navigation scenario, we provide navigation waypoints as an optional choice to assist users with training navigation agents. The waypoints of each model is stored as a json file named with the id of that model. 
-
-### Visualization
-
-We provide code for visualizing waypoints. In order to use it, you need to install the latest [Blender](https://www.blender.org/).
-
-```bash
-## Make sure that you can start blender in terminal
-blender
-
-## Configure your blender python path
-echo `python -c "import sys; print(':'.join(x for x in sys.path if x))"` > path.txt
-
-### Running visualization
-blender -b --python visualize_path.py --filepath path_to_scenario_json_dir \
-                                      --datapath path_to_dataset_root_dir \
-                                      --renderpath . \
-                                      --model  Allensville \
-                                      --idx 1 \
+scene_name
+│
+└───urdf
+│   │   # The structure of links (in iGSDF pseudo-URDF format) and joints
+│   │   scene_name.urdf
+│   │   # Single link object with all the walls (collision and visual)
+│   │   scene_name_walls.urdf
+│   │   # Single link object with all the floors (collision and visual)
+│   │   scene_name_floors.urdf
+│   │   # Single link object with all the ceilings (collision and visual)
+│   │   scene_name_ceilings.urdf
+│   │   # multi-link object with each building structure as a link, used to generate scene_name{_best|_random_N}.urdf
+│   │   scene_name_orig.urdf
+│   │   # Similar to scene_name.urdf, but has object instances already selected, with the highest quality geometry and material, and guaranteed scene consistency.
+│   │   scene_name_best.urdf
+│   │   # Similar to scene_name.urdf, but has object instances already selected, with the highest quality geometry and material, and guaranteed scene consistency. Used for object randomization.
+│   │   scene_name_random_N.urdf
+│
+└───shape
+│   └───visual
+│   │   │   # Directory containing all the obj files for walls and floors. 
+│   │   │   # Each obj uses a different baked texture map, linked by the corresponding mtl file. 
+│   │   │   wall_vm.obj, wall.mtl
+│   │   │   ceiling_vm.obj, ceiling.mtl
+│   │   │   floor_0_vm.obj, floor_0.mtl
+│   │   │   floor_1_vm.obj, floor_1.mtl
+│   │   │   ...
+│   │ 
+│   └───collision
+│   │   │   # Directory containing all the collision obj files for walls and floors. 
+│   │   │   wall_cm.obj
+│   │   │   ceiling_cm.obj
+│   │   │   floor_0_cm.obj
+│   │   │   Floor_1_cm.obj
+│   │   │   ...
+│   │ 
+└───material
+│   │   # Each directory contains the corresponding structure element’s baked texture map. 
+│   │   # There are two channels: COMBINED.png (RGB map with baked shading) and NORMAL.png (tangent normal map).
+│   └───ceiling
+│   │   │   COMBINED.png
+│   │   │   NORMAL.png
+│   │ 
+│   └───wall
+│   │   │   COMBINED.png
+│   │   │   NORMAL.png
+│   │ 
+│   └───floor_0
+│   │   │   COMBINED.png
+│   │   │   NORMAL.png
+│   │ 
+│   └───floor_1
+│   │   ...
+│
+└───layout
+│   │   # All maps have the same center and orientation. Each pixel represents a centimeter in 3D space.
+│   │   #
+│   │   # obstacle map for localization and planning, contains only structure elements
+│   │   floor_no_obj_0.png
+│   │   # obstacle map for localization and planning, contains all furnitures
+│   │   floor_0.png
+│   │   # occupancy map for localization and planning, contains only structure elements
+│   │   floor_trav_no_obj_0.png
+│   │   # occupancy map for localization and planning, contains all furnitures
+│   │   floor_trav_0.png
+│   │   # scene semantic segmentation map for initialization (objects, agents) and other perceptual tasks
+│   │   floor_semseg_0.png
+│   │   # scene instance segmentation map for initialization (objects, agents) and other perceptual tasks
+│   │   floor_insseg_0.png
+│   │   # lighting type map used for iGibson rendering
+│   │   floor_lighttype_0.png
+│ 
+└───misc
+│   │  # Stores all the objects in the scene, used to generate scene_name.urdf, scene_name_best.urdf and scene_name_random_N.urdf
+│   │   all_objs.json
+│   │   # A list of object pairs that have overlapping bounding boxes, used for scene quality check
+│   │   bbox_overlap.json
+│   │   # Material group that the ceilings are assigned to, used for online texture randomization
+│   │   ceilings_material_groups.json
+│   │   # Similar to above
+│   │   floors_material_groups.json
+│   │   # Similar to above
+│   │   walls_material_groups.json
+│   │   # Annotated camera trajectory that tour through each scene 
+│   │   tour_cam_trajectory.txt 
 ```
 
-Should give you: 
-<img src=https://i.imgur.com/ryJuhx5.png width="800">
+## iGibson object data format
+
+```
+OBJECT_NAME
+│   # Unified Robot Description Format (URDF)
+│   # http://wiki.ros.org/urdf
+│   # It defines the object model (parts, articulation, dynamics properties etc.).
+│   OBJECT_NAME.urdf 
+│
+└───shape
+│   └───visual 
+│   │    │   # Directory containing visual meshes (vm) of the object. Used for iGibson's rendering
+│   │    │   # All objs are UV mapped onto the same texture, linked by default.mtl. All faces are triangles.
+│   │    │   # Each obj represents a unique (link, material) combination.
+│   │    │   # For example, link_1_m1_vm.obj represents the part of link_1 that uses material m1. 
+│   │    │   # The material annotation can be found in OBJECT_NAME/misc/material_groups.json.
+│   │    │  link_1_m1_vm.obj
+│   │    │  link_1_m2_vm.obj
+│   │    │  link_2_m1_vm.obj
+│   │    │  …
+│   │    │  default.mtl (links the geometry to the texture files)
+│   │ 
+│   └───collision
+│   │    │   # Directory containing collision meshes (cm) of the objects. Used for iGibson's physics simulation.
+│   │    │   # Each obj represents a unique link of the object.
+│   │    │   # For example, link_1_cm.obj represents the collision mesh of link_1. 
+│   │    │  link_1_cm.obj
+│   │    │  link_2_cm.obj
+│   │    │  …
+│
+└───material
+│   │   # There are 4 channels:
+│   │   # 	DIFFUSE.png (RGB albedo map)
+│   │   # 	METALLIC.png (metallic map)
+│   │   # 	NORMAL.png (tangent normal map)
+│   │   # 	ROUGHNESS.png (roughness map)
+│   │   DIFFUSE.png
+│   │   METALLIC.png	
+│   │   NORMAL.png
+│   │   ROUGHNESS.png
+│
+└───misc
+│   │   # contains bounding box information of the object
+│   │   metadata.json
+│   │   # contains the object’s material annotation of what kinds of material each link can have.
+│   │   material_groups.json 
+│
+└───visualizations
+│   │   # GIF of the visual mesh of the object rotating, rendered with iG renderer
+│   │   OBJECT_NAME.gif
+```

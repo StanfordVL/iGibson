@@ -3,24 +3,25 @@ import gibson2
 import logging
 import numpy as np
 from gibson2.objects.articulated_object import URDFObject
-from gibson2.utils.utils import get_transform_from_xyz_rpy, quatXYZWFromRotMat, rotate_vector_2d
+from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
 import pybullet as p
 import os
 import xml.etree.ElementTree as ET
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 import random
 import json
-from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path
-from IPython import embed
+from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
 from PIL import Image
+
+SCENE_SOURCE = ['IG', 'CUBICASA', 'THREEDFRONT']
 
 
 # class InteractiveIndoorScene(StaticIndoorScene):
 class InteractiveIndoorScene(StaticIndoorScene):
     """
     Create an interactive scene defined with iGibson Scene Description Format (iGSDF).
-    iGSDF is an extension of URDF that we use to define an interactive scene. It has support for URDF scaling,
-    URDF nesting and randomization.
+    iGSDF is an extension of URDF that we use to define an interactive scene.
+    It has support for URDF scaling, URDF nesting and randomization.
     InteractiveIndoorScene inherits from StaticIndoorScene the functionalities to compute shortest path and other
     navigation functionalities.
     """
@@ -43,7 +44,28 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  load_room_types=None,
                  load_room_instances=None,
                  seg_map_resolution=0.1,
+                 scene_source="IG",
                  ):
+        """
+        :param scene_id: Scene id
+        :param trav_map_resolution: traversability map resolution
+        :param trav_map_erosion: erosion radius of traversability areas, should be robot footprint radius
+        :param trav_map_type: type of traversability map, with_obj | no_obj
+        :param build_graph: build connectivity graph
+        :param num_waypoints: number of way points returned
+        :param waypoint_resolution: resolution of adjacent way points
+        :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect robot's observations
+        :param texture_randomization: whether to randomize material/texture
+        :param link_collision_tolerance: tolerance of the percentage of links that cannot be fully extended after object randomization
+        :param object_randomization: whether to randomize object
+        :param object_randomization_idx: index of a pre-computed object randomization model that guarantees good scene quality
+        :param should_open_all_doors: whether to open all doors after episode reset (usually required for navigation tasks)
+        :param load_object_categories: only load these object categories into the scene (a list of str)
+        :param load_room_types: only load objects in these room types into the scene (a list of str)
+        :param load_room_instances: only load objects in these room instances into the scene (a list of str)
+        :param seg_map_resolution: room segmentation map resolution
+        :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT 
+        """
 
         super().__init__(
             scene_id,
@@ -66,15 +88,26 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                               object_randomization_idx)
         else:
             fname = '{}_best'.format(scene_id)
-        self.is_interactive = True
+        if scene_source not in SCENE_SOURCE:
+            raise ValueError(
+                'Unsupported scene source: {}'.format(scene_source))
+        if scene_source == "IG":
+            scene_dir = get_ig_scene_path(scene_id)
+        elif scene_source == "CUBICASA":
+            scene_dir = get_cubicasa_scene_path(scene_id)
+        else:
+            scene_dir = get_3dfront_scene_path(scene_id)
+        self.scene_source = scene_source
+        self.scene_dir = scene_dir
         self.scene_file = os.path.join(
-            get_ig_scene_path(scene_id), "urdf", "{}.urdf".format(fname))
+            scene_dir, "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
         self.first_n_objects = np.inf
         self.random_groups = {}
         self.objects_by_category = {}
         self.objects_by_name = {}
         self.objects_by_id = {}
+        self.category_ids = get_ig_category_ids()
 
         # Current time string to use to save the temporal urdfs
         timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -115,7 +148,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
                 # Find the urdf file that defines this object
                 if category in ["walls", "floors", "ceilings"]:
-                    model_path = get_ig_scene_path(model)
+                    model_path = self.scene_dir
                     filename = os.path.join(
                         model_path, "urdf", model + "_" + category + ".urdf")
 
@@ -222,6 +255,13 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                            load_object_categories,
                                            load_room_types,
                                            load_room_instances):
+        """
+        Handle partial scene loading based on object categories, room types or room instances
+
+        :param load_object_categories: only load these object categories into the scene (a list of str)
+        :param load_room_types: only load objects in these room types into the scene (a list of str)
+        :param load_room_instances: only load objects in these room instances into the scene (a list of str)
+        """
 
         if isinstance(load_object_categories, str):
             load_object_categories = [load_object_categories]
@@ -254,7 +294,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
             self.load_room_instances = None
 
     def load_room_sem_ins_seg_map(self, seg_map_resolution):
-        layout_dir = os.path.join(get_ig_scene_path(self.scene_id), "layout")
+        """
+        Load room segmentation map
+
+        :param seg_map_resolution: room segmentation map resolution
+        """
+        layout_dir = os.path.join(self.scene_dir, "layout")
         room_seg_imgs = os.path.join(layout_dir, 'floor_insseg_0.png')
         img_ins = Image.open(room_seg_imgs)
         room_seg_imgs = os.path.join(layout_dir, 'floor_semseg_0.png')
@@ -314,6 +359,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.room_sem_map = img_sem
 
     def load_avg_obj_dims(self):
+        """
+        Load average object dimensions for scene objects
+        """
         avg_obj_dim_file = os.path.join(
             gibson2.ig_dataset_path, 'objects/avg_category_specs.json')
         if os.path.isfile(avg_obj_dim_file):
@@ -323,8 +371,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
             return {}
 
     def load_overlapped_bboxes(self):
+        """
+        Load overlapped bounding boxes in scene definition.
+        E.g. a dining table usually has overlaps with the surrounding dining chairs
+        """
         bbox_overlap_file = os.path.join(
-            get_ig_scene_path(self.scene_id), 'misc', 'bbox_overlap.json')
+            self.scene_dir, 'misc', 'bbox_overlap.json')
         if os.path.isfile(bbox_overlap_file):
             with open(bbox_overlap_file) as f:
                 return json.load(f)
@@ -333,7 +385,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
     def add_object(self,
                    category,
-                   model="random",
+                   model=None,
                    model_path=None,
                    filename=None,
                    bounding_box=None,
@@ -347,19 +399,21 @@ class InteractiveIndoorScene(StaticIndoorScene):
                    in_rooms=None,
                    ):
         """
-        "Adds an object to the scene
-        :param category:
-        :param model:
-        :param filename:
-        :param bounding_box:
-        :param scale:
-        :param object_name:
-        :param joint_name:
-        :param joint_type:
-        :param joint_parent:
-        :param position:
-        :param orientation_rpy:
-        :return: None
+        Adds an object to the scene
+
+        :param category: object category, e.g. door
+        :param model: object model in the object dataset
+        :param model_path: folder path of that object model
+        :param filename: urdf file path of that object model
+        :param bounding_box: bounding box of this object
+        :param scale: scaling factor of this object
+        :param object_name: object name, unique for each object instance, e.g. door_3
+        :param joint_name: name of the joint that connects the object to the scene
+        :param joint_type: type of the joint that connects the object to the scene
+        :param joint_parent: parent of the joint that connects the object to the scene (i.e. world)
+        :param position: position of the joint that connects the object to the scene
+        :param orientation_rpy: orientation of the joint that connects the object to the scene
+        :param in_rooms: which room(s) this object is in. It can be in more than one rooms if it sits at room boundary (e.g. doors)
         """
 
         if object_name in self.objects_by_name.keys():
@@ -419,6 +473,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
             added_object.prepare_texture()
 
     def randomize_texture(self):
+        """
+        Randomize texture/material for all objects in the scene
+        """
         if not self.texture_randomization:
             logging.warning(
                 'calling randomize_texture while texture_randomization is False during initialization.')
@@ -428,6 +485,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
             obj.randomize_texture()
 
     def check_collision(self, body_a, body_b=None, link_a=None, fixed_body_ids=None):
+        """
+        Helper function to check for collision for scene quality
+        """
         if body_b is None:
             assert link_a is not None
             pts = p.getContactPoints(bodyA=body_a, linkIndexA=link_a)
@@ -445,6 +505,15 @@ class InteractiveIndoorScene(StaticIndoorScene):
         return len(pts) > 0
 
     def check_scene_quality(self, body_ids, fixed_body_ids):
+        """
+        Helper function to check for scene quality.
+        1) Objects should have no collision with each other.
+        2) Fixed, articulated objects that cannot fully extend their joints should be less than self.link_collision_tolerance
+
+        :param body_ids: body ids of all scene objects
+        :param fixed_body_ids: body ids of all fixed scene objects
+        :return: whether scene passes quality check
+        """
         quality_check = True
 
         body_body_collision = []
@@ -558,35 +627,50 @@ class InteractiveIndoorScene(StaticIndoorScene):
             ))
             self.link_collision_set.add(body_id_to_name[body_id])
 
+        return self.quality_check
+
     def _set_first_n_objects(self, first_n_objects):
-        # hidden API for debugging purposes
+        """
+        Only load the first N objects. Hidden API for debugging purposes.
+
+        :param first_n_objects: only load the first N objects (integer)
+        """
         self.first_n_objects = first_n_objects
 
-    def open_all_doors(self):
-        if 'door' not in self.objects_by_category:
-            return
-        for obj in self.objects_by_category['door']:
-            # assume door only has one sub URDF
-            body_id = obj.body_ids[0]
-            for joint_id in range(p.getNumJoints(body_id)):
-                state_id = p.saveState()
-                j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
-                j_type = p.getJointInfo(body_id, joint_id)[2]
-                parent_idx = p.getJointInfo(body_id, joint_id)[-1]
-                if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                    p.removeState(state_id)
-                    continue
-                # this is the continuous joint
-                if j_low >= j_high:
-                    p.removeState(state_id)
-                    continue
-                # this is the door knob joint
-                if parent_idx != 0:
-                    p.removeState(state_id)
-                    continue
-                # try to set the door to from 90 to 0 degrees until no collision
-                for j_pos in np.arange(0.0, j_high + np.pi / 36.0, step=np.pi / 36.0):
-                    p.resetJointState(body_id, joint_id, j_high - j_pos)
+    def open_one_obj(self, body_id, mode='random'):
+        """
+        Attempt to open one object without collision
+
+        :param body_id: body id of the object
+        :param mode: opening mode (zero, max, or random)
+        """
+        body_joint_pairs = []
+        for joint_id in range(p.getNumJoints(body_id)):
+            # cache current physics state
+            state_id = p.saveState()
+
+            j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
+            j_type = p.getJointInfo(body_id, joint_id)[2]
+            parent_idx = p.getJointInfo(body_id, joint_id)[-1]
+            if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                p.removeState(state_id)
+                continue
+            # this is the continuous joint
+            if j_low >= j_high:
+                p.removeState(state_id)
+                continue
+            # this is the 2nd degree joint, ignore for now
+            if parent_idx != 0:
+                p.removeState(state_id)
+                continue
+
+            if mode == 'max':
+                # try to set the joint to the maxr value until no collision
+                # step_size is 5cm for prismatic joint and 5 degrees for revolute joint
+                step_size = np.pi / 36.0 if j_type == p.JOINT_REVOLUTE else 0.05
+                for j_pos in np.arange(0.0, j_high + step_size, step=step_size):
+                    p.resetJointState(
+                        body_id, joint_id, j_high - j_pos)
                     p.stepSimulation()
                     has_collision = self.check_collision(
                         body_a=body_id, link_a=joint_id)
@@ -594,30 +678,81 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     if not has_collision:
                         p.resetJointState(body_id, joint_id, j_high - j_pos)
                         break
-                p.removeState(state_id)
 
-    def close_all_doors(self):
-        if 'door' not in self.objects_by_category:
-            return
-        for obj in self.objects_by_category['door']:
-            # assume door only has one sub URDF
-            body_id = obj.body_ids[0]
-            for joint_id in range(p.getNumJoints(body_id)):
-                j_low, j_high = p.getJointInfo(body_id, joint_id)[8:10]
-                j_type = p.getJointInfo(body_id, joint_id)[2]
-                parent_idx = p.getJointInfo(body_id, joint_id)[-1]
-                if j_type not in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                    continue
-                # this is the continuous joint
-                if j_low >= j_high:
-                    continue
-                # this is the door knob joint
-                if parent_idx != 0:
-                    continue
-                # set door position to 0.0
+            elif mode == 'random':
+                # try to set the joint to a random value until no collision
+                reset_success = False
+                # make 10 attemps
+                for _ in range(10):
+                    j_pos = np.random.uniform(j_low, j_high)
+                    p.resetJointState(
+                        body_id, joint_id, j_pos)
+                    p.stepSimulation()
+                    has_collision = self.check_collision(
+                        body_a=body_id, link_a=joint_id)
+                    p.restoreState(state_id)
+                    if not has_collision:
+                        p.resetJointState(body_id, joint_id, j_pos)
+                        reset_success = True
+                        break
+
+                # if none of the random values work, set it to 0.0 by default
+                if not reset_success:
+                    p.resetJointState(body_id, joint_id, 0.0)
+            elif mode == 'zero':
                 p.resetJointState(body_id, joint_id, 0.0)
+            else:
+                assert False
+
+            body_joint_pairs.append((body_id, joint_id))
+            # Remove cached state to avoid memory leak.
+            p.removeState(state_id)
+
+        return body_joint_pairs
+
+    def open_all_objs_by_category(self, category, mode='random', prob=1.0):
+        """
+        Attempt to open all objects of a certain category without collision
+
+        :param category: object category (str)
+        :param mode: opening mode (zero, max, or random)
+        :param prob: opening probability
+        """
+        body_joint_pairs = []
+        if category not in self.objects_by_category:
+            return body_joint_pairs
+        for obj in self.objects_by_category[category]:
+            # open probability
+            if np.random.random() > prob:
+                continue
+            for body_id in obj.body_ids:
+                body_joint_pairs += self.open_one_obj(body_id, mode=mode)
+        return body_joint_pairs
+
+    def open_all_objs_by_categories(self, categories, mode='random', prob=1.0):
+        """
+        Attempt to open all objects of a number of categories without collision
+
+        :param categories: object categories (a list of str)
+        :param mode: opening mode (zero, max, or random)
+        :param prob: opening probability
+        """
+        body_joint_pairs = []
+        for category in categories:
+            body_joint_pairs += self.open_all_objs_by_category(
+                category, mode=mode, prob=prob)
+        return body_joint_pairs
+
+    def open_all_doors(self):
+        """
+        Attempt to open all doors to maximum values without collision
+        """
+        return self.open_all_objs_by_category('door', mode='max')
 
     def load(self):
+        """
+        Load all scene objects into pybullet
+        """
         # Load all the objects
         body_ids = []
         fixed_body_ids = []
@@ -648,24 +783,51 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     0, 0, enableCollision=0)
 
         # Load the traversability map
-        maps_path = os.path.join(get_ig_scene_path(self.scene_id), "layout")
-        self.load_trav_map(maps_path)
+        maps_path = os.path.join(self.scene_dir, "layout")
+        if self.build_graph:
+            self.load_trav_map(maps_path)
 
         self.visual_mesh_to_material = visual_mesh_to_material
         self.check_scene_quality(body_ids, fixed_body_ids)
 
+        # force wake up each body once
+        self.force_wakeup_scene_objects()
         return body_ids
 
+    def force_wakeup_scene_objects(self):
+        """
+        Force wakeup sleeping objects
+        """
+        for obj_name in self.objects_by_name:
+            self.objects_by_name[obj_name].force_wakeup()
+
     def reset_scene_objects(self):
+        """
+        Reset the pose and joint configuration of all scene objects.
+        Also open all doors if self.should_open_all_doors is True
+        """
         for obj_name in self.objects_by_name:
             self.objects_by_name[obj_name].reset()
+
         if self.should_open_all_doors:
+            self.force_wakeup_scene_objects()
             self.open_all_doors()
 
     def get_num_objects(self):
+        """
+        Get the number of objects
+
+        :return: number of objects
+        """
         return len(self.objects_by_name)
 
     def get_random_point_by_room_type(self, room_type):
+        """
+        Sample a random point by room type
+
+        :param room_type: room type (e.g. bathroom)
+        :return: floor (always 0), a randomly sampled point in [x, y, z]
+        """
         if room_type not in self.room_sem_name_to_sem_id:
             logging.warning('room_type [{}] does not exist.'.format(room_type))
             return None, None
@@ -681,6 +843,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
         return floor, np.array([x, y, z])
 
     def get_random_point_by_room_instance(self, room_instance):
+        """
+        Sample a random point by room instance
+
+        :param room_instance: room instance (e.g. bathroom_1)
+        :return: floor (always 0), a randomly sampled point in [x, y, z]
+        """
         if room_instance not in self.room_ins_name_to_ins_id:
             logging.warning(
                 'room_instance [{}] does not exist.'.format(room_instance))
@@ -699,6 +867,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
     def seg_map_to_world(self, xy):
         """
         Transforms a 2D point in map reference frame into world (simulator) reference frame
+
         :param xy: 2D location in seg map reference frame (image)
         :return: 2D location in world reference frame (metric)
         """
@@ -708,12 +877,19 @@ class InteractiveIndoorScene(StaticIndoorScene):
     def world_to_seg_map(self, xy):
         """
         Transforms a 2D point in world (simulator) reference frame into map reference frame
+
         :param xy: 2D location in world reference frame (metric)
         :return: 2D location in seg map reference frame (image)
         """
         return np.flip((xy / self.seg_map_resolution + self.seg_map_size / 2.0)).astype(np.int)
 
     def get_room_type_by_point(self, xy):
+        """
+        Return the room type given a point
+
+        :param xy: 2D location in world reference frame (metric)
+        :return: room type that this point is in or None, if this point is not on the room segmentation map
+        """
         x, y = self.world_to_seg_map(xy)
         sem_id = self.room_sem_map[x, y]
         # room boundary
@@ -723,6 +899,13 @@ class InteractiveIndoorScene(StaticIndoorScene):
             return self.room_sem_id_to_sem_name[sem_id]
 
     def get_room_instance_by_point(self, xy):
+        """
+        Return the room instance given a point
+
+        :param xy: 2D location in world reference frame (metric)
+        :return: room instance that this point is in or None, if this point is not on the room segmentation map
+        """
+
         x, y = self.world_to_seg_map(xy)
         ins_id = self.room_ins_map[x, y]
         # room boundary
@@ -730,3 +913,15 @@ class InteractiveIndoorScene(StaticIndoorScene):
             return None
         else:
             return self.room_ins_id_to_ins_name[ins_id]
+
+    def get_body_ids(self):
+        """
+        Return the body ids of all scene objects
+
+        :return: body ids
+        """
+        ids = []
+        for obj_name in self.objects_by_name:
+            if self.objects_by_name[obj_name].body_id is not None:
+                ids.extend(self.objects_by_name[obj_name].body_id)
+        return ids

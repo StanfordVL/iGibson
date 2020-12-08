@@ -1,6 +1,10 @@
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
+from gibson2.utils.semantics_utils import get_class_name_to_class_id
+from gibson2.utils.constants import SemanticClass, PyBulletSleepState
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from gibson2.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR, VrSettings
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, MeshRendererSettings
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from gibson2.render.mesh_renderer.instances import InstanceGroup, Instance, Robot
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer, ViewerVR, ViewerSimple
 from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
@@ -10,10 +14,14 @@ import os
 import numpy as np
 import platform
 import logging
-from IPython import embed
 import time
 
 class Simulator:
+    """
+    Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
+    both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
+    """
+
     def __init__(self,
                  gravity=9.8,
                  physics_timestep=1 / 120.0,
@@ -24,14 +32,10 @@ class Simulator:
                  vertical_fov=90,
                  device_idx=0,
                  render_to_tensor=False,
-                 auto_sync=True,
                  rendering_settings=MeshRendererSettings(),
                  vr_settings=VrSettings()):
 
         """
-        Simulator class is a wrapper of physics simulator (pybullet) and MeshRenderer, it loads objects into
-        both pybullet and also MeshRenderer and syncs the pose of objects and robot parts.
-
         :param gravity: gravity on z direction.
         :param physics_timestep: timestep of physical simulation, p.stepSimulation()
         :param render_timestep: timestep of rendering, and Simulator.step() function
@@ -52,7 +56,7 @@ class Simulator:
         self.render_timestep = render_timestep
         self.mode = mode
 
-        #Todo: eliminate this
+        # TODO: remove this, currently used for testing only
         self.objects = []
 
         plt = platform.system()
@@ -86,8 +90,9 @@ class Simulator:
         self.vertical_fov = vertical_fov
         self.device_idx = device_idx
         self.render_to_tensor = render_to_tensor
-        self.auto_sync = auto_sync
+        self.optimized_renderer = rendering_settings.optimized
         self.rendering_settings = rendering_settings
+        self.viewer = None
         self.vr_settings = vr_settings
         # We must be using the Simulator's vr mode and have use_vr set to true in the settings to access the VR context
         self.can_access_vr_context = self.use_vr_renderer and self.vr_settings.use_vr
@@ -104,9 +109,15 @@ class Simulator:
 
         self.load()
 
+        self.class_name_to_class_id = get_class_name_to_class_id()
+        self.body_links_awake = 0
+
     def set_timestep(self, physics_timestep, render_timestep):
         """
-        :param timestep: set timestep after the initialization of Simulator
+        Set physics timestep and render (action) timestep
+
+        :param physics_timestep: physics timestep for pybullet
+        :param render_timestep: rendering timestep for renderer
         """
         self.physics_timestep = physics_timestep
         self.render_timestep = render_timestep
@@ -120,8 +131,8 @@ class Simulator:
 
     def add_viewer(self):
         """
-        Attach a debugging viewer to the renderer. This will make the step much slower so should be avoided when
-        training agents
+        Attach a debugging viewer to the renderer.
+        This will make the step much slower so should be avoided when training agents
         """
         if self.use_vr_renderer:
             self.viewer = ViewerVR()
@@ -152,11 +163,10 @@ class Simulator:
             self.renderer = MeshRendererVR(rendering_settings=self.rendering_settings, vr_settings=self.vr_settings)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
-                                     height=self.image_height,
-                                     vertical_fov=self.vertical_fov,
-                                     device_idx=self.device_idx,
-                                     rendering_settings=self.rendering_settings)
-
+                                         height=self.image_height,
+                                         vertical_fov=self.vertical_fov,
+                                         device_idx=self.device_idx,
+                                         rendering_settings=self.rendering_settings)
 
         # print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:
@@ -176,11 +186,13 @@ class Simulator:
         if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and not self.render_to_tensor:
             self.add_viewer()
 
-
     def optimize_vertex_and_texture(self):
         self.renderer.optimize_vertex_and_texture()
 
     def load_without_pybullet_vis(load_func):
+        """
+        Load without pybullet visualizer
+        """
         def wrapped_load_func(*args, **kwargs):
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
             res = load_func(*args, **kwargs)
@@ -194,7 +206,7 @@ class Simulator:
                      texture_scale=1.0,
                      load_texture=True,
                      render_floor_plane=False,
-                     class_id=None,
+                     class_id=SemanticClass.SCENE_OBJS,
                      ):
         """
         Import a scene into the simulator. A scene could be a synthetic one or a realistic Gibson Environment.
@@ -202,7 +214,9 @@ class Simulator:
         :param scene: Scene object
         :param texture_scale: Option to scale down the texture for rendering
         :param load_texture: If you don't need rgb output, texture loading could be skipped to make rendering faster
+        :param render_floor_plane: Whether to render the additionally added floor plane
         :param class_id: Class id for rendering semantic segmentation
+        :return: pybullet body ids from scene.load function
         """
 
         # Load the scene. Returns a list of pybullet ids of the objects loaded that we can use to
@@ -213,7 +227,8 @@ class Simulator:
         # Load the objects in the renderer
         for new_object_pb_id in new_object_pb_ids:
             self.load_object_in_renderer(new_object_pb_id, class_id=class_id, texture_scale=texture_scale,
-                                         load_texture=load_texture, render_floor_plane=render_floor_plane)
+                                         load_texture=load_texture, render_floor_plane=render_floor_plane,
+                                         use_pbr=False, use_pbr_mapping=False)
 
         self.scene = scene
         return new_object_pb_ids
@@ -222,23 +237,24 @@ class Simulator:
     def import_ig_scene(self, scene):
         """
         Import scene from iGSDF class
+
         :param scene: iGSDFScene instance
-        :return: ids from scene.load function
+        :return: pybullet body ids from scene.load function
         """
         new_object_ids = scene.load()
         self.objects += new_object_ids
         if scene.texture_randomization:
             # use randomized texture
-
-
             for body_id, visual_mesh_to_material in \
                     zip(new_object_ids, scene.visual_mesh_to_material):
                 shadow_caster = True
                 if scene.objects_by_id[body_id].category == 'ceilings':
                     shadow_caster = False
-
+                class_id = self.class_name_to_class_id.get(
+                    scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
                 self.load_articulated_object_in_renderer(
-                    body_id, class_id=body_id,
+                    body_id,
+                    class_id=class_id,
                     visual_mesh_to_material=visual_mesh_to_material,
                     shadow_caster=shadow_caster)
         else:
@@ -247,27 +263,39 @@ class Simulator:
                 use_pbr = True
                 use_pbr_mapping = True
                 shadow_caster = True
-
-                if scene.objects_by_id[body_id].category in ['walls', 'floors', 'ceilings']:
-                    use_pbr = False
-                    use_pbr_mapping = False
+                if scene.scene_source == 'IG':
+                    if scene.objects_by_id[body_id].category in ['walls', 'floors', 'ceilings']:
+                        use_pbr = False
+                        use_pbr_mapping = False
                 if scene.objects_by_id[body_id].category == 'ceilings':
                     shadow_caster = False
-                self.load_articulated_object_in_renderer(body_id, class_id=body_id,
-                                                         use_pbr=use_pbr,
-                                                         use_pbr_mapping=use_pbr_mapping,
-                                                         shadow_caster=shadow_caster)
+                class_id = self.class_name_to_class_id.get(
+                    scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
+                self.load_articulated_object_in_renderer(
+                    body_id,
+                    class_id=body_id,
+                    use_pbr=use_pbr,
+                    use_pbr_mapping=use_pbr_mapping,
+                    shadow_caster=shadow_caster)
         self.scene = scene
 
         return new_object_ids
 
     @load_without_pybullet_vis
-    def import_object(self, obj, class_id=None, use_pbr=True, use_pbr_mapping=True, shadow_caster=True):
+    def import_object(self,
+                      obj,
+                      class_id=SemanticClass.USER_ADDED_OBJS,
+                      use_pbr=True,
+                      use_pbr_mapping=True,
+                      shadow_caster=True):
         """
-        Import a non-articulated object into the simulator
+        Import an object into the simulator
 
         :param obj: Object to load
         :param class_id: Class id for rendering semantic segmentation
+        :param use_pbr: Whether to use pbr
+        :param use_pbr_mapping: Whether to use pbr mapping
+        :param shadow_caster: Whether to cast shadow
         """
 
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
@@ -303,10 +331,19 @@ class Simulator:
                                 use_pbr_mapping=True,
                                 shadow_caster=True
                                 ):
-        if class_id is None:
-            class_id = self.next_class_id
-        self.next_class_id += 1
+        """
+        Load the object into renderer
 
+        :param object_pb_id: pybullet body id
+        :param class_id: Class id for rendering semantic segmentation
+        :param softbody: Whether the object is soft body
+        :param texture_scale: Texture scale
+        :param load_texture: If you don't need rgb output, texture loading could be skipped to make rendering faster
+        :param render_floor_plane: Whether to render the additionally added floor plane
+        :param use_pbr: Whether to use pbr
+        :param use_pbr_mapping: Whether to use pbr mapping
+        :param shadow_caster: Whether to cast shadow
+        """
         for shape in p.getVisualShapeData(object_pb_id):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             visual_object = None
@@ -385,10 +422,16 @@ class Simulator:
                                             use_pbr=True,
                                             use_pbr_mapping=True,
                                             shadow_caster=True):
+        """
+        Load the articulated object into renderer
 
-        if class_id is None:
-            class_id = self.next_class_id
-        self.next_class_id += 1
+        :param object_pb_id: pybullet body id
+        :param class_id: Class id for rendering semantic segmentation
+        :param visual_mesh_to_material: mapping from visual mesh to randomizable materials
+        :param use_pbr: Whether to use pbr
+        :param use_pbr_mapping: Whether to use pbr mapping
+        :param shadow_caster: Whether to cast shadow
+        """
 
         visual_objects = []
         link_ids = []
@@ -411,7 +454,7 @@ class Simulator:
                         scale=np.array(dimensions),
                         overwrite_material=overwrite_material)
                     self.visual_objects[(filename, (*dimensions))
-                    ] = len(self.renderer.visual_objects) - 1
+                                        ] = len(self.renderer.visual_objects) - 1
                 visual_objects.append(
                     self.visual_objects[(filename, (*dimensions))])
                 link_ids.append(link_id)
@@ -459,8 +502,8 @@ class Simulator:
                                          link_ids=link_ids,
                                          pybullet_uuid=object_pb_id,
                                          class_id=class_id,
-                                         poses_rot=poses_rot,
                                          poses_trans=poses_trans,
+                                         poses_rot=poses_rot,
                                          dynamic=True,
                                          robot=None,
                                          use_pbr=use_pbr,
@@ -468,7 +511,9 @@ class Simulator:
                                          shadow_caster=shadow_caster)
 
     @load_without_pybullet_vis
-    def import_robot(self, robot, class_id=None):
+    def import_robot(self,
+                     robot,
+                     class_id=SemanticClass.ROBOTS):
         """
         Import a robot into the simulator
 
@@ -476,11 +521,6 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         :return: pybullet id
         """
-
-        if class_id is None:
-            class_id = self.next_class_id
-        self.next_class_id += 1
-
         ids = robot.load()
         visual_objects = []
         link_ids = []
@@ -578,8 +618,7 @@ class Simulator:
         physics_dur = time.time() - physics_start_time
 
         render_start_time = time.time()
-        if self.auto_sync:
-            self.sync()
+        self.sync()
         render_dur = time.time() - render_start_time
         # Update render timestep using low-pass filter function
         if use_render_timestep_lpf:
@@ -606,10 +645,11 @@ class Simulator:
         """
         Update positions in renderer without stepping the simulation. Usually used in the reset() function
         """
-        for instance in self.renderer.get_instances():
+        self.body_links_awake = 0
+        for instance in self.renderer.instances:
             if instance.dynamic:
-                self.update_position(instance)
-        if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and not self.viewer is None:
+                self.body_links_awake += self.update_position(instance)
+        if self.use_ig_renderer and self.viewer is not None:
             self.viewer.update()
 
     # Sets the VR position on the first step iteration where the hmd tracking is valid. Not to be confused
@@ -796,11 +836,12 @@ class Simulator:
 
         :param instance: Instance in the renderer
         """
+        body_links_awake = 0
         if isinstance(instance, Instance):
             _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
                 p.getDynamicsInfo(instance.pybullet_uuid, -1)
-
-            #if activation_state == 1:
+            if activation_state != PyBulletSleepState.AWAKE:
+                return body_links_awake
             # pos and orn of the inertial frame of the base link,
             # instead of the base link frame
             pos, orn = p.getBasePositionAndOrientation(
@@ -818,13 +859,16 @@ class Simulator:
                 pos, orn, inv_inertial_pos, inv_inertial_orn)
 
             instance.set_position(pos)
-            instance.set_rotation(xyzw2wxyz(orn))
+            instance.set_rotation(quat2rotmat(xyzw2wxyz(orn)))
+            body_links_awake += 1
         elif isinstance(instance, InstanceGroup):
             for j, link_id in enumerate(instance.link_ids):
                 if link_id == -1:
                     _, _, _, inertial_pos, inertial_orn, _, _, _, _, _, _, _, activation_state = \
                         p.getDynamicsInfo(instance.pybullet_uuid, -1)
 
+                    if activation_state != PyBulletSleepState.AWAKE:
+                        continue
                     # same conversion is needed as above
                     pos, orn = p.getBasePositionAndOrientation(
                         instance.pybullet_uuid)
@@ -834,14 +878,18 @@ class Simulator:
                     pos, orn = p.multiplyTransforms(
                         pos, orn, inv_inertial_pos, inv_inertial_orn)
                 else:
-                    activation_state = p.getDynamicsInfo(instance.pybullet_uuid, link_id)[-1]
+                    activation_state = p.getDynamicsInfo(
+                        instance.pybullet_uuid, link_id)[-1]
+                    if activation_state != PyBulletSleepState.AWAKE:
+                        continue
                     _, _, _, _, pos, orn = p.getLinkState(
                         instance.pybullet_uuid, link_id)
 
-                #print(instance.pybullet_uuid, link_id, activation_state)
-                instance.poses_rot[j] = quat2rotmat(xyzw2wxyz(orn))
-                instance.poses_trans[j] = xyz2mat(pos)
-
+                instance.set_position_for_part(xyz2mat(pos), j)
+                instance.set_rotation_for_part(
+                    quat2rotmat(xyzw2wxyz(orn)), j)
+                body_links_awake += 1
+        return body_links_awake
 
     def isconnected(self):
         """
@@ -851,7 +899,7 @@ class Simulator:
 
     def disconnect(self):
         """
-        clean up the simulator
+        Clean up the simulator
         """
         if self.isconnected():
             # print("******************PyBullet Logging Information:")

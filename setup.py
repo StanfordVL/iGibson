@@ -112,7 +112,7 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
 
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
@@ -128,7 +128,7 @@ setup(
             'gym>=0.12',
             'numpy>=1.16.0',
             'scipy>=1.2.1',
-            'pybullet @ https://github.com/fxia22/bullet3/archive/master.zip',
+            'pybullet @ https://github.com/StanfordVL/bullet3/archive/master.zip',
             'transforms3d>=0.3.1',
             'opencv-python>=3.4.8',
             'Pillow>=5.4.0',

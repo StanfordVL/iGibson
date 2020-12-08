@@ -12,14 +12,13 @@ import trimesh
 
 from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import RandomizedMaterial
-
-from IPython import embed
+from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 
 
 class ArticulatedObject(Object):
     """
-    Articulated objects are defined in URDF files. They are passive (no motors)
+    Articulated objects are defined in URDF files.
+    They are passive (no motors).
     """
 
     def __init__(self, filename, scale=1):
@@ -28,6 +27,9 @@ class ArticulatedObject(Object):
         self.scale = scale
 
     def _load(self):
+        """
+        Load the object into pybullet
+        """
         body_id = p.loadURDF(self.filename, globalScaling=self.scale,
                              flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
@@ -36,6 +38,11 @@ class ArticulatedObject(Object):
 
 
 class RBOObject(ArticulatedObject):
+    """
+    RBO object from assets/models/rbo
+    Reference: https://tu-rbo.github.io/articulated-objects/
+    """
+
     def __init__(self, name, scale=1):
         filename = os.path.join(gibson2.assets_path, 'models', 'rbo', name, 'configuration',
                                 '{}.urdf'.format(name))
@@ -44,8 +51,9 @@ class RBOObject(ArticulatedObject):
 
 class URDFObject(Object):
     """
-    URDFObjects are instantiated from a URDF file. They can be composed of one or more links and joints. They should
-    be passive. We use this class to parse our modified link tag for URDFs that embed objects into scenes
+    URDFObjects are instantiated from a URDF file. They can be composed of one
+    or more links and joints. They should be passive. We use this class to
+    parse our modified link tag for URDFs that embed objects into scenes
     """
 
     def __init__(self,
@@ -61,14 +69,17 @@ class URDFObject(Object):
                  in_rooms=None,
                  ):
         """
-
-        :param name:
-        :param category:
-        :param model:
-
-        :param filename:
-        :param bounding_box:
-        :param scale:
+        :param name: object name, unique for each object instance, e.g. door_3
+        :param category: object category, e.g. door
+        :param model: object model in the object dataset
+        :param model_path: folder path of that object model
+        :param filename: urdf file path of that object model
+        :param bounding_box: bounding box of this object
+        :param scale: scaling factor of this object
+        :param avg_obj_dims: average object dimension of this object
+        :param joint_friction: joint friction for joints in this object
+        :param in_rooms: which room(s) this object is in. It can be in more
+        than one rooms if it sits at room boundary (e.g. doors)
         """
         super(URDFObject, self).__init__()
 
@@ -76,9 +87,6 @@ class URDFObject(Object):
         self.category = category
         self.model = model
         self.in_rooms = in_rooms
-
-        # If we merge the fixed joints into single link to improve performance
-        self.merge_fj = False
 
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
@@ -103,8 +111,8 @@ class URDFObject(Object):
         self.is_fixed = []
         # mapping between visual objects and possible textures
         # multiple visual objects can share the same material
-        # if some sub URDF does not have visual object or it is building,
-        # it will have an empty dict
+        # if some sub URDF does not have visual object or this URDF is part of
+        # the building structure, it will have an empty dict
         # [
         #     {                                             # 1st sub URDF
         #         'visual_1.obj': randomized_material_1
@@ -158,8 +166,8 @@ class URDFObject(Object):
                 bbox_size = bbox_max - bbox_min
                 base_link_offset = (bbox_min + bbox_max) / 2.0
         else:
-            assert category in ['building', 'walls', 'floors',
-                                'ceilings'], 'missing object model size and base link offset data'
+            assert category in ['walls', 'floors', 'ceilings'], \
+                'missing object model size and base link offset data'
             bbox_size = None
             base_link_offset = np.zeros(3)
 
@@ -190,6 +198,10 @@ class URDFObject(Object):
         self.rename_urdf()
 
     def rename_urdf(self):
+        """
+        Helper function that renames the file paths in the object urdf
+        from relative paths to absolute paths
+        """
         # Change the links of the added object to adapt the to the given name
         for link_emb in self.object_tree.iter('link'):
             if link_emb.attrib['name'] == "base_link":
@@ -223,6 +235,9 @@ class URDFObject(Object):
                         "_" + parent_emb.attrib['link']
 
     def scale_object(self):
+        """
+        Scale the object according to the given bounding box
+        """
         # We need to scale 1) the meshes, 2) the position of meshes, 3) the position of joints, 4) the orientation
         # axis of joints. The problem is that those quantities are given wrt. its parent link frame, and this can be
         # rotated wrt. the frame the scale was given in Solution: parse the kin tree joint by joint, extract the
@@ -301,7 +316,7 @@ class URDFObject(Object):
 
         all_links = self.object_tree.findall('link')
         # compute dynamics properties
-        if self.category not in ["building", "walls", "floors", "ceilings"]:
+        if self.category not in ["walls", "floors", "ceilings"]:
             all_links_trimesh = []
             total_volume = 0.0
             for link in all_links:
@@ -348,7 +363,7 @@ class URDFObject(Object):
 
         # Now iterate over all links and scale the meshes and positions
         for i, link in enumerate(all_links):
-            if self.category not in ["building", "walls", "floors", "ceilings"]:
+            if self.category not in ["walls", "floors", "ceilings"]:
                 link_trimesh = all_links_trimesh[i]
                 # assign dynamics properties
                 inertials = link.findall('inertial')
@@ -438,12 +453,14 @@ class URDFObject(Object):
                 origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
 
     def remove_floating_joints(self, folder=""):
+        """
+        Split a single urdf to multiple urdfs if there exist floating joints
+        """
         # Deal with floating joints inside the embedded urdf
         folder_name = os.path.join(folder, self.name)
         urdfs_no_floating = \
             save_urdfs_without_floating_joints(self.object_tree,
-                                               folder_name,
-                                               self.merge_fj)
+                                               folder_name)
 
         # append a new tuple of file name of the instantiated embedded urdf
         # and the transformation (!= identity if its connection was floating)
@@ -455,11 +472,17 @@ class URDFObject(Object):
             self.is_fixed.append(urdfs_no_floating[urdf][2])
 
     def randomize_texture(self):
+        """
+        Randomize texture and material for each link / visual shape
+        """
         for material in self.materials:
             material.randomize()
         self.update_friction()
 
     def update_friction(self):
+        """
+        Update the surface lateral friction for each link based on its material
+        """
         if self.material_to_friction is None:
             return
         for i in range(len(self.urdf_paths)):
@@ -495,12 +518,11 @@ class URDFObject(Object):
                 p.changeDynamics(body_id, j, lateralFriction=link_friction)
 
     def prepare_texture(self):
+        """
+        Set up mapping from visual meshes to randomizable materials
+        """
         for _ in range(len(self.urdf_paths)):
             self.visual_mesh_to_material.append({})
-
-        # deprecated - should remove soon
-        if self.category in ["building"]:
-            return
 
         if self.category in ["walls", "floors", "ceilings"]:
             material_groups_file = os.path.join(
@@ -546,6 +568,9 @@ class URDFObject(Object):
                 self.material_to_friction = json.load(f)
 
     def _load(self):
+        """
+        Load the object into pybullet and set it to the correct pose
+        """
         for idx in range(len(self.urdf_paths)):
             logging.info("Loading " + self.urdf_paths[idx])
             body_id = p.loadURDF(self.urdf_paths[idx])
@@ -574,7 +599,19 @@ class URDFObject(Object):
             self.body_ids.append(body_id)
         return self.body_ids
 
+    def force_wakeup(self):
+        """
+        Force wakeup sleeping objects
+        """
+        for body_id in self.body_ids:
+            for joint_id in range(p.getNumJoints(body_id)):
+                p.changeDynamics(body_id, joint_id,
+                                 activationState=p.ACTIVATION_STATE_WAKE_UP)
+
     def reset(self):
+        """
+        Reset the object to its original pose and joint configuration
+        """
         for idx in range(len(self.body_ids)):
             body_id = self.body_ids[idx]
             transformation = self.poses[idx]
