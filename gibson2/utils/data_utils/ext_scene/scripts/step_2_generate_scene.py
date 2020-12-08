@@ -138,7 +138,6 @@ def gen_structure(wall_bbox,hole_bbox,floor_bbox, model_dir, skirt_pts, save_obj
                     v, f = gen_cube_obj(bbox, floor_path, 
                                         is_color=False, 
                                         should_save=(overwrite or not os.path.isfile(floor_path)))
-                    bbox.z = (ceiling_height, ceiling_height + 0.2)
                     v = np.asarray(v)
                     f = np.asarray(f)
                     verts.append(v)
@@ -324,9 +323,12 @@ def main():
     skirt_pts = np.load(args.skirt_file)
 
     files = os.listdir(misc_path)
+    global ceiling_height
     with open(os.path.join(misc_path, 'wall.json'), 'r') as fp:
         wall_bbox = [BBox(None,None,None,f) 
                           for f in json.load(fp)]
+        ceiling_height = max([w.z[1] for w in wall_bbox])
+
     hole_bbox = []
     with open(os.path.join(misc_path, 'window.json'), 'r') as fp:
         hole_bbox.extend([(BBox(None,None,None,f), 'window') 
