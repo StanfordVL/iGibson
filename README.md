@@ -1,4 +1,4 @@
-#  iGibson: A Simulation Environment to Train AI Agents in Large Realistic Scenes
+#  iGibson: A Simulation Environment to train AI Agents in Large Realistic Scenes
 
 <img src="./docs/images/igibsonlogo.png" width="500"> <img src="./docs/images/igibson.gif" width="250"> 
 
@@ -37,14 +37,14 @@ The documentation for iGibson can be found here: [iGibson Documentation](http://
 If you want to know more about iGibson, you can also check out [our webpage](http://svl.stanford.edu/igibson),  [our
  updated arxiv preprint](https://arxiv.org/abs/2012.02924) and [our previous RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442).
 
-### Dowloading Dataset of 3D Environments
+### Dowloading the Dataset of 3D Scenes
 
 With iGibson v1.0 release, you will have access to 15 fully interactive scenes (100+ rooms) that can be
  used in simulation. As a highlight, here
  are the features we support. We also include 500+ object models.  
 
 - Scenes are the
- result of converting 3D reconstructions of real homes into fully interactive simulatable environments.
+ result of converting 3D reconstructions of real homes into fully interactive simulatable models.
 - Each scene corresponds to one floor of a real-world home.
 The scenes are annotated with bounding box location and size of different objects, mostly furniture, e.g. cabinets, doors, stoves, tables, chairs, beds, showers, toilets, sinks...
 - Scenes include layout information (occupancy, semantics)
@@ -57,7 +57,7 @@ For instructions to install iGibson and download dataset, you can visit [install
 
 There are other datasets we link to iGibson. We include support to use CubiCasa5K and 3DFront scenes, adding up more than 8000 extra interactive scenes to use in iGibson! Check our documentation on how to use those.
 
-We also maintain compatibility with datasets of 3D reconstructed large real-world environments (homes and offices) that you can download and use with iGibson, for example from our previous simulator, Gibson. All of them will be accessible once you fill in this <a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[form]</a>.
+We also maintain compatibility with datasets of 3D reconstructed large real-world scenes (homes and offices) that you can download and use with iGibson, for example from our previous simulator, Gibson. All of them will be accessible once you fill in this <a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[form]</a>.
 
 ### Contributing
 This is the github repository for iGibson (pip package `gibson2`) 1.0 release. Bug reports, suggestions for improvement, as
