@@ -261,6 +261,13 @@ def export_scene(fixed_obj_bbox,free_obj_bbox,wall_bbox,model_dir):
         for wi, wall in enumerate(walls_poly):
             if obj.intersects(wall):
                 snap_out_of_wall(free_obj_bbox[i][1], wall_bbox[wi], obj, wall)
+    free_poly_snapped= [shape_poly(bbox.get_coords()) for _, bbox in free_obj_bbox]
+    to_delete = []
+    for i, obj in enumerate(free_poly_snapped):
+        for wi, wall in enumerate(walls_poly):
+            if obj.intersects(wall):
+                to_delete.append(i)
+    free_obj_bbox = [f for i,f in enumerate(free_obj_bbox) if i not in to_delete]
 
     fixed_poly = []
     for _, bbox in fixed_obj_bbox:
