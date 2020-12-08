@@ -12,10 +12,11 @@ If you use iGibson or its assets and models, consider citing the following publi
 @article{shenigibson,
   title={iGibson, a Simulation Environment for Interactive Tasks in Large Realistic Scenes},
   author={Shen, Bokui and Xia, Fei and Li, Chengshu and Mart{\i}n-Mart{\i}n, Roberto and Fan, Linxi and Wang, Guanzhi and Buch, Shyamal and D’Arpino, Claudia and Srivastava, Sanjana and Tchapmi, Lyne P and  Vainio, Kent and Fei-Fei, Li and Savarese, Silvio},
-  journal={arXiv preprint},
+  journal={arXiv preprint arXiv:2012.02924},
   year={2020}
 }
 ```
+
 
 ### Code Release
 The GitHub repository of iGibson can be found here: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson). Bug reports, suggestions for improvement, as well as community developments are encouraged and appreciated. The support for our previous version of the environment, [Gibson v1](http://github.com/StanfordVL/GibsonEnv/), will be moved there.
@@ -23,7 +24,7 @@ The GitHub repository of iGibson can be found here: [iGibson GitHub Repo](https:
 ### Documentation
 This is the documentation webpage for iGibson. It includes installation guide (including data download), quickstart guide, code examples, and APIs.
 
-If you want to know more about iGibson, you can also check out [our webpage](http://svl.stanford.edu/igibson), [our updated technical report](TBA) and [our RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442).
+If you want to know more about iGibson, you can also check out [our webpage](http://svl.stanford.edu/igibson), [our updated technical report](https://arxiv.org/abs/2012.02924) and [our RAL+ICRA20 paper](https://arxiv.org/abs/1910.14442).
 
 ### Dowloading Dataset of 3D Environments
 There are several datasets of 3D reconstructed large real-world environments (homes and offices) that you can download and use with iGibson. All of them will be accessible once you fill in this <a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[form]</a>.

@@ -30,10 +30,11 @@ If you use Gibson, iGibson or their assets, please consider citing the following
 @article{shenigibson,
   title={iGibson, a Simulation Environment for Interactive Tasks in Large Realistic Scenes},
   author={Shen, Bokui and Xia, Fei and Li, Chengshu and Mart{\i}n-Mart{\i}n, Roberto and Fan, Linxi and Wang, Guanzhi and Buch, Shyamal and D’Arpino, Claudia and Srivastava, Sanjana and Tchapmi, Lyne P and  Vainio, Kent and Fei-Fei, Li and Savarese, Silvio},
-  journal={arXiv preprint},
+  journal={arXiv preprint arXiv:2012.02924},
   year={2020}
 }
 ```
+
 
 ````
 @article{xia2020interactive,
