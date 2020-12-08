@@ -62,17 +62,15 @@ class VrAgent(object):
         Updates VR agent - transforms of all objects managed by this class.
         If vr_data is set to a non-None value, we use this data and overwrite all data from the simulator.
         """
-        self.vr_dict['body'].update(vr_data=vr_data)
-        self.vr_dict['gaze_marker'].update(vr_data=vr_data)
-        #for vr_obj in self.vr_dict.values():
-        #    vr_obj.update(vr_data=vr_data)
+        for vr_obj in self.vr_dict.values():
+            vr_obj.update(vr_data=vr_data)
 
     def get_frame_offset(self):
         """
         Calculates the new VR offset after a single frame of VR interaction.
         """
+        # TODO: Fix this calculation!
         o = self.sim.get_vr_offset()
-        print(o)
         return self.sim.get_vr_offset()
 
         new_offset = self.sim.get_vr_offset()
@@ -388,7 +386,7 @@ class VrGazeMarker(VisualMarker):
     """
     Represents the marker used for VR gaze tracking
     """
-    def __init__(self, s, z_coord):
+    def __init__(self, s, z_coord=100):
         # We store a reference to the simulator so that VR data can be acquired under the hood
         self.sim = s
         super(VrGazeMarker, self).__init__(visual_shape=p.GEOM_SPHERE, radius=0.02)
@@ -409,6 +407,7 @@ class VrGazeMarker(VisualMarker):
         is_eye_data_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = eye_data
         if is_eye_data_valid:
             updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
+            print("New eye tracking pos!")
             self.set_position(updated_marker_pos)
 
 
