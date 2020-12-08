@@ -213,6 +213,24 @@ def download_dataset(url):
         'tar -zxf /tmp/{} --strip-components=1 --directory {}'.format(file_name, gibson2.g_dataset_path))
     # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 
+def download_ext_scene_assets():
+    os.makedirs(gibson2.threedfront_dataset_path, exist_ok=True)
+    os.makedirs(gibson2.cubicasa_dataset_path, exist_ok=True)
+    url = "https://storage.googleapis.com/gibson_scenes/default_materials.tar.gz"
+    file_name = url.split('/')[-1]
+    os.system(
+        'wget -c --retry-connrefused --tries=5 --timeout=5 {} -O /tmp/{}'.format(url, file_name))
+    os.system( 'tar -zxf /tmp/{} --directory {}'.format(
+               file_name, gibson2.cubicasa_dataset_path))
+    os.system( 'tar -zxf /tmp/{} --directory {}'.format(
+               file_name, gibson2.threedfront_dataset_path))
+
+    url = "https://storage.googleapis.com/gibson_scenes/threedfront_urdfs.tar.gz"
+    file_name = url.split('/')[-1]
+    os.system(
+        'wget -c --retry-connrefused --tries=5 --timeout=5 {} -O /tmp/{}'.format(url, file_name))
+    os.system( 'tar -zxf /tmp/{} --directory {}'.format(
+               file_name, gibson2.threedfront_dataset_path))
 
 def download_ig_dataset():
     """
@@ -259,7 +277,8 @@ if __name__ == "__main__":
                         help='download dataset file given an URL')
     parser.add_argument('--download_ig_dataset', action='store_true',
                         help='download iG Dataset')
-
+    parser.add_argument('--download_ext_scene_assets', action='store_true',
+                        help='download external scene dataset assets')
     parser.add_argument('--change_data_path', action='store_true',
                         help='change the path to store assets and datasert')
 
@@ -275,3 +294,5 @@ if __name__ == "__main__":
         download_ig_dataset()
     elif args.change_data_path:
         change_data_path()
+    elif args.download_ext_scene_assets:
+        download_ext_scene_assets()

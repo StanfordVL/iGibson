@@ -22,6 +22,14 @@ We currently only offer support for Linux.
 
 We use Blender 2.82 for mesh processing. Follow the instruction here: [blender_utils](../blender_utils/) for guide on installation.
 
+## Process external scenes
+
+First, you need to download some helper assets for external scenes, which can be done by simply running:
+```
+python -m gibson2.utils.assets_utils --download_ext_scene_assets
+```
+This will download some default materials, as well as 3D-Front's no-collision URDFs (explained more in details in section [3D-Front)](#important:-addressing-overlapping-bounding-boxes-in-3d-front).
+
 ### Process a CubiCasa5K scene
 
 To preprocess a CubiCasa5K scene, please follow these steps:
@@ -72,14 +80,36 @@ We make the following changes to 3D-Front scenes during our processing:
 [ 'CustomizedFixedFurniture', 'CustomizedFurniture', 'CustomizedPersonalizedModel', 'CustomizedPlatform']
 ```
 since we can't generate collision meshes properly with these categories. In total, there are 8808 scenes that don't contain any of the category above.
-2. Real-world free-moving objects can have overlapping bounding boxes (e.g. a chair tucked into a table), thus, for overlapping bounding box issue, we do the following:
-- if an object bounding box is over 80% contained in another object, this is likely to be a scene design overlook (for example, penetrating furniture in the original scene design, see [here](https://github.com/3D-FRONT-FUTURE/3D-FRONT-ToolBox/issues/4) ). We thus skip the object.
-- if two objects overlap with each other, we try to shrink the bounding boxes. We shrink by no more than 80%.
-- we randomize the objects with our object assets, and manage to provide non-overlapping layouts for 2200 scenes. You can download the URDFs via:
-```
-python -m gibson2.utils.assets_utils --download_threedfront_nonoverlapping_urdfs
-```
-3. 3D-Front also has known corrupted mesh issue (see [github issue](https://github.com/3D-FRONT-FUTURE/3D-FRONT-ToolBox/issues/2#issuecomment-682678930)). 
+ 2. 3D-Front also has known corrupted mesh issue (see [github issue](https://github.com/3D-FRONT-FUTURE/3D-FRONT-ToolBox/issues/2#issuecomment-682678930)). We expect this problem to be solved in future releases of 3D-Front.
+3. the kitchen cabinets in 3D-Front are not annotated as objects, but instead the entire kitchen furniture is a single object with each panel of the furniture represented as separate meshes. This impedes us to generate interactive versions of the kitchen cabinets. We include two alternative versions of the scenes: a) a version with non-interactive kitchen cabinets, and b) a version without any kitchen cabinets. We expect this problem to be solved in future annotations of 3D-Front.
  
 Notes:
 1.  Object and scene category mappings can be found [here](scripts/utils/semantics.py) .
+
+#### Important: addressing overlapping bounding boxes in 3D-FRONT
+
+While 3D-Front dataset includes a layout description of rooms and elements, including their position and size, the furniture pieces are sometimes defined as overlapping significantly with each other (see reported issue [here](https://github.com/3D-FRONT-FUTURE/3D-FRONT-ToolBox/issues/4)). This has a severe effect in our physics simulation as it tries to solve the penetrating contact. To alleviate this issue, we remove objects that overlap more than 80% of volume with others. 
+
+At the same time, real-world free-moving objects can have overlapping bounding boxes (e.g. a chair tucked into a table), thus, for overlapping bounding boxes, we do the following:
+- if two objects overlap with each other, we try to shrink the bounding boxes. We shrink by no more than 80%.
+- we randomize the objects with our object assets, and try to come up with no-collision object configurations from overlapping bounding boxes. 
+
+We managed to provide no-collision URDFs for 2239 scenes.  If the scene your are converting is among this set, the scene generation process will automatically retrieve the no-collision URDF. If not, **please use the scene at your own discretion**, since the objects might be penetrating with each other.
+
+
+### Examine generated scenes
+
+To examine the scene, you can leverage the ```mouse_interaction.py``` in iGibson's ```example/demo``` folder [examples/demo/mouse_interaction.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/mouse_interaction.py). 
+
+For Cubicasa5K, you can examine a scene by running:
+```
+python mouse_interaction.py --source CUBICASA -- scene $SCENE_ID
+```
+Here ```$SCENE_ID``` can be ```10709_floor_0``` or ```10709_floor_1``` if you converted scene ```colorful/10709``` in Cubicasa5k.
+
+Similarly, for 3D-Front, you can examine a scene by running:
+```
+python mouse_interaction.py --source THREEDFRONT -- scene $SCENE_ID
+```
+Here ```$SCENE_ID``` is ````d8f50afc-d93f-49f8-9170-b7b9fe880152``` if you converted scene ```d8f50afc-d93f-49f8-9170-b7b9fe880152.json``` in 3D-Front.
+

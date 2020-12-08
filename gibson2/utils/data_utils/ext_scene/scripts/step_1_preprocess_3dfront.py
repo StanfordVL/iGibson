@@ -337,6 +337,7 @@ def get_all_objs(model_id):
         model_to_bbox = json.load(fp)
     with open(model_id, 'r') as fp:
         data = json.load(fp)
+        z_max = get_z_max(data['mesh'])
         model_jid = []
         model_uid = []
         model_bbox= []
@@ -398,6 +399,7 @@ def get_all_objs(model_id):
             normal = edge_y / np.linalg.norm(edge_y)
             z = (scaled_bbox+pos)[:,1]
             z[z < 0] = 0
+            z[z > zmax] = zmax-0.1
             center = np.array([center_x, center_y])
             y = edge_x / 2.
             x = edge_y / 2.
@@ -405,7 +407,8 @@ def get_all_objs(model_id):
                             center + x - y,
                             center + x + y,
                             center - x + y])
-
+            if og_cat == 'bottom_cabinet' and z[0] > 0.1:
+                og_cat = 'top_cabinet'
             free_objs.append(('{}={}'.format(og_cat, instance_id), 
                             {'edge_x':edge_y.tolist(), 
                              'edge_y':edge_x.tolist(), 
