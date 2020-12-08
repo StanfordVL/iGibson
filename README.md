@@ -1,8 +1,6 @@
-#  iGibson: A Simulation Environment to train AI Agents in Large Realistic Scenes
+#  iGibson: A Simulation Environment to train Robots in Large Realistic Interactive Scenes
 
 <img src="./docs/images/igibsonlogo.png" width="500"> <img src="./docs/images/igibson.gif" width="250"> 
-
-### Similation of Large Scale Interactive Scenes for Robot Learning
 
 iGibson is a simulation environment providing fast visual rendering and physics simulation based on Bullet. iGibson is equipped with fifteen fully interactive high quality scenes, hundreds of large 3D scenes reconstructed from real homes and offices, and compatibility with datasets like CubiCasa5K and 3D-Front, providing 8000+ additional interactive scenes. Some of the features of iGibson include domain randomization, integration with motion planners and easy-to-use tools to collect human demonstrations. With these scenes and features, iGibson allows researchers to train and evaluate robotic agents that use visual signals to solve navigation and manipulation tasks such as opening doors, picking up and placing objects, or searching in cabinets.
 
