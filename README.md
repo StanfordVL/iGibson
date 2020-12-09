@@ -154,18 +154,31 @@ $ pip install -e .
 Important - VR functionality and where to find it:
 
 You can find all the VR demos in iGibson/examples/demo/vr_demos, which has the following structure:
+
 -vr_playground.py
+
 --robot_embodiment (folder)
+
 ---vr_demo_robot_control.py
+
 --muvr (folder)
+
 ---igvr_client.py
+
 ---igvr_server.py
+
 ---muvr_demo.py
+
 --data_save_replay (folder)
+
 ---vr_demo_save_states.py
+
 ---vr_demo_replay_states.py
+
 ---vr_demo_save_actions.py
+
 ---vr_demo_replay_actions.py
+
 ---vr_logs (folder containing saved data)
 
 Additional information:
