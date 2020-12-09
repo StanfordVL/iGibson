@@ -649,7 +649,7 @@ class Simulator:
         for instance in self.renderer.instances:
             if instance.dynamic:
                 self.body_links_awake += self.update_position(instance)
-        if self.use_ig_renderer and self.viewer is not None:
+        if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and not self.viewer is None:
             self.viewer.update()
 
     # Sets the VR position on the first step iteration where the hmd tracking is valid. Not to be confused

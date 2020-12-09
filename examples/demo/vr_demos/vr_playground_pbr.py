@@ -26,12 +26,10 @@ from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
 
-sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
-
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = True
 # Set to true to print out render, physics and overall frame FPS
-PRINT_FPS = False
+PRINT_FPS = True
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -54,32 +52,51 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             enable_pbr=True,
                                             msaa=True,
                                             light_dimming_factor=1.0)
+# VR system settings
+# Change use_vr to toggle VR mode on/off
+vr_settings = VrSettings(use_vr=True)
 s = Simulator(mode='vr', 
             rendering_settings=vr_rendering_settings, 
-            vr_settings=VrSettings())
+            vr_settings=vr_settings)
 scene = InteractiveIndoorScene('Rs_int')
 # Turn this on when debugging to speed up loading
 if LOAD_PARTIAL:
     scene._set_first_n_objects(10)
 s.import_ig_scene(scene)
 
+if not vr_settings.use_vr:
+    camera_pose = np.array([0, -3, 1.2])
+    view_direction = np.array([0, 1, 0])
+    s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
+    s.renderer.set_fov(90)
+
+# Create a VrAgent and it will handle all initialization and importing under-the-hood
 vr_agent = VrAgent(s)
 
 # Objects to interact with
-basket_path = os.path.join(sample_urdf_folder, 'object_ZU6u5fvE8Z1.urdf')
-basket = ArticulatedObject(basket_path, scale=0.8)
-s.import_object(basket)
-basket.set_position([-1, 1.55, 1.2])
-p.changeDynamics(basket.body_id, -1, mass=5)
+mass_list = [5, 10, 100, 500]
+mustard_start = [-1, 1.55, 1.2]
+mustard_list = []
+for i in range(len(mass_list)):
+    mustard = YCBObject('006_mustard_bottle')
+    mustard_list.append(mustard)
+    s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+    mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
+    p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
 
 s.optimize_vertex_and_texture()
 
-# Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
-s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
+if vr_settings.use_vr:
+    # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
+    s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
 
 # Main simulation loop
 while True:
     s.step(print_time=PRINT_FPS)
+
+    # Don't update VR agents or query events if we are not using VR
+    if not vr_settings.use_vr:
+        continue
 
     # Example of querying VR events to hide object
     if s.query_vr_event('right_controller', 'touchpad_press'):
