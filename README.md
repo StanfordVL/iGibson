@@ -8,8 +8,8 @@ iGibson is a simulation environment providing fast visual rendering and physics 
 
 [12/1/2020] Major update to iGibson to reach iGibson v1.0, for details please refer to our [arxiv preprint](https://arxiv.org/abs/2012.02924). 
 
-- Release of iGibson dataset that includes 15 fully interactive scenes and 500+ object models annotated with materials and physical attributes.
-- Compatibility to import CubiCasa and 3D-Front scene layouts for more than 8000 extra interactive scenes!
+- Release of iGibson dataset that includes 15 fully interactive scenes and 500+ object models annotated with materials and physical attributes on top of [existing 3D articulated models](https://cs.stanford.edu/~kaichun/partnet/).
+- Compatibility to import [CubiCasa5K](https://github.com/CubiCasa/CubiCasa5k) and [3D-Front](https://tianchi.aliyun.com/specials/promotion/alibaba-3d-scene-dataset) scene descriptions leading to more than 8000 extra interactive scenes!
 - New features in iGibson: Physically based rendering, 1-beam and 16-beam LiDAR, domain randomization, motion planning integration, tools to collect human demos and more!
 - Code refactoring, better class structure and cleanup. 
 
