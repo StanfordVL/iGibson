@@ -32,11 +32,13 @@ the computer's display when the VR is running
 ------ vr_device_data (group)
 
 --------- hmd (dataset)
------------- DATA: [is_valid, trans, rot] (len 8)
+------------ DATA: [is_valid, trans, rot, right, up, forward] (len 17)
 --------- left_controller (dataset)
------------- DATA: [is_valid, trans, rot] (len 8)
+------------ DATA: [is_valid, trans, rot, right, up, forward] (len 17)
 --------- right_controller (dataset)
------------- DATA: [is_valid, trans, rot] (len 8)
+------------ DATA: [is_valid, trans, rot, right, up, forward] (len 17)
+--------- vr_position_data (dataset)
+------------ DATA: [vr_world_pos, vr_offset] (len 6)
 
 ------ vr_button_data (group)
 
@@ -47,12 +49,23 @@ the computer's display when the VR is running
 
 ------ vr_eye_tracking_data (dataset)
 --------- DATA: [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter] (len 9)
+
+------ vr_event_data (group)
+
+--------- left_controller (dataset)
+------------ DATA: [grip press/unpress, trigger press/unpress, touchpad press/unpress, touchpad touch/untouch, menu press/unpress] (len 10)
+--------- right_controller (dataset)
+------------ DATA: [grip press/unpress, trigger press/unpress, touchpad press/unpress, touchpad touch/untouch, menu press/unpress] (len 10)
 """
+
+# TODO: Implement this new binary event system!
 
 import h5py
 import numpy as np
 import pybullet as p
 import time
+
+from gibson2.utils.vr_utils import import convert_events_to_binary
 
 class VRLogWriter():
     """Class that handles saving of VR data, physics data and user-defined actions.

@@ -652,22 +652,6 @@ class Viewer:
                 self.pause_recording = False
             else:
                 self.pause_recording = True
-<<<<<<< HEAD
-        elif q == ord('m'):  # Switch between Manipulation and Navigation modes
-            if self.manipulation_mode:
-                self.left_down = False
-                self.middle_down = False
-                self.right_down = False
-                self.manipulation_mode = False
-            else:
-                self.left_down = False
-                self.middle_down = False
-                self.right_down = False
-                self.manipulation_mode = True
-        elif q == ord('l'):
-            # reset
-            self.reset()
-=======
 
         # Switch amoung navigation, manipulation, motion planning / execution modes
         elif q == ord('m'):
@@ -676,7 +660,6 @@ class Viewer:
             self.right_down = False
             self.manipulation_mode = (self.manipulation_mode + 1) % 3
 
->>>>>>> pbr
         if self.recording and not self.pause_recording:
             cv2.imwrite(os.path.join(self.video_folder, '{:05d}.png'.format(self.frame_idx)),
                         (frame * 255).astype(np.uint8))

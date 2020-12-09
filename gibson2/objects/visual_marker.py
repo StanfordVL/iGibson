@@ -58,12 +58,9 @@ class VisualMarker(Object):
         return body_id
 
     def set_color(self, color):
-<<<<<<< HEAD
-=======
         """
         Set the color of the marker
 
         :param color: normalized rgba color
         """
->>>>>>> pbr
         p.changeVisualShape(self.body_id, -1, rgbaColor=color)
