@@ -405,11 +405,8 @@ class VrGazeMarker(VisualMarker):
 
         # Unpack eye tracking data
         is_eye_data_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = eye_data
-        print("Eye data validity: {}".format(is_eye_data_valid))
         if is_eye_data_valid:
             updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
-            print("New eye tracking pos!")
             self.set_position(updated_marker_pos)
-            print("New position: {}".format(self.get_position()))
 
 
