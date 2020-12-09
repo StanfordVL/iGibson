@@ -151,17 +151,35 @@ $ cd iGibson
 $ pip install -e .
 ```
 
-You can find all the VR demos in iGibson/examples/demo/vr_demos
+Important - VR functionality and where to find it:
 
-Run:
+You can find all the VR demos in iGibson/examples/demo/vr_demos, which has the following structure:
+-vr_playground.py
+--robot_embodiment (folder)
+---vr_demo_robot_control.py
+--muvr (folder)
+---igvr_client.py
+---igvr_server.py
+---muvr_demo.py
+--data_save_replay (folder)
+---vr_demo_save_states.py
+---vr_demo_replay_states.py
+---vr_demo_save_actions.py
+---vr_demo_replay_actions.py
+---vr_logs (folder containing saved data)
+
+Additional information:
+1) Most VR functions can be found in the gibson2/simulator.py
+2) The VrAgent and its associated VR objects can be found in gibson2/objects/vr_objects.py
+3) VR utility functions are found in gibson2/utils/vr_utils.py
+4) The VR renderer can be found in gibson2/render/mesh_renderer.py
+5) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in gibson2/render/cpp
+
+To get started with the iGibson VR experience run:
 
 $ python vr_playground.py
 
-To get the full VR playground experience. By default the LOAD_PARTIAL boolean is set to false to speed up loading (loads first 10 objects into the scene as well as some objects to interact with). Please edit this variable to True if you wish to load the entire Rs_int scene.
-
-Data saving/replay code can be found in vr_demos/data_save_replay.
-Run vr_demo_save to save a demo to a log file, and vr_demo_replay to run it again. 
-Please see the demos and gibson2/utils/vr_logging.py for more details on the data saving/replay system.
+By default the LOAD_PARTIAL boolean is set to false to speed up loading (loads first 10 objects into the scene as well as some objects to interact with). Please edit this variable to True if you wish to load the entire Rs_int scene.
 
 To use the VR assets, please access the Google drive folder at this link:
 https://drive.google.com/drive/folders/1zm3ZpPc7yHwyALEGfsb0_NybFMvV81Um?usp=sharing

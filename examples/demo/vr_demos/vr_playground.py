@@ -1,12 +1,13 @@
-""" VR playground containing various objects. This playground operates in a
-PBR scene. Please see vr_playground_no_pbr.py for a non-PBR experience.
+""" VR playground containing various objects. This playground operates in the
+Rs_int PBR scene.
 
 Important - VR functionality and where to find it:
 
 1) Most VR functions can be found in the gibson2/simulator.py
-2) VR utility functions are found in gibson2/utils/vr_utils.py
-3) The VR renderer can be found in gibson2/render/mesh_renderer.py
-4) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in gibson2/render/cpp
+2) The VrAgent and its associated VR objects can be found in gibson2/objects/vr_objects.py
+3) VR utility functions are found in gibson2/utils/vr_utils.py
+4) The VR renderer can be found in gibson2/render/mesh_renderer.py
+5) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in gibson2/render/cpp
 """
 
 import numpy as np
@@ -76,10 +77,8 @@ vr_agent = VrAgent(s)
 # Objects to interact with
 mass_list = [5, 10, 100, 500]
 mustard_start = [-1, 1.55, 1.2]
-mustard_list = []
 for i in range(len(mass_list)):
     mustard = YCBObject('006_mustard_bottle')
-    mustard_list.append(mustard)
     s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
     mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
     p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
@@ -100,7 +99,7 @@ while True:
 
     # Example of querying VR events to hide object
     if s.query_vr_event('right_controller', 'touchpad_press'):
-        s.set_hidden_state(basket, hide=not s.get_hidden_state(basket))
+        s.set_hidden_state(mustard, hide=not s.get_hidden_state(mustard))
 
     # Update VR objects
     vr_agent.update()
