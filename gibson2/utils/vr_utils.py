@@ -62,26 +62,27 @@ class VrData(object):
 
         return self.vr_data_dict[q]
 
-    def refresh_action_replay_data(self, ar_data):
+    def refresh_action_replay_data(self, ar_data, frame_num):
         """
-        Updates the vr dictionary with data from action replay.
+        Updates the vr dictionary with data from action replay. Needs a frame number
+        to get the correct slice of the saved data.
         """
         for device in self.devices:
-            device_data = ar_data['vr']['vr_device_data'][device].tolist()
+            device_data = ar_data['vr/vr_device_data/{}'.format(device)][frame_num].tolist()
             self.vr_data_dict[device] = [device_data[0], device_data[1:4], device_data[4:8], device_data[8:11], device_data[11:14], device_data[14:]]
             if device in self.controllers:
-                self.vr_data_dict['{}_button'.format(device)] = ar_data['vr']['vr_button_data'][device].tolist()
+                self.vr_data_dict['{}_button'.format(device)] = ar_data['vr/vr_button_data/{}'.format(device)][frame_num].tolist()
 
-        eye_data = ar_data['vr']['vr_eye_tracking_data'].tolist()
+        eye_data = ar_data['vr/vr_eye_tracking_data'][frame_num].tolist()
         self.vr_data_dict['eye_data'] = [eye_data[0], eye_data[1:4], eye_data[4:7], eye_data[7], eye_data[8]]
 
         events = []
         for controller in self.controllers:
-            for event in convert_binary_to_events(ar_data['vr']['vr_event_data'][device]):
+            for event in convert_binary_to_events(ar_data['vr/vr_event_data/{}'.format(controller)][frame_num]):
                 events.append([controller, event])
         self.vr_data_dict['event_data'] = events
 
-        pos_data = ar_data['vr']['vr_device_data']['vr_position_data'].tolist()
+        pos_data = ar_data['vr/vr_device_data/vr_position_data'][frame_num].tolist()
         self.vr_data_dict['vr_positions'] = [pos_data[:3], pos_data[3:]]
         # Action replay does not use VR settings, so we leave this as an empty list
         self.vr_data_dict['vr_settings'] = []
@@ -114,6 +115,8 @@ def convert_events_to_binary(events):
         event_idx = VR_EVENT_LIST.index(event)
         bin_events[event_idx] = 1
 
+    return bin_events
+
 def convert_binary_to_events(bin_events):
     """
     Converts a list of binary vr events to string names, from the following list:
@@ -123,6 +126,8 @@ def convert_binary_to_events(bin_events):
     for i in range(10):
         if bin_events[i]:
             str_events.append(VR_EVENT_LIST[i])
+
+    return str_events
 
 def move_player(s, touch_x, touch_y, movement_speed, relative_device):
     """Moves the VR player. Takes in the simulator,
@@ -146,3 +151,12 @@ def translate_vr_position_by_vecs(right_frac, forward_frac, right, forward, curr
     """direction vectors of the chosen VR device (HMD/controller), and adds this vector to the current offset."""
     vr_offset_vec = get_normalized_translation_vec(right_frac, forward_frac, right, forward)
     return [curr_offset[i] + vr_offset_vec[i] * movement_speed for i in range(3)]
+
+
+if __name__ == "__main__":
+    print('Running VR utils tests...')
+    example_events = ['grip_press', 'touchpad_touch', 'menu_unpress']
+    bin_events = convert_events_to_binary(example_events)
+    print(bin_events)
+    recovered_events = convert_binary_to_events(bin_events)
+    print(recovered_events)

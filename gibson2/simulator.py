@@ -677,6 +677,10 @@ class Simulator:
 
         return self.renderer.vrsys.pollVREvents()
 
+    # Returns the VR events processed by the simulator
+    def get_vr_events(self):
+        return self.vr_event_data
+
     # Queries system for a VR event, and returns true if that event happened this frame
     def query_vr_event(self, device, event):
         for ev_data in self.vr_event_data:
