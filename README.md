@@ -155,11 +155,9 @@ You can find all the VR demos in iGibson/examples/demo/vr_demos
 
 Run:
 
-$ python vr_playground_no_pbr (for a scene without PBR)
+$ python vr_playground.py
 
-or 
-
-$ python vr_playground_pbr (for the current state-of-the-art Gibson graphics)
+To get the full VR playground experience. By default the LOAD_PARTIAL boolean is set to false to speed up loading (loads first 10 objects into the scene as well as some objects to interact with). Please edit this variable to True if you wish to load the entire Rs_int scene.
 
 Data saving/replay code can be found in vr_demos/data_save_replay.
 Run vr_demo_save to save a demo to a log file, and vr_demo_replay to run it again. 
@@ -168,7 +166,7 @@ Please see the demos and gibson2/utils/vr_logging.py for more details on the dat
 To use the VR assets, please access the Google drive folder at this link:
 https://drive.google.com/drive/folders/1zm3ZpPc7yHwyALEGfsb0_NybFMvV81Um?usp=sharing
 
-You will need to download all the assets folders (vr_body, vr_hand, fetch) and place them in folders with the same name in your assets folder. In the case of fetch, this new folder can replace the contents of the pre-existing fetch folder in assets.
+You will need to download both vr_body and vr_hand and place them in folders with the same name in your assets folder.
 
 Have fun in VR!
 
