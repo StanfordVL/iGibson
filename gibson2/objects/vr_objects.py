@@ -294,9 +294,8 @@ class VrHand(ArticulatedObject):
         If vr_data is passed in, uses this data to update the hand instead of the simulator's data.
         """
         if vr_data:
-            controller_data = vr_data.query(self.vr_device)
-            transform_data = controller_data[:3]
-            touch_data = controller_data[6:]
+            transform_data = vr_data.query(self.vr_device)[:3]
+            touch_data = vr_data.query('{}_button'.format(self.vr_device))
         else:
             transform_data = self.sim.get_data_for_vr_device(self.vr_device)
             touch_data = self.sim.get_button_data_for_controller(self.vr_device)
@@ -384,7 +383,7 @@ class VrGazeMarker(VisualMarker):
         Updates the gaze marker using simulator data - if vr_data is not None, we use this data instead.
         """
         if vr_data:
-            eye_data = vr_data['eye_data']
+            eye_data = vr_data.query('eye_data')
         else:
             eye_data = self.sim.get_eye_tracking_data()
 

@@ -86,4 +86,5 @@ class MeshRendererVR(MeshRenderer):
     # Releases VR system and renderer
     def release(self):
         super().release()
-        self.vrsys.releaseVR()
+        if self.vr_settings.use_vr:
+            self.vrsys.releaseVR()

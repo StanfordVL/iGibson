@@ -310,7 +310,7 @@ class VRLogWriter():
             'left_controller': [],
             'right_controller': []
         }
-        for device, event in s.poll_vr_events():
+        for device, event in s.get_vr_events():
             controller_events[device].append(event)
         for controller in controller_events.keys():
             bin_events = convert_events_to_binary(controller_events[controller])
@@ -457,7 +457,7 @@ class VRLogReader():
         Returns all vr action data as a VrData object.
         """
         # Update VrData with new HF data
-        self.vr_data.refresh_action_replay_data(self.hf)
+        self.vr_data.refresh_action_replay_data(self.hf, self.frame_counter)
         return self.vr_data
 
     def read_value(self, value_path):
@@ -478,10 +478,6 @@ class VRLogReader():
                 an action that was previously registered with the VRLogWriter during data saving
         """
         full_action_path = 'action/' + action_path
-        if self.frame_counter == 0:
-            print('Printing first frame actions:')
-            print('Reading action at path {} for frame {}'.format(full_action_path, self.frame_counter))
-            print(self.hf[full_action_path][self.frame_counter])
         return self.hf[full_action_path][self.frame_counter]
     
     # TIMELINE: Use this as the while loop condition to keep reading frames!

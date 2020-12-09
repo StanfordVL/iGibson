@@ -81,7 +81,8 @@ def run_state_sr(mode):
     s.import_ig_scene(scene)
 
     # Create a VrAgent and it will handle all initialization and importing under-the-hood
-    vr_agent = VrAgent(s, use_constraints=(mode == 'save'))
+    # Data replay uses constraints during both save and replay modes
+    vr_agent = VrAgent(s, use_constraints=True)
 
     # Objects to interact with
     mass_list = [5, 10, 100, 500]
@@ -139,10 +140,10 @@ def run_state_sr(mode):
     else:
         # The VR reader automatically shuts itself down and performs cleanup once the while loop has finished running
         while vr_reader.get_data_left_to_read():
-            # We need to read frame to set the camera and read other values before the call to step
+            s.step()
+
             # Note that fullReplay is set to False for action replay
             vr_reader.read_frame(s, fullReplay=False)
-            s.step()
 
             # Read our mock action and hide/unhide the mustard based on its value
             mock_action = int(vr_reader.read_action(mock_vr_action_path)[0])
