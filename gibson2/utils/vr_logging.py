@@ -65,7 +65,7 @@ import numpy as np
 import pybullet as p
 import time
 
-from gibson2.utils.vr_utils import convert_events_to_binary
+from gibson2.utils.vr_utils import VrData, convert_events_to_binary
 
 class VRLogWriter():
     """Class that handles saving of VR data, physics data and user-defined actions.
@@ -389,6 +389,8 @@ class VRLogReader():
         self.total_frame_num = self.hf['vr/vr_device_data/hmd'].shape[0]
         # Boolean indicating if we still have data left to read
         self.data_left_to_read = True
+        # Placeholder VrData object, which will be filled every frame if we are performing action replay
+        self.vr_data = VrData()
         print('----- VRLogReader initialized -----')
         print('Preparing to read {0} frames'.format(self.total_frame_num))
 
@@ -449,6 +451,14 @@ class VRLogReader():
         # Sleep to match duration of this frame, to create an accurate replay
         if read_duration < frame_duration:
             time.sleep(frame_duration - read_duration)
+
+    def get_vr_action_data(self):
+        """
+        Returns all vr action data as a VrData object.
+        """
+        # Update VrData with new HF data
+        self.vr_data.refresh_action_replay_data(self.hf)
+        return self.vr_data
 
     def read_value(self, value_path):
         """Reads any saved value at value_path for the current frame.

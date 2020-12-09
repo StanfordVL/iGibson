@@ -1,13 +1,18 @@
 """ VR saving/replay demo.
 
-This demo saves the states of all objects in their entirety. The replay
-resulting from this is completely controlled by the saved state data, and does
-not involve any meaningful physical simulation.
+This demo saves the actions of certain objects as well as states. Either can
+be used to playback later in the replay demo.
+
+In this demo, we save some "mock" VR actions that are already saved by default,
+but can be saved separately as actions to demonstrate the action-saving system.
+During replay, we use a combination of these actions and saved values to get data
+that can be used to control the physics simulation without setting every object's
+transform each frame.
 
 Usage:
-python vr_states_sr.py --mode=[save/replay]
+python vr_actions_sr.py --mode=[save/replay]
 
-This demo saves to vr_logs/vr_states_sr.h5
+This demo saves to vr_logs/vr_actions_sr.h5
 Run this demo (and also change the filename) if you would like to save your own data."""
 
 import argparse
@@ -94,11 +99,15 @@ def run_state_sr(mode):
         s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
 
     # Note: Modify this path to save to different files
-    vr_log_path = 'vr_logs/vr_states_sr.h5'
+    vr_log_path = 'vr_logs/vr_actions_sr.h5'
+    mock_vr_action_path = 'mock_vr_action'
 
     if mode == 'save':
         # Saves every 2 seconds or so (200 / 90fps is approx 2 seconds)
         vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=True)
+
+        # Save a single button press as a mock action that demonstrates action-saving capabilities.
+        vr_writer.register_action(mock_vr_action_path, (1,))
 
         # Call set_up_data_storage once all actions have been registered (in this demo we only save states so there are none)
         # Despite having no actions, we need to call this function
@@ -113,8 +122,10 @@ def run_state_sr(mode):
             s.step(print_time=PRINT_FPS)
 
             # Example of querying VR events to hide object
+            # We will store this as a mock action, even though it is saved by default
             if s.query_vr_event('right_controller', 'touchpad_press'):
                 s.set_hidden_state(mustard, hide=not s.get_hidden_state(mustard))
+                vr_writer.save_action(mock_vr_action_path, np.array([1]))
 
             # Update VR objects
             vr_agent.update()
@@ -128,10 +139,19 @@ def run_state_sr(mode):
     else:
         # The VR reader automatically shuts itself down and performs cleanup once the while loop has finished running
         while vr_reader.get_data_left_to_read():
-            # We need to read frame before step for various reasons - one of them is that we need to set the camera
-            # matrix for this frame before rendering in step
-            vr_reader.read_frame(s, fullReplay=True)
+            # We need to read frame to set the camera and read other values before the call to step
+            # Note that fullReplay is set to False for action replay
+            vr_reader.read_frame(s, fullReplay=False)
             s.step()
+
+            # Read our mock action and hide/unhide the mustard based on its value
+            mock_action = int(vr_reader.read_action(mock_vr_action_path)[0])
+            if mock_action == 1:
+                s.set_hidden_state(mustard, hide=not s.get_hidden_state(mustard))
+
+            # Get relevant VR action data and update VR agent
+            vr_action_data = vr_reader.get_vr_action_data()
+            vr_agent.update(vr_action_data)
     
     s.disconnect()
 

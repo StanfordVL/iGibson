@@ -50,15 +50,17 @@ class VrData(object):
         self.controllers = ['left_controller', 'right_controller']
         self.devices = ['hmd'] + self.controllers
 
-    def query_data(self, query):
+    def query(self, q):
         """
         Queries VrData object and returns values. Please see class description for
         possible values that can be queried.
-        """
-        if query not in self.vr_data_dict.keys():
-            raise RuntimeError('ERROR: Key {} does not exist in VR data dictionary!'.format(query))
 
-        return self.vr_data_dict[query]
+        q is the input query and must be a string corresponding to one of the keys of the self.vr_data_dict object
+        """
+        if q not in self.vr_data_dict.keys():
+            raise RuntimeError('ERROR: Key {} does not exist in VR data dictionary!'.format(q))
+
+        return self.vr_data_dict[q]
 
     def refresh_action_replay_data(self, ar_data):
         """
