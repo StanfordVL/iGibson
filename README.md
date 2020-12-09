@@ -171,13 +171,9 @@ You can find all the VR demos in iGibson/examples/demo/vr_demos, which has the f
 
 --data_save_replay (folder)
 
----vr_demo_save_states.py
+---vr_states_sr.py
 
----vr_demo_replay_states.py
-
----vr_demo_save_actions.py
-
----vr_demo_replay_actions.py
+---vr_actions_sr.py
 
 ---vr_logs (folder containing saved data)
 
