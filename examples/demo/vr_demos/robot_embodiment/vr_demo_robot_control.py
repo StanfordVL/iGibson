@@ -17,8 +17,7 @@ from gibson2.utils.utils import parse_config
 from gibson2.utils.vr_utils import move_player
 from gibson2 import assets_path
 
-sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
-fetch_config = parse_config(os.path.join('..', '..', '..', 'configs', 'fetch_p2p_nav.yaml'))
+fetch_config = parse_config(os.path.join('..', '..', '..', 'configs', 'fetch_reaching.yaml'))
 
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = True
@@ -70,11 +69,13 @@ fvr = FetchVR(fetch_config, s, [0.5, -1.5, 0], update_freq=1)
 gm = VrGazeMarker(s)
 
 # Objects to interact with
-basket_path = os.path.join(sample_urdf_folder, 'object_ZU6u5fvE8Z1.urdf')
-basket = ArticulatedObject(basket_path, scale=0.8)
-s.import_object(basket)
-basket.set_position([-1, 1.55, 1.2])
-p.changeDynamics(basket.body_id, -1, mass=5)
+mass_list = [5, 10, 100, 500]
+mustard_start = [-1, 1.55, 1.2]
+for i in range(len(mass_list)):
+    mustard = YCBObject('006_mustard_bottle')
+    s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+    mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
+    p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
 
 s.optimize_vertex_and_texture()
 
