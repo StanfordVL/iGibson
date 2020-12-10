@@ -4,10 +4,10 @@ Dataset
 In dataset we include two parts. First we introduce the new iGibson dataset in this release. Secondly, we introduce
  how to download previous Gibson dataset, which is updated and compatible with iGibson.
 
-- [Download iGibson Data](#download-igibson-data)
-- [Download Gibson Data](#download-gibson-data)
+- [Download iGibson Scenes](#download-igibson-scenes)
+- [Download Gibson Scenes](#download-gibson-scenes)
 
-Download iGibson Data
+Download iGibson Scenes
 ------------------------
 
 We annotate fifteen 3D reconstructions of real-world scans and convert them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets ([ShapeNet Dataset](https://www.shapenet.org/), [Motion Dataset](http://motiondataset.zbuaa.com/), [SAPIEN Dataset](https://sapien.ucsd.edu/)) enriched with annotations of material and dynamic properties. 
@@ -29,7 +29,7 @@ The new dataset format can be found [here](https://github.com/StanfordVL/iGibson
 #### Cubicasa / 3D Front Dataset
 We provide support for Cubicasa and 3D Front Dataset, to import them into iGibson, follow the guide [here](https://github.com/StanfordVL/iGibson/tree/master/gibson2/utils/data_utils/ext_scene). 
 
-Download Gibson Data
+Download Gibson Scenes
 ------------------------
 Original Gibson Environment Dataset has been updated to use with iGibson simulator. The link will first take you to
  the license agreement and then to the data. 

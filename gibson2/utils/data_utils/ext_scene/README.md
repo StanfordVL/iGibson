@@ -16,6 +16,8 @@ The example script executes the following steps
 
 Above shows some example scenes from CubiCasa5K (first row) and 3D-Front(second row).
 
+**Important Note:** CubiCasa5K and 3D-Front scenes have much less objects per scene (<40) on average than those of iGibson (75).  
+
 We currently only offer support for Linux.
 
 ## Installing Blender

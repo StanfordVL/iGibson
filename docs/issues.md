@@ -29,11 +29,5 @@ If the original installation doesn't work, try the following:
 
 Also, the EGL setup part is borrowed from Erwin Coumans [egl_example](https://github.com/erwincoumans/egl_example). It would be informative to see if that repository can run on your machine.
 
-### Pybullet error
-#### `ValueError: not enough values to unpack (expected 13, got 12)`
-This is because we require a custom version of pybullet, if in your virtual/conda environment there is already pybullet installed, you need to first uninstall `pip uninstall pybullet` and then repeat install iGibson with
-```bash
-pip install gibson2
-```
-
-or ```pip install -e .``` if you installed from source. 
+### Other issues
+For other issues, please submit an issue in our [github repository](https://github.com/StanfordVL/iGibson/issues). 

@@ -12,7 +12,7 @@ JSON_PATH=$(basename $JSON_PATH)
 THREEDFRONT_ID="${JSON_PATH%.*}"
 echo $THREEDFRONT_ID
 
-python step_2_generate_scene.py --model_dir \
+python step_2_generate_scene.py --overwrite --model_dir \
     $THREEDFRONT_DIR/scenes/$THREEDFRONT_ID
 blender -b --python step_3_uv_unwrap.py -- \
     $THREEDFRONT_DIR/scenes/$THREEDFRONT_ID
