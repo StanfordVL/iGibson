@@ -110,7 +110,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='gibson2',
-    version='0.0.5',
+    version='1.0.0',
     author='Stanford University',
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -121,7 +121,7 @@ setup(
             'gym>=0.12',
             'numpy>=1.16.0',
             'scipy>=1.2.1',
-            'pybullet @ https://github.com/StanfordVL/bullet3/archive/master.zip',
+            'pybullet>=2.6.4',
             'transforms3d>=0.3.1',
             'opencv-python>=3.4.8',
             'Pillow>=5.4.0',

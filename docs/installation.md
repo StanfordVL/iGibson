@@ -29,8 +29,12 @@ pip install gibson2  # This step takes about 4 minutes
 python -m gibson2.scripts.demo_static
 ```
 
-Note: we use a custom version of pybullet, so if you have a previous version of pybullet installed, it will not be compabile with iGibson. We recommend you start from a fresh virtualenv/conda environment. Since install iGibson(`gibson`) requires compiling pybullet, it takes about 4 minutes. 
+Note: we support using a custom pybullet version to speed up the physics in iGibson, if you want to have the speed up, you would need to do the following steps after installation:
 
+```bash
+pip uninstall pybullet
+pip install https://github.com/StanfordVL/bullet3/archive/master.zip
+```
 
 ### 2. Docker image
 
@@ -74,7 +78,12 @@ source activate py3-igibson
 pip install -e . # This step takes about 4 minutes
 ```
 
-Note: we use a custom version of pybullet, so if you have a previous version of pybullet installed, it will not be compabile with iGibson. We recommend you start from a fresh virtualenv/conda environment. Since install iGibson(`gibson`) requires compiling pybullet, it takes about 4 minutes. 
+Note: we support using a custom pybullet version to speed up the physics in iGibson, if you want to have the speed up, you would need to do the following steps after installation:
+
+```bash
+pip uninstall pybullet
+pip install https://github.com/StanfordVL/bullet3/archive/master.zip
+```
 
 We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
 
