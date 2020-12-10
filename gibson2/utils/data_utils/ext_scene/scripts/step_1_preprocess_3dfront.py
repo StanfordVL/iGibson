@@ -399,7 +399,7 @@ def get_all_objs(model_id):
             normal = edge_y / np.linalg.norm(edge_y)
             z = (scaled_bbox+pos)[:,1]
             z[z < 0] = 0
-            z[z > zmax] = zmax-0.1
+            z[z > z_max] = z_max-0.01
             center = np.array([center_x, center_y])
             y = edge_x / 2.
             x = edge_y / 2.
