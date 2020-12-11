@@ -6,7 +6,7 @@ from gibson2 import assets_path
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.utils import multQuatLists
-from gibson2.utils.vr_utils import move_player, calc_offset, translate_vr_position_by_vecs
+from gibson2.utils.vr_utils import move_player, calc_offset, translate_vr_position_by_vecs, calc_z_dropoff
 
 
 class VrAgent(object):
@@ -147,55 +147,59 @@ class VrBody(ArticulatedObject):
         # Only update the body if the HMD data is valid - this also only teleports the body to the player
         # once the HMD has started tracking when they first load into a scene
         if hmd_is_valid:
-            # Set body to HMD on the first frame
-            if self.first_frame:
-                self.set_position(hmd_pos)
-                self.first_frame = False
-
+            # Get hmd and current body rotations for use in calculations
             hmd_x, hmd_y, hmd_z = p.getEulerFromQuaternion(hmd_rot)
             _, _, curr_z = p.getEulerFromQuaternion(self.get_orientation())
 
-            # Check whether angle between forward vector and pos/neg z direction is less than self.z_rot_thresh, and only
-            # update if this condition is fulfilled - this stops large body angle swings when HMD is pointed up/down
-            n_forward = np.array(forward)
-            # Normalized forward direction and z direction
-            n_forward = n_forward / np.linalg.norm(n_forward)
-            n_z = np.array([0.0, 0.0, 1.0])
-            # Calculate angle and convert to degrees
-            theta_z = np.arccos(np.dot(n_forward, n_z)) / np.pi * 180
+            # Reset the body position to the HMD if either of the controller reset buttons are pressed
+            if vr_data:
+                grip_press =(['left_controller', 'grip_press'] in vr_data.query('event_data') 
+                            or ['right_controller', 'grip_press'] in vr_data.query('event_data'))
+            else:
+                grip_press = (self.sim.query_vr_event('left_controller', 'grip_press') or self.sim.query_vr_event('right_controller', 'grip_press'))
+            if grip_press:
+                self.set_position(hmd_pos)
+                self.set_orientation(p.getQuaternionFromEuler([0, 0, hmd_z]))
 
-            # Move theta into range 0 to max_z
-            if theta_z > (180.0 - self.max_z):
-                theta_z = 180.0 - theta_z
+            # If VR body is more than 2 meters away from the HMD, don't update its constraint
+            curr_pos = np.array(self.get_position())
+            dest = np.array(hmd_pos)
+            dist_to_dest = np.linalg.norm(curr_pos - dest)
 
-            # If we are out of range, get how much we are out of range between 0 and threshold angle
-            # Then apply linear falloff of z_multiplier in that range
-            z_mult = 1.0
-            if self.min_z < theta_z and theta_z < self.max_z:
-                # Apply the following quadratic to get faster falloff closer to the poles:
-                # y = -1/(min_z - max_z)^2 * x*2 + 2 * max_z / (min_z - max_z) ^2 * x + (min_z^2 - 2 * min_z * max_z) / (min_z - max_z) ^2
-                d = (self.min_z - self.max_z) ** 2
-                z_mult = -1/d * theta_z ** 2 + 2*self.max_z/d * theta_z + (self.min_z ** 2 - 2*self.min_z*self.max_z)/d
-            elif theta_z < self.min_z:
-                z_mult = 0.0
+            if dist_to_dest < 2.0:
 
-            delta_z = hmd_z - curr_z
-            # Modulate rotation fraction by z_mult
-            new_z = curr_z + delta_z * z_mult
-            new_body_rot = p.getQuaternionFromEuler([0, 0, new_z])
+                # Check whether angle between forward vector and pos/neg z direction is less than self.z_rot_thresh, and only
+                # update if this condition is fulfilled - this stops large body angle swings when HMD is pointed up/down
+                n_forward = np.array(forward)
+                # Normalized forward direction and z direction
+                n_forward = n_forward / np.linalg.norm(n_forward)
+                n_z = np.array([0.0, 0.0, 1.0])
+                # Calculate angle and convert to degrees
+                theta_z = np.arccos(np.dot(n_forward, n_z)) / np.pi * 180
 
-            # Update body transform constraint
-            p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
+                # Move theta into range 0 to max_z
+                if theta_z > (180.0 - self.max_z):
+                    theta_z = 180.0 - theta_z
 
-            # Use 100% strength haptic pulse in both controllers for vr body collisions - this should notify the user immediately
-            # Note: haptics can't be used in networking situations like MUVR (due to network latency)
-            # or in action replay, since no VR device is connected
-            if not vr_data:
-                if len(p.getContactPoints(self.body_id)) > 0:
-                    for controller in ['left_controller', 'right_controller']:
-                        is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
-                        if is_valid:
-                            self.sim.trigger_haptic_pulse(controller, 1.0)
+                # Calculate z multiplication coefficient based on how much we are looking in up/down direction
+                z_mult = calc_z_dropoff(theta_z, self.min_z, self.max_z)
+                delta_z = hmd_z - curr_z
+                # Modulate rotation fraction by z_mult
+                new_z = curr_z + delta_z * z_mult
+                new_body_rot = p.getQuaternionFromEuler([0, 0, new_z])
+
+                # Update body transform constraint
+                p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
+
+                # Use 100% strength haptic pulse in both controllers for vr body collisions - this should notify the user immediately
+                # Note: haptics can't be used in networking situations like MUVR (due to network latency)
+                # or in action replay, since no VR device is connected
+                if not vr_data:
+                    if len(p.getContactPoints(self.body_id)) > 0:
+                        for controller in ['left_controller', 'right_controller']:
+                            is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
+                            if is_valid:
+                                self.sim.trigger_haptic_pulse(controller, 1.0)
 
 
 class VrHand(ArticulatedObject):
