@@ -105,6 +105,22 @@ class VrData(object):
 
 # ----- Utility functions ------
 
+def calc_z_dropoff(theta, t_min, t_max):
+    """
+    Calculates and returns the dropoff coefficient for a z rotation (used in both VR body and Fetch VR).
+    The dropoff is 1 if theta > t_max, falls of quadratically between t_max and t_min and is then clamped to 0 thereafter.
+    """
+    z_mult = 1.0
+    if t_min < theta and theta < t_max:
+        # Apply the following quadratic to get faster falloff closer to the poles:
+        # y = -1/(min_z - max_z)^2 * x*2 + 2 * max_z / (min_z - max_z) ^2 * x + (min_z^2 - 2 * min_z * max_z) / (min_z - max_z) ^2
+        d = (t_min - t_max) ** 2
+        z_mult = -1/d * theta ** 2 + 2*t_max/d * theta + (t_min ** 2 - 2*t_min*t_max)/d
+    elif theta < t_min:
+        z_mult = 0.0
+
+    return z_mult
+
 def convert_events_to_binary(events):
     """
     Converts a list of vr events to binary form, resulting in the following list:
