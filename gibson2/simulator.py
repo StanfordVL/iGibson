@@ -609,7 +609,9 @@ class Simulator:
         """
         # First poll VR events and store them
         if self.can_access_vr_context:
-            self.vr_event_data = self.poll_vr_events()
+            # Note: this should only be called once per frame - use get_vr_events to read the event data list in
+            # subsequent read operations
+            self.poll_vr_events()
 
         physics_start_time = time.time()
         physics_timestep_num = int(self.render_timestep / self.physics_timestep)
@@ -675,7 +677,8 @@ class Simulator:
         if not self.can_access_vr_context:
             raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
-        return self.renderer.vrsys.pollVREvents()
+        self.vr_event_data = self.renderer.vrsys.pollVREvents()
+        return self.vr_event_data
 
     # Returns the VR events processed by the simulator
     def get_vr_events(self):

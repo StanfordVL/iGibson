@@ -1,8 +1,5 @@
 """ Multi-user VR demo. Always start server running before the client.
 
-TODO: Add more detail in description!
-TODO: Upgrade to use PBR scenes in future!
-
 Usage: python muvr_demo.py --mode=[server or client] --host=[localhost or ip address] --port=[valid port number]
 """
 
@@ -35,8 +32,8 @@ PRINT_FPS = False
 
 # Note: This is where the VR configuration for the MUVR experience can be changed.
 RUN_SETTINGS = {
-    'client': VrSettings(use_vr=True),
-    'server': VrSettings(use_vr=False)
+    'client': VrSettings(use_vr=False),
+    'server': VrSettings(use_vr=True)
 }
 
 
@@ -88,15 +85,17 @@ def run_muvr(mode='server', host='localhost', port='8885'):
     # Spawn two agents - one for client and one for the server
     # The client loads the agents in with MUVR set to true - this allows the VrAgent to
     # be set up just for rendering, with no physics or constraints
-    client_agent = VrAgent(s, agent_num=1, muvr=not is_server)
-    server_agent = VrAgent(s, agent_num=2, muvr=not is_server)
+    client_agent = VrAgent(s, agent_num=1)
+    server_agent = VrAgent(s, agent_num=2)
 
     # Objects to interact with
-    basket_path = os.path.join(sample_urdf_folder, 'object_ZU6u5fvE8Z1.urdf')
-    basket = ArticulatedObject(basket_path, scale=0.8)
-    s.import_object(basket)
-    basket.set_position([-1, 1.55, 1.2])
-    p.changeDynamics(basket.body_id, -1, mass=5)
+    mass_list = [5, 10, 100, 500]
+    mustard_start = [-1, 1.55, 1.2]
+    for i in range(len(mass_list)):
+        mustard = YCBObject('006_mustard_bottle')
+        s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+        mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
+        p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
 
     s.optimize_vertex_and_texture()
 
@@ -126,6 +125,9 @@ def run_muvr(mode='server', host='localhost', port='8885'):
             # Update VR agent on server-side
             if s.vr_settings.use_vr:
                 server_agent.update()
+                # Need to update client agent every frame, even if VR data is stale
+                if vr_server.vr_data_persistent:
+                    client_agent.update(vr_server.vr_data_persistent)
             
             # Send the current frame to be rendered by the client,
             # and also ingest new client data

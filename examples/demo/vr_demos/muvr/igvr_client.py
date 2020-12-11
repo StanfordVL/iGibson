@@ -69,14 +69,14 @@ class IGVRClient(ConnectionListener):
                 instance.poses_rot = poses_rot
 
         # Render the frame in VR
-        # TODO: Add this back in later
-        #self.s.viewer.update()
-        # Sets the VR starting position if one has been specified by the user
-        self.s.perform_vr_start_pos_move()
+        self.s.viewer.update()
+        if self.s.can_access_vr_context:
+            self.s.poll_vr_events()
+            # Sets the VR starting position if one has been specified by the user
+            self.s.perform_vr_start_pos_move()
 
-        # Update VR offset so updated value can be used in server
-        self.vr_offset = self.client_agent.get_frame_offset()
-        self.s.set_vr_offset(self.vr_offset)
+            # Update VR offset so updated value can be used in server
+            self.client_agent.update_frame_offset()
 
     # Standard methods for networking diagnostics
     def Network_connected(self, data):
@@ -138,19 +138,19 @@ class IGVRClient(ConnectionListener):
         """
         Refreshes frame data that was sent from the server.
         """
-        print("Refresh time: {}".format(time.time()))
+        #print("Refresh time: {}".format(time.time()))
         if self.is_connected:
+            connection.Pump()
             self.Pump()
 
     def send_vr_data(self):
         """
         Generates and sends vr data over to the server.
         """
-        print("Send time: {}".format(time.time()))
+        #print("Send time: {}".format(time.time()))
         # First generate VR data
         vr_data = self.generate_vr_data()
 
         # Send to a server if connected
         if self.is_connected:
             self.Send({"action":"vrdata", "vr_data":vr_data})
-            connection.Pump()

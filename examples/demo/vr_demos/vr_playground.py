@@ -22,7 +22,6 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.object_base import Object
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.vr_objects import VrAgent
-from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
