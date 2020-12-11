@@ -92,7 +92,7 @@ class VrData(object):
         Updates the vr dictionary with data from MUVR.
         """
         for device in self.devices:
-            device_data = muvr_device[device]
+            device_data = muvr_data[device]
             self.vr_data_dict[device] = device_data[:6]
             if device in self.controllers:
                 self.vr_data_dict['{}_button'.format(device)] = device_data[6:]

@@ -5,6 +5,7 @@ import numpy as np
 import time
 
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGroup
+from gibson2.utils.vr_utils import VrData
 
 from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server
@@ -55,6 +56,9 @@ class IGVRServer(Server):
         print('IGVR server launched!')
         # This server manages a single vr client
         self.vr_client = None
+        # Single VrData object that gets refreshed every frame
+        # This is used to update the client agent's server-side VR data
+        self.vr_data_persistent = None
         self.last_comm_time = time.time()
 
     def has_client(self):
@@ -78,31 +82,10 @@ class IGVRServer(Server):
         """
         time_since_last_comm = time.time() - self.last_comm_time
         self.last_comm_time = time.time()
-        #print("Time since last comm: {}".format(time_since_last_comm))
-        #print("Comm fps: {}".format(1/time_since_last_comm))
-        # Only update if there is data to read - when the client is in non-vr mode, it sends empty lists
-        if vr_data:
-            # Delegate manual updates to the VrAgent class
-            #self.client_agent.update(vr_data)
-            gm = self.client_agent.vr_dict['gaze_marker']
-            eye_dat = vr_data['eye_data']
-
-            is_eye_data_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = eye_dat
-            if is_eye_data_valid:
-                print("Old positoin: {}".format(gm.get_position()))
-                updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
-                print("New position: {}".format(updated_marker_pos))
-                gm.set_position(updated_marker_pos)
-                print("----- Eye data is valid! -----")
-
-            """
-            print("Current client position in server:")
-            print(self.client_agent.vr_dict['body'].get_position())
-            print(self.client_agent.vr_dict['left_hand'].get_position())
-            print(self.client_agent.vr_dict['right_hand'].get_position())
-            print(self.client_agent.vr_dict['gaze_marker'].get_position())
-            print("Eye data: {}".format(vr_data['eye_data']))
-            """
+        print("Time since last comm: {}".format(time_since_last_comm))
+        print("Comm fps: {}".format(1/max(0.0001, time_since_last_comm)))
+        # Set new VR data object - this is used each frame to update the client agent
+        self.vr_data_persistent = vr_data
     
     def Connected(self, channel, addr):
         """

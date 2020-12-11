@@ -58,29 +58,27 @@ class VrAgent(object):
         for vr_obj in self.vr_dict.values():
             vr_obj.update(vr_data=vr_data)
 
-    # TODO: Fix this and get it working with MUVR
-    def get_frame_offset(self):
+    def update_frame_offset(self):
         """
         Calculates the new VR offset after a single frame of VR interaction.
         """
-        # TODO: Fix this calculation!
-        o = self.sim.get_vr_offset()
-        return self.sim.get_vr_offset()
-
         new_offset = self.sim.get_vr_offset()
         for hand in ['left', 'right']:
             vr_device = '{}_controller'.format(hand)
             is_valid, trans, rot = self.sim.get_data_for_vr_device(vr_device)
+            if not is_valid:
+                continue
+
             trig_frac, touch_x, touch_y = self.sim.get_button_data_for_controller(vr_device)
             if hand == self.sim.vr_settings.movement_controller and self.sim.vr_settings.touchpad_movement:
                 new_offset = calc_offset(self.sim, touch_x, touch_y, self.sim.vr_settings.movement_speed, self.sim.vr_settings.relative_movement_device)
         
             # Offset z coordinate using menu press
-            if [vr_device, 'menu_press'] in self.sim.poll_vr_events():
+            if self.sim.query_vr_event(vr_device, 'menu_press'):
                 vr_z_offset = 0.01 if hand == 'right' else -0.01
                 new_offset = [new_offset[0], new_offset[1], new_offset[2] + vr_z_offset]
-        
-        return new_offset
+
+            self.sim.set_vr_offset(new_offset)
 
 
 class VrBody(ArticulatedObject):
