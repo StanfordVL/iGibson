@@ -94,7 +94,6 @@ class VrBody(ArticulatedObject):
         self.sim = s
         self.use_constraints = use_constraints
         super(VrBody, self).__init__(filename=self.vr_body_fpath, scale=1)
-        self.first_frame = True
         # Start body far above the scene so it doesn't interfere with physics
         self.start_pos = [30, 0, z_coord]
         # Number of degrees of forward axis away from +/- z axis at which HMD stops rotating body
