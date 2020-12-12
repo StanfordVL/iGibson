@@ -27,7 +27,7 @@ from gibson2.simulator import Simulator
 from gibson2 import assets_path
 
 # Set to false to load entire Rs_int scene
-LOAD_PARTIAL = True
+LOAD_PARTIAL = False
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = True
 
