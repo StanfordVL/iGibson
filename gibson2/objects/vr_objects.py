@@ -100,6 +100,16 @@ class VrBody(ArticulatedObject):
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         self.init_body()
 
+    def _load(self):
+        """
+        Overidden load that keeps VrBody awake upon initialization.
+        """
+        body_id = p.loadURDF(self.filename, globalScaling=self.scale,
+                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+        self.mass = p.getDynamicsInfo(body_id, -1)[0]
+
+        return body_id
+
     def init_body(self):
         """
         Initializes VR body to start in a specific location.
@@ -266,6 +276,16 @@ class VrHand(ArticulatedObject):
             self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         else:
             self.sim.import_object(self, use_pbr=True, use_pbr_mapping=True, shadow_caster=True)
+
+    def _load(self):
+        """
+        Overidden load that keeps VrHand awake upon initialization.
+        """
+        body_id = p.loadURDF(self.filename, globalScaling=self.scale,
+                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+        self.mass = p.getDynamicsInfo(body_id, -1)[0]
+
+        return body_id
 
     def hand_setup(self, z_coord):
         """
