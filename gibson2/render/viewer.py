@@ -9,8 +9,8 @@ import numpy as np
 import pybullet as p
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.utils import rotate_vector_2d
+from gibson2.utils.constants import ManipulationMode, SubgoalMode
 import time
-
 
 class Viewer:
     def __init__(self,
@@ -53,7 +53,8 @@ class Viewer:
 
         # Flag to control if the mouse interface is in navigation, manipulation
         # or motion planning/execution mode
-        self.manipulation_mode = 0
+        self.manipulation_mode = ManipulationMode.NAV
+        self.subgoal_mode = SubgoalMode.PUSH
 
         # Video recording
         self.recording = False  # Boolean if we are recording frames from the viewer
@@ -286,7 +287,7 @@ class Viewer:
         """
 
         # Navigation mode
-        if self.manipulation_mode == 0:
+        if self.manipulation_mode == ManipulationMode.NAV:
             # Only once, when pressing left mouse while ctrl key is pressed
             if flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_CTRLKEY and not self.right_down:
                 self._mouse_ix, self._mouse_iy = x, y
@@ -359,7 +360,7 @@ class Viewer:
                     self.pz = max(self.min_cam_z, self.pz)
 
         # Manipulation mode
-        elif self.manipulation_mode == 1:
+        elif self.manipulation_mode == ManipulationMode.MANIP:
             # Middle mouse button press or only once, when pressing left mouse
             # while shift key is pressed (Mac compatibility)
             if (event == cv2.EVENT_MBUTTONDOWN) or (flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down):
@@ -390,7 +391,7 @@ class Viewer:
                     self.move_constraint_z(dy)
 
         # Motion planning / execution mode
-        elif self.manipulation_mode == 2 and not self.block_command:
+        elif self.manipulation_mode == ManipulationMode.PLANNING and not self.block_command:
             # left mouse button press
             if event == cv2.EVENT_LBUTTONDOWN:
                 self._mouse_ix, self._mouse_iy = x, y
@@ -424,17 +425,30 @@ class Viewer:
             # Arm motion
             if event == cv2.EVENT_MBUTTONDOWN:
                 hit_pos, hit_normal, body_id, link_id = self.get_hit(x, y)
+
                 if hit_pos is not None:
                     self.block_command = True
-                    plan = self.planner.plan_arm_push(
-                        hit_pos, -np.array(hit_normal), use_normal=False)
-                    #self.planner.execute_arm_grasp(
-                    #    plan, hit_pos, -np.array(hit_normal), body_id, link_id)
 
-                    self.planner.execute_arm_pull(
-                        plan, hit_pos, -np.array(hit_normal),
-                        body_id, link_id
-                    )
+                    if self.subgoal_mode == SubgoalMode.PUSH:
+                        plan = self.planner.plan_arm_push(
+                            hit_pos, -np.array(hit_normal), use_normal=False)
+                        self.planner.execute_arm_push(plan, hit_pos, -np.array(hit_normal))
+                    elif self.subgoal_mode == SubgoalMode.PULL:
+                        plan = self.planner.plan_arm_push(
+                            hit_pos, -np.array(hit_normal), use_normal=False)
+                        self.planner.execute_arm_pull(
+                            plan, hit_pos, -np.array(hit_normal),
+                            body_id, link_id
+                        )
+                    elif self.subgoal_mode == SubgoalMode.PICK:
+                        if self.planner.attachment is None:
+                            plan = self.planner.plan_arm_push(
+                                hit_pos, -np.array(hit_normal), use_normal=False)
+                            self.planner.execute_arm_grasp(
+                               plan, hit_pos, -np.array(hit_normal), body_id, link_id)
+                    elif self.subgoal_mode == SubgoalMode.PLACE:
+                        self.planner.attachment = None
+
                     self.block_command = False
 
     def show_help_text(self, frame):
@@ -543,6 +557,8 @@ class Viewer:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, cv2.LINE_AA)
         cv2.putText(frame, ["nav mode", "manip mode", "planning mode"][self.manipulation_mode], (10, 60),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, cv2.LINE_AA)
+        cv2.putText(frame, ["push", "pull", "pick", "place"][self.subgoal_mode], (180, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, cv2.LINE_AA)
         self.show_help_text(frame)
 
         cv2.imshow('ExternalView', frame)
@@ -630,6 +646,12 @@ class Viewer:
             self.middle_down = False
             self.right_down = False
             self.manipulation_mode = (self.manipulation_mode + 1) % 3
+
+        elif q == ord('n'):
+            self.left_down = False
+            self.middle_down = False
+            self.right_down = False
+            self.subgoal_mode = (self.subgoal_mode + 1) % 4
 
         if self.recording and not self.pause_recording:
             cv2.imwrite(os.path.join(self.video_folder, '{:05d}.png'.format(self.frame_idx)),

@@ -25,6 +25,8 @@ def run_example(args):
     while True:
         action = np.zeros(nav_env.action_space.shape)
         state, reward, done, _ = nav_env.step(action)
+        if motion_planner.attachment:
+            motion_planner.attachment.assign()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

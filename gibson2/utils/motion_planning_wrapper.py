@@ -19,6 +19,8 @@ from gibson2.external.pybullet_tools.utils import get_base_values
 from gibson2.external.pybullet_tools.utils import plan_base_motion_2d
 from gibson2.external.pybullet_tools.utils import get_moving_links
 from gibson2.external.pybullet_tools.utils import is_collision_free
+from gibson2.external.pybullet_tools.utils import create_attachment
+from gibson2.external.pybullet_tools.utils import Attachment
 
 from gibson2.utils.utils import rotate_vector_2d, rotate_vector_3d
 from gibson2.utils.utils import l2_distance, quatToXYZW
@@ -88,6 +90,8 @@ class MotionPlanningWrapper(object):
                 self.marker, use_pbr=False)
             self.env.simulator.import_object(
                 self.marker_direction, use_pbr=False)
+
+        self.attachment = None
 
     def set_marker_position(self, pos):
         """
@@ -234,7 +238,10 @@ class MotionPlanningWrapper(object):
                          way_point[1],
                          way_point[2]],
                         z=self.initial_height)
+                    if self.attachment:
+                        self.attachment.assign()
                     self.simulator_sync()
+
                     #self.simulator_step()
                     # sleep(0.005) # for animation
             else:
@@ -484,7 +491,9 @@ class MotionPlanningWrapper(object):
                         self.robot_id, self.arm_joint_ids, joint_way_point)
                     set_base_values_with_z(
                         self.robot_id, base_pose, z=self.initial_height)
-                    self.simulator_step()
+                    if self.attachment:
+                        self.attachment.assign()
+                    self.simulator_sync()
                     # sleep(0.02)  # animation
             else:
                 set_joint_positions(
@@ -670,8 +679,9 @@ class MotionPlanningWrapper(object):
         if plan is not None:
             self.dry_run_arm_plan(plan)
 
-            cid = self.createConstraint(self.robot_id, self.robot.end_effector_part_index(), target_body_id,
-                                        target_link_id, hit_pos, constraint_type=p.JOINT_FIXED, max_force=1000)
+            self.attachment = create_attachment(self.robot_id, self.robot.end_effector_part_index(), target_body_id)
+            #cid = self.createConstraint(self.robot_id, self.robot.end_effector_part_index(), target_body_id,
+            #                            target_link_id, hit_pos, constraint_type=p.JOINT_FIXED, max_force=1000)
             #self.interact_pull(hit_pos, -hit_normal)
             #p.removeConstraint(cid)
             #set_joint_positions(self.robot_id, self.arm_joint_ids,

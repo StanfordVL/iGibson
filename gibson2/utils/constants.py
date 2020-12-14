@@ -7,6 +7,16 @@ from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 import gibson2
 import os
 
+class ManipulationMode(IntEnum):
+    NAV = 0
+    MANIP = 1
+    PLANNING = 2
+
+class SubgoalMode(IntEnum):
+    PUSH = 0
+    PULL = 1
+    PICK = 2
+    PLACE = 3
 
 class SemanticClass(IntEnum):
     BACKGROUND = 0
