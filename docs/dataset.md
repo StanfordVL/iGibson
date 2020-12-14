@@ -23,6 +23,7 @@ To download the dataset, you need to first configure where the dataset is to be 
 python -m gibson2.utils.assets_utils --download_ig_dataset
 ```
 
+If the script fails to work, you can download from this [direct link](https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz) and extract to `your_installation_path/gibson2/data/ig_dataset`.
 #### Dataset Format
 The new dataset format can be found [here](https://github.com/StanfordVL/iGibson/tree/master/gibson2/utils/data_utils). 
 
