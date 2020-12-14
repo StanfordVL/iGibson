@@ -208,7 +208,7 @@ class Viewer:
         hit_normal = None
         if len(res) > 0 and res[0][0] != -1:
             object_id, link_id, _, hit_pos, hit_normal = res[0]
-        return hit_pos, hit_normal
+        return hit_pos, hit_normal, object_id, link_id
 
     def remove_constraint(self):
         """
@@ -395,11 +395,11 @@ class Viewer:
             if event == cv2.EVENT_LBUTTONDOWN:
                 self._mouse_ix, self._mouse_iy = x, y
                 self.left_down = True
-                self.hit_pos, _ = self.get_hit(x, y)
+                self.hit_pos, _, _, _ = self.get_hit(x, y)
 
             # Base motion
             if event == cv2.EVENT_LBUTTONUP:
-                hit_pos, _ = self.get_hit(x, y)
+                hit_pos, _, _, _ = self.get_hit(x, y)
                 target_yaw = np.arctan2(
                     hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
                 self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
@@ -415,7 +415,7 @@ class Viewer:
             # Visualize base subgoal orientation
             if event == cv2.EVENT_MOUSEMOVE:
                 if self.left_down:
-                    hit_pos, _ = self.get_hit(x, y)
+                    hit_pos, _, _, _ = self.get_hit(x, y)
                     target_yaw = np.arctan2(
                         hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
                     self.planner.set_marker_position_yaw(
@@ -423,13 +423,18 @@ class Viewer:
 
             # Arm motion
             if event == cv2.EVENT_MBUTTONDOWN:
-                hit_pos, hit_normal = self.get_hit(x, y)
+                hit_pos, hit_normal, body_id, link_id = self.get_hit(x, y)
                 if hit_pos is not None:
                     self.block_command = True
                     plan = self.planner.plan_arm_push(
-                        hit_pos, -np.array(hit_normal))
-                    self.planner.execute_arm_push(
-                        plan, hit_pos, -np.array(hit_normal))
+                        hit_pos, -np.array(hit_normal), use_normal=False)
+                    #self.planner.execute_arm_grasp(
+                    #    plan, hit_pos, -np.array(hit_normal), body_id, link_id)
+
+                    self.planner.execute_arm_pull(
+                        plan, hit_pos, -np.array(hit_normal),
+                        body_id, link_id
+                    )
                     self.block_command = False
 
     def show_help_text(self, frame):

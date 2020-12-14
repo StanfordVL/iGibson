@@ -235,6 +235,7 @@ class MotionPlanningWrapper(object):
                          way_point[2]],
                         z=self.initial_height)
                     self.simulator_sync()
+                    #self.simulator_step()
                     # sleep(0.005) # for animation
             else:
                 set_base_values_with_z(
@@ -278,7 +279,7 @@ class MotionPlanningWrapper(object):
             joint_range, joint_damping
         )
 
-    def get_arm_joint_positions(self, arm_ik_goal):
+    def get_arm_joint_positions(self, arm_ik_goal, orn=None):
         """
         Attempt to find arm_joint_positions that satisfies arm_subgoal
         If failed, return None
@@ -308,6 +309,7 @@ class MotionPlanningWrapper(object):
                 self.robot.end_effector_part_index(),
                 targetPosition=arm_ik_goal,
                 # targetOrientation=self.robots[0].get_orientation(),
+                targetOrientation=orn,
                 lowerLimits=min_limits,
                 upperLimits=max_limits,
                 jointRanges=joint_range,
@@ -482,7 +484,7 @@ class MotionPlanningWrapper(object):
                         self.robot_id, self.arm_joint_ids, joint_way_point)
                     set_base_values_with_z(
                         self.robot_id, base_pose, z=self.initial_height)
-                    self.simulator_sync()
+                    self.simulator_step()
                     # sleep(0.02)  # animation
             else:
                 set_joint_positions(
@@ -494,7 +496,7 @@ class MotionPlanningWrapper(object):
             set_joint_positions(self.robot_id, self.arm_joint_ids,
                                 self.arm_default_joint_positions)
 
-    def plan_arm_push(self, hit_pos, hit_normal):
+    def plan_arm_push(self, hit_pos, hit_normal, use_normal=False):
         """
         Attempt to reach a 3D position and prepare for a push later
 
@@ -504,7 +506,10 @@ class MotionPlanningWrapper(object):
         """
         if self.marker is not None:
             self.set_marker_position_direction(hit_pos, hit_normal)
-        joint_positions = self.get_arm_joint_positions(hit_pos)
+        if use_normal:
+            joint_positions = self.get_arm_joint_positions(hit_pos)
+        else:
+            joint_positions = self.get_arm_joint_positions(hit_pos)
 
         #print('planned JP', joint_positions)
         set_joint_positions(self.robot_id, self.arm_joint_ids,
@@ -517,6 +522,58 @@ class MotionPlanningWrapper(object):
             return None
 
     def interact(self, push_point, push_direction):
+        """
+        Move the arm starting from the push_point along the push_direction
+        and physically simulate the interaction
+
+        :param push_point: 3D point to start pushing from
+        :param push_direction: push direction
+        """
+        push_vector = np.array(push_direction) * self.arm_interaction_length
+
+        max_limits, min_limits, rest_position, joint_range, joint_damping = \
+            self.get_ik_parameters()
+        base_pose = get_base_values(self.robot_id)
+
+        steps = 50
+        for i in range(steps):
+            push_goal = np.array(push_point) + \
+                push_vector * (i + 1) / float(steps)
+
+            joint_positions = p.calculateInverseKinematics(
+                self.robot_id,
+                self.robot.end_effector_part_index(),
+                targetPosition=push_goal,
+                # targetOrientation=self.robots[0].get_orientation(),
+                lowerLimits=min_limits,
+                upperLimits=max_limits,
+                jointRanges=joint_range,
+                restPoses=rest_position,
+                jointDamping=joint_damping,
+                solver=p.IK_DLS,
+                maxNumIterations=100)
+
+            if self.robot_type == 'Fetch':
+                joint_positions = joint_positions[2:10]
+            elif self.robot_type == 'Movo':
+                joint_positions = joint_positions[:8]
+
+            control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
+
+            # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
+            achieved = self.robot.get_end_effector_position()
+            # print('ee delta', np.array(achieved) - push_goal, np.linalg.norm(np.array(achieved) - push_goal))
+
+            # if self.robot_type == 'Movo':
+            #    self.robot.control_tuck_left()
+            self.simulator_step()
+            set_base_values_with_z(
+                self.robot_id, base_pose, z=self.initial_height)
+
+            if self.mode in ['pbgui', 'iggui', 'gui']:
+                sleep(0.02)  # for visualization
+
+    def interact_pull(self, push_point, push_direction):
         """
         Move the arm starting from the push_point along the push_direction
         and physically simulate the interaction
@@ -583,3 +640,115 @@ class MotionPlanningWrapper(object):
             set_joint_positions(self.robot_id, self.arm_joint_ids,
                                 self.arm_default_joint_positions)
             self.simulator_sync()
+            #self.simulator_step()
+
+    def execute_arm_pull(self, plan, hit_pos, hit_normal, target_body_id, target_link_id):
+        """
+        :param plan: arm trajectory or None if no plan can be found
+        :param hit_pos: 3D position to reach
+        :param hit_normal: direction to push after reacehing that position
+        """
+        if plan is not None:
+            self.dry_run_arm_plan(plan)
+
+            cid = self.createConstraint(self.robot_id, self.robot.end_effector_part_index(), target_body_id,
+                                        target_link_id, hit_pos)
+            self.interact_pull(hit_pos, -hit_normal)
+            p.removeConstraint(cid)
+            set_joint_positions(self.robot_id, self.arm_joint_ids,
+                                self.arm_default_joint_positions)
+            self.simulator_sync()
+            #self.simulator_step()
+
+    def execute_arm_grasp(self, plan, hit_pos, hit_normal, target_body_id, target_link_id):
+        """
+        :param plan: arm trajectory or None if no plan can be found
+        :param hit_pos: 3D position to reach
+        :param hit_normal: direction to push after reacehing that position
+        """
+        cid = None
+        if plan is not None:
+            self.dry_run_arm_plan(plan)
+
+            cid = self.createConstraint(self.robot_id, self.robot.end_effector_part_index(), target_body_id,
+                                        target_link_id, hit_pos, constraint_type=p.JOINT_FIXED, max_force=1000)
+            #self.interact_pull(hit_pos, -hit_normal)
+            #p.removeConstraint(cid)
+            #set_joint_positions(self.robot_id, self.arm_joint_ids,
+            #                    self.arm_default_joint_positions)
+            self.simulator_sync()
+            #self.simulator_step()
+            plan = self.plan_arm_motion([0 for _ in range(8)])
+
+            if plan is not None:
+                self.dry_run_arm_plan(plan)
+
+        return cid
+
+    def execute_arm_release(self, plan, hit_pos, hit_normal, cid):
+        """
+        :param plan: arm trajectory or None if no plan can be found
+        :param hit_pos: 3D position to reach
+        :param hit_normal: direction to push after reacehing that position
+        """
+        if plan is not None:
+            self.dry_run_arm_plan(plan)
+            p.removeConstraint(cid)
+
+        return cid
+
+    def createConstraint(self, parent_body_id, parent_link_id, child_body_id, child_link_id, point,
+                         constraint_type=p.JOINT_POINT2POINT, max_force=100):
+
+        # wake up parent and child
+        p.changeDynamics(
+            parent_body_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
+
+        for link_id in range(p.getNumJoints(parent_body_id)):
+            p.changeDynamics(
+                parent_body_id, link_id, activationState=p.ACTIVATION_STATE_WAKE_UP)
+
+        p.changeDynamics(
+            child_body_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
+
+        for link_id in range(p.getNumJoints(child_body_id)):
+            p.changeDynamics(
+                child_body_id, link_id, activationState=p.ACTIVATION_STATE_WAKE_UP)
+
+        if parent_link_id == -1:
+            parent_link_pos, parent_link_orn = p.getBasePositionAndOrientation(parent_body_id)
+        else:
+            link_state = p.getLinkState(parent_body_id, parent_link_id)
+            parent_link_pos, parent_link_orn = link_state[:2]
+
+        parent_frame_pos, parent_frame_orn = \
+            p.multiplyTransforms(*p.invertTransform(parent_link_pos, parent_link_orn),
+                                 point, [0, 0, 0, 1])
+
+
+        if child_link_id == -1:
+            child_link_pos, child_link_orn = p.getBasePositionAndOrientation(child_body_id)
+        else:
+            link_state = p.getLinkState(child_body_id, child_link_id)
+            child_link_pos, child_link_orn = link_state[:2]
+
+        child_frame_pos, child_frame_orn = \
+            p.multiplyTransforms(*p.invertTransform(child_link_pos, child_link_orn),
+                                 point, [0, 0, 0, 1])
+
+
+        cid = p.createConstraint(
+            parentBodyUniqueId=parent_body_id,
+            parentLinkIndex=parent_link_id,
+            childBodyUniqueId=child_body_id,
+            childLinkIndex=child_link_id,
+            jointType=constraint_type,
+            jointAxis=(0, 0, 0),
+            parentFramePosition=parent_frame_pos,
+            parentFrameOrientation=parent_frame_orn,
+            childFramePosition=child_frame_pos,
+            childFrameOrientation=child_frame_orn,
+        )
+        p.changeConstraint(cid, maxForce=max_force)
+
+        return cid
