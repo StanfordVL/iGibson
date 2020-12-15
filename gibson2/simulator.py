@@ -7,6 +7,12 @@ from gibson2.render.mesh_renderer.instances import InstanceGroup, Instance, Robo
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer, ViewerVR, ViewerSimple
 from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from gibson2.scenes.scene_base import Scene
+from gibson2.robots.robot_base import BaseRobot
+from gibson2.objects.object_base import Object
+
+
 import pybullet as p
 import gibson2
 import os
@@ -200,7 +206,8 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         :return: pybullet body ids from scene.load function
         """
-
+        assert isinstance(scene, Scene) and not isinstance(scene, InteractiveIndoorScene), \
+            'import_scene can only be called with Scene that is not InteractiveIndoorScene'
         # Load the scene. Returns a list of pybullet ids of the objects loaded that we can use to
         # load them in the renderer
         new_object_pb_ids = scene.load()
@@ -223,6 +230,8 @@ class Simulator:
         :param scene: iGSDFScene instance
         :return: pybullet body ids from scene.load function
         """
+        assert isinstance(scene, InteractiveIndoorScene), \
+            'import_ig_scene can only be called with InteractiveIndoorScene'
         new_object_ids = scene.load()
         self.objects += new_object_ids
         if scene.texture_randomization:
@@ -279,7 +288,8 @@ class Simulator:
         :param use_pbr_mapping: Whether to use pbr mapping
         :param shadow_caster: Whether to cast shadow
         """
-
+        assert isinstance(obj, Object), \
+            'import_object can only be called with Object'
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
         new_object_pb_id = obj.load()
         self.objects += [new_object_pb_id]
@@ -506,6 +516,8 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         :return: pybullet id
         """
+        assert isinstance(robot, BaseRobot), \
+            'import_robot can only be called with BaseRobot'
         ids = robot.load()
         visual_objects = []
         link_ids = []
