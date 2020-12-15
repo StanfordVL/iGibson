@@ -176,7 +176,7 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         :return: pybullet body ids from scene.load function
         """
-        assert isinstance(scene, Scene) and not isinstance(scene, InteractiveIndoorScene) \
+        assert isinstance(scene, Scene) and not isinstance(scene, InteractiveIndoorScene), \
             'import_scene can only be called with Scene that is not InteractiveIndoorScene'
         # Load the scene. Returns a list of pybullet ids of the objects loaded that we can use to
         # load them in the renderer
