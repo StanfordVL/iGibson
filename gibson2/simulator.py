@@ -176,8 +176,8 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         :return: pybullet body ids from scene.load function
         """
-        assert isinstance(scene, Scene), \
-            'import_scene can only be used with Scene'
+        assert isinstance(scene, Scene) and not isinstance(scene, InteractiveIndoorScene) \
+            'import_scene can only be called with Scene that is not InteractiveIndoorScene'
         # Load the scene. Returns a list of pybullet ids of the objects loaded that we can use to
         # load them in the renderer
         new_object_pb_ids = scene.load()
@@ -201,7 +201,7 @@ class Simulator:
         :return: pybullet body ids from scene.load function
         """
         assert isinstance(scene, InteractiveIndoorScene), \
-            'import_ig_scene can only be used with InteractiveIndoorScene'
+            'import_ig_scene can only be called with InteractiveIndoorScene'
         new_object_ids = scene.load()
         self.objects += new_object_ids
         if scene.texture_randomization:
@@ -259,7 +259,7 @@ class Simulator:
         :param shadow_caster: Whether to cast shadow
         """
         assert isinstance(obj, Object), \
-            'import_object can only be used with Object'
+            'import_object can only be called with Object'
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
         new_object_pb_id = obj.load()
         self.objects += [new_object_pb_id]
@@ -484,7 +484,7 @@ class Simulator:
         :return: pybullet id
         """
         assert isinstance(robot, BaseRobot), \
-            'import_robot can only be used with BaseRobot'
+            'import_robot can only be called with BaseRobot'
         ids = robot.load()
         visual_objects = []
         link_ids = []
