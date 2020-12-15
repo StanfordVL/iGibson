@@ -52,7 +52,7 @@ def test_render_rendering(record_property):
     renderer.add_instance(0)
     renderer.set_camera([0, 0, 1.2], [0, 1, 1.2], [0, 1, 0])
     renderer.set_fov(90)
-    rgb, _, seg, _ = renderer.render()
+    rgb = renderer.render(('rgb'))[0]
     record_property("object_loading_time", elapsed)
 
     assert (np.sum(rgb, axis=(0, 1, 2)) > 0)
@@ -70,7 +70,7 @@ def test_render_rendering_cleaning():
         renderer.add_instance(0)
         renderer.set_camera([0, 0, 1.2], [0, 1, 1.2], [0, 1, 0])
         renderer.set_fov(90)
-        rgb, _, seg, _ = renderer.render()
+        rgb = renderer.render(('rgb'))[0]
         assert (np.sum(rgb, axis=(0, 1, 2)) > 0)
 
         GPUtil.showUtilization()

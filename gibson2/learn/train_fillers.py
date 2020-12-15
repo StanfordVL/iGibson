@@ -33,28 +33,38 @@ def main():
     parser.add_argument('--imgsize', type=int, default=256, help='image size')
     parser.add_argument('--nf', type=int, default=64, help='number of filters')
     parser.add_argument('--batchsize', type=int, default=20, help='batchsize')
-    parser.add_argument('--workers', type=int, default=9, help='number of workers')
-    parser.add_argument('--nepoch', type=int, default=50, help='number of epochs')
-    parser.add_argument('--lr', type=float, default=2e-5, help='learning rate, default=0.002')
-    parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
-    parser.add_argument('--outf', type=str, default="filler_pano_pc_full", help='output folder')
+    parser.add_argument('--workers', type=int, default=9,
+                        help='number of workers')
+    parser.add_argument('--nepoch', type=int, default=50,
+                        help='number of epochs')
+    parser.add_argument('--lr', type=float, default=2e-5,
+                        help='learning rate, default=0.002')
+    parser.add_argument('--beta1', type=float, default=0.5,
+                        help='beta1 for adam. default=0.5')
+    parser.add_argument('--outf', type=str,
+                        default="filler_pano_pc_full", help='output folder')
     parser.add_argument('--model', type=str, default="", help='model path')
     parser.add_argument('--cepoch', type=int, default=0, help='current epoch')
-    parser.add_argument('--loss', type=str, default="perceptual", help='l1 only')
+    parser.add_argument('--loss', type=str,
+                        default="perceptual", help='l1 only')
     parser.add_argument('--init', type=str, default="iden", help='init method')
     parser.add_argument('--l1', type=float, default=0, help='add l1 loss')
-    parser.add_argument('--color_coeff', type=float, default=0, help='add color match loss')
+    parser.add_argument('--color_coeff', type=float,
+                        default=0, help='add color match loss')
     parser.add_argument('--unfiller', action='store_true', help='debug mode')
     parser.add_argument('--joint', action='store_true', help='debug mode')
-    parser.add_argument('--use_depth', action='store_true', default=False, help='debug mode')
+    parser.add_argument('--use_depth', action='store_true',
+                        default=False, help='debug mode')
     parser.add_argument('--zoom', type=int, default=1, help='debug mode')
-    parser.add_argument('--patchsize', type=int, default=256, help='debug mode')
+    parser.add_argument('--patchsize', type=int,
+                        default=256, help='debug mode')
 
     mean = torch.from_numpy(np.array([0.57441127, 0.54226291,
                                       0.50356019]).astype(np.float32)).clone()
     opt = parser.parse_args()
     print(opt)
-    writer = SummaryWriter(opt.outf + '/runs/' + datetime.now().strftime('%B%d  %H:%M:%S'))
+    writer = SummaryWriter(opt.outf + '/runs/' +
+                           datetime.now().strftime('%B%d  %H:%M:%S'))
     try:
         os.makedirs(opt.outf)
     except OSError:
@@ -72,7 +82,8 @@ def main():
     ])
 
     d = PairDataset(root=opt.dataroot, transform=tf, mist_transform=mist_tf)
-    d_test = PairDataset(root=opt.dataroot, transform=tf, mist_transform=mist_tf, train=False)
+    d_test = PairDataset(root=opt.dataroot, transform=tf,
+                         mist_transform=mist_tf, train=False)
 
     cudnn.benchmark = True
 
@@ -115,7 +126,8 @@ def main():
         comp2 = torch.nn.DataParallel(comp2).cuda()
         if opt.model != '':
             comp2.load_state_dict(torch.load(opt.model.replace('G', 'G2')))
-        optimizerG2 = torch.optim.Adam(comp2.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+        optimizerG2 = torch.optim.Adam(
+            comp2.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
     l2 = nn.MSELoss()
     # if opt.loss == 'train_init':
@@ -125,7 +137,8 @@ def main():
     #    optimizerG = torch.optim.Adam(params_sel, lr = opt.lr, betas = (opt.beta1, 0.999))
     #
     # else:
-    optimizerG = torch.optim.Adam(comp.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+    optimizerG = torch.optim.Adam(
+        comp.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
     curriculum = (200000, 300000
                   )    # step to start D training and G training, slightly different from the paper
@@ -142,8 +155,10 @@ def main():
     for param in p.parameters():
         param.requires_grad = False
 
-    imgnet_mean = torch.from_numpy(np.array([0.485, 0.456, 0.406]).astype(np.float32)).clone()
-    imgnet_std = torch.from_numpy(np.array([0.229, 0.224, 0.225]).astype(np.float32)).clone()
+    imgnet_mean = torch.from_numpy(
+        np.array([0.485, 0.456, 0.406]).astype(np.float32)).clone()
+    imgnet_std = torch.from_numpy(
+        np.array([0.229, 0.224, 0.225]).astype(np.float32)).clone()
 
     imgnet_mean_img = Variable(
         imgnet_mean.view(1, 3, 1, 1).repeat(opt.batchsize * 4, 1, patchsize, patchsize)).cuda()
@@ -171,7 +186,8 @@ def main():
             img.data.copy_(source)
             maskv.data.copy_(source_depth)
             img_original.data.copy_(target)
-            imgc, maskvc, img_originalc = crop(img, maskv, img_original, zoom, patchsize)
+            imgc, maskvc, img_originalc = crop(
+                img, maskv, img_original, zoom, patchsize)
             # from IPython import embed; embed()
             recon = comp(imgc, maskvc)
 
@@ -180,16 +196,19 @@ def main():
             elif opt.loss == 'l1':
                 loss = l2(recon, img_originalc)
             elif opt.loss == 'perceptual':
-                loss = l2(p(recon), p(img_originalc).detach()) + opt.l1 * l2(recon, img_originalc)
+                loss = l2(p(recon), p(img_originalc).detach()) + \
+                    opt.l1 * l2(recon, img_originalc)
             elif opt.loss == 'color_stable':
                 loss = l2(
-                    p(recon.view(recon.size(0) * 3, 1, patchsize, patchsize).repeat(1, 3, 1, 1)),
+                    p(recon.view(recon.size(0) * 3, 1,
+                                 patchsize, patchsize).repeat(1, 3, 1, 1)),
                     p(
                         img_originalc.view(img_originalc.size(0) * 3, 1, patchsize,
                                            patchsize).repeat(1, 3, 1, 1)).detach())
             elif opt.loss == 'color_correction':
                 recon_percept = p((recon - imgnet_mean_img) / imgnet_std_img)
-                org_percept = p((img_originalc - imgnet_mean_img) / (imgnet_std_img)).detach()
+                org_percept = p(
+                    (img_originalc - imgnet_mean_img) / (imgnet_std_img)).detach()
                 loss = l2(recon_percept, org_percept)
                 for scale in [32]:
                     img_originalc_patch = img_originalc.view(
@@ -230,13 +249,17 @@ def main():
                 recon2 = comp2(img_originalc, maskvc)
 
                 if not opt.joint:
-                    recon2_percept = p((recon2 - imgnet_mean_img) / imgnet_std_img)
-                    recon_percept = p((recon - imgnet_mean_img) / imgnet_std_img)
+                    recon2_percept = p(
+                        (recon2 - imgnet_mean_img) / imgnet_std_img)
+                    recon_percept = p(
+                        (recon - imgnet_mean_img) / imgnet_std_img)
                     loss2 = l2(recon2_percept, recon_percept.detach())
                 else:
-                    recon_percept = p((recon - imgnet_mean_img) / imgnet_std_img)
+                    recon_percept = p(
+                        (recon - imgnet_mean_img) / imgnet_std_img)
                     z = Variable(torch.zeros(recon_percept.size()).cuda())
-                    recon2_percept = p((recon2 - imgnet_mean_img) / imgnet_std_img)
+                    recon2_percept = p(
+                        (recon2 - imgnet_mean_img) / imgnet_std_img)
 
                     loss2 = l2(recon2_percept - recon_percept, z)
 
@@ -267,13 +290,17 @@ def main():
                              img_originalc_patch[:, j:j + 1].repeat(1, 3, 1, 1, 1)).mean(dim=-1))
 
                     recon2_patch_cov_cat = torch.cat(recon2_patch_cov, 1)
-                    img_originalc_patch_cov_cat = torch.cat(img_originalc_patch_cov, 1)
+                    img_originalc_patch_cov_cat = torch.cat(
+                        img_originalc_patch_cov, 1)
 
-                    z = Variable(torch.zeros(img_originalc_patch_mean.size()).cuda())
+                    z = Variable(torch.zeros(
+                        img_originalc_patch_mean.size()).cuda())
                     if opt.joint:
-                        color_loss = l2(recon2_patch_mean - img_originalc_patch_mean, z)
+                        color_loss = l2(recon2_patch_mean -
+                                        img_originalc_patch_mean, z)
                     else:
-                        color_loss = l2(recon2_patch_mean, img_originalc_patch_mean)
+                        color_loss = l2(recon2_patch_mean,
+                                        img_originalc_patch_mean)
 
                     loss2 += opt.color_coeff * color_loss
 
@@ -311,7 +338,8 @@ def main():
                 source_depth = test_data[1]
                 target = test_data[2]
 
-                mask = (torch.sum(source[:, :3, :, :], 1) > 0).float().unsqueeze(1)
+                mask = (torch.sum(source[:, :3, :, :], 1)
+                        > 0).float().unsqueeze(1)
 
                 source[:, :3, :, :] += (1 - mask.repeat(1, 3, 1, 1)) * mean.view(1, 3, 1, 1).repeat(
                     opt.batchsize, 1, 1024, 2048)
@@ -320,7 +348,8 @@ def main():
                 img.data.copy_(source)
                 maskv.data.copy_(source_depth)
                 img_original.data.copy_(target)
-                imgc, maskvc, img_originalc = crop(img, maskv, img_original, zoom, patchsize)
+                imgc, maskvc, img_originalc = crop(
+                    img, maskv, img_original, zoom, patchsize)
                 comp.eval()
                 recon = comp(imgc, maskvc)
                 comp.train()
@@ -333,11 +362,13 @@ def main():
                     visual = torch.cat(
                         [imgc.data[:, :3, :, :], recon.data, recon2.data, img_originalc.data], 3)
                 else:
-                    visual = torch.cat([imgc.data[:, :3, :, :], recon.data, img_originalc.data], 3)
+                    visual = torch.cat(
+                        [imgc.data[:, :3, :, :], recon.data, img_originalc.data], 3)
 
                 visual = vutils.make_grid(visual, normalize=True)
                 writer.add_image('image', visual, step)
-                vutils.save_image(visual, '%s/compare%d_%d.png' % (opt.outf, epoch, i), nrow=1)
+                vutils.save_image(visual, '%s/compare%d_%d.png' %
+                                  (opt.outf, epoch, i), nrow=1)
 
             if i % 10 == 0:
                 writer.add_scalar('MSEloss', loss.data[0], step)
@@ -345,7 +376,8 @@ def main():
                 writer.add_scalar('D_loss', errD_data, step)
 
             if i % 2000 == 0:
-                torch.save(comp.state_dict(), '%s/compG_epoch%d_%d.pth' % (opt.outf, epoch, i))
+                torch.save(comp.state_dict(), '%s/compG_epoch%d_%d.pth' %
+                           (opt.outf, epoch, i))
 
                 if opt.unfiller:
                     torch.save(comp2.state_dict(),

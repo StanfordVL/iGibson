@@ -55,7 +55,6 @@ int GLFWRendererContext::init() {
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 	}
 
-
 	if (m_fullscreen) {
 		this->window = glfwCreateWindow(m_windowWidth, m_windowHeight, "Gibson Renderer Output", glfwGetPrimaryMonitor(), NULL);
 	}

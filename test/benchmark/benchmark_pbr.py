@@ -1,6 +1,7 @@
 import numpy as np
 import time
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import sys
 import os
 import cv2
@@ -56,10 +57,6 @@ def benchmark(render_to_tensor=False, resolution=512, obj_num = 100, optimized =
 
     print(renderer.visual_objects, renderer.instances)
     print(renderer.materials_mapping, renderer.mesh_materials)
-    #print(renderer.texture_files)
-
-    if optimized:
-        renderer.optimize_vertex_and_texture()
 
     start = time.time()
     for i in range(n_frame):

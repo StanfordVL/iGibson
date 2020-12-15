@@ -3,9 +3,10 @@
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from gibson2.utils.constants import AVAILABLE_MODALITIES
 from gibson2.utils.utils import parse_config
-
+from gibson2.utils.constants import NamedRenderingPresets
 import os
 import gibson2
 import time
@@ -13,9 +14,11 @@ import random
 import matplotlib.pyplot as plt
 from gibson2.utils.assets_utils import get_ig_assets_version
 from gibson2.utils.assets_utils import get_scene_path
+import pickle as pkl
+import numpy as np
 
 
-def benchmark_scene(scene_name, optimized=False, first_n=200):
+def benchmark_scene(scene_name, optimized=False, import_robot=True):
     config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
     assets_version = get_ig_assets_version()
     print('assets_version', assets_version)
@@ -23,31 +26,35 @@ def benchmark_scene(scene_name, optimized=False, first_n=200):
         scene_name, texture_randomization=False, object_randomization=False)
     settings = MeshRendererSettings(
         msaa=False, enable_shadow=False, optimized=optimized)
-    # scene._set_first_n_objects(first_n)
     s = Simulator(mode='headless',
                   image_width=512,
                   image_height=512,
                   device_idx=0,
                   rendering_settings=settings,
-                  physics_timestep=1/240.0
                   )
     s.import_ig_scene(scene)
-    turtlebot = Turtlebot(config)
-    s.import_robot(turtlebot)
+    if import_robot:
+        turtlebot = Turtlebot(config)
+        s.import_robot(turtlebot)
 
     s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
-    if optimized:
-        s.optimize_vertex_and_texture()
     fps = []
     physics_fps = []
     render_fps = []
-    for i in range(5000):
+    obj_awake = []
+    for i in range(2000):
         # if i % 100 == 0:
         #     scene.randomize_texture()
         start = time.time()
         s.step()
+        if import_robot:
+            # apply random actions
+            turtlebot.apply_action(turtlebot.action_space.sample())
         physics_end = time.time()
-        _ = s.renderer.render_robot_cameras(modes=('rgb'))
+        if import_robot:
+            _ = s.renderer.render_robot_cameras(modes=('rgb'))
+        else:
+            _ = s.renderer.render(modes=('rgb'))
         end = time.time()
 
         #print("Elapsed time: ", end - start)
@@ -57,40 +64,58 @@ def benchmark_scene(scene_name, optimized=False, first_n=200):
         fps.append(1 / (end - start))
         physics_fps.append(1 / (physics_end - start))
         render_fps.append(1 / (end - physics_end))
-
+        obj_awake.append(s.body_links_awake)
     s.disconnect()
     plt.figure(figsize=(7, 25))
 
-    ax = plt.subplot(5, 1, 1)
+    ax = plt.subplot(6, 1, 1)
     plt.hist(render_fps)
     ax.set_xlabel('Render fps')
-    ax.set_title('Scene {} version {}\noptimized {} num_obj {}/{}'.format(
-        scene_name, assets_version, optimized, first_n, scene.get_num_objects()))
-    ax = plt.subplot(5, 1, 2)
+    ax.set_title('Scene {} version {}\noptimized {} num_obj {}\n import_robot {}'.format(
+        scene_name, assets_version, optimized, scene.get_num_objects(), import_robot))
+    ax = plt.subplot(6, 1, 2)
     plt.hist(physics_fps)
     ax.set_xlabel('Physics fps')
-    ax = plt.subplot(5, 1, 3)
+    ax = plt.subplot(6, 1, 3)
     plt.hist(fps)
     ax.set_xlabel('Step fps')
-    ax = plt.subplot(5, 1, 4)
+    ax = plt.subplot(6, 1, 4)
     plt.plot(render_fps)
     ax.set_xlabel('Render fps with time')
     ax.set_ylabel('fps')
-    ax = plt.subplot(5, 1, 5)
+    ax = plt.subplot(6, 1, 5)
     plt.plot(physics_fps)
-    ax.set_xlabel('Physics fps with time')
+    ax.set_xlabel('Physics fps with time, converge to {}'.format(np.mean(physics_fps[-100:])))
     ax.set_ylabel('fps')
-    plt.savefig('scene_benchmark_{}_o_{}_{}.pdf'.format(
-        scene_name, optimized, first_n))
+    ax = plt.subplot(6, 1, 6)
+    plt.plot(obj_awake)
+    ax.set_xlabel('Num object links awake, converge to {}'.format(np.mean(obj_awake[-100:])) )
 
+    plt.savefig('scene_benchmark_{}_o_{}_r_{}.pdf'.format(
+        scene_name, optimized, import_robot))
 
 def main():
-    # for i in [0, 1,5,10,20,30,40,50,60,70]:
-    benchmark_scene('Rs_int', True)
-    #benchmark_scene('Rs_int', False)
-    #benchmark_scene('Wainscott_0_int', True)
-    #benchmark_scene('Wainscott_0_int', False)
+    benchmark_scene('Rs_int', optimized=True, import_robot=True)
+    benchmark_scene('Rs_int', optimized=True, import_robot=False)
 
+    # scenes = ["Beechwood_0_int",
+    #           "Beechwood_1_int",
+    #           "Benevolence_0_int",
+    #           "Benevolence_1_int",
+    #           "Benevolence_2_int",
+    #           "Ihlen_0_int",
+    #           "Ihlen_1_int",
+    #           "Merom_0_int",
+    #           "Merom_1_int",
+    #           "Pomaria_0_int",
+    #           "Pomaria_1_int",
+    #           "Pomaria_2_int",
+    #           "Rs_int",
+    #           "Wainscott_0_int",
+    #           "Wainscott_1_int"]
+
+    # for scene in scenes:
+    #     benchmark_scene(scene, True)
 
 if __name__ == "__main__":
     main()

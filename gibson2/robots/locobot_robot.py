@@ -5,6 +5,12 @@ from gibson2.robots.robot_locomotor import LocomotorRobot
 
 
 class Locobot(LocomotorRobot):
+    """
+    Locobot robot
+    Reference: https://www.trossenrobotics.com/locobot-pyrobot-ros-rover.aspx
+    Uses differentiable_drive / twist command control
+    """
+
     def __init__(self, config):
         self.config = config
         # https://www.trossenrobotics.com/locobot-pyrobot-ros-rover.aspx
@@ -24,6 +30,9 @@ class Locobot(LocomotorRobot):
                                 control="differential_drive")
 
     def set_up_continuous_action_space(self):
+        """
+        Set up continuous action space
+        """
         self.action_high = np.zeros(self.wheel_dim)
         self.action_high[0] = self.linear_velocity
         self.action_high[1] = self.angular_velocity
@@ -34,7 +43,13 @@ class Locobot(LocomotorRobot):
                                            dtype=np.float32)
 
     def set_up_discrete_action_space(self):
+        """
+        Set up discrete action space
+        """
         assert False, "Locobot does not support discrete actions"
 
     def get_end_effector_position(self):
+        """
+        Get end-effector position
+        """
         return self.parts['gripper_link'].get_position()

@@ -28,3 +28,6 @@ If the original installation doesn't work, try the following:
 4. If you want to render in headless mode, make sure `$DISPLAY` environment variable is unset, otherwise you might have error `Failed to EGL with glad`, because EGL is sensitive to `$DISPLAY` environment variable.
 
 Also, the EGL setup part is borrowed from Erwin Coumans [egl_example](https://github.com/erwincoumans/egl_example). It would be informative to see if that repository can run on your machine.
+
+### Other issues
+For other issues, please submit an issue in our [github repository](https://github.com/StanfordVL/iGibson/issues). 
