@@ -27,9 +27,11 @@ from gibson2.simulator import Simulator
 from gibson2 import assets_path
 
 # Set to false to load entire Rs_int scene
-LOAD_PARTIAL = False
+LOAD_PARTIAL = True
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = True
+# Set to true to use VR hand instead of gripper
+USE_HAND = True
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -71,7 +73,8 @@ if not vr_settings.use_vr:
     s.renderer.set_fov(90)
 
 # Create a VrAgent and it will handle all initialization and importing under-the-hood
-vr_agent = VrAgent(s)
+# Change use_gripper to switch between the VrHand and the VrGripper (see objects/vr_objects.py for more details)
+vr_agent = VrAgent(s, use_gripper=not USE_HAND)
 
 # Objects to interact with
 mass_list = [5, 10, 100, 500]
