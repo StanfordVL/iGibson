@@ -3,13 +3,46 @@ import random
 import subprocess
 from threading import Thread
 import logging
+import time
 
 import cv2
 import numpy as np
 import pybullet as p
 from gibson2.objects.visual_marker import VisualMarker
+from gibson2.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
 from gibson2.utils.utils import rotate_vector_2d
-import time
+
+class ViewerVR:
+    def __init__(self):
+        self.renderer = None
+    
+    def update(self):
+        self.renderer.render()
+        # Viewer is responsible for calling companion window rendering function
+        self.renderer.render_companion_window()
+
+
+class ViewerSimple:
+    """Viewer class that just renders - V and P matrices are updated using the VRLogger."""
+    def __init__(self,
+                 simulator = None,
+                 renderer = None,
+                 ):
+        self.renderer = renderer
+        self.simulator = simulator
+
+        cv2.namedWindow('ExternalView')
+        cv2.moveWindow("ExternalView", 0,0)
+        
+    def update(self):
+        if not self.renderer is None:
+            frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=('rgb')), axis=1),
+                                 cv2.COLOR_RGB2BGR)
+        else:
+            frame = np.zeros((300, 300, 3)).astype(np.uint8)
+
+        cv2.imshow('Renderer Output', frame)
+        q = cv2.waitKey(1)
 
 
 class Viewer:
@@ -50,6 +83,7 @@ class Viewer:
         self.renderer = renderer
         self.simulator = simulator
         self.cid = []
+        self.dist = 0
 
         # Flag to control if the mouse interface is in navigation, manipulation
         # or motion planning/execution mode
@@ -84,13 +118,13 @@ class Viewer:
             radius=0.04, rgba_color=[0, 0, 1, 1])
         self.constraint_marker2 = VisualMarker(visual_shape=p.GEOM_CAPSULE, radius=0.01, length=3,
                                                initial_offset=[0, 0, -1.5], rgba_color=[0, 0, 1, 1])
+        # print('SIMULATOR:', self.simulator)
         if self.simulator is not None:
             self.simulator.import_object(
                 self.constraint_marker2, use_pbr=False)
             self.simulator.import_object(self.constraint_marker, use_pbr=False)
-
-        self.constraint_marker.set_position([0, 0, -1])
-        self.constraint_marker2.set_position([0, 0, -1])
+            self.constraint_marker.set_position([0, 0, -1])
+            self.constraint_marker2.set_position([0, 0, -1])
 
     def apply_push_force(self, x, y, force):
         """

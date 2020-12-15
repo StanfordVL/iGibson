@@ -13,12 +13,12 @@ import subprocess
 import platform
 import codecs
 import platform
+import shutil
 
 
 use_clang = False
 
 here = os.path.abspath(os.path.dirname(__file__))
-
 
 def read(*parts):
     with codecs.open(os.path.join(here, *parts), 'r') as fp:
@@ -56,13 +56,28 @@ class CMakeBuild(build_ext):
         for ext in self.extensions:
             self.build_extension(ext)
 
+        if platform.system() == "Windows":
+            mesh_renderer_dir = os.path.join(here, 'gibson2', 'render', 'mesh_renderer')
+            release_dir = os.path.join(mesh_renderer_dir, 'Release')
+            for f in os.listdir(release_dir):
+                shutil.copy(os.path.join(release_dir, f), mesh_renderer_dir)
+
+            shutil.rmtree(release_dir)
+            vr_dll = os.path.join(here, 'gibson2', 'render', 'openvr', 'bin', 'win64', 'openvr_api.dll')
+            sr_ani_dir = os.path.join(here, 'gibson2', 'render', 'sranipal', 'bin')
+            shutil.copy(vr_dll, mesh_renderer_dir)
+
+            for f in os.listdir(sr_ani_dir):
+                if f.endswith('dll'):
+                    shutil.copy(os.path.join(sr_ani_dir, f), mesh_renderer_dir)
+
     def build_extension(self, ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
         cmake_args = [
             '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/render/mesh_renderer'),
+            os.path.join(extdir, 'gibson2', 'render', 'mesh_renderer'),
             '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/render/mesh_renderer', 'build'),
+            os.path.join(extdir, 'gibson2', 'render', 'mesh_renderer', 'build'),
             '-DPYTHON_EXECUTABLE=' + sys.executable
         ]
 
@@ -80,7 +95,7 @@ class CMakeBuild(build_ext):
         build_args = ['--config', cfg]
 
         if platform.system() == "Windows":
-            cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir)]
+            cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY{}={}'.format(cfg.upper(), extdir)]
             if sys.maxsize > 2**32:
                 cmake_args += ['-A', 'x64']
             build_args += ['--', '/m']
@@ -97,14 +112,6 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
 
 
-'''
-class PostInstallCommand(install):
-        """Post-installation for installation mode."""
-        def run(self):
-                print('post installation')
-                check_call("bash realenv/envs/build.sh".split())
-                install.run(self)
-'''
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 

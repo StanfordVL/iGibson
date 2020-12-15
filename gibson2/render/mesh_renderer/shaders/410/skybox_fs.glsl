@@ -13,5 +13,4 @@ void main (void) {
     NormalColour = vec4(0,0,0,1);
     InstanceColour = vec4(0,0,0,1);
     PCColour = vec4(0,0,0,1);
-
 }
