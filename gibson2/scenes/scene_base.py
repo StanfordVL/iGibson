@@ -1,4 +1,4 @@
-class Scene:
+class Scene(object):
     """
     Base class for all Scene objects
     Contains the base functionalities and the functions that all derived classes need to implement

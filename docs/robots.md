@@ -65,19 +65,19 @@ def main():
     p.loadMJCF(floor)
 
     robots = []
-    config = parse_config('../configs/fetch_p2p_nav.yaml')
+    config = parse_config('../configs/fetch_reaching.yaml')
     fetch = Fetch(config)
     robots.append(fetch)
 
-    config = parse_config('../configs/jr_p2p_nav.yaml')
+    config = parse_config('../configs/jr_reaching.yaml')
     jr = JR2_Kinova(config)
     robots.append(jr)
 
-    config = parse_config('../configs/locobot_p2p_nav.yaml')
+    config = parse_config('../configs/locobot_point_nav.yaml')
     locobot = Locobot(config)
     robots.append(locobot)
 
-    config = parse_config('../configs/turtlebot_p2p_nav.yaml')
+    config = parse_config('../configs/turtlebot_point_nav.yaml')
     turtlebot = Turtlebot(config)
     robots.append(turtlebot)
 
