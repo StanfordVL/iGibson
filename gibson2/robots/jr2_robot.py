@@ -5,6 +5,12 @@ from gibson2.robots.robot_locomotor import LocomotorRobot
 
 
 class JR2(LocomotorRobot):
+    """
+    JR2 robot (no arm)
+    Reference: https://cvgl.stanford.edu/projects/jackrabbot/
+    Uses joint velocity control
+    """
+
     def __init__(self, config):
         self.config = config
         self.velocity = config.get('velocity', 1.0)
@@ -16,6 +22,9 @@ class JR2(LocomotorRobot):
                                 control='velocity')
 
     def set_up_continuous_action_space(self):
+        """
+        Set up continuous action space
+        """
         self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
@@ -24,6 +33,9 @@ class JR2(LocomotorRobot):
         self.action_low = -self.action_high
 
     def set_up_discrete_action_space(self):
+        """
+        Set up discrete action space
+        """
         self.action_list = [[self.velocity, self.velocity, 0, self.velocity],
                             [-self.velocity, -self.velocity, 0, -self.velocity],
                             [self.velocity, -self.velocity, -self.velocity, 0],
@@ -33,9 +45,9 @@ class JR2(LocomotorRobot):
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'),): 0,  ## forward
-            (ord('s'),): 1,  ## backward
-            (ord('d'),): 2,  ## turn right
-            (ord('a'),): 3,  ## turn left
+            (ord('w'),): 0,  # forward
+            (ord('s'),): 1,  # backward
+            (ord('d'),): 2,  # turn right
+            (ord('a'),): 3,  # turn left
             (): 4
         }

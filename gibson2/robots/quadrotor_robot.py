@@ -6,6 +6,12 @@ from gibson2.robots.robot_locomotor import LocomotorRobot
 
 
 class Quadrotor(LocomotorRobot):
+    """
+    Quadrotor robot
+    Reference: https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1705&context=edissertations
+    Uses joint torque control
+    """
+
     def __init__(self, config):
         self.config = config
         self.torque = config.get("torque", 0.02)
@@ -18,6 +24,9 @@ class Quadrotor(LocomotorRobot):
                                 control="torque")
 
     def set_up_continuous_action_space(self):
+        """
+        Set up continuous action space
+        """
         self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
@@ -26,25 +35,34 @@ class Quadrotor(LocomotorRobot):
         self.action_low = -self.action_high
 
     def set_up_discrete_action_space(self):
+        """
+        Set up discrete action space
+        """
         self.action_list = [[self.torque, 0, 0, 0, 0, 0], [-self.torque, 0, 0, 0, 0, 0],
-                            [0, self.torque, 0, 0, 0, 0], [0, -self.torque, 0, 0, 0, 0],
-                            [0, 0, self.torque, 0, 0, 0], [0, 0, -self.torque, 0, 0, 0],
+                            [0, self.torque, 0, 0, 0, 0], [
+                                0, -self.torque, 0, 0, 0, 0],
+                            [0, 0, self.torque, 0, 0, 0], [
+                                0, 0, -self.torque, 0, 0, 0],
                             [0, 0, 0, 0, 0, 0]]
         self.action_space = gym.spaces.Discrete(len(self.action_list))
         self.setup_keys_to_action()
 
     def apply_action(self, action):
+        """
+        Apply policy action. Zero gravity.
+        """
         real_action = self.policy_action_to_robot_action(action)
         p.setGravity(0, 0, 0)
-        p.resetBaseVelocity(self.robot_ids[0], real_action[:3], real_action[3:])
+        p.resetBaseVelocity(
+            self.robot_ids[0], real_action[:3], real_action[3:])
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
-            (ord('w'),): 0,  ## +x
-            (ord('s'),): 1,  ## -x
-            (ord('d'),): 2,  ## +y
-            (ord('a'),): 3,  ## -y
-            (ord('z'),): 4,  ## +z
-            (ord('x'),): 5,  ## -z
+            (ord('w'),): 0,  # +x
+            (ord('s'),): 1,  # -x
+            (ord('d'),): 2,  # +y
+            (ord('a'),): 3,  # -y
+            (ord('z'),): 4,  # +z
+            (ord('x'),): 5,  # -z
             (): 6
         }

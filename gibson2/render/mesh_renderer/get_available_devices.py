@@ -2,18 +2,20 @@ import subprocess
 import os
 import logging
 
+
 def get_available_devices():
     """
-    Find available devices to run EGL on, it will return the minor numbers,
+    Find available devices to run EGL on. It will return the minor numbers,
     The minor number for the device is such that the Nvidia device node
     file for each GPU will have the form /dev/nvidia[minor number]. Avail-
     able only on Linux platform.
 
-     :return: Minor number
+    :return: Minor number
     """
     executable_path = os.path.join(os.path.dirname(__file__), 'build')
     try:
-        num_devices = int(subprocess.check_output(["{}/query_devices".format(executable_path)]))
+        num_devices = int(subprocess.check_output(
+            ["{}/query_devices".format(executable_path)]))
     except subprocess.CalledProcessError as e:
         return [0]
 
@@ -34,9 +36,9 @@ def get_available_devices():
 
     return available_devices
 
+
 def get_cuda_device(minor_idx):
     """
-
     Get the device index to use in pytorch
 
     The minor number for the device is such that the Nvidia device node
@@ -49,7 +51,8 @@ def get_cuda_device(minor_idx):
 
     executable_path = os.path.join(os.path.dirname(__file__), 'build')
     try:
-        num_devices = int(subprocess.check_output(["{}/query_devices".format(executable_path)]))
+        num_devices = int(subprocess.check_output(
+            ["{}/query_devices".format(executable_path)]))
     except subprocess.CalledProcessError as e:
         return 0
 
@@ -62,7 +65,9 @@ def get_cuda_device(minor_idx):
             return i
     return 0
 
+
 if __name__ == '__main__':
     graphics_devices = get_available_devices()
     logging.info('Graphics Devices: {}'.format(graphics_devices))
-    logging.info('Graphics Device Ids: {}'.format([get_cuda_device(item) for item in graphics_devices]))
+    logging.info('Graphics Device Ids: {}'.format(
+        [get_cuda_device(item) for item in graphics_devices]))

@@ -5,11 +5,12 @@ import numpy as np
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from gibson2.utils.assets_utils import get_scene_path
 
+
 def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:
-        model_path = os.path.join(get_scene_path('Rs_int'), 'mesh_z_up.obj')
+        model_path = os.path.join(get_scene_path('Rs'), 'mesh_z_up.obj')
 
     renderer = MeshRenderer(width=512, height=512)
     renderer.load_object(model_path)
@@ -18,7 +19,8 @@ def main():
     view_direction = np.array([1, 0, 0])
     renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
     renderer.set_fov(90)
-    frames = renderer.render(modes=('rgb', 'normal', '3d'))
+    frames = renderer.render(
+        modes=('rgb', 'normal', '3d'))
     frames = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
     cv2.imshow('image', frames)
     cv2.waitKey(0)

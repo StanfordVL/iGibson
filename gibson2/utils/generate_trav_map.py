@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 
-from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.utils.utils import parse_config
-from gibson2.utils.assets_utils import get_ig_scene_path
-from gibson2.utils.map_utils import gen_trav_map
 import os
-import gibson2
-
+import sys
 import time
 import random
-import sys
+import gibson2
+import argparse
+
+from gibson2.simulator import Simulator
+from gibson2.utils.utils import parse_config
+from gibson2.utils.map_utils import gen_trav_map
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene,SCENE_SOURCE
+from gibson2.utils.assets_utils import get_ig_scene_path,get_cubicasa_scene_path,get_3dfront_scene_path, get_ig_category_path
 
 """
 script to generate all traversability maps:
@@ -18,11 +19,26 @@ script to generate all traversability maps:
 for file in ../../gibson2/ig_dataset/scenes/*
   python generate_trav_map.py $(basename $file)
 
+to generate traversability maps for cubicasa5k or 3dfront:
+pass in additional flag --source CUBICASA or --source THREEDFRONT
+
 """
 
-def generate_trav_map(scene_name, load_full_scene=True):
+def generate_trav_map(scene_name, scene_source, load_full_scene=True):
+    if scene_source not in SCENE_SOURCE:
+        raise ValueError(
+            'Unsupported scene source: {}'.format(scene_source))
+    if scene_source == "IG":
+        scene_dir = get_ig_scene_path(scene_name)
+    elif scene_source == "CUBICASA":
+        scene_dir = get_cubicasa_scene_path(scene_name)
+    else:
+        scene_dir = get_3dfront_scene_path(scene_name)
     random.seed(0)
-    scene = InteractiveIndoorScene(scene_name, texture_randomization=False)
+    scene = InteractiveIndoorScene(scene_name, 
+                                   build_graph=False,
+                                   texture_randomization=False,
+                                   scene_source=scene_source)
     if not load_full_scene:
         scene._set_first_n_objects(3)
     s = Simulator(mode='headless', image_width=512,
@@ -45,14 +61,23 @@ def generate_trav_map(scene_name, load_full_scene=True):
         trav_map_filename_format = 'floor_trav_no_obj_{}.png'
         obstacle_map_filename_format = 'floor_no_obj_{}.png'
 
-    gen_trav_map(vertices_info, faces_info, output_folder=os.path.join(get_ig_scene_path(scene_name), 'layout'),
+    gen_trav_map(vertices_info, faces_info, 
+                 output_folder=os.path.join(scene_dir, 'layout'),
         trav_map_filename_format = trav_map_filename_format,
         obstacle_map_filename_format =obstacle_map_filename_format)
 
 
 def main():
-    generate_trav_map(sys.argv[1], False)
-    generate_trav_map(sys.argv[1], True)
+    parser = argparse.ArgumentParser(
+        description='Generate Traversability Map')
+    parser.add_argument('scene_names', metavar='s', type=str,
+                        nargs='+', help='The name of the scene to process')
+    parser.add_argument('--source', dest='source', help='Source of the scene, should be among [CUBICASA, IG, THREEDFRONT]')
+
+    args = parser.parse_args()
+    for scene_name in args.scene_names:
+        generate_trav_map(scene_name, args.source, False)
+        generate_trav_map(scene_name, args.source, True)
 
 if __name__ == "__main__":
     main()

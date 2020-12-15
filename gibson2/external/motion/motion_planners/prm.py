@@ -240,3 +240,8 @@ class DegreePRM(PRM):
                 else:
                     degree += 1
         return new_vertices
+
+
+def call_prm(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn):
+    prm = DistancePRM(distance_fn, extend_fn, collision_fn)
+    return prm.call(start_conf, end_conf)

@@ -6,13 +6,15 @@ import numpy as np
 from transforms3d import quaternions
 from transforms3d.quaternions import axangle2quat, mat2quat
 
+
 def xyzw2wxyz(orn):
     """
     :param orn: quaternion in xyzw
     :return: quaternion in wxyz
     """
     return [orn[-1], orn[0], orn[1], orn[2]]
-    
+
+
 def frustum(left, right, bottom, top, znear, zfar):
     """Create view frustum matrix."""
     assert right != left
@@ -31,6 +33,7 @@ def frustum(left, right, bottom, top, znear, zfar):
     M[2, 3] = -1.0
     return M
 
+
 def ortho(left, right, bottom, top, znear, zfar):
     """Create orthonormal projection matrix."""
     assert right != left
@@ -48,14 +51,13 @@ def ortho(left, right, bottom, top, znear, zfar):
     return M
 
 
-
 def perspective(fovy, aspect, znear, zfar):
     """Create perspective projection matrix."""
+    # fovy is in degree
     assert znear != zfar
     h = np.tan(fovy / 360.0 * np.pi) * znear
     w = h * aspect
     return frustum(-w, w, -h, h, znear, zfar)
-
 
 
 def anorm(x, axis=None, keepdims=False):
@@ -82,11 +84,11 @@ def lookat(eye, target=[0, 0, 0], up=[0, 1, 0]):
 
 
 def sample_view(min_dist, max_dist=None):
-    '''Sample random camera position.
-
-  Sample origin directed camera position in given distance
-  range from the origin. ModelView matrix is returned.
-  '''
+    """
+    Sample random camera position.
+    Sample origin directed camera position in given distance
+    range from the origin. ModelView matrix is returned.
+    """
     if max_dist is None:
         max_dist = min_dist
     dist = np.random.uniform(min_dist, max_dist)
@@ -127,16 +129,16 @@ def _unify_rows(a):
 def load_obj(fn):
     """Load 3d mesh form .obj' file.
 
-  Args:
-    fn: Input file name or file-like object.
+    Args:
+        fn: Input file name or file-like object.
 
-  Returns:
-    dictionary with the following keys (some of which may be missing):
-      position: np.float32, (n, 3) array, vertex positions
-      uv: np.float32, (n, 2) array, vertex uv coordinates
-      normal: np.float32, (n, 3) array, vertex uv normals
-      face: np.int32, (k*3,) traingular face indices
-  """
+    Returns:
+        dictionary with the following keys (some of which may be missing):
+        position: np.float32, (n, 3) array, vertex positions
+        uv: np.float32, (n, 2) array, vertex uv coordinates
+        normal: np.float32, (n, 3) array, vertex uv normals
+        face: np.int32, (k*3,) traingular face indices
+    """
     position = [np.zeros(3, dtype=np.float32)]
     normal = [np.zeros(3, dtype=np.float32)]
     uv = [np.zeros(2, dtype=np.float32)]
@@ -185,12 +187,15 @@ def load_obj(fn):
         outputs['normal'] = _unify_rows(normal)[normal_idx]
     return outputs
 
+
 def save_obj(vertices_info, faces_info, fn):
     with open(fn, 'w') as f:
         for v in vertices_info:
             f.write('v {} {} {}\n'.format(v[0], v[1], v[2]))
         for face in faces_info:
-            f.write('f {} {} {}\n'.format(face[0] + 1, face[1] + 1, face[2] + 1))
+            f.write('f {} {} {}\n'.format(
+                face[0] + 1, face[1] + 1, face[2] + 1))
+
 
 def transform_vertex(vertices, pose_rot, pose_trans):
     v = vertices[:, :3]
@@ -198,14 +203,16 @@ def transform_vertex(vertices, pose_rot, pose_trans):
     v = v.dot(pose_rot.T).dot(pose_trans)
     return v[:, :3]
 
+
 def normalize_mesh(mesh):
-    '''Scale mesh to fit into -1..1 cube'''
+    """Scale mesh to fit into -1..1 cube"""
     mesh = dict(mesh)
     pos = mesh['position'][:, :3].copy()
     pos -= (pos.max(0) + pos.min(0)) / 2.0
     pos /= np.abs(pos).max()
     mesh['position'] = pos
     return mesh
+
 
 def quat2rotmat(quat):
     """
@@ -231,7 +238,7 @@ def mat2xyz(mat):
 
 def safemat2quat(mat):
     """
-    :param mat:4x4 matrix
+    :param mat: 4x4 matrix
     :return: quaternion in w,x,y,z
     """
     quat = np.array([1, 0, 0, 0])

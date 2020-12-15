@@ -9,9 +9,10 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 
+
 def main():
     p.connect(p.GUI)
-    p.setGravity(0,0,-9.8)
+    p.setGravity(0, 0, -9.8)
     p.setTimeStep(1./240.)
 
     floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
@@ -63,4 +64,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

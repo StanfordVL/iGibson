@@ -3,6 +3,10 @@ import pybullet as p
 
 
 class SoftObject(Object):
+    """
+    Soft object (WIP)
+    """
+
     def __init__(self, filename, basePosition=[0, 0, 0], baseOrientation=[0, 0, 0, 1], scale=-1, mass=-1,
                  collisionMargin=-1, useMassSpring=0, useBendingSprings=0, useNeoHookean=0, springElasticStiffness=1,
                  springDampingStiffness=0.1, springBendingStiffness=0.1, NeoHookeanMu=1, NeoHookeanLambda=1,
@@ -28,6 +32,9 @@ class SoftObject(Object):
         self.useSelfCollision = useSelfCollision
 
     def _load(self):
+        """
+        Load the object into pybullet
+        """
         body_id = p.loadSoftBody(self.filename, scale=self.scale, basePosition=self.basePosition,
                                  baseOrientation=self.baseOrientation, mass=self.mass,
                                  collisionMargin=self.collisionMargin, useMassSpring=self.useMassSpring,
@@ -44,6 +51,10 @@ class SoftObject(Object):
 
         return body_id
 
-    def addAnchor(self, nodeIndex=-1, bodyUniqueId=-1, linkIndex=-1, bodyFramePosition=[0, 0, 0], physicsClientId=0):
+    def add_anchor(self, nodeIndex=-1, bodyUniqueId=-1, linkIndex=-1,
+                   bodyFramePosition=[0, 0, 0], physicsClientId=0):
+        """
+        Create soft body anchor
+        """
         p.createSoftBodyAnchor(self.body_id, nodeIndex, bodyUniqueId,
                                linkIndex, bodyFramePosition, physicsClientId)

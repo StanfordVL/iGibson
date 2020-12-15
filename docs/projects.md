@@ -1,4 +1,4 @@
-Projects using Gibson
+Projects using Gibson/iGibson
 ===================================
 
 It is exciting to see people using Gibson Environment in embodied AI research. Here is a list of projects using Gibson v1 or iGibson:
@@ -14,6 +14,12 @@ It is exciting to see people using Gibson Environment in embodied AI research. H
 - Watkins-Valls, David, et al. [Learning Your Way Without a Map or Compass: Panoramic Target Driven Visual Navigation.](https://arxiv.org/pdf/1909.09295.pdf) arXiv preprint arXiv:1909.09295 (2019).
 - Akinola, Iretiayo, et al. [Accelerated Robot Learning via Human Brain Signals.](https://arxiv.org/pdf/1910.00682.pdf) arXiv preprint arXiv:1910.00682(2019).
 - Xia, Fei, et al. [Interactive Gibson: A Benchmark for Interactive Navigation in Cluttered Environments.](https://arxiv.org/pdf/1910.14442.pdf) arXiv preprint arXiv:1910.14442 (2019).
+- Pérez-D'Arpino, et al. [Robot Navigation in Constrained Pedestrian Environments using Reinforcement Learning](https://arxiv.org/pdf/2010.08600.pdf). Preprint arXiv:2010.08600, 2020.
+- Andrey Kurenkov, et al[Visuomotor Mechanical Search: Learning to Retrieve Target Objects in Clutter](https://arxiv.org/abs/2008.06073). IROS 2020.
+- Andrey Kurenkov, et al. [Multi-Layer Semantic and Geometric Modeling with Neural Message Passing in 3D Scene Graphs for Hierarchical Mechanical Search](https://ai.stanford.edu/mech-search/hms/).
+- Joanne Truong, et al. [Learning Navigation Skills for Legged Robots with Learned Robot Embeddings](https://arxiv.org/pdf/2011.12255.pdf).
+
+
 
 
 These papers tested policies trained in Gibson v1 on real robots in the physical world:
@@ -25,6 +31,16 @@ These papers tested policies trained in Gibson v1 on real robots in the physical
 
 
 If you use Gibson, iGibson or their assets, please consider citing the following papers for iGibson, the Interactive Gibson Environment:
+
+```
+@article{shenigibson,
+  title={iGibson, a Simulation Environment for Interactive Tasks in Large Realistic Scenes},
+  author={Shen*, Bokui and Xia*, Fei and Li*, Chengshu and Mart{\'i}n-Mart{\'i}n*, Roberto and Fan, Linxi and Wang, Guanzhi and Buch, Shyamal and D’Arpino, Claudia and Srivastava, Sanjana and Tchapmi, Lyne P and  Vainio, Kent and Fei-Fei, Li and Savarese, Silvio},
+  journal={arXiv preprint arXiv:2012.02924},
+  year={2020}
+}
+```
+
 
 ````
 @article{xia2020interactive,
@@ -39,16 +55,6 @@ If you use Gibson, iGibson or their assets, please consider citing the following
          }
 ````
 
-````text
-@techreport{xiagibson2019,
-           title = {Gibson Env V2: Embodied Simulation Environments for Interactive Navigation},
-           author = {Xia, Fei and Li, Chengshu and Chen, Kevin and Shen, William B and Mart{\'i}n-Mart{\'i}n, Roberto and Hirose, Noriaki and Zamir, Amir R and Fei-Fei, Li and Savarese, Silvio},
-           group = {Stanford Vision and Learning Group},
-           year = {2019},
-           institution = {Stanford University},
-           month = {6},
-}
-````
 
 and the following paper for Gibson v1:
 
