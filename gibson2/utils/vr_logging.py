@@ -8,13 +8,8 @@ HDF5 hierarchy:
 
 ------ N x action_path (group) - these are paths introduced by the user and are of the form Y x group_name + dataset name
 
---- frame_data (group)
-
------- frame_number (dataset)
---------- DATA: int
-
------- last_frame_time (dataset) - the time the last frame took to simulate and render
---------- DATA: float
+--- frame_data (dataset)
+------ DATA: [frame_number, last_frame_physics_time, last_frame_render_time, last_frame_physics_step_num, last_frame_time] (len 5 x float)
 
 --- physics_data (group)
 
@@ -31,6 +26,8 @@ the computer's display when the VR is running
 ------------ DATA: 4x4 mat
 --------- right_eye_proj (dataset)
 ------------ DATA: 4x4 mat
+--------- right_camera_pos (dataset)
+------------ DATA: [x, y, z] (len 3)
 
 ------ vr_device_data (group)
 
@@ -91,8 +88,6 @@ class VRLogWriter():
         self.frame_counter = 0
         # Counts number of frames and does not reset
         self.persistent_frame_count = 0
-        # Time when last frame ended (not valid for first frame, set to current time to get a reasonable estimate)
-        self.last_frame_end_time = time.time()
         # Handle of HDF5 file
         self.hf = None
         # Name path data - used to extract data from data map and save to hd5
@@ -104,10 +99,7 @@ class VRLogWriter():
     def generate_name_path_data(self):
         """Generates lists of name paths for resolution in hd5 saving.
         Eg. ['vr', 'vr_camera', 'right_eye_view']."""
-        self.name_path_data.extend([
-                ['frame_data', 'frame_number'],
-                ['frame_data', 'last_frame_duration'],
-        ])
+        self.name_path_data.extend([['frame_data']])
 
         for n in self.pb_ids:
             self.name_path_data.append(['physics_data', 'body_id_{0}'.format(n)])
@@ -115,6 +107,7 @@ class VRLogWriter():
         self.name_path_data.extend([
                 ['vr', 'vr_camera', 'right_eye_view'],
                 ['vr', 'vr_camera', 'right_eye_proj'],
+                ['vr', 'vr_camera', 'right_camera_pos'],
                 ['vr', 'vr_device_data', 'hmd'],
                 ['vr', 'vr_device_data', 'left_controller'],
                 ['vr', 'vr_device_data', 'right_controller'],
@@ -128,9 +121,7 @@ class VRLogWriter():
         map is reset after every self.frames_before_write frames, by refresh_data_map."""
         self.data_map = dict()
         self.data_map['action'] = dict()
-        self.data_map['frame_data'] = dict()
-        self.data_map['frame_data']['frame_number'] = np.full((self.frames_before_write, 1), self.default_fill_sentinel)
-        self.data_map['frame_data']['last_frame_duration'] = np.full((self.frames_before_write, 1), self.default_fill_sentinel)
+        self.data_map['frame_data'] = np.full((self.frames_before_write, 5), self.default_fill_sentinel)
 
         self.data_map['physics_data'] = dict()
         for pb_id in self.pb_ids:
@@ -142,7 +133,8 @@ class VRLogWriter():
         self.data_map['vr'] = {
             'vr_camera': {
                 'right_eye_view': np.full((self.frames_before_write, 4, 4), self.default_fill_sentinel),
-                'right_eye_proj': np.full((self.frames_before_write, 4, 4), self.default_fill_sentinel)
+                'right_eye_proj': np.full((self.frames_before_write, 4, 4), self.default_fill_sentinel),
+                'right_camera_pos': np.full((self.frames_before_write, 3), self.default_fill_sentinel)
             }, 
             'vr_device_data': {
                 'hmd': np.full((self.frames_before_write, 8), self.default_fill_sentinel),
@@ -229,11 +221,21 @@ class VRLogWriter():
         act_data = self.get_data_for_name_path(full_action_path.split('/'))
         act_data[self.frame_counter, ...] = action
 
-    def write_frame_data_to_map(self):
-        """Writes frame data to the data map."""
-        self.data_map['frame_data']['frame_number'][self.frame_counter, ...] = self.persistent_frame_count
-        self.data_map['frame_data']['last_frame_duration'][self.frame_counter, ...] = time.time() - self.last_frame_end_time
-        self.last_frame_end_time = time.time()
+    def write_frame_data_to_map(self, s):
+        """Writes frame data to the data map.
+        
+        Args:
+            s (simulator): used to extract information about VR system
+        """
+        frame_data = np.array([
+            self.persistent_frame_count,
+            s.last_physics_timestep,
+            s.last_render_timestep,
+            s.last_physics_step_num,
+            s.last_frame_dur
+        ])
+        
+        self.data_map['frame_data'][self.frame_counter, ...] = frame_data[:]
 
     def write_vr_data_to_map(self, s):
         """Writes all VR data to map. This will write data
@@ -250,6 +252,7 @@ class VRLogWriter():
         # At end of each frame, renderer has camera information for VR right eye
         self.data_map['vr']['vr_camera']['right_eye_view'][self.frame_counter, ...] = s.renderer.V
         self.data_map['vr']['vr_camera']['right_eye_proj'][self.frame_counter, ...] = s.renderer.P
+        self.data_map['vr']['vr_camera']['right_camera_pos'][self.frame_counter, ...] = s.renderer.camera
 
         for device in ['hmd', 'left_controller', 'right_controller']:
             is_valid, trans, rot = s.get_data_for_vr_device(device)
@@ -292,7 +295,7 @@ class VRLogWriter():
         Args:
             s (simulator): used to extract information about VR system
         """
-        self.write_frame_data_to_map()
+        self.write_frame_data_to_map(s)
         self.write_vr_data_to_map(s)
         self.write_pybullet_data_to_map()
         self.frame_counter += 1
@@ -330,6 +333,7 @@ class VRLogWriter():
 
     def end_log_session(self):
         """Closes hdf5 log file at end of logging session."""
+        print('VR LOGGER INFO: Ending log writing session after {} frames'.format(self.persistent_frame_count))
         self.hf.close()
 
 class VRLogReader():
@@ -373,13 +377,17 @@ class VRLogReader():
         if self.frame_counter >= self.total_frame_num:
             return
 
-        # Get recorded frame duration for this frame
-        frame_duration = self.hf['frame_data']['last_frame_duration'][self.frame_counter][0]
+        # Get all frame statistics for the most recent frame
+        _, _, render_t, _, frame_duration = list(self.hf['frame_data'][self.frame_counter])
+        s.set_render_timestep(render_t)
 
         read_start_time = time.time()
         # Each frame we first set the camera data
         s.renderer.V = self.hf['vr/vr_camera/right_eye_view'][self.frame_counter]
         s.renderer.P = self.hf['vr/vr_camera/right_eye_proj'][self.frame_counter]
+        right_cam_pos = self.hf['vr/vr_camera/right_camera_pos'][self.frame_counter]
+        s.renderer.camera = right_cam_pos
+        s.renderer.set_light_position_direction([right_cam_pos[0], right_cam_pos[1], 10], [right_cam_pos[0], right_cam_pos[1], 0])
 
         if fullReplay:
             # If doing full replay we update the physics manually each frame

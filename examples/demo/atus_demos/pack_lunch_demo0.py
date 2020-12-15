@@ -130,9 +130,11 @@ for i in range(4):
     s.import_object(obj)
     obj.set_position_orientation([-5.9 - 0.1*i, -5.9, 1.7], [0, 0, 0, 1])
     objects.append(obj)    
-    
+
+pack_lunch_assets_folder = 'd:\\gibson2_assets\\processed\\pack_lunch_objects'
 category = 'food\\protein\\eggs\\'
 instance = 'eggs00_eggland'
+filename = 'rigid_body.urdf'
 modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
 obj = ArticulatedObject(filename=modelpath, scale=0.7)
 s.import_object(obj)
