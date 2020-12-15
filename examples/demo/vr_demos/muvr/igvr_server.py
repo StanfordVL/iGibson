@@ -2,9 +2,10 @@
 
 
 import numpy as np
-from time import sleep
+import time
 
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGroup
+from gibson2.utils.vr_utils import VrData
 
 from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server
@@ -55,31 +56,36 @@ class IGVRServer(Server):
         print('IGVR server launched!')
         # This server manages a single vr client
         self.vr_client = None
+        # Single VrData object that gets refreshed every frame
+        # This is used to update the client agent's server-side VR data
+        self.vr_data_persistent = None
+        self.last_comm_time = time.time()
 
-    def register_sim_renderer(self, sim):
+    def has_client(self):
         """
-        Register the simulator and renderer from which the server will collect frame data
+        Returns whether the server has a client connected.
+        """
+        return self.vr_client is not None
 
-        :param renderer: the renderer from which we extract visual data
+    def register_data(self, sim, client_agent):
+        """
+        Register the simulator and renderer and VrAgent objects from which the server will collect frame data
         """
         self.s = sim
         self.renderer = sim.renderer
+        self.client_agent = client_agent
 
-    def register_vr_objects(self, vr_objects):
-        """
-        Register the list of vr objects whose transform data the client will send over each frame.
-        """
-        self.vr_objects = vr_objects
-
-    def update_vr_objects(self, vr_data):
+    def update_client_vr_data(self, vr_data):
         """
         Updates VR objects based on data sent by client. This function is called from the asynchronous
         Network_vrdata that is first called by the client channel.
         """
-        # TODO: Extend this to work with all the other VR objects, including left hand, body and gaze marker
-        right_hand_pos = vr_data['right_hand'][0]
-        right_hand_orn = vr_data['right_hand'][1]
-        self.vr_objects['right_hand'].move(right_hand_pos, right_hand_orn)
+        time_since_last_comm = time.time() - self.last_comm_time
+        self.last_comm_time = time.time()
+        print("Time since last comm: {}".format(time_since_last_comm))
+        print("Comm fps: {}".format(1/max(0.0001, time_since_last_comm)))
+        # Set new VR data object - this is used each frame to update the client agent
+        self.vr_data_persistent = vr_data
     
     def Connected(self, channel, addr):
         """
@@ -87,7 +93,7 @@ class IGVRServer(Server):
         """
         print("New connection:", channel)
         self.vr_client = channel
-        self.vr_client.set_vr_data_callback(self.update_vr_objects)
+        self.vr_client.set_vr_data_callback(self.update_client_vr_data)
         
     def generate_frame_data(self):
         """
@@ -121,7 +127,7 @@ class IGVRServer(Server):
         Pumps the server to refresh incoming/outgoing connections.
         """
         self.Pump()
-        frame_data = self.generate_frame_data()
 
         if self.vr_client:
+            frame_data = self.generate_frame_data()
             self.vr_client.send_frame_data(frame_data)

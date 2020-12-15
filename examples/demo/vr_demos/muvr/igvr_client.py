@@ -1,9 +1,12 @@
 """Client code that connects to server, syncs iGibson data and renders to VR."""
 
 
+from collections import defaultdict
 import numpy as np
+import time
 
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGroup
+from gibson2.utils.vr_utils import calc_offset
 
 from PodSixNet.Connection import connection, ConnectionListener
 
@@ -17,16 +20,20 @@ class IGVRClient(ConnectionListener):
         self.is_connected = False
         self.Connect((host, port))
         self.is_connected = True
+        # Client stores its offset that will be used in server-based calculations
+        self.vr_offset = [0, 0, 0]
         print("IGVRClient started")
 
-    def register_sim_renderer(self, sim):
+    def register_data(self, sim, client_agent):
         """
-        Register the simulator and renderer which the clients need to render
-
-        :param renderer: the renderer from which we extract visual data
+        Register the simulator and renderer from which the server will collect frame data.
+        Also stores client_agent for VrAgent computations.
         """
         self.s = sim
         self.renderer = sim.renderer
+        self.client_agent = client_agent
+        self.vr_device = '{}_controller'.format(self.s.vr_settings.movement_controller)
+        self.devices = ['left_controller', 'right_controller', 'hmd']
     
     # Custom server callbacks
     def Network_syncframe(self, data):
@@ -61,9 +68,16 @@ class IGVRClient(ConnectionListener):
                 instance.poses_trans = poses_trans
                 instance.poses_rot = poses_rot
 
-        # Then render the frame
+        # Render the frame in VR
         self.s.viewer.update()
-    
+        if self.s.can_access_vr_context:
+            self.s.poll_vr_events()
+            # Sets the VR starting position if one has been specified by the user
+            self.s.perform_vr_start_pos_move()
+
+            # Update VR offset so updated value can be used in server
+            self.client_agent.update_frame_offset()
+
     # Standard methods for networking diagnostics
     def Network_connected(self, data):
         print("Connected to the server")
@@ -77,20 +91,66 @@ class IGVRClient(ConnectionListener):
     def Network_disconnected(self, data):
         print("Server disconnected")
         exit()
+
+    # Methods for handling VR data
+    def generate_vr_data(self):
+        """
+        Generates all the VR data that the server needs to operate:
+        Controller/HMD: valid, trans, rot, right, up, forward coordinate directions
+        Controller: + trig_frac, touch_x, touch_y
+        Eye tracking: valid, origin, dir, l_pupil_diameter, r_pupil_diameter
+        Events: list of all events from simulator (each event is a tuple of device type, event type)
+        Current vr position
+        Vr settings
+        """
+        if not self.s.can_access_vr_context:
+            return []
+
+        # Store all data in a dictionary to be sent to the server
+        vr_data_dict = defaultdict(list)
+
+        for device in self.devices:
+            device_data = []
+            is_valid, trans, rot = self.s.get_data_for_vr_device(device)
+            device_data.extend([is_valid, trans.tolist(), rot.tolist()])
+            device_data.extend(self.s.get_device_coordinate_system(device))
+            if device in ['left_controller', 'right_controller']:
+                device_data.extend(self.s.get_button_data_for_controller(device))
+            vr_data_dict[device] = device_data
+
+        vr_data_dict['eye_data'] = self.s.get_eye_tracking_data()
+        vr_data_dict['event_data'] = self.s.poll_vr_events()
+        vr_data_dict['vr_pos'] = self.s.get_vr_pos().tolist()
+        f_vr_offset = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
+        vr_data_dict['vr_offset'] = f_vr_offset
+        # Note: eye tracking is enable by default
+        vr_data_dict['vr_settings'] = [
+            self.s.vr_settings.touchpad_movement,
+            self.s.vr_settings.movement_controller,
+            self.s.vr_settings.relative_movement_device,
+            self.s.vr_settings.movement_speed
+        ]
+
+        return dict(vr_data_dict)
         
     # Methods for interacting with the server        
     def refresh_frame_data(self):
         """
         Refreshes frame data that was sent from the server.
         """
-        # TODO: Is double-pumping causing an issue?
+        #print("Refresh time: {}".format(time.time()))
         if self.is_connected:
+            connection.Pump()
             self.Pump()
 
-    def send_vr_data(self, vr_data):
+    def send_vr_data(self):
         """
-        Sends vr data over to the server.
+        Generates and sends vr data over to the server.
         """
+        #print("Send time: {}".format(time.time()))
+        # First generate VR data
+        vr_data = self.generate_vr_data()
+
+        # Send to a server if connected
         if self.is_connected:
             self.Send({"action":"vrdata", "vr_data":vr_data})
-            connection.Pump()
