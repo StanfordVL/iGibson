@@ -94,7 +94,7 @@ objects = []
 # Lunch packing objects 
 filename = 'rigid_body.urdf'
 for i in range(4):
-    category = 'dish\\casserole_dish'
+    category = os.path.join('dish', 'casserole_dish')
     instance = 'casserole_dish00'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
     obj = ArticulatedObject(filename=modelpath, scale=.34)
@@ -104,7 +104,7 @@ for i in range(4):
     objects.append(obj)
     
 for i in range(2):
-    category = 'dish\\bowl\\'
+    category = os.path.join('dish', 'bowl')
     instance = 'bowl02'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
     obj = ArticulatedObject(filename=modelpath, scale=.25)
@@ -114,7 +114,7 @@ for i in range(2):
     objects.append(obj)
     
 for i in range(2):
-    category = 'dish\\bowl\\'
+    category = os.path.join('dish', 'bowl')
     instance = 'bowl02'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
     obj = ArticulatedObject(filename=modelpath, scale=.25)
@@ -124,7 +124,7 @@ for i in range(2):
     objects.append(obj)
 
 for i in range(4):
-    category = 'drink\\soda\\'
+    category = os.path.join('drink', 'soda')
     instance = 'soda38_bluecan'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
     obj = ArticulatedObject(filename=modelpath, scale=.7)
@@ -132,7 +132,7 @@ for i in range(4):
     obj.set_position_orientation([-5.9 - 0.1*i, -5.9, 1.7], [0, 0, 0, 1])
     objects.append(obj)    
     
-category = 'food\\protein\\eggs\\'
+category = os.path.join('food', 'protein', 'eggs')
 instance = 'eggs00_eggland'
 modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
 obj = ArticulatedObject(filename=modelpath, scale=0.7)
@@ -141,7 +141,7 @@ obj.set_position_orientation([-5.4, -6, .5], [0, 0, 0, 1])
 objects.append(obj)
 
 for i in range(4):
-    category = 'food\\vegetable\\corn\\'
+    category = os.path.join('food', 'vegetable', 'corn')
     instance = 'corn00'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
     obj = ArticulatedObject(filename=modelpath, scale=.45)
@@ -150,7 +150,7 @@ for i in range(4):
     objects.append(obj)
 
 for i in range(2):
-    category = 'food\\fruit\\apple\\'
+    category = os.path.join('food', 'fruit', 'apple')
     instance = 'apple00'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
     obj = ArticulatedObject(filename=modelpath, scale=1)
@@ -159,7 +159,7 @@ for i in range(2):
     objects.append(obj)
 
 for i in range(2):
-    category = 'food\\fruit\\apple\\'
+    category = os.path.join('food', 'fruit', 'apple')
     instance = 'apple00'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
     obj = ArticulatedObject(filename=modelpath, scale=1)
@@ -168,7 +168,7 @@ for i in range(2):
     objects.append(obj)
 
 for i in range(2):
-    category = 'food\\vegetable\\pepper\\'
+    category = os.path.join('food', 'vegetable', 'pepper')
     instance = 'pepper00'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
     obj = ArticulatedObject(filename=modelpath, scale=.85)
@@ -177,7 +177,7 @@ for i in range(2):
     objects.append(obj)
     
 for i in range(2):
-    category = 'food\\vegetable\\pepper\\'
+    category = os.path.join('food', 'vegetable', 'pepper')
     instance = 'pepper00'
     modelpath = os.path.join(pack_lunch_assets_folder, category, instance, filename)
     obj = ArticulatedObject(filename=modelpath, scale=.85)

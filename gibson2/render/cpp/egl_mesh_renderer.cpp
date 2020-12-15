@@ -280,6 +280,7 @@ PYBIND11_MODULE(EGLRendererContext, m) {
 	pymodule.def("updateUVData", &EGLRendererContext::updateUVData, "TBA");
     pymodule.def("updateDynamicData", &EGLRendererContext::updateDynamicData, "TBA");
     pymodule.def("renderOptimized", &EGLRendererContext::renderOptimized, "TBA");
+    pymodule.def("renderOptimized", &EGLRendererContext::renderOptimized, "TBA");
     pymodule.def("clean_meshrenderer_optimized", &EGLRendererContext::clean_meshrenderer_optimized, "TBA");
 
     //for skybox

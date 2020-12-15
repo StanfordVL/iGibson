@@ -90,6 +90,8 @@ class Simulator:
         # renderer + VR
         self.vr_eye_tracking = vr_eye_tracking
         self.vr_mode = vr_mode
+        # Starting position for the VR (default set to None if no starting position is specified by the user)
+        self.vr_start_pos = None
         self.max_haptic_duration = 4000
         self.image_width = image_width
         self.image_height = image_height
@@ -100,6 +102,17 @@ class Simulator:
         self.optimized_renderer = rendering_settings.optimized
         self.rendering_settings = rendering_settings
         self.viewer = None
+
+        # Settings for adjusting physics and render timestep in vr
+        # Fraction to multiple previous render timestep by in low-pass filter
+        self.lp_filter_frac = 0.9
+
+        # Variables for data saving and replay in VR
+        self.last_physics_timestep = -1
+        self.last_render_timestep = -1
+        self.last_physics_step_num = -1
+        self.last_frame_dur = -1
+
         self.load()
 
         self.class_name_to_class_id = get_class_name_to_class_id()
@@ -115,6 +128,12 @@ class Simulator:
         self.physics_timestep = physics_timestep
         self.render_timestep = render_timestep
         p.setTimeStep(self.physics_timestep)
+
+    def set_render_timestep(self, render_timestep):
+        """
+        :param render_timestep: render timestep to set in the Simulator
+        """
+        self.render_timestep = render_timestep
 
     def add_viewer(self):
         """
@@ -603,13 +622,44 @@ class Simulator:
             if instance.dynamic:
                 self.update_position(instance)
 
-    def step(self):
+    def step(self, print_time=False, use_render_timestep_lpf=True):
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
-        for _ in range(int(self.render_timestep / self.physics_timestep)):
+        physics_start_time = time.time()
+        physics_timestep_num = int(
+            self.render_timestep / self.physics_timestep)
+        for _ in range(physics_timestep_num):
             p.stepSimulation()
         self.sync()
+        physics_dur = time.time() - physics_start_time
+
+        render_start_time = time.time()
+        render_dur = time.time() - render_start_time
+        # Update render timestep using low-pass filter function
+        if use_render_timestep_lpf:
+            self.render_timestep = self.lp_filter_frac * \
+                self.render_timestep + (1 - self.lp_filter_frac) * render_dur
+        frame_dur = physics_dur + render_dur
+
+        # Set variables for data saving and replay
+        self.last_physics_timestep = physics_dur
+        self.last_render_timestep = render_dur
+        self.last_physics_step_num = physics_timestep_num
+        self.last_frame_dur = frame_dur
+
+        # Sets the VR starting position if one has been specified by the user
+        self.perform_vr_start_pos_move()
+
+        if print_time:
+            print('Total frame duration: {} and FPS: {}'.format(
+                round(frame_dur, 2), round(1/max(frame_dur, 0.002), 2)))
+            print('Total physics duration: {} and FPS: {}'.format(
+                round(physics_dur, 2), round(1/max(physics_dur, 0.002), 2)))
+            print('Number of 1/120 physics steps: {}'.format(physics_timestep_num))
+            print('Total render duration: {} and FPS: {}'.format(
+                round(render_dur, 2), round(1/max(render_dur, 0.002), 2)))
+            print('-------------------------')
 
     def sync(self):
         """
@@ -621,6 +671,22 @@ class Simulator:
                 self.body_links_awake += self.update_position(instance)
         if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and self.viewer is not None:
             self.viewer.update()
+
+    # Sets the VR position on the first step iteration where the hmd tracking is valid. Not to be confused
+    # with self.set_vr_start_pos, which simply records the desired start position before the simulator starts running.
+    def perform_vr_start_pos_move(self):
+        # Update VR start position if it is not None and the hmd is valid
+        # This will keep checking until we can successfully set the start position
+        if self.vr_start_pos:
+            hmd_is_valid, _, _, _ = self.renderer.vrsys.getDataForVRDevice(
+                'hmd')
+            if hmd_is_valid:
+                offset_to_start = np.array(
+                    self.vr_start_pos) - self.get_hmd_world_pos()
+                if self.vr_height_offset:
+                    offset_to_start[2] = self.vr_height_offset
+                self.set_vr_offset(offset_to_start)
+                self.vr_start_pos = None
 
     # Returns event data as list of lists. Each sub-list contains deviceType and eventType. List is empty is all
     # events are invalid.
@@ -677,9 +743,24 @@ class Simulator:
         is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
         return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
 
+    # Sets the starting position of the VR system in iGibson space
+    def set_vr_start_pos(self, start_pos=None, vr_height_offset=None):
+        if not self.use_vr_renderer or not start_pos:
+            return
+
+        # The VR headset will actually be set to this position during the first frame.
+        # This is because we need to know where the headset is in space when it is first picked
+        # up to set the initial offset correctly.
+        self.vr_start_pos = start_pos
+        # This value can be set to specify a height offset instead of an absolute height.
+        # We might want to adjust the height of the camera based on the height of the person using VR,
+        # but still offset this height. When this option is non-zero it offsets the height by the amount
+        # specified instead of overwriting the VR system height output.
+        self.vr_height_offset = vr_height_offset
+
     # Sets the world position of the VR system in iGibson space
     def set_vr_pos(self, pos=None):
-        if not self.use_vr_renderer:
+        if not self.use_vr_renderer or not pos:
             return
 
         offset_to_pos = np.array(pos) - self.get_hmd_world_pos()
@@ -744,6 +825,17 @@ class Simulator:
                 instance.hidden = hide
                 self.renderer.update_hidden_state([instance])
                 return
+
+    def get_floor_ids(self):
+        """
+        Gets the body ids for all floor objects in the scene. This is used internally
+        by the VrBody class to disable collisions with the floor.
+        """
+        floor_ids = []
+        for body_id in self.objects:
+            if body_id in self.scene.objects_by_id.keys() and self.scene.objects_by_id[body_id].category == 'floors':
+                floor_ids.append(body_id)
+        return floor_ids
 
     @staticmethod
     def update_position(instance):
