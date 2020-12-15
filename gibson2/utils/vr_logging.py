@@ -32,11 +32,13 @@ the computer's display when the VR is running
 ------ vr_device_data (group)
 
 --------- hmd (dataset)
------------- DATA: [is_valid, trans, rot] (len 8)
+------------ DATA: [is_valid, trans, rot, right, up, forward] (len 17)
 --------- left_controller (dataset)
------------- DATA: [is_valid, trans, rot] (len 8)
+------------ DATA: [is_valid, trans, rot, right, up, forward] (len 17)
 --------- right_controller (dataset)
------------- DATA: [is_valid, trans, rot] (len 8)
+------------ DATA: [is_valid, trans, rot, right, up, forward] (len 17)
+--------- vr_position_data (dataset)
+------------ DATA: [vr_world_pos, vr_offset] (len 6)
 
 ------ vr_button_data (group)
 
@@ -47,12 +49,23 @@ the computer's display when the VR is running
 
 ------ vr_eye_tracking_data (dataset)
 --------- DATA: [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter] (len 9)
+
+------ vr_event_data (group)
+
+--------- left_controller (dataset)
+------------ DATA: [grip press/unpress, trigger press/unpress, touchpad press/unpress, touchpad touch/untouch, menu press/unpress] (len 10)
+--------- right_controller (dataset)
+------------ DATA: [grip press/unpress, trigger press/unpress, touchpad press/unpress, touchpad touch/untouch, menu press/unpress] (len 10)
 """
+
+# TODO: Implement this new binary event system!
 
 import h5py
 import numpy as np
 import pybullet as p
 import time
+
+from gibson2.utils.vr_utils import VrData, convert_events_to_binary
 
 class VRLogWriter():
     """Class that handles saving of VR data, physics data and user-defined actions.
@@ -111,9 +124,12 @@ class VRLogWriter():
                 ['vr', 'vr_device_data', 'hmd'],
                 ['vr', 'vr_device_data', 'left_controller'],
                 ['vr', 'vr_device_data', 'right_controller'],
+                ['vr', 'vr_device_data', 'vr_position_data'],
                 ['vr', 'vr_button_data', 'left_controller'],
                 ['vr', 'vr_button_data', 'right_controller'],
                 ['vr', 'vr_eye_tracking_data'],
+                ['vr', 'vr_event_data', 'left_controller'],
+                ['vr', 'vr_event_data', 'right_controller']
         ])
 
     def create_data_map(self):
@@ -137,15 +153,20 @@ class VRLogWriter():
                 'right_camera_pos': np.full((self.frames_before_write, 3), self.default_fill_sentinel)
             }, 
             'vr_device_data': {
-                'hmd': np.full((self.frames_before_write, 8), self.default_fill_sentinel),
-                'left_controller': np.full((self.frames_before_write, 8), self.default_fill_sentinel),
-                'right_controller': np.full((self.frames_before_write, 8), self.default_fill_sentinel)
+                'hmd': np.full((self.frames_before_write, 17), self.default_fill_sentinel),
+                'left_controller': np.full((self.frames_before_write, 17), self.default_fill_sentinel),
+                'right_controller': np.full((self.frames_before_write, 17), self.default_fill_sentinel),
+                'vr_position_data': np.full((self.frames_before_write, 6), self.default_fill_sentinel)
             },
             'vr_button_data': {
                 'left_controller': np.full((self.frames_before_write, 3), self.default_fill_sentinel),
                 'right_controller': np.full((self.frames_before_write, 3), self.default_fill_sentinel)
             },
-            'vr_eye_tracking_data': np.full((self.frames_before_write, 9), self.default_fill_sentinel)
+            'vr_eye_tracking_data': np.full((self.frames_before_write, 9), self.default_fill_sentinel),
+            'vr_event_data': {
+                'left_controller': np.full((self.frames_before_write, 10), self.default_fill_sentinel),
+                'right_controller': np.full((self.frames_before_write, 10), self.default_fill_sentinel)
+            }
         }
     
     # TIMELINE: Register all actions immediately after calling init
@@ -256,16 +277,25 @@ class VRLogWriter():
 
         for device in ['hmd', 'left_controller', 'right_controller']:
             is_valid, trans, rot = s.get_data_for_vr_device(device)
+            right, up, forward = s.get_device_coordinate_system(device)
             if is_valid is not None:
                 data_list = [is_valid]
                 data_list.extend(trans)
                 data_list.extend(rot)    
+                data_list.extend(list(right))
+                data_list.extend(list(up))
+                data_list.extend(list(forward))
                 self.data_map['vr']['vr_device_data'][device][self.frame_counter, ...] = np.array(data_list)
 
             if device == 'left_controller' or device == 'right_controller':
                 button_data_list = s.get_button_data_for_controller(device)
                 if button_data_list[0] is not None:
                     self.data_map['vr']['vr_button_data'][device][self.frame_counter, ...] = np.array(button_data_list)
+
+        vr_pos_data = []
+        vr_pos_data.extend(list(s.get_vr_pos()))
+        vr_pos_data.extend(list(s.get_vr_offset()))
+        self.data_map['vr']['vr_device_data']['vr_position_data'][self.frame_counter, ...] = np.array(vr_pos_data)
 
         is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = s.get_eye_tracking_data()
         if is_valid is not None:
@@ -275,6 +305,16 @@ class VRLogWriter():
             eye_data_list.append(left_pupil_diameter)
             eye_data_list.append(right_pupil_diameter)
             self.data_map['vr']['vr_eye_tracking_data'][self.frame_counter, ...] = np.array(eye_data_list)
+
+        controller_events = {
+            'left_controller': [],
+            'right_controller': []
+        }
+        for device, event in s.get_vr_events():
+            controller_events[device].append(event)
+        for controller in controller_events.keys():
+            bin_events = convert_events_to_binary(controller_events[controller])
+            self.data_map['vr']['vr_event_data'][controller][self.frame_counter, ...] = np.array(bin_events)
 
     def write_pybullet_data_to_map(self):
         """Write all pybullet data to the class' internal map."""
@@ -349,6 +389,8 @@ class VRLogReader():
         self.total_frame_num = self.hf['vr/vr_device_data/hmd'].shape[0]
         # Boolean indicating if we still have data left to read
         self.data_left_to_read = True
+        # Placeholder VrData object, which will be filled every frame if we are performing action replay
+        self.vr_data = VrData()
         print('----- VRLogReader initialized -----')
         print('Preparing to read {0} frames'.format(self.total_frame_num))
 
@@ -410,6 +452,14 @@ class VRLogReader():
         if read_duration < frame_duration:
             time.sleep(frame_duration - read_duration)
 
+    def get_vr_action_data(self):
+        """
+        Returns all vr action data as a VrData object.
+        """
+        # Update VrData with new HF data
+        self.vr_data.refresh_action_replay_data(self.hf, self.frame_counter)
+        return self.vr_data
+
     def read_value(self, value_path):
         """Reads any saved value at value_path for the current frame.
 
@@ -428,10 +478,6 @@ class VRLogReader():
                 an action that was previously registered with the VRLogWriter during data saving
         """
         full_action_path = 'action/' + action_path
-        if self.frame_counter == 0:
-            print('Printing first frame actions:')
-            print('Reading action at path {} for frame {}'.format(full_action_path, self.frame_counter))
-            print(self.hf[full_action_path][self.frame_counter])
         return self.hf[full_action_path][self.frame_counter]
     
     # TIMELINE: Use this as the while loop condition to keep reading frames!

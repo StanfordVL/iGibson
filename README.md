@@ -50,7 +50,7 @@ The scenes are annotated with bounding box location and size of different object
 ) is baked offline with high-performant ray-tracing
 - Scenes are defined in iGSDF (iGibson Scene Definition Format), an extension of URDF, and shapes are OBJ files with
  associated materials
- 
+
 For instructions to install iGibson and download dataset, you can visit [installation guide](http://svl.stanford.edu/igibson/docs/installation.html).
 
 There are other datasets we link to iGibson. We include support to use CubiCasa5K and 3DFront scenes, adding up more than 8000 extra interactive scenes to use in iGibson! Check our documentation on how to use those.
@@ -121,14 +121,13 @@ Gibson
 * Get codebase and assets:
 
 ```
-$ git clone https://github.com/fxia22/iGibson.git --recursive
+$ git clone https://github.com/fxia22/iGibson.git --init --recursive
 $ cd iGibson
-$ git checkout vr
+$ git checkout vr_new
 $ git submodule update --recursive
 ```
 
-Download Gibson assets and copy to iGibson/gibson2/assets/
-Download enviroments (scenes) and copy to iGibson/gibson2/assets/dataset
+Follow the instructions on the iGibson website to obtain the iGibson assets and dataset (http://svl.stanford.edu/igibson/docs/).
 
 * Create anaconda env:
 
@@ -137,40 +136,64 @@ $ conda create -n gibsonvr python=3.6
 ```
 Activate conda env:
 ```
-$ source activate gibsonvr
+$ conda activate gibsonvr
 ```
 
 * Install Gibson in anaconda env:
 ```
 $ cd iGibson
 ```
-- If you followed the instructions, iGibson is at the vr branch
+- If you followed the instructions, iGibson is at the vr_new branch
 ```
 $ pip install -e .
 ```
 
-Should end printing 'Successfully installed gibson2'
+Important - VR functionality and where to find it:
 
-You can find all the VR demos in iGibson/examples/demo/vr_demos
+You can find all the VR demos in iGibson/examples/demo/vr_demos, which has the following structure:
 
-Run:
+-vr_playground.py
 
-$ python vr_playground_no_pbr (for a scene without PBR)
+--robot_embodiment (folder)
 
-or 
+---vr_demo_robot_control.py
 
-$ python vr_playground_pbr (for the current state-of-the-art Gibson graphics)
+--muvr (folder)
 
-Data saving/replay code can be found in vr_demos/data_save_replay.
-Run vr_demo_save to save a demo to a log file, and vr_demo_replay to run it again. 
-Please see the demos and gibson2/utils/vr_logging.py for more details on the data saving/replay system.
+---igvr_client.py
 
-To use the VR hand asset, please download and unzip the asset and put it into assets/models under the folder name 'vr_hand'.
-The asset is stored in a drive folder and is entitled vr_hand.zip.
-Link to VR hand zip: https://drive.google.com/drive/folders/1zm3ZpPc7yHwyALEGfsb0_NybFMvV81Um?usp=sharing
+---igvr_server.py
+
+---muvr_demo.py
+
+--data_save_replay (folder)
+
+---vr_states_sr.py
+
+---vr_actions_sr.py
+
+---vr_logs (folder containing saved data)
+
+Additional information:
+1) Most VR functions can be found in the gibson2/simulator.py
+2) The VrAgent and its associated VR objects can be found in gibson2/objects/vr_objects.py
+3) VR utility functions are found in gibson2/utils/vr_utils.py
+4) The VR renderer can be found in gibson2/render/mesh_renderer.py
+5) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in gibson2/render/cpp
+
+To get started with the iGibson VR experience run:
+
+$ python vr_playground.py
+
+By default the LOAD_PARTIAL boolean is set to false to speed up loading (loads first 10 objects into the scene as well as some objects to interact with). Please edit this variable to True if you wish to load the entire Rs_int scene.
+
+To use the VR assets, please access the Google drive folder at this link:
+https://drive.google.com/drive/folders/1zm3ZpPc7yHwyALEGfsb0_NybFMvV81Um?usp=sharing
+
+You will need to download both vr_body and vr_hand and place them into assets/models. The pack_lunch folder containing the groceries assets used in the ATUS demos can also be found here. Please also put this into your assets/models folder.
 
 Have fun in VR!
 
 Helpful tips:
-Press ESCAPE to force the fullscreen rendering window to close during program execution.
-Before using SRAnipal eye tracking, you may want to re-calibrate the eye tracker. Please go to the Vive system settings to perform this calibration.
+1) Press ESCAPE to force the fullscreen rendering window to close during program execution (although fullscreen is disabled by default)
+2) Before using SRAnipal eye tracking, you may want to re-calibrate the eye tracker. Please go to the Vive system settings to perform this calibration.
