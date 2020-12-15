@@ -33,6 +33,7 @@ def get_ig_scene_path(scene_name):
     """
     ig_dataset_path = gibson2.ig_dataset_path
     ig_scenes_path = ig_dataset_path + "/scenes"
+    print('SCENE NAME:', scene_name)
     assert scene_name in os.listdir(
         ig_scenes_path), "Scene {} does not exist".format(scene_name)
     return os.path.join(ig_scenes_path, scene_name)

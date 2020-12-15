@@ -32,6 +32,8 @@ class ArticulatedObject(Object):
         """
         body_id = p.loadURDF(self.filename, globalScaling=self.scale,
                              flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+        # Enable sleeping for all objects that are loaded in
+        p.changeDynamics(body_id, -1, activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
 
         return body_id

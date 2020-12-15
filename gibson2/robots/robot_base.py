@@ -181,6 +181,7 @@ class BodyPart:
         self.body_part_index = body_part_index
         self.initialPosition = self.get_position()
         self.initialOrientation = self.get_orientation()
+        self.movement_cid = -1
 
     def get_name(self):
         """Get name of body part"""
@@ -278,7 +279,6 @@ class BodyPart:
         Get contact points of the body part
         """
         return p.getContactPoints(self.bodies[self.body_index], -1, self.body_part_index, -1)
-
 
 class Joint:
     """

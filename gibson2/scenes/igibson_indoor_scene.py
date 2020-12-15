@@ -16,6 +16,7 @@ from PIL import Image
 SCENE_SOURCE = ['IG', 'CUBICASA', 'THREEDFRONT']
 
 
+# class InteractiveIndoorScene(StaticIndoorScene):
 class InteractiveIndoorScene(StaticIndoorScene):
     """
     Create an interactive scene defined with iGibson Scene Description Format (iGSDF).
