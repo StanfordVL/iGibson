@@ -408,9 +408,9 @@ class VrHand(VrHandBase):
             # Make masses larger for greater stability
             # Mass is in kg, friction is coefficient
             p.changeDynamics(self.body_id, jointIndex, mass=1, lateralFriction=2.5)
-            #open_pos = self.open_pos[jointIndex]
-            #p.resetJointState(self.body_id, jointIndex, open_pos)
-            #p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=open_pos, force=500)
+            open_pos = self.open_pos[jointIndex]
+            p.resetJointState(self.body_id, jointIndex, open_pos)
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=open_pos, force=500)
         p.changeDynamics(self.body_id, -1, mass=1, lateralFriction=2)
         # Create constraint that can be used to move the hand
         if self.use_constraints:
@@ -418,6 +418,7 @@ class VrHand(VrHandBase):
 
         # Create gear constraint
         # TODO: Expand beyond joint 3
+        """
         self.grip_cid = p.createConstraint(self.body_id,
                               self.thumb_idxs[2],
                               self.body_id,
@@ -427,6 +428,7 @@ class VrHand(VrHandBase):
                               parentFramePosition=[0, 0, 0],
                               childFramePosition=[0, 0, 0])
         p.changeConstraint(self.grip_cid, gearRatio=1, erp=0.5, relativePositionTarget=0.5, maxForce=3)
+        """
 
     def set_close_fraction(self, close_frac):
         """
@@ -434,19 +436,22 @@ class VrHand(VrHandBase):
         and close frac of 0 indicates fully open joint. Joints move smoothly between 
         their values in self.open_pos and self.close_pos.
         """
-        #for jointIndex in range(p.getNumJoints(self.body_id)):
-        #    open_pos = self.open_pos[jointIndex]
-        #    close_pos = self.close_pos[jointIndex]
-        #    interp_frac = (close_pos - open_pos) * close_frac
-        #    target_pos = open_pos + interp_frac
-        #    p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos, force=2000)
+        for jointIndex in range(p.getNumJoints(self.body_id)):
+            open_pos = self.open_pos[jointIndex]
+            close_pos = self.close_pos[jointIndex]
+            interp_frac = (close_pos - open_pos) * close_frac
+            target_pos = open_pos + interp_frac
+            # TODO: Modify max force (and change force to max force)
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos, force=3)
 
+        """
         # Change gear constraint to reflect trigger close fraction
         p.changeConstraint(self.grip_cid,
                          gearRatio=1,
                          erp=1,
                          relativePositionTarget=close_frac,
                          maxForce=3)
+        """
 
 
 # TODO: Fix issues with VR Gripper
