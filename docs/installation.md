@@ -7,11 +7,18 @@ First, you need to install the simulation environment. Then, you need to downloa
 
 The minimum system requirements are the following:
 
-- Ubuntu 16.04
-- Nvidia GPU with VRAM > 6.0GB
-- Nvidia driver >= 384
-- CUDA >= 9.0, CuDNN >= v7
-- CMake >= 2.8.12 (can install with `pip install cmake`)
+- Linux
+    - Ubuntu 16.04
+    - Nvidia GPU with VRAM > 6.0GB
+    - Nvidia driver >= 384
+    - CUDA >= 9.0, CuDNN >= v7
+    - CMake >= 2.8.12 (can install with `pip install cmake`)
+- Mac OS X
+    - Tested on 10.15
+    - PBR features not supported
+    - CMake >= 2.8.12 (can install with `pip install cmake`)
+- Windows
+    - Coming soon
 
 Other system configurations may work, but we haven't tested them extensively and we probably won't be able to provide as much support as we want.
 
