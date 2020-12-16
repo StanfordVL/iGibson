@@ -127,10 +127,10 @@ while True:
     start_time = time.time()
 
     igtn_task.simulator.step()
-    success, failed_conditions = igtn_task.check_success()
+    success, sorted_conditions = igtn_task.check_success()
     print('TASK SUCCESS:', success)
     if not success:
-        print('FAILED CONDITIONS:', failed_conditions)
+        print('FAILED CONDITIONS:', sorted_conditions['unsatisfied'])
     else:
         # break
         pass
