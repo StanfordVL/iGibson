@@ -83,26 +83,36 @@ class FetchVR(Fetch):
         """
         Updates FetchVR robot. If vr_data is supplied, overwrites VR input.
         """
-        # TODO: Add in vr_data is not none condition here!
-        hmd_is_valid, hmd_trans, hmd_rot = self.sim.get_data_for_vr_device('hmd')
-        _, _, hmd_forward = self.sim.get_device_coordinate_system('hmd')
-        is_valid, trans, rot = self.sim.get_data_for_vr_device(self.control_device)
-        trig_frac, touch_x, touch_y = self.sim.get_button_data_for_controller(self.control_device)
+        # TODO: Add in vr_data is not none condition here! Make this similar to VrBody
+        if vr_data:
+            hmd_is_valid, hmd_trans, hmd_rot, _, _, hmd_forward = vr_data.query('hmd')
+            hmd_world_pos, _ = vr_data.query('vr_positions')
+            transform_data = vr_data.query(self.control_device)[:3]
+            touch_data = vr_data.query('{}_button'.format(self.control_device))
+        else:
+            hmd_is_valid, hmd_trans, hmd_rot = self.sim.get_data_for_vr_device('hmd')
+            _, _, hmd_forward = self.sim.get_device_coordinate_system('hmd')
+            hmd_world_pos = self.sim.get_hmd_world_pos()
+            transform_data = self.sim.get_data_for_vr_device(self.control_device)
+            touch_data = self.sim.get_button_data_for_controller(self.control_device)
+
+        is_valid, trans, rot = transform_data
+        trig_frac, touch_x, touch_y = touch_data
 
         if hmd_is_valid:
             # Set fetch orientation directly from HMD to avoid lag when turning and resultant motion sickness
             self.set_z_rotation(hmd_rot, hmd_forward)
 
-            # Get world position and fetch position
-            hmd_world_pos = self.sim.get_hmd_world_pos()
-            fetch_pos = self.get_position()
+            if not vr_data:
+                # Get world position and fetch position
+                fetch_pos = self.get_position()
 
-            # Calculate x and y offset to get to fetch position
-            # z offset is to the desired hmd height, corresponding to fetch head height
-            offset_to_fetch = [fetch_pos[0] - hmd_world_pos[0], 
-                                fetch_pos[1] - hmd_world_pos[1], 
-                                self.height - hmd_world_pos[2]] 
-            self.sim.set_vr_offset(offset_to_fetch)
+                # Calculate x and y offset to get to fetch position
+                # z offset is to the desired hmd height, corresponding to fetch head height
+                offset_to_fetch = [fetch_pos[0] - hmd_world_pos[0], 
+                                    fetch_pos[1] - hmd_world_pos[1], 
+                                    self.height - hmd_world_pos[2]] 
+                self.sim.set_vr_offset(offset_to_fetch)
 
         if is_valid:
             # Update effector marker to desired end-effector transform
