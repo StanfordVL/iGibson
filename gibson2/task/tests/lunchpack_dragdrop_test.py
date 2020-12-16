@@ -170,7 +170,7 @@ for item in pack_items:
         s.import_object(item_ob)
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
-        sim_objects.append(item_ob)
+        sim_objects.append(item_ob.body_id)
         sim_obj_categories.append(item)
         if item == 'container':
             p.changeDynamics(item_ob.body_id, -1, mass=8., lateralFriction=0.9)
