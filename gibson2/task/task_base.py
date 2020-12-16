@@ -1,5 +1,6 @@
 import numpy as np 
 import os 
+import sys
 
 import tasknet as tn 
 from tasknet.task_base import TaskNetTask
@@ -24,6 +25,7 @@ class iGTNTask(TaskNetTask):
     def initialize_simulator(self,
                              handmade_simulator=None, 
                              handmade_sim_objs=None,
+                             handmade_sim_obj_categories=None,
                              handmade_dsl_objs=None):            
         '''
         Get scene populated with objects such that scene satisfies initial conditions 
@@ -37,6 +39,9 @@ class iGTNTask(TaskNetTask):
         '''
         # Set self.scene_name, self.scene, self.sampled_simulator_objects, and self.sampled_dsl_objects
         if handmade_simulator is None:
+            print('SIM:', s)
+            print('NO HANDMADE SIMULATOR')
+            # sys.exit()
             self.initialize(InteractiveIndoorScene, ArticulatedObject)
 
             hdr_texture = os.path.join(
@@ -72,8 +77,11 @@ class iGTNTask(TaskNetTask):
                 print(dsl_obj.category)
         
         else:
+            print('HANDMADE SIMULATOR')
+            # sys.exit()
             self.simulator = handmade_simulator
             self.sampled_simulator_objects = handmade_sim_objs
+            self.sim_obj_categories = handmade_sim_obj_categories
             self.sampled_dsl_objects = handmade_dsl_objs
 
     #### CHECKERS ####
