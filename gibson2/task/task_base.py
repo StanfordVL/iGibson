@@ -90,18 +90,18 @@ class iGTNTask(TaskNetTask):
         Checks if one object is on top of another. TODO does it need to update TN object representation?
                                                         We've been saying no.
         True iff objA TODO 
-        :param objA: simulator object
-        :param objB: simulator object 
+        :param objA: simulator object body ID
+        :param objB: simulator object body ID
         '''
-        center, extent = get_center_extent(objA.body_id) # TODO: approximate_as_prism
-        bottom_aabb = get_aabb(objB.body_id)
+        center, extent = get_center_extent(objA) # TODO: approximate_as_prism
+        bottom_aabb = get_aabb(objB)
 
         base_center = center - np.array([0, 0, extent[2]])/2
         top_z_min = base_center[2]
         bottom_z_max = bottom_aabb[1][2]
         height_correct = (bottom_z_max - abs(below_epsilon)) <= top_z_min <= (bottom_z_max + abs(above_epsilon))
         bbox_contain = (aabb_contains_point(base_center[:2], aabb2d_from_aabb(bottom_aabb)))
-        touching = body_collision(objA.body_id, objB.body_id)
+        touching = body_collision(objA, objB)
 
         return height_correct and bbox_contain and touching 
         # return is_placement(objA.body_id, objB.body_id) or is_center_stable(objA.body_id, objB.body_id)
@@ -110,26 +110,28 @@ class iGTNTask(TaskNetTask):
         '''
         Checks if one object is inside another. 
         True iff the AABB of objA does not extend past the AABB of objB TODO this might not be the right spec anymore
-        :param objA: simulator object
-        :param objB: simulator object 
+        :param objA: simulator object body ID
+        :param objB: simulator object body ID
         '''
         # return aabb_contains_aabb(get_aabb(objA.body_id), get_aabb(objB.body_id))
-        aabbA, aabbB = get_aabb(objA.body_id), get_aabb(objB.body_id)
+        # aabbA, aabbB = get_aabb(objA.body_id), get_aabb(objB.body_id)
+        aabbA, aabbB = get_aabb(objA), get_aabb(objB)
         center_inside = aabb_contains_point(get_aabb_center(aabbA), aabbB)
         volume_lesser = get_aabb_volume(aabbA) < get_aabb_volume(aabbB)
         extentA, extentB = get_aabb_extent(aabbA), get_aabb_extent(aabbB)
         two_dimensions_lesser = np.sum(np.less_equal(extentA, extentB)) >= 2
-        return center_inside and volume_lesser and two_dimensions_lesser
+        above = center_inside and aabbB[1][2] <= aabbA[0][2]
+        return (center_inside and volume_lesser and two_dimensions_lesser) or above
 
     def nextTo(self, objA, objB):
         '''
         Checks if one object is next to another. 
         True iff the distance between the objects is TODO less than 2/3 of the average
                  side length across both objects' AABBs 
-        :param objA: simulator object
-        :param objB: simulator object 
+        :param objA: simulator object body ID
+        :param objB: simulator object body ID
         '''
-        objA_aabb, objB_aabb = get_aabb(objA.body_id), get_aabb(objB.body_id)
+        objA_aabb, objB_aabb = get_aabb(objA), get_aabb(objB)
         objA_lower, objA_upper = objA_aabb
         objB_lower, objB_upper = objB_aabb
         distance_vec = []
@@ -150,14 +152,14 @@ class iGTNTask(TaskNetTask):
         True iff the (x, y) coordinates of objA's AABB center are within the (x, y) projection
                  of objB's AABB, and the z-coordinate of objA's AABB upper is less than the 
                  z-coordinate of objB's AABB lower.
-        :param objA: simulator object
-        :param objB: simulator object 
+        :param objA: simulator object body ID
+        :param objB: simulator object body ID
         ''' 
         within = aabb_contains_point(
-                                get_aabb_center(get_aabb(objA.body_id))[:2], 
-                                aabb2d_from_aabb(get_aabb(objB.body_id)))
-        objA_aabb = get_aabb(objA.body_id)
-        objB_aabb = get_aabb(objB.body_id)
+                                get_aabb_center(get_aabb(objA))[:2], 
+                                aabb2d_from_aabb(get_aabb(objB)))
+        objA_aabb = get_aabb(objA)
+        objB_aabb = get_aabb(objB)
         
         within = aabb_contains_point(
                                 get_aabb_center(objA_aabb)[:2],
@@ -166,8 +168,12 @@ class iGTNTask(TaskNetTask):
         return within and below 
         
     def touching(self, objA, objB):
+        '''
+        :param objA: simulator object body ID
+        :param objB: simulator object body ID 
+        '''
 
-        return body_collision(objA.body_id, objB.body_id)    
+        return body_collision(objA, objB)    
 
     #### SAMPLERS ####
     def sampleOnTop(self, objA, objB):
