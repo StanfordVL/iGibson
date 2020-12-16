@@ -671,7 +671,8 @@ void VRRendererContext::updateVRData() {
 				if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_Trigger) {
 					trigger_index = i;
 				}
-				else if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_TrackPad) {
+				// Detect trackpad on HTC Vive controller and Joystick on Oculus controller
+				else if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_TrackPad || axisType == vr::EVRControllerAxisType::k_eControllerAxis_Joystick) {
 					touchpad_index = i;
 				}
 			}
