@@ -9,16 +9,20 @@ import time
 
 import gibson2
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.object_base import Object
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.visual_marker import VisualMarker
+from gibson2.objects.vr_objects import VrAgent
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
 import signal
 import sys
 
+# Set to true to use viewer manipulation instead of VR
+# Set to false by default so this benchmark task can be performed in VR
+VIEWER_MANIP = False
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = True
 
@@ -44,20 +48,26 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             msaa=True,
                                             light_dimming_factor=1.0)
 
-# VR system settings
-# Change use_vr to toggle VR mode on/off
-# TODO: Add option for gui benchmarking vs vr benchmarking
-s = Simulator(mode='iggui', 
-              image_width=512,
-              image_height=512,
-              rendering_settings=vr_rendering_settings, 
-              )
+if VIEWER_MANIP:
+    s = Simulator(mode='iggui', 
+                image_width=512,
+                image_height=512,
+                rendering_settings=vr_rendering_settings, 
+                )
+else:
+    vr_settings = VrSettings(use_vr=True)
+    s = Simulator(mode='vr', 
+                rendering_settings=vr_rendering_settings, 
+                vr_settings=vr_settings)
 
 scene = InteractiveIndoorScene('Rs_int')
 # Turn this on when debugging to speed up loading
 scene._set_first_n_objects(2)
 s.import_ig_scene(scene)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
+
+if not VIEWER_MANIP:
+    vr_agent = VrAgent(s)
 
 objects = [
     ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
@@ -107,4 +117,8 @@ obj.set_position_orientation([1., 0.300000, 0.750000], [0, 0, 0, 1])
 # Main simulation loop
 while True:
     s.step()
+
+    if not VIEWER_MANIP:
+        vr_agent.update()
+
 s.disconnect()

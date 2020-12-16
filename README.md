@@ -142,6 +142,8 @@ Activate conda env:
 $ conda activate gibsonvr
 ```
 
+Note: if you want to use multi-user VR, please run "pip install podsixnet" (with your conda environment active)
+
 * Install Gibson in anaconda env:
 ```
 $ cd iGibson

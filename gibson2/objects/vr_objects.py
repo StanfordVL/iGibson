@@ -189,7 +189,6 @@ class VrBody(ArticulatedObject):
             dist_to_dest = np.linalg.norm(curr_pos - dest)
 
             if dist_to_dest < 2.0:
-
                 # Check whether angle between forward vector and pos/neg z direction is less than self.z_rot_thresh, and only
                 # update if this condition is fulfilled - this stops large body angle swings when HMD is pointed up/down
                 n_forward = np.array(forward)

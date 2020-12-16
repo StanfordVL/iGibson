@@ -24,7 +24,7 @@ LOAD_PARTIAL = True
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = False
 # Set to false to just use FetchVR in non-VR mode
-VR_MODE = False
+VR_MODE = True
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -61,6 +61,12 @@ scene = InteractiveIndoorScene('Rs_int')
 if LOAD_PARTIAL:
     scene._set_first_n_objects(10)
 s.import_ig_scene(scene)
+
+if not VR_MODE:
+    camera_pose = np.array([0, -3, 1.2])
+    view_direction = np.array([0, 1, 0])
+    s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
+    s.renderer.set_fov(90)
 
 # Import FetchVR robot - the class handles importing and setup itself
 fvr = FetchVR(fetch_config, s, [0.5, -1.5, 0], update_freq=1)
