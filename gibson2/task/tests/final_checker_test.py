@@ -4,7 +4,7 @@ from gibson2.utils.utils import parse_config
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.task.task_base import iGTNTask
 from gibson2.objects.articulated_object import ArticulatedObject
-from tasknet.object import BaseObject
+# from tasknet.object import BaseObject
 import os
 import gibson2
 import time
@@ -46,9 +46,6 @@ def test_import_igsdf():
 
 s, scene = test_import_igsdf()
 
-
-sim_objects = []
-dsl_objects = []
 
 # List of object names to filename mapping
 lunch_pack_folder = os.path.join(gibson2.assets_path, 'dataset', 'processed', 'pack_lunch')
@@ -102,6 +99,11 @@ item_start_pos_orn = {
     ]
 }
 
+
+sim_objects = []
+# dsl_objects = []
+sim_obj_categories = []
+
 # Import all objects and put them in the correct positions
 pack_items = list(lunch_pack_files.keys())
 for item in pack_items:
@@ -113,24 +115,28 @@ for item in pack_items:
         s.import_object(item_ob)
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
+        # sim_objects.append(item_ob)
         sim_objects.append(item_ob)
-        dsl_objects.append(BaseObject(item))
+        # dsl_objects.append(BaseObject(item))
         if item == 'container':
             p.changeDynamics(item_ob.body_id, -1, mass=8., lateralFriction=0.9)
 
 
-igtn_task = iGTNTask('pack_lunch_demo', task_instance=2)
+igtn_task = iGTNTask('lunchpacking_demo', task_instance=0)
 igtn_task.initialize_simulator(handmade_simulator=s,
-                           handmade_sim_objs=sim_objects,
-                           handmade_dsl_objs=dsl_objects)
+                            handmade_sim_objs=sim_objects,
+                            handmade_sim_obj_categories=sim_obj_categories)
+                        #    handmade_dsl_objs=dsl_objects)
+igtn_task.gen_conditions()
+
 while True:
     start_time = time.time()
 
     igtn_task.simulator.step()
-    success, failed_conditions = igtn_task.check_success()
+    success, sorted_conditions = igtn_task.check_success()
     print('TASK SUCCESS:', success)
     if not success:
-        print('FAILED CONDITIONS:', failed_conditions)
+        print('FAILED CONDITIONS:', sorted_conditions['unsatisfied'])
     else:
         # break
         pass
