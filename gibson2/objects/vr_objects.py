@@ -11,7 +11,6 @@ also be individually created. These are:
 import numpy as np
 import os
 import pybullet as p
-import pybullet_data
 
 from gibson2 import assets_path
 from gibson2.objects.articulated_object import ArticulatedObject
@@ -387,7 +386,9 @@ class VrHand(VrHandBase):
         # Thumb indices (proximal, middle, tip)
         self.thumb_idxs = [11, 12, 13]
         # Open positions for all joints
-        self.open_pos = [0, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 1.0, 0.1, 0.1, 0.1, 0.2, 0.3, 0.4]
+        # Alternate starting joint positions for more closed gripping: [0, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 1.0, 0.1, 0.1, 0.1, 0.2, 0.3, 0.4]
+        self.open_pos = [0.1] * 17
+        self.open_pos[10] = 1.0 
         # Closed positions for all joints
         self.close_pos = [0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 1.2, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8]
 
@@ -453,15 +454,14 @@ class VrHand(VrHandBase):
         """
 
 
-# TODO: Fix issues with VR Gripper
 class VrGripper(VrHandBase):
     """
     Gripper utilizing the pybullet gripper URDF from their VR demo.
     """
     def __init__(self, s, hand='right', use_constraints=True):
-        p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        super(VrGripper, self).__init__(s, "pr2_gripper.urdf",
-                                    hand=hand, use_constraints=use_constraints, base_rot=[0,0,0,1])
+        self.vr_gripper_fpath = os.path.join(assets_path, 'models', 'vr_gripper', 'vr_gripper.urdf')
+        super(VrGripper, self).__init__(s, self.vr_gripper_fpath,
+                                    hand=hand, use_constraints=use_constraints, base_rot=p.getQuaternionFromEuler([0, -90, 0]))
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 
     def hand_setup(self, z_coord):
