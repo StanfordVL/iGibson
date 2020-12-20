@@ -211,7 +211,7 @@ class VrBody(ArticulatedObject):
                 # Update body transform constraint
                 p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
 
-                # Use 100% strength haptic pulse in both controllers for vr body collisions - this should notify the user immediately
+                # Use 90% strength haptic pulse in both controllers for vr body collisions - this should notify the user immediately
                 # Note: haptics can't be used in networking situations like MUVR (due to network latency)
                 # or in action replay, since no VR device is connected
                 if not vr_data:
@@ -219,7 +219,7 @@ class VrBody(ArticulatedObject):
                         for controller in ['left_controller', 'right_controller']:
                             is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
                             if is_valid:
-                                self.sim.trigger_haptic_pulse(controller, 1.0)
+                                self.sim.trigger_haptic_pulse(controller, 0.9)
 
 
 class VrHandBase(ArticulatedObject):
@@ -442,7 +442,7 @@ class VrHand(VrHandBase):
             interp_frac = (close_pos - open_pos) * close_frac
             target_pos = open_pos + interp_frac
             # TODO: Modify max force (and change force to max force)
-            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos, force=3)
+            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos, force=500)
 
         """
         # Change gear constraint to reflect trigger close fraction
