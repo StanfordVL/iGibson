@@ -24,7 +24,7 @@ import sys
 # Set to false by default so this benchmark task can be performed in VR
 VIEWER_MANIP = False
 # Set to true to print out render, physics and overall frame FPS
-PRINT_FPS = True
+PRINT_FPS = False
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -67,7 +67,7 @@ s.import_ig_scene(scene)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
 if not VIEWER_MANIP:
-    vr_agent = VrAgent(s)
+    vr_agent = VrAgent(s, use_gripper=False)
 
 objects = [
     ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
@@ -114,9 +114,11 @@ obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects',
 s.import_object(obj)
 obj.set_position_orientation([1., 0.300000, 0.750000], [0, 0, 0, 1])
 
+s.optimize_vertex_and_texture()
+
 # Main simulation loop
 while True:
-    s.step()
+    s.step(print_time=PRINT_FPS)
 
     if not VIEWER_MANIP:
         vr_agent.update()
