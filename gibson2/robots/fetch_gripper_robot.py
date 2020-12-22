@@ -6,26 +6,24 @@ from gibson2.external.pybullet_tools.utils import joints_from_names, set_joint_p
 from gibson2.robots.robot_locomotor import LocomotorRobot
 
 
-class Fetch(LocomotorRobot):
-    """
-    Fetch Robot
-    Reference: https://fetchrobotics.com/robotics-platforms/fetch-mobile-manipulator/
-    Uses joint velocity control
-    """
-
+class FetchGripper(LocomotorRobot):
     def __init__(self, config):
         self.config = config
         self.wheel_velocity = config.get('wheel_velocity', 1.0)
         self.torso_lift_velocity = config.get('torso_lift_velocity', 1.0)
         self.arm_velocity = config.get('arm_velocity', 1.0)
+        self.gripper_velocity = config.get('gripper_velocity', 1.0)
+        self.head_tilt_velocity = config.get('gripper_velocity', 1.0)
         self.wheel_dim = 2
         self.torso_lift_dim = 1
         self.arm_dim = 7
+        self.gripper_dim = 2
+        self.head_tilt_dim = 1
         self.wheel_axle_half = 0.18738  # half of the distance between the wheels
         self.wheel_radius = 0.065  # radius of the wheels
         LocomotorRobot.__init__(self,
-                                "fetch/fetch.urdf",
-                                action_dim=self.wheel_dim + self.torso_lift_dim + self.arm_dim,
+                                "fetch/fetch_gripper.urdf",
+                                action_dim=self.wheel_dim + self.torso_lift_dim + self.head_tilt_dim + self.arm_dim + self.gripper_dim,
                                 scale=config.get("robot_scale", 1.0),
                                 is_discrete=config.get("is_discrete", False),
                                 control="velocity",
@@ -37,7 +35,9 @@ class Fetch(LocomotorRobot):
         """
         self.action_high = np.array([self.wheel_velocity] * self.wheel_dim +
                                     [self.torso_lift_velocity] * self.torso_lift_dim +
-                                    [self.arm_velocity] * self.arm_dim)
+                                    [self.head_tilt_velocity] * self.head_tilt_dim +
+                                    [self.arm_velocity] * self.arm_dim +
+                                    [self.gripper_velocity] * self.gripper_dim)
         self.action_low = -self.action_high
         self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
@@ -55,31 +55,30 @@ class Fetch(LocomotorRobot):
         Fetch robot specific reset.
         Reset the torso lift joint and tuck the arm towards the body
         """
-        super(Fetch, self).robot_specific_reset()
-
+        super(FetchGripper, self).robot_specific_reset()
         # roll the arm to its body
         robot_id = self.robot_ids[0]
-        arm_joints = joints_from_names(robot_id,
+        joints = joints_from_names(robot_id,
                                        [
                                            'torso_lift_joint',
+                                           'head_tilt_joint',
                                            'shoulder_pan_joint',
                                            'shoulder_lift_joint',
                                            'upperarm_roll_joint',
                                            'elbow_flex_joint',
                                            'forearm_roll_joint',
                                            'wrist_flex_joint',
-                                           'wrist_roll_joint'
+                                           'wrist_roll_joint',
+                                           'r_gripper_finger_joint',
+                                           'l_gripper_finger_joint'
                                        ])
-
-        rest_position = (0.02, np.pi / 2.0 - 0.4, np.pi / 2.0 -
-                         0.1, -0.4, np.pi / 2.0 + 0.1, 0.0, np.pi / 2.0, 0.0)
+        rest_position = (0.02, 0., np.pi / 2.0 - 0.4, np.pi / 2.0 - 0.1, -0.4, np.pi / 2.0 + 0.1, 0.0, np.pi / 2.0, 0.0, 0.05, 0.05)
         # might be a better pose to initiate manipulation
         # rest_position = (0.30322468280792236, -1.414019864768982,
         #                  1.5178184935241699, 0.8189625336474915,
         #                  2.200358942909668, 2.9631312579803466,
         #                  -1.2862852996643066, 0.0008453550418615341)
-
-        set_joint_positions(robot_id, arm_joints, rest_position)
+        set_joint_positions(robot_id, joints, rest_position)
 
     def get_end_effector_position(self):
         """
@@ -87,18 +86,12 @@ class Fetch(LocomotorRobot):
         """
         return self.parts['gripper_link'].get_position()
 
-    def end_effector_part_index(self):
-        """
-        Get end-effector link id
-        """
-        return self.parts['gripper_link'].body_part_index
-
     def load(self):
         """
         Load the robot into pybullet. Filter out unnecessary self collision
         due to modeling imperfection in the URDF
         """
-        ids = super(Fetch, self).load()
+        ids = super(FetchGripper, self).load()
         robot_id = self.robot_ids[0]
 
         disable_collision_names = [
