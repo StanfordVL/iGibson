@@ -13,7 +13,7 @@ class EmptyScene(Scene):
     """
 
     def __init__(self):
-        super().__init__()
+        super(EmptyScene, self).__init__()
 
     def load(self):
         """

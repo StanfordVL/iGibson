@@ -1,12 +1,12 @@
-from abc import abstractmethod, ABC
+from abc import abstractmethod, ABCMeta
 
 
-class BaseRewardFunction(ABC):
+class BaseRewardFunction():
     """
     Base RewardFunction class
     Reward-specific reset and get_reward methods are implemented in subclasses
     """
-
+    __metaclass__ = ABCMeta
     def __init__(self, config):
         self.config = config
 
