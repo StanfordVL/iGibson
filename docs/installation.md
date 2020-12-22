@@ -120,7 +120,7 @@ python -m gibson2.utils.assets_utils --download_assets
 ```
 
 
-Third, you need to download some large 3D reconstructed real-world environments (e.g. houses and offices) from [our dataset](dataset.md) for your agents to be trained in. Create a new folder for those environments and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/data/g_dataset` and `your_installation_path/gibson2/data/ig_dataset`). You can get access and download the Gibson and iGibson datasets by filling up the following [license agreement](https://forms.gle/36TW9uVpjrE1Mkf9A). In addition, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo purposes.
+Third, you need to download some large 3D reconstructed real-world environments (e.g. houses and offices) from [our dataset](dataset.md) for your agents to be trained in. Create a new folder for those environments and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/data/g_dataset` and `your_installation_path/gibson2/data/ig_dataset`). You can get access and download the Gibson dataset (after filling up the following [license agreement](https://forms.gle/36TW9uVpjrE1Mkf9A)) and the iGibson dataset (following the guide [here](http://svl.stanford.edu/igibson/docs/dataset.html#download-instruction) or following the instructions below). In addition, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo purposes.
 
 To download the demo data, run:
 
