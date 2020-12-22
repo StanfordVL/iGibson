@@ -9,10 +9,12 @@ import xml.etree.ElementTree as ET
 from gibson2.objects.object_base import Object
 import pybullet as p
 import trimesh
+import cv2
 
 from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
+from gibson2.external.pybullet_tools.utils import link_from_name
 
 
 class ArticulatedObject(Object):
@@ -33,7 +35,8 @@ class ArticulatedObject(Object):
         body_id = p.loadURDF(self.filename, globalScaling=self.scale,
                              flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         # Enable sleeping for all objects that are loaded in
-        p.changeDynamics(body_id, -1, activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
+        p.changeDynamics(
+            body_id, -1, activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
 
         return body_id
@@ -198,6 +201,67 @@ class URDFObject(Object):
 
         self.scale_object()
         self.rename_urdf()
+
+    def load_supporting_surfaces(self):
+        self.supporting_surfaces = {}
+        heights_file = os.path.join(
+            self.model_path, 'misc/heights_per_link.json')
+        if not os.path.isfile(heights_file):
+            return
+
+        with open(heights_file, 'r') as f:
+            heights = json.load(f)
+
+        original_object_tree = ET.parse(self.filename)
+        sub_urdfs = [ET.parse(urdf_path) for urdf_path in self.urdf_paths]
+        for predicate in heights:
+            height_maps_dir = os.path.join(
+                self.model_path,
+                'misc/height_maps_per_link/{}'.format(predicate))
+
+            height_maps = {}
+            for link_name in heights[predicate]:
+                link_dir = os.path.join(height_maps_dir, link_name)
+
+                # Get collision mesh of the link in the original urdf
+                link = original_object_tree.find(
+                    ".//link[@name='{}']".format(link_name))
+                link_col_mesh = link.find('collision/geometry/mesh')
+                col_mesh_path = os.path.join(
+                    self.model_path,
+                    link_col_mesh.attrib['filename'])
+
+                # Try to find the body_id (after splitting) and the new link name (after renaming)
+                # by matching the collision mesh file path
+                new_link = None
+                new_body_id = None
+                assert len(sub_urdfs) == len(self.body_ids)
+                for sub_urdf, body_id in zip(sub_urdfs, self.body_ids):
+                    for link in sub_urdf.findall('link'):
+                        link_col_mesh = link.find('collision/geometry/mesh')
+                        if link_col_mesh is None:
+                            continue
+                        print(link_col_mesh.attrib['filename'])
+                        print(col_mesh_path)
+                        if link_col_mesh.attrib['filename'] == col_mesh_path:
+                            new_link = link.attrib['name']
+                            new_body_id = body_id
+                            break
+                    if new_link is not None:
+                        break
+
+                assert new_link is not None
+                new_link_id = link_from_name(new_body_id, new_link)
+
+                height_maps[(new_body_id, new_link_id)] = []
+
+                for i, z_value in enumerate(heights[predicate][link_name]):
+                    img_fname = os.path.join(
+                        link_dir, link_dir, '{}.png'.format(i))
+                    xy_map = cv2.imread(img_fname, 0)
+                    height_maps[(new_body_id, new_link_id)].append(
+                        (z_value, xy_map))
+            self.supporting_surfaces[predicate] = height_maps
 
     def rename_urdf(self):
         """
@@ -599,6 +663,9 @@ class URDFObject(Object):
                         body_id, j, p.VELOCITY_CONTROL,
                         targetVelocity=0.0, force=self.joint_friction)
             self.body_ids.append(body_id)
+
+        self.load_supporting_surfaces()
+
         return self.body_ids
 
     def force_wakeup(self):
