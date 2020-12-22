@@ -160,8 +160,10 @@ class Viewer:
                 link_state = p.getLinkState(object_id, link_id)
                 link_pos, link_orn = link_state[:2]
 
+            child_frame_trans_pos, child_frame_trans_orn = p.invertTransform(link_pos, link_orn)
             child_frame_pos, child_frame_orn = \
-                p.multiplyTransforms(*p.invertTransform(link_pos, link_orn),
+                p.multiplyTransforms(child_frame_trans_pos,
+                                     child_frame_trans_orn,
                                      hit_pos,
                                      [0, 0, 0, 1])
             self.constraint_marker.set_position(hit_pos)
