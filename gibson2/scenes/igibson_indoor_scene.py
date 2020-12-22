@@ -471,6 +471,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if self.texture_randomization:
             added_object.prepare_texture()
 
+        return added_object
+
     def randomize_texture(self):
         """
         Randomize texture/material for all objects in the scene

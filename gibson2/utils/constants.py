@@ -31,6 +31,10 @@ class PyBulletSleepState(IntEnum):
     AWAKE = 1
 
 
+# iGATUS-related
+with open(os.path.join(gibson2.ig_dataset_path, 'metadata/categories.txt')) as f:
+    NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines()]
+
 hdr_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
 hdr_texture2 = os.path.join(

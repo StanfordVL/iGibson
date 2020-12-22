@@ -1,117 +1,156 @@
-import numpy as np 
-import os 
-import sys
+import numpy as np
+import os
 
-import tasknet as tn 
+import tasknet as tn
 from tasknet.task_base import TaskNetTask
 import gibson2
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings 
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.objects.articulated_object import URDFObject, ArticulatedObject
+from tasknet.condition_evaluation import OnTop, Inside
 from gibson2.external.pybullet_tools.utils import *
+from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS
+from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path
+import random
+import pybullet as p
+from IPython import embed
 
 
 class iGTNTask(TaskNetTask):
     def __init__(self, atus_activity, task_instance=0):
         '''
-        Initialize simulator with appropriate scene and sampled objects. 
-        :param atus_activity: string, official ATUS activity label 
-        :param task_instance: int, specific instance of atus_activity init/final conditions 
-                                   optional, randomly generated if not specified 
+        Initialize simulator with appropriate scene and sampled objects.
+        :param atus_activity: string, official ATUS activity label
+        :param task_instance: int, specific instance of atus_activity init/final conditions
+                                   optional, randomly generated if not specified
         '''
         super().__init__(atus_activity, task_instance=task_instance)
 
     def initialize_simulator(self,
-                             handmade_simulator=None, 
+                             scene_id=None,
+                             handmade_simulator=None,
                              handmade_sim_objs=None,
                              handmade_sim_obj_categories=None,
-                             handmade_dsl_objs=None):            
+                             handmade_dsl_objs=None):
         '''
-        Get scene populated with objects such that scene satisfies initial conditions 
-        :param handmade_simulator: Simulator class, populated simulator that should completely 
+        Get scene populated with objects such that scene satisfies initial conditions
+        :param handmade_simulator: Simulator class, populated simulator that should completely
                                    replace this function. Use if you would like to bypass internal
                                    Simulator instantiation and population based on initial conditions
-                                   and use your own. Warning that if you use this option, we cannot 
+                                   and use your own. Warning that if you use this option, we cannot
                                    guarantee that the final conditions will be reachable.
         :param handmade_sim_objs:
         :param handmade_dsl_objs:
         '''
         # Set self.scene_name, self.scene, self.sampled_simulator_objects, and self.sampled_dsl_objects
         if handmade_simulator is None:
-            print('SIM:', s)
-            print('NO HANDMADE SIMULATOR')
-            # sys.exit()
-            self.initialize(InteractiveIndoorScene, ArticulatedObject)
-
-            hdr_texture = os.path.join(
-                gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-            hdr_texture2 = os.path.join(
-                gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
-            light_modulation_map_filename = os.path.join(
-                gibson2.ig_dataset_path, 'scenes', self.scene_name, 'layout', 'floor_lighttype_0.png')
-            background_texture = os.path.join(
-                gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
-
-            settings = MeshRendererSettings(env_texture_filename=hdr_texture,
-                                            env_texture_filename2=hdr_texture2,
-                                            env_texture_filename3=background_texture,
-                                            light_modulation_map_filename=light_modulation_map_filename,
-                                            enable_shadow=True, msaa=True,
-                                            light_dimming_factor=1.0)
-            self.simulator = Simulator(mode='iggui', image_width=960, image_height=720, device_idx=0, rendering_settings=settings)
-        
-            self.simulator.viewer.min_cam_z = 1.0
-            self.simulator.import_ig_scene(self.scene)
-
-            # NOTE not making a separate add_objects function since users shouldn't be able to add extra tasks,
-            # that could make the final conditions unsatisfiable or otherwise vacuous. Can change if needed.
-            for obj, obj_pos, obj_orn in self.sampled_simulator_objects:
-                self.simulator.import_object(obj)
-                obj.set_position_orientation(obj_pos, obj_orn)
-        
-            # Match IDs of simulator and DSL objects 
-            for sim_obj, dsl_obj in zip(self.sampled_simulator_objects, self.sampled_dsl_objects):
-                dsl_obj.body_id = sim_obj.body_id
-                print(dsl_obj.body_id)
-                print(dsl_obj.category)
-        
+            self.simulator = Simulator(
+                mode='iggui', image_width=960, image_height=720, device_idx=0)
+            self.initialize(InteractiveIndoorScene,
+                            ArticulatedObject,
+                            scene_id=scene_id)
         else:
             print('HANDMADE SIMULATOR')
-            # sys.exit()
             self.simulator = handmade_simulator
             self.sampled_simulator_objects = handmade_sim_objs
             self.sim_obj_categories = handmade_sim_obj_categories
             self.sampled_dsl_objects = handmade_dsl_objs
 
+    def check_scene(self):
+        for obj_cat in self.objects:
+            if obj_cat not in NON_SAMPLEABLE_OBJECTS:
+                continue
+            if obj_cat not in self.scene.objects_by_category or \
+                    len(self.objects[obj_cat]) > len(self.scene.objects_by_category[obj_cat]):
+                return False
+
+        for obj_cat in self.objects:
+            if obj_cat in NON_SAMPLEABLE_OBJECTS:
+                simulator_objs = np.random.choice(
+                    self.scene.objects_by_category[obj_cat],
+                    len(self.objects[obj_cat]), replace=False)
+                for obj_inst, simulator_obj in \
+                        zip(self.objects[obj_cat], simulator_objs):
+                    self.object_scope[obj_inst] = simulator_obj
+            else:
+                for i, obj_inst in enumerate(self.objects[obj_cat]):
+                    category_path = get_ig_category_path(obj_cat)
+                    obj_name = '{}_{}'.format(obj_cat, i)
+                    model = random.choice(os.listdir(category_path))
+                    model_path = get_ig_model_path(obj_cat, model)
+                    filename = os.path.join(model_path, model + ".urdf")
+                    scale = np.array([1.0, 1.0, 1.0])
+                    simulator_obj = self.scene.add_object(
+                        obj_cat,
+                        object_name=obj_name,
+                        model=model,
+                        model_path=model_path,
+                        filename=filename,
+                        bounding_box=None,
+                        scale=scale,
+                        in_rooms=None,
+                        joint_name=None,
+                        joint_type='floating',
+                        joint_parent=None,
+                        position=[0.0, 0.0, 0.0],
+                        orientation_rpy=[0.0, 0.0, 0.0],
+                    )
+                    self.object_scope[obj_inst] = simulator_obj
+
+        return True
+
+    def import_scene(self):
+        self.simulator.reload()
+        self.simulator.import_ig_scene(self.scene)
+        # TODO: this assumes the main body id is the first body id
+        for name in self.scene.objects_by_name:
+            self.scene.objects_by_name[name].body_id = self.scene.objects_by_name[name].body_id[0]
+
+    def sample(self, failed_conditions):
+        print('sample')
+        failed_conditions = [cond.children[0] for cond in failed_conditions]
+        for failed_condition in failed_conditions:
+            success = failed_condition.sample()
+            print('single sample', success)
+            if not success:
+                return False
+        return True
+
     #### CHECKERS ####
     def onTop(self, objA, objB):
         '''
-        Checks if one object is on top of another. TODO does it need to update TN object representation?
-                                                        We've been saying no.
-        True iff objA TODO 
+        Checks if one object is on top of another.
+        True iff the (x, y) coordinates of objA's AABB center are within the (x, y) projection
+            of objB's AABB, and the z-coordinate of objA's AABB lower is within a threshold around
+            the z-coordinate of objB's AABB upper, and objA and objB are touching.
         :param objA: simulator object
-        :param objB: simulator object 
+        :param objB: simulator object
         '''
-        center, extent = get_center_extent(objA.body_id) # TODO: approximate_as_prism
+        below_epsilon, above_epsilon = 0.025, 0.025
+
+        center, extent = get_center_extent(
+            objA.body_id)  # TODO: approximate_as_prism
         bottom_aabb = get_aabb(objB.body_id)
 
         base_center = center - np.array([0, 0, extent[2]])/2
         top_z_min = base_center[2]
         bottom_z_max = bottom_aabb[1][2]
-        height_correct = (bottom_z_max - abs(below_epsilon)) <= top_z_min <= (bottom_z_max + abs(above_epsilon))
-        bbox_contain = (aabb_contains_point(base_center[:2], aabb2d_from_aabb(bottom_aabb)))
+        height_correct = (bottom_z_max - abs(below_epsilon)
+                          ) <= top_z_min <= (bottom_z_max + abs(above_epsilon))
+        bbox_contain = (aabb_contains_point(
+            base_center[:2], aabb2d_from_aabb(bottom_aabb)))
         touching = body_collision(objA.body_id, objB.body_id)
 
-        return height_correct and bbox_contain and touching 
+        return height_correct and bbox_contain and touching
         # return is_placement(objA.body_id, objB.body_id) or is_center_stable(objA.body_id, objB.body_id)
 
     def inside(self, objA, objB):
         '''
-        Checks if one object is inside another. 
+        Checks if one object is inside another.
         True iff the AABB of objA does not extend past the AABB of objB TODO this might not be the right spec anymore
         :param objA: simulator object
-        :param objB: simulator object 
+        :param objB: simulator object
         '''
         # return aabb_contains_aabb(get_aabb(objA.body_id), get_aabb(objB.body_id))
         aabbA, aabbB = get_aabb(objA.body_id), get_aabb(objB.body_id)
@@ -124,11 +163,11 @@ class iGTNTask(TaskNetTask):
 
     def nextTo(self, objA, objB):
         '''
-        Checks if one object is next to another. 
+        Checks if one object is next to another.
         True iff the distance between the objects is TODO less than 2/3 of the average
-                 side length across both objects' AABBs 
+                 side length across both objects' AABBs
         :param objA: simulator object
-        :param objB: simulator object 
+        :param objB: simulator object
         '''
         objA_aabb, objB_aabb = get_aabb(objA.body_id), get_aabb(objB.body_id)
         objA_lower, objA_upper = objA_aabb
@@ -144,47 +183,103 @@ class iGTNTask(TaskNetTask):
         avg_aabb_length = np.mean(objA_dims + objB_dims)
 
         return distance <= (avg_aabb_length * (1./6.))  # TODO better function
-        
+
     def under(self, objA, objB):
         '''
-        Checks if one object is underneath another. 
+        Checks if one object is underneath another.
         True iff the (x, y) coordinates of objA's AABB center are within the (x, y) projection
-                 of objB's AABB, and the z-coordinate of objA's AABB upper is less than the 
+                 of objB's AABB, and the z-coordinate of objA's AABB upper is less than the
                  z-coordinate of objB's AABB lower.
         :param objA: simulator object
-        :param objB: simulator object 
-        ''' 
+        :param objB: simulator object
+        '''
         within = aabb_contains_point(
-                                get_aabb_center(get_aabb(objA.body_id))[:2], 
-                                aabb2d_from_aabb(get_aabb(objB.body_id)))
+            get_aabb_center(get_aabb(objA.body_id))[:2],
+            aabb2d_from_aabb(get_aabb(objB.body_id)))
         objA_aabb = get_aabb(objA.body_id)
         objB_aabb = get_aabb(objB.body_id)
-        
-        within = aabb_contains_point(
-                                get_aabb_center(objA_aabb)[:2],
-                                aabb2d_from_aabb(objB_aabb))
-        below = objA_aabb[1][2] <= objB_aabb[0][2]
-        return within and below 
-        
-    def touching(self, objA, objB):
 
-        return body_collision(objA.body_id, objB.body_id)    
+        within = aabb_contains_point(
+            get_aabb_center(objA_aabb)[:2],
+            aabb2d_from_aabb(objB_aabb))
+        below = objA_aabb[1][2] <= objB_aabb[0][2]
+        return within and below
+
+    def touching(self, objA, objB):
+        return body_collision(objA.body_id, objB.body_id)
 
     #### SAMPLERS ####
     def sampleOnTop(self, objA, objB):
-        pass 
-    
+        return self.sampleOnTopOrInside(objA, objB, 'onTop')
+
+    def sampleOnTopOrInside(self, objA, objB, predicate):
+        if predicate not in objB.supporting_surfaces:
+            return False
+
+        max_trials = 100
+        z_offset = 0.01
+        objA.set_position_orientation([100, 100, 100], [0, 0, 0, 1])
+        state_id = p.saveState()
+        for i in range(max_trials):
+            random_idx = np.random.randint(
+                len(objB.supporting_surfaces[predicate].keys()))
+            body_id, link_id = list(objB.supporting_surfaces[predicate].keys())[
+                random_idx]
+            random_height_idx = np.random.randint(
+                len(objB.supporting_surfaces[predicate][(body_id, link_id)]))
+            height, height_map = objB.supporting_surfaces[predicate][(
+                body_id, link_id)][random_height_idx]
+
+            valid_pos = np.array(height_map.nonzero())
+            random_pos_idx = np.random.randint(valid_pos.shape[1])
+            random_pos = valid_pos[:, random_pos_idx]
+            y_map, x_map = random_pos
+            y = y_map / 100.0 - 2
+            x = x_map / 100.0 - 2
+            z = height
+
+            pos = np.array([x, y, z])
+            pos *= objB.scale
+
+            link_pos, link_orn = get_link_pose(body_id, link_id)
+            pos = matrix_from_quat(link_orn).dot(pos) + np.array(link_pos)
+
+            pos[2] += z_offset
+            z = stable_z_on_aabb(
+                objA.body_id, ([0, 0, pos[2]], [0, 0, pos[2]]))
+            pos[2] = z
+            objA.set_position_orientation(pos, [0, 0, 0, 1])
+
+            p.stepSimulation()
+            success = len(p.getContactPoints(objA.body_id)) == 0
+            p.restoreState(state_id)
+
+            if success:
+                break
+
+        if success:
+            objA.set_position_orientation(pos, [0, 0, 0, 1])
+            # Let it fall for 0.1 second
+            for _ in range(int(0.1 / self.simulator.physics_timestep)):
+                p.stepSimulation()
+                if self.touching(objA, objB):
+                    break
+            return True
+        else:
+            return False
+
     def sampleInside(self, objA, objB):
-        pass
-    
+        return self.sampleOnTopOrInside(objA, objB, 'inside')
+
     def sampleNextTo(self, objA, objB):
         pass
 
     def sampleUnder(self, objA, objB):
         pass
-    
+
     def sampleTouching(self, objA, objB):
         pass
+
 
 def main():
     igtn_task = iGTNTask('kinematic_checker_testing', 2)
@@ -197,10 +292,7 @@ def main():
     if not success:
         print('FAILED CONDITIONS:', failed_conditions)
     igtn_task.simulator.disconnect()
-                
-    
+
+
 if __name__ == '__main__':
     main()
-
-    
-
