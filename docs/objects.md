@@ -24,7 +24,7 @@ Instruction can be found here: [External Objects](https://github.com/StanfordVL/
 
 
 ### Examples
-In this example, we import three objects into PyBullet, two of which are articulated objects. The code can be found here: [examples/demo/object_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/object_example.py).
+In this example, we import three objects into PyBullet, two of which are articulated objects. The code can be found here: [gibson2/examples/demo/object_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/object_example.py).
 
 ```python
 from gibson2.objects.ycb_object import YCBObject
