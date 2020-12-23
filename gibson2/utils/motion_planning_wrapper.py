@@ -36,11 +36,11 @@ class MotionPlanningWrapper(object):
     """
 
     def __init__(self,
-                 env: iGibsonEnv = None,
-                 base_mp_algo: str = 'birrt',
-                 arm_mp_algo: str = 'birrt',
-                 optimize_iter: int = 0,
-                 fine_motion_plan: bool = True):
+                 env=None,
+                 base_mp_algo='birrt',
+                 arm_mp_algo='birrt',
+                 optimize_iter=0,
+                 fine_motion_plan=True):
         """
         Get planning related parameters.
         """
