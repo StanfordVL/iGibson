@@ -19,7 +19,7 @@ import numpy as np
 
 
 def benchmark_rendering(scene_list, rendering_presets_list, modality_list):
-    config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
+    config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
     assets_version = get_ig_assets_version()
     print('assets_version', assets_version)
     result = {}

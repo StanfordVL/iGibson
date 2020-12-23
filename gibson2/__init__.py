@@ -59,3 +59,9 @@ logging.info('Gibson Dataset path: {}'.format(g_dataset_path))
 logging.info('iG Dataset path: {}'.format(ig_dataset_path))
 logging.info('3D-FRONT Dataset path: {}'.format(threedfront_dataset_path))
 logging.info('CubiCasa5K Dataset path: {}'.format(cubicasa_dataset_path))
+
+example_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
+example_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples', 'configs')
+
+logging.info('Example path: {}'.format(example_path))
+logging.info('Example config path: {}'.format(example_config_path))
