@@ -41,7 +41,7 @@ class StaticIndoorScene(IndoorScene):
         :param waypoint_resolution: resolution of adjacent way points
         :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect robot's observations
         """
-        super().__init__(
+        super(StaticIndoorScene, self).__init__(
             scene_id,
             trav_map_resolution,
             trav_map_erosion,
