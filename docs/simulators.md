@@ -15,7 +15,7 @@ If `Simulator` uses `gui` mode, by default it will also maintain a `Viewer`, whi
 Most of the code can be found here: [gibson2/simulator.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/simulator.py).
 
 ### Examples
-In this example, we import a `StaticIndoorScene`, a `Turtlebot`, and ten `YCBObject` into the simulator. The code can be found here: [examples/demo/simulator_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/simulator_example.py)
+In this example, we import a `StaticIndoorScene`, a `Turtlebot`, and ten `YCBObject` into the simulator. The code can be found here: [gibson2/examples/demo/simulator_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/simulator_example.py)
 
 ```python
 from gibson2.robots.turtlebot_robot import Turtlebot
