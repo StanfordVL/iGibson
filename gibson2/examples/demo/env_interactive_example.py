@@ -7,9 +7,7 @@ import logging
 
 
 def main():
-    config_filename = os.path.join(
-        os.path.dirname(gibson2.__file__),
-        '../examples/configs/turtlebot_demo.yaml')
+    config_filename = os.path.join(gibson2.example_config_path, 'turtlebot_point_nav.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='gui')
     for j in range(10):
         env.reset()

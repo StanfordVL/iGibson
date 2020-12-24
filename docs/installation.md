@@ -33,7 +33,7 @@ iGibson's simulator can be installed as a python package using pip:
 ```bash
 pip install gibson2  # This step takes about 4 minutes
 # run the demo
-python -m gibson2.scripts.demo_static
+python -m gibson2.examples.demo.demo_static
 ```
 
 Note: we support using a custom pybullet version to speed up the physics in iGibson, if you want to have the speed up, you would need to do the following steps after installation:
