@@ -1,12 +1,12 @@
-from abc import abstractmethod, ABC
+from abc import abstractmethod, ABCMeta
 
 
-class BaseSensor(ABC):
+class BaseSensor():
     """
     Base Sensor class.
     Sensor-specific get_obs method is implemented in subclasses
     """
-
+    __metaclass__ = ABCMeta
     def __init__(self, env):
         self.config = env.config
 
