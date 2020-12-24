@@ -51,8 +51,7 @@ For `Rs` scene, the rendering results will look like this:
 In this example, we show an interactive demo of MeshRenderer.
 
 ```bash
-cd examples/demo
-python mesh_renderer_example.py
+python -m gibson2.examples.demo.mesh_renderer_example
 ```
 You may translate the camera by pressing "WASD" on your keyboard and rotate the camera by dragging your mouse. Press `Q` to exit the rendering loop. The code can be found in [gibson2/examples/demo/mesh_renderer_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/mesh_renderer_example.py).
 
@@ -63,8 +62,7 @@ You can test the physically based renderer with the PBR demo. You can render any
   obj files in the folder.
 
 ```bash
-cd examples/demo
-python mesh_renderer_example_pbr.py <path to ig_dataset>/objects/sink/sink_1/shape/visual
+python -m gibson2.examples.demo.mesh_renderer_example_pbr <path to ig_dataset>/objects/sink/sink_1/shape/visual
 ```
 ![pbr_renderer.png](images/pbr_render.png)
 

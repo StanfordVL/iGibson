@@ -4,6 +4,11 @@
 
 We developed an easy-to-use iGibson-human interface called **Viewer** for users to inspect and interact with our scenes and objects. The Viewer will automatically pop up if you use `gui` or `iggui` mode in `Simulator`.
 
+To play with an example of viewer, you can run the following command:
+
+```bash
+python -m gibson2.examples.demo.mouse_interaction
+```
 ![viewer.png](images/viewer.png)
 
 On the top left corner, you can see `px 0.4 py -0.9 pz 1.2`, which indicates the camera position, `[1.0, 0.1, -0.1]`, which indicates the camera orientation, and `manip mode`, which indicates the current control mode you are in (explained below).
