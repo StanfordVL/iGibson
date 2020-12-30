@@ -300,6 +300,8 @@ class Instance(object):
 
         # softbody: reload vertex position
         if self.softbody:
+            assert self.renderer.optimized == False
+            # TODO: softbody is not compatible with optimized renderer
             # construct new vertex position into shape format
             object_idx = self.object.VAO_ids[0]
             vertices = p.getMeshData(self.pybullet_uuid)[1]
@@ -307,22 +309,28 @@ class Instance(object):
                 item for sublist in vertices for item in sublist]
             vertex_position = np.array(vertices_flattened).reshape(
                 (len(vertices_flattened) // 3, 3))
-            shape = self.renderer.shapes[object_idx]
-            n_indices = len(shape.mesh.indices)
-            np_indices = shape.mesh.numpy_indices().reshape((n_indices, 3))
-            shape_vertex_index = np_indices[:, 0]
-            shape_vertex = vertex_position[shape_vertex_index]
+
+            # shape = self.renderer.shapes[object_idx]
+            # n_indices = len(shape.mesh.indices)
+            # np_indices = shape.mesh.numpy_indices().reshape((n_indices, 3))
+            # shape_vertex_index = np_indices[:, 0]
+            # shape_vertex = vertex_position[shape_vertex_index]
 
             # update new vertex position in buffer data
+            # new_data = self.renderer.vertex_data[object_idx]
+            # new_data[:, 0:shape_vertex.shape[1]] = shape_vertex
+            # new_data = new_data.astype(np.float32)
+
             new_data = self.renderer.vertex_data[object_idx]
-            new_data[:, 0:shape_vertex.shape[1]] = shape_vertex
-            new_data = new_data.astype(np.float32)
+            new_data[:,:3] = vertex_position
+            # TODO: surface normal needs to be recalculated if vertex changes
 
             # transform and rotation already included in mesh data
             self.pose_trans = np.eye(4)
             self.pose_rot = np.eye(4)
             self.last_trans = np.eye(4)
             self.last_rot = np.eye(4)
+            # TODO: optical flow and scene flow are not compatible with softbody
 
             # update buffer data into VBO
             self.renderer.r.render_softbody_instance(
