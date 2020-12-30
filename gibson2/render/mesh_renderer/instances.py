@@ -285,7 +285,10 @@ class Instance(object):
         self.or_buffer_indices = None
         self.last_trans = np.copy(pose_trans)
         self.last_rot = np.copy(pose_rot)
-
+        self.has_skeleton = True
+        self.weight = None
+        self.step = 0
+        self.sign = 1
     def render(self, shadow_pass=0):
         """
         Render this instance
@@ -298,18 +301,40 @@ class Instance(object):
         if self.renderer is None:
             return
 
+        self.step += 1
+        if self.step % 50 == 0:
+            self.sign = -self.sign
+
+        def sigmoid(x):
+            return 1 / (1 + np.exp(-x))
+
         # softbody: reload vertex position
         if self.softbody:
             assert self.renderer.optimized == False
             # TODO: softbody is not compatible with optimized renderer
             # construct new vertex position into shape format
             object_idx = self.object.VAO_ids[0]
-            vertices = p.getMeshData(self.pybullet_uuid)[1]
-            vertices_flattened = [
-                item for sublist in vertices for item in sublist]
-            vertex_position = np.array(vertices_flattened).reshape(
-                (len(vertices_flattened) // 3, 3))
 
+            if not self.has_skeleton:
+                vertices = p.getMeshData(self.pybullet_uuid)[1]
+                vertices_flattened = [
+                    item for sublist in vertices for item in sublist]
+                vertex_position = np.array(vertices_flattened).reshape(
+                    (len(vertices_flattened) // 3, 3))
+            else:
+                # use skeleton to deform mesh
+                vertex_position = self.renderer.vertex_data[object_idx][:,:3]
+                #from IPython import embed; embed()
+                #vertex_position[:1000,:] += 1
+                if self.weight is None:
+                    weight = sigmoid((vertex_position[:,0] - -0.01) * 20)
+                    weight = weight[:,None]
+                    self.weight = weight
+                vertex_position = (vertex_position.dot(np.array([[np.cos(0.01 * self.sign), np.sin(0.01* self.sign), 0],
+                                                               [-np.sin(0.01* self.sign), np.cos(0.01* self.sign), 0],
+                                                               [0,0,1]]))) * self.weight + vertex_position.dot(np.array([[np.cos(-0.01 * self.sign), np.sin(-0.01* self.sign), 0],
+                                                               [-np.sin(-0.01* self.sign), np.cos(-0.01* self.sign), 0],
+                                                               [0,0,1]])) * (1-self.weight)
             # shape = self.renderer.shapes[object_idx]
             # n_indices = len(shape.mesh.indices)
             # np_indices = shape.mesh.numpy_indices().reshape((n_indices, 3))

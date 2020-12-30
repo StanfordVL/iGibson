@@ -4,7 +4,7 @@ import pybullet as p
 
 class SoftObject(Object):
     """
-    Soft object (WIP)
+    Soft object
     """
 
     def __init__(self, fileName, simFileName, basePosition=[0, 0, -1], baseOrientation = [0,0,0,1], scale=1,
@@ -49,3 +49,11 @@ class SoftObject(Object):
         """
         p.createSoftBodyAnchor(self.body_id, nodeIndex, bodyUniqueId,
                                linkIndex, bodyFramePosition, physicsClientId)
+
+
+class RiggedSoftObject(Object):
+    def __init__(self, skeleton_filename, visual_filename):
+        super(RiggedSoftObject, self).__init__()
+
+    def _load(self):
+        pass
