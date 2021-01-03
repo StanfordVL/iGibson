@@ -425,8 +425,10 @@ class MeshRenderer(object):
             else:
                 shape_normal = vertex_normal[shape_normal_index]
 
+            # Scale the shape before transforming
             # Need to flip normals in axes where we have negative scaling
             for i in range(3):
+                shape_vertex[:, i] *= scale[i]
                 if scale[i] < 0:
                     shape_normal[:, i] *= -1
 
@@ -437,15 +439,12 @@ class MeshRenderer(object):
                 shape_texcoord = vertex_texcoord[shape_texcoord_index]
 
             if transform_orn is not None:
+                # Rotate the shape after they are scaled
                 orn = quat2rotmat(xyzw2wxyz(transform_orn))
                 shape_vertex = shape_vertex.dot(orn[:3, :3].T)
             if transform_pos is not None:
-                # shape_vertex is using the scale of original obj file
-                # before scaling in the URDF.
-                # However, transform_pos is already scaled by "scale"
-                # Therefore, to avoid transform_pos from being scaled twice,
-                # we need to divide transform_pos by "scale" first.
-                shape_vertex += np.array(transform_pos) / scale
+                # Translate the shape after they are scaled
+                shape_vertex += np.array(transform_pos)
 
             v0 = shape_vertex[0::3, :]
             v1 = shape_vertex[1::3, :]
@@ -467,7 +466,7 @@ class MeshRenderer(object):
             bitangent = bitangent.repeat(3, axis=0)
             tangent = tangent.repeat(3, axis=0)
             vertices = np.concatenate(
-                [shape_vertex * scale, shape_normal, shape_texcoord, tangent, bitangent], axis=-1)
+                [shape_vertex, shape_normal, shape_texcoord, tangent, bitangent], axis=-1)
             faces = np.array(range(len(vertices))).reshape(
                 (len(vertices) // 3, 3))
             vertexData = vertices.astype(np.float32)
