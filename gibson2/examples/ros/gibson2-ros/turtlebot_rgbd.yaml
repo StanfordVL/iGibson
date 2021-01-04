@@ -1,6 +1,6 @@
 # scene
 scene: gibson
-scene_id: Rs
+scene_id: area1
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
@@ -19,9 +19,9 @@ is_discrete: false
 velocity: 1.0
 
 # task
-task: point_nav_random
-target_dist_min: 1.0
-target_dist_max: 10.0
+task: point_nav_fixed
+initial_pos: [0.0, 0.0, 0.0]
+initial_orn: [0.0, 0.0, 0.0]
 goal_format: polar
 task_obs_dim: 4
 
@@ -44,14 +44,15 @@ initial_pos_z_offset: 0.1
 collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collisions with these robot links
 
 # sensor spec
-output: [task_obs, rgb, depth]
+output: [task_obs, rgb, depth, scan]
+enable_pbr: false
 # image
 # ASUS Xtion PRO LIVE
 # https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE
 fisheye: false
-image_width: 160
-image_height: 120
-vertical_fov: 45
+image_width: 256
+image_height: 256
+vertical_fov: 90
 # depth
 depth_low: 0.8
 depth_high: 3.5

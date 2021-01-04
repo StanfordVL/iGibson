@@ -141,7 +141,7 @@ class IndoorScene(Scene):
             largest_cc = max(nx.connected_components(g), key=len)
             g = g.subgraph(largest_cc).copy()
             with open(graph_file, 'wb') as pfile:
-                pickle.dump(g, pfile, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(g, pfile)
 
         self.floor_graph.append(g)
 
