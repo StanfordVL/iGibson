@@ -49,7 +49,7 @@ rosdep install --from-paths src --ignore-src -r -y
 
 ```bash
 which python # Should give /usr/bin/python
-python -c 'import gibson2, rospy, rospkg' # Should run without errors.
+python -c 'import gibson2, rospy, rospkg' # Should run without errors
 ```
 
 Running
@@ -62,7 +62,7 @@ In order to run iGibson+ROS examples, you will need to perform the following ste
 source /opt/ros/kinetic/setup.bash
 source ~/catkin_ws/devel/setup.bash
 ```
-2. Repeat step 3 from Preparation, sanitize `PATH` and `PYTHONPATH`
+2. Repeat Step 3 from Preparation: sanitize `PATH` and `PYTHONPATH`
 3. Here are some of the examples that you can run, including gmapping, hector mapping and navigation.
 ```bash
 roslaunch gibson2-ros turtlebot_rgbd.launch # Bare minimal bringup example
@@ -86,7 +86,6 @@ Topics
 ----------------
 
 Here are all the topics that `turtlebot_rgbd.py` publishes and subscribes.
-- `turtlebot_rgbd.py`
 
 Publishes:
 
@@ -105,7 +104,7 @@ Subscribes:
 | Topic name        | Type           | Usage|
 |:------------------:|:---------------------------:|:---:|
 |`/mobile_base/commands/velocity`|`geometry_msgs/Twist`|Velocity command for turtlebot, `msg.linear.x` is the forward velocity, `msg.angular.z` is the angular velocity|
-|`reset_pose`|`geometry_msgs/PoseStamped`|Direct reset turtlebot's pose (i.e. teleportation)|
+|`/reset_pose`|`geometry_msgs/PoseStamped`|Direct reset turtlebot's pose (i.e. teleportation)|
 
 
 ### References
