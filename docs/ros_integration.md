@@ -27,7 +27,7 @@ Environment Setup
 git clone https://github.com/StanfordVL/iGibson --recursive
 cd iGibson
 
-conda create -n py2-igibson python=2.7 # we support python 2.7, 3.5, 3.6, 3.7, 3.8
+conda create -n py2-igibson python=2.7 anaconda # we support python 2.7, 3.5, 3.6, 3.7, 3.8
 source activate py2-igibson
 pip install -e . # This step takes about 4 minutes
 source deactivate # This step is important because we will NOT use <anaconda installation root>/envs/py2-igibson/bin/python
