@@ -47,8 +47,8 @@ collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collisions with these robot 
 output: [task_obs, rgb, depth, scan]
 enable_pbr: false
 # image
-# ASUS Xtion PRO LIVE
-# https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE
+# Simulated camera with 90 degree field of view
+# If this is changed, also need to change the CameraInfo message
 fisheye: false
 image_width: 256
 image_height: 256
