@@ -80,7 +80,7 @@ Alternatively, iGibson can be compiled from source: [iGibson GitHub Repo](https:
 git clone https://github.com/StanfordVL/iGibson --recursive
 cd iGibson
 
-conda create -n py3-igibson python=3.6 anaconda # we support python 3.5, 3.6, 3.7, 3.8
+conda create -n py3-igibson python=3.6 # we support python 2.7, 3.5, 3.6, 3.7, 3.8
 source activate py3-igibson
 pip install -e . # This step takes about 4 minutes
 ```
