@@ -42,10 +42,10 @@ source deactivate # This step is important because we will NOT use <anaconda ins
 ```bash
 mkdir -p ~/catkin_ws
 ```
-5. Soft-link `gibson-ros` folder to your `catkin_ws/src` and run catkin_make to index gibson-ros package.
+5. Soft-link `gibson2-ros` folder to your `catkin_ws/src` and run `catkin_make` to index `gibson2-ros` package.
 ```bash
 cd <iGibson root>/gibson2
-ln -s $PWD/examples/ros/gibson-ros/ ~/catkin_ws/src/
+ln -s $PWD/examples/ros/gibson2-ros/ ~/catkin_ws/src/
 cd ~/catkin_ws && catkin_make
 ```
 5. Install `gibson2-ros` dependencies:
