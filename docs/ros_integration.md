@@ -23,12 +23,21 @@ Environment Setup
  
 1. Install ROS: in this package, we use navigation stack from ROS kinetic. Please follow the [instructions](http://wiki.ros.org/kinetic/Installation/Ubuntu).
 2. Install iGibson **from source** following [installation guide](installation.md) in **python2.7**. Note that ROS only supports `python2.7` at the moment, so you need to create python2.7 virtual environment to install iGibson instead of python3.x.
+```bash
+git clone https://github.com/StanfordVL/iGibson --recursive
+cd iGibson
+
+conda create -n py2-igibson python=2.7 # we support python 2.7, 3.5, 3.6, 3.7, 3.8
+source activate py2-igibson
+pip install -e . # This step takes about 4 minutes
+source deactivate # This step is important because we will NOT use <anaconda installation root>/envs/py2-igibson/bin/python
+```
 3. If you use anaconda for setting up python environment, some tweaks of `PATH` and `PYTHONPATH` variable are required to avoid conflict. In particular:
 	1. For `PATH`: conda related needs to be removed from `PATH`
 	```bash
 	echo $PATH | grep -oP "[^:;]+" | grep conda	## Remove these paths from $PATH
 	```
-	2. For `PYTHONPATH`: `/usr/lib/python2.7/dist-packages/`, `/opt/ros/kinetic/lib/python2.7/dist-packages`(ROS python libraries), `<anaconda installation root>/envs/py27/lib/python2.7/site-packages`(iGibson dependencies) and `<iGibson root>` need to be in `PYTHONPATH` **in this exact order**.
+	2. For `PYTHONPATH`: `/usr/lib/python2.7/dist-packages/`, `/opt/ros/kinetic/lib/python2.7/dist-packages`(ROS python libraries), `<anaconda installation root>/envs/py2-igibson/lib/python2.7/site-packages`(iGibson dependencies) and `<iGibson root>` need to be in `PYTHONPATH` **in this exact order**.
 4. Create `catkin_ws` folder
 ```bash
 mkdir -p ~/catkin_ws
@@ -48,7 +57,7 @@ rosdep install --from-paths src --ignore-src -r -y
 ## Sanity check 
 
 ```bash
-which python # Should give /usr/bin/python
+which python # Should give /usr/bin/python, NOT <anaconda installation root>/envs/py2-igibson/bin/python
 python -c 'import gibson2, rospy, rospkg' # Should run without errors
 ```
 
