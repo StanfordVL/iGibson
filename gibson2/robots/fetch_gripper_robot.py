@@ -9,21 +9,23 @@ from gibson2.robots.robot_locomotor import LocomotorRobot
 class FetchGripper(LocomotorRobot):
     def __init__(self, config):
         self.config = config
-        self.wheel_velocity = config.get('wheel_velocity', 1.0)
-        self.torso_lift_velocity = config.get('torso_lift_velocity', 1.0)
-        self.arm_velocity = config.get('arm_velocity', 1.0)
-        self.gripper_velocity = config.get('gripper_velocity', 1.0)
-        self.head_tilt_velocity = config.get('gripper_velocity', 1.0)
+        # self.wheel_velocity = config.get('wheel_velocity', 1.0)
+        # self.torso_lift_velocity = config.get('torso_lift_velocity', 1.0)
+        # self.arm_velocity = config.get('arm_velocity', 1.0)
+        # self.gripper_velocity = config.get('gripper_velocity', 1.0)
+        # self.head_velocity = config.get('gripper_velocity', 1.0)
         self.wheel_dim = 2
         self.torso_lift_dim = 1
         self.arm_dim = 7
         self.gripper_dim = 2
-        self.head_tilt_dim = 1
+        self.head_dim = 2
+        action_dim = self.wheel_dim + self.torso_lift_dim + self.head_dim + self.arm_dim + self.gripper_dim
+        self.max_velocity = np.array(config.get('max_velocity', np.ones(action_dim)))
         self.wheel_axle_half = 0.18738  # half of the distance between the wheels
         self.wheel_radius = 0.065  # radius of the wheels
         LocomotorRobot.__init__(self,
                                 "fetch/fetch_gripper.urdf",
-                                action_dim=self.wheel_dim + self.torso_lift_dim + self.head_tilt_dim + self.arm_dim + self.gripper_dim,
+                                action_dim=action_dim,
                                 scale=config.get("robot_scale", 1.0),
                                 is_discrete=config.get("is_discrete", False),
                                 control="velocity",
@@ -33,11 +35,14 @@ class FetchGripper(LocomotorRobot):
         """
         Set up continuous action space
         """
-        self.action_high = np.array([self.wheel_velocity] * self.wheel_dim +
-                                    [self.torso_lift_velocity] * self.torso_lift_dim +
-                                    [self.head_tilt_velocity] * self.head_tilt_dim +
-                                    [self.arm_velocity] * self.arm_dim +
-                                    [self.gripper_velocity] * self.gripper_dim)
+        # self.action_high = np.array([self.wheel_velocity] * self.wheel_dim +
+        #                             [self.torso_lift_velocity] * self.torso_lift_dim +
+        #                             [self.head_velocity] * self.head_dim +
+        #                             [self.arm_velocity] * self.arm_dim +
+        #                             [self.gripper_velocity] * self.gripper_dim)
+        #self.action_high = np.array(self.max_velocity)
+        #self.action_low = -self.action_high
+        self.action_high = np.ones(self.action_dim)
         self.action_low = -self.action_high
         self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
@@ -61,6 +66,7 @@ class FetchGripper(LocomotorRobot):
         joints = joints_from_names(robot_id,
                                        [
                                            'torso_lift_joint',
+                                           'head_pan_joint',
                                            'head_tilt_joint',
                                            'shoulder_pan_joint',
                                            'shoulder_lift_joint',
@@ -72,7 +78,7 @@ class FetchGripper(LocomotorRobot):
                                            'r_gripper_finger_joint',
                                            'l_gripper_finger_joint'
                                        ])
-        rest_position = (0.02, 0., np.pi / 2.0 - 0.4, np.pi / 2.0 - 0.1, -0.4, np.pi / 2.0 + 0.1, 0.0, np.pi / 2.0, 0.0, 0.05, 0.05)
+        rest_position = (0.02, 0., 0., np.pi / 2.0 - 0.4, np.pi / 2.0 - 0.1, -0.4, np.pi / 2.0 + 0.1, 0.0, np.pi / 2.0, 0.0, 0.05, 0.05)
         # might be a better pose to initiate manipulation
         # rest_position = (0.30322468280792236, -1.414019864768982,
         #                  1.5178184935241699, 0.8189625336474915,
