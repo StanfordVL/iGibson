@@ -170,6 +170,27 @@ def transform_element_xyzrpy(element, transformation):
         *transform_rpy)
 
 
+def get_main_link(tree):
+    is_fixed = tree.find("link[@name='world']") is not None
+    joints = tree.findall('joint')
+    links = tree.findall('link')
+    if is_fixed:
+        # Find the link that connects to the world link
+        main_link_name = [
+            joint.find('child').attrib['link']
+            for joint in joints
+            if joint.find('parent').attrib['link'] == 'world'][0]
+    else:
+        # Find the base link
+        children_links = [joint.find('child').attrib['link']
+                          for joint in joints]
+        main_link_name = [
+            link.attrib['name']
+            for link in links
+            if link.attrib['name'] not in children_links][0]
+    return main_link_name
+
+
 def save_urdfs_without_floating_joints(tree, file_prefix):
     """
     Split one URDF into multiple URDFs if there are floating joints and save them
@@ -224,9 +245,11 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
                 if child_name in extended_splitted_dict[esd][3]:
                     extended_splitted_dict[esd] = (extended_splitted_dict[esd][0], extended_splitted_dict[esd][1], extended_splitted_dict[esd][2],
                                                    extended_splitted_dict[esd][3], transformation)
-
     logging.info("Number of splits: " + str(len(extended_splitted_dict)))
     logging.info("Instantiating scene into the following urdfs:")
+
+    main_link_name = get_main_link(tree)
+
     urdfs_no_floating = {}
     for esd_key in extended_splitted_dict:
         xml_tree_parent = ET.ElementTree(ET.fromstring(
@@ -253,10 +276,14 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
 
         # check if this object is fixed: look for "world" link
         is_fixed = xml_tree_parent.find("link[@name='world']") is not None
+        is_main_body = main_link_name == get_main_link(xml_tree_parent)
         transformation = extended_splitted_dict[esd_key][4]
         urdfs_no_floating[esd_key] = (
-            urdf_file_name, transformation, is_fixed)
+            urdf_file_name, transformation, is_fixed, is_main_body)
         xml_tree_parent.write(urdf_file_name, xml_declaration=True)
         logging.info(urdf_file_name)
+
+    # There should be exactly one main body
+    assert np.sum([val[3] for val in urdfs_no_floating.values()]) == 1
 
     return urdfs_no_floating

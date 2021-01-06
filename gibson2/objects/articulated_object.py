@@ -64,7 +64,7 @@ class URDFObject(Object):
     def __init__(self,
                  name,
                  category,
-                 model="random",
+                 model=None,
                  model_path=None,
                  filename=None,
                  bounding_box=None,
@@ -114,6 +114,7 @@ class URDFObject(Object):
         self.body_ids = []
         # whether this object is fixed or not, boolean
         self.is_fixed = []
+        self.main_body = -1
         # mapping between visual objects and possible textures
         # multiple visual objects can share the same material
         # if some sub URDF does not have visual object or this URDF is part of
@@ -241,8 +242,6 @@ class URDFObject(Object):
                         link_col_mesh = link.find('collision/geometry/mesh')
                         if link_col_mesh is None:
                             continue
-                        print(link_col_mesh.attrib['filename'])
-                        print(col_mesh_path)
                         if link_col_mesh.attrib['filename'] == col_mesh_path:
                             new_link = link.attrib['name']
                             new_body_id = body_id
@@ -530,12 +529,14 @@ class URDFObject(Object):
 
         # append a new tuple of file name of the instantiated embedded urdf
         # and the transformation (!= identity if its connection was floating)
-        for urdf in urdfs_no_floating:
+        for i, urdf in enumerate(urdfs_no_floating):
             self.urdf_paths.append(urdfs_no_floating[urdf][0])
             transformation = np.dot(
                 self.joint_frame, urdfs_no_floating[urdf][1])
             self.poses.append(transformation)
             self.is_fixed.append(urdfs_no_floating[urdf][2])
+            if urdfs_no_floating[urdf][3]:
+                self.main_body = i
 
     def randomize_texture(self):
         """
@@ -704,3 +705,68 @@ class URDFObject(Object):
                     p.setJointMotorControl2(
                         body_id, j, p.VELOCITY_CONTROL,
                         targetVelocity=0.0, force=self.joint_friction)
+
+    def get_position(self):
+        """
+        Get object position
+
+        :return: position in xyz
+        """
+        body_id = self.body_ids[self.main_body]
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            pos, _ = p.getLinkState(body_id, 0)[0:2]
+        else:
+            pos, _ = p.getBasePositionAndOrientation(body_id)
+        return pos
+
+    def get_orientation(self):
+        """
+        Get object orientation
+
+        :return: quaternion in xyzw
+        """
+        body_id = self.body_ids[self.main_body]
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            _, orn = p.getLinkState(body_id, 0)[0:2]
+        else:
+            _, orn = p.getBasePositionAndOrientation(body_id)
+        return orn
+
+    def set_position(self, pos):
+        """
+        Set object position
+
+        :param pos: position in xyz
+        """
+        body_id = self.body_ids[self.main_body]
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            logging.warning('cannot set_position for fixed objects')
+        else:
+            _, old_orn = p.getBasePositionAndOrientation(body_id)
+            p.resetBasePositionAndOrientation(body_id, pos, old_orn)
+
+    def set_orientation(self, orn):
+        """
+        Set object orientation
+
+        :param orn: quaternion in xyzw
+        """
+        body_id = self.body_ids[self.main_body]
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            logging.warning('cannot set_orientation for fixed objects')
+        else:
+            old_pos, _ = p.getBasePositionAndOrientation(body_id)
+            p.resetBasePositionAndOrientation(body_id, old_pos, orn)
+
+    def set_position_orientation(self, pos, orn):
+        """
+        Set object position and orientation
+        :param pos: position in xyz
+        :param orn: quaternion in xyzw
+        """
+        body_id = self.body_ids[self.main_body]
+        if self.is_fixed[self.main_body]:
+            logging.warning(
+                'cannot set_position_orientation for fixed objects')
+        else:
+            p.resetBasePositionAndOrientation(body_id, pos, orn)
