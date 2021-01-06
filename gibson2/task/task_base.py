@@ -15,6 +15,7 @@ from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path
 import random
 import pybullet as p
 from IPython import embed
+import cv2
 
 
 class iGTNTask(TaskNetTask):
@@ -28,6 +29,7 @@ class iGTNTask(TaskNetTask):
         super().__init__(atus_activity, task_instance=task_instance)
 
     def initialize_simulator(self,
+                             mode='iggui',
                              scene_id=None,
                              handmade_simulator=None,
                              handmade_sim_objs=None,
@@ -46,7 +48,7 @@ class iGTNTask(TaskNetTask):
         # Set self.scene_name, self.scene, self.sampled_simulator_objects, and self.sampled_dsl_objects
         if handmade_simulator is None:
             self.simulator = Simulator(
-                mode='iggui', image_width=960, image_height=720, device_idx=0)
+                mode=mode, image_width=960, image_height=720, device_idx=0)
             self.initialize(InteractiveIndoorScene,
                             ArticulatedObject,
                             scene_id=scene_id)
@@ -229,8 +231,14 @@ class iGTNTask(TaskNetTask):
                 len(objB.supporting_surfaces[predicate][(body_id, link_id)]))
             height, height_map = objB.supporting_surfaces[predicate][(
                 body_id, link_id)][random_height_idx]
+            obj_half_size = np.max(objA.bounding_box[0:2]) / 2 * 100
+            obj_half_size_scaled = np.array(
+                [obj_half_size / objB.scale[1], obj_half_size / objB.scale[0]])
+            obj_half_size_scaled = np.ceil(obj_half_size_scaled).astype(np.int)
+            height_map_eroded = cv2.erode(
+                height_map, np.ones(obj_half_size_scaled, np.uint8))
 
-            valid_pos = np.array(height_map.nonzero())
+            valid_pos = np.array(height_map_eroded.nonzero())
             random_pos_idx = np.random.randint(valid_pos.shape[1])
             random_pos = valid_pos[:, random_pos_idx]
             y_map, x_map = random_pos
