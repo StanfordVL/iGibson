@@ -13,7 +13,7 @@ import cv2
 import time
 import random
 
-from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up
+from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_aabb_urdf, get_base_link_name
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
@@ -76,6 +76,7 @@ class URDFObject(Object):
                  joint_friction=None,
                  in_rooms=None,
                  texture_randomization=False,
+                 overwrite_inertial=False,
                  scene_instance_folder=None,
                  ):
         """
@@ -90,6 +91,7 @@ class URDFObject(Object):
         :param joint_friction: joint friction for joints in this object
         :param in_rooms: which room(s) this object is in. It can be in more than one rooms if it sits at room boundary (e.g. doors)
         :param texture_randomization: whether to enable texture randomization
+        :param overwrite_inertial: whether to overwrite the inertial frame of the original URDF using trimesh + density estimate
         :param scene_instance_folder: scene instance folder to split and save sub-URDFs
         """
         super(URDFObject, self).__init__()
@@ -99,6 +101,7 @@ class URDFObject(Object):
         self.in_rooms = in_rooms
         self.connecting_joint = connecting_joint
         self.texture_randomization = texture_randomization
+        self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
 
         # Friction for all prismatic and revolute joints
@@ -144,11 +147,14 @@ class URDFObject(Object):
 
         self.material_to_friction = None
 
-        self.model_path = model_path
         logging.info("Category " + self.category)
         self.filename = filename
         logging.info("Loading the following URDF template " + filename)
         self.object_tree = ET.parse(filename)  # Parse the URDF
+
+        self.model_path = model_path
+        if self.model_path is None:
+            self.model_path = os.path.dirname(filename)
 
         # Change the mesh filenames to include the entire path
         for mesh in self.object_tree.iter("mesh"):
@@ -177,8 +183,6 @@ class URDFObject(Object):
                 bbox_size = bbox_max - bbox_min
                 base_link_offset = (bbox_min + bbox_max) / 2.0
         else:
-            assert category in ['walls', 'floors', 'ceilings'], \
-                'missing object model size and base link offset data'
             bbox_size = None
             base_link_offset = np.zeros(3)
 
@@ -192,10 +196,14 @@ class URDFObject(Object):
                     scale = np.ones(3)
                 bounding_box = bbox_size * scale
 
-        logging.info("Scale: " + np.array2string(scale))
-
         self.scale = scale
         self.bounding_box = bounding_box
+
+        # If no bounding box, cannot compute dynamic properties from density
+        if self.bounding_box is None:
+            self.overwrite_inertial = False
+
+        logging.info("Scale: " + np.array2string(scale))
 
         # We need to know where the base_link origin is wrt. the bounding box
         # center. That allows us to place the model correctly since the joint
@@ -204,6 +212,8 @@ class URDFObject(Object):
         self.scaled_bbxc_in_blf = -self.scale * base_link_offset
 
         self.avg_obj_dims = avg_obj_dims
+
+        self.base_link_name = get_base_link_name(self.object_tree)
 
         self.scale_object()
         self.rename_urdf()
@@ -270,6 +280,7 @@ class URDFObject(Object):
 
     def load_supporting_surfaces(self):
         self.supporting_surfaces = {}
+
         heights_file = os.path.join(
             self.model_path, 'misc/heights_per_link.json')
         if not os.path.isfile(heights_file):
@@ -332,9 +343,12 @@ class URDFObject(Object):
         Helper function that renames the file paths in the object urdf
         from relative paths to absolute paths
         """
-        # Change the links of the added object to adapt the to the given name
+        # Change the links of the added object to adapt to the given name
         for link_emb in self.object_tree.iter('link'):
-            if link_emb.attrib['name'] == "base_link":
+            # If the original urdf already contains world link, do not rename
+            if link_emb.attrib['name'] == 'world':
+                pass
+            elif link_emb.attrib['name'] == self.base_link_name:
                 # The base_link get renamed as the link tag indicates
                 # Just change the name of the base link in the embedded urdf
                 link_emb.attrib['name'] = self.name
@@ -351,14 +365,20 @@ class URDFObject(Object):
                 "_" + joint_emb.attrib["name"]
             # We change the child link names
             for child_emb in joint_emb.findall('child'):
-                if child_emb.attrib['link'] == "base_link":
+                # If the original urdf already contains world link, do not rename
+                if child_emb.attrib['link'] == 'world':
+                    pass
+                elif child_emb.attrib['link'] == self.base_link_name:
                     child_emb.attrib['link'] = self.name
                 else:
                     child_emb.attrib['link'] = self.name + \
                         "_" + child_emb.attrib['link']
             # and the parent link names
             for parent_emb in joint_emb.findall('parent'):
-                if parent_emb.attrib['link'] == "base_link":
+                # If the original urdf already contains world link, do not rename
+                if parent_emb.attrib['link'] == 'world':
+                    pass
+                elif parent_emb.attrib['link'] == self.base_link_name:
                     parent_emb.attrib['link'] = self.name
                 else:
                     parent_emb.attrib['link'] = self.name + \
@@ -375,7 +395,7 @@ class URDFObject(Object):
 
         # First, define the scale in each link reference frame
         # and apply it to the joint values
-        scales_in_lf = {"base_link": self.scale}
+        scales_in_lf = {self.base_link_name: self.scale}
         all_processed = False
         while not all_processed:
             all_processed = True
@@ -446,7 +466,7 @@ class URDFObject(Object):
 
         all_links = self.object_tree.findall('link')
         # compute dynamics properties
-        if self.category not in ["walls", "floors", "ceilings"]:
+        if self.overwrite_inertial and self.category not in ["walls", "floors", "ceilings"]:
             all_links_trimesh = []
             total_volume = 0.0
             for link in all_links:
@@ -456,14 +476,15 @@ class URDFObject(Object):
                     continue
                 # assume one collision mesh per link
                 assert len(meshes) == 1, (self.filename, link.attrib['name'])
-                collision_mesh_path = os.path.join(self.model_path,
-                                                   meshes[0].attrib['filename'])
+                # check collision mesh path
+                collision_mesh_path = os.path.join(
+                    meshes[0].attrib['filename'])
                 trimesh_obj = trimesh.load(
                     file_obj=collision_mesh_path, force='mesh')
                 all_links_trimesh.append(trimesh_obj)
                 volume = trimesh_obj.volume
                 # a hack to artificially increase the density of the lamp base
-                if link.attrib['name'] == 'base_link':
+                if link.attrib['name'] == self.base_link_name and self.base_link_name != 'world':
                     if self.category in ['lamp']:
                         volume *= 10.0
                 total_volume += volume
@@ -493,7 +514,7 @@ class URDFObject(Object):
 
         # Now iterate over all links and scale the meshes and positions
         for i, link in enumerate(all_links):
-            if self.category not in ["walls", "floors", "ceilings"]:
+            if self.overwrite_inertial and self.category not in ["walls", "floors", "ceilings"]:
                 link_trimesh = all_links_trimesh[i]
                 # assign dynamics properties
                 inertials = link.findall('inertial')
@@ -526,7 +547,7 @@ class URDFObject(Object):
 
                 if link_trimesh is not None:
                     # a hack to artificially increase the density of the lamp base
-                    if link.attrib['name'] == 'base_link':
+                    if link.attrib['name'] == self.base_link_name and self.base_link_name != 'world':
                         if self.category in ['lamp']:
                             link_trimesh.density *= 10.0
 
