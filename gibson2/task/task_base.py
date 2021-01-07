@@ -76,27 +76,15 @@ class iGTNTask(TaskNetTask):
                         zip(self.objects[obj_cat], simulator_objs):
                     self.object_scope[obj_inst] = simulator_obj
             else:
+                category_path = get_ig_category_path(obj_cat)
                 for i, obj_inst in enumerate(self.objects[obj_cat]):
-                    category_path = get_ig_category_path(obj_cat)
-                    obj_name = '{}_{}'.format(obj_cat, i)
                     model = random.choice(os.listdir(category_path))
                     model_path = get_ig_model_path(obj_cat, model)
                     filename = os.path.join(model_path, model + ".urdf")
-                    scale = np.array([1.0, 1.0, 1.0])
                     simulator_obj = self.scene.add_object(
-                        obj_cat,
-                        object_name=obj_name,
-                        model=model,
+                        filename,
+                        category=obj_cat,
                         model_path=model_path,
-                        filename=filename,
-                        bounding_box=None,
-                        scale=scale,
-                        in_rooms=None,
-                        joint_name=None,
-                        joint_type='floating',
-                        joint_parent=None,
-                        position=[0.0, 0.0, 0.0],
-                        orientation_rpy=[0.0, 0.0, 0.0],
                     )
                     self.object_scope[obj_inst] = simulator_obj
 
@@ -105,9 +93,6 @@ class iGTNTask(TaskNetTask):
     def import_scene(self):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
-        # TODO: this assumes the main body id is the first body id
-        for name in self.scene.objects_by_name:
-            self.scene.objects_by_name[name].body_id = self.scene.objects_by_name[name].body_id[0]
 
     def sample(self, failed_conditions):
         print('sample')
@@ -132,8 +117,8 @@ class iGTNTask(TaskNetTask):
         below_epsilon, above_epsilon = 0.025, 0.025
 
         center, extent = get_center_extent(
-            objA.body_id)  # TODO: approximate_as_prism
-        bottom_aabb = get_aabb(objB.body_id)
+            objA.get_body_id())  # TODO: approximate_as_prism
+        bottom_aabb = get_aabb(objB.get_body_id())
 
         base_center = center - np.array([0, 0, extent[2]])/2
         top_z_min = base_center[2]
@@ -142,10 +127,10 @@ class iGTNTask(TaskNetTask):
                           ) <= top_z_min <= (bottom_z_max + abs(above_epsilon))
         bbox_contain = (aabb_contains_point(
             base_center[:2], aabb2d_from_aabb(bottom_aabb)))
-        touching = body_collision(objA.body_id, objB.body_id)
+        touching = body_collision(objA.get_body_id(), objB.get_body_id())
 
         return height_correct and bbox_contain and touching
-        # return is_placement(objA.body_id, objB.body_id) or is_center_stable(objA.body_id, objB.body_id)
+        # return is_placement(objA.get_body_id(), objB.get_body_id()) or is_center_stable(objA.get_body_id(), objB.get_body_id())
 
     def inside(self, objA, objB):
         '''
@@ -154,8 +139,9 @@ class iGTNTask(TaskNetTask):
         :param objA: simulator object
         :param objB: simulator object
         '''
-        # return aabb_contains_aabb(get_aabb(objA.body_id), get_aabb(objB.body_id))
-        aabbA, aabbB = get_aabb(objA.body_id), get_aabb(objB.body_id)
+        # return aabb_contains_aabb(get_aabb(objA.get_body_id()), get_aabb(objB.get_body_id()))
+        aabbA, aabbB = get_aabb(
+            objA.get_body_id()), get_aabb(objB.get_body_id())
         center_inside = aabb_contains_point(get_aabb_center(aabbA), aabbB)
         volume_lesser = get_aabb_volume(aabbA) < get_aabb_volume(aabbB)
         extentA, extentB = get_aabb_extent(aabbA), get_aabb_extent(aabbB)
@@ -171,7 +157,8 @@ class iGTNTask(TaskNetTask):
         :param objA: simulator object
         :param objB: simulator object
         '''
-        objA_aabb, objB_aabb = get_aabb(objA.body_id), get_aabb(objB.body_id)
+        objA_aabb, objB_aabb = get_aabb(
+            objA.get_body_id()), get_aabb(objB.get_body_id())
         objA_lower, objA_upper = objA_aabb
         objB_lower, objB_upper = objB_aabb
         distance_vec = []
@@ -196,10 +183,10 @@ class iGTNTask(TaskNetTask):
         :param objB: simulator object
         '''
         within = aabb_contains_point(
-            get_aabb_center(get_aabb(objA.body_id))[:2],
-            aabb2d_from_aabb(get_aabb(objB.body_id)))
-        objA_aabb = get_aabb(objA.body_id)
-        objB_aabb = get_aabb(objB.body_id)
+            get_aabb_center(get_aabb(objA.get_body_id()))[:2],
+            aabb2d_from_aabb(get_aabb(objB.get_body_id())))
+        objA_aabb = get_aabb(objA.get_body_id())
+        objB_aabb = get_aabb(objB.get_body_id())
 
         within = aabb_contains_point(
             get_aabb_center(objA_aabb)[:2],
@@ -208,7 +195,7 @@ class iGTNTask(TaskNetTask):
         return within and below
 
     def touching(self, objA, objB):
-        return body_collision(objA.body_id, objB.body_id)
+        return body_collision(objA.get_body_id(), objB.get_body_id())
 
     #### SAMPLERS ####
     def sampleOnTop(self, objA, objB):
@@ -254,12 +241,12 @@ class iGTNTask(TaskNetTask):
 
             pos[2] += z_offset
             z = stable_z_on_aabb(
-                objA.body_id, ([0, 0, pos[2]], [0, 0, pos[2]]))
+                objA.get_body_id(), ([0, 0, pos[2]], [0, 0, pos[2]]))
             pos[2] = z
             objA.set_position_orientation(pos, [0, 0, 0, 1])
 
             p.stepSimulation()
-            success = len(p.getContactPoints(objA.body_id)) == 0
+            success = len(p.getContactPoints(objA.get_body_id())) == 0
             p.restoreState(state_id)
 
             if success:

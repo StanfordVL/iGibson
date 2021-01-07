@@ -10,11 +10,14 @@ from gibson2.objects.object_base import Object
 import pybullet as p
 import trimesh
 import cv2
+import time
+import random
 
 from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
+from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
 
 
 class ArticulatedObject(Object):
@@ -62,36 +65,41 @@ class URDFObject(Object):
     """
 
     def __init__(self,
-                 name,
-                 category,
-                 model=None,
+                 filename,
+                 name='object_0',
+                 category='object',
                  model_path=None,
-                 filename=None,
                  bounding_box=None,
                  scale=None,
+                 connecting_joint=None,
                  avg_obj_dims=None,
                  joint_friction=None,
                  in_rooms=None,
+                 texture_randomization=False,
+                 scene_instance_folder=None,
                  ):
         """
+        :param filename: urdf file path of that object model
         :param name: object name, unique for each object instance, e.g. door_3
         :param category: object category, e.g. door
-        :param model: object model in the object dataset
         :param model_path: folder path of that object model
-        :param filename: urdf file path of that object model
         :param bounding_box: bounding box of this object
         :param scale: scaling factor of this object
+        :param connecting_joint: connecting joint to the scene that defines the object's initial pose (optional)
         :param avg_obj_dims: average object dimension of this object
         :param joint_friction: joint friction for joints in this object
-        :param in_rooms: which room(s) this object is in. It can be in more
-        than one rooms if it sits at room boundary (e.g. doors)
+        :param in_rooms: which room(s) this object is in. It can be in more than one rooms if it sits at room boundary (e.g. doors)
+        :param texture_randomization: whether to enable texture randomization
+        :param scene_instance_folder: scene instance folder to split and save sub-URDFs
         """
         super(URDFObject, self).__init__()
 
         self.name = name
         self.category = category
-        self.model = model
         self.in_rooms = in_rooms
+        self.connecting_joint = connecting_joint
+        self.texture_randomization = texture_randomization
+        self.scene_instance_folder = scene_instance_folder
 
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
@@ -137,10 +145,7 @@ class URDFObject(Object):
         self.material_to_friction = None
 
         self.model_path = model_path
-
         logging.info("Category " + self.category)
-        logging.info("Model " + self.model)
-
         self.filename = filename
         logging.info("Loading the following URDF template " + filename)
         self.object_tree = ET.parse(filename)  # Parse the URDF
@@ -202,6 +207,66 @@ class URDFObject(Object):
 
         self.scale_object()
         self.rename_urdf()
+        self.compute_object_pose()
+        self.remove_floating_joints(self.scene_instance_folder)
+        if self.texture_randomization:
+            self.prepare_texture()
+
+    def compute_object_pose(self):
+        if self.connecting_joint is not None:
+            joint_type = self.connecting_joint.attrib['type']
+            joint_xyz = np.array(
+                [float(val)for val in self.connecting_joint.find("origin").attrib["xyz"].split(" ")])
+            if 'rpy' in self.connecting_joint.find("origin").attrib:
+                joint_rpy = np.array(
+                    [float(val) for val in self.connecting_joint.find("origin").attrib["rpy"].split(" ")])
+            else:
+                joint_rpy = np.array([0., 0., 0.])
+            joint_name = self.connecting_joint.attrib['name']
+            joint_parent = self.connecting_joint.find("parent").attrib["link"]
+            assert joint_parent == 'world'
+        else:
+            joint_type = 'floating'
+            joint_xyz = np.array([0., 0., 0.])
+            joint_rpy = np.array([0., 0., 0.])
+            joint_name = None
+            joint_parent = None
+
+        # Deal with the joint connecting the embedded urdf to the world link
+        joint_frame = np.eye(4)
+
+        # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
+        # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
+        x, y, z = self.scaled_bbxc_in_blf
+        yaw = joint_rpy[2]
+        x, y = rotate_vector_2d(np.array([x, y]), -yaw)
+        joint_xyz += np.array([x, y, z])
+
+        # if the joint is floating, we save the transformation of the floating joint to be used when we load the
+        # embedded urdf
+        if joint_type == "floating":
+            joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
+        # if the joint is not floating (fixed), we add the joint and a link to the embedded urdf
+        else:
+            assert joint_parent == 'world'
+            assert joint_type == 'fixed'
+
+            new_joint = ET.SubElement(
+                self.object_tree.getroot(), "joint",
+                dict([("name", joint_name), ("type", joint_type)]))
+            ET.SubElement(
+                new_joint, "origin",
+                dict([("rpy", "{0:f} {1:f} {2:f}".format(*joint_rpy)),
+                      ("xyz", "{0:f} {1:f} {2:f}".format(*joint_xyz))]))
+            ET.SubElement(new_joint, "parent",
+                          dict([("link", joint_parent)]))
+            ET.SubElement(new_joint, "child",
+                          dict([("link", self.name)]))
+            ET.SubElement(self.object_tree.getroot(), "link",
+                          dict([("name", joint_parent)]))
+
+        # Save the transformation internally to be used when loading
+        self.joint_frame = joint_frame
 
     def load_supporting_surfaces(self):
         self.supporting_surfaces = {}
@@ -517,15 +582,22 @@ class URDFObject(Object):
                     [round_up(val, 10) for val in new_origin_xyz])
                 origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
 
-    def remove_floating_joints(self, folder=""):
+    def remove_floating_joints(self, folder=None):
         """
         Split a single urdf to multiple urdfs if there exist floating joints
         """
+        if folder is None:
+            timestr = time.strftime("%Y%m%d-%H%M%S")
+            folder = os.path.join(
+                gibson2.ig_dataset_path, "scene_instances",
+                '{}_{}_{}'.format(timestr, random.getrandbits(64), os.getpid()))
+            os.makedirs(folder, exist_ok=True)
+
         # Deal with floating joints inside the embedded urdf
-        folder_name = os.path.join(folder, self.name)
+        file_prefix = os.path.join(folder, self.name)
         urdfs_no_floating = \
             save_urdfs_without_floating_joints(self.object_tree,
-                                               folder_name)
+                                               file_prefix)
 
         # append a new tuple of file name of the instantiated embedded urdf
         # and the transformation (!= identity if its connection was floating)
@@ -764,9 +836,12 @@ class URDFObject(Object):
         :param pos: position in xyz
         :param orn: quaternion in xyzw
         """
-        body_id = self.body_ids[self.main_body]
-        if self.is_fixed[self.main_body]:
+        body_id = self.get_body_id()
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             logging.warning(
                 'cannot set_position_orientation for fixed objects')
         else:
             p.resetBasePositionAndOrientation(body_id, pos, orn)
+
+    def get_body_id(self):
+        return self.body_ids[self.main_body]
