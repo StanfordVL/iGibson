@@ -29,7 +29,7 @@ import sys
 from IPython import embed
 
 igtn_task = iGTNTask('sampling_test', task_instance=0)
-igtn_task.initialize_simulator(scene_id='Rs_int')
+igtn_task.initialize_simulator(scene_id='Rs_int', mode='gui')
 
 while True:
     igtn_task.simulator.step(use_render_timestep_lpf=False)

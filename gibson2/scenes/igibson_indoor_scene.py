@@ -219,33 +219,17 @@ class InteractiveIndoorScene(StaticIndoorScene):
                      if joint.find("child").attrib["link"]
                      == object_name][0]
 
-                joint_xyz = np.array([float(val) for val in joint_connecting_embedded_link.find(
-                    "origin").attrib["xyz"].split(" ")])
-                joint_type = joint_connecting_embedded_link.attrib['type']
-                if 'rpy' in joint_connecting_embedded_link.find("origin").attrib:
-                    joint_rpy = \
-                        np.array([float(val) for val in
-                                  joint_connecting_embedded_link.find("origin").attrib["rpy"].split(" ")])
-                else:
-                    joint_rpy = np.array([0., 0., 0.])
+                self.add_object(
+                    filename,
+                    object_name=object_name,
+                    category=category,
+                    model_path=model_path,
+                    bounding_box=bounding_box,
+                    scale=scale,
+                    connecting_joint=joint_connecting_embedded_link,
+                    in_rooms=in_rooms,
+                    texture_randomization=self.texture_randomization)
 
-                joint_name = joint_connecting_embedded_link.attrib['name']
-                joint_parent = joint_connecting_embedded_link.find(
-                    "parent").attrib["link"]
-
-                self.add_object(category,
-                                model=model,
-                                model_path=model_path,
-                                filename=filename,
-                                bounding_box=bounding_box,
-                                scale=scale,
-                                object_name=object_name,
-                                joint_type=joint_type,
-                                position=joint_xyz,
-                                orientation_rpy=joint_rpy,
-                                joint_name=joint_name,
-                                joint_parent=joint_parent,
-                                in_rooms=in_rooms)
             elif link.attrib["name"] != "world":
                 logging.error(
                     "iGSDF should only contain links that represent embedded URDF objects")
@@ -383,93 +367,56 @@ class InteractiveIndoorScene(StaticIndoorScene):
             return []
 
     def add_object(self,
-                   category,
-                   model=None,
+                   filename,
+                   object_name=None,
+                   category='object',
                    model_path=None,
-                   filename=None,
                    bounding_box=None,
                    scale=None,
-                   object_name=None,
-                   joint_name=None,
-                   joint_type=None,
-                   joint_parent=None,
-                   position=None,
-                   orientation_rpy=None,
+                   connecting_joint=None,
                    in_rooms=None,
+                   texture_randomization=False,
                    ):
         """
         Adds an object to the scene
 
-        :param category: object category, e.g. door
-        :param model: object model in the object dataset
-        :param model_path: folder path of that object model
         :param filename: urdf file path of that object model
+        :param object_name: object name, unique for each object instance, e.g. door_3
+        :param category: object category, e.g. door
+        :param model_path: folder path of that object model
         :param bounding_box: bounding box of this object
         :param scale: scaling factor of this object
-        :param object_name: object name, unique for each object instance, e.g. door_3
-        :param joint_name: name of the joint that connects the object to the scene
-        :param joint_type: type of the joint that connects the object to the scene
-        :param joint_parent: parent of the joint that connects the object to the scene (i.e. world)
-        :param position: position of the joint that connects the object to the scene
-        :param orientation_rpy: orientation of the joint that connects the object to the scene
+        :param connecting_joint: connecting joint to the scene that defines the object's initial pose (optional)
         :param in_rooms: which room(s) this object is in. It can be in more than one rooms if it sits at room boundary (e.g. doors)
+        :param texture_randomization: whether to enable texture randomization
         """
+        if object_name is None:
+            object_name = '{}_{}'.format(
+                category, len(self.objects_by_category.get(category, [])))
 
         if object_name in self.objects_by_name.keys():
             logging.error(
                 "Object names need to be unique! Existing name " + object_name)
             exit(-1)
 
-        added_object = URDFObject(object_name,
-                                  category,
-                                  model=model,
-                                  model_path=model_path,
-                                  filename=filename,
-                                  bounding_box=bounding_box,
-                                  scale=scale,
-                                  avg_obj_dims=self.avg_obj_dims.get(category),
-                                  in_rooms=in_rooms)
+        added_object = URDFObject(
+            filename,
+            name=object_name,
+            category=category,
+            model_path=model_path,
+            bounding_box=bounding_box,
+            scale=scale,
+            connecting_joint=connecting_joint,
+            avg_obj_dims=self.avg_obj_dims.get(category),
+            in_rooms=in_rooms,
+            texture_randomization=texture_randomization,
+            scene_instance_folder=self.scene_instance_folder)
+
         # Add object to database
         self.objects_by_name[object_name] = added_object
         if category not in self.objects_by_category.keys():
             self.objects_by_category[category] = []
         self.objects_by_category[category].append(added_object)
-
-        # Deal with the joint connecting the embedded urdf to the main link (world or building)
-        joint_frame = np.eye(4)
-
-        # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
-        # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
-        x, y, z = added_object.scaled_bbxc_in_blf
-        yaw = orientation_rpy[2]
-        x, y = rotate_vector_2d(np.array([x, y]), -yaw)
-        position += np.array([x, y, z])
-
-        # if the joint is not floating, we add the joint and a link to the embedded urdf
-        if joint_type != "floating":
-            new_joint = ET.SubElement(added_object.object_tree.getroot(), "joint",
-                                      dict([("name", joint_name), ("type", joint_type)]))
-            ET.SubElement(new_joint, "origin",
-                          dict([("rpy", "{0:f} {1:f} {2:f}".format(
-                              *orientation_rpy)), ("xyz", "{0:f} {1:f} {2:f}".format(
-                                  *position))]))
-            ET.SubElement(new_joint, "parent",
-                          dict([("link", joint_parent)]))
-            ET.SubElement(new_joint, "child",
-                          dict([("link", object_name)]))
-            ET.SubElement(added_object.object_tree.getroot(), "link",
-                          dict([("name", joint_parent)]))  # "world")]))
-
-        # if the joint is floating, we save the transformation of the floating joint to be used when we load the
-        # embedded urdf
-        else:
-            joint_frame = get_transform_from_xyz_rpy(position, orientation_rpy)
-
-        # Save the transformation internally to be used when loading
-        added_object.joint_frame = joint_frame
-        added_object.remove_floating_joints(self.scene_instance_folder)
-        if self.texture_randomization:
-            added_object.prepare_texture()
 
         return added_object
 

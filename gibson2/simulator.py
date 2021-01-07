@@ -308,25 +308,31 @@ class Simulator:
         assert isinstance(obj, Object), \
             'import_object can only be called with Object'
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
-        new_object_pb_id = obj.load()
-        self.objects += [new_object_pb_id]
-        if isinstance(obj, ArticulatedObject) or isinstance(obj, URDFObject):
-            self.load_articulated_object_in_renderer(new_object_pb_id,
-                                                     class_id,
-                                                     use_pbr=use_pbr,
-                                                     use_pbr_mapping=use_pbr_mapping,
-                                                     shadow_caster=shadow_caster)
+        new_object_pb_id_or_ids = obj.load()
+        if isinstance(new_object_pb_id_or_ids, list):
+            new_object_pb_ids = new_object_pb_id_or_ids
         else:
-            softbody = False
-            if obj.__class__.__name__ == 'SoftObject':
-                softbody = True
-            self.load_object_in_renderer(new_object_pb_id,
-                                         class_id,
-                                         softbody,
-                                         use_pbr=use_pbr,
-                                         use_pbr_mapping=use_pbr_mapping,
-                                         shadow_caster=shadow_caster)
-        return new_object_pb_id
+            new_object_pb_ids = [new_object_pb_id_or_ids]
+        self.objects += new_object_pb_ids
+
+        for new_object_pb_id in new_object_pb_ids:
+            if isinstance(obj, ArticulatedObject) or isinstance(obj, URDFObject):
+                self.load_articulated_object_in_renderer(
+                    new_object_pb_id,
+                    class_id,
+                    use_pbr=use_pbr,
+                    use_pbr_mapping=use_pbr_mapping,
+                    shadow_caster=shadow_caster)
+            else:
+                softbody = obj.__class__.__name__ == 'SoftObject'
+                self.load_object_in_renderer(
+                    new_object_pb_id,
+                    class_id,
+                    softbody,
+                    use_pbr=use_pbr,
+                    use_pbr_mapping=use_pbr_mapping,
+                    shadow_caster=shadow_caster)
+        return new_object_pb_id_or_ids
 
     @load_without_pybullet_vis
     def load_object_in_renderer(self,
