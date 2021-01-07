@@ -10,6 +10,28 @@ from gibson2.utils.assets_utils import get_scene_path, get_texture_file, get_ig_
 import numpy as np
 import logging
 import math
+import trimesh
+
+
+def get_aabb_urdf(tree):
+    all_vertices = []
+    for mesh in tree.findall('link/collision/geometry/mesh'):
+        mesh_obj = trimesh.load(mesh.attrib['filename'])
+        all_vertices.append(mesh_obj.vertices)
+    all_vertices = np.vstack(all_vertices)
+    return all_vertices.min(axis=0), all_vertices.max(axis=0)
+
+
+def get_base_link_name(tree):
+    joints = tree.findall('joint')
+    links = tree.findall('link')
+    # Find the base link
+    children_links = [joint.find('child').attrib['link']
+                      for joint in joints]
+    return [
+        link.attrib['name']
+        for link in links
+        if link.attrib['name'] not in children_links][0]
 
 
 def parse_urdf(tree):
@@ -170,10 +192,9 @@ def transform_element_xyzrpy(element, transformation):
         *transform_rpy)
 
 
-def get_main_link(tree):
+def get_main_link_name(tree):
     is_fixed = tree.find("link[@name='world']") is not None
     joints = tree.findall('joint')
-    links = tree.findall('link')
     if is_fixed:
         # Find the link that connects to the world link
         main_link_name = [
@@ -182,12 +203,7 @@ def get_main_link(tree):
             if joint.find('parent').attrib['link'] == 'world'][0]
     else:
         # Find the base link
-        children_links = [joint.find('child').attrib['link']
-                          for joint in joints]
-        main_link_name = [
-            link.attrib['name']
-            for link in links
-            if link.attrib['name'] not in children_links][0]
+        main_link_name = get_base_link_name(tree)
     return main_link_name
 
 
@@ -248,7 +264,7 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
     logging.info("Number of splits: " + str(len(extended_splitted_dict)))
     logging.info("Instantiating scene into the following urdfs:")
 
-    main_link_name = get_main_link(tree)
+    main_link_name = get_main_link_name(tree)
 
     urdfs_no_floating = {}
     for esd_key in extended_splitted_dict:
@@ -276,7 +292,7 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
 
         # check if this object is fixed: look for "world" link
         is_fixed = xml_tree_parent.find("link[@name='world']") is not None
-        is_main_body = main_link_name == get_main_link(xml_tree_parent)
+        is_main_body = main_link_name == get_main_link_name(xml_tree_parent)
         transformation = extended_splitted_dict[esd_key][4]
         urdfs_no_floating[esd_key] = (
             urdf_file_name, transformation, is_fixed, is_main_body)

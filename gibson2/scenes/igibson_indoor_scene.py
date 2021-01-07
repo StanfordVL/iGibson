@@ -376,6 +376,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                    connecting_joint=None,
                    in_rooms=None,
                    texture_randomization=False,
+                   overwrite_inertial=True,
                    ):
         """
         Adds an object to the scene
@@ -389,6 +390,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param connecting_joint: connecting joint to the scene that defines the object's initial pose (optional)
         :param in_rooms: which room(s) this object is in. It can be in more than one rooms if it sits at room boundary (e.g. doors)
         :param texture_randomization: whether to enable texture randomization
+        :param overwrite_inertial: whether to overwrite the inertial frame of the original URDF using trimesh + density estimate
         """
         if object_name is None:
             object_name = '{}_{}'.format(
@@ -410,6 +412,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             avg_obj_dims=self.avg_obj_dims.get(category),
             in_rooms=in_rooms,
             texture_randomization=texture_randomization,
+            overwrite_inertial=overwrite_inertial,
             scene_instance_folder=self.scene_instance_folder)
 
         # Add object to database
