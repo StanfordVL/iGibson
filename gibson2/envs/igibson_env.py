@@ -11,6 +11,8 @@ from gibson2.sensors.vision_sensor import VisionSensor
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
 
+import gibson2.external.pybullet_tools.utils as PBU
+
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
 import argparse
@@ -444,6 +446,12 @@ class iGibsonEnv(BaseEnv):
         self.reset_variables()
 
         return state
+
+    def reset_to(self, serialized_world_state, exclude=()):
+        state = PBU.WorldSaver(exclude_body_ids=exclude)
+        state.deserialize(serialized_world_state)
+        state.restore()
+        p.stepSimulation()
 
 
 if __name__ == '__main__':
