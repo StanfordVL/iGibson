@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION=0.0.4
+VERSION=1.0.1
 
 docker push igibson/igibson:v$VERSION
 docker push igibson/igibson:latest

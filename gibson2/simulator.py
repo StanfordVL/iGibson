@@ -359,7 +359,7 @@ class Simulator:
             visual_object = None
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if (filename, (*dimensions)) not in self.visual_objects.keys():
+                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
@@ -367,9 +367,9 @@ class Simulator:
                                               scale=np.array(dimensions),
                                               texture_scale=texture_scale,
                                               load_texture=load_texture)
-                    self.visual_objects[(filename, (*dimensions))
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
                                         ] = len(self.renderer.visual_objects) - 1
-                visual_object = self.visual_objects[(filename, (*dimensions))]
+                visual_object = self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
                     gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
@@ -452,7 +452,7 @@ class Simulator:
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if (filename, (*dimensions)) not in self.visual_objects.keys():
+                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
                     overwrite_material = None
                     if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
                         overwrite_material = visual_mesh_to_material[filename]
@@ -463,10 +463,10 @@ class Simulator:
                         input_kd=color[:3],
                         scale=np.array(dimensions),
                         overwrite_material=overwrite_material)
-                    self.visual_objects[(filename, (*dimensions))
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
                                         ] = len(self.renderer.visual_objects) - 1
                 visual_objects.append(
-                    self.visual_objects[(filename, (*dimensions))])
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
@@ -544,16 +544,16 @@ class Simulator:
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if (filename, (*dimensions)) not in self.visual_objects.keys():
+                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[(filename, (*dimensions))
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
                                         ] = len(self.renderer.visual_objects) - 1
                 visual_objects.append(
-                    self.visual_objects[(filename, (*dimensions))])
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(

@@ -38,7 +38,7 @@ assets
 ├── test
 │   └── mesh
 └── example_configs
-    └── {}.yaml
+    └── {}.yaml (deprecated, will be removed)
 
 ```
 `models` contains robot models and interactive objects, `networks` contain the neural network filler used in Gibson V1, `test` contains files for performing tests of installation. 

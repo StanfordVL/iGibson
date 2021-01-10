@@ -194,7 +194,7 @@ In this example, we show how to instantiate `iGibsonEnv` and how to step through
 - `reward`: a scalar that represents the current reward
 - `done`: a boolean that indicates whether the episode should terminate
 - `info`: a python dictionary for bookkeeping purpose
-The code can be found here: [examples/demo/env_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/env_example.py).
+The code can be found here: [gibson2/examples/demo/env_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/env_example.py).
 
 ```python
 from gibson2.envs.igibson_env import iGibsonEnv
@@ -206,9 +206,7 @@ import logging
 
 
 def main():
-    config_filename = os.path.join(
-        os.path.dirname(gibson2.__file__),
-        '../examples/configs/turtlebot_demo.yaml')
+    config_filename = os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='gui')
     for j in range(10):
         env.reset()
@@ -228,4 +226,4 @@ if __name__ == "__main__":
 ```
 
 #### Interactive Environments
-In this example, we show how to instantiate `iGibsobEnv` with a fully interactive scene `Rs_int`. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: [examples/demo/env_interactive_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/env_interactive_example.py).
+In this example, we show how to instantiate `iGibsobEnv` with a fully interactive scene `Rs_int`. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: [gibson2/examples/demo/env_interactive_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/env_interactive_example.py).

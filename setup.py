@@ -14,7 +14,7 @@ import platform
 import codecs
 import platform
 import shutil
-
+import sys
 
 use_clang = False
 
@@ -112,12 +112,25 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
 
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+'''
+class PostInstallCommand(install):
+        """Post-installation for installation mode."""
+        def run(self):
+                print('post installation')
+                check_call("bash realenv/envs/build.sh".split())
+                install.run(self)
+'''
+if sys.version_info.major == 3:
+    with open("README.md", "r", encoding="utf-8") as fh:
+        long_description = fh.read()
+else:
+    # for python2
+    with open("README.md", "r") as fh:
+        long_description = fh.read()
 
 setup(
     name='gibson2',
-    version='1.0.0',
+    version='1.0.1',
     author='Stanford University',
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -144,7 +157,7 @@ setup(
             'future',
             'trimesh',
             'sphinx_markdown_tables',
-            'sphinx==2.2.1',
+            'sphinx>=1.8.0',
             'recommonmark',
             'sphinx_rtd_theme'
     ],

@@ -8,7 +8,7 @@ We developed our own MeshRenderer that supports customizable camera configuratio
 
 #### Simple Example
 
-In this example, we render an iGibson scene with a few lines of code. The code can be found in [examples/demo/mesh_renderer_simple_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/mesh_renderer_simple_example.py).
+In this example, we render an iGibson scene with a few lines of code. The code can be found in [gibson2/examples/demo/mesh_renderer_simple_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/mesh_renderer_simple_example.py).
 
 ```
 import cv2
@@ -51,10 +51,9 @@ For `Rs` scene, the rendering results will look like this:
 In this example, we show an interactive demo of MeshRenderer.
 
 ```bash
-cd examples/demo
-python mesh_renderer_example.py
+python -m gibson2.examples.demo.mesh_renderer_example
 ```
-You may translate the camera by pressing "WASD" on your keyboard and rotate the camera by dragging your mouse. Press `Q` to exit the rendering loop. The code can be found in [examples/demo/mesh_renderer_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/mesh_renderer_example.py).
+You may translate the camera by pressing "WASD" on your keyboard and rotate the camera by dragging your mouse. Press `Q` to exit the rendering loop. The code can be found in [gibson2/examples/demo/mesh_renderer_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/mesh_renderer_example.py).
 
 #### PBR (Physics-Based Rendering) Example
 
@@ -63,8 +62,7 @@ You can test the physically based renderer with the PBR demo. You can render any
   obj files in the folder.
 
 ```bash
-cd examples/demo
-python mesh_renderer_example_pbr.py <path to ig_dataset>/objects/sink/sink_1/shape/visual
+python -m gibson2.examples.demo.mesh_renderer_example_pbr <path to ig_dataset>/objects/sink/sink_1/shape/visual
 ```
 ![pbr_renderer.png](images/pbr_render.png)
 
@@ -73,12 +71,12 @@ You will get a nice rendering of the sink, and should see the metal parts have s
  
 
 #### Velodyne VLP-16 Example
-In this example, we show a demo of 16-beam Velodyne VLP-16 LiDAR placed on top of a virtual Turtlebot. The code can be found in [examples/demo/lidar_velodyne_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/lidar_velodyne_example.py).
+In this example, we show a demo of 16-beam Velodyne VLP-16 LiDAR placed on top of a virtual Turtlebot. The code can be found in [gibson2/examples/demo/lidar_velodyne_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/lidar_velodyne_example.py).
 
 The Velodyne VLP-16 LiDAR visualization will look like this:
 ![lidar_velodyne.png](images/lidar_velodyne.png)
 
 #### Render to PyTorch Tensors
 
-In this example, we show that MeshRenderer can directly render into a PyTorch tensor to maximize efficiency. PyTorch installation is required (otherwise, iGibson does not depend on PyTorch). The code can be found in [examples/demo/mesh_renderer_gpu_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/mesh_renderer_gpu_example.py).
+In this example, we show that MeshRenderer can directly render into a PyTorch tensor to maximize efficiency. PyTorch installation is required (otherwise, iGibson does not depend on PyTorch). The code can be found in [gibson2/examples/demo/mesh_renderer_gpu_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/mesh_renderer_gpu_example.py).
 
