@@ -25,6 +25,8 @@ import sys
 VIEWER_MANIP = False
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = False
+# Set to true to use gripper instead of VR hands
+USE_GRIPPER = True
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -67,7 +69,7 @@ s.import_ig_scene(scene)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
 if not VIEWER_MANIP:
-    vr_agent = VrAgent(s, use_gripper=False)
+    vr_agent = VrAgent(s, use_gripper=USE_GRIPPER)
 
 objects = [
     ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,

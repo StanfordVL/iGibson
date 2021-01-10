@@ -461,14 +461,18 @@ class VrGripper(VrHandBase):
     def __init__(self, s, hand='right', use_constraints=True):
         self.vr_gripper_fpath = os.path.join(assets_path, 'models', 'vr_gripper', 'vr_gripper.urdf')
         super(VrGripper, self).__init__(s, self.vr_gripper_fpath,
-                                    hand=hand, use_constraints=use_constraints, base_rot=p.getQuaternionFromEuler([0, -90, 0]))
+                                    hand=hand, use_constraints=use_constraints, base_rot=p.getQuaternionFromEuler([0, 0, 0]))
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+        self.joint_positions = [0.550569, 0.000000, 0.549657, 0.000000]
 
     def hand_setup(self, z_coord):
         """
         Sets up constraints in addition to superclass hand setup.
         """
         super(VrGripper, self).hand_setup(z_coord)
+        for joint_idx in range(p.getNumJoints(self.body_id)):
+            p.resetJointState(self.body_id, joint_idx, self.joint_positions[joint_idx])
+            p.setJointMotorControl2(self.body_id, joint_idx, p.POSITION_CONTROL, targetPosition=0, force=0)
 
         if self.use_constraints:
             # Movement constraint
@@ -485,7 +489,7 @@ class VrGripper(VrHandBase):
             p.changeConstraint(self.grip_cid, gearRatio=1, erp=0.5, relativePositionTarget=0.5, maxForce=3)
 
     def set_close_fraction(self, close_frac):
-        # PyBullet does this to keep the gripper centered/symmetric
+        # PyBullet recommmends doing this to keep the gripper centered/symmetric
         b = p.getJointState(self.body_id, 2)[0]
         p.setJointMotorControl2(self.body_id, 0, p.POSITION_CONTROL, targetPosition=b, force=3)
         
@@ -493,7 +497,7 @@ class VrGripper(VrHandBase):
         p.changeConstraint(self.grip_cid,
                          gearRatio=1,
                          erp=1,
-                         relativePositionTarget=close_frac,
+                         relativePositionTarget=1-close_frac,
                          maxForce=3)
 
 
