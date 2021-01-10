@@ -112,6 +112,7 @@ class VrBody(ArticulatedObject):
         self.min_z = 20.0
         self.max_z = 45.0
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+        self.wall_ids = self.sim.get_category_ids('walls')
         self.init_body()
 
     def _load(self):
@@ -142,7 +143,7 @@ class VrBody(ArticulatedObject):
         Sets VrBody's collision filters.
         """
         # Get body ids of the floor
-        floor_ids = self.sim.get_floor_ids()
+        floor_ids = self.sim.get_category_ids('floors')
         body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.body_id))]
 
         for f_id in floor_ids:
@@ -211,15 +212,16 @@ class VrBody(ArticulatedObject):
                 # Update body transform constraint
                 p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
 
-                # Use 90% strength haptic pulse in both controllers for vr body collisions - this should notify the user immediately
+                # Use 90% strength haptic pulse in both controllers for body collisions with walls - this should notify the user immediately
                 # Note: haptics can't be used in networking situations like MUVR (due to network latency)
                 # or in action replay, since no VR device is connected
                 if not vr_data:
-                    if len(p.getContactPoints(self.body_id)) > 0:
-                        for controller in ['left_controller', 'right_controller']:
-                            is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
-                            if is_valid:
-                                self.sim.trigger_haptic_pulse(controller, 0.9)
+                    for c_info in p.getContactPoints(self.body_id):
+                        if self.wall_ids and (c_info[1] in self.wall_ids or c_info[2] in self.wall_ids):
+                            for controller in ['left_controller', 'right_controller']:
+                                is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
+                                if is_valid:
+                                    self.sim.trigger_haptic_pulse(controller, 0.9)
 
 
 class VrHandBase(ArticulatedObject):

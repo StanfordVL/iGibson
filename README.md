@@ -198,8 +198,7 @@ By default the LOAD_PARTIAL boolean is set to false to speed up loading (loads f
 
 To use the VR assets, please access the Google drive folder at this link:
 https://drive.google.com/drive/folders/1zm3ZpPc7yHwyALEGfsb0_NybFMvV81Um?usp=sharing
-
-You will need to download both vr_body and vr_hand and place them into assets/models. The pack_lunch folder containing the groceries assets used in the ATUS demos can also be found here. Please also put this into your assets/models folder.
+Please place all of these folders into your assets/models folder, with their original names.
 
 Have fun in VR!
 
