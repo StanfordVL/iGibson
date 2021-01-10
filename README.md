@@ -124,9 +124,9 @@ Gibson
 * Get codebase and assets:
 
 ```
-$ git clone https://github.com/fxia22/iGibson.git --init --recursive
+$ git clone https://github.com/fxia22/iGibson.git --recursive (depending on your computer you may need to add the --init flag as well)
 $ cd iGibson
-$ git checkout vr_new
+$ git checkout igvr
 $ git submodule update --recursive
 ```
 
