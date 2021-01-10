@@ -835,18 +835,13 @@ class Simulator:
             if obj.body_id == instance.pybullet_uuid:
                 return instance.hidden 
 
-    def get_floor_ids(self):
+    def get_category_ids(self, category_name):
         """
-        Gets the body ids for all floor objects in the scene. This is used internally
-        by the VrBody class to disable collisions with the floor.
+        Gets ids for all instances of a specific category (floors, walls, etc.) in a scene.
         """
         if not hasattr(self.scene, 'objects_by_id'):
             return []
-        floor_ids = []
-        for body_id in self.objects:
-            if body_id in self.scene.objects_by_id.keys() and self.scene.objects_by_id[body_id].category == 'floors':
-                floor_ids.append(body_id)
-        return floor_ids
+        return [body_id for body_id in self.objects if body_id in self.scene.objects_by_id.keys() and self.scene.objects_by_id[body_id].category == category_name]
 
     @staticmethod
     def update_position(instance):
