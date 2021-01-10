@@ -142,8 +142,6 @@ Activate conda env:
 $ conda activate gibsonvr
 ```
 
-Note: if you want to use multi-user VR, please run "pip install podsixnet" (with your conda environment active)
-
 * Install Gibson in anaconda env:
 ```
 $ cd iGibson
@@ -153,11 +151,17 @@ $ cd iGibson
 $ pip install -e .
 ```
 
+Now, with your conda environment activate, run the following two commands:
+1) pip uninstall pybullet && pip install --no-cache-dir https://github.com/StanfordVL/bullet3/archive/master.zip (this replaces Stanford pybullet with SVL's pybullet, which contains optimizations for VR)
+2) pip install podsixnet (networking library used in multi-user VR)
+
 Important - VR functionality and where to find it:
 
-You can find all the VR demos in iGibson/examples/demo/vr_demos, which has the following structure:
+You can find all the VR demos in iGibson/gibson2/examples/demo/vr_demos, which has the following structure:
 
 -vr_playground.py
+
+-vr_hand_benchmark.py
 
 --robot_embodiment (folder)
 

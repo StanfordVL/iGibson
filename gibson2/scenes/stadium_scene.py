@@ -13,7 +13,7 @@ class StadiumScene(Scene):
     """
 
     def __init__(self):
-        super().__init__()
+        super(StadiumScene, self).__init__()
 
     def load(self):
         """
