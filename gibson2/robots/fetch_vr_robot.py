@@ -19,8 +19,10 @@ class FetchVR(Fetch):
         self.torso_lift_velocity = config.get('torso_lift_velocity', 1.0)
         self.arm_velocity = config.get('arm_velocity', 1.0)
         self.wheel_dim = 2
-        self.torso_lift_dim = 1
-        self.arm_dim = 7
+        # Torso lift has been disabled for VR, since it causes the torso to intersect the VR camera
+        self.torso_lift_dim = 0
+        # 7 for arm, 2 for gripper
+        self.arm_dim = 9
         LocomotorRobot.__init__(self,
                                 "fetch/fetch_vr.urdf",
                                 action_dim=self.wheel_dim + self.torso_lift_dim + self.arm_dim,
@@ -47,24 +49,25 @@ class FetchVR(Fetch):
 
         # Variables used in IK to move end effector
         self.bid = self.robot_body.bodies[self.robot_body.body_index]
-        self.wheel_speed_multiplier = 10
+        self.wheel_speed_multiplier = 100
 
         # Update data
         self.frame_count = 0
 
         # Load end effector
-        self.effector_marker = VisualMarker(rgba_color = [1, 0, 1, 0.2], radius=0.05)
+        self.effector_marker = VisualMarker(rgba_color = [1, 0, 1, 0.2], radius=0.025)
         self.sim.import_object(self.effector_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
         # Hide marker upon initialization
         self.effector_marker.set_position([0,0,-5])
-        self.non_wheel_joints = self.ordered_joints[2:]
+        # Arm joints excluding wheels and gripper
+        self.arm_joints = self.ordered_joints[2:9]
+        self.gripper_max_joint = 0.05
 
-    def set_wheel_vel(self, lin_vel, ang_vel):
+    def apply_frame_data(self, lin_vel, ang_vel, arm_poses, grip_frac):
         """
-        Sets just wheel velocity for steering in VR.
+        Sets wheel velocity, arm positions and gripper open/close fraction each frame using data from VR system.
         """
-        actions = [lin_vel, ang_vel] + self.get_joint_pos()
-        actions = np.array(actions)
+        actions = np.array([lin_vel, ang_vel] + arm_poses + [grip_frac] * 2)
         actions.reshape((actions.shape[0], 1))
         self.apply_robot_action(actions)
 
@@ -73,7 +76,7 @@ class FetchVR(Fetch):
         Returns list containing all current joint positions of FetchVR robot (excluding wheels).
         """
         joint_pos = []
-        for n, j in enumerate(self.non_wheel_joints):
+        for n, j in enumerate(self.arm_joints):
             j_pos, _, _ = j.get_state()
             joint_pos.append(j_pos)
 
@@ -118,39 +121,28 @@ class FetchVR(Fetch):
             # Update effector marker to desired end-effector transform
             self.effector_marker.set_position(trans)
             self.effector_marker.set_orientation(rot)
-            self.set_wheel_vel(self.wheel_speed_multiplier * touch_y, 0)
-
-            # Ignore sideays rolling dimensions of controller (x axis) since fetch can't "roll" its final arm link
-            euler_rot = p.getEulerFromQuaternion(rot)
-            rot_no_x = p.getQuaternionFromEuler([0, euler_rot[1], euler_rot[2]])
 
             # Iteration and residual threshold values are based on recommendations from PyBullet
-            # TODO: Use rest poses here!
+            # TODO: Use rest poses here from the null-space IK example
             if self.frame_count % self.update_freq == 0:
-                ik_joint_poses = None
                 ik_joint_poses = p.calculateInverseKinematics(self.bid,
                                                         self.end_effector_part_index(),
                                                         trans,
-                                                        rot_no_x,
+                                                        rot,
                                                         solver=0,
                                                         maxNumIterations=100,
                                                         residualThreshold=.01)
-
-                # Set joints to the results of the IK
-                if ik_joint_poses is not None:
-                    for i in range(len(ik_joint_poses)):
-                        next_pose = ik_joint_poses[i]
-                        next_joint = self.ordered_joints[i]
-
-                        # Set wheel joint back to original position so IK calculation does not affect movement
-                        # Note: PyBullet does not currently expose the root of the IK calculation
-                        if next_joint.joint_name == 'r_wheel_joint' or next_joint.joint_name == 'l_wheel_joint':
-                            next_pose, _, _ = next_joint.get_state()
-
-                        next_joint.set_motor_position(next_pose)
-
-                # TODO: Implement opening/closing the end effectors
-                # Something like this: fetch.set_fetch_gripper_fraction(rTrig)
+                # Exclude wheels and gripper joints
+                arm_poses = ik_joint_poses[2:9]
+            else:
+                arm_poses = self.get_joint_pos()
+            
+            # Calculate linear and angular velocity as well as gripper positions
+            lin_vel = self.wheel_speed_multiplier * touch_y
+            ang_vel = 0
+            grip_frac = self.gripper_max_joint * (1 - trig_frac)
+            # Apply data to Fetch as an action
+            self.apply_frame_data(lin_vel, ang_vel, list(arm_poses), grip_frac)
 
     def set_z_rotation(self, hmd_rot, hmd_forward):
         """
@@ -174,24 +166,3 @@ class FetchVR(Fetch):
         new_z = curr_z + delta_z * z_mult
         fetch_rot = p.getQuaternionFromEuler([0, 0, new_z])
         self.set_orientation(fetch_rot)
-
-    # Set open/close fraction of the end grippers
-    def set_fetch_gripper_fraction(self, frac, maxForce=500):
-        min_joint = 0.0
-        max_joint = 0.05
-        right_finger_joint_idx = 20
-        left_finger_joint_idx = 21
-        # TODO: Set more friction on grippers using p.changeDynamics?
-        #  min_joint + frac * (max_joint - min_joint)
-        target_pos = 0.05
-        p.setJointMotorControl2(self.get_fetch_body_id(),
-                                right_finger_joint_idx, 
-                                p.POSITION_CONTROL, 
-                                targetPosition=target_pos, 
-                                force=maxForce)
-        
-        p.setJointMotorControl2(self.get_fetch_body_id(),
-                                left_finger_joint_idx, 
-                                p.POSITION_CONTROL, 
-                                targetPosition=target_pos, 
-                                force=maxForce)

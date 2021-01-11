@@ -651,7 +651,7 @@ class Simulator:
         if print_time:
             print('Total frame duration: {} and FPS: {}'.format(round(frame_dur, 2), round(1/max(frame_dur, 0.002), 2)))
             print('Total physics duration: {} and FPS: {}'.format(round(physics_dur, 2), round(1/max(physics_dur, 0.002), 2)))
-            print('Number of 1/120 physics steps: {}'.format(physics_timestep_num))
+            print('Number of physics steps: {}'.format(physics_timestep_num))
             print('Total render duration: {} and FPS: {}'.format(round(render_dur, 2), round(1/max(render_dur, 0.002), 2)))
             print('-------------------------')
 

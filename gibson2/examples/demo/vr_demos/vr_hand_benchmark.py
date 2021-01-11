@@ -26,7 +26,7 @@ VIEWER_MANIP = False
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = False
 # Set to true to use gripper instead of VR hands
-USE_GRIPPER = True
+USE_GRIPPER = False
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
