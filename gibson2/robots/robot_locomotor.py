@@ -228,9 +228,7 @@ class LocomotorRobot(BaseRobot):
                 self.ordered_joints[0].set_motor_velocity(left_wheel_ang_vel)
                 self.ordered_joints[1].set_motor_velocity(right_wheel_ang_vel)
 
-            for n, j in enumerate(self.ordered_joints[2:]):
-                # Offset n to account for wheel joints
-                n = n + 2
+            for n, j in enumerate(self.ordered_joints):
                 if self.control[n] == 'torque':
                     j.set_motor_torque(
                         self.torque_coef * j.max_torque * float(np.clip(action[n], -1, +1)))
