@@ -44,8 +44,8 @@ class FetchVR(Fetch):
 
         # Position setup
         self.set_position(start_pos)
-        self.robot_specific_reset()
-        self.keep_still()
+        self.fetch_vr_reset()
+        #self.keep_still()
 
         # Variables used in IK to move end effector
         self.bid = self.robot_body.bodies[self.robot_body.body_index]
@@ -62,6 +62,32 @@ class FetchVR(Fetch):
         # Arm joints excluding wheels and gripper
         self.arm_joints = self.ordered_joints[2:9]
         self.gripper_max_joint = 0.05
+        # IK control start can be toggled by pressing grip of control device
+        self.use_ik_control = False
+
+    def fetch_vr_reset(self):
+        for j in self.ordered_joints:
+            j.reset_joint_state(0.0, 0.0)
+
+        # roll the arm to its body
+        robot_id = self.robot_ids[0]
+        arm_joints = joints_from_names(robot_id,
+                                       [
+                                           'torso_lift_joint',
+                                           'shoulder_pan_joint',
+                                           'shoulder_lift_joint',
+                                           'upperarm_roll_joint',
+                                           'elbow_flex_joint',
+                                           'forearm_roll_joint',
+                                           'wrist_flex_joint',
+                                           'wrist_roll_joint'
+                                       ])
+        rest_position = (0.30322468280792236, -1.414019864768982,
+                        1.5178184935241699, 0.8189625336474915,
+                        2.200358942909668, 2.9631312579803466,
+                        -1.2862852996643066, 0.0008453550418615341)
+
+        set_joint_positions(robot_id, arm_joints, rest_position)
 
     def apply_frame_data(self, lin_vel, ang_vel, arm_poses, grip_frac):
         """
@@ -118,13 +144,17 @@ class FetchVR(Fetch):
                 self.sim.set_vr_offset(offset_to_fetch)
 
         if is_valid:
-            # Update effector marker to desired end-effector transform
-            self.effector_marker.set_position(trans)
-            self.effector_marker.set_orientation(rot)
+            # Toggle IK on/off from grip press on control device
+            if self.sim.query_vr_event(self.control_device, 'grip_press'):
+                self.use_ik_control = not self.use_ik_control
 
             # Iteration and residual threshold values are based on recommendations from PyBullet
             # TODO: Use rest poses here from the null-space IK example
-            if self.frame_count % self.update_freq == 0:
+            if self.use_ik_control and self.frame_count % self.update_freq == 0:
+                # Update effector marker to desired end-effector transform
+                self.effector_marker.set_position(trans)
+                self.effector_marker.set_orientation(rot)
+
                 ik_joint_poses = p.calculateInverseKinematics(self.bid,
                                                         self.end_effector_part_index(),
                                                         trans,

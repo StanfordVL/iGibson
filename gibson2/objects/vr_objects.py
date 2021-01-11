@@ -406,7 +406,7 @@ class VrHand(VrHandBase):
         Sets up constraints in addition to superclass hand setup.
         """
         super(VrHand, self).hand_setup(z_coord)
-        p.changeDynamics(self.body_id, -1, mass=0.1, lateralFriction=self.hand_friction)
+        p.changeDynamics(self.body_id, -1, mass=2, lateralFriction=self.hand_friction)
         for jointIndex in range(p.getNumJoints(self.body_id)):
             # Make masses larger for greater stability
             # Mass is in kg, friction is coefficient

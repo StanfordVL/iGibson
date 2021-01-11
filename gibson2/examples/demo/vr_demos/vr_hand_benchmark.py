@@ -24,7 +24,7 @@ import sys
 # Set to false by default so this benchmark task can be performed in VR
 VIEWER_MANIP = False
 # Set to true to print out render, physics and overall frame FPS
-PRINT_FPS = False
+PRINT_FPS = True
 # Set to true to use gripper instead of VR hands
 USE_GRIPPER = False
 
