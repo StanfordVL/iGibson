@@ -8,7 +8,7 @@ def main():
     p.setGravity(0,0,-9.8)
     p.setTimeStep(1./240.)
 
-    scene = BuildingScene('Placida',
+    scene = BuildingScene('Rs_interactive',
                           is_interactive=True,
                           build_graph=True,
                           pybullet_load_texture=True)

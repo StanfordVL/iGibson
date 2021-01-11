@@ -1,6 +1,6 @@
 # scene
 scene: building
-model_id: Placida
+model_id: Rs_int_small
 is_interactive: true
 build_graph: true
 load_texture: true
@@ -9,7 +9,7 @@ trav_map_resolution: 0.1
 trav_map_erosion: 2
 
 # robot
-robot: Turtlebot
+robot: [Turtlebot, Turtlebot]
 is_discrete: false
 velocity: 1.0
 
@@ -38,13 +38,13 @@ max_collisions_allowed: 500
 goal_format: polar
 
 # sensor spec
-output: [sensor, rgb, depth, scan]
+output: [rgb]
 # image
 # ASUS Xtion PRO LIVE
 # https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE
 fisheye: false
-image_width: 640
-image_height: 480
+image_width: 320
+image_height: 240
 vertical_fov: 45
 # depth
 depth_low: 0.8

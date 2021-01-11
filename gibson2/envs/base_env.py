@@ -1,5 +1,5 @@
 from gibson2.core.physics.robot_locomotors \
-    import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot
+    import Turtlebot, Husky, Ant, Humanoid, JR2, JR2_Kinova, Freight, Fetch, Locobot, Gripper, Camera
 from gibson2.core.simulator import Simulator
 from gibson2.core.physics.scene import EmptyScene, StadiumScene, BuildingScene
 import gibson2
@@ -88,30 +88,45 @@ class BaseEnv(gym.Env):
             )
         self.simulator.import_scene(scene, load_texture=self.config.get('load_texture', True))
 
-        if self.config['robot'] == 'Turtlebot':
-            robot = Turtlebot(self.config)
-        elif self.config['robot'] == 'Husky':
-            robot = Husky(self.config)
-        elif self.config['robot'] == 'Ant':
-            robot = Ant(self.config)
-        elif self.config['robot'] == 'Humanoid':
-            robot = Humanoid(self.config)
-        elif self.config['robot'] == 'JR2':
-            robot = JR2(self.config)
-        elif self.config['robot'] == 'JR2_Kinova':
-            robot = JR2_Kinova(self.config)
-        elif self.config['robot'] == 'Freight':
-            robot = Freight(self.config)
-        elif self.config['robot'] == 'Fetch':
-            robot = Fetch(self.config)
-        elif self.config['robot'] == 'Locobot':
-            robot = Locobot(self.config)
+        if self.config['robot'][0] == 'Gripper':
+            robot = Gripper(self.config)
+        elif self.config['robot'][0] == 'Camera':
+            robot = Camera(self.config)
         else:
-            raise Exception('unknown robot type: {}'.format(self.config['robot']))
+            raise Exception('unknown robot 1 type: {}'.format(self.config['robot'][0]))
+
+        if self.config['robot'][1] == 'Gripper':
+            robot_2 = Gripper(self.config)
+        elif self.config['robot'][1] == 'Camera':
+            robot_2 = Camera(self.config)
+        else:
+            raise Exception('unknown robot 2 type: {}'.format(self.config['robot'][1]))
+
+        if self.config['robot'][2] == 'Gripper':
+            robot_3 = Gripper(self.config)
+        elif self.config['robot'][2] == 'Camera':
+            robot_3 = Camera(self.config)
+        else:
+            raise Exception('unknown robot 2 type: {}'.format(self.config['robot'][2]))
+
+        if self.config['robot'][3] == 'Gripper':
+            robot_4 = Gripper(self.config)
+        elif self.config['robot'][3] == 'Camera':
+            robot_4 = Camera(self.config)
+        else:
+            raise Exception('unknown robot 2 type: {}'.format(self.config['robot'][3]))
+
+        if self.config['robot'][4] == 'Gripper':
+            robot_5 = Gripper(self.config)
+        elif self.config['robot'][4] == 'Camera':
+            robot_5 = Camera(self.config)
+        else:
+            raise Exception('unknown robot 2 type: {}'.format(self.config['robot'][4]))
 
         self.scene = scene
-        self.robots = [robot]
+        self.robots = [robot, robot_2, robot_3, robot_4, robot_5]
         for robot in self.robots:
+            print("Load robot")
             self.simulator.import_robot(robot)
 
     def clean(self):

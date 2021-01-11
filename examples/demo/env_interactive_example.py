@@ -11,12 +11,14 @@ def main():
     config_filename = os.path.join(os.path.dirname(gibson2.__file__),
                                    '../examples/configs/turtlebot_interactive_demo.yaml')
     nav_env = NavigateRandomEnv(config_file=config_filename, mode='gui')
+    nav_env.load_action_space()
+
     for j in range(10):
         nav_env.reset()
         for i in range(100):
             with Profiler('Env action step'):
                 action = nav_env.action_space.sample()
-                state, reward, done, info = nav_env.step(action)
+                state, reward, done, info = nav_env.step_old(action)
                 if done:
                     print("Episode finished after {} timesteps".format(i + 1))
                     break

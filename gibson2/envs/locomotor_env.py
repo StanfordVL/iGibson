@@ -52,6 +52,11 @@ class NavigateEnv(BaseEnv):
                                           device_idx=device_idx,
                                           render_to_tensor=render_to_tensor)
         self.automatic_reset = automatic_reset
+        self.has_cons = [False, False]
+        self.cons_id = [0, 0]
+        self.robot_id = [3, 4]
+        self.robot_pos = [[0.0, 0.0, 0.0],
+                          [0.0, 0.0, 0.0]]
 
     def load_task_setup(self):
         """
@@ -173,6 +178,7 @@ class NavigateEnv(BaseEnv):
         """
         Load action space
         """
+        print(self.robots, self.robots[0])
         self.action_space = self.robots[0].action_space
 
     def load_visualization(self):
@@ -184,12 +190,12 @@ class NavigateEnv(BaseEnv):
 
         cyl_length = 0.2
         self.initial_pos_vis_obj = VisualMarker(visual_shape=p.GEOM_CYLINDER,
-                                                rgba_color=[1, 0, 0, 0.3],
+                                                rgba_color=[0, 0, 0, 0.0],
                                                 radius=self.dist_tol,
                                                 length=cyl_length,
                                                 initial_offset=[0, 0, cyl_length / 2.0])
         self.target_pos_vis_obj = VisualMarker(visual_shape=p.GEOM_CYLINDER,
-                                               rgba_color=[0, 0, 1, 0.3],
+                                               rgba_color=[0, 0, 0, 0.0],
                                                radius=self.dist_tol,
                                                length=cyl_length,
                                                initial_offset=[0, 0, cyl_length / 2.0])
@@ -199,7 +205,7 @@ class NavigateEnv(BaseEnv):
         if self.scene.build_graph:
             self.num_waypoints_vis = 250
             self.waypoints_vis = [VisualMarker(visual_shape=p.GEOM_CYLINDER,
-                                               rgba_color=[0, 1, 0, 0.3],
+                                               rgba_color=[0, 0, 0, 0.0],
                                                radius=0.1,
                                                length=cyl_length,
                                                initial_offset=[0, 0, cyl_length / 2.0])
@@ -223,7 +229,7 @@ class NavigateEnv(BaseEnv):
         super(NavigateEnv, self).load()
         self.load_task_setup()
         self.load_observation_space()
-        self.load_action_space()
+        # self.load_action_space()
         self.load_visualization()
         self.load_miscellaneous_variables()
 
@@ -308,7 +314,7 @@ class NavigateEnv(BaseEnv):
         """
         :return: surface normal reading
         """
-        return self.simulator.renderer.render_robot_cameras(modes='normal')[0][:, :, :3]
+        return self.simulator.renderer.render_robot_cameras(modes='normal')
 
     def get_seg(self):
         """
@@ -383,7 +389,7 @@ class NavigateEnv(BaseEnv):
         collision_links = []
         for _ in range(self.simulator_loop):
             self.simulator_step()
-            collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
+            # collision_links.append(list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0])))
         self.simulator.sync()
 
         return self.filter_collision_links(collision_links)
@@ -463,20 +469,20 @@ class NavigateEnv(BaseEnv):
         collision_links_flatten = [item for sublist in collision_links for item in sublist]
         reward = self.slack_reward  # |slack_reward| = 0.01 per step
 
-        if self.reward_type == 'l2':
-            new_potential = self.get_l2_potential()
-        elif self.reward_type == 'geodesic':
-            new_potential = self.get_geodesic_potential()
-        potential_reward = self.potential - new_potential
-        reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
-        self.potential = new_potential
-
-        collision_reward = float(len(collision_links_flatten) > 0)
-        self.collision_step += int(collision_reward)
-        reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
-
-        if self.is_goal_reached():
-            reward += self.success_reward  # |success_reward| = 10.0 per step
+        # if self.reward_type == 'l2':
+        #     new_potential = self.get_l2_potential()
+        # elif self.reward_type == 'geodesic':
+        #     new_potential = self.get_geodesic_potential()
+        # potential_reward = self.potential - new_potential
+        # reward += potential_reward * self.potential_reward_weight  # |potential_reward| ~= 0.1 per step
+        # self.potential = new_potential
+        #
+        # collision_reward = float(len(collision_links_flatten) > 0)
+        # self.collision_step += int(collision_reward)
+        # reward += collision_reward * self.collision_reward_weight  # |collision_reward| ~= 1.0 per step if collision
+        #
+        # if self.is_goal_reached():
+        #     reward += self.success_reward  # |success_reward| = 10.0 per step
         return reward, info
 
     def get_termination(self, collision_links=[], action=None, info={}):
@@ -488,19 +494,19 @@ class NavigateEnv(BaseEnv):
         done = False
 
         # goal reached
-        if self.is_goal_reached():
-            done = True
-            info['success'] = True
-
-        # max collisions reached
-        if self.collision_step > self.max_collisions_allowed:
-            done = True
-            info['success'] = False
-
-        # time out
-        elif self.current_step >= self.max_step:
-            done = True
-            info['success'] = False
+        # if self.is_goal_reached():
+        #     done = True
+        #     info['success'] = True
+        #
+        # # max collisions reached
+        # if self.collision_step > self.max_collisions_allowed:
+        #     done = True
+        #     info['success'] = False
+        #
+        # # time out
+        # elif self.current_step >= self.max_step:
+        #     done = True
+        #     info['success'] = False
 
         if done:
             info['episode_length'] = self.current_step
@@ -545,18 +551,48 @@ class NavigateEnv(BaseEnv):
             for i in range(num_nodes, self.num_waypoints_vis):
                 self.waypoints_vis[i].set_position(pos=np.array([0.0, 0.0, 100.0]))
 
-    def step(self, action):
+    def step(self, human, robot, human_pos, human_rotation, robot_pos, robot_rotation, item):
         """
         apply robot's action and get state, reward, done and info, following OpenAI gym's convention
         :param action: a list of control signals
         :return: state, reward, done, info
         """
         self.current_step += 1
-        if action is not None:
-            self.robots[0].apply_action(action)
-        cache = self.before_simulation()
+        # if action is not None:
+
+        # self.robots[0].apply_action(pos, rotation)
+        # if action_2 is not None:
+        #     self.robots[1].apply_action(action_2, action_2_right_eb_pos, action_2_right_ee_pos, action_2_left_eb_pos, action_2_left_ee_pos)
+
+        action = [0.0 for i in range(0, 42)]
+        action[4] = -1.57
+        action[14] = -1.57
+        action[31] = 1.57
+        action[38] = 1.57
+        action[28] = -1.57
+        action[35] = -1.57
+
+        # for i in range(p.getNumJoints(robot)):
+        #     print(i)
+        #     _name = p.getJointInfo(robot, i)
+        #     print(_name)
+
+        arm_action = p.calculateInverseKinematics(human, 9, targetPosition=human_pos)
+        action[3:7] = arm_action[3:7]
+
+        p.setJointMotorControlArray(human, jointIndices=[i for i in range(0, 42)],
+                                    controlMode=p.POSITION_CONTROL, targetPositions=action)
+
+        p.resetBasePositionAndOrientation(robot, robot_pos, robot_rotation)
+
+        p.setJointMotorControlArray(robot, jointIndices=[i for i in range(0, 8)],
+                                    controlMode=p.POSITION_CONTROL, targetPositions=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+        # print(p.getLinkState(robot, 8)[0])
+
+        # cache = self.before_simulation()
         collision_links = self.run_simulation()
-        self.after_simulation(cache, collision_links)
+        # self.after_simulation(cache, collision_links)
 
         state = self.get_state(collision_links)
         info = {}
@@ -569,23 +605,149 @@ class NavigateEnv(BaseEnv):
             state = self.reset()
         return state, reward, done, info
 
+    def create_cons(self, idx, p_id, p_link, c_id, c_link):
+        self.has_cons[idx] = True
+        if c_id == 2:
+            obj_pos = p.getLinkState(2, 2)[0]
+            obj_orn = p.getLinkState(2, 2)[1]
+        else:
+            obj_pos, obj_orn = p.getBasePositionAndOrientation(c_id)
+
+        gripper_pos, gripper_orn = p.getBasePositionAndOrientation(p_id)
+        grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
+        self.cons_id[idx] = p.createConstraint(
+            parentBodyUniqueId=p_id,
+            parentLinkIndex=p_link,
+            childBodyUniqueId=c_id,
+            childLinkIndex=c_link,
+            jointType=p.JOINT_FIXED,
+            jointAxis=(0, 0, 0),
+            parentFramePosition=grasp_pose[0],
+            childFramePosition=[0, 0, 0],
+            parentFrameOrientation=grasp_pose[1],
+            childFrameOrientation=(0, 0, 0, 1),
+        )
+
+    def delete_cons(self, idx):
+        self.has_cons[idx] = False
+        p.removeConstraint(self.cons_id[idx])
+
+    def step_old(self, action, action2):
+        """
+        Apply robot's action.
+        Returns the next state, reward, done and info,
+        following OpenAI Gym's convention
+        :param action: robot actions
+        :return: state: next observation
+        :return: reward: reward of this time step
+        :return: done: whether the episode is terminated
+        :return: info: info dictionary with any useful information
+        """
+        self.current_step += 1
+
+        if action is not None and action2 is not None:
+            self.robot_pos[0] = np.array(list(p.getBasePositionAndOrientation(self.robot_id[0])[0]))
+            self.robot_pos[0] += action[:3]
+            self.robots[0].apply_action(self.robot_pos[0], action[3:7])
+            p.setJointMotorControlArray(self.robot_id[0], jointIndices=[i for i in range(0, 5)], controlMode=p.POSITION_CONTROL,
+                                        targetPositions=[1.0-action[-1], 0.0, 1.0-action[-1], 0.0, 0.0],
+                                        forces=[0.1, 0.0, 0.1, 0.0, 0.0])
+
+            self.robot_pos[1] = np.array(list(p.getBasePositionAndOrientation(self.robot_id[1])[0]))
+            self.robot_pos[1] += action2[:3]
+            self.robots[1].apply_action(self.robot_pos[1], action2[3:7])
+            p.setJointMotorControlArray(self.robot_id[1], jointIndices=[i for i in range(0, 5)], controlMode=p.POSITION_CONTROL,
+                                        targetPositions=[1.0-action2[-1], 0.0, 1.0-action2[-1], 0.0, 0.0],
+                                        forces=[0.1, 0.0, 0.1, 0.0, 0.0])
+
+            p.setJointMotorControlArray(2, jointIndices=[0, 1, 3, 4],
+                                        controlMode=p.POSITION_CONTROL,
+                                        targetPositions=[0.0, 0.0, 0.0, 0.0])
+
+        ycb_pos = np.array(list(p.getBasePositionAndOrientation(260)[0]))
+
+        gripper_pos = np.array(list(p.getLinkState(self.robot_id[0], 3)[0]))
+        gripper_pos2 = np.array(list(p.getLinkState(self.robot_id[1], 3)[0]))
+
+        drawer_pos = np.array(list(p.getLinkState(2, 2)[0]))
+        drawer_pos[0] -= 0.15
+
+        print(np.linalg.norm(drawer_pos - gripper_pos), np.linalg.norm(drawer_pos - gripper_pos2))
+
+        if action[-1] == 1.0 and np.linalg.norm(ycb_pos - gripper_pos) < 0.1 and not(self.has_cons[0]):
+            self.create_cons(0, self.robot_id[0], -1, 260, -1)
+
+        if action2[-1] == 1.0 and np.linalg.norm(ycb_pos - gripper_pos2) < 0.1 and not(self.has_cons[1]):
+            self.create_cons(1, self.robot_id[1], -1, 260, -1)
+
+        if action[-1] == 1.0 and np.linalg.norm(drawer_pos - gripper_pos) < 0.1 and not(self.has_cons[0]):
+            self.create_cons(0, self.robot_id[0], -1, 2, 2)
+
+        if action2[-1] == 1.0 and np.linalg.norm(drawer_pos - gripper_pos2) < 0.1 and not(self.has_cons[1]):
+            self.create_cons(1, self.robot_id[1], -1, 2, 2)
+
+        if action[-1] == 0.0 and self.has_cons[0]:
+            self.delete_cons(0)
+
+        if action2[-1] == 0.0 and self.has_cons[1]:
+            self.delete_cons(1)
+
+
+        collision_links = self.run_simulation()
+        self.collision_links = collision_links
+        self.collision_step += int(len(collision_links) > 0)
+
+        state = self.get_state(collision_links)
+        info = {}
+        reward, info = self.get_reward(collision_links, action, info)
+        done, info = self.get_termination(collision_links, action, info)
+        self.step_visualization()
+
+        if done and self.automatic_reset:
+            info['last_observation'] = state
+            state = self.reset()
+
+        return state, reward, done, info
+
+    def set_camera(self, cam_pos, cam_ori):
+        self.robots[2].apply_action(cam_pos[0], cam_ori[0])
+        self.robots[3].apply_action(cam_pos[1], cam_ori[1])
+        self.robots[4].apply_action(cam_pos[2], cam_ori[2])
+
+    def set_robot(self, rob_action):
+        self.robot_pos[0] = rob_action[:3]
+        self.robots[0].apply_action(self.robot_pos[0], rob_action[3:7])
+        p.setJointMotorControlArray(self.robot_id[0], jointIndices=[i for i in range(0, 5)],
+                                    controlMode=p.POSITION_CONTROL,
+                                    targetPositions=[1.0-rob_action[-1], 0.0, 1.0-rob_action[-1], 0.0, 0.0])
+
+        self.robot_pos[1] = rob_action[:3]
+        self.robot_pos[1][2] += 0.3
+        self.robots[1].apply_action(self.robot_pos[1], rob_action[3:7])
+        p.setJointMotorControlArray(self.robot_id[1], jointIndices=[i for i in range(0, 5)],
+                                    controlMode=p.POSITION_CONTROL,
+                                    targetPositions=[1.0 - rob_action[-1], 0.0, 1.0 - rob_action[-1], 0.0, 0.0])
+
     def reset_agent(self):
         """
         Reset the robot's joint configuration and base pose until no collision
         """
-        reset_success = False
-        max_trials = 100
-        for _ in range(max_trials):
-            self.reset_initial_and_target_pos()
-            if self.test_valid_position('robot', self.robots[0], self.initial_pos, self.initial_orn) and \
-                    self.test_valid_position('robot', self.robots[0], self.target_pos):
-                reset_success = True
-                break
-
-        if not reset_success:
-            logging.warning("WARNING: Failed to reset robot without collision")
-
-        self.land('robot', self.robots[0], self.initial_pos, self.initial_orn)
+        # reset_success = False
+        # max_trials = 100
+        # for _ in range(max_trials):
+        #     self.reset_initial_and_target_pos()
+        #     if self.test_valid_position('robot', self.robots[0], self.initial_pos, self.initial_orn) and \
+        #             self.test_valid_position('robot', self.robots[0], self.target_pos):
+        #         reset_success = True
+        #         break
+        #
+        # if not reset_success:
+        #     logging.warning("WARNING: Failed to reset robot without collision")
+        #
+        # self.land('robot', self.robots[0], self.initial_pos, self.initial_orn)
+        # self.robots[0].robot_specific_reset()
+        # self.robots[1].robot_specific_reset()
+        # self.land('robot', self.robots[0], self.initial_pos, self.initial_orn)
 
     def reset_initial_and_target_pos(self):
         """
@@ -688,7 +850,7 @@ class NavigateEnv(BaseEnv):
         self.current_step = 0
         self.collision_step = 0
         self.path_length = 0.0
-        self.geodesic_dist = self.get_geodesic_potential()
+        # self.geodesic_dist = self.get_geodesic_potential()
 
     def reset(self):
         """
@@ -697,10 +859,10 @@ class NavigateEnv(BaseEnv):
         self.reset_agent()
         self.simulator.sync()
         state = self.get_state()
-        if self.reward_type == 'l2':
-            self.potential = self.get_l2_potential()
-        elif self.reward_type == 'geodesic':
-            self.potential = self.get_geodesic_potential()
+        # if self.reward_type == 'l2':
+        #     self.potential = self.get_l2_potential()
+        # elif self.reward_type == 'geodesic':
+        #     self.potential = self.get_geodesic_potential()
         self.reset_variables()
         self.step_visualization()
 
@@ -714,7 +876,7 @@ class NavigateRandomEnv(NavigateEnv):
             model_id=None,
             mode='headless',
             action_timestep=1 / 10.0,
-            physics_timestep=1 / 240.0,
+            physics_timestep=1 / 480.0,
             automatic_reset=False,
             random_height=False,
             device_idx=0,

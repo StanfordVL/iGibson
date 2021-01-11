@@ -9,6 +9,7 @@ def main():
     p.setTimeStep(1./240.)
 
     scene = BuildingScene('Rs',
+                          is_interactive=True,
                           build_graph=True,
                           pybullet_load_texture=True)
     scene.load()
