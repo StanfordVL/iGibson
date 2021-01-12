@@ -2,10 +2,12 @@ import gym
 import numpy as np
 import pybullet as p
 
-from gibson2.external.pybullet_tools.utils import joints_from_names, set_joint_positions
+from gibson2.external.pybullet_tools.utils import joints_from_names, get_joint_positions, set_joint_positions, get_max_limits, get_min_limits
 from gibson2.objects.visual_marker import VisualMarker
+from gibson2.objects.vr_objects import VrGazeMarker
 from gibson2.robots.fetch_robot import Fetch
 from gibson2.robots.robot_locomotor import LocomotorRobot
+from gibson2.utils.utils import l2_distance
 from gibson2.utils.vr_utils import calc_z_dropoff
 
 
@@ -13,7 +15,7 @@ class FetchVR(Fetch):
     """
     Fetch robot used in VR embodiment demos.
     """
-    def __init__(self, config, s, start_pos, update_freq=1, control_hand='right'):
+    def __init__(self, config, s, start_pos, update_freq=1, control_hand='right', use_ns_ik=True, use_gaze_marker=True):
         self.config = config
         self.wheel_velocity = config.get('wheel_velocity', 1.0)
         self.torso_lift_velocity = config.get('torso_lift_velocity', 1.0)
@@ -23,6 +25,17 @@ class FetchVR(Fetch):
         self.torso_lift_dim = 0
         # 7 for arm, 2 for gripper
         self.arm_dim = 9
+        self.named_joint_list = [
+                                    'shoulder_pan_joint',
+                                    'shoulder_lift_joint',
+                                    'upperarm_roll_joint',
+                                    'elbow_flex_joint',
+                                    'forearm_roll_joint',
+                                    'wrist_flex_joint',
+                                    'wrist_roll_joint'
+                                ]
+        if self.torso_lift_dim > 0:
+            self.named_joint_list += ['torso_lift_joint']
         LocomotorRobot.__init__(self,
                                 "fetch/fetch_vr.urdf",
                                 action_dim=self.wheel_dim + self.torso_lift_dim + self.arm_dim,
@@ -45,10 +58,7 @@ class FetchVR(Fetch):
         # Position setup
         self.set_position(start_pos)
         self.fetch_vr_reset()
-        #self.keep_still()
-
-        # Variables used in IK to move end effector
-        self.bid = self.robot_body.bodies[self.robot_body.body_index]
+        self.keep_still()
         self.wheel_speed_multiplier = 100
 
         # Update data
@@ -64,30 +74,40 @@ class FetchVR(Fetch):
         self.gripper_max_joint = 0.05
         # IK control start can be toggled by pressing grip of control device
         self.use_ik_control = False
+        # Whether to use null-space IK
+        self.use_ns_ik = use_ns_ik
+        self.use_gaze_marker = use_gaze_marker
+        if self.use_gaze_marker:
+            self.gm = VrGazeMarker(s)
+
+        # Set friction of grippers
+        self.gripper_ids = joints_from_names(self.robot_id, ['l_gripper_finger_joint', 'r_gripper_finger_joint'])
+        for g_id in self.gripper_ids:
+            p.changeDynamics(self.robot_id, g_id, lateralFriction=2.5)
 
     def fetch_vr_reset(self):
         for j in self.ordered_joints:
             j.reset_joint_state(0.0, 0.0)
 
         # roll the arm to its body
-        robot_id = self.robot_ids[0]
-        arm_joints = joints_from_names(robot_id,
-                                       [
-                                           'torso_lift_joint',
-                                           'shoulder_pan_joint',
-                                           'shoulder_lift_joint',
-                                           'upperarm_roll_joint',
-                                           'elbow_flex_joint',
-                                           'forearm_roll_joint',
-                                           'wrist_flex_joint',
-                                           'wrist_roll_joint'
-                                       ])
-        rest_position = (0.30322468280792236, -1.414019864768982,
+        self.robot_id = self.robot_ids[0]
+        self.arm_joint_ids = joints_from_names(self.robot_id, self.named_joint_list)
+        rest_position = (-1.414019864768982,
                         1.5178184935241699, 0.8189625336474915,
                         2.200358942909668, 2.9631312579803466,
                         -1.2862852996643066, 0.0008453550418615341)
 
-        set_joint_positions(robot_id, arm_joints, rest_position)
+        set_joint_positions(self.robot_id, self.arm_joint_ids, rest_position)
+
+    def calc_ik_params(self):
+        max_limits = [0., 0.] + get_max_limits(self.robot_id, self.arm_joint_ids) + [0., 0.]
+        min_limits = [0., 0.] + get_min_limits(self.robot_id, self.arm_joint_ids) + [0., 0.]
+        rest_position = [0., 0.] + list(get_joint_positions(self.robot_id, self.arm_joint_ids)) + [0., 0.]
+        joint_range = list(np.array(max_limits) - np.array(min_limits))
+        joint_range = [item + 1 for item in joint_range]
+        joint_damping = [0.1 for _ in joint_range]
+
+        return (max_limits, min_limits, rest_position, joint_range, joint_damping)
 
     def apply_frame_data(self, lin_vel, ang_vel, arm_poses, grip_frac):
         """
@@ -112,7 +132,6 @@ class FetchVR(Fetch):
         """
         Updates FetchVR robot. If vr_data is supplied, overwrites VR input.
         """
-        # TODO: Add in vr_data is not none condition here! Make this similar to VrBody
         if vr_data:
             hmd_is_valid, hmd_trans, hmd_rot, _, _, hmd_forward = vr_data.query('hmd')
             hmd_world_pos, _ = vr_data.query('vr_positions')
@@ -145,34 +164,51 @@ class FetchVR(Fetch):
 
         if is_valid:
             # Toggle IK on/off from grip press on control device
-            if self.sim.query_vr_event(self.control_device, 'grip_press'):
+            grip_press = ([self.control_device, 'grip_press'] in vr_data.query('event_data')) if vr_data else self.sim.query_vr_event(self.control_device, 'grip_press')
+            if grip_press:
                 self.use_ik_control = not self.use_ik_control
 
+            # Calculate linear and angular velocity as well as gripper positions
+            lin_vel = self.wheel_speed_multiplier * touch_y
+            ang_vel = 0
+            grip_frac = self.gripper_max_joint * (1 - trig_frac)
+
             # Iteration and residual threshold values are based on recommendations from PyBullet
-            # TODO: Use rest poses here from the null-space IK example
             if self.use_ik_control and self.frame_count % self.update_freq == 0:
                 # Update effector marker to desired end-effector transform
                 self.effector_marker.set_position(trans)
                 self.effector_marker.set_orientation(rot)
 
-                ik_joint_poses = p.calculateInverseKinematics(self.bid,
-                                                        self.end_effector_part_index(),
-                                                        trans,
-                                                        rot,
-                                                        solver=0,
-                                                        maxNumIterations=100,
-                                                        residualThreshold=.01)
+                if not self.use_ns_ik:
+                    ik_joint_poses = p.calculateInverseKinematics(self.robot_id,
+                                        self.end_effector_part_index(),
+                                        trans,
+                                        rot,
+                                        solver=0,
+                                        maxNumIterations=100,
+                                        residualThreshold=.01)
+                else:
+                    max_limits, min_limits, rest_position, joint_range, joint_damping = self.calc_ik_params()
+                    ik_joint_poses = p.calculateInverseKinematics(self.robot_id,
+                                                            self.end_effector_part_index(),
+                                                            trans,
+                                                            rot,
+                                                            lowerLimits=min_limits,
+                                                            upperLimits=max_limits,
+                                                            restPoses=rest_position,
+                                                            jointDamping=joint_damping,
+                                                            solver=0,
+                                                            maxNumIterations=100,
+                                                            residualThreshold=.01)
                 # Exclude wheels and gripper joints
-                arm_poses = ik_joint_poses[2:9]
+                arm_poses = ik_joint_poses[2:self.torso_lift_dim + self.arm_dim]
+                self.apply_frame_data(lin_vel, ang_vel, list(arm_poses), grip_frac)
             else:
-                arm_poses = self.get_joint_pos()
-            
-            # Calculate linear and angular velocity as well as gripper positions
-            lin_vel = self.wheel_speed_multiplier * touch_y
-            ang_vel = 0
-            grip_frac = self.gripper_max_joint * (1 - trig_frac)
-            # Apply data to Fetch as an action
-            self.apply_frame_data(lin_vel, ang_vel, list(arm_poses), grip_frac)
+                self.apply_frame_data(lin_vel, ang_vel, list(self.get_joint_pos()), grip_frac)
+
+            # Update gaze marker
+            if self.use_gaze_marker:
+                self.gm.update()
 
     def set_z_rotation(self, hmd_rot, hmd_forward):
         """
