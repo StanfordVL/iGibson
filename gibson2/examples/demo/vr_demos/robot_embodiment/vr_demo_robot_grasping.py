@@ -67,9 +67,13 @@ if not VR_MODE:
     s.renderer.set_fov(90)
 
 # Import FetchVR robot - the class handles importing and setup itself
-fvr = FetchVR(fetch_config, s, [0.1, 0, 0], update_freq=1, use_ns_ik=True, use_gaze_marker=True)
+fvr = FetchVR(fetch_config, s, [0.45, 0, 0], update_freq=1, use_ns_ik=True, use_gaze_marker=True)
 
 objects = [
+    ("jenga/jenga.urdf", (1.500000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+               0.707107)),
+    ("jenga/jenga.urdf", (1.400000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+               0.707107)),
     ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
                0.707107)),
     ("jenga/jenga.urdf", (1.200000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
@@ -78,11 +82,7 @@ objects = [
                0.707107)),
     ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
                0.707107)),
-    ("jenga/jenga.urdf", (0.900000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-               0.707107)),
-    ("jenga/jenga.urdf", (0.800000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-               0.707107)),
-    ("table/table.urdf", (1.000000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107,
+    ("table/table.urdf", (1.300000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107,
                0.707107)),
     ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107,
                0.707107)),
@@ -108,12 +108,14 @@ for i in range(3):
     s.import_object(obj)
     obj.set_position_orientation([1.100000 + 0.12 * i, -0.300000, 0.750000], [0, 0, 0, 1])
 
+"""
 obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects', 
     'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
                         scale=2)
 s.import_object(obj)
 p.changeDynamics(obj.body_id, -1, mass=100, lateralFriction=2)
-obj.set_position_orientation([1., 0.300000, 0.750000], [0, 0, 0, 1])
+obj.set_position_orientation([1.15, 0.300000, 0.750000], [0, 0, 0, 1])
+"""
 
 s.optimize_vertex_and_texture()
 
