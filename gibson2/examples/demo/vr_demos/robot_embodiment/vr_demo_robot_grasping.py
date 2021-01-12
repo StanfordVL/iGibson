@@ -1,8 +1,9 @@
-""" VR embodiment demo with Fetch robot. """
+""" VR embodiment demo with Fetch robot. This demo allows you to test out Fetch VR's grasping functionality."""
 
 import numpy as np
 import os
 import pybullet as p
+import pybullet_data
 
 import gibson2
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
@@ -19,10 +20,8 @@ from gibson2 import assets_path
 
 fetch_config = parse_config(os.path.join('..', '..', '..', 'configs', 'fetch_reaching.yaml'))
 
-# Set to false to load entire Rs_int scene
-LOAD_PARTIAL = True
 # Set to true to print out render, physics and overall frame FPS
-PRINT_FPS = False
+PRINT_FPS = True
 # Set to false to just use FetchVR in non-VR mode
 VR_MODE = True
 
@@ -57,10 +56,9 @@ else:
     s.viewer.min_cam_z = 1.0
 
 scene = InteractiveIndoorScene('Rs_int')
-# Turn this on when debugging to speed up loading
-if LOAD_PARTIAL:
-    scene._set_first_n_objects(10)
+scene._set_first_n_objects(2)
 s.import_ig_scene(scene)
+p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
 if not VR_MODE:
     camera_pose = np.array([0, -3, 1.2])
@@ -69,19 +67,53 @@ if not VR_MODE:
     s.renderer.set_fov(90)
 
 # Import FetchVR robot - the class handles importing and setup itself
-fvr = FetchVR(fetch_config, s, [0.5, -1.5, 0], update_freq=1)
+fvr = FetchVR(fetch_config, s, [0.1, 0, 0], update_freq=1, use_ns_ik=True, use_gaze_marker=True)
 
-# Gaze marker to visualize where the user is looking
-gm = VrGazeMarker(s)
+objects = [
+    ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+               0.707107)),
+    ("jenga/jenga.urdf", (1.200000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+               0.707107)),
+    ("jenga/jenga.urdf", (1.100000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+               0.707107)),
+    ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+               0.707107)),
+    ("jenga/jenga.urdf", (0.900000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+               0.707107)),
+    ("jenga/jenga.urdf", (0.800000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+               0.707107)),
+    ("table/table.urdf", (1.000000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107,
+               0.707107)),
+    ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107,
+               0.707107)),
+    ("duck_vhacd.urdf", (0.950000, -0.100000, 0.700000), (0.000000, 0.000000, 0.707107,
+               0.707107)),
+    ("sphere_small.urdf", (0.850000, -0.400000, 0.700000), (0.000000, 0.000000, 0.707107,
+               0.707107)),
+    ("duck_vhacd.urdf", (0.850000, -0.400000, 1.00000), (0.000000, 0.000000, 0.707107,
+               0.707107)),
+]
 
-# Objects to interact with
-mass_list = [5, 10, 100, 500]
-mustard_start = [-1, 1.55, 1.2]
-for i in range(len(mass_list)):
-    mustard = YCBObject('006_mustard_bottle')
-    s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
-    mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
-    p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
+for item in objects:
+    fpath = item[0]
+    pos = item[1]
+    orn = item[2]
+    item_ob = ArticulatedObject(fpath, scale=1)
+    s.import_object(item_ob, use_pbr=False, use_pbr_mapping=False)
+    item_ob.set_position(pos)
+    item_ob.set_orientation(orn)
+
+for i in range(3):
+    obj = YCBObject('003_cracker_box')
+    s.import_object(obj)
+    obj.set_position_orientation([1.100000 + 0.12 * i, -0.300000, 0.750000], [0, 0, 0, 1])
+
+obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects', 
+    'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
+                        scale=2)
+s.import_object(obj)
+p.changeDynamics(obj.body_id, -1, mass=100, lateralFriction=2)
+obj.set_position_orientation([1., 0.300000, 0.750000], [0, 0, 0, 1])
 
 s.optimize_vertex_and_texture()
 
@@ -91,7 +123,5 @@ while True:
     if VR_MODE:
         # FetchVR class handles all update logic
         fvr.update()
-        # Update visual gaze marker
-        gm.update()
 
 s.disconnect()

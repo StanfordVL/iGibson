@@ -1,0 +1,92 @@
+""" VR embodiment demo with Fetch robot. This demos allows you to explore the Rs environment with Fetch VR"""
+
+import numpy as np
+import os
+import pybullet as p
+
+import gibson2
+from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
+from gibson2.robots.fetch_vr_robot import FetchVR
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from gibson2.objects.articulated_object import ArticulatedObject
+from gibson2.objects.vr_objects import VrGazeMarker
+from gibson2.objects.ycb_object import YCBObject
+from gibson2.simulator import Simulator
+from gibson2.utils.utils import parse_config
+from gibson2.utils.vr_utils import move_player
+from gibson2 import assets_path
+
+fetch_config = parse_config(os.path.join('..', '..', '..', 'configs', 'fetch_reaching.yaml'))
+
+# Set to false to load entire Rs_int scene
+LOAD_PARTIAL = True
+# Set to true to print out render, physics and overall frame FPS
+PRINT_FPS = False
+# Set to false to just use FetchVR in non-VR mode
+VR_MODE = True
+
+# HDR files for PBR rendering
+hdr_texture = os.path.join(
+    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+hdr_texture2 = os.path.join(
+    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+light_modulation_map_filename = os.path.join(
+    gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+background_texture = os.path.join(
+    gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+
+# VR rendering settings
+vr_rendering_settings = MeshRendererSettings(optimized=True,
+                                            fullscreen=False,
+                                            env_texture_filename=hdr_texture,
+                                            env_texture_filename2=hdr_texture2,
+                                            env_texture_filename3=background_texture,
+                                            light_modulation_map_filename=light_modulation_map_filename,
+                                            enable_shadow=True, 
+                                            enable_pbr=True,
+                                            msaa=True,
+                                            light_dimming_factor=1.0)
+if VR_MODE:
+    s = Simulator(mode='vr', 
+                rendering_settings=vr_rendering_settings, 
+                vr_settings=VrSettings())
+else:
+    s = Simulator(mode='iggui', image_width=960,
+                  image_height=720, device_idx=0, rendering_settings=vr_rendering_settings)
+    s.viewer.min_cam_z = 1.0
+
+scene = InteractiveIndoorScene('Rs_int')
+# Turn this on when debugging to speed up loading
+if LOAD_PARTIAL:
+    scene._set_first_n_objects(10)
+s.import_ig_scene(scene)
+
+if not VR_MODE:
+    camera_pose = np.array([0, -3, 1.2])
+    view_direction = np.array([0, 1, 0])
+    s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
+    s.renderer.set_fov(90)
+
+# Import FetchVR robot - the class handles importing and setup itself
+fvr = FetchVR(fetch_config, s, [0.5, -1.5, 0], update_freq=1, use_ns_ik=True, use_gaze_marker=True)
+
+# Objects to interact with
+mass_list = [5, 10, 100, 500]
+mustard_start = [-1, 1.55, 1.2]
+for i in range(len(mass_list)):
+    mustard = YCBObject('006_mustard_bottle')
+    s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+    mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
+    p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
+
+s.optimize_vertex_and_texture()
+
+# Main simulation loop
+while True:
+    s.step()
+    if VR_MODE:
+        # FetchVR class handles all update logic
+        fvr.update()
+
+s.disconnect()
