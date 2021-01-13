@@ -32,7 +32,7 @@ def get_ig_scene_path(scene_name):
     :return: file path to the scene name
     """
     ig_dataset_path = gibson2.ig_dataset_path
-    ig_scenes_path = ig_dataset_path + "/scenes"
+    ig_scenes_path = os.path.join(ig_dataset_path, "scenes")
     print('SCENE NAME:', scene_name)
     assert scene_name in os.listdir(
         ig_scenes_path), "Scene {} does not exist".format(scene_name)
@@ -47,7 +47,7 @@ def get_3dfront_scene_path(scene_name):
     :return: file path to the scene name
     """
     threedfront_dataset_path = gibson2.threedfront_dataset_path
-    threedfront_dataset_path = os.path.join( threedfront_dataset_path, "scenes")
+    threedfront_dataset_path = os.path.join(threedfront_dataset_path, "scenes")
     assert scene_name in os.listdir(
         threedfront_dataset_path), "Scene {} does not exist".format(scene_name)
     return os.path.join(threedfront_dataset_path, scene_name)
@@ -61,7 +61,7 @@ def get_cubicasa_scene_path(scene_name):
     :return: file path to the scene name
     """
     cubicasa_dataset_path = gibson2.cubicasa_dataset_path
-    cubicasa_dataset_path= os.path.join( cubicasa_dataset_path, "scenes")
+    cubicasa_dataset_path = os.path.join(cubicasa_dataset_path, "scenes")
     assert scene_name in os.listdir(
         cubicasa_dataset_path), "Scene {} does not exist".format(scene_name)
     return os.path.join(cubicasa_dataset_path, scene_name)
@@ -75,7 +75,7 @@ def get_ig_category_path(category_name):
     :return: file path to the object category
     """
     ig_dataset_path = gibson2.ig_dataset_path
-    ig_categories_path = ig_dataset_path + "/objects"
+    ig_categories_path = os.path.join(ig_dataset_path, "objects")
     assert category_name in os.listdir(
         ig_categories_path), "Category {} does not exist".format(category_name)
     return os.path.join(ig_categories_path, category_name)
@@ -102,7 +102,7 @@ def get_all_object_models():
     :return: a list of all object model paths
     """
     ig_dataset_path = gibson2.ig_dataset_path
-    ig_categories_path = ig_dataset_path + "/objects"
+    ig_categories_path = os.path.join(ig_dataset_path, "objects")
 
     categories = os.listdir(ig_categories_path)
     categories = [item for item in categories if os.path.isdir(
@@ -214,6 +214,7 @@ def download_dataset(url):
         'tar -zxf /tmp/{} --strip-components=1 --directory {}'.format(file_name, gibson2.g_dataset_path))
     # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 
+
 def download_ext_scene_assets():
     os.makedirs(gibson2.threedfront_dataset_path, exist_ok=True)
     os.makedirs(gibson2.cubicasa_dataset_path, exist_ok=True)
@@ -221,17 +222,18 @@ def download_ext_scene_assets():
     file_name = url.split('/')[-1]
     os.system(
         'wget -c --retry-connrefused --tries=5 --timeout=5 {} -O /tmp/{}'.format(url, file_name))
-    os.system( 'tar -zxf /tmp/{} --directory {}'.format(
-               file_name, gibson2.cubicasa_dataset_path))
-    os.system( 'tar -zxf /tmp/{} --directory {}'.format(
-               file_name, gibson2.threedfront_dataset_path))
+    os.system('tar -zxf /tmp/{} --directory {}'.format(
+        file_name, gibson2.cubicasa_dataset_path))
+    os.system('tar -zxf /tmp/{} --directory {}'.format(
+        file_name, gibson2.threedfront_dataset_path))
 
     url = "https://storage.googleapis.com/gibson_scenes/threedfront_urdfs.tar.gz"
     file_name = url.split('/')[-1]
     os.system(
         'wget -c --retry-connrefused --tries=5 --timeout=5 {} -O /tmp/{}'.format(url, file_name))
-    os.system( 'tar -zxf /tmp/{} --directory {}'.format(
-               file_name, gibson2.threedfront_dataset_path))
+    os.system('tar -zxf /tmp/{} --directory {}'.format(
+        file_name, gibson2.threedfront_dataset_path))
+
 
 def download_ig_dataset():
     """
@@ -250,23 +252,25 @@ def download_ig_dataset():
         'tar -zxf /tmp/{} --strip-components=1 --directory {}'.format(file_name, gibson2.ig_dataset_path))
     # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 
+
 def change_data_path():
     with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'global_config.yaml')) as f:
         global_config = yaml.load(f, Loader=yaml.FullLoader)
     print("Current dataset path:")
     for k, v in global_config.items():
-        print("{}: {}".format(k,v))
-    for k,v in global_config.items():
+        print("{}: {}".format(k, v))
+    for k, v in global_config.items():
         new_path = input("Change {} from {} to: ".format(k, v))
         global_config[k] = new_path
 
     print("New dataset path:")
     for k, v in global_config.items():
-        print("{}: {}".format(k,v))
+        print("{}: {}".format(k, v))
     response = input("Save? [y/n]")
     if response == "y":
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'global_config.yaml'), 'w') as f:
             yaml.dump(global_config, f)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
