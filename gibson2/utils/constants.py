@@ -35,6 +35,8 @@ class PyBulletSleepState(IntEnum):
 with open(os.path.join(gibson2.ig_dataset_path, 'metadata/categories.txt')) as f:
     NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines()]
 
+UNDER_OBJECTS = ['table', 'console_table', 'coffee_table', 'chair', 'bench']
+
 hdr_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
 hdr_texture2 = os.path.join(

@@ -18,6 +18,8 @@ from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from gibson2.object_properties.factory import get_object_property_class
+from gibson2.object_states.factory import get_object_state_instance
 
 
 class ArticulatedObject(Object):
@@ -221,6 +223,27 @@ class URDFObject(Object):
         self.remove_floating_joints(self.scene_instance_folder)
         if self.texture_randomization:
             self.prepare_texture()
+        self.prepare_object_properties()
+
+    def prepare_object_properties(self):
+        self.properties_name = ['onTop', 'inside',
+                                'nextTo', 'under', 'touching']
+        # TODO: append more properties name based on object taxonomy
+        self.properties_name += []
+
+        self.properties = {}
+        for prop_name in self.properties_name:
+            self.properties[prop_name] = get_object_property_class(prop_name)
+
+        self.state_names = set()
+        for prop_name in self.properties:
+            self.state_names.update(
+                self.properties[prop_name].get_relevant_states())
+
+        self.states = {}
+        for state_name in self.state_names:
+            self.states[state_name] = get_object_state_instance(
+                state_name, self)
 
     def compute_object_pose(self):
         if self.connecting_joint is not None:
@@ -558,6 +581,8 @@ class URDFObject(Object):
 
                     # The inertial frame origin will be scaled down below.
                     # Here, it has the value BEFORE scaling
+                    # TODO: this is not 100% correct. This assumes collision
+                    # mesh has zero origin, which is not always true.
                     origin.attrib['xyz'] = ' '.join(map(str, center))
                     origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
 
@@ -805,7 +830,7 @@ class URDFObject(Object):
 
         :return: position in xyz
         """
-        body_id = self.body_ids[self.main_body]
+        body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             pos, _ = p.getLinkState(body_id, 0)[0:2]
         else:
@@ -818,12 +843,26 @@ class URDFObject(Object):
 
         :return: quaternion in xyzw
         """
-        body_id = self.body_ids[self.main_body]
+        body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             _, orn = p.getLinkState(body_id, 0)[0:2]
         else:
             _, orn = p.getBasePositionAndOrientation(body_id)
         return orn
+
+    def get_position_orientation(self):
+        """
+        Get object position and orientation
+
+        :return: position in xyz
+        :return: quaternion in xyzw
+        """
+        body_id = self.get_body_id()
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            pos, orn = p.getLinkState(body_id, 0)[0:2]
+        else:
+            pos, orn = p.getBasePositionAndOrientation(body_id)
+        return pos, orn
 
     def set_position(self, pos):
         """
@@ -831,7 +870,7 @@ class URDFObject(Object):
 
         :param pos: position in xyz
         """
-        body_id = self.body_ids[self.main_body]
+        body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             logging.warning('cannot set_position for fixed objects')
         else:
@@ -844,7 +883,7 @@ class URDFObject(Object):
 
         :param orn: quaternion in xyzw
         """
-        body_id = self.body_ids[self.main_body]
+        body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             logging.warning('cannot set_orientation for fixed objects')
         else:
