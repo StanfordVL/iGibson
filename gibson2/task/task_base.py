@@ -12,6 +12,7 @@ from tasknet.condition_evaluation import OnTop, Inside
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path
+from gibson2.object_properties.factory import get_all_object_properties, get_object_property_class
 import random
 import pybullet as p
 from IPython import embed
@@ -49,8 +50,8 @@ class iGTNTask(TaskNetTask):
         if handmade_simulator is None:
             self.simulator = Simulator(
                 mode=mode, image_width=960, image_height=720, device_idx=0)
+            self.prepare_object_properties()
             self.initialize(InteractiveIndoorScene,
-                            ArticulatedObject,
                             scene_id=scene_id)
         else:
             print('HANDMADE SIMULATOR')
@@ -58,6 +59,12 @@ class iGTNTask(TaskNetTask):
             self.sampled_simulator_objects = handmade_sim_objs
             self.sim_obj_categories = handmade_sim_obj_categories
             self.sampled_dsl_objects = handmade_dsl_objs
+
+    def prepare_object_properties(self):
+        self.properties_name = get_all_object_properties()
+        self.properties = {}
+        for prop_name in self.properties_name:
+            self.properties[prop_name] = get_object_property_class(prop_name)
 
     def check_scene(self):
         for obj_cat in self.objects:
@@ -87,7 +94,6 @@ class iGTNTask(TaskNetTask):
                         model_path=model_path,
                     )
                     self.object_scope[obj_inst] = simulator_obj
-
         return True
 
     def import_scene(self):
@@ -95,11 +101,10 @@ class iGTNTask(TaskNetTask):
         self.simulator.import_ig_scene(self.scene)
 
     def sample(self, failed_conditions):
-        print('sample')
         failed_conditions = [cond.children[0] for cond in failed_conditions]
+        # TODO: assume initial condition is always true
         for failed_condition in failed_conditions:
-            success = failed_condition.sample()
-            print('single sample', success)
+            success = failed_condition.sample(binary_state=True)
             if not success:
                 return False
         return True
