@@ -37,7 +37,7 @@ class Pyramid(Object):
 
 
 def main():
-    s = Simulator(mode='headless', gravity=0.0)
+    s = Simulator(mode='gui', gravity=0.0)
     obj = Pyramid()
     random_material = RandomizedColorMaterial(kds=[
         [1.0, 0.0, 0.0],
