@@ -1,7 +1,8 @@
 
 from gibson2.object_states.object_state_base import BaseObjectState
+from gibson2.external.pybullet_tools.utils import aabb_union, get_aabb, get_all_links
 import numpy as np
-from gibson2.external.pybullet_tools.utils import get_aabb
+import pybullet as p
 
 
 class AABB(BaseObjectState):
@@ -12,7 +13,13 @@ class AABB(BaseObjectState):
     def get_value(self):
         if self.online:
             body_id = self.obj.get_body_id()
-            aabb_low, aabb_hi = get_aabb(body_id)
+            all_links = get_all_links(body_id)
+            if p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+                all_links.remove(-1)
+            aabbs = [get_aabb(body_id, link=link)
+                     for link in all_links]
+            aabb_low, aabb_hi = aabb_union(aabbs)
+
             self.value = (np.array(aabb_low), np.array(aabb_hi))
 
         return self.value
