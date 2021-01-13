@@ -301,7 +301,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             (self.seg_map_size, self.seg_map_size), Image.NEAREST))
 
         room_categories = os.path.join(
-            gibson2.ig_dataset_path, 'metadata/room_categories.txt')
+            gibson2.ig_dataset_path, 'metadata', 'room_categories.txt')
         with open(room_categories, 'r') as fp:
             room_cats = [line.rstrip() for line in fp.readlines()]
 
@@ -346,7 +346,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         Load average object dimensions for scene objects
         """
         avg_obj_dim_file = os.path.join(
-            gibson2.ig_dataset_path, 'objects/avg_category_specs.json')
+            gibson2.ig_dataset_path, 'objects', 'avg_category_specs.json')
         if os.path.isfile(avg_obj_dim_file):
             with open(avg_obj_dim_file) as f:
                 return json.load(f)

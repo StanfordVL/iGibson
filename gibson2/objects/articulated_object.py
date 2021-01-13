@@ -160,8 +160,8 @@ class URDFObject(Object):
 
         # Change the mesh filenames to include the entire path
         for mesh in self.object_tree.iter("mesh"):
-            mesh.attrib['filename'] = self.model_path + \
-                "/" + mesh.attrib['filename']
+            mesh.attrib['filename'] = os.path.join(
+                self.model_path, mesh.attrib['filename'])
 
         # Apply the desired bounding box size / scale
         # First obtain the scaling factor
@@ -170,8 +170,8 @@ class URDFObject(Object):
                 "You cannot define both scale and bounding box size when creating a URDF Objects")
             exit(-1)
 
-        meta_json = os.path.join(self.model_path, 'misc/metadata.json')
-        bbox_json = os.path.join(self.model_path, 'misc/bbox.json')
+        meta_json = os.path.join(self.model_path, 'misc', 'metadata.json')
+        bbox_json = os.path.join(self.model_path, 'misc', 'bbox.json')
         if os.path.isfile(meta_json):
             with open(meta_json, 'r') as f:
                 meta_data = json.load(f)
@@ -305,7 +305,7 @@ class URDFObject(Object):
         self.supporting_surfaces = {}
 
         heights_file = os.path.join(
-            self.model_path, 'misc/heights_per_link.json')
+            self.model_path, 'misc', 'heights_per_link.json')
         if not os.path.isfile(heights_file):
             return
 
@@ -317,7 +317,7 @@ class URDFObject(Object):
         for predicate in heights:
             height_maps_dir = os.path.join(
                 self.model_path,
-                'misc/height_maps_per_link/{}'.format(predicate))
+                'misc', 'height_maps_per_link', '{}'.format(predicate))
 
             height_maps = {}
             for link_name in heights[predicate]:
@@ -711,10 +711,10 @@ class URDFObject(Object):
 
         if self.category in ["walls", "floors", "ceilings"]:
             material_groups_file = os.path.join(
-                self.model_path, 'misc/{}_material_groups.json'.format(self.category))
+                self.model_path, 'misc', '{}_material_groups.json'.format(self.category))
         else:
             material_groups_file = os.path.join(
-                self.model_path, 'misc/material_groups.json')
+                self.model_path, 'misc', 'material_groups.json')
 
         assert os.path.isfile(material_groups_file), \
             'cannot find material group: {}'.format(material_groups_file)
@@ -731,7 +731,8 @@ class URDFObject(Object):
         # make visual mesh file path absolute
         visual_mesh_to_idx = material_groups[1]
         for old_path in list(visual_mesh_to_idx.keys()):
-            new_path = os.path.join(self.model_path, 'shape/visual', old_path)
+            new_path = os.path.join(
+                self.model_path, 'shape', 'visual', old_path)
             visual_mesh_to_idx[new_path] = visual_mesh_to_idx[old_path]
             del visual_mesh_to_idx[old_path]
 
@@ -747,7 +748,7 @@ class URDFObject(Object):
         self.materials = list(all_materials.values())
 
         friction_json = os.path.join(
-            gibson2.ig_dataset_path, 'materials/material_friction.json')
+            gibson2.ig_dataset_path, 'materials', 'material_friction.json')
         if os.path.isfile(friction_json):
             with open(friction_json) as f:
                 self.material_to_friction = json.load(f)
