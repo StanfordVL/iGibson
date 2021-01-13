@@ -13,11 +13,8 @@ from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.vr_objects import VrGazeMarker
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
-from gibson2.utils.utils import parse_config
 from gibson2.utils.vr_utils import move_player
 from gibson2 import assets_path
-
-fetch_config = parse_config(os.path.join('..', '..', '..', 'configs', 'fetch_reaching.yaml'))
 
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = True
@@ -69,7 +66,7 @@ if not VR_MODE:
     s.renderer.set_fov(90)
 
 # Import FetchVR robot - the class handles importing and setup itself
-fvr = FetchVR(fetch_config, s, [0.5, -1.5, 0], update_freq=1, use_ns_ik=True, use_gaze_marker=True)
+fvr = FetchVR(s, [0.5, -1.5, 0], update_freq=1, use_ns_ik=True, use_gaze_marker=True)
 
 # Objects to interact with
 mass_list = [5, 10, 100, 500]

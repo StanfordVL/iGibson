@@ -1,13 +1,15 @@
 import gym
 import numpy as np
+import os
 import pybullet as p
 
+from gibson2 import assets_path
 from gibson2.external.pybullet_tools.utils import joints_from_names, get_joint_positions, set_joint_positions, get_max_limits, get_min_limits
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.vr_objects import VrGazeMarker
 from gibson2.robots.fetch_robot import Fetch
 from gibson2.robots.robot_locomotor import LocomotorRobot
-from gibson2.utils.utils import l2_distance
+from gibson2.utils.utils import l2_distance, parse_config
 from gibson2.utils.vr_utils import calc_z_dropoff
 
 
@@ -15,8 +17,8 @@ class FetchVR(Fetch):
     """
     Fetch robot used in VR embodiment demos.
     """
-    def __init__(self, config, s, start_pos, update_freq=1, control_hand='right', use_ns_ik=True, use_gaze_marker=True):
-        self.config = config
+    def __init__(self, s, start_pos, update_freq=1, control_hand='right', use_ns_ik=True, use_gaze_marker=True):
+        config = parse_config(os.path.join(assets_path, 'models', 'fetch', 'fetcH_embodiment.yaml'))
         self.wheel_velocity = config.get('wheel_velocity', 1.0)
         self.torso_lift_velocity = config.get('torso_lift_velocity', 1.0)
         self.arm_velocity = config.get('arm_velocity', 1.0)
@@ -59,8 +61,6 @@ class FetchVR(Fetch):
         self.set_position(start_pos)
         self.fetch_vr_reset()
         self.keep_still()
-        self.wheel_speed_multiplier = 100
-
         # Update data
         self.frame_count = 0
 
@@ -169,7 +169,7 @@ class FetchVR(Fetch):
                 self.use_ik_control = not self.use_ik_control
 
             # Calculate linear and angular velocity as well as gripper positions
-            lin_vel = self.wheel_speed_multiplier * touch_y
+            lin_vel = self.wheel_velocity * touch_y
             ang_vel = 0
             grip_frac = self.gripper_max_joint * (1 - trig_frac)
 
