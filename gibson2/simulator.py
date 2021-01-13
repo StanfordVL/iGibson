@@ -261,31 +261,44 @@ class Simulator:
         assert isinstance(obj, Object), \
             'import_object can only be called with Object'
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
-        new_object_pb_id = obj.load()
-        self.objects += [new_object_pb_id]
-        if obj.__class__ in [ArticulatedObject, URDFObject]:
-            self.load_articulated_object_in_renderer(new_object_pb_id,
-                                                     class_id,
-                                                     use_pbr=use_pbr,
-                                                     use_pbr_mapping=use_pbr_mapping,
-                                                     shadow_caster=shadow_caster)
+        new_object_pb_id_or_ids = obj.load()
+        if isinstance(new_object_pb_id_or_ids, list):
+            new_object_pb_ids = new_object_pb_id_or_ids
         else:
-            softbody = False
-            if obj.__class__.__name__ == 'SoftObject':
-                softbody = True
-            self.load_object_in_renderer(new_object_pb_id,
-                                         class_id,
-                                         softbody,
-                                         use_pbr=use_pbr,
-                                         use_pbr_mapping=use_pbr_mapping,
-                                         shadow_caster=shadow_caster)
-        return new_object_pb_id
+            new_object_pb_ids = [new_object_pb_id_or_ids]
+        self.objects += new_object_pb_ids
+
+        for i, new_object_pb_id in enumerate(new_object_pb_ids):
+            if hasattr(obj, 'visual_mesh_to_material'):
+                visual_mesh_to_material = obj.visual_mesh_to_material[i]
+            else:
+                visual_mesh_to_material = None
+            if isinstance(obj, ArticulatedObject) or isinstance(obj, URDFObject):
+                self.load_articulated_object_in_renderer(
+                    new_object_pb_id,
+                    class_id,
+                    visual_mesh_to_material=visual_mesh_to_material,
+                    use_pbr=use_pbr,
+                    use_pbr_mapping=use_pbr_mapping,
+                    shadow_caster=shadow_caster)
+            else:
+                softbody = obj.__class__.__name__ == 'SoftObject'
+                self.load_object_in_renderer(
+                    new_object_pb_id,
+                    class_id,
+                    softbody,
+                    visual_mesh_to_material=visual_mesh_to_material,
+                    use_pbr=use_pbr,
+                    use_pbr_mapping=use_pbr_mapping,
+                    shadow_caster=shadow_caster)
+        return new_object_pb_id_or_ids
 
     @load_without_pybullet_vis
     def load_object_in_renderer(self,
                                 object_pb_id,
                                 class_id=None,
                                 softbody=False,
+                                visual_mesh_to_material=None,
                                 texture_scale=1.0,
                                 load_texture=True,
                                 render_floor_plane=False,
@@ -299,6 +312,7 @@ class Simulator:
         :param object_pb_id: pybullet body id
         :param class_id: Class id for rendering semantic segmentation
         :param softbody: Whether the object is soft body
+        :param visual_mesh_to_material: mapping from visual mesh to randomizable materials
         :param texture_scale: Texture scale
         :param load_texture: If you don't need rgb output, texture loading could be skipped to make rendering faster
         :param render_floor_plane: Whether to render the additionally added floor plane
@@ -312,16 +326,23 @@ class Simulator:
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
+                    overwrite_material = None
+                    if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
+                        overwrite_material = visual_mesh_to_material[filename]
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions),
                                               texture_scale=texture_scale,
-                                              load_texture=load_texture)
-                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
-                                        ] = len(self.renderer.visual_objects) - 1
-                visual_object = self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
+                                              load_texture=load_texture,
+                                              overwrite_material=overwrite_material)
+                    self.visual_objects[
+                        (filename, tuple(dimensions),
+                         tuple(rel_pos), tuple(rel_orn))
+                    ] = len(self.renderer.visual_objects) - 1
+                visual_object = self.visual_objects[(filename, tuple(
+                    dimensions), tuple(rel_pos), tuple(rel_orn))]
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
                     gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')

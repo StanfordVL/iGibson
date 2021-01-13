@@ -229,3 +229,40 @@ class RandomizedMaterial(Material):
                 self.roughness_texture_id, self.normal_texture_id, self.kd,
                 self.material_classes)
         )
+
+
+class RandomizedColorMaterial(Material):
+    """
+    Randomized Material class for material randomization
+    """
+
+    def __init__(self,
+                 kds=[[0.5, 0.5, 0.5]]):
+        """
+        :param kds: a list of color parameters
+        """
+        super(RandomizedColorMaterial, self).__init__(
+            material_type='color',
+            kd=[0.5, 0.5, 0.5],
+            texture_id=None,
+            metallic_texture_id=None,
+            roughness_texture_id=None,
+            normal_texture_id=None,
+        )
+        self.kds = kds
+
+    def randomize(self):
+        """
+        Randomize the material by randomly sampling a material id that belongs
+        to one of the material classes. All potential materials have already
+        been loaded to memory.
+        """
+        self.kd = self.kds[np.random.randint(len(self.kds))]
+        print('new kd', self.kd)
+
+    def __str__(self):
+        return (
+            "RandomizedColorMaterial(material_type: {}, color: {})".format(
+                self.material_type, self.kd
+            )
+        )

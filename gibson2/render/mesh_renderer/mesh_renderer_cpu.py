@@ -389,7 +389,10 @@ class MeshRenderer(object):
                 material = Material('color', kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
 
-        if input_kd is not None:  # append the default material in the end, in case material loading fails
+        if overwrite_material is not None:
+            self.materials_mapping[len(
+                materials) + material_count] = overwrite_material
+        elif input_kd is not None:  # append the default material in the end, in case material loading fails
             self.materials_mapping[len(
                 materials) + material_count] = Material('color', kd=input_kd, texture_id=-1)
         else:
