@@ -12,7 +12,6 @@ from PodSixNet.Connection import connection, ConnectionListener
 
 
 class IGVRClient(ConnectionListener):
-    # Setup methods
     def __init__(self, host, port):
         """
         Connects the client to an IGVRServer at a specified host and port
@@ -22,7 +21,16 @@ class IGVRClient(ConnectionListener):
         self.is_connected = True
         # Client stores its offset that will be used in server-based calculations
         self.vr_offset = [0, 0, 0]
-        print("IGVRClient started")
+        self.last_comm_time = -1
+        # Self-timing is disabled by default to prevent console log spam
+        self.timer_mode = False
+        print("IGVRClient launched")
+
+    def enable_timer_mode(self):
+        """
+        Instructs server to time its communications with the client.
+        """
+        self.timer_mode = True
 
     def register_data(self, sim, client_agent):
         """
@@ -35,7 +43,6 @@ class IGVRClient(ConnectionListener):
         self.vr_device = '{}_controller'.format(self.s.vr_settings.movement_controller)
         self.devices = ['left_controller', 'right_controller', 'hmd']
     
-    # Custom server callbacks
     def Network_syncframe(self, data):
         """
         Processes a syncframe action - one that uploads data from server to client.
@@ -43,9 +50,55 @@ class IGVRClient(ConnectionListener):
         data is a dictionary containing frame data at key=frame_data
         """
         frame_data = data["frame_data"]
+        self.server_response(frame_data)
 
-        # First sync data in the renderer
-        # TODO: Send other things including hidden state of objects for the client renderer to ingest
+    # Standard methods for networking diagnostics
+    def Network_connected(self, data):
+        print("Connected to the server")
+    
+    def Network_error(self, data):
+        # Errors take the form of Python socket errors, with an
+        # error number and a description
+        print("error:", data["error"])
+        connection.Close()
+    
+    def Network_disconnected(self, data):
+        print("Server disconnected")
+        exit()
+
+    def client_step(self):
+        """
+        Client's simplified version of the simulator step function that does renders the viewport and does some VR calculations.
+        """
+        # Render the frame in VR
+        self.s.viewer.update()
+        if self.s.can_access_vr_context:
+            self.s.poll_vr_events()
+            # Sets the VR starting position if one has been specified by the user
+            self.s.perform_vr_start_pos_move()
+
+            # Update VR offset so updated value can be used in server
+            self.client_agent.update_frame_offset()
+
+    def server_response(self, frame_data):
+        """
+        Responds to a message from the VR server with the following two steps:
+        1) Ingests server frame data into simulator
+        2) Generates VR data to send to the server
+        """
+        if self.timer_mode:
+            time_since_last_comm = time.time() - self.last_comm_time
+            if self.last_comm_time > 0:
+                print("Time since last server comm: {} ms".format(max(time_since_last_comm, 0.0001)/0.001))
+            self.last_comm_time = time.time()
+
+        self.ingest_frame_data(frame_data)
+        self.gen_send_vr_data()
+
+    def ingest_frame_data(self, frame_data):
+        """
+        Ingests frame_data into the simulator's renderer.
+        """
         for instance in self.renderer.get_instances():
             data = frame_data[instance.pybullet_uuid]
             if isinstance(instance, Instance):
@@ -68,41 +121,25 @@ class IGVRClient(ConnectionListener):
                 instance.poses_trans = poses_trans
                 instance.poses_rot = poses_rot
 
-        # Render the frame in VR
-        self.s.viewer.update()
-        if self.s.can_access_vr_context:
-            self.s.poll_vr_events()
-            # Sets the VR starting position if one has been specified by the user
-            self.s.perform_vr_start_pos_move()
+    def gen_send_vr_data(self):
+        """
+        Generates and sends VR data for the client's current frame.
+        """
+        vr_data = self.generate_vr_data()
+        if self.is_connected:
+            self.Send({"action":"vrdata", "vr_data":vr_data})
 
-            # Update VR offset so updated value can be used in server
-            self.client_agent.update_frame_offset()
-
-    # Standard methods for networking diagnostics
-    def Network_connected(self, data):
-        print("Connected to the server")
-    
-    def Network_error(self, data):
-        # Errors take the form of Python socket errors, with an
-        # error number and a description
-        print("error:", data["error"])
-        connection.Close()
-    
-    def Network_disconnected(self, data):
-        print("Server disconnected")
-        exit()
-
-    # Methods for handling VR data
     def generate_vr_data(self):
         """
-        Generates all the VR data that the server needs to operate:
-        Controller/HMD: valid, trans, rot, right, up, forward coordinate directions
-        Controller: + trig_frac, touch_x, touch_y
-        Eye tracking: valid, origin, dir, l_pupil_diameter, r_pupil_diameter
-        Events: list of all events from simulator (each event is a tuple of device type, event type)
-        Current vr position
-        Vr settings
+        Helper function that generates all the VR data that the server needs to operate:
+            - Controller/HMD: valid, trans, rot, right, up, forward coordinate directions
+            - Controller: + trig_frac, touch_x, touch_y
+            - Eye tracking: valid, origin, dir, l_pupil_diameter, r_pupil_diameter
+            - Events: list of all events from simulator (each event is a tuple of device type, event type)
+            - Current vr position
+            - Vr settings
         """
+        # If in non-vr mode, the client simply returns an empty list
         if not self.s.can_access_vr_context:
             return []
 
@@ -132,25 +169,11 @@ class IGVRClient(ConnectionListener):
         ]
 
         return dict(vr_data_dict)
-        
-    # Methods for interacting with the server        
-    def refresh_frame_data(self):
+
+    def refresh_client(self):
         """
-        Refreshes frame data that was sent from the server.
+        Refreshes incoming/outgoing connections to client once per frame.
         """
-        #print("Refresh time: {}".format(time.time()))
         if self.is_connected:
             connection.Pump()
             self.Pump()
-
-    def send_vr_data(self):
-        """
-        Generates and sends vr data over to the server.
-        """
-        #print("Send time: {}".format(time.time()))
-        # First generate VR data
-        vr_data = self.generate_vr_data()
-
-        # Send to a server if connected
-        if self.is_connected:
-            self.Send({"action":"vrdata", "vr_data":vr_data})

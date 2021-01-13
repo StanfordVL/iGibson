@@ -22,13 +22,14 @@ class IGVRChannel(Channel):
         print(self, "Client disconnected")
         
     def Network_vrdata(self, data):
+        """
+        Processes a vrdata action recevied from the client.
+        """
         self.vr_data_cb(data["vr_data"])
 
     def set_vr_data_callback(self, cb):
         """
-        Sets callback to be called when vr data is received. In this case,
-        we call a function on the server to update the positions/constraints of all the
-        VR objects in the scene.
+        Sets callback to be called when vr data is received.
 
         Note: cb should take in one parameter - vr_data
         """
@@ -53,13 +54,22 @@ class IGVRServer(Server):
         Initializes the IGVRServer.
         """
         Server.__init__(self, *args, **kwargs)
-        print('IGVR server launched!')
         # This server manages a single vr client
         self.vr_client = None
-        # Single VrData object that gets refreshed every frame
-        # This is used to update the client agent's server-side VR data
-        self.vr_data_persistent = None
-        self.last_comm_time = time.time()
+        # This stores the client agent's server-side VR data
+        self.client_vr_data = None
+        self.last_comm_time = -1
+        # Self-timing is disabled by default to prevent console log spam
+        self.timer_mode = False
+        # Whether the first message has been sent - the server always sends the first message in the communication
+        self.first_message_sent = False
+        print("IGVR server launched!")
+
+    def enable_timer_mode(self):
+        """
+        Instructs server to time its communications with the client.
+        """
+        self.timer_mode = True
 
     def has_client(self):
         """
@@ -74,30 +84,53 @@ class IGVRServer(Server):
         self.s = sim
         self.renderer = sim.renderer
         self.client_agent = client_agent
-
-    def update_client_vr_data(self, vr_data):
-        """
-        Updates VR objects based on data sent by client. This function is called from the asynchronous
-        Network_vrdata that is first called by the client channel.
-        """
-        time_since_last_comm = time.time() - self.last_comm_time
-        self.last_comm_time = time.time()
-        print("Time since last comm: {}".format(time_since_last_comm))
-        print("Comm fps: {}".format(1/max(0.0001, time_since_last_comm)))
-        # Set new VR data object - this is used each frame to update the client agent
-        self.vr_data_persistent = vr_data
     
     def Connected(self, channel, addr):
         """
         Called each time a new client connects to the server.
         """
-        print("New connection:", channel)
         self.vr_client = channel
-        self.vr_client.set_vr_data_callback(self.update_client_vr_data)
-        
-    def generate_frame_data(self):
+        self.vr_client.set_vr_data_callback(self.client_response)
+
+    def refresh_server(self):
         """
-        Generates frame data to send to client
+        Pumps the server every frame to refresh incoming/outgoing connections
+        as frequently as possible.
+        """
+        # Server is the first to initiate communication
+        if not self.first_message_sent and self.vr_client:
+            print("Sending first data to client!")
+            self.send_frame_data_to_client()
+            self.first_message_sent = True
+
+        self.Pump()
+    
+    def client_response(self, vr_data):
+        """
+        Performs response to client signal. This consists of 2 tasks:
+        1) Updates client's VR data in the server's data structures
+        2) Extracts frame data to send back to the client.
+        This function is called as a callback from the asynchronous Network_vrdata (called by IGVRChannel).
+        """
+        if self.timer_mode:
+            time_since_last_comm = time.time() - self.last_comm_time
+            if self.last_comm_time > 0:
+                print("Time since last client comm: {} ms".format(max(time_since_last_comm, 0.0001)/0.001))
+            self.last_comm_time = time.time()
+        
+        # Server response to client network call
+        self.update_client_vr_data(vr_data)
+        self.send_frame_data_to_client()
+
+    def update_client_vr_data(self, vr_data):
+        """
+        Updates client's VR data, using information received from client.
+        """
+        self.client_vr_data = vr_data
+
+    def send_frame_data_to_client(self):
+        """
+        Sends the client new frame data from the server's renderer.
         """
         # Frame data is stored as a dictionary mapping pybullet uuid to pose/rot data
         frame_data = {}
@@ -120,14 +153,5 @@ class IGVRServer(Server):
 
                 frame_data[instance.pybullet_uuid] = [poses, rots]
 
-        return frame_data
-
-    def refresh_server(self):
-        """
-        Pumps the server to refresh incoming/outgoing connections.
-        """
-        self.Pump()
-
-        if self.vr_client:
-            frame_data = self.generate_frame_data()
-            self.vr_client.send_frame_data(frame_data)
+        # Now queue up data to be sent to the client on next Pump call
+        self.vr_client.send_frame_data(frame_data)

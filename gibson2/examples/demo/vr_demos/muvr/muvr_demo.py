@@ -27,8 +27,12 @@ sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
 
 # Only load in first few objects in Rs to decrease load times
 LOAD_PARTIAL = True
-# Whether to print FPS each frame
-PRINT_FPS = False
+# Whether to print iGibson + networking FPS each frame
+PRINT_FPS = True
+# Whether to wait for client before stepping physics simulation and rendering
+WAIT_FOR_CLIENT = True
+# If set to true, server and client will time communications
+TIMER_MODE = True
 
 # Note: This is where the VR configuration for the MUVR experience can be changed.
 RUN_SETTINGS = {
@@ -106,40 +110,44 @@ def run_muvr(mode='server', host='localhost', port='8885'):
     # Setup client/server
     if is_server:
         vr_server = IGVRServer(localaddr=(host, port))
+        if TIMER_MODE:
+            vr_server.enable_timer_mode()
         vr_server.register_data(s, client_agent)
     else:
         vr_client = IGVRClient(host, port)
+        if TIMER_MODE:
+            vr_client.enable_timer_mode()
         vr_client.register_data(s, client_agent)
         # Disconnect pybullet since the client only renders
         s.disconnect_pybullet()
 
-    # Run main networking/rendering/physics loop
-    run_start_time = time.time()
     while True:
+        frame_start_time = time.time()
         if is_server:
             # Only step the server if a client has been connected
-            if vr_server.has_client():
+            if not WAIT_FOR_CLIENT or vr_server.has_client():
                 # Server is the one that steps the physics simulation, not the client
-                s.step(print_time=PRINT_FPS)
+                s.step()
 
             # Update VR agent on server-side
             if s.vr_settings.use_vr:
                 server_agent.update()
                 # Need to update client agent every frame, even if VR data is stale
-                if vr_server.vr_data_persistent:
-                    client_agent.update(vr_server.vr_data_persistent)
+                if vr_server.client_vr_data:
+                    client_agent.update(vr_server.client_vr_data)
             
-            # Send the current frame to be rendered by the client,
-            # and also ingest new client data
+            # Refresh incoming/outgoing connections
             vr_server.refresh_server()
         else:
-            # Order of client events:
-            # 1) Receive frame data for rendering from the client
-            # Note: the rendering happens asynchronously when a callback inside the vr_client is triggered (after being sent a frame)
-            vr_client.refresh_frame_data()
+            # Client's version of simulator step function
+            vr_client.client_step()
 
-            # 2) Generate VR data and send over to the server
-            vr_client.send_vr_data()
+            # Refresh incoming/outgoing connections
+            vr_client.refresh_client()
+        
+        frame_dur = time.time() - frame_start_time
+        if PRINT_FPS:
+            print("Total frame time: {} ms".format(max(0.0001, frame_dur) / 0.001))
 
     # Disconnect at end of server session
     if is_server:
