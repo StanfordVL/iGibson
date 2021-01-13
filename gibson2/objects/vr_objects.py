@@ -333,8 +333,7 @@ class VrHandBase(ArticulatedObject):
         dist_to_dest = np.linalg.norm(curr_pos - dest)
         if dist_to_dest < 2.0:
             final_rot = multQuatLists(rot, self.base_rot)
-            # Max force of 500 seems to be a good value from the PyBullet VR demo
-            p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=500)
+            p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=100)
 
     def set_close_fraction(self, close_frac):
         """
@@ -424,12 +423,12 @@ class VrHand(VrHandBase):
         and close frac of 0 indicates fully open joint. Joints move smoothly between 
         their values in self.open_pos and self.close_pos.
         """
-        for jointIndex in range(p.getNumJoints(self.body_id)):
-            open_pos = self.open_pos[jointIndex]
-            close_pos = self.close_pos[jointIndex]
+        for joint_index in range(p.getNumJoints(self.body_id)):
+            open_pos = self.open_pos[joint_index]
+            close_pos = self.close_pos[joint_index]
             interp_frac = (close_pos - open_pos) * close_frac
             target_pos = open_pos + interp_frac
-            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=target_pos, force=3)
+            p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=3)
 
 
 class VrGripper(VrHandBase):
