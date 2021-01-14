@@ -114,7 +114,7 @@ obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects',
     'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
                         scale=2)
 s.import_object(obj)
-obj.set_position_orientation([1., 0.300000, 0.750000], [0, 0, 0, 1])
+obj.set_position_orientation([1.1, 0.300000, 0.750000], [0, 0, 0, 1])
 
 s.optimize_vertex_and_texture()
 
