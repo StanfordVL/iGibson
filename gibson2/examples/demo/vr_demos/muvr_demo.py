@@ -57,6 +57,7 @@ def run_muvr(mode='server', host='localhost', port='8885'):
 
     # Main networking loop
     while True:
+        frame_start = time.time()
         if is_server:
             # Update iGibson with latest vr data from client
             vr_server.ingest_vr_data()
@@ -77,6 +78,10 @@ def run_muvr(mode='server', host='localhost', port='8885'):
             vr_client.gen_vr_data()
             vr_client.send_vr_data()
             vr_client.Refresh()
+
+        frame_dur = time.time() - frame_start
+        if PRINT_FPS:
+            print("Frame duration: {:.3f} ms".format(frame_dur / 0.001))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Multi-user VR demo that can be run in server and client mode.')
