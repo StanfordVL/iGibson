@@ -159,29 +159,11 @@ Important - VR functionality and where to find it:
 
 You can find all the VR demos in iGibson/gibson2/examples/demo/vr_demos, which has the following structure:
 
--vr_playground.py
+- vr demo files for normal VR, multi-user VR and robot embodiment VR
 
--vr_hand_benchmark.py
+- data_save_replay folder containing save/replay demos
 
---robot_embodiment (folder)
-
----vr_demo_robot_control.py
-
---muvr (folder)
-
----igvr_client.py
-
----igvr_server.py
-
----muvr_demo.py
-
---data_save_replay (folder)
-
----vr_states_sr.py
-
----vr_actions_sr.py
-
----vr_logs (folder containing saved data)
+- atus folder containing lunch packing demo
 
 Additional information:
 1) Most VR functions can be found in the gibson2/simulator.py
