@@ -9,13 +9,15 @@ from gibson2.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGro
 from gibson2.utils.vr_utils import calc_offset, VrData
 
 from PodSixNet.Channel import Channel
-from PodSixNet.Connection import connection
+# TODO: Can use connection as an endpoint - perhaps endpoint is already created so I can't use it?
+from PodSixNet.Connection import connection, ConnectionListener
+# TODO: Experiment with endpoints once everything else is working
 from PodSixNet.EndPoint import EndPoint
 from PodSixNet.Server import Server
 
 # TODO: Subclass relevant PSN classes to edit queue behavior
 
-class IGVRClient(object):
+class IGVRClient(ConnectionListener):
     """Client that connects to server, syncs iGibson data and renders to VR.
     Acts similarly to the ConnectionListener class from PodSixNet, just with custom methods."""
     def __init__(self, host, port):
@@ -24,24 +26,25 @@ class IGVRClient(object):
         """
         self.is_connected = False
         # And EndPoint is the client's connection point to the server, which queues up network events and sends them out
-        self.ep = EndPoint()
-        self.ep.DoConnect((host, port))
+        #self.ep = EndPoint()
+        #self.ep.DoConnect((host, port))
         # Do this once to check for connection errors
         # TODO: Check for network errors!
         #self.Pump()
+        self.Connect((host, port))
         self.is_connected = True
         # Client stores its offset that will be used in server-based calculations
         self.vr_offset = [0, 0, 0]
         self.last_comm_time = -1
         # Self-timing is disabled by default to prevent console log spam
         self.timer_mode = False
+        # TODO: Deprecate this
         # List of custom action suffixes - used to check for multiple occurences of same custom action in the queue
-        self.custom_action_list = ["syncframe"]
+        #self.custom_action_list = ["syncframe"]
         print("IGVRClient launched")
 
-
+    """
     def Pump(self):
-        """ Performs I/O of data to/from the server. """
         # Pushes data to the server
         # Reads data from the server
 
@@ -50,7 +53,6 @@ class IGVRClient(object):
         for data in self.ep.GetQueue():
             [getattr(self, n)(data) for n in ("Network_" + data['action'], "Network") if hasattr(self, n)]
 
-        """
         in_q = self.ep.GetQueue()
         custom_action_ids = [self.find_most_recent_action_idx(n, in_q) for n in self.custom_action_list]
         for i in range(len(in_q)):
@@ -59,15 +61,13 @@ class IGVRClient(object):
             # Only process action if it is a system action (eg. error), or the most recent custom action
             if action_name not in self.custom_action_list or i in custom_action_ids:
                 [getattr(self, n)(data) for n in ("Network_" + action_name, "Network") if hasattr(self, n)]
-        """
+    """
 
+    """
     def find_most_recent_action_idx(action_name, q):
-        """
-        Finds the index for most recent action of a given name in the data queue. This action
-        will be the one with the highest index in the queue.
-        """
         act_ids = [i for i in range(len(q)) if q[i]["action"] == action_name]
         return act_ids[-1] if len(act_ids) > 0 else -1
+    """
 
     def enable_timer_mode(self):
         """
@@ -99,6 +99,7 @@ class IGVRClient(object):
         frame_data = data["frame_data"]
         # Store most recent frame data until it needs to be used again
         self.TEMP_FRAME_DATA = frame_data
+        print("Received a sync frame request!")
         
         """
         if self.timer_mode:
@@ -113,7 +114,8 @@ class IGVRClient(object):
 
     # Standard methods for networking diagnostics
     def Network_connected(self, data):
-        print("Connected to the server")
+        # TODO: Clean this up
+        print("Connected to the server - - - - - - - - - - - - - - - - - - - - - - - - - -- - -")
     
     def Network_error(self, data):
         # Errors take the form of Python socket errors, with an
@@ -219,9 +221,10 @@ class IGVRClient(object):
         Refreshes incoming/outgoing connections to client once per frame.
         """
         if self.is_connected:
-            self.ep.Send({"action":"vrdata", "vr_data":[1,2,3,4,5]})
-            self.ep.Pump()
+            self.Send({"action":"vrdata", "vr_data":[1,2,3,4,5]})
+            connection.Pump()
             # TODO: Make sent data structure more complex eventually!
+            # TODO: Play around with this!
             self.Pump()
 
 
@@ -322,7 +325,6 @@ class IGVRServer(Server):
             self.first_message_sent = True
         """
 
-        print("Attempting to refresh server!")
         if self.vr_client:
             print("Found client and able to refresh!")
             self.send_frame_data_to_client()
