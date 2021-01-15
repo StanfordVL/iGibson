@@ -20,8 +20,8 @@ from gibson2.simulator import Simulator
 from gibson2 import assets_path
 
 # Key classes used for MUVR interaction
-from igvr_server import IGVRServer
-from igvr_client import IGVRClient
+from gibson2.utils.muvr_utils import IGVRServer
+from gibson2.utils.muvr_utils import IGVRClient
 
 sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
 
@@ -30,7 +30,7 @@ LOAD_PARTIAL = True
 # Whether to print iGibson + networking FPS each frame
 PRINT_FPS = True
 # Whether to wait for client before stepping physics simulation and rendering
-WAIT_FOR_CLIENT = True
+WAIT_FOR_CLIENT = False
 # If set to true, server and client will time communications
 TIMER_MODE = True
 
