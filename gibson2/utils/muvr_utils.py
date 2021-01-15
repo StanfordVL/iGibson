@@ -53,7 +53,7 @@ class IGVRClient(ConnectionListener):
         # Deep copy frame data so it doesn't get overwritten by a random async callback
         self.latest_frame_data = copy.deepcopy(self.frame_data)
         for instance in self.renderer.get_instances():
-            data = frame_data[instance.pybullet_uuid]
+            data = self.latest_frame_data[instance.pybullet_uuid]
             if isinstance(instance, Instance):
                 trans = np.array(data[0])
                 rot = np.array(data[1])
@@ -133,7 +133,6 @@ class IGVRChannel(Channel):
         self.Send({"action": "frame_data", "frame_data": frame_data})
 
 
-
 class IGVRServer(Server):
     """ TODO: Add comments everywhere! """
     channelClass = IGVRChannel
@@ -165,8 +164,25 @@ class IGVRServer(Server):
         self.latest_vr_data = copy.deepcopy(self.client.vr_data)
 
     def gen_frame_data(self):
-        # TODO: Implement this properly!
-        self.frame_data = [6,7,8,9,10]
+        # Frame data is stored as a dictionary mapping pybullet uuid to pose/rot data
+        self.frame_data = {}
+        # It is assumed that the client renderer will have loaded instances in the same order as the server
+        for instance in self.renderer.get_instances():
+            # Loop through all instances and get pos and rot data
+            # We convert numpy arrays into lists so they can be serialized and sent over the network
+            # Lists can also be easily reconstructed back into numpy arrays on the client side
+            if isinstance(instance, Instance):
+                pose = instance.pose_trans.tolist()
+                rot = instance.pose_rot.tolist()
+                self.frame_data[instance.pybullet_uuid] = [pose, rot]
+            elif isinstance(instance, InstanceGroup):
+                poses = []
+                rots = []
+                for pose in instance.poses_trans:
+                    poses.append(pose.tolist())
+                for rot in instance.poses_rot:
+                    rots.append(rot.tolist())
+                self.frame_data[instance.pybullet_uuid] = [poses, rots]
 
     def send_frame_data(self):
         if self.client:
