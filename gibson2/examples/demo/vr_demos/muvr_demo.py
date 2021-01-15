@@ -30,7 +30,7 @@ LOAD_PARTIAL = True
 # Whether to print iGibson + networking FPS each frame
 PRINT_FPS = True
 # Whether to wait for client before stepping physics simulation and rendering
-WAIT_FOR_CLIENT = False
+WAIT_FOR_CLIENT = True
 # If set to true, server and client will time communications
 TIMER_MODE = True
 
@@ -140,7 +140,8 @@ def run_muvr(mode='server', host='localhost', port='8885'):
             vr_server.refresh_server()
         else:
             # Client's version of simulator step function
-            vr_client.client_step()
+            # TODO: Re-enable this later!
+            #vr_client.client_step()
 
             # Refresh incoming/outgoing connections
             vr_client.refresh_client()
