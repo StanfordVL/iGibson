@@ -9,6 +9,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGro
 from gibson2.utils.vr_utils import calc_offset, VrData
 
 from PodSixNet.Channel import Channel
+from PodSixNet.Connection import connection
 from PodSixNet.EndPoint import EndPoint
 from PodSixNet.Server import Server
 
@@ -26,7 +27,8 @@ class IGVRClient(object):
         self.ep = EndPoint()
         self.ep.DoConnect((host, port))
         # Do this once to check for connection errors
-        self.Pump()
+        # TODO: Check for network errors!
+        #self.Pump()
         self.is_connected = True
         # Client stores its offset that will be used in server-based calculations
         self.vr_offset = [0, 0, 0]
@@ -41,10 +43,11 @@ class IGVRClient(object):
     def Pump(self):
         """ Performs I/O of data to/from the server. """
         # Pushes data to the server
-        self.ep.Pump()
         # Reads data from the server
 
-        for data in connection.GetQueue():
+        i_q = self.ep.GetQueue()
+        print("Length of incoming queue: {}".format(i_q))
+        for data in self.ep.GetQueue():
             [getattr(self, n)(data) for n in ("Network_" + data['action'], "Network") if hasattr(self, n)]
 
         """
@@ -216,8 +219,9 @@ class IGVRClient(object):
         Refreshes incoming/outgoing connections to client once per frame.
         """
         if self.is_connected:
-            # TODO: Make sent data structure more complex eventually!
             self.ep.Send({"action":"vrdata", "vr_data":[1,2,3,4,5]})
+            self.ep.Pump()
+            # TODO: Make sent data structure more complex eventually!
             self.Pump()
 
 
@@ -250,6 +254,7 @@ class IGVRChannel(Channel):
         """
         Sends frame data to an IGVRClient.
         """
+        print("Sending frame data: {}".format(frame_data))
         self.Send({"action":"syncframe", "frame_data":frame_data})
     
 
@@ -317,8 +322,11 @@ class IGVRServer(Server):
             self.first_message_sent = True
         """
 
+        print("Attempting to refresh server!")
         if self.vr_client:
+            print("Found client and able to refresh!")
             self.send_frame_data_to_client()
+            print("Pumping!")
             self.Pump()
     
     def client_response(self, vr_data):
