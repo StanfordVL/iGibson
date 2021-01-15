@@ -95,10 +95,10 @@ class IGVRClient(ConnectionListener):
             vr_data_dict['eye_data'] = self.s.get_eye_tracking_data()
             vr_data_dict['event_data'] = self.s.poll_vr_events()
             vr_data_dict['vr_pos'] = self.s.get_vr_pos().tolist()
-            f_vr_offset = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
-            vr_data_dict['vr_offset'] = f_vr_offset
+            #f_vr_offset = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
+            vr_data_dict['vr_offset'] = [0, 0, 0] # TODO: Change this back!
             vr_data_dict['vr_settings'] = [
-                self.s.vr_settings.use_eye_tracking,
+                self.s.vr_settings.eye_tracking,
                 self.s.vr_settings.touchpad_movement,
                 self.s.vr_settings.movement_controller,
                 self.s.vr_settings.relative_movement_device,
@@ -106,7 +106,6 @@ class IGVRClient(ConnectionListener):
             ]
 
             self.vr_data = dict(vr_data_dict)
-            print("FRAME VR DATA: {}".format(self.vr_data))
 
     def send_vr_data(self):
         if self.vr_data:
@@ -174,8 +173,10 @@ class IGVRServer(Server):
         if not self.client:
             return
 
+        if not self.latest_vr_data:
+            self.latest_vr_data = VrData()
         # Make a copy of channel's most recent VR data, so it doesn't get mutated if new requests arrive
-        self.latest_vr_data = copy.deepcopy(self.client.vr_data)
+        self.latest_vr_data.refresh_muvr_data(copy.deepcopy(self.client.vr_data))
 
     def gen_frame_data(self):
         # Frame data is stored as a dictionary mapping pybullet uuid to pose/rot data
