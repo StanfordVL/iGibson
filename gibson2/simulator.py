@@ -626,7 +626,8 @@ class Simulator:
             self.poll_vr_events()
 
         physics_start_time = time.time()
-        physics_timestep_num = int(self.render_timestep / self.physics_timestep)
+        # Always guarantee at least one physics timestep
+        physics_timestep_num = max(1, int(self.render_timestep / self.physics_timestep))
         for _ in range(physics_timestep_num):
             p.stepSimulation()
         physics_dur = time.time() - physics_start_time
