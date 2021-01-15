@@ -8,6 +8,7 @@ import numpy as np
 import os
 import pybullet as p
 import time
+from time import sleep
 
 import gibson2
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
@@ -18,10 +19,7 @@ from gibson2.objects.vr_objects import VrAgent
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
-
-# Key classes used for MUVR interaction
-from gibson2.utils.muvr_utils import IGVRServer
-from gibson2.utils.muvr_utils import IGVRClient
+from gibson2.utils.muvr_utils import IGVRClient, IGVRServer
 
 sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
 
@@ -80,6 +78,8 @@ def run_muvr(mode='server', host='localhost', port='8885'):
             vr_client.Refresh()
 
         frame_dur = time.time() - frame_start
+        time_left_to_min_dur = MUVR_MIN_FRAME_DUR - frame_dur
+        if time_left_to_min_dur = 
         if PRINT_FPS:
             print("Frame duration: {:.3f} ms".format(frame_dur / 0.001))
 
