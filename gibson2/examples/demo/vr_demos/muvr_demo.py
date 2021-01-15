@@ -32,8 +32,8 @@ WAIT_FOR_CLIENT = False
 
 # Note: This is where the VR configuration for the MUVR experience can be changed.
 RUN_SETTINGS = {
-    'client': VrSettings(use_vr=False),
-    'server': VrSettings(use_vr=True)
+    'client': VrSettings(use_vr=True),
+    'server': VrSettings(use_vr=False)
 }
 
 
@@ -84,9 +84,6 @@ def run_muvr(mode='server', host='localhost', port='8885'):
         s.renderer.set_fov(90)
 
     # Spawn two agents - one for client and one for the server
-    # The client loads the agents in with MUVR set to true - this allows the VrAgent to
-    # be set up just for rendering, with no physics or constraints
-    # TODO: Check that agents are not causing problems
     client_agent = VrAgent(s, agent_num=1)
     server_agent = VrAgent(s, agent_num=2)
 

@@ -11,24 +11,13 @@ from gibson2.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGro
 from gibson2.utils.vr_utils import calc_offset, VrData
 
 from PodSixNet.Channel import Channel
-# TODO: Can use connection as an endpoint - perhaps endpoint is already created so I can't use it?
 from PodSixNet.Connection import connection, ConnectionListener
-# TODO: Experiment with endpoints once everything else is working
-from PodSixNet.EndPoint import EndPoint
 from PodSixNet.Server import Server
 
 
 # An FPS cap is needed to ensure that the client and server don't fall too far out of sync
 # 90 is the FPS cap of VR, so is the fastest speed we realistically need for any MUVR-related work
 MUVR_FPS_CAP = 90.0
-
-# TODO: Add some kind of accrediation to PodSixNet here, since we were inspired by them, but ended up modifying their code
-
-class QueueChannel(Channel):
-    """ A Channel subclass that stores all incoming data in a queue, rather than immediately
-    triggering asynchronous callbacks. This stops the MUVR networking from interrupting the main
-    simulation loop, which causes severe slowdown.
-    """
 
 
 class IGVRClient(ConnectionListener):
@@ -77,7 +66,7 @@ class IGVRClient(ConnectionListener):
     def client_step(self):
         self.s.viewer.update()
         """
-        TODO: Work on these VR features!
+        # TODO: Work on these VR features!
         if self.s.can_access_vr_context:
             self.s.poll_vr_events()
             # Sets the VR starting position if one has been specified by the user
@@ -91,7 +80,33 @@ class IGVRClient(ConnectionListener):
         if not self.s.can_access_vr_context:
             self.vr_data = []
         else:
-            print("Gen VR data coming soon!")
+            # Store all data in a dictionary to be sent to the server
+            vr_data_dict = defaultdict(list)
+
+            for device in self.devices:
+                device_data = []
+                is_valid, trans, rot = self.s.get_data_for_vr_device(device)
+                device_data.extend([is_valid, trans.tolist(), rot.tolist()])
+                device_data.extend(self.s.get_device_coordinate_system(device))
+                if device in ['left_controller', 'right_controller']:
+                    device_data.extend(self.s.get_button_data_for_controller(device))
+                vr_data_dict[device] = device_data
+
+            vr_data_dict['eye_data'] = self.s.get_eye_tracking_data()
+            vr_data_dict['event_data'] = self.s.poll_vr_events()
+            vr_data_dict['vr_pos'] = self.s.get_vr_pos().tolist()
+            f_vr_offset = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
+            vr_data_dict['vr_offset'] = f_vr_offset
+            vr_data_dict['vr_settings'] = [
+                self.s.vr_settings.use_eye_tracking,
+                self.s.vr_settings.touchpad_movement,
+                self.s.vr_settings.movement_controller,
+                self.s.vr_settings.relative_movement_device,
+                self.s.vr_settings.movement_speed
+            ]
+
+            self.vr_data = dict(vr_data_dict)
+            print("FRAME VR DATA: {}".format(self.vr_data))
 
     def send_vr_data(self):
         if self.vr_data:
@@ -127,7 +142,6 @@ class IGVRChannel(Channel):
         # Store vr data until it is needed for physics simulation
         # This avoids the overhead of updating the physics simulation every time this function is called
         self.vr_data = data["vr_data"]
-        print("Received vr data: {}".format(data["vr_data"]))
 
     def send_frame_data(self, frame_data):
         self.Send({"action": "frame_data", "frame_data": frame_data})

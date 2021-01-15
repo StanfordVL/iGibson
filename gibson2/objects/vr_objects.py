@@ -94,6 +94,16 @@ class VrAgent(object):
 
             self.sim.set_vr_offset(new_offset)
 
+    def print_positions(self):
+        """
+        Prints out all the positions of the VrAgent, including helpful VrAgent information for debugging.
+        """
+        print('Data for VrAgent number {}'.format(self.agent_num))
+        print('Using hands: {}, using constraints: {}, using body: {}, using gripper: {}'.format(self.hands, self.use_constraints, self.use_body, self.use_gripper))
+        for k, v in self.vr_dict.items():
+            print('{} at position {}'.format(k, v.get_position()))
+        print('-------------------------------')
+
 
 class VrBody(ArticulatedObject):
     """
