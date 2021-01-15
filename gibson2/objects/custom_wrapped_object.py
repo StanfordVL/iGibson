@@ -1,15 +1,20 @@
 from gibson2.objects.articulated_object import ArticulatedObject
+from gibson2.objects.object_base import Object
+from gibson2.objects.ycb_object import YCBObject
 from gibson2.utils.custom_utils import create_uniform_ori_sampler, create_uniform_pos_sampler
 
-class CustomArticulatedObject(ArticulatedObject):
+
+class CustomWrappedObject:
     """
-    A custom class that extends the articulated object by assigning this object a name, keeping track of its class id,
+    A custom class that an arbitrary object, and assigns this object a name, keeping track of its class id,
     and providing sampling functions for automatically sampling positions / orientations for this object
+
+    Currently, YCB and Articulated (URDF-based) objects are supported.
 
     Args:
         name (str): Name to assign this object -- should be unique
 
-        filename (str): fpath to the urdf associated with this object
+        filename (str): fpath to the urdf associated with this object, OR name associated with YCB object (0XX-name)
 
         scale (float): relative scale of the object when loading
 
@@ -44,8 +49,13 @@ class CustomArticulatedObject(ArticulatedObject):
         filename,
         scale=1,
     ):
-        # Run super init first
-        super().__init__(filename=filename, scale=scale)
+        # Create the appropriate name based on filename arg
+        if filename[0] == '0':
+            # This is a YCB object
+            self.obj = YCBObject(name=filename, scale=scale)
+        else:
+            # Default to Articulated (URDF-based) object
+            self.obj = ArticulatedObject(filename=filename, scale=scale)
 
         # Store other internal vars
         self.name = name
@@ -94,3 +104,35 @@ class CustomArticulatedObject(ArticulatedObject):
                 global (x,y,z,w) quaternion for the object.
         """
         self.ori_sampler = ori_sampler
+
+    @property
+    def unwrapped(self):
+        """
+        Grabs unwrapped object
+
+        Returns:
+            Object: Unwrapped object
+        """
+        return self.obj
+
+    @classmethod
+    def class_name(cls):
+        return cls.__name__
+
+    # this method is a fallback option on any methods the original env might support
+    def __getattr__(self, attr):
+        # using getattr ensures that both __getattribute__ and __getattr__ (fallback) get called
+        # (see https://stackoverflow.com/questions/3278077/difference-between-getattr-vs-getattribute)
+        orig_attr = getattr(self.obj, attr)
+        if callable(orig_attr):
+
+            def hooked(*args, **kwargs):
+                result = orig_attr(*args, **kwargs)
+                # prevent wrapped_class from becoming unwrapped
+                if result == self.obj:
+                    return self
+                return result
+
+            return hooked
+        else:
+            return orig_attr

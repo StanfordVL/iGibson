@@ -4,8 +4,8 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.termination_conditions.max_collision import MaxCollision
 from gibson2.termination_conditions.timeout import Timeout
 from gibson2.termination_conditions.out_of_bound import OutOfBound
-from gibson2.reward_functions.potential_reward import PotentialReward
-from gibson2.objects.custom_articulated_object import CustomArticulatedObject
+from gibson2.reward_functions.null_reward import NullReward
+from gibson2.objects.custom_wrapped_object import CustomWrappedObject
 
 import logging
 import numpy as np
@@ -18,7 +18,7 @@ class SemanticRearrangementTask(BaseTask):
 
     Args:
         env (BaseEnv): Environment using this task
-        objects (list of CustomArticulatedObject): Object(s) to use for this task
+        objects (list of CustomWrappedObject): Object(s) to use for this task
         goal_pos (3-array): (x,y,z) cartesian global coordinates for the goal location
         randomize_initial_robot_pos (bool): whether to randomize initial robot position or not. If False,
             will deterministically be set to @goal_pos instead
@@ -37,7 +37,9 @@ class SemanticRearrangementTask(BaseTask):
         # Goal
         self.goal_pos = np.array(goal_pos)
         # Reward-free task currently
-        self.reward_functions = [None]
+        self.reward_functions = [
+            NullReward(self.config),
+        ]
         self.floor_num = 0
         # Objects
         self.objects = objects
@@ -107,6 +109,28 @@ class SemanticRearrangementTask(BaseTask):
 
     def get_task_obs(self, env):
         """
-        No task-specific observation
+        Get task-specific observation, including goal position, current velocities, etc.
+
+        :param env: environment instance
+        :return: task-specific observation
         """
-        return
+        # TODO: Currently no task obs
+        # task_obs = self.global_to_local(env, self.target_pos)[:2]
+        # if self.goal_format == 'polar':
+        #     task_obs = np.array(cartesian_to_polar(task_obs[0], task_obs[1]))
+
+        # No task obs for now
+        task_obs = None
+
+        # linear velocity along the x-axis
+        # linear_velocity = rotate_vector_3d(
+        #     env.robots[0].get_linear_velocity(),
+        #     *env.robots[0].get_rpy())[0]
+        # # angular velocity along the z-axis
+        # angular_velocity = rotate_vector_3d(
+        #     env.robots[0].get_angular_velocity(),
+        #     *env.robots[0].get_rpy())[2]
+        # task_obs = np.append(
+        #     task_obs, [linear_velocity, angular_velocity])
+
+        return task_obs

@@ -258,8 +258,8 @@ class Simulator:
         :param use_pbr_mapping: Whether to use pbr mapping
         :param shadow_caster: Whether to cast shadow
         """
-        assert isinstance(obj, Object), \
-            'import_object can only be called with Object'
+        # assert isinstance(obj, Object), \
+        #     'import_object can only be called with Object'
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
         new_object_pb_id = obj.load()
         self.objects += [new_object_pb_id]

@@ -92,6 +92,24 @@ class FetchGripper(LocomotorRobot):
         """
         return self.parts['gripper_link'].get_position()
 
+    def get_end_effector_orientation(self):
+        """
+        Get end-effector orientation
+        """
+        return self.parts['gripper_link'].get_orientation()
+
+    def get_end_effector_linear_velocity(self):
+        """
+        Get end-effector linear velocity
+        """
+        return self.parts['gripper_link'].get_linear_velocity()
+
+    def get_end_effector_angular_velocity(self):
+        """
+        Get end-effector angular velocity
+        """
+        return self.parts['gripper_link'].get_angular_velocity()
+
     def load(self):
         """
         Load the robot into pybullet. Filter out unnecessary self collision

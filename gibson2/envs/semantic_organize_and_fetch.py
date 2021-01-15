@@ -1,6 +1,6 @@
 from gibson2.envs.igibson_env import iGibsonEnv
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.custom_articulated_object import CustomArticulatedObject
+from gibson2.objects.custom_wrapped_object import CustomWrappedObject
 from gibson2.utils.custom_utils import ObjectConfig
 from gibson2.tasks.semantic_rearrangement_task import SemanticRearrangementTask
 import numpy as np
@@ -13,7 +13,7 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
     to a specified goal location
 
     Args:
-        config_file (str): config_file path
+        config_file (dict or str): config_file as either a dict or filepath string
         object_configs (ObjectConfig or list of ObjectConfig): Object(s) to use for this task
         task_mode (str): Take mode for this environment. Options are "organize" or "fetch"
         scene_id (str): override scene_id in config file
@@ -72,7 +72,7 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
         # Load objects into env
         self.objects = {}
         for object_config in self.object_configs:
-            obj = CustomArticulatedObject(**object_config._asdict())
+            obj = CustomWrappedObject(**object_config._asdict())
             # Import this object into the simulator
             self.simulator.import_object(obj=obj, class_id=obj.class_id)
             # Add this object to our dict of objects
@@ -86,3 +86,33 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
             randomize_initial_robot_pos=(self.task_mode == "fetch"),
         )
 
+    def get_state(self, collision_links=[]):
+        """
+        Extend super class to also add in proprioception
+
+        :param collision_links: collisions from last physics timestep
+        :return: observation as a dictionary
+        """
+
+        # Run super class call first
+        state = super().get_state(collision_links=collision_links)
+
+        if 'proprio' in self.output:
+            # Add in proprio states
+            proprio = self.robots[0].calc_state()
+            state["proprio"] = {
+                "base_pos": proprio[:3],
+                "base_rpy": proprio[3:6],
+                "base_quat": proprio[6:10],
+                "base_lin_vel": proprio[10:13],
+                "base_ang_vel": proprio[13:16],
+                "joint_pos_cos": np.cos(self.robots[0].joint_position[:-2]),
+                "joint_pos_sin": np.sin(self.robots[0].joint_position[:-2]),
+                "joint_vel": self.robots[0].joint_velocity[:-2],
+                "gripper_pos": self.robots[0].joint_position[-2:],
+                "gripper_vel": self.robots[0].joint_velocity[-2:],
+                "eef_pos": self.robots[0].get_end_effector_position(),
+                "eef_quat": self.robots[0].get_end_effector_orientation(),
+            }
+
+        return state
