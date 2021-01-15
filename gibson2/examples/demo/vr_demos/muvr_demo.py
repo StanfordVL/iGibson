@@ -124,8 +124,8 @@ def run_muvr(mode='server', host='localhost', port='8885'):
                 s.step()
                 if s.vr_settings.use_vr:
                     server_agent.update()
-                    if vr_server.latest_vr_data:
-                        client_agent.update(vr_server.latest_vr_data)
+                if vr_server.latest_vr_data:
+                    client_agent.update(vr_server.latest_vr_data)
 
             # Generate and send latest rendering data to client
             vr_server.gen_frame_data()

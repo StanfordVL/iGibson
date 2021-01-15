@@ -172,9 +172,12 @@ class IGVRServer(Server):
         self.frame_start = time.time()
         if not self.client:
             return
-
+        
+        if not self.client.vr_data:
+            return
         if not self.latest_vr_data:
             self.latest_vr_data = VrData()
+
         # Make a copy of channel's most recent VR data, so it doesn't get mutated if new requests arrive
         self.latest_vr_data.refresh_muvr_data(copy.deepcopy(self.client.vr_data))
 
