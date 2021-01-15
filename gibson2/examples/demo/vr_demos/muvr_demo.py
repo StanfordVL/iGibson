@@ -48,112 +48,35 @@ def run_muvr(mode='server', host='localhost', port='8885'):
     print('INFO: Running MUVR {} at {}:{}'.format(mode, host, port))
     # This function only runs if mode is one of server or client, so setting this bool is safe
     is_server = mode == 'server'
-    vr_settings = RUN_SETTINGS[mode]
-
-    # HDR files for PBR rendering
-    hdr_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-    hdr_texture2 = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
-    light_modulation_map_filename = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
-    background_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
-
-    # VR rendering settings
-    vr_rendering_settings = MeshRendererSettings(optimized=True,
-                                                fullscreen=False,
-                                                env_texture_filename=hdr_texture,
-                                                env_texture_filename2=hdr_texture2,
-                                                env_texture_filename3=background_texture,
-                                                light_modulation_map_filename=light_modulation_map_filename,
-                                                enable_shadow=True, 
-                                                enable_pbr=True,
-                                                msaa=True,
-                                                light_dimming_factor=1.0)
-    s = Simulator(mode='vr', 
-                rendering_settings=vr_rendering_settings, 
-                vr_settings=vr_settings)
-    scene = InteractiveIndoorScene('Rs_int')
-    if LOAD_PARTIAL:
-        scene._set_first_n_objects(10)
-    s.import_ig_scene(scene)
-
-    # Default camera for non-VR MUVR users
-    if not vr_settings.use_vr:
-        camera_pose = np.array([0, -3, 1.2])
-        view_direction = np.array([0, 1, 0])
-        s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
-        s.renderer.set_fov(90)
-
-    # Spawn two agents - one for client and one for the server
-    # The client loads the agents in with MUVR set to true - this allows the VrAgent to
-    # be set up just for rendering, with no physics or constraints
-    client_agent = VrAgent(s, agent_num=1)
-    server_agent = VrAgent(s, agent_num=2)
-
-    # Objects to interact with
-    mass_list = [5, 10, 100, 500]
-    mustard_start = [-1, 1.55, 1.2]
-    for i in range(len(mass_list)):
-        mustard = YCBObject('006_mustard_bottle')
-        s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
-        mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
-        p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
-
-    s.optimize_vertex_and_texture()
-
-    # Start the two agents at different points so they don't collide upon entering the scene
-    if vr_settings.use_vr:
-        s.set_vr_start_pos([0.5, 0 if is_server else -1.5, 0], vr_height_offset=-0.1)
-
+    
     # Setup client/server
     if is_server:
         vr_server = IGVRServer(localaddr=(host, port))
-        if TIMER_MODE:
-            vr_server.enable_timer_mode()
-        vr_server.register_data(s, client_agent)
     else:
         vr_client = IGVRClient(host, port)
-        if TIMER_MODE:
-            vr_client.enable_timer_mode()
-        vr_client.register_data(s, client_agent)
-        # Disconnect pybullet since the client only renders
-        s.disconnect_pybullet()
 
+    # Main networking loop
     while True:
-        frame_start_time = time.time()
         if is_server:
-            # Only step the server if a client has been connected
-            if not WAIT_FOR_CLIENT or vr_server.has_client():
-                # Server is the one that steps the physics simulation, not the client
-                s.step()
+            # Update iGibson with latest vr data from client
+            vr_server.ingest_vr_data()
 
-            # Update VR agent on server-side
-            if s.vr_settings.use_vr:
-                server_agent.update()
-                # Need to update client agent every frame, even if VR data is stale
-                if vr_server.client_vr_data:
-                    client_agent.update(vr_server.client_vr_data)
-            
-            # Refresh incoming/outgoing connections
-            vr_server.refresh_server()
+            # TODO: iGibson step() here
+
+            # Generate and send latest rendering data to client
+            vr_server.gen_frame_data()
+            vr_server.send_frame_data()
+            vr_server.Refresh()
+
         else:
-            # Client's version of simulator step function
-            # TODO: Re-enable this later!
-            #vr_client.client_step()
-
-            # Refresh incoming/outgoing connections
-            vr_client.refresh_client()
-        
-        frame_dur = time.time() - frame_start_time
-        if PRINT_FPS:
-            print("Total frame time: {} ms".format(max(0.0001, frame_dur) / 0.001))
-
-    # Disconnect at end of server session
-    if is_server:
-        s.disconnect()
-
+            # Update client renderer with frame data received from server, and then render it
+            vr_client.ingest_frame_data()
+            vr_client.client_step()
+            
+            # Generate and send client's VR data so it can be used to process client physics on the server
+            vr_client.gen_vr_data()
+            vr_client.send_vr_data()
+            vr_client.Refresh()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Multi-user VR demo that can be run in server and client mode.')
