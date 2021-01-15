@@ -17,7 +17,18 @@ from PodSixNet.Connection import connection, ConnectionListener
 from PodSixNet.EndPoint import EndPoint
 from PodSixNet.Server import Server
 
-# TODO: Subclass relevant PSN classes to edit queue behavior
+
+# An FPS cap is needed to ensure that the client and server don't fall too far out of sync
+# 90 is the FPS cap of VR, so is the fastest speed we realistically need for any MUVR-related work
+MUVR_FPS_CAP = 90.0
+
+# TODO: Add some kind of accrediation to PodSixNet here, since we were inspired by them, but ended up modifying their code
+
+class QueueChannel(Channel):
+    """ A Channel subclass that stores all incoming data in a queue, rather than immediately
+    triggering asynchronous callbacks. This stops the MUVR networking from interrupting the main
+    simulation loop, which causes severe slowdown.
+    """
 
 
 class IGVRClient(ConnectionListener):
@@ -25,8 +36,10 @@ class IGVRClient(ConnectionListener):
     def __init__(self, host, port):
         self.Connect((host, port))
         self.frame_data = {}
+        self.frame_start = 0
 
     def ingest_frame_data(self):
+        self.frame_start = time.time()
         if not self.frame_data:
             return
 
@@ -49,13 +62,19 @@ class IGVRClient(ConnectionListener):
         # Store frame data until it is needed during rendering
         # This avoids the overhead of updating the renderer every single time this function is called
         self.frame_data = data["frame_data"]
-        print("Received frame data: {}".format(data["frame_data"]))
+        #print("Received frame data: {}".format(data["frame_data"]))
 
     def Refresh(self):
         # Send data
         self.Pump()
         # Receive data
         connection.Pump()
+        # Keep client at FPS cap if it is running too fast
+        frame_dur = time.time() - self.frame_start
+        time_until_min_dur = (1 / MUVR_FPS_CAP) - frame_dur
+        if time_until_min_dur > 0:
+            sleep(time_until_min_dur)
+
 
 
 class IGVRChannel(Channel):
@@ -85,12 +104,14 @@ class IGVRServer(Server):
     def __init__(self, *args, **kwargs):
         Server.__init__(self, *args, **kwargs)
         self.client = None
+        self.frame_start = 0
 
     def Connected(self, channel, addr):
-        print("Someone connected to the server!")
+        #print("Someone connected to the server!")
         self.client = channel
 
     def ingest_vr_data(self):
+        self.frame_start = time.time()
         if not self.client:
             return
 
@@ -108,3 +129,9 @@ class IGVRServer(Server):
     
     def Refresh(self):
         self.Pump()
+
+        # Keep server at FPS cap if it is running too fast
+        frame_dur = time.time() - self.frame_start
+        time_until_min_dur = (1 / MUVR_FPS_CAP) - frame_dur
+        if time_until_min_dur > 0:
+            sleep(time_until_min_dur)
