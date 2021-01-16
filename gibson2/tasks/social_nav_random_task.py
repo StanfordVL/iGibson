@@ -1,0 +1,254 @@
+from gibson2.tasks.point_nav_random_task import PointNavRandomTask
+from gibson2.objects.visual_marker import VisualMarker
+from gibson2.utils.utils import quatToXYZW
+from transforms3d.euler import euler2quat
+import pybullet as p
+
+import numpy as np
+import rvo2
+from IPython import embed
+
+
+class SocialNavRandomTask(PointNavRandomTask):
+    """
+    Social Navigation Random Task
+    The goal is to navigate to a random goal position, in the presence of pedestrians
+    """
+
+    def __init__(self, env):
+        super(SocialNavRandomTask, self).__init__(env)
+        self.num_pedestrians = self.config.get('num_pedestrians', 3)
+        self.neighbor_dist = self.config.get('orca_neighbor_dist', 5)
+        self.max_neighbors = self.num_pedestrians + 1
+        self.time_horizon = self.config.get('orca_time_horizon', 2.0)
+        self.time_horizon_obst = self.config.get('orca_time_horizon_obst', 2.0)
+        self.radius = self.config.get('orca_radius', 0.3)
+        self.max_speed = self.config.get('orca_max_speed', 1.0)
+        self.pedestrian_velocity = self.config.get('pedestrian_velocity', 1.0)
+        self.pedestrian_goal_thresh = \
+            self.config.get('pedestrian_goal_thresh', 0.2)
+        """
+        timeStep        The time step of the simulation.
+                        Must be positive.
+        neighborDist    The default maximum distance (center point
+                        to center point) to other agents a new agent
+                        takes into account in the navigation. The
+                        larger this number, the longer the running
+                        time of the simulation. If the number is too
+                        low, the simulation will not be safe. Must be
+                        non-negative.
+        maxNeighbors    The default maximum number of other agents a
+                        new agent takes into account in the
+                        navigation. The larger this number, the
+                        longer the running time of the simulation.
+                        If the number is too low, the simulation
+                        will not be safe.
+        timeHorizon     The default minimal amount of time for which
+                        a new agent's velocities that are computed
+                        by the simulation are safe with respect to
+                        other agents. The larger this number, the
+                        sooner an agent will respond to the presence
+                        of other agents, but the less freedom the
+                        agent has in choosing its velocities.
+                        Must be positive.
+        timeHorizonObst The default minimal amount of time for which
+                        a new agent's velocities that are computed
+                        by the simulation are safe with respect to
+                        obstacles. The larger this number, the
+                        sooner an agent will respond to the presence
+                        of obstacles, but the less freedom the agent
+                        has in choosing its velocities.
+                        Must be positive.
+        radius          The default radius of a new agent.
+                        Must be non-negative.
+        maxSpeed        The default maximum speed of a new agent.
+                        Must be non-negative.
+        velocity        The default initial two-dimensional linear
+                        velocity of a new agent (optional).
+        """
+        self.orca_sim = rvo2.PyRVOSimulator(
+            env.action_timestep,
+            self.neighbor_dist,
+            self.max_neighbors,
+            self.time_horizon,
+            self.time_horizon_obst,
+            self.radius,
+            self.max_speed)
+        self.pedestrians, self.orca_pedestrians = self.load_pedestrians(env)
+        self.pedestrian_goals = self.load_pedestrian_goals(env)
+        self.load_obstacles(env)
+
+    def load_pedestrians(self, env):
+        """
+        Load pedestrians
+
+        :param env: environment instance
+        :return: a list of pedestrians
+        """
+        pedestrians = []
+        orca_pedestrians = []
+        colors = [
+            [1, 0, 0, 1],
+            [0, 1, 0, 1],
+            [0, 0, 1, 1]
+        ]
+        for i in range(self.num_pedestrians):
+            ped = VisualMarker(
+                visual_shape=p.GEOM_CYLINDER,
+                rgba_color=colors[i % 3],
+                radius=0.3,
+                length=1.8,
+                initial_offset=[0, 0, 1.8 / 2])
+            env.simulator.import_object(ped)
+            pedestrians.append(ped)
+            orca_ped = self.orca_sim.addAgent((0, 0))
+            orca_pedestrians.append(orca_ped)
+        return pedestrians, orca_pedestrians
+
+    def load_pedestrian_goals(self, env):
+        pedestrian_goals = []
+        for ped in self.pedestrians:
+            ped_goal = VisualMarker(
+                visual_shape=p.GEOM_CYLINDER,
+                rgba_color=ped.rgba_color[0:3] + [0.5],
+                radius=0.3,
+                length=0.2,
+                initial_offset=[0, 0, 0.2 / 2])
+            env.simulator.import_object(ped_goal)
+            pedestrian_goals.append(ped_goal)
+        return pedestrian_goals
+
+    def load_obstacles(self, env):
+        for obj_name in env.scene.objects_by_name:
+            obj = env.scene.objects_by_name[obj_name]
+            if obj.category in ['walls', 'floors', 'ceilings', 'carpet']:
+                continue
+            body_id = obj.body_ids[0]
+            if p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+                aabb = p.getAABB(body_id, 0)
+            else:
+                aabb = p.getAABB(body_id, -1)
+
+            (x_min, y_min, _), (x_max, y_max, _) = aabb
+            # self.orca_sim.addObstacle([
+            #     (x_min, y_min), (x_min, y_max), (x_max, y_max), (x_max, y_min)
+            # ])
+            self.orca_sim.addObstacle([
+                (x_max, y_max), (x_min, y_max), (x_min, y_min), (x_max, y_min)
+            ])
+
+        self.orca_sim.processObstacles()
+
+    def reset_pedestrians(self, env):
+        """
+        Reset the poses of pedestrians to have no collisions with the scene or the robot and set waypoints to follow
+
+        :param env: environment instance
+        """
+        # TODO: re-sample if too close to other pedestrians
+        # TODO: re-sample if too close to robot
+        self.pedestrian_waypoints = []
+        for ped, orca_ped in zip(self.pedestrians, self.orca_pedestrians):
+            _, initial_pos = env.scene.get_random_point(floor=self.floor_num)
+            orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
+            ped.set_position_orientation(
+                initial_pos, quatToXYZW(euler2quat(*orn), 'wxyz'))
+            self.orca_sim.setAgentPosition(orca_ped, tuple(initial_pos[0:2]))
+            waypoints = self.sample_new_target_pos(env, initial_pos)
+            self.pedestrian_waypoints.append(waypoints)
+
+    def sample_new_target_pos(self, env, initial_pos):
+        while True:
+            _, target_pos = env.scene.get_random_point(floor=self.floor_num)
+            # print('initial_pos', initial_pos)
+            shortest_path, _ = env.scene.get_shortest_path(
+                self.floor_num,
+                initial_pos[:2],
+                target_pos[:2],
+                entire_path=True)
+            if len(shortest_path) > 1:
+                break
+        waypoints = self.shortest_path_to_waypoints(shortest_path)
+        return waypoints
+
+    def shortest_path_to_waypoints(self, shortest_path):
+        assert len(shortest_path) > 0
+        waypoints = []
+        valid_waypoint = None
+        prev_waypoint = None
+        cached_slope = None
+        for waypoint in shortest_path:
+            if valid_waypoint is None:
+                valid_waypoint = waypoint
+            elif cached_slope is None:
+                cached_slope = waypoint - valid_waypoint
+            else:
+                cur_slope = waypoint - prev_waypoint
+                cosine_angle = np.dot(cached_slope, cur_slope) / \
+                    (np.linalg.norm(cached_slope) * np.linalg.norm(cur_slope))
+                if np.abs(cosine_angle - 1.0) > 1e-3:
+                    waypoints.append(valid_waypoint)
+                    valid_waypoint = prev_waypoint
+                    cached_slope = waypoint - valid_waypoint
+
+            prev_waypoint = waypoint
+
+        # Add the last two valid waypoints
+        waypoints.append(valid_waypoint)
+        waypoints.append(shortest_path[-1])
+
+        # Remove the first waypoint because it's the same as the initial pos
+        waypoints.pop(0)
+
+        return waypoints
+
+    def reset_scene(self, env):
+        """
+        Task-specific scene reset: reset the pedestrians after scene and agent reset
+
+        :param env: environment instance
+        """
+        super(SocialNavRandomTask, self).reset_scene(env)
+        self.reset_pedestrians(env)
+
+    def step(self, env):
+        """
+        Perform task-specific step: move the dynamic objects with action repeat
+
+        :param env: environment instance
+        """
+        super(SocialNavRandomTask, self).step(env)
+        for i, (ped, orca_ped, waypoints) in \
+                enumerate(zip(self.pedestrians,
+                              self.orca_pedestrians,
+                              self.pedestrian_waypoints)):
+            current_pos = np.array(ped.get_position())
+            # Sample new waypoints if empty
+            if len(waypoints) == 0:
+                waypoints = self.sample_new_target_pos(env, current_pos)
+                self.pedestrian_waypoints[i] = waypoints
+
+            next_goal = waypoints[0]
+            self.pedestrian_goals[i].set_position(
+                np.array([next_goal[0], next_goal[1], current_pos[2]]))
+
+            desired_vel = next_goal - current_pos[0:2]
+            desired_vel = desired_vel / \
+                np.linalg.norm(desired_vel) * self.pedestrian_velocity
+            self.orca_sim.setAgentPrefVelocity(orca_ped, tuple(desired_vel))
+
+        self.orca_sim.doStep()
+
+        for ped, orca_ped, waypoints in \
+                zip(self.pedestrians,
+                    self.orca_pedestrians,
+                    self.pedestrian_waypoints):
+            pos_xy = self.orca_sim.getAgentPosition(orca_ped)
+            prev_pos_xyz = ped.get_position()
+            pos = np.array([pos_xy[0], pos_xy[1], prev_pos_xyz[2]])
+            ped.set_position(pos)
+            # print('next_goal', next_goal, 'pos_xy', pos_xy)
+            next_goal = waypoints[0]
+            if np.linalg.norm(next_goal - np.array(pos_xy)) \
+                    <= self.pedestrian_goal_thresh:
+                waypoints.pop(0)

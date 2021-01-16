@@ -5,6 +5,7 @@ from gibson2.tasks.point_nav_fixed_task import PointNavFixedTask
 from gibson2.tasks.point_nav_random_task import PointNavRandomTask
 from gibson2.tasks.interactive_nav_random_task import InteractiveNavRandomTask
 from gibson2.tasks.dynamic_nav_random_task import DynamicNavRandomTask
+from gibson2.tasks.social_nav_random_task import SocialNavRandomTask
 from gibson2.tasks.reaching_random_task import ReachingRandomTask
 from gibson2.sensors.scan_sensor import ScanSensor
 from gibson2.sensors.vision_sensor import VisionSensor
@@ -92,6 +93,8 @@ class iGibsonEnv(BaseEnv):
             self.task = InteractiveNavRandomTask(self)
         elif self.config['task'] == 'dynamic_nav_random':
             self.task = DynamicNavRandomTask(self)
+        elif self.config['task'] == 'social_nav_random':
+            self.task = SocialNavRandomTask(self)
         elif self.config['task'] == 'reaching_random':
             self.task = ReachingRandomTask(self)
         elif self.config['task'] == 'room_rearrangement':
