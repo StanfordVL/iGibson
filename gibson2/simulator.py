@@ -641,10 +641,10 @@ class Simulator:
             self.render_timestep / self.physics_timestep)
         for _ in range(physics_timestep_num):
             p.stepSimulation()
-        self.sync()
         physics_dur = time.time() - physics_start_time
 
         render_start_time = time.time()
+        self.sync()
         render_dur = time.time() - render_start_time
         # Update render timestep using low-pass filter function
         if use_render_timestep_lpf:
