@@ -2,7 +2,7 @@ import gym
 import numpy as np
 import pybullet as p
 
-from gibson2.external.pybullet_tools.utils import joints_from_names, set_joint_positions
+from gibson2.external.pybullet_tools.utils import joints_from_names, set_joint_positions, joint_from_name
 from gibson2.robots.robot_locomotor import LocomotorRobot
 
 
@@ -23,12 +23,27 @@ class FetchGripper(LocomotorRobot):
         self.max_velocity = np.array(config.get('max_velocity', np.ones(action_dim)))
         self.wheel_axle_half = 0.18738  # half of the distance between the wheels
         self.wheel_radius = 0.065  # radius of the wheels
+
+        # Make sure control is specified
+        control = config.get('control', None)
+        assert control is not None, "control must be specified for this robot!"
+
+        # Action limits
+        self.action_high = None
+        self.action_low = None
+        self.action_space = None
+
+        # Gripper visualizations
+        self.gripper_visualization = self.config.get("gripper_visualization", False)
+        self.gripper_link_id = None
+
+        # Run super init
         LocomotorRobot.__init__(self,
-                                "fetch/fetch_gripper.urdf",
+                                "fetch/fetch_gripper{}.urdf".format("_vis" if self.gripper_visualization else ""),
                                 action_dim=action_dim,
                                 scale=config.get("robot_scale", 1.0),
                                 is_discrete=config.get("is_discrete", False),
-                                control="velocity",
+                                control=control,
                                 self_collision=True)
 
     def set_up_continuous_action_space(self):
@@ -42,8 +57,10 @@ class FetchGripper(LocomotorRobot):
         #                             [self.gripper_velocity] * self.gripper_dim)
         #self.action_high = np.array(self.max_velocity)
         #self.action_low = -self.action_high
-        self.action_high = np.ones(self.action_dim)
-        self.action_low = -self.action_high
+        # self.action_high = np.ones(self.action_dim)
+        # self.action_low = -self.action_high
+        self.action_high = np.array(self.config.get('action_high', np.ones(self.action_dim)))
+        self.action_low = np.array(self.config.get('action_low', -np.ones(self.action_dim)))
         self.action_space = gym.spaces.Box(shape=(self.action_dim,),
                                            low=-1.0,
                                            high=1.0,
@@ -126,9 +143,15 @@ class FetchGripper(LocomotorRobot):
             ['caster_wheel_joint', 'torso_fixed_joint'],
             ['caster_wheel_joint', 'l_wheel_joint'],
             ['caster_wheel_joint', 'r_wheel_joint'],
+            ['r_gripper_finger_joint', 'l_gripper_finger_joint'],
         ]
         for names in disable_collision_names:
             link_a, link_b = joints_from_names(robot_id, names)
             p.setCollisionFilterPair(robot_id, robot_id, link_a, link_b, 0)
+
+        self.gripper_link_id = joint_from_name(self.robot_ids[0], 'gripper_axis')
+        if self.gripper_visualization:
+            # Toggle rgba of visual links
+            p.changeVisualShape(objectUniqueId=self.robot_ids[0], linkIndex=self.gripper_link_id, rgbaColor=[1, 0, 0, 0.3])
 
         return ids

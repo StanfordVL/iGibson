@@ -21,7 +21,7 @@ class SemanticRearrangementTask(BaseTask):
         objects (list of CustomWrappedObject): Object(s) to use for this task
         goal_pos (3-array): (x,y,z) cartesian global coordinates for the goal location
         randomize_initial_robot_pos (bool): whether to randomize initial robot position or not. If False,
-            will deterministically be set to @goal_pos instead
+            will selected based on pos_range specified in the config
     """
 
     def __init__(self, env, objects, goal_pos=(0,0,0), randomize_initial_robot_pos=True):
@@ -45,6 +45,8 @@ class SemanticRearrangementTask(BaseTask):
         self.objects = objects
         # Other internal vars
         self.randomize_initial_robot_pos = randomize_initial_robot_pos
+        self.init_pos_range = np.array(self.config.get("pos_range", np.zeros((2,3))))
+        self.init_rot_range = np.array(self.config.get("rot_range", np.zeros(2)))
 
     def reset_scene(self, env):
         """
@@ -61,6 +63,7 @@ class SemanticRearrangementTask(BaseTask):
         for obj in self.objects:
             pos, ori = obj.sample_pose()
             obj.set_position_orientation(pos, ori)
+        p.stepSimulation()
 
     def sample_initial_pose(self, env):
         """
@@ -72,8 +75,8 @@ class SemanticRearrangementTask(BaseTask):
         if self.randomize_initial_robot_pos:
             _, initial_pos = env.scene.get_random_point(floor=self.floor_num)
         else:
-            initial_pos = self.goal_pos
-        initial_orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
+            initial_pos = np.random.uniform(self.init_pos_range[0], self.init_pos_range[1])
+        initial_orn = np.array([0, 0, np.random.uniform(self.init_rot_range[0], self.init_rot_range[1])])
         return initial_pos, initial_orn
 
     def reset_agent(self, env):

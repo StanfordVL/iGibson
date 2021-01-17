@@ -10,13 +10,14 @@ class YCBObject(Object):
     Reference: https://www.ycbbenchmarks.com/
     """
 
-    def __init__(self, name, scale=1):
+    def __init__(self, name, scale=1, mass=0.1):
         super(YCBObject, self).__init__()
         self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
                                             'textured_simple.obj')
         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
                                                'textured_simple_vhacd.obj')
         self.scale = scale
+        self.mass = mass
 
     def _load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH,
@@ -29,5 +30,5 @@ class YCBObject(Object):
         body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id,
                                     baseVisualShapeIndex=visual_id,
                                     basePosition=[0.2, 0.2, 1.5],
-                                    baseMass=0.1)
+                                    baseMass=self.mass)
         return body_id

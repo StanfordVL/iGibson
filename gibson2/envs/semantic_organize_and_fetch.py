@@ -4,6 +4,7 @@ from gibson2.objects.custom_wrapped_object import CustomWrappedObject
 from gibson2.utils.custom_utils import ObjectConfig
 from gibson2.tasks.semantic_rearrangement_task import SemanticRearrangementTask
 import numpy as np
+import pybullet as p
 
 
 class SemanticOrganizeAndFetch(iGibsonEnv):
@@ -85,6 +86,29 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
             goal_pos=[0, 0, 0],
             randomize_initial_robot_pos=(self.task_mode == "fetch"),
         )
+
+    def reset(self):
+        """
+        Reset the environment
+
+        Returns:
+            OrderedDict: state after reset
+        """
+        # Run super method
+        state = super().reset()
+
+        # Make sure all object positions and velocities are 0
+        for object in self.objects.values():
+            p.resetBaseVelocity(objectUniqueId=object.body_id, linearVelocity=[0,0,0], angularVelocity=[0,0,0])
+            p.stepSimulation()
+            self.simulator.sync()
+
+        # Re-gather task obs since they may have changed
+        if 'task_obs' in self.output:
+            state['task_obs'] = self.task.get_task_obs(self)
+
+        # Return state
+        return state
 
     def get_state(self, collision_links=[]):
         """

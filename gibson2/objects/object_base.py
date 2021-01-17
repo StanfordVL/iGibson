@@ -67,3 +67,9 @@ class Object(object):
         :param orn: quaternion in xyzw
         """
         p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+
+    def reset(self):
+        """
+        Conduct reset, if any
+        """
+        pass

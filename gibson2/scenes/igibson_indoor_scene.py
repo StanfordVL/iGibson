@@ -40,6 +40,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  object_randomization_idx=None,
                  should_open_all_doors=False,
                  load_object_categories=None,
+                 load_object_instances=None,
                  load_room_types=None,
                  load_room_instances=None,
                  seg_map_resolution=0.1,
@@ -60,6 +61,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param object_randomization_idx: index of a pre-computed object randomization model that guarantees good scene quality
         :param should_open_all_doors: whether to open all doors after episode reset (usually required for navigation tasks)
         :param load_object_categories: only load these object categories into the scene (a list of str)
+        :param load_object_instances: only select from these object instances. Should be None or list of list equal to the length of @load_object_categories
         :param load_room_types: only load objects in these room types into the scene (a list of str)
         :param load_room_instances: only load objects in these room instances into the scene (a list of str)
         :param seg_map_resolution: room segmentation map resolution
@@ -132,6 +134,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # percentage of objects allowed that CANNOT extend their joints by >66%
         self.link_collision_tolerance = link_collision_tolerance
 
+        obj_category_mapping = None
+        # Map categories to object choices
+        if load_object_categories is not None and load_object_instances is not None:
+            obj_category_mapping = {cat: inst for cat, inst in zip(load_object_categories, load_object_instances)}
+
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):
             if 'category' in link.attrib:
@@ -183,14 +190,13 @@ class InteractiveIndoorScene(StaticIndoorScene):
                             # otherwise, this is the first instance of this random group
                             # select a random model and cache it
                             else:
-                                model = random.choice(
-                                    os.listdir(category_path))
+                                model = random.choice(os.listdir(category_path)) if obj_category_mapping is None else str(np.random.choice(obj_category_mapping[category]))
                                 self.random_groups[random_group_key] = model
                         else:
                             # Using a random instance
-                            model = random.choice(os.listdir(category_path))
+                            model = random.choice(os.listdir(category_path)) if obj_category_mapping is None else str(np.random.choice(obj_category_mapping[category]))
                     else:
-                        model = link.attrib['model']
+                        model = link.attrib['model'] if obj_category_mapping is None else str(np.random.choice(obj_category_mapping[category]))
 
                     model_path = get_ig_model_path(category, model)
                     filename = os.path.join(model_path, model + ".urdf")

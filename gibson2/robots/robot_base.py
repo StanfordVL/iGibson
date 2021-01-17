@@ -45,7 +45,7 @@ class BaseRobot(object):
         else:
             self.model_type = 'MJCF'
             assert self.scale == 1, 'pybullet does not support scaling for MJCF model (p.loadMJCF)'
-        self.config = None
+        #self.config = None
         self.self_collision = self_collision
 
     def load(self):

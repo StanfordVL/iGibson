@@ -1,8 +1,10 @@
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.object_base import Object
 from gibson2.objects.ycb_object import YCBObject
+from gibson2.objects.articulated_object import URDFObject
 from gibson2.utils.custom_utils import create_uniform_ori_sampler, create_uniform_pos_sampler
 
+import numpy as np
 
 class CustomWrappedObject:
     """
@@ -15,6 +17,8 @@ class CustomWrappedObject:
         name (str): Name to assign this object -- should be unique
 
         filename (str): fpath to the urdf associated with this object, OR name associated with YCB object (0XX-name)
+
+        obj_type (str): type of object. Options are "custom", "furniture", "ycb"
 
         scale (float): relative scale of the object when loading
 
@@ -40,6 +44,7 @@ class CustomWrappedObject:
     def __init__(
         self,
         name,
+        obj_type,
         class_id,
         pos_range,
         rot_range,
@@ -50,12 +55,24 @@ class CustomWrappedObject:
         scale=1,
     ):
         # Create the appropriate name based on filename arg
-        if filename[0] == '0':
+        if obj_type == 'ycb':
             # This is a YCB object
-            self.obj = YCBObject(name=filename, scale=scale)
-        else:
+            self.obj = YCBObject(name=filename, scale=scale, mass=1.0)
+        elif obj_type == 'furniture':
+            # This is a furniture object
+            # TODO: This is currently broken ):
+            fname_splits = filename.split("/")
+            category = fname_splits[-3]
+            model = fname_splits[-2]
+            model_path = "/".join(fname_splits[:-1])
+            self.obj = URDFObject(name=name, category=category, model=model, model_path=model_path, filename=filename, scale=scale * np.ones(3))
+        elif obj_type == 'custom':
             # Default to Articulated (URDF-based) object
             self.obj = ArticulatedObject(filename=filename, scale=scale)
+        else:
+            raise ValueError(f"Unknown object type specified! Got: {obj_type}")
+
+        self.obj_type = obj_type
 
         # Store other internal vars
         self.name = name

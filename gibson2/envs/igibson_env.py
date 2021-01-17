@@ -249,6 +249,16 @@ class iGibsonEnv(BaseEnv):
             bodyA=self.robots[0].robot_ids[0]))
         return self.filter_collision_links(collision_links)
 
+    def check_robot_contact(self):
+        """
+        Checks if robot is in contact with any object, filtering out the pre-specfied bodies / links
+
+        :return: (bool) whether the robot is in contact with an object
+        """
+        collision_links = list(p.getContactPoints(
+            bodyA=self.robots[0].robot_ids[0]))
+        return len(self.filter_collision_links(collision_links)) > 0
+
     def filter_collision_links(self, collision_links):
         """
         Filter out collisions that should be ignored

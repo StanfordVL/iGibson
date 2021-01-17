@@ -12,6 +12,7 @@ Should contain relevant information for an iG object that can be passed into an 
 
 Args:
     filename (str): fpath to the relevant object urdf file
+    obj_type (str): type of object. Options are "custom", "furniture", "ycb"
     scale (float): relative scale of the object when loading
     class_id (int): integer to assign to this object when using semantic segmentation
     pos_range (None or 2-tuple of 3-array): [min, max] values to uniformly sample position from, where min, max are
@@ -32,6 +33,7 @@ ObjectConfig = namedtuple(
     field_names=[
         "name",
         "filename",
+        "obj_type",
         "scale",
         "class_id",
         "pos_range",
