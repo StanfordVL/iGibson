@@ -794,6 +794,7 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("getDeviceCoordinateSystem", &VRRendererContext::getDeviceCoordinateSystem);
 	pymodule.def("getEyeTrackingData", &VRRendererContext::getEyeTrackingData);
 	pymodule.def("getVROffset", &VRRendererContext::getVROffset);
+	pymodule.def("hasEyeTrackingSupport", &VRRendererContext::hasEyeTrackingSupport);
 	pymodule.def("initVR", &VRRendererContext::initVR);
 	pymodule.def("pollVREvents", &VRRendererContext::pollVREvents);
 	pymodule.def("postRenderVRForEye", &VRRendererContext::postRenderVRForEye);
