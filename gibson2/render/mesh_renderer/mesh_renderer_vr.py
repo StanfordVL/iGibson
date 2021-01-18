@@ -53,6 +53,9 @@ class MeshRendererVR(MeshRenderer):
         # Rename self.r to self.vrsys
         self.vrsys = self.r
         if self.vr_settings.use_vr:
+            # If eye tracking is requested but headset does not have eye tracking support, disable support
+            if self.vr_settings.eye_tracking and not self.vrsys.hasEyeTrackingSupport():
+                self.vr_settings.eye_tracking = False
             self.vrsys.initVR(self.vr_settings.eye_tracking)
 
     # Renders VR scenes and returns the left eye frame
