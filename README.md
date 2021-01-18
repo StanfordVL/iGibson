@@ -87,6 +87,14 @@ https://www.vive.com/eu/support/vive/category_howto/setting-up-for-the-first-tim
 Dependencies and environment:
 =============================
 
+* Skip this step if you have a working terminal setup in Windows
+
+Follow these instructions to download and install Cygwin: https://www.cygwin.com/ and then https://www.howtogeek.com/howto/41382/how-to-use-linux-commands-in-windows-with-cygwin/ - Cygwin provides a similar experience to the Linux terminal on Windows, and makes working with iGibson much easier.
+
+**Note:** In the article they add C:\Cygwin\bin to the PATH, but the name of your folder may differ. Check in your C: drive in file explorer to see whether you have a folder named Cygwin, or cygwin64 (or perhaps something different). Use this path instead.
+
+**Pro tip:** To run the Windows command line, press Win+R, then type cmd. We recommend pinning this to your taskbar for easy access.
+
 * git 
 https://git-scm.com/download/win
 
@@ -96,13 +104,7 @@ https://www.python.org/downloads/release/python-377/
 * Anaconda 
 https://www.anaconda.com/distribution/#download-section
 
-Make sure anaconda is added to the PATH as follows:
-C:\Users\C\anaconda3
-C:\Users\C\anaconda3\Scripts
-C:\Users\C\anaconda3\Library\bin
-
-Lack of the latter produced the following error:
-HTTP 000 CONNECTION FAILED for url <https://repo.anaconda.com/pkgs/main/win-64/current_repodata.json> Elapsed
+Make sure anaconda is added to the PATH by ticking the appropriate box during installation.
 
 * Build Tools for Visual Studio:
 Microsoft Visual C++ 14.0 is required. Get it with "Build Tools for Visual Studio": 
@@ -126,7 +128,8 @@ Gibson
 ```
 $ git clone https://github.com/fxia22/iGibson.git --recursive (depending on your computer you may need to add the --init flag as well)
 $ cd iGibson
-$ git checkout igvr
+$ git fetch origin
+$ git checkout -b igvr origin/igvr
 $ git submodule update --recursive
 ```
 
@@ -135,18 +138,17 @@ Follow the instructions on the iGibson website to obtain the iGibson assets and 
 * Create anaconda env:
 
 ```
-$ conda create -n gibsonvr python=3.6
+$ conda create -n igvr python=3.6
 ```
 Activate conda env:
 ```
-$ conda activate gibsonvr
+$ conda activate igvr
 ```
-
 * Install Gibson in anaconda env:
 ```
 $ cd iGibson
 ```
-- If you followed the instructions, iGibson is at the vr_new branch
+- Make sure you are on the igvr branch.
 ```
 $ pip install -e .
 ```
@@ -177,6 +179,15 @@ To get started with the iGibson VR experience run:
 $ python vr_playground.py
 
 By default the LOAD_PARTIAL boolean is set to false to speed up loading (loads first 10 objects into the scene as well as some objects to interact with). Please edit this variable to True if you wish to load the entire Rs_int scene.
+
+Note: we recommend looking at gibson2/render/mesh_renderer/mesh_renderer_vr.py to see the VrSettings class. A single VrSettings object is created and passed in to the Simulator constructor at the start of every demo, and you can modify it to change your experience. Here is a list of the things you can set, along with their default values:
+
+  1) use_vr (default True) - whether to render to the HMD and use VR system or just render to screen (used for debugging)
+  2) eye_tracking (default True) - whether to use eye tracking. Turn this off if your headset does not support eye tracking (only the HTC Vive Pro Eye does)
+  3) touchpad_movement (default True) - whether to enable use of touchpad to move - this will help you get around large scenes if your play area is small
+  4) movement_controller (default 'right') - device to controler movement - can be right or left (representing the corresponding controllers). Default is for right-handed people - please change to left if that is more comfortable.
+  4) relative_movement_device (default 'hmd') - which device to use to control touchpad movement direction (can be any VR device). You should not need to change this.
+  5) movement_speed (default 0.01) - how fast you move when using the touchpad. This number has been calibrated carefully, however feel free to change it if you want to speed up/slow down.
 
 To use the VR assets, please access the Google drive folder at this link:
 https://drive.google.com/drive/folders/1zm3ZpPc7yHwyALEGfsb0_NybFMvV81Um?usp=sharing
