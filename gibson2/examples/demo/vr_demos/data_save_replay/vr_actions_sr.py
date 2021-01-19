@@ -105,7 +105,7 @@ def run_state_sr(mode):
 
     if mode == 'save':
         # Saves every 2 seconds or so (200 / 90fps is approx 2 seconds)
-        vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=True)
+        vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=True, log_status=True)
 
         # Save a single button press as a mock action that demonstrates action-saving capabilities.
         vr_writer.register_action(mock_vr_action_path, (1,))
@@ -120,7 +120,7 @@ def run_state_sr(mode):
         start_time = time.time()
         # Main simulation loop - run for as long as the user specified
         while (time.time() - start_time < DATA_SAVE_RUNTIME):
-            s.step(print_time=PRINT_FPS)
+            s.step(print_time=PRINT_FPS, print_timestep=True)
 
             # Example of querying VR events to hide object
             # We will store this as a mock action, even though it is saved by default
@@ -132,7 +132,7 @@ def run_state_sr(mode):
             vr_agent.update()
 
             # Record this frame's data in the VRLogWriter
-            vr_writer.process_frame(s)
+            vr_writer.process_frame(s, print_vr_data=False)
 
         # Note: always call this after the simulation is over to close the log file
         # and clean up resources used.
@@ -140,10 +140,10 @@ def run_state_sr(mode):
     else:
         # The VR reader automatically shuts itself down and performs cleanup once the while loop has finished running
         while vr_reader.get_data_left_to_read():
-            s.step()
+            s.step(print_timestep=True, forced_timestep=vr_reader.get_phys_step_n())
 
             # Note that fullReplay is set to False for action replay
-            vr_reader.read_frame(s, fullReplay=False)
+            vr_reader.read_frame(s, full_replay=False, print_vr_data=False)
 
             # Read our mock action and hide/unhide the mustard based on its value
             mock_action = int(vr_reader.read_action(mock_vr_action_path)[0])

@@ -129,7 +129,7 @@ def run_state_sr(mode):
         # The VR reader automatically shuts itself down and performs cleanup once the while loop has finished running
         while vr_reader.get_data_left_to_read():
             s.step()
-            vr_reader.read_frame(s, fullReplay=True)
+            vr_reader.read_frame(s, full_replay=True)
     
     s.disconnect()
 

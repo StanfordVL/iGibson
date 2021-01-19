@@ -16,16 +16,17 @@ from PodSixNet.Server import Server
 
 
 # An FPS cap is needed to ensure that the client and server don't fall too far out of sync
-# 90 is the FPS cap of VR, so is the fastest speed we realistically need for any MUVR-related work
-MUVR_FPS_CAP = 90.0
+# 45 is a good cap that matches average VR speed and guarantees that the server frame data queue does not become backlogged
+MUVR_FPS_CAP = 45.0
 
 
 class IGVRClient(ConnectionListener):
-    """ TODO: Add comments everywhere! """
+    """ MUVR client that uses server's frame data to render and generates VR data for the server to consume. """
     def __init__(self, host, port):
         self.Connect((host, port))
         self.frame_data = {}
         self.frame_start = 0
+        self.vr_offset = [0, 0, 0]
 
     def register_data(self, sim, client_agent):
         self.s = sim
@@ -65,8 +66,6 @@ class IGVRClient(ConnectionListener):
 
     def client_step(self):
         self.s.viewer.update()
-        """
-        # TODO: Work on these VR features!
         if self.s.can_access_vr_context:
             self.s.poll_vr_events()
             # Sets the VR starting position if one has been specified by the user
@@ -74,7 +73,6 @@ class IGVRClient(ConnectionListener):
 
             # Update VR offset so updated value can be used in server
             self.client_agent.update_frame_offset()
-        """
 
     def gen_vr_data(self):
         if not self.s.can_access_vr_context:
@@ -93,10 +91,10 @@ class IGVRClient(ConnectionListener):
                 vr_data_dict[device] = device_data
 
             vr_data_dict['eye_data'] = self.s.get_eye_tracking_data()
-            vr_data_dict['event_data'] = self.s.poll_vr_events()
+            # We need to get VR events instead of polling here, otherwise the previously events will be erased
+            vr_data_dict['event_data'] = self.s.get_vr_events()
             vr_data_dict['vr_pos'] = self.s.get_vr_pos().tolist()
-            #f_vr_offset = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
-            vr_data_dict['vr_offset'] = [0, 0, 0] # TODO: Change this back!
+            vr_data_dict['vr_offset'] = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
             vr_data_dict['vr_settings'] = [
                 self.s.vr_settings.eye_tracking,
                 self.s.vr_settings.touchpad_movement,
@@ -129,7 +127,7 @@ class IGVRClient(ConnectionListener):
 
 
 class IGVRChannel(Channel):
-    """ TODO: Add comments everywhere! """
+    """ Server's representation of the IGVRClient. """
     def __init__(self, *args, **kwargs):
         Channel.__init__(self, *args, **kwargs)
         self.vr_data = {}
@@ -147,7 +145,7 @@ class IGVRChannel(Channel):
 
 
 class IGVRServer(Server):
-    """ TODO: Add comments everywhere! """
+    """ MUVR server that sends frame data and ingests vr data each frame. """
     channelClass = IGVRChannel
     
     def __init__(self, *args, **kwargs):

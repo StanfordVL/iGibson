@@ -112,6 +112,7 @@ class Simulator:
         self.last_render_timestep = -1
         self.last_physics_step_num = -1
         self.last_frame_dur = -1
+        self.frame_count = 0
 
         self.load()
 
@@ -179,12 +180,14 @@ class Simulator:
             self.cid = p.connect(p.GUI)
         else:
             self.cid = p.connect(p.DIRECT)
+
+        # Simulation reset is needed for deterministic action replay
+        if self.vr_settings.reset_sim:
+            p.resetSimulation()
+            p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
         p.setTimeStep(self.physics_timestep)
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
-        # print("PyBullet Logging Information******************")
-
-
         self.visual_objects = {}
         self.robots = []
         self.scene = None
@@ -615,7 +618,7 @@ class Simulator:
             if instance.dynamic:
                 self.update_position(instance)
 
-    def step(self, print_time=False, use_render_timestep_lpf=True):
+    def step(self, print_time=False, use_render_timestep_lpf=True, print_timestep=False, forced_timestep=None):
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
@@ -627,7 +630,10 @@ class Simulator:
 
         physics_start_time = time.time()
         # Always guarantee at least one physics timestep
-        physics_timestep_num = max(1, int(self.render_timestep / self.physics_timestep))
+        physics_timestep_num = max(1, int(self.render_timestep / self.physics_timestep)) if not forced_timestep else forced_timestep
+        if print_timestep:
+            print("Frame {} - physics timestep num: {}".format(self.frame_count, physics_timestep_num))
+            self.frame_count += 1
         for _ in range(physics_timestep_num):
             p.stepSimulation()
         physics_dur = time.time() - physics_start_time
