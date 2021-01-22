@@ -7,6 +7,12 @@ from gibson2.render.mesh_renderer.instances import InstanceGroup, Instance, Robo
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer
 from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from gibson2.scenes.scene_base import Scene
+from gibson2.robots.robot_base import BaseRobot
+from gibson2.objects.object_base import Object
+
+
 import pybullet as p
 import gibson2
 import os
@@ -170,7 +176,8 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         :return: pybullet body ids from scene.load function
         """
-
+        assert isinstance(scene, Scene) and not isinstance(scene, InteractiveIndoorScene), \
+            'import_scene can only be called with Scene that is not InteractiveIndoorScene'
         # Load the scene. Returns a list of pybullet ids of the objects loaded that we can use to
         # load them in the renderer
         new_object_pb_ids = scene.load()
@@ -193,6 +200,8 @@ class Simulator:
         :param scene: iGSDFScene instance
         :return: pybullet body ids from scene.load function
         """
+        assert isinstance(scene, InteractiveIndoorScene), \
+            'import_ig_scene can only be called with InteractiveIndoorScene'
         new_object_ids = scene.load()
         self.objects += new_object_ids
         if scene.texture_randomization:
@@ -249,7 +258,8 @@ class Simulator:
         :param use_pbr_mapping: Whether to use pbr mapping
         :param shadow_caster: Whether to cast shadow
         """
-
+        assert isinstance(obj, Object), \
+            'import_object can only be called with Object'
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
         new_object_pb_id = obj.load()
         self.objects += [new_object_pb_id]
@@ -301,7 +311,7 @@ class Simulator:
             visual_object = None
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if (filename, (*dimensions)) not in self.visual_objects.keys():
+                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
@@ -309,9 +319,9 @@ class Simulator:
                                               scale=np.array(dimensions),
                                               texture_scale=texture_scale,
                                               load_texture=load_texture)
-                    self.visual_objects[(filename, (*dimensions))
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
                                         ] = len(self.renderer.visual_objects) - 1
-                visual_object = self.visual_objects[(filename, (*dimensions))]
+                visual_object = self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
                     gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
@@ -394,7 +404,7 @@ class Simulator:
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if (filename, (*dimensions)) not in self.visual_objects.keys():
+                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
                     overwrite_material = None
                     if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
                         overwrite_material = visual_mesh_to_material[filename]
@@ -405,10 +415,10 @@ class Simulator:
                         input_kd=color[:3],
                         scale=np.array(dimensions),
                         overwrite_material=overwrite_material)
-                    self.visual_objects[(filename, (*dimensions))
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
                                         ] = len(self.renderer.visual_objects) - 1
                 visual_objects.append(
-                    self.visual_objects[(filename, (*dimensions))])
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
@@ -473,6 +483,8 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         :return: pybullet id
         """
+        assert isinstance(robot, BaseRobot), \
+            'import_robot can only be called with BaseRobot'
         ids = robot.load()
         visual_objects = []
         link_ids = []
@@ -484,16 +496,16 @@ class Simulator:
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if (filename, (*dimensions)) not in self.visual_objects.keys():
+                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
                                               transform_pos=rel_pos,
                                               input_kd=color[:3],
                                               scale=np.array(dimensions))
-                    self.visual_objects[(filename, (*dimensions))
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
                                         ] = len(self.renderer.visual_objects) - 1
                 visual_objects.append(
-                    self.visual_objects[(filename, (*dimensions))])
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))])
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
@@ -615,7 +627,8 @@ class Simulator:
         elif isinstance(instance, InstanceGroup):
             for j, link_id in enumerate(instance.link_ids):
                 if link_id == -1:
-                    dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
+                    dynamics_info = p.getDynamicsInfo(
+                        instance.pybullet_uuid, -1)
                     inertial_pos = dynamics_info[3]
                     inertial_orn = dynamics_info[4]
                     if len(dynamics_info) == 13:

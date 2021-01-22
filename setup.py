@@ -13,7 +13,7 @@ import subprocess
 import platform
 import codecs
 import platform
-
+import sys
 
 use_clang = False
 
@@ -105,12 +105,17 @@ class PostInstallCommand(install):
                 check_call("bash realenv/envs/build.sh".split())
                 install.run(self)
 '''
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+if sys.version_info.major == 3:
+    with open("README.md", "r", encoding="utf-8") as fh:
+        long_description = fh.read()
+else:
+    # for python2
+    with open("README.md", "r") as fh:
+        long_description = fh.read()
 
 setup(
     name='gibson2',
-    version='1.0.0',
+    version='1.0.1',
     author='Stanford University',
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -137,7 +142,7 @@ setup(
             'future',
             'trimesh',
             'sphinx_markdown_tables',
-            'sphinx==2.2.1',
+            'sphinx>=1.8.0',
             'recommonmark',
             'sphinx_rtd_theme'
     ],

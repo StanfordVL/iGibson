@@ -41,7 +41,7 @@ class IndoorScene(Scene):
         :param waypoint_resolution: resolution of adjacent way points
         :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect robot's observations
         """
-        super().__init__()
+        super(IndoorScene, self).__init__()
         logging.info("IndoorScene model: {}".format(scene_id))
         self.scene_id = scene_id
         self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
@@ -141,7 +141,7 @@ class IndoorScene(Scene):
             largest_cc = max(nx.connected_components(g), key=len)
             g = g.subgraph(largest_cc).copy()
             with open(graph_file, 'wb') as pfile:
-                pickle.dump(g, pfile, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(g, pfile)
 
         self.floor_graph.append(g)
 

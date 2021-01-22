@@ -96,12 +96,12 @@ At the same time, real-world free-moving objects can have overlapping bounding b
 - if two objects overlap with each other, we try to shrink the bounding boxes. We shrink by no more than 80%.
 - we randomize the objects with our object assets, and try to come up with no-collision object configurations from overlapping bounding boxes. 
 
-We managed to provide no-collision URDFs for 2239 scenes.  If the scene your are converting is among this set, the scene generation process will automatically retrieve the no-collision URDF. If not, **please use the scene at your own discretion**, since the objects might be penetrating with each other.
+We managed to provide no-collision URDFs for 6049 scenes.  If the scene your are converting is among this set, the scene generation process will automatically retrieve the no-collision URDF. If not, **please use the scene at your own discretion**, since the objects might be penetrating with each other.
 
 
 ### Examine generated scenes
 
-To examine the scene, you can leverage the ```mouse_interaction.py``` in iGibson's ```example/demo``` folder [examples/demo/mouse_interaction.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/mouse_interaction.py). 
+To examine the scene, you can leverage the ```mouse_interaction.py``` in iGibson's ```example/demo``` folder [gibson2/examples/demo/mouse_interaction.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/mouse_interaction.py). 
 
 For Cubicasa5K, you can examine a scene by running:
 ```

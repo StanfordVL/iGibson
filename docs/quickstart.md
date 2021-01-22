@@ -4,8 +4,7 @@
 Assume you finished installation and assets downloading. Let's get our hands dirty and see iGibson in action.
 
 ```bash
-cd examples/demo
-python env_example.py
+python -m gibson2.examples.demo.env_example
 ```
 You should see something like this:
 ![quickstart.png](images/quickstart.png)
@@ -55,8 +54,7 @@ simulation framerate in iGibson.
 
 ### Benchmark static scene (Gibson scenes)
 ```bash
-cd test/benchmark
-python benchmark_static_scene.py
+python -m gibson2.test.benchmark.benchmark_static_scene
 ```
 
 You will see output similar to:
@@ -76,8 +74,7 @@ Rendering normal, resolution 512, render_to_tensor False: 265.70666134193806 fps
 ### Benchmark physics simulation in interactive scenes (iGibson scene)
 
 ```bash
-cd test/benchmark
-python benchmark_interactive_scene.py
+python -m gibson2.test.benchmark.benchmark_interactive_scene
 ```
 
 It will generate a report like below:
@@ -90,8 +87,7 @@ It will generate a report like below:
 To run a comprehensive benchmark for all rendering in all iGibson scenes, you can excute the following command:
 
 ```bash
-cd test/benchmark
-python benchmark_interactive_scene_rendering.py
+python -m gibson2.test.benchmark.benchmark_interactive_scene_rendering
 ```
 
 It benchmarks two use cases, one for training visual RL agents (low resolution, shadow mapping off), another one for
