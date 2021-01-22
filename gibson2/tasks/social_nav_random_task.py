@@ -1,5 +1,6 @@
 from gibson2.tasks.point_nav_random_task import PointNavRandomTask
 from gibson2.objects.visual_marker import VisualMarker
+from gibson2.objects.pedestrian import Pedestrian
 from gibson2.utils.utils import quatToXYZW
 from transforms3d.euler import euler2quat
 import pybullet as p
@@ -93,12 +94,13 @@ class SocialNavRandomTask(PointNavRandomTask):
             [0, 0, 1, 1]
         ]
         for i in range(self.num_pedestrians):
-            ped = VisualMarker(
-                visual_shape=p.GEOM_CYLINDER,
-                rgba_color=colors[i % 3],
-                radius=0.3,
-                length=1.8,
-                initial_offset=[0, 0, 1.8 / 2])
+            # ped = VisualMarker(
+            #     visual_shape=p.GEOM_CYLINDER,
+            #     rgba_color=colors[i % 3],
+            #     radius=0.3,
+            #     length=1.8,
+            #     initial_offset=[0, 0, 1.8 / 2])
+            ped = Pedestrian()
             env.simulator.import_object(ped)
             pedestrians.append(ped)
             orca_ped = self.orca_sim.addAgent((0, 0))
@@ -107,10 +109,15 @@ class SocialNavRandomTask(PointNavRandomTask):
 
     def load_pedestrian_goals(self, env):
         pedestrian_goals = []
-        for ped in self.pedestrians:
+        colors = [
+            [1, 0, 0, 1],
+            [0, 1, 0, 1],
+            [0, 0, 1, 1]
+        ]
+        for i, ped in enumerate(self.pedestrians):
             ped_goal = VisualMarker(
                 visual_shape=p.GEOM_CYLINDER,
-                rgba_color=ped.rgba_color[0:3] + [0.5],
+                rgba_color=colors[i % 3][:3] + [0.5],
                 radius=0.3,
                 length=0.2,
                 initial_offset=[0, 0, 0.2 / 2])
@@ -121,20 +128,40 @@ class SocialNavRandomTask(PointNavRandomTask):
     def load_obstacles(self, env):
         for obj_name in env.scene.objects_by_name:
             obj = env.scene.objects_by_name[obj_name]
-            if obj.category in ['walls', 'floors', 'ceilings', 'carpet']:
+            if obj.category in ['walls', 'floors', 'ceilings']:
                 continue
-            body_id = obj.body_ids[0]
-            if p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
-                aabb = p.getAABB(body_id, 0)
-            else:
-                aabb = p.getAABB(body_id, -1)
+            # body_id = obj.body_ids[0]
+            # if p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            #     aabb = p.getAABB(body_id, 0)
+            # else:
+            #     aabb = p.getAABB(body_id, -1)
 
-            (x_min, y_min, _), (x_max, y_max, _) = aabb
+            # (x_min, y_min, _), (x_max, y_max, _) = aabb
+            # # self.orca_sim.addObstacle([
+            # #     (x_min, y_min), (x_min, y_max), (x_max, y_max), (x_max, y_min)
+            # # ])
             # self.orca_sim.addObstacle([
-            #     (x_min, y_min), (x_min, y_max), (x_max, y_max), (x_max, y_min)
+            #     (x_max, y_max), (x_min, y_max), (x_min, y_min), (x_max, y_min)
             # ])
+            x_extent, y_extent = obj.bounding_box[:2]
+            initial_bbox = np.array([
+                [x_extent / 2.0, y_extent / 2.0],
+                [-x_extent / 2.0, y_extent / 2.0],
+                [-x_extent / 2.0, -y_extent / 2.0],
+                [x_extent / 2.0, -y_extent / 2.0]
+            ])
+            yaw = obj.bbox_orientation_rpy[2]
+            rot_mat = np.array([
+                [np.cos(-yaw), -np.sin(-yaw)],
+                [np.sin(-yaw), np.cos(-yaw)],
+            ])
+            initial_bbox = initial_bbox.dot(rot_mat)
+            initial_bbox = initial_bbox + obj.bbox_pos[:2]
             self.orca_sim.addObstacle([
-                (x_max, y_max), (x_min, y_max), (x_min, y_min), (x_max, y_min)
+                tuple(initial_bbox[0]),
+                tuple(initial_bbox[1]),
+                tuple(initial_bbox[2]),
+                tuple(initial_bbox[3]),
             ])
 
         self.orca_sim.processObstacles()
@@ -150,9 +177,8 @@ class SocialNavRandomTask(PointNavRandomTask):
         self.pedestrian_waypoints = []
         for ped, orca_ped in zip(self.pedestrians, self.orca_pedestrians):
             _, initial_pos = env.scene.get_random_point(floor=self.floor_num)
-            orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
             ped.set_position_orientation(
-                initial_pos, quatToXYZW(euler2quat(*orn), 'wxyz'))
+                initial_pos, p.getQuaternionFromEuler(ped.default_orn_euler))
             self.orca_sim.setAgentPosition(orca_ped, tuple(initial_pos[0:2]))
             waypoints = self.sample_new_target_pos(env, initial_pos)
             self.pedestrian_waypoints.append(waypoints)
@@ -231,6 +257,9 @@ class SocialNavRandomTask(PointNavRandomTask):
             next_goal = waypoints[0]
             self.pedestrian_goals[i].set_position(
                 np.array([next_goal[0], next_goal[1], current_pos[2]]))
+            yaw = np.arctan2(next_goal[1] - current_pos[1],
+                             next_goal[0] - current_pos[0])
+            ped.set_yaw(yaw)
 
             desired_vel = next_goal - current_pos[0:2]
             desired_vel = desired_vel / \

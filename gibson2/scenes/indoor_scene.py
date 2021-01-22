@@ -22,6 +22,7 @@ class IndoorScene(Scene):
     def __init__(self,
                  scene_id,
                  trav_map_resolution=0.1,
+                 trav_map_default_resolution=0.01,
                  trav_map_erosion=2,
                  trav_map_type='with_obj',
                  build_graph=True,
@@ -33,7 +34,8 @@ class IndoorScene(Scene):
         Load an indoor scene and compute traversability
 
         :param scene_id: Scene id
-        :param trav_map_resolution: traversability map resolution
+        :param trav_map_resolution: desired traversability map resolution
+        :param trav_map_default_resolution: original traversability map resolution
         :param trav_map_erosion: erosion radius of traversability areas, should be robot footprint radius
         :param trav_map_type: type of traversability map, with_obj | no_obj
         :param build_graph: build connectivity graph
@@ -44,7 +46,8 @@ class IndoorScene(Scene):
         super(IndoorScene, self).__init__()
         logging.info("IndoorScene model: {}".format(scene_id))
         self.scene_id = scene_id
-        self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
+        # trav_map_default_resolution = 0.01 means each pixel represents 0.01m
+        self.trav_map_default_resolution = trav_map_default_resolution
         self.trav_map_resolution = trav_map_resolution
         self.trav_map_original_size = None
         self.trav_map_size = None
@@ -72,7 +75,8 @@ class IndoorScene(Scene):
         for floor in range(len(self.floor_heights)):
             if self.trav_map_type == 'with_obj':
                 trav_map = np.array(Image.open(
-                    os.path.join(maps_path, 'floor_trav_{}.png'.format(floor))
+                    os.path.join(
+                        maps_path, 'floor_trav_{}_new.png'.format(floor))
                 ))
                 obstacle_map = np.array(Image.open(
                     os.path.join(maps_path, 'floor_{}.png'.format(floor))
@@ -93,7 +97,7 @@ class IndoorScene(Scene):
                 self.trav_map_size = int(self.trav_map_original_size *
                                          self.trav_map_default_resolution /
                                          self.trav_map_resolution)
-            trav_map[obstacle_map == 0] = 0
+            # trav_map[obstacle_map == 0] = 0
             trav_map = cv2.resize(
                 trav_map, (self.trav_map_size, self.trav_map_size))
             trav_map = cv2.erode(trav_map, np.ones(

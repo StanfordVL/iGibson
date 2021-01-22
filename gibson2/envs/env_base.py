@@ -154,6 +154,8 @@ class BaseEnv(gym.Env):
                 build_graph=self.config.get('build_graph', False),
                 trav_map_resolution=self.config.get(
                     'trav_map_resolution', 0.1),
+                trav_map_default_resolution=self.config.get(
+                    'trav_map_default_resolution', 0.01),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
                 trav_map_type=self.config.get('trav_map_type', 'with_obj'),
                 pybullet_load_texture=self.config.get(
@@ -165,6 +167,8 @@ class BaseEnv(gym.Env):
                     'should_open_all_doors', False),
                 load_object_categories=self.config.get(
                     'load_object_categories', None),
+                not_load_object_categories=self.config.get(
+                    'not_load_object_categories', None),
                 load_room_types=self.config.get('load_room_types', None),
                 load_room_instances=self.config.get(
                     'load_room_instances', None),
