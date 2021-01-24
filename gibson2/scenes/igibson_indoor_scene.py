@@ -44,6 +44,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  load_room_types=None,
                  load_room_instances=None,
                  seg_map_resolution=0.1,
+                 scene_instance=None,
                  scene_source="IG",
                  ):
         """
@@ -65,6 +66,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param load_room_types: only load objects in these room types into the scene (a list of str)
         :param load_room_instances: only load objects in these room instances into the scene (a list of str)
         :param seg_map_resolution: room segmentation map resolution
+        :param scene_instance: specific scene instance to load, if specified
         :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT 
         """
 
@@ -81,7 +83,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
         self.should_open_all_doors = should_open_all_doors
-        if object_randomization:
+        if scene_instance is not None:
+            fname = scene_instance
+        elif object_randomization:
             if object_randomization_idx is None:
                 fname = scene_id
             else:
@@ -434,7 +438,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                   bounding_box=bounding_box,
                                   scale=scale,
                                   avg_obj_dims=self.avg_obj_dims.get(category),
-                                  in_rooms=in_rooms)
+                                  in_rooms=in_rooms,
+                                  init_pos=position,
+                                  init_ori=orientation_rpy)
         # Add object to database
         self.objects_by_name[object_name] = added_object
         if category not in self.objects_by_category.keys():

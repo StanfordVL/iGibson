@@ -1,7 +1,4 @@
 from gibson2.envs.igibson_env import iGibsonEnv
-from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.custom_wrapped_object import CustomWrappedObject
-from gibson2.utils.custom_utils import ObjectConfig
 from gibson2.tasks.semantic_rearrangement_task import SemanticRearrangementTask
 import numpy as np
 import pybullet as p
@@ -15,7 +12,6 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
 
     Args:
         config_file (dict or str): config_file as either a dict or filepath string
-        object_configs (ObjectConfig or list of ObjectConfig): Object(s) to use for this task
         task_mode (str): Take mode for this environment. Options are "organize" or "fetch"
         scene_id (str): override scene_id in config file
         mode (str): headless, gui, iggui
@@ -28,7 +24,6 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
     def __init__(
         self,
         config_file,
-        object_configs,
         task_mode="organize",
         scene_id=None,
         mode='headless',
@@ -38,10 +33,6 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
         render_to_tensor=False,
         automatic_reset=False,
     ):
-        # Store objects
-        self.object_configs = [object_configs] if isinstance(object_configs, ObjectConfig) else object_configs
-        self.objects = None                     # to be filled later during load() - maps names to object classes
-
         # Store other internal variables
         self.task = None
         self.task_mode = task_mode
@@ -70,19 +61,15 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
         # Run super call
         super().load()
 
-        # Load objects into env
-        self.objects = {}
-        for object_config in self.object_configs:
-            obj = CustomWrappedObject(**object_config._asdict())
-            # Import this object into the simulator
-            self.simulator.import_object(obj=obj, class_id=obj.class_id)
-            # Add this object to our dict of objects
-            self.objects[obj.name] = obj
+    def load_task_setup(self):
+        """
+        Extends super call to make sure that self.task is the appropriate task for this env
+        """
+        super().load_task_setup()
 
         # Load task
         self.task = SemanticRearrangementTask(
             env=self,
-            objects=list(self.objects.values()),
             goal_pos=[0, 0, 0],
             randomize_initial_robot_pos=(self.task_mode == "fetch"),
         )
@@ -96,12 +83,6 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
         """
         # Run super method
         state = super().reset()
-
-        # Make sure all object positions and velocities are 0
-        for object in self.objects.values():
-            p.resetBaseVelocity(objectUniqueId=object.body_id, linearVelocity=[0,0,0], angularVelocity=[0,0,0])
-            p.stepSimulation()
-            self.simulator.sync()
 
         # Re-gather task obs since they may have changed
         if 'task_obs' in self.output:

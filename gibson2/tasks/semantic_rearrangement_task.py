@@ -9,6 +9,7 @@ from gibson2.objects.custom_wrapped_object import CustomWrappedObject
 
 import logging
 import numpy as np
+from collections import OrderedDict
 
 
 class SemanticRearrangementTask(BaseTask):
@@ -18,13 +19,13 @@ class SemanticRearrangementTask(BaseTask):
 
     Args:
         env (BaseEnv): Environment using this task
-        objects (list of CustomWrappedObject): Object(s) to use for this task
+        #objects (list of CustomWrappedObject): Object(s) to use for this task
         goal_pos (3-array): (x,y,z) cartesian global coordinates for the goal location
         randomize_initial_robot_pos (bool): whether to randomize initial robot position or not. If False,
             will selected based on pos_range specified in the config
     """
 
-    def __init__(self, env, objects, goal_pos=(0,0,0), randomize_initial_robot_pos=True):
+    def __init__(self, env, goal_pos=(0,0,0), randomize_initial_robot_pos=True):
         super().__init__(env)
         # Currently, this should be able to be done in either a gibson or igibson env
         # assert isinstance(env.scene, InteractiveIndoorScene), \
@@ -42,11 +43,34 @@ class SemanticRearrangementTask(BaseTask):
         ]
         self.floor_num = 0
         # Objects
-        self.objects = objects
+        self.target_objects = self._create_objects(env=env)
         # Other internal vars
         self.randomize_initial_robot_pos = randomize_initial_robot_pos
         self.init_pos_range = np.array(self.config.get("pos_range", np.zeros((2,3))))
         self.init_rot_range = np.array(self.config.get("rot_range", np.zeros(2)))
+        # Observation mode
+        self.task_obs_format = self.config.get("task_obs_format", "global") # Options are global, egocentric
+        assert self.task_obs_format in {"global", "egocentric"}, \
+            f"Task obs format must be one of: [global, egocentric]. Got: {self.task_obs_format}"
+
+    def _create_objects(self, env):
+        """
+        Helper function to create objects
+
+        Returns:
+            dict: objects mapped from name to BaseObject instances
+        """
+        objs = {}
+        # Loop over all objects from the config file and load them
+        for obj_config in self.config.get("objects", []):
+            obj = CustomWrappedObject(env=env, **obj_config)
+            # Import this object into the simulator
+            env.simulator.import_object(obj=obj, class_id=obj.class_id)
+            # Store a reference to this object
+            objs[obj_config["name"]] = obj
+
+        # Return created objects
+        return objs
 
     def reset_scene(self, env):
         """
@@ -60,7 +84,7 @@ class SemanticRearrangementTask(BaseTask):
             env.scene.force_wakeup_scene_objects()
 
         # Reset objects belonging to this task specifically
-        for obj in self.objects:
+        for obj in self.target_objects.values():
             pos, ori = obj.sample_pose()
             obj.set_position_orientation(pos, ori)
         p.stepSimulation()
@@ -117,23 +141,17 @@ class SemanticRearrangementTask(BaseTask):
         :param env: environment instance
         :return: task-specific observation
         """
-        # TODO: Currently no task obs
-        # task_obs = self.global_to_local(env, self.target_pos)[:2]
-        # if self.goal_format == 'polar':
-        #     task_obs = np.array(cartesian_to_polar(task_obs[0], task_obs[1]))
-
-        # No task obs for now
-        task_obs = None
-
-        # linear velocity along the x-axis
-        # linear_velocity = rotate_vector_3d(
-        #     env.robots[0].get_linear_velocity(),
-        #     *env.robots[0].get_rpy())[0]
-        # # angular velocity along the z-axis
-        # angular_velocity = rotate_vector_3d(
-        #     env.robots[0].get_angular_velocity(),
-        #     *env.robots[0].get_rpy())[2]
-        # task_obs = np.append(
-        #     task_obs, [linear_velocity, angular_velocity])
+        # Construct task obs -- consists of 3D locations of all target objects
+        task_obs = OrderedDict()
+        obs_cat = []
+        # Loop over all target objects and add to our task obs
+        for obj_name, obj in self.target_objects.items():
+            obj_dist = np.array(obj.get_position())
+            if self.task_obs_format == "egocentric":
+                obj_dist -= np.array(env.robots[0].get_end_effector_position())
+            task_obs[obj_name] = obj_dist
+            obs_cat.append(obj_dist)
+        # Add concatenated obs also
+        task_obs["object-state"] = np.concatenate(obs_cat)
 
         return task_obs

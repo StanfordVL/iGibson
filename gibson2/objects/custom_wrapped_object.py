@@ -24,8 +24,12 @@ class CustomWrappedObject:
 
         class_id (int): integer to assign to this object when using semantic segmentation
 
+        sample_at (None or dict): If specified, maps scene_object names to probability instances for being sampled.
+            @scene_object should be a str (name of the object in the environment), and
+            @prob should be the associated probability with choosing that object. All probabilities should add up to 1.
+
         pos_range (None or 2-tuple of 3-array): [min, max] values to uniformly sample position from, where min, max are
-            each composed of a (x, y, z) array. If None, `'pos_sampler'` must be specified.
+            each composed of a (x, y, z) array. If None, `'pos_sampler'` or `'sample_at'` must be specified.
 
         rot_range (None or 2-array): [min, max] rotation to uniformly sample from.
             If None, `'ori_sampler'` must be specified.
@@ -35,22 +39,26 @@ class CustomWrappedObject:
 
         pos_sampler (None or function): function that should take no args and return a 3-tuple for the
             global (x,y,z) cartesian position values for the object. Overrides `'pos_range'` if both are specified.
-            If None, `'pos_range'` must be specified.
+            If None, `'pos_range'` or `'sample_at'` must be specified.
 
         ori_sampler (None or function): function that should take no args and return a 4-tuple for the
             global (x,y,z,w) quaternion for the object. Overrides `'rot_range'` and `'rot_axis'` if all are specified.
             If None, `'rot_range'` and `'rot_axis'` must be specified.
+
+        env (iGibsonEnv): active environment instance
     """
     def __init__(
         self,
         name,
         obj_type,
         class_id,
+        sample_at,
         pos_range,
         rot_range,
         rot_axis,
         pos_sampler,
         ori_sampler,
+        env,
         filename,
         scale=1,
     ):
@@ -78,10 +86,21 @@ class CustomWrappedObject:
         self.name = name
         self.class_id = class_id
 
+        # # TODO: For now, hardcoding radius, height, and bottom_offset
+        # self.radius = 0.0
+        # self.height = 0.0
+        # self.bottom_offset = 0.0
+
         # Compose samplers
-        if pos_sampler is None:
-            assert pos_range is not None, "Either pos_sampler or pos_range must be specified!"
+        self.sample_at = sample_at
+        if self.sample_at is not None:
+            # We override any other position sampling attribute
+            pos_sampler = self._create_stochastic_location_pos_sampler(env=env)
+
+        elif pos_sampler is None:
+            assert pos_range is not None, "Either pos_sampler, pos_range, or sample_at must be specified!"
             pos_sampler = create_uniform_pos_sampler(low=pos_range[0], high=pos_range[1])
+
         if ori_sampler is None:
             assert rot_range is not None and rot_axis is not None,\
                 "Either ori_sampler or rot_range and rot_axis must be specified!"
@@ -89,6 +108,28 @@ class CustomWrappedObject:
 
         self.pos_sampler = pos_sampler
         self.ori_sampler = ori_sampler
+
+    def _create_stochastic_location_pos_sampler(self, env):
+        """
+        Helper function to generate stochastic sampler for sampling a random location for this object to be placed.
+
+        Args:
+            env (iGibsonEnv): active environment instance
+
+        Returns:
+            function: pos sampling function handle
+        """
+        # Define sampling function to return
+        def sampler():
+            # Sample random location according to the specified probability distribution
+            location = np.random.choice(list(self.sample_at.keys()), p=list(self.sample_at.values()))
+            # Sample a specific pos at this location
+            print(env.scene.objects_by_name.keys())
+            return env.scene.objects_by_name[location].sample_obj_position(
+                obj_radius=self.radius + 0.01, obj_height=self.height, bottom_offset=self.bottom_offset + 0.01)
+
+        # Return this sampler
+        return sampler
 
     def sample_pose(self):
         """

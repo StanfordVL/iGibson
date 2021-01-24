@@ -4,6 +4,8 @@ Custom utilities built on top of the OTS iG repo
 from collections import namedtuple
 import numpy as np
 import gibson2.utils.transform_utils as T
+import pybullet as p
+import gibson2.external.pybullet_tools.utils as PBU
 
 """
 ObjectConfig tuple class
@@ -15,15 +17,18 @@ Args:
     obj_type (str): type of object. Options are "custom", "furniture", "ycb"
     scale (float): relative scale of the object when loading
     class_id (int): integer to assign to this object when using semantic segmentation
+    sample_at (None or dict): If specified, maps scene_object names to probability instances for being sampled.
+        @scene_object should be a str (name of the object in the environment), and
+        @prob should be the associated probability with choosing that object. All probabilities should add up to 1. 
     pos_range (None or 2-tuple of 3-array): [min, max] values to uniformly sample position from, where min, max are
-        each composed of a (x, y, z) array. If None, `'pos_sampler'` must be specified.
+        each composed of a (x, y, z) array. If None, `'pos_sampler'` or `'sample_at'` must be specified.
     rot_range (None or 2-array): [min, max] rotation to uniformly sample from.
         If None, `'ori_sampler'` must be specified.
     rot_axis (None or str): One of {`'x'`, `'y'`, `'z'`}, the axis to sample rotation from.
         If None, `'ori_sampler'` must be specified.
     pos_sampler (None or function): function that should take no args and return a 3-tuple for the
         global (x,y,z) cartesian position values for the object. Overrides `'pos_range'` if both are specified.
-        If None, `'pos_range'` must be specified.
+        If None, `'pos_range'` or `'sample_at'` must be specified.
     ori_sampler (None or function): function that should take no args and return a 4-tuple for the
         global (x,y,z,w) quaternion for the object. Overrides `'rot_range'` and `'rot_axis'` if all are specified.
         If None, `'rot_range'` and `'rot_axis'` must be specified.
@@ -36,6 +41,7 @@ ObjectConfig = namedtuple(
         "obj_type",
         "scale",
         "class_id",
+        "sample_at",
         "pos_range",
         "rot_range",
         "rot_axis",

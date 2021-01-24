@@ -13,6 +13,8 @@ import trimesh
 from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
+import gibson2.utils.transform_utils as T
+
 
 
 class ArticulatedObject(Object):
@@ -67,6 +69,8 @@ class URDFObject(Object):
                  avg_obj_dims=None,
                  joint_friction=None,
                  in_rooms=None,
+                 init_pos=(0,0,0),
+                 init_ori=(0,0,0),
                  ):
         """
         :param name: object name, unique for each object instance, e.g. door_3
@@ -79,6 +83,8 @@ class URDFObject(Object):
         :param avg_obj_dims: average object dimension of this object
         :param joint_friction: joint friction for joints in this object
         :param in_rooms: which room(s) this object is in. It can be in more
+        :param init_pos: (x,y,z) initial position of this object, in world coords. Should correspond to joint offset
+        :param init_ori: (r,p,y) initial orientation of this object, in world coords. Should correspond to joint offset
         than one rooms if it sits at room boundary (e.g. doors)
         """
         super(URDFObject, self).__init__()
@@ -87,6 +93,8 @@ class URDFObject(Object):
         self.category = category
         self.model = model
         self.in_rooms = in_rooms
+        self.init_pos = np.array(init_pos)
+        self.init_ori = np.array(init_ori)
 
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
@@ -153,6 +161,7 @@ class URDFObject(Object):
 
         meta_json = os.path.join(self.model_path, 'misc/metadata.json')
         bbox_json = os.path.join(self.model_path, 'misc/bbox.json')
+        meta_data = None
         if os.path.isfile(meta_json):
             with open(meta_json, 'r') as f:
                 meta_data = json.load(f)
@@ -182,6 +191,19 @@ class URDFObject(Object):
                 bounding_box = bbox_size * scale
 
         logging.info("Scale: " + np.array2string(scale))
+
+        # We want to load the metadata for obj sampling
+        self.sampling_surfaces = {}
+        if meta_data is not None:
+            surfaces = meta_data.get('valid_surfaces', None)
+            if surfaces is not None:
+                for surface in surfaces:
+                    self.sampling_surfaces[surface["name"]] = {
+                        "offset_from_base": np.array(surface["offset_from_base"]) * scale,
+                        "size": np.array(surface["size"]) * scale[:2],
+                        "max_height": np.array(surface["max_height"]) * scale[2],
+                        "prob": surface["prob"],
+                    }
 
         self.scale = scale
         self.bounding_box = bounding_box
@@ -608,6 +630,51 @@ class URDFObject(Object):
                 p.changeDynamics(body_id, joint_id,
                                  activationState=p.ACTIVATION_STATE_WAKE_UP)
 
+    def get_position(self):
+        """
+        Get object position
+
+        :return: position in xyz
+        """
+        pos, _ = p.getBasePositionAndOrientation(self.body_id[0])
+        return pos
+
+    def get_orientation(self):
+        """
+        Get object orientation
+
+        :return: quaternion in xyzw
+        """
+        _, orn = p.getBasePositionAndOrientation(self.body_ids[0])
+        return orn
+
+    def set_position(self, pos):
+        """
+        Set object position
+
+        :param pos: position in xyz
+        """
+        _, old_orn = p.getBasePositionAndOrientation(self.body_ids[0])
+        p.resetBasePositionAndOrientation(self.body_ids[0], pos, old_orn)
+
+    def set_orientation(self, orn):
+        """
+        Set object orientation
+
+        :param orn: quaternion in xyzw
+        """
+        old_pos, _ = p.getBasePositionAndOrientation(self.body_ids[0])
+        p.resetBasePositionAndOrientation(self.body_ids[0], old_pos, orn)
+
+    def set_position_orientation(self, pos, orn):
+        """
+        Set object position and orientation
+
+        :param pos: position in xyz
+        :param orn: quaternion in xyzw
+        """
+        p.resetBasePositionAndOrientation(self.body_ids[0], pos, orn)
+
     def reset(self):
         """
         Reset the object to its original pose and joint configuration
@@ -635,3 +702,65 @@ class URDFObject(Object):
                     p.setJointMotorControl2(
                         body_id, j, p.VELOCITY_CONTROL,
                         targetVelocity=0.0, force=self.joint_friction)
+
+    def sample_obj_position(self, obj_radius=0.0, obj_height=0.0, bottom_offset=0.0, surface_name=None):
+        """
+        Samples a valid location on / in this object for another object defined by @obj_radius and @obj_height to
+        be placed.
+
+        Args:
+            obj_radius (float): Radius of the object to be placed somewhere on / in this object. Defaults to 0, which
+                corresponds to no sampling compensation
+            obj_height (float): Height of the object to be placed somewhere on / in this object. Defaults to 0, which
+                corresponds to all sampling surfaces being considered valid
+            bottom_offset (float): Distance from center of object to bottom surface of object being placed. Defaults to
+                0, which corresponds to center of object being assumed to be the bottom surface (presumably this should
+                be negative)
+            surface_name (None or str): If specified, will sample location specifically from this surface. Otherwise,
+                will be randomly sampled.
+
+        Returns:
+            np.array: (x,y,z) global coordinates sampled representing a valid location on / in this object
+        """
+        # First, sample location on this object if surface name is not specified
+        if surface_name is None:
+            surface_names = np.random.choice(
+                list(self.sampling_surfaces.keys()),
+                size=len(self.sampling_surfaces.keys()),
+                replace=False,
+                p=[v["prob"] for v in self.sampling_surfaces.values()]
+            )
+        else:
+            # Only use requested surface for sampling
+            surface_names = [surface_name]
+
+        # Next sample appropriate location
+        success = False
+        sampled_location = np.zeros(3)
+        for surface_name in surface_names:
+            # See if this surface is tall enough to accommodate the object
+            surface = self.sampling_surfaces[surface_name]
+            if obj_height > surface["max_height"]:
+                # Object is too tall, try the next surface
+                continue
+            elif obj_radius * 2 > surface["size"][0] or obj_radius * 2 > surface["size"][1]:
+                # Object is too wide, try next surface
+                continue
+            else:
+                # Sample location
+                for i in range(2):      # x, y
+                    sampled_location[i] = surface["offset_from_base"][i] + surface["size"][i] * (np.random.rand() - 0.5)
+                # Set height
+                sampled_location[2] = surface["offset_from_base"][2] - bottom_offset
+                # Rotate the x, y values according to init_ori (yaw value, rotation about z axis)
+                z_rot = self.init_ori[2]
+                sampled_location[:2] = np.array([[np.cos(z_rot), -np.sin(z_rot)],[np.sin(z_rot), np.cos(z_rot)]]) @ sampled_location[:2]
+                # Offset this value by the base global position
+                sampled_location += self.init_pos
+                success = True
+
+        # If no success, we couldn't find a valid sample ): Raise an error to let user know
+        assert success, "No valid sampling location could be found!"
+
+        # Return the sampled position
+        return sampled_location
