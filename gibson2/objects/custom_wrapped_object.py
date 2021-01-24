@@ -28,6 +28,9 @@ class CustomWrappedObject:
             @scene_object should be a str (name of the object in the environment), and
             @prob should be the associated probability with choosing that object. All probabilities should add up to 1.
 
+        only_top (bool): If @sample_at is specified, then this will determine whether sampled surfaces only consist of
+            the top surface (i.e.: "on" the object), or also inside the object as well (e.g.: inside a drawer)
+
         pos_range (None or 2-tuple of 3-array): [min, max] values to uniformly sample position from, where min, max are
             each composed of a (x, y, z) array. If None, `'pos_sampler'` or `'sample_at'` must be specified.
 
@@ -53,6 +56,7 @@ class CustomWrappedObject:
         obj_type,
         class_id,
         sample_at,
+        only_top,
         pos_range,
         rot_range,
         rot_axis,
@@ -95,7 +99,7 @@ class CustomWrappedObject:
         self.sample_at = sample_at
         if self.sample_at is not None:
             # We override any other position sampling attribute
-            pos_sampler = self._create_stochastic_location_pos_sampler(env=env)
+            pos_sampler = self._create_stochastic_location_pos_sampler(env=env, only_top=only_top)
 
         elif pos_sampler is None:
             assert pos_range is not None, "Either pos_sampler, pos_range, or sample_at must be specified!"
@@ -109,12 +113,14 @@ class CustomWrappedObject:
         self.pos_sampler = pos_sampler
         self.ori_sampler = ori_sampler
 
-    def _create_stochastic_location_pos_sampler(self, env):
+    def _create_stochastic_location_pos_sampler(self, env, only_top=False):
         """
         Helper function to generate stochastic sampler for sampling a random location for this object to be placed.
 
         Args:
             env (iGibsonEnv): active environment instance
+            only_top (bool): determine whether sampled surfaces only consist of the top surface (i.e.: "on" the object),
+                or also inside the object as well (e.g.: inside a drawer)
 
         Returns:
             function: pos sampling function handle
@@ -124,9 +130,14 @@ class CustomWrappedObject:
             # Sample random location according to the specified probability distribution
             location = np.random.choice(list(self.sample_at.keys()), p=list(self.sample_at.values()))
             # Sample a specific pos at this location
-            print(env.scene.objects_by_name.keys())
-            return env.scene.objects_by_name[location].sample_obj_position(
-                obj_radius=self.radius + 0.05, obj_height=self.height, bottom_offset=self.bottom_offset + 0.01)
+            sampler_args = {
+                "obj_radius": self.radius + 0.01,
+                "obj_height": self.height + 0.01,
+                "bottom_offset": self.bottom_offset + 0.01,
+            }
+            if only_top:
+                sampler_args["surface_name"] = "top"
+            return env.scene.objects_by_name[location].sample_obj_position(**sampler_args)
 
         # Return this sampler
         return sampler

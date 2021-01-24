@@ -42,8 +42,15 @@ class SemanticRearrangementTask(BaseTask):
             NullReward(self.config),
         ]
         self.floor_num = 0
+        self.sampling_args = self.config.get("sampling", {})
+        # Robot
+        self.robot_body_id = env.robots[0].robot_ids[0]
+        self.robot_gripper_joint_ids = env.robots[0].gripper_joint_ids
         # Objects
         self.target_objects = self._create_objects(env=env)
+        self.target_objects_id = {k: i for i, k in enumerate(self.target_objects.keys())}
+        self.target_object = None                   # this is the current active target object for the current episode
+        self.exclude_body_ids = []                  # will include all body ids belonging to any items that shouldn't be outputted in state
         # Other internal vars
         self.randomize_initial_robot_pos = randomize_initial_robot_pos
         self.init_pos_range = np.array(self.config.get("pos_range", np.zeros((2,3))))
@@ -60,10 +67,10 @@ class SemanticRearrangementTask(BaseTask):
         Returns:
             dict: objects mapped from name to BaseObject instances
         """
-        objs = {}
+        objs = OrderedDict()
         # Loop over all objects from the config file and load them
         for obj_config in self.config.get("objects", []):
-            obj = CustomWrappedObject(env=env, **obj_config)
+            obj = CustomWrappedObject(env=env, only_top=self.sampling_args.get("only_top", False), **obj_config)
             # Import this object into the simulator
             env.simulator.import_object(obj=obj, class_id=obj.class_id)
             # Store a reference to this object
@@ -83,9 +90,19 @@ class SemanticRearrangementTask(BaseTask):
             env.scene.reset_scene_objects()
             env.scene.force_wakeup_scene_objects()
 
+        # Sample new target object and reset exlude body ids
+        self.target_object = np.random.choice(list(self.target_objects.values()))
+        self.exclude_body_ids = []
+
         # Reset objects belonging to this task specifically
-        for obj in self.target_objects.values():
-            pos, ori = obj.sample_pose()
+        for obj_name, obj in self.target_objects.items():
+            # Only sample pose if this is the actual active target object
+            if self.target_object.name == obj_name:
+                pos, ori = obj.sample_pose()
+            else:
+                # Otherwise, we'll remove the object from the scene and exclude its body ids from the state
+                pos, ori = [30, 30, 30], [0, 0, 0, 1]
+                self.exclude_body_ids.append(self.target_object.body_id)
             obj.set_position_orientation(pos, ori)
         p.stepSimulation()
 
@@ -141,17 +158,70 @@ class SemanticRearrangementTask(BaseTask):
         :param env: environment instance
         :return: task-specific observation
         """
-        # Construct task obs -- consists of 3D locations of all target objects
+        # Construct task obs -- consists of 3D locations of active target object
         task_obs = OrderedDict()
         obs_cat = []
-        # Loop over all target objects and add to our task obs
-        for obj_name, obj in self.target_objects.items():
-            obj_dist = np.array(obj.get_position())
-            if self.task_obs_format == "egocentric":
-                obj_dist -= np.array(env.robots[0].get_end_effector_position())
-            task_obs[obj_name] = obj_dist
-            obs_cat.append(obj_dist)
+        obj_dist = np.array(self.target_object.get_position())
+        if self.task_obs_format == "egocentric":
+            obj_dist -= np.array(env.robots[0].get_end_effector_position())
+        task_obs[self.target_object.name] = obj_dist
+        obs_cat.append(obj_dist)
         # Add concatenated obs also
         task_obs["object-state"] = np.concatenate(obs_cat)
 
         return task_obs
+
+    def set_conditions(self, conditions):
+        """
+        Method to override task conditions (e.g.: target object), useful in cases such as playing back
+            from demonstrations
+
+        Args:
+            conditions (dict): Keyword-mapped arguments to set internally
+        """
+        # Set target object
+        self.set_target_object(identifier=conditions["task_id"])
+
+    def set_target_object(self, identifier):
+        """
+        Manually sets the target object for the current episode. Useful for, e.g., if deterministically resetting the
+        state.
+
+        Args:
+            identifier (str or int): Either the ID (as mapped by @self.target_objects_id) or object name to set
+                as the target
+        """
+        if type(identifier) is int:
+            obj_name = list(self.target_objects.keys())[identifier]
+        elif type(identifier) is str:
+            obj_name = identifier
+        else:
+            raise TypeError("Identifier must be either an int or str!")
+
+        self.target_object = self.target_objects[obj_name]
+
+    def check_success(self):
+        """
+        Checks various success states and returns the keyword-mapped values
+
+        Returns:
+            dict: Success criteria mapped to bools
+        """
+        # Task is considered success if target object is touching both gripper fingers
+        collisions = list(p.getContactPoints(bodyA=self.target_object.body_id, bodyB=self.robot_body_id))
+        touching_left_finger, touching_right_finger = False, False
+        for item in collisions:
+            if touching_left_finger and touching_right_finger:
+                # No need to continue iterating
+                break
+            # check linkB to see if it matches either gripper finger
+            if item[4] == self.robot_gripper_joint_ids[0]:
+                touching_right_finger = True
+            elif item[4] == self.robot_gripper_joint_ids[1]:
+                touching_left_finger = True
+
+        # Compose and success dict
+        success_dict = {"task": touching_left_finger and touching_right_finger}
+
+        # Return dict
+        return success_dict

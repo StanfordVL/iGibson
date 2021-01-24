@@ -32,6 +32,7 @@ class FetchGripper(LocomotorRobot):
         self.joint_ids = np.array([1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 20, 21])  # non-fixed joints
         self.arm_joint_ids = np.array([3, 12, 13, 14, 15, 16, 17, 18])  # torso and arm
         self.arm_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.arm_joint_ids]
+        self.gripper_joint_ids = np.array([20, 21])
 
         # Make sure control is specified
         control = config.get('control', None)

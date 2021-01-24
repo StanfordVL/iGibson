@@ -742,9 +742,11 @@ class URDFObject(Object):
             surface = self.sampling_surfaces[surface_name]
             if obj_height > surface["max_height"]:
                 # Object is too tall, try the next surface
+                print(f"obj too tall for sampled surface {surface_name}")
                 continue
             elif obj_radius * 2 > surface["size"][0] or obj_radius * 2 > surface["size"][1]:
                 # Object is too wide, try next surface
+                print(f"obj too wide for sampled surface {surface_name}")
                 continue
             else:
                 # Sample location
@@ -759,6 +761,8 @@ class URDFObject(Object):
                 # Offset this value by the base global position
                 sampled_location += self.init_pos
                 success = True
+                # Stop looping, we've found a valid sampling location
+                break
 
         # If no success, we couldn't find a valid sample ): Raise an error to let user know
         assert success, "No valid sampling location could be found!"

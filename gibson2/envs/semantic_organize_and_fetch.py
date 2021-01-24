@@ -121,3 +121,22 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
             }
 
         return state
+
+    def set_task_conditions(self, task_conditions):
+        """
+        Method to override task conditions (e.g.: target object), useful in cases such as playing back
+            from demonstrations
+
+        Args:
+            task_conditions (dict): Keyword-mapped arguments to pass to task instance to set internally
+        """
+        self.task.set_conditions(task_conditions)
+
+    def check_success(self):
+        """
+        Checks various success states and returns the keyword-mapped values
+
+        Returns:
+            dict: Success criteria mapped to bools
+        """
+        return self.task.check_success()
