@@ -126,7 +126,7 @@ class CustomWrappedObject:
             # Sample a specific pos at this location
             print(env.scene.objects_by_name.keys())
             return env.scene.objects_by_name[location].sample_obj_position(
-                obj_radius=self.radius + 0.01, obj_height=self.height, bottom_offset=self.bottom_offset + 0.01)
+                obj_radius=self.radius + 0.05, obj_height=self.height, bottom_offset=self.bottom_offset + 0.01)
 
         # Return this sampler
         return sampler

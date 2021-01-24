@@ -749,9 +749,10 @@ class URDFObject(Object):
             else:
                 # Sample location
                 for i in range(2):      # x, y
-                    sampled_location[i] = surface["offset_from_base"][i] + surface["size"][i] * (np.random.rand() - 0.5)
+                    sampled_location[i] = surface["offset_from_base"][i] + self.scaled_bbxc_in_blf[i] + \
+                                          (surface["size"][i] - 2 * obj_radius) * (np.random.rand() - 0.5)
                 # Set height
-                sampled_location[2] = surface["offset_from_base"][2] - bottom_offset
+                sampled_location[2] = surface["offset_from_base"][2] + self.scaled_bbxc_in_blf[2] - bottom_offset
                 # Rotate the x, y values according to init_ori (yaw value, rotation about z axis)
                 z_rot = self.init_ori[2]
                 sampled_location[:2] = np.array([[np.cos(z_rot), -np.sin(z_rot)],[np.sin(z_rot), np.cos(z_rot)]]) @ sampled_location[:2]
