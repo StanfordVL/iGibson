@@ -66,3 +66,24 @@ gibson/assets
 notebook
 build
 dist
+
+# Custom assets
+gibson2/data/assets/*
+!gibson2/data/assets/models/
+gibson2/data/assets/models/*
+!gibson2/data/assets/models/ycb/
+!gibson2/data/assets/models/fetch/
+gibson2/data/assets/models/ycb/*
+gibson2/data/assets/models/fetch/*
+!gibson2/data/assets/models/ycb/024_bowl/
+!gibson2/data/assets/models/ycb/061_foam_brick/
+!gibson2/data/assets/models/ycb/024_bowl/metadata.json
+!gibson2/data/assets/models/ycb/061_foam_brick/metadata.json
+!gibson2/data/assets/models/fetch/fetch_gripper.urdf
+!gibson2/data/assets/models/fetch/fetch_gripper_vis.urdf
+
+gibson2/data/g_dataset/*
+gibson2/data/ig_dataset/*
+!gibson2/data/ig_dataset/objects/console_table/19836/misc/metadata.json
+!gibson2/data/ig_dataset/scenes/Pomaria_1_int/urdf/Pomaria_1_int_custom.urdf
+

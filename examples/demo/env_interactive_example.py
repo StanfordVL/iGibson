@@ -10,7 +10,7 @@ def main():
     config_filename = os.path.join(
         os.path.dirname(gibson2.__file__),
         '../examples/configs/turtlebot_point_nav.yaml')
-    env = iGibsonEnv(config_file=config_filename, mode='gui')
+    env = iGibsonEnv(config_file=config_filename, mode='headless', render_to_tensor=True)
     for j in range(10):
         env.reset()
         for i in range(100):
