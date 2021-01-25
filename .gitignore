@@ -66,3 +66,6 @@ gibson/assets
 notebook
 build
 dist
+
+# Custom assets
+gibson2/data/*
