@@ -286,7 +286,7 @@ class FetchGripper(LocomotorRobot):
         :param action: robot action [tuck, diff drive, joint vels, gripper]
         """
         # See if we need to update tuck
-        tuck_updated = self.update_tucking(tuck=bool(action[0]))
+        tuck_updated = self.update_tucking(tuck=(action[0] > 0.0))
 
         # If we didn't update our tucking, execute the rest of the action
         if not tuck_updated:
