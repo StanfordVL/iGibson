@@ -206,6 +206,13 @@ class SemanticRearrangementTask(BaseTask):
 
         self.target_object = self.target_objects[obj_name]
 
+    def update_target_object_init_pos(self):
+        """
+        Function to manually update the initial target object position. Useful for, e.g., if deterministically playing
+        back from hard-coded states
+        """
+        self.target_object_init_pos = self.target_object.get_position()
+
     def check_success(self):
         """
         Checks various success states and returns the keyword-mapped values
