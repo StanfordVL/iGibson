@@ -55,6 +55,7 @@ class SemanticRearrangementTask(BaseTask):
         self.randomize_initial_robot_pos = randomize_initial_robot_pos
         self.init_pos_range = np.array(self.config.get("pos_range", np.zeros((2,3))))
         self.init_rot_range = np.array(self.config.get("rot_range", np.zeros(2)))
+        self.target_object_init_pos = None                        # will be initial x,y,z sampled placement in active episode
         # Observation mode
         self.task_obs_format = self.config.get("task_obs_format", "global") # Options are global, egocentric
         assert self.task_obs_format in {"global", "egocentric"}, \
@@ -99,6 +100,7 @@ class SemanticRearrangementTask(BaseTask):
             # Only sample pose if this is the actual active target object
             if self.target_object.name == obj_name:
                 pos, ori = obj.sample_pose()
+                self.target_object_init_pos = np.array(pos)
             else:
                 # Otherwise, we'll remove the object from the scene and exclude its body ids from the state
                 pos, ori = [30, 30, 30], [0, 0, 0, 1]
@@ -168,6 +170,10 @@ class SemanticRearrangementTask(BaseTask):
         obs_cat.append(obj_dist)
         # Add concatenated obs also
         task_obs["object-state"] = np.concatenate(obs_cat)
+        # Add task id
+        task_id_one_hot = np.zeros(len(self.target_objects.keys()))
+        task_id_one_hot[self.target_objects_id[self.target_object.name]] = 1
+        task_obs["task_id"] = task_id_one_hot
 
         return task_obs
 
@@ -207,21 +213,25 @@ class SemanticRearrangementTask(BaseTask):
         Returns:
             dict: Success criteria mapped to bools
         """
-        # Task is considered success if target object is touching both gripper fingers
+        # Task is considered success if target object is touching both gripper fingers and lifted by small margin
         collisions = list(p.getContactPoints(bodyA=self.target_object.body_id, bodyB=self.robot_body_id))
         touching_left_finger, touching_right_finger = False, False
-        for item in collisions:
-            if touching_left_finger and touching_right_finger:
-                # No need to continue iterating
-                break
-            # check linkB to see if it matches either gripper finger
-            if item[4] == self.robot_gripper_joint_ids[0]:
-                touching_right_finger = True
-            elif item[4] == self.robot_gripper_joint_ids[1]:
-                touching_left_finger = True
+        task_success = False
+        if self.target_object.get_position()[2] - self.target_object_init_pos[2] > 0.05:
+            # Object is lifted, now check for gripping contact
+            for item in collisions:
+                if touching_left_finger and touching_right_finger:
+                    # No need to continue iterating
+                    task_success = True
+                    break
+                # check linkB to see if it matches either gripper finger
+                if item[4] == self.robot_gripper_joint_ids[0]:
+                    touching_right_finger = True
+                elif item[4] == self.robot_gripper_joint_ids[1]:
+                    touching_left_finger = True
 
         # Compose and success dict
-        success_dict = {"task": touching_left_finger and touching_right_finger}
+        success_dict = {"task": task_success}
 
         # Return dict
         return success_dict
