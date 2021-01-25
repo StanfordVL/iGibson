@@ -1,15 +1,14 @@
 '''
-Credit: Andrey Kurenkov 
+Credit: Andrey Kurenkov
 '''
 
 import os
 import trimesh
 import argparse
 import numpy as np
-import yaml
+import json
 import math
 from pyquaternion import Quaternion
-from transformations import euler_from_matrix
 import pybullet as p
 from gibson2.simulator import Simulator
 from gibson2.objects.articulated_object import ArticulatedObject
@@ -18,7 +17,7 @@ import matplotlib.pyplot as plt
 
 '''
 Analyzes a model for possible ways to place it flat on a surface.
-Use by running without --ask_probs or --save_yaml to see rotations, and then with to save them with probabilities.
+Use by running without --ask_probs or --save_json to see rotations, and then with to save them with probabilities.
 '''
 
 
@@ -98,12 +97,12 @@ def main(args):
         for d in dicts:
             print(d)
 
-        if args.save_yaml:
+        if args.save_json:
             path = os.path.dirname(object_file)
-            output_path = os.path.join(path, 'orientations.yaml')
+            output_path = os.path.join(path, 'orientations.json')
 
             with open(output_path, 'w') as f:
-                documents = yaml.dump(dicts, f)
+                documents = json.dump(dicts, f)
 
         p.removeBody(body_id)
 
@@ -114,8 +113,8 @@ if __name__ == '__main__':
     parser.add_argument('object_files', nargs='+', type=str)
     parser.add_argument('--ask_probs', action='store_true',
                         help='Whether to ask probability per rotation.')
-    parser.add_argument('--save_yaml', action='store_true',
-                        help='Whether to save orientations and probabilities to yaml.')
+    parser.add_argument('--save_json', action='store_true',
+                        help='Whether to save orientations and probabilities to json.')
     parser.add_argument('--threshold', type=float, default=0.02,
                         help='Threshold for including orientations or not.')
     args = parser.parse_args()
