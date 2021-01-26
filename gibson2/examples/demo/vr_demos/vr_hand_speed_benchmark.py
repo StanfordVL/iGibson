@@ -69,7 +69,7 @@ s.import_ig_scene(scene)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
 if not VIEWER_MANIP:
-    vr_agent = VrAgent(s, use_gripper=USE_GRIPPER)
+    vr_agent = VrAgent(s, use_gripper=USE_GRIPPER, normal_color=False)
 
 objects = [
     ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,

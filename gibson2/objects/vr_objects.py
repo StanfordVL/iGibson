@@ -26,7 +26,7 @@ class VrAgent(object):
     use of this class is recommended for most VR applications, especially if you
     just want to get a VR scene up and running quickly.
     """
-    def __init__(self, sim, agent_num=1, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True, use_gripper=False):
+    def __init__(self, sim, agent_num=1, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True, use_gripper=False, normal_color=True):
         """
         Initializes VR body:
         sim - iGibson simulator object
@@ -36,6 +36,8 @@ class VrAgent(object):
         use_body - true if using VrBody
         use_gaze_marker - true if we want to visualize gaze point
         use_gripper - whether the agent should use the pybullet gripper or the iGibson VR hand
+        normal_color - whether to use normal color (grey) (when True) or alternative color (blue-tinted). The alternative
+        color is helpful for distinguishing between the client and server in multi-user VR.
         """
         self.sim = sim
         self.agent_num = agent_num
@@ -46,22 +48,23 @@ class VrAgent(object):
         self.use_body = use_body
         self.use_gaze_marker = use_gaze_marker
         self.use_gripper = use_gripper
+        self.normal_color = normal_color
 
         # Dictionary of vr object names to objects
         self.vr_dict = dict()
 
         if 'left' in self.hands:
-            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', use_constraints=self.use_constraints) if not use_gripper 
+            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', use_constraints=self.use_constraints, normal_color=self.normal_color) if not use_gripper 
                                         else VrGripper(self.sim, hand='left', use_constraints=self.use_constraints))
             self.vr_dict['left_hand'].hand_setup(self.z_coord)
         if 'right' in self.hands:
-            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', use_constraints=self.use_constraints) if not use_gripper 
+            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', use_constraints=self.use_constraints, normal_color=self.normal_color) if not use_gripper 
                                         else VrGripper(self.sim, hand='right', use_constraints=self.use_constraints))
             self.vr_dict['right_hand'].hand_setup(self.z_coord)
         if self.use_body:
-            self.vr_dict['body'] = VrBody(self.sim, self.z_coord, use_constraints=self.use_constraints)
+            self.vr_dict['body'] = VrBody(self.sim, self.z_coord, use_constraints=self.use_constraints, normal_color=self.normal_color)
         if self.use_gaze_marker:
-            self.vr_dict['gaze_marker'] = VrGazeMarker(self.sim, self.z_coord)
+            self.vr_dict['gaze_marker'] = VrGazeMarker(self.sim, self.z_coord, normal_color=self.normal_color)
 
     def update(self, vr_data=None):
         """
@@ -111,10 +114,12 @@ class VrBody(ArticulatedObject):
     them from moving through physical objects and wall, as well
     as other VR users.
     """
-    def __init__(self, s, z_coord, use_constraints=True):
-        self.vr_body_fpath = os.path.join(assets_path, 'models', 'vr_body', 'vr_body.urdf')
+    def __init__(self, s, z_coord, use_constraints=True, normal_color=True):
         self.sim = s
         self.use_constraints = use_constraints
+        self.normal_color = normal_color
+        body_path = 'normal_color' if self.normal_color else 'alternative_color'
+        self.vr_body_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_body', body_path, 'vr_body.urdf')
         super(VrBody, self).__init__(filename=self.vr_body_fpath, scale=1)
         # Start body far above the scene so it doesn't interfere with physics
         self.start_pos = [30, 0, z_coord]
@@ -377,12 +382,12 @@ class VrHand(VrHandBase):
     """
 
     # VR hand can be one of three types - no_pbr (diffuse white/grey color), skin or metal
-    def __init__(self, s, hand='right', tex_type='no_pbr', use_constraints=True):
-        self.tex_type = tex_type
-        self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_hand')
-        super(VrHand, self).__init__(s, os.path.join(self.vr_hand_folder, self.tex_type, 'vr_hand_{}.urdf'.format(hand)),
+    def __init__(self, s, hand='right', use_constraints=True, normal_color=True):
+        self.normal_color = normal_color
+        hand_path = 'normal_color' if self.normal_color else 'alternative_color'
+        self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', hand_path)
+        super(VrHand, self).__init__(s, os.path.join(self.vr_hand_folder, 'vr_hand_{}.urdf'.format(hand)),
                                     hand=hand, use_constraints=use_constraints, base_rot=p.getQuaternionFromEuler([0, 160, -80 if hand == 'right' else 80]))
-        self.tex_type = tex_type
 
         # Lists of joint indices for hand part
         self.base_idxs = [0]
@@ -403,12 +408,7 @@ class VrHand(VrHandBase):
         # Closed positions for all joints
         self.close_pos = [0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 1.2, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8]
         self.hand_friction = 2.5
-
-        # Import hand and setup
-        if tex_type == 'no_pbr':
-            self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
-        else:
-            self.sim.import_object(self, use_pbr=True, use_pbr_mapping=True, shadow_caster=True)
+        self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 
     def hand_setup(self, z_coord):
         """
@@ -445,8 +445,10 @@ class VrGripper(VrHandBase):
     """
     Gripper utilizing the pybullet gripper URDF from their VR demo.
     """
-    def __init__(self, s, hand='right', use_constraints=True):
-        self.vr_gripper_fpath = os.path.join(assets_path, 'models', 'vr_gripper', 'vr_gripper.urdf')
+    def __init__(self, s, hand='right', use_constraints=True, normal_color=True):
+        self.normal_color = normal_color
+        gripper_path = 'normal_color' if self.normal_color else 'alternative_color'
+        self.vr_gripper_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_gripper', gripper_path, 'vr_gripper.urdf')
         super(VrGripper, self).__init__(s, self.vr_gripper_fpath,
                                     hand=hand, use_constraints=use_constraints, base_rot=p.getQuaternionFromEuler([0, 0, 0]))
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
@@ -492,10 +494,11 @@ class VrGazeMarker(VisualMarker):
     """
     Represents the marker used for VR gaze tracking
     """
-    def __init__(self, s, z_coord=100):
+    def __init__(self, s, z_coord=100, normal_color=True):
         # We store a reference to the simulator so that VR data can be acquired under the hood
         self.sim = s
-        super(VrGazeMarker, self).__init__(visual_shape=p.GEOM_SPHERE, radius=0.02)
+        self.normal_color = normal_color
+        super(VrGazeMarker, self).__init__(visual_shape=p.GEOM_SPHERE, radius=0.02, rgba_color=[1, 0, 0, 1] if self.normal_color else [0, 0, 1, 1])
         s.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
         # Set high above scene initially
         self.set_position([0, 0, z_coord])
