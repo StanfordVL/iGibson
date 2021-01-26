@@ -29,7 +29,7 @@ import signal
 import sys
 
 # Set to false to load entire Rs_int scene
-LOAD_PARTIAL = True
+LOAD_PARTIAL = False
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = True
 
@@ -79,7 +79,7 @@ if not vr_settings.use_vr:
     s.renderer.set_fov(90)
 
 # Create a VrAgent and it will handle all initialization and importing under-the-hood
-vr_agent = VrAgent(s)
+vr_agent = VrAgent(s, use_gripper=True)
 
 # List of object names to filename mapping
 lunch_pack_folder = os.path.join(gibson2.assets_path, 'models', 'pack_lunch')
