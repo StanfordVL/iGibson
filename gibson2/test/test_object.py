@@ -87,7 +87,7 @@ def test_import_box():
         obj = Cube(curr[0], curr[1])
         s.import_object(obj)
 
-    config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
+    config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
     turtlebot1 = Turtlebot(config)
     turtlebot2 = Turtlebot(config)
     s.import_robot(turtlebot1)

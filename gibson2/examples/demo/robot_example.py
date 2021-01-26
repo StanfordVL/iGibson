@@ -8,7 +8,7 @@ import time
 import numpy as np
 import pybullet as p
 import pybullet_data
-
+import gibson2
 
 def main():
     p.connect(p.GUI)
@@ -19,19 +19,19 @@ def main():
     p.loadMJCF(floor)
 
     robots = []
-    config = parse_config('../configs/fetch_reaching.yaml')
+    config = parse_config(os.path.join(gibson2.example_config_path, 'fetch_reaching.yaml'))
     fetch = Fetch(config)
     robots.append(fetch)
 
-    config = parse_config('../configs/jr_reaching.yaml')
+    config = parse_config(os.path.join(gibson2.example_config_path,'jr_reaching.yaml'))
     jr = JR2_Kinova(config)
     robots.append(jr)
 
-    config = parse_config('../configs/locobot_point_nav.yaml')
+    config = parse_config(os.path.join(gibson2.example_config_path, 'locobot_point_nav.yaml'))
     locobot = Locobot(config)
     robots.append(locobot)
 
-    config = parse_config('../configs/turtlebot_point_nav.yaml')
+    config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_point_nav.yaml'))
     turtlebot = Turtlebot(config)
     robots.append(turtlebot)
 

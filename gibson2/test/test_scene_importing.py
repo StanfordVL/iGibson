@@ -48,7 +48,7 @@ def test_import_stadium():
 def test_import_building_viewing():
     download_assets()
     download_demo_data()
-    config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
+    config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
 
 
     s = Simulator(mode='headless')

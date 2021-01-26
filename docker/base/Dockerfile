@@ -45,4 +45,4 @@ RUN pip install -e .
 RUN python -m gibson2.utils.assets_utils --download_assets
 RUN python -m gibson2.utils.assets_utils --download_demo_data
 
-WORKDIR /opt/igibson/examples/demo
+WORKDIR /opt/igibson/gibson2/examples/demo

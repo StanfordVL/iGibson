@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 def benchmark(render_to_tensor=False, resolution=512):
-    config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
+    config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
     s = Simulator(mode='headless', image_width=resolution, image_height=resolution, render_to_tensor=render_to_tensor)
     scene = StaticIndoorScene('Rs',
                               build_graph=True,

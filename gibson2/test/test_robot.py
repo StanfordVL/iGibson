@@ -16,7 +16,7 @@ import os
 from gibson2.utils.assets_utils import download_assets
 
 download_assets()
-config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
+config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
 
 
 def test_fetch():

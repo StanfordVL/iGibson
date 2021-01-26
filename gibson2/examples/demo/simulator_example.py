@@ -6,11 +6,11 @@ from gibson2.utils.utils import parse_config
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import numpy as np
 from gibson2.render.profiler import Profiler
-from IPython import embed
-
+import gibson2
+import os
 
 def main():
-    config = parse_config('../configs/turtlebot_demo.yaml')
+    config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
     s = Simulator(mode='gui', image_width=256,
                   image_height=256, rendering_settings=settings)
