@@ -66,7 +66,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT 
         """
 
-        super().__init__(
+        super(InteractiveIndoorScene, self).__init__(
             scene_id,
             trav_map_resolution,
             trav_map_erosion,

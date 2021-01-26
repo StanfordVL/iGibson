@@ -190,7 +190,7 @@ class ProcessPyEnvironment(object):
 
 class ToyEnv(object):
     def __init__(self):
-        config = parse_config('../../configs/turtlebot_demo.yaml')
+        config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
         hdr_texture = os.path.join(
             gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
         hdr_texture2 = os.path.join(
@@ -231,7 +231,7 @@ class ToyEnv(object):
 
 class ToyEnvInt(object):
     def __init__(self, robot='turtlebot', scene='Rs_int'):
-        config = parse_config('../../configs/turtlebot_demo.yaml')
+        config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
         hdr_texture = os.path.join(
             gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
         hdr_texture2 = os.path.join(

@@ -9,10 +9,10 @@ from gibson2.external.pybullet_tools.utils import set_joint_positions, joints_fr
     get_max_limits, get_min_limits, get_sample_fn
 
 import numpy as np
-
+import gibson2
 
 def main():
-    config = parse_config('../configs/fetch_reaching.yaml')
+    config = parse_config(os.path.join(gibson2.example_config_path, 'fetch_reaching.yaml'))
     s = Simulator(mode='gui', physics_timestep=1 / 240.0)
     scene = EmptyScene()
     s.import_scene(scene)

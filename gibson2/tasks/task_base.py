@@ -1,13 +1,13 @@
-from abc import abstractmethod, ABC
+from abc import abstractmethod, ABCMeta
 
 
-class BaseTask(ABC):
+class BaseTask():
     """
     Base Task class.
     Task-specific reset_scene, reset_agent, get_task_obs, step methods are implemented in subclasses
     Subclasses are expected to populate self.reward_functions and self.termination_conditions
     """
-
+    __metaclass__ = ABCMeta
     def __init__(self, env):
         self.config = env.config
         self.reward_functions = []
