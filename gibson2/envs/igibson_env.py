@@ -462,7 +462,19 @@ class iGibsonEnv(BaseEnv):
         state.deserialize(serialized_world_state)
         state.restore()
         p.stepSimulation()
+        self.sync_state()
 
+    def sync_state(self):
+        """
+        Helper function used to synchronize environment. Usually used after directly setting
+        the state (e.g., reset_to(...))
+        """
+        # Sync any robot-related stuff
+        self.robots[0].sync_state()
+        # Sync the task
+        self.task.sync_state()
+        # Sync the simulator
+        self.simulator.sync()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

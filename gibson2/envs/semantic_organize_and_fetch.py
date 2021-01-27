@@ -104,21 +104,7 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
 
         if 'proprio' in self.output:
             # Add in proprio states
-            proprio = self.robots[0].calc_state()
-            state["proprio"] = {
-                "base_pos": proprio[:3],
-                "base_rpy": proprio[3:6],
-                "base_quat": proprio[6:10],
-                "base_lin_vel": proprio[10:13],
-                "base_ang_vel": proprio[13:16],
-                "joint_pos_cos": np.cos(self.robots[0].joint_position[:-2]),
-                "joint_pos_sin": np.sin(self.robots[0].joint_position[:-2]),
-                "joint_vel": self.robots[0].joint_velocity[:-2],
-                "gripper_pos": self.robots[0].joint_position[-2:],
-                "gripper_vel": self.robots[0].joint_velocity[-2:],
-                "eef_pos": self.robots[0].get_end_effector_position(),
-                "eef_quat": self.robots[0].get_end_effector_orientation(),
-            }
+            state["proprio"] = self.robots[0].get_proprio_obs()
 
         return state
 

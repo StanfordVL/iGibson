@@ -242,3 +242,19 @@ class SemanticRearrangementTask(BaseTask):
 
         # Return dict
         return success_dict
+
+    def sync_state(self):
+        """
+        Helper function to synchronize internal state variables with actual sim state. This might be necessary
+        where state mismatches may occur, e.g., after a direct sim state setting where env.step() isn't explicitly
+        called.
+        """
+        # We need to update target object if there isn't an internal one
+        # or if we detect that it's currently out of the scene
+        if self.target_object is None or np.linalg.norm(self.target_object.get_position()) > 45:
+            # Iterate over the target objects; we know the current active object is the one that's not out of the scene
+            for obj in self.target_objects.values():
+                if np.linalg.norm(obj.get_position()) < 45:
+                    # This is the target object, update it and break
+                    self.target_object = obj
+                    break

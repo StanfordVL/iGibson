@@ -5,6 +5,7 @@ import pybullet as p
 from gibson2.external.pybullet_tools.utils import joints_from_names, set_joint_positions, joint_from_name,\
     plan_joint_motion, link_from_name, set_joint_positions, get_joint_positions
 from gibson2.robots.robot_locomotor import LocomotorRobot
+import gibson2.utils.transform_utils as T
 
 
 class FetchGripper(LocomotorRobot):
@@ -28,11 +29,39 @@ class FetchGripper(LocomotorRobot):
         self.wheel_axle_half = 0.18738  # half of the distance between the wheels
         self.wheel_radius = 0.065  # radius of the wheels
 
-        # Define joint information
-        self.joint_ids = np.array([1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 20, 21])  # non-fixed joints
+        # define joint ids
+        self.joint_ids = np.array([1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 20, 21])
+
+        # define subsets of the joint ids
+        self.wheel_joint_ids = np.array([1, 2])
+        # self.head_joint_ids = list(joints_from_names(self.robot_id, ['head_pan_joint', 'head_tilt_joint']))
+        self.head_joint_ids = np.array([4, 5])
         self.arm_joint_ids = np.array([3, 12, 13, 14, 15, 16, 17, 18])  # torso and arm
-        self.arm_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.arm_joint_ids]
         self.gripper_joint_ids = np.array([20, 21])
+
+        # Get action indexes
+        self.wheel_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.wheel_joint_ids]
+        self.head_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.head_joint_ids]
+        self.arm_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.arm_joint_ids]
+        self.gripper_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.gripper_joint_ids]
+
+        self.tucked_default_joints = np.array([
+            0.0, 0.0,                                                                                       # wheels
+            -8.94255e-01,                                                                                   # trunk
+            0.0, 0.0,                                                                                       # head
+            7.29284e-01, 9.65373e-01, -4.00009e-01, 7.42225e-01, -5.08728e-05, 7.27318e-01, 5.44435e-05,    # arm
+            8.0e-01, 8.0e-01,                                                                               # gripper
+        ])
+        self.untucked_default_joints = np.array([
+            0.0, 0.0,                                                                                       # wheels
+            0.3,                                                                                            # trunk
+            0.0, 0.0,                                                                                       # head
+            -1.095292641696146, -0.13764594151800824, 1.5801872514651998, 1.5533028371247326,               # arm
+            -0.7807740632174298, 1.2798540806924843, 1.9078970015451702,
+            8.0e-01, 8.0e-01,                                                                               # gripper
+        ])
+        self.tucked_arm_joint_positions = self.tucked_default_joints[self.arm_joint_action_idx]
+        self.untucked_arm_joint_positions = self.untucked_default_joints[self.arm_joint_action_idx]
 
         # Make sure control is specified
         control = config.get('control', None)
@@ -142,6 +171,18 @@ class FetchGripper(LocomotorRobot):
         """
         return self.parts['gripper_link'].get_orientation()
 
+    def get_relative_end_effector_position(self):
+        """
+        Get relative end-effector position wrt robot base
+        """
+        return self.get_end_effector_position() - self.get_position()
+
+    def get_relative_end_effector_orientation(self):
+        """
+        Get relative end-effector orientation wrt robot base
+        """
+        return T.quat_distance(self.get_end_effector_orientation(), self.get_orientation())
+
     def get_end_effector_linear_velocity(self):
         """
         Get end-effector linear velocity
@@ -226,11 +267,10 @@ class FetchGripper(LocomotorRobot):
             success = False
             if tuck:
                 # We want to TUCK if tuck is True
-                arm_joint_positions = np.array(self.config.get("tucked_default_joints", None))[self.arm_joint_action_idx]
                 arm_path = plan_joint_motion(
                     self.robot_ids[0],
                     self.arm_joint_ids,
-                    arm_joint_positions,
+                    self.tucked_arm_joint_positions,
                     disabled_collisions=self.disabled_tucking_collisions,
                     self_collisions=True,
                     obstacles=[],
@@ -250,11 +290,10 @@ class FetchGripper(LocomotorRobot):
                     print("WARNING: Failed to plan the motion trajectory of tucking")
             else:
                 # We want to UNTUCK if tuck is False
-                candidate_grasping_joints = self.config.get("untucked_default_arm_joints", None)
                 arm_path = plan_joint_motion(
                     self.robot_ids[0],
                     self.arm_joint_ids,
-                    candidate_grasping_joints,
+                    self.untucked_arm_joint_positions,
                     disabled_collisions=self.disabled_tucking_collisions,
                     self_collisions=True,
                     obstacles=[],
@@ -303,3 +342,41 @@ class FetchGripper(LocomotorRobot):
         :param action: policy action [tuck, diff drive, joint vels, gripper]
         """
         return np.concatenate([[action[0]], super().policy_action_to_robot_action(action[1:])])
+
+    def get_proprio_obs(self):
+        """
+        Calculates the proprio observations associated with this robot
+
+        Returns:
+            dict: keyword-mapped proprio observations
+        """
+        proprio = self.calc_state()
+        obs_dict = {
+            "base_pos": proprio[:3],
+            "base_rpy": proprio[3:6],
+            "base_quat": proprio[6:10],
+            "base_lin_vel": proprio[10:13],
+            "base_ang_vel": proprio[13:16],
+            "head_joint_pos": self.joint_position[self.head_joint_action_idx],
+            "trunk_joint_pos": np.array([self.joint_position[self.arm_joint_action_idx[0]]]),
+            "arm_joint_pos_cos": np.cos(self.joint_position[self.arm_joint_action_idx[1:]]),
+            "arm_joint_pos_sin": np.sin(self.joint_position[self.arm_joint_action_idx[1:]]),
+            "joint_vel": self.joint_velocity[:-2],
+            "gripper_pos": self.joint_position[-2:],
+            "gripper_vel": self.joint_velocity[-2:],
+            "eef_pos": self.get_relative_end_effector_position(),
+            "eef_quat": self.get_relative_end_effector_orientation(),
+            "tucked": np.array([1.0 if self.tucked else -1.0]),
+        }
+        return obs_dict
+
+    def sync_state(self):
+        """
+        Helper function to synchronize internal state variables with actual sim state. This might be necessary
+        where state mismatches may occur, e.g., after a direct sim state setting where env.step() isn't explicitly
+        called.
+        """
+        # We need to update internal joint values and tucking variable
+        self.calc_state()
+        self.tucked = np.linalg.norm(self.joint_position[self.arm_joint_action_idx] -
+                                     self.tucked_arm_joint_positions) < 0.1
