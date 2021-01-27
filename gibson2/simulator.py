@@ -112,6 +112,7 @@ class Simulator:
         self.last_render_timestep = -1
         self.last_physics_step_num = -1
         self.last_frame_dur = -1
+        self.frame_count = 0
 
         self.load()
 
@@ -180,11 +181,16 @@ class Simulator:
             self.cid = p.connect(p.GUI)
         else:
             self.cid = p.connect(p.DIRECT)
+
+        # Simulation reset is needed for deterministic action replay
+        if self.vr_settings.reset_sim:
+            p.resetSimulation()
+            p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
+        if self.mode == 'vr':
+            p.setPhysicsEngineParameter(numSolverIterations=200)
         p.setTimeStep(self.physics_timestep)
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
-        # print("PyBullet Logging Information******************")
-
         self.visual_objects = {}
         self.robots = []
         self.scene = None
@@ -374,7 +380,8 @@ class Simulator:
                                               load_texture=load_texture)
                     self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
                                         ] = len(self.renderer.visual_objects) - 1
-                visual_object = self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
+                visual_object = self.visual_objects[(filename, tuple(
+                    dimensions), tuple(rel_pos), tuple(rel_orn))]
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
                     gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
@@ -626,7 +633,7 @@ class Simulator:
             if instance.dynamic:
                 self.update_position(instance)
 
-    def step(self, print_time=False, use_render_timestep_lpf=True):
+    def step(self, print_time=False, use_render_timestep_lpf=True, print_timestep=False, forced_timestep=None):
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
@@ -637,8 +644,13 @@ class Simulator:
             self.poll_vr_events()
 
         physics_start_time = time.time()
-        physics_timestep_num = int(
-            self.render_timestep / self.physics_timestep)
+        # Always guarantee at least one physics timestep
+        physics_timestep_num = max(1, int(
+            self.render_timestep / self.physics_timestep)) if not forced_timestep else forced_timestep
+        if print_timestep:
+            print(
+                "Frame {} - physics timestep num: {}".format(self.frame_count, physics_timestep_num))
+            self.frame_count += 1
         for _ in range(physics_timestep_num):
             p.stepSimulation()
         physics_dur = time.time() - physics_start_time
@@ -662,11 +674,12 @@ class Simulator:
         self.perform_vr_start_pos_move()
 
         if print_time:
+
             print('Total frame duration: {} and FPS: {}'.format(
                 round(frame_dur, 2), round(1/max(frame_dur, 0.002), 2)))
             print('Total physics duration: {} and FPS: {}'.format(
                 round(physics_dur, 2), round(1/max(physics_dur, 0.002), 2)))
-            print('Number of 1/120 physics steps: {}'.format(physics_timestep_num))
+            print('Number of physics steps: {}'.format(physics_timestep_num))
             print('Total render duration: {} and FPS: {}'.format(
                 round(render_dur, 2), round(1/max(render_dur, 0.002), 2)))
             print('-------------------------')
@@ -867,18 +880,13 @@ class Simulator:
             if obj.body_id == instance.pybullet_uuid:
                 return instance.hidden
 
-    def get_floor_ids(self):
+    def get_category_ids(self, category_name):
         """
-        Gets the body ids for all floor objects in the scene. This is used internally
-        by the VrBody class to disable collisions with the floor.
+        Gets ids for all instances of a specific category (floors, walls, etc.) in a scene.
         """
         if not hasattr(self.scene, 'objects_by_id'):
             return []
-        floor_ids = []
-        for body_id in self.objects:
-            if body_id in self.scene.objects_by_id.keys() and self.scene.objects_by_id[body_id].category == 'floors':
-                floor_ids.append(body_id)
-        return floor_ids
+        return [body_id for body_id in self.objects if body_id in self.scene.objects_by_id.keys() and self.scene.objects_by_id[body_id].category == category_name]
 
     @staticmethod
     def update_position(instance):

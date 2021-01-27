@@ -8,6 +8,7 @@ import numpy as np
 import os
 import pybullet as p
 import time
+from time import sleep
 
 import gibson2
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
@@ -18,22 +19,21 @@ from gibson2.objects.vr_objects import VrAgent
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
-
-# Key classes used for MUVR interaction
-from igvr_server import IGVRServer
-from igvr_client import IGVRClient
+from gibson2.utils.muvr_utils import IGVRClient, IGVRServer
 
 sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
 
 # Only load in first few objects in Rs to decrease load times
 LOAD_PARTIAL = True
-# Whether to print FPS each frame
-PRINT_FPS = False
+# Whether to print iGibson + networking FPS each frame
+PRINT_FPS = True
+# Whether to wait for client before simulating
+WAIT_FOR_CLIENT = True
 
 # Note: This is where the VR configuration for the MUVR experience can be changed.
 RUN_SETTINGS = {
-    'client': VrSettings(use_vr=False),
-    'server': VrSettings(use_vr=True)
+    'client': VrSettings(use_vr=True),
+    'server': VrSettings(use_vr=False)
 }
 
 
@@ -44,6 +44,7 @@ def run_muvr(mode='server', host='localhost', port='8885'):
     print('INFO: Running MUVR {} at {}:{}'.format(mode, host, port))
     # This function only runs if mode is one of server or client, so setting this bool is safe
     is_server = mode == 'server'
+
     vr_settings = RUN_SETTINGS[mode]
 
     # HDR files for PBR rendering
@@ -83,13 +84,11 @@ def run_muvr(mode='server', host='localhost', port='8885'):
         s.renderer.set_fov(90)
 
     # Spawn two agents - one for client and one for the server
-    # The client loads the agents in with MUVR set to true - this allows the VrAgent to
-    # be set up just for rendering, with no physics or constraints
     client_agent = VrAgent(s, agent_num=1)
     server_agent = VrAgent(s, agent_num=2)
 
     # Objects to interact with
-    mass_list = [5, 10, 100, 500]
+    mass_list = [5, 10, 20, 30]
     mustard_start = [-1, 1.55, 1.2]
     for i in range(len(mass_list)):
         mustard = YCBObject('006_mustard_bottle')
@@ -113,33 +112,40 @@ def run_muvr(mode='server', host='localhost', port='8885'):
         # Disconnect pybullet since the client only renders
         s.disconnect_pybullet()
 
-    # Run main networking/rendering/physics loop
-    run_start_time = time.time()
+    # Main networking loop
     while True:
+        frame_start = time.time()
         if is_server:
-            # Only step the server if a client has been connected
-            if vr_server.has_client():
+            # Update iGibson with latest vr data from client
+            vr_server.ingest_vr_data()
+
+            if not WAIT_FOR_CLIENT or vr_server.client_connected():
                 # Server is the one that steps the physics simulation, not the client
-                s.step(print_time=PRINT_FPS)
+                s.step()
+                if s.vr_settings.use_vr:
+                    server_agent.update()
+                if vr_server.latest_vr_data:
+                    client_agent.update(vr_server.latest_vr_data)
 
-            # Update VR agent on server-side
-            if s.vr_settings.use_vr:
-                server_agent.update()
-                # Need to update client agent every frame, even if VR data is stale
-                if vr_server.vr_data_persistent:
-                    client_agent.update(vr_server.vr_data_persistent)
-            
-            # Send the current frame to be rendered by the client,
-            # and also ingest new client data
-            vr_server.refresh_server()
+            # Generate and send latest rendering data to client
+            vr_server.gen_frame_data()
+            vr_server.send_frame_data()
+            vr_server.Refresh()
         else:
-            # Order of client events:
-            # 1) Receive frame data for rendering from the client
-            # Note: the rendering happens asynchronously when a callback inside the vr_client is triggered (after being sent a frame)
-            vr_client.refresh_frame_data()
-
-            # 2) Generate VR data and send over to the server
+            # Update client renderer with frame data received from server, and then render it
+            vr_client.ingest_frame_data()
+            vr_client.client_step()
+            
+            # Generate and send client's VR data so it can be used to process client physics on the server
+            # This does not generate or send data when the client is in non-VR mode - all error checking is
+            # handled by IGVRClient internally
+            vr_client.gen_vr_data()
             vr_client.send_vr_data()
+            vr_client.Refresh()
+
+        frame_dur = time.time() - frame_start
+        if PRINT_FPS:
+            print("Frame duration: {:.3f} ms".format(frame_dur / 0.001))
 
     # Disconnect at end of server session
     if is_server:
