@@ -38,6 +38,7 @@ pipeline {
                 sh 'pytest gibson2/test/test_igsdf_scene_importing.py --junitxml=test_result/test_igsdf_scene_importing.py.xml'
                 sh 'pytest gibson2/test/test_sensors.py --junitxml=test_result/test_sensors.py.xml'
                 sh 'pytest gibson2/test/test_motion_planning.py --junitxml=test_result/test_motion_planning.py.xml'
+                sh 'pytest gibson2/test/test_properties.py --junitxml=test_result/test_properties.py.xml'
             }
         }
 
