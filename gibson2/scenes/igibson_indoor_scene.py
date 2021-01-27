@@ -107,6 +107,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.objects_by_category = {}
         self.objects_by_name = {}
         self.objects_by_id = {}
+        self.objects_by_room = {}
         self.category_ids = get_ig_category_ids()
 
         # Current time string to use to save the temporal urdfs
@@ -421,6 +422,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if category not in self.objects_by_category.keys():
             self.objects_by_category[category] = []
         self.objects_by_category[category].append(added_object)
+        if in_rooms is not None:
+            for in_room in in_rooms:
+                if in_room not in self.objects_by_room.keys():
+                    self.objects_by_room[in_room] = []
+                self.objects_by_room[in_room].append(added_object)
 
         return added_object
 

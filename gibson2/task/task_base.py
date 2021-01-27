@@ -74,13 +74,76 @@ class iGTNTask(TaskNetTask):
                     len(self.objects[obj_cat]) > len(self.scene.objects_by_category[obj_cat]):
                 return False
 
+        room_type_to_obj_inst = {}
+        for cond in self.parsed_initial_conditions:
+            if cond[0] == 'inroom':
+                obj_inst, room_type = cond[1], cond[2]
+
+                # Room type missing in the scene
+                if room_type not in self.scene.room_sem_name_to_ins_name:
+                    return False
+
+                if room_type not in room_type_to_obj_inst:
+                    room_type_to_obj_inst[room_type] = []
+
+                room_type_to_obj_inst[room_type].append(obj_inst)
+
+        selected_obj_names = set()
+        for room_type in room_type_to_obj_inst:
+            room_type_success = False
+            # Loop through all instances of the room, e.g. bedroom_0, bedroom_1
+            for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
+                tmp_scope = {}
+                tmp_selected_obj_names = set()
+                room_inst_success = True
+                room_objs = self.scene.objects_by_room[room_inst]
+                # Try to assign obj instances to this room instance
+                for obj_inst in room_type_to_obj_inst[room_type]:
+                    obj_cat = self.obj_inst_to_obj_cat[obj_inst]
+                    # Assume inroom relationship can only be defined w.r.t non-sampleable object
+                    assert obj_cat in NON_SAMPLEABLE_OBJECTS
+                    room_objs_of_cat = [
+                        obj for obj in room_objs
+                        if obj.category == obj_cat
+                        and obj.name not in tmp_selected_obj_names]
+                    if len(room_objs_of_cat) == 0:
+                        room_inst_success = False
+                        break
+
+                    selected_obj = np.random.choice(room_objs_of_cat)
+                    tmp_scope[obj_inst] = selected_obj
+                    tmp_selected_obj_names.add(selected_obj.name)
+
+                # If successful, permanently assign object scope
+                if room_inst_success:
+                    for obj_inst in tmp_scope:
+                        self.object_scope[obj_inst] = tmp_scope[obj_inst]
+                        selected_obj_names.add(tmp_scope[obj_inst].name)
+                    room_type_success = True
+                    break
+
+            # Fail to assign obj instances to any room instance;
+            # Hence, initial condition cannot be fulfilled
+            if not room_type_success:
+                return False
+
         for obj_cat in self.objects:
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
+                # Remaining non-sampleable objects that have NOT been sampled
+                # in the previous room assignment phase
+                obj_inst_remain = [
+                    obj_inst for obj_inst in self.objects[obj_cat]
+                    if self.object_scope[obj_inst] is None]
+
+                obj_remain = [
+                    obj for obj in self.scene.objects_by_category[obj_cat]
+                    if obj.name not in selected_obj_names
+                ]
+
                 simulator_objs = np.random.choice(
-                    self.scene.objects_by_category[obj_cat],
-                    len(self.objects[obj_cat]), replace=False)
+                    obj_remain, len(obj_inst_remain), replace=False)
                 for obj_inst, simulator_obj in \
-                        zip(self.objects[obj_cat], simulator_objs):
+                        zip(obj_inst_remain, simulator_objs):
                     self.object_scope[obj_inst] = simulator_obj
             else:
                 category_path = get_ig_category_path(obj_cat)
@@ -94,6 +157,7 @@ class iGTNTask(TaskNetTask):
                         model_path=model_path,
                     )
                     self.object_scope[obj_inst] = simulator_obj
+
         return True
 
     def import_scene(self):
