@@ -43,8 +43,11 @@ class ArticulatedObject(Object):
         p.changeDynamics(
             body_id, -1, activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
-
+        self.body_id = body_id
         return body_id
+
+    def get_body_id(self):
+        return self.body_id
 
 
 class RBOObject(ArticulatedObject):
@@ -223,27 +226,6 @@ class URDFObject(Object):
         self.remove_floating_joints(self.scene_instance_folder)
         if self.texture_randomization:
             self.prepare_texture()
-        self.prepare_object_properties()
-
-    def prepare_object_properties(self):
-        self.properties_name = ['onTop', 'inside',
-                                'nextTo', 'under', 'touching']
-        # TODO: append more properties name based on object taxonomy
-        self.properties_name += []
-
-        self.properties = {}
-        for prop_name in self.properties_name:
-            self.properties[prop_name] = get_object_property_class(prop_name)
-
-        self.state_names = set()
-        for prop_name in self.properties:
-            self.state_names.update(
-                self.properties[prop_name].get_relevant_states())
-
-        self.states = {}
-        for state_name in self.state_names:
-            self.states[state_name] = get_object_state_instance(
-                state_name, self)
 
     def compute_object_pose(self):
         if self.connecting_joint is not None:
