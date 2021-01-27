@@ -102,6 +102,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             scene_dir, "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
         self.first_n_objects = np.inf
+        self.obj_names_to_load = []
         self.random_groups = {}
         self.objects_by_category = {}
         self.objects_by_name = {}
@@ -588,6 +589,18 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         self.first_n_objects = first_n_objects
 
+    def _set_obj_names_to_load(self, obj_name_list):
+        """
+        Only load in objects with the given string names. Hidden API as is only
+        used internally in the VR benchmark. This function automatically
+        adds walls, floors and ceilings to the room.
+
+        :param obj_name_list: list of string object names. These names must
+            all be in the scene URDF file.
+        """
+        self.obj_names_to_load = obj_name_list
+        self.obj_names_to_load.extend(['walls', 'floors', 'ceilings'])
+
     def open_one_obj(self, body_id, mode='random'):
         """
         Attempt to open one object without collision
@@ -710,6 +723,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
         visual_mesh_to_material = []
         num_loaded = 0
         for int_object in self.objects_by_name:
+            # If object names to load are specified, skip loading if we encounter a name we don't want to load
+            if self.obj_names_to_load and int_object not in self.obj_names_to_load:
+                continue
             obj = self.objects_by_name[int_object]
             new_ids = obj.load()
             for id in new_ids:
