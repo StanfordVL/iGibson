@@ -64,6 +64,7 @@ import h5py
 import numpy as np
 import pybullet as p
 import time
+import copy
 
 from gibson2.utils.vr_utils import VrData, convert_events_to_binary
 
@@ -95,7 +96,7 @@ class VRLogWriter():
         self.log_status = log_status
         # PyBullet body ids to be saved
         self.pb_ids = [p.getBodyUniqueId(i) for i in range(p.getNumBodies())]
-        self.pb_id_data_len_map = dict()
+        self.joint_map = {pbid: p.getNumJoints(pbid) for pbid in self.pb_ids}
         self.data_map = None
         # Sentinel that indicates a certain value was not set in the HDF5 
         self.default_fill_sentinel = -1.0
@@ -117,7 +118,10 @@ class VRLogWriter():
         self.name_path_data.extend([['frame_data']])
 
         for n in self.pb_ids:
-            self.name_path_data.append(['physics_data', 'body_id_{0}'.format(n)])
+            base = ['physics_data', 'body_id_{0}'.format(n)]
+            for registered_property in ['position', 'orientation', 'aabb', 'joint_state']:
+                self.name_path_data.append(copy.deepcopy(base) + [ registered_property ])
+
         
         self.name_path_data.extend([
                 ['vr', 'vr_camera', 'right_eye_view'],
@@ -143,10 +147,12 @@ class VRLogWriter():
 
         self.data_map['physics_data'] = dict()
         for pb_id in self.pb_ids:
-            # pos + orn + number of joints
-            array_len = 7 + p.getNumJoints(pb_id)
-            self.pb_id_data_len_map[pb_id] = array_len
-            self.data_map['physics_data']['body_id_{0}'.format(pb_id)] = np.full((self.frames_before_write, array_len), self.default_fill_sentinel)
+            self.data_map['physics_data']['body_id_{0}'.format(pb_id)] = dict()
+            handle = self.data_map['physics_data']['body_id_{0}'.format(pb_id)] 
+            handle['position'] = np.full((self.frames_before_write, 3), self.default_fill_sentinel)
+            handle['orientation'] = np.full((self.frames_before_write, 4), self.default_fill_sentinel)
+            handle['aabb'] = np.full((self.frames_before_write, 6), self.default_fill_sentinel)
+            handle['joint_state'] = np.full((self.frames_before_write, self.joint_map[pb_id]), self.default_fill_sentinel)
 
         self.data_map['vr'] = {
             'vr_camera': {
@@ -323,10 +329,14 @@ class VRLogWriter():
         for pb_id in self.pb_ids:
             data_list = []
             pos, orn = p.getBasePositionAndOrientation(pb_id)
-            data_list.extend(pos)
-            data_list.extend(orn)
-            data_list.extend([p.getJointState(pb_id, n)[0] for n in range(p.getNumJoints(pb_id))])
-            self.data_map['physics_data']['body_id_{0}'.format(pb_id)][self.frame_counter] = np.array(data_list)
+            pos = np.array(pos)
+            orn = np.array(orn)
+            aabb = p.getAABB(pb_id)
+            handle = self.data_map['physics_data']['body_id_{0}'.format(pb_id)]
+            handle['position'][self.frame_counter] = pos
+            handle['orientation'][self.frame_counter] = orn
+            handle['aabb'][self.frame_counter] = np.array([*aabb[0]] + [*aabb[1]])
+            handle['joint_state'][self.frame_counter] = np.array([p.getJointState(pb_id, n)[0] for n in range(self.joint_map[pb_id])])
 
     # TIMELINE: Call this at the end of each frame (eg. at end of while loop)
     def process_frame(self, s, print_vr_data=False):

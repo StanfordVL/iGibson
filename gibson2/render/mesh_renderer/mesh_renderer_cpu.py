@@ -943,7 +943,7 @@ class MeshRenderer(object):
             ]
             fbo_list += [self.fbo_ms]
 
-        if self.optimized:
+        if self.optimized and self.optimization_process_executed:
             self.r.clean_meshrenderer_optimized(clean_list, [self.tex_id_1, self.tex_id_2], fbo_list,
                                                 [self.optimized_VAO], [self.optimized_VBO], [self.optimized_EBO])
         else:
