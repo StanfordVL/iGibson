@@ -2,6 +2,7 @@ import bpy
 import os
 import sys
 import glob
+import tempfile
 import xml.etree.ElementTree as ET
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from material_util import clean_nodes,build_pbr_textured_nodes_from_name,create_empty_image
@@ -25,7 +26,7 @@ def look_at(obj_camera, point):
 
 class redirect_output(): 
     def __init__(self): 
-        logfile = '/tmp/blender_command.log'
+        logfile = os.path.join(tempfile.gettempdir(), 'blender_command.log')
         with open(logfile, 'a') as f:
             f.close()
         self.old = os.dup(1)
