@@ -63,7 +63,6 @@ else:
                 vr_settings=vr_settings)
 
 scene = InteractiveIndoorScene('Rs_int')
-# Turn this on when debugging to speed up loading
 scene._set_first_n_objects(2)
 s.import_ig_scene(scene)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())

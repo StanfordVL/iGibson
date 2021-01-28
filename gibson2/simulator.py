@@ -90,6 +90,7 @@ class Simulator:
                    
         # Starting position for the VR (default set to None if no starting position is specified by the user)
         self.vr_start_pos = None
+        self.eye_tracking_data = None
         self.max_haptic_duration = 4000
         self.image_width = image_width
         self.image_height = image_height
@@ -629,6 +630,8 @@ class Simulator:
             # Note: this should only be called once per frame - use get_vr_events to read the event data list in
             # subsequent read operations
             self.poll_vr_events()
+            # This is necessary to fix the eye tracking value for the current frame, since it is multi-threaded
+            self.fix_eye_tracking_value()
 
         physics_start_time = time.time()
         # Always guarantee at least one physics timestep
@@ -688,6 +691,12 @@ class Simulator:
                     offset_to_start[2] = self.vr_height_offset
                 self.set_vr_offset(offset_to_start)
                 self.vr_start_pos = None
+
+    # Calculates and fixes eye tracking data to its value during step(). This is necessary, since multiple
+    # calls to get eye tracking data return different results, due to the SRAnipal multithreaded loop that
+    # runs in parallel to the iGibson main thread
+    def fix_eye_tracking_value(self):
+        self.eye_tracking_data = self.renderer.vrsys.getEyeTrackingData()
     
     # Returns VR event data as list of lists. Each sub-list contains deviceType and eventType. 
     # List is empty if all events are invalid. 
@@ -748,10 +757,7 @@ class Simulator:
     # Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
     # Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
     def get_eye_tracking_data(self):
-        if not self.can_access_vr_context:
-            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
-            
-        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.eye_tracking_data
         return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
 
     # Sets the starting position of the VR system in iGibson space

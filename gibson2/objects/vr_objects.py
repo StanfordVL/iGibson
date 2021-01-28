@@ -416,13 +416,15 @@ class VrHand(VrHandBase):
         """
         super(VrHand, self).hand_setup(z_coord)
         p.changeDynamics(self.body_id, -1, mass=2, lateralFriction=self.hand_friction)
-        for jointIndex in range(p.getNumJoints(self.body_id)):
+        for joint_index in range(p.getNumJoints(self.body_id)):
             # Make masses larger for greater stability
             # Mass is in kg, friction is coefficient
-            p.changeDynamics(self.body_id, jointIndex, mass=0.1, lateralFriction=self.hand_friction)
-            open_pos = self.open_pos[jointIndex]
-            p.resetJointState(self.body_id, jointIndex, open_pos)
-            p.setJointMotorControl2(self.body_id, jointIndex, p.POSITION_CONTROL, targetPosition=open_pos, force=3)
+            p.changeDynamics(self.body_id, joint_index, mass=0.1, lateralFriction=self.hand_friction)
+            open_pos = self.open_pos[joint_index]
+            p.resetJointState(self.body_id, joint_index, targetValue=open_pos, targetVelocity=0.0)
+            p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.POSITION_CONTROL, targetPosition=open_pos, 
+                                    targetVelocity=0.0, positionGain=0.1, velocityGain=0.1, force=0)
+            p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
         # Create constraint that can be used to move the hand
         if self.use_constraints:
             self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.start_pos)
