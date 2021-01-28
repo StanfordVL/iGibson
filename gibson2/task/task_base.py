@@ -59,6 +59,9 @@ class iGTNTask(TaskNetTask):
             self.sampled_simulator_objects = handmade_sim_objs
             self.sim_obj_categories = handmade_sim_obj_categories
             self.sampled_dsl_objects = handmade_dsl_objs
+            self.prepare_object_properties()
+            self.initialize(InteractiveIndoorScene,
+                            scene_id=scene_id)
 
     def prepare_object_properties(self):
         self.properties_name = get_all_object_properties()
