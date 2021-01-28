@@ -171,6 +171,11 @@ py::list VRRendererContext::getVROffset() {
 	return offset;
 }
 
+// Returns whether the current VR system supports eye tracking
+bool VRRendererContext::hasEyeTrackingSupport() {
+	return ViveSR::anipal::Eye::IsViveProEye();
+}
+
 // Initialize the VR system and compositor
 // TIMELINE: Call during init of renderer, before height/width are set
 void VRRendererContext::initVR(bool useEyeTracking) {
@@ -428,6 +433,7 @@ glm::vec3 VRRendererContext::getVec3ColFromMat4(int col_index, glm::mat4& mat) {
 void VRRendererContext::initAnipal() {
 	if (!ViveSR::anipal::Eye::IsViveProEye()) {
 		fprintf(stderr, "This HMD does not support eye-tracking!\n");
+		exit(EXIT_FAILURE);
 	}
 
 	int anipalError = ViveSR::anipal::Initial(ViveSR::anipal::Eye::ANIPAL_TYPE_EYE, NULL);
@@ -436,8 +442,10 @@ void VRRendererContext::initAnipal() {
 		break;
 	case ViveSR::Error::RUNTIME_NOT_FOUND:
 		fprintf(stderr, "SRAnipal runtime not found!\n");
+		exit(EXIT_FAILURE);
 	default:
 		fprintf(stderr, "Failed to initialize SRAnipal!\n");
+		exit(EXIT_FAILURE);
 	}
 
 	// Launch a thread to poll data from the SRAnipal SDK
@@ -671,7 +679,8 @@ void VRRendererContext::updateVRData() {
 				if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_Trigger) {
 					trigger_index = i;
 				}
-				else if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_TrackPad) {
+				// Detect trackpad on HTC Vive controller and Joystick on Oculus controller
+				else if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_TrackPad || axisType == vr::EVRControllerAxisType::k_eControllerAxis_Joystick) {
 					touchpad_index = i;
 				}
 			}
@@ -785,6 +794,7 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("getDeviceCoordinateSystem", &VRRendererContext::getDeviceCoordinateSystem);
 	pymodule.def("getEyeTrackingData", &VRRendererContext::getEyeTrackingData);
 	pymodule.def("getVROffset", &VRRendererContext::getVROffset);
+	pymodule.def("hasEyeTrackingSupport", &VRRendererContext::hasEyeTrackingSupport);
 	pymodule.def("initVR", &VRRendererContext::initVR);
 	pymodule.def("pollVREvents", &VRRendererContext::pollVREvents);
 	pymodule.def("postRenderVRForEye", &VRRendererContext::postRenderVRForEye);

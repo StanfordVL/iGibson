@@ -25,8 +25,8 @@ import gibson2
 
 
 project = 'iGibson'
-copyright = 'Stanford University 2018-2020'
-author = 'Fei Xia, William B. Shen, Chengshu Li, Micael Tchapmi, Lyne Tchapmi, Noriaki Hirose, Kevin Chen, Junyoung Gwak Priya Kasimbeg, Alexander Toshev,  Amir R. Zamir, Roberto Martı́n-Martı́n, Li Fei-Fei, Silvio Savarese'
+copyright = 'Stanford University 2018-2021'
+author = 'Bokui Shen*, Fei Xia*, Chengshu Li*, Roberto Martín-Martín*, Linxi Fan, Guanzhi Wang, Shyamal Buch, Claudia DArpino, Sanjana Srivastava, Lyne P. Tchapmi, Micael E. Tchapmi, Kent Vainio, Li Fei-Fei, Silvio Savarese (*Equal Contribution)'
 
 github_doc_root = 'https://github.com/StanfordVL/iGibson'
 

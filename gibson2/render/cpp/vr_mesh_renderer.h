@@ -70,27 +70,6 @@ public:
 	glm::vec3 rightEyeCameraPos;
 
 	// Matrices that can transform between gibson and VR space
-	// VR and Gibson coordinate systems explained:
-	// VR coordinate system follows the OpenGL default:
-	// TODO: Finish explaining this! Also play around with coordinate systems!
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
 	glm::mat4 gibToVr;
 	glm::mat4 vrToGib;
 
@@ -125,6 +104,8 @@ public:
 	py::list getEyeTrackingData();
 
 	py::list getVROffset();
+	
+	bool hasEyeTrackingSupport();
 
 	void initVR(bool useEyeTracking);
 

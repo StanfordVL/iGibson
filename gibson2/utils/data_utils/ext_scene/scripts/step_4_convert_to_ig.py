@@ -20,7 +20,7 @@ for file in ../../gibson2/ig_dataset/scenes/*
   python scene_converter.py $(basename $file)
 """
 
-config = parse_config(os.path.join(gibson2.root_path, '../test/test.yaml'))
+config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
 missing_models = set([
     'exercise_equipment',
     'curtain',

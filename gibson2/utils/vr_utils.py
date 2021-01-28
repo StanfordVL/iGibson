@@ -102,6 +102,11 @@ class VrData(object):
         self.vr_data_dict['vr_positions'] = [muvr_data['vr_pos'], muvr_data['vr_offset']]
         self.vr_data_dict['vr_settings'] = muvr_data['vr_settings']
 
+    def print_data(self):
+        """ Utility function to print VrData object in a pretty fashion. """
+        for k, v in self.vr_data_dict.items():
+            print("{}: {}".format(k, v))
+
 
 # ----- Utility functions ------
 

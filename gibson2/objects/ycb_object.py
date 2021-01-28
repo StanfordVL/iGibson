@@ -30,4 +30,8 @@ class YCBObject(Object):
                                     baseVisualShapeIndex=visual_id,
                                     basePosition=[0.2, 0.2, 1.5],
                                     baseMass=0.1)
+        self.body_id = body_id
         return body_id
+
+    def get_body_id(self):
+        return self.body_id
