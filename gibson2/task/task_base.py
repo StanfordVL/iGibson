@@ -27,7 +27,9 @@ class iGTNTask(TaskNetTask):
         :param task_instance: int, specific instance of atus_activity init/final conditions
                                    optional, randomly generated if not specified
         '''
-        super().__init__(atus_activity, task_instance=task_instance)
+        super().__init__(atus_activity,
+                         task_instance=task_instance,
+                         scene_path=os.path.join(gibson2.ig_dataset_path, 'scenes'))
 
     def initialize_simulator(self,
                              mode='iggui',
