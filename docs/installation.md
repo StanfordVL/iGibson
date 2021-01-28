@@ -33,7 +33,7 @@ iGibson's simulator can be installed as a python package using pip:
 ```bash
 pip install gibson2  # This step takes about 4 minutes
 # run the demo
-python -m gibson2.scripts.demo_static
+python -m gibson2.examples.demo.demo_static
 ```
 
 Note: we support using a custom pybullet version to speed up the physics in iGibson, if you want to have the speed up, you would need to do the following steps after installation:
@@ -80,7 +80,7 @@ Alternatively, iGibson can be compiled from source: [iGibson GitHub Repo](https:
 git clone https://github.com/StanfordVL/iGibson --recursive
 cd iGibson
 
-conda create -n py3-igibson python=3.6 anaconda # we support python 3.5, 3.6, 3.7, 3.8
+conda create -n py3-igibson python=3.6 anaconda # we support python 2.7, 3.5, 3.6, 3.7, 3.8
 source activate py3-igibson
 pip install -e . # This step takes about 4 minutes
 ```
@@ -120,7 +120,7 @@ python -m gibson2.utils.assets_utils --download_assets
 ```
 
 
-Third, you need to download some large 3D reconstructed real-world environments (e.g. houses and offices) from [our dataset](dataset.md) for your agents to be trained in. Create a new folder for those environments and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/data/g_dataset` and `your_installation_path/gibson2/data/ig_dataset`). You can get access and download the Gibson and iGibson datasets by filling up the following [license agreement](https://forms.gle/36TW9uVpjrE1Mkf9A). In addition, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo purposes.
+Third, you need to download some large 3D reconstructed real-world environments (e.g. houses and offices) from [our dataset](dataset.md) for your agents to be trained in. Create a new folder for those environments and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/data/g_dataset` and `your_installation_path/gibson2/data/ig_dataset`). You can get access and download the Gibson dataset (after filling up the following [license agreement](https://forms.gle/36TW9uVpjrE1Mkf9A)) and the iGibson dataset (following the guide [here](http://svl.stanford.edu/igibson/docs/dataset.html#download-instruction) or following the instructions below). In addition, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo purposes.
 
 To download the demo data, run:
 

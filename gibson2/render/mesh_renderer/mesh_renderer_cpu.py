@@ -425,8 +425,10 @@ class MeshRenderer(object):
             else:
                 shape_normal = vertex_normal[shape_normal_index]
 
+            # Scale the shape before transforming
             # Need to flip normals in axes where we have negative scaling
             for i in range(3):
+                shape_vertex[:, i] *= scale[i]
                 if scale[i] < 0:
                     shape_normal[:, i] *= -1
 
@@ -437,15 +439,12 @@ class MeshRenderer(object):
                 shape_texcoord = vertex_texcoord[shape_texcoord_index]
 
             if transform_orn is not None:
+                # Rotate the shape after they are scaled
                 orn = quat2rotmat(xyzw2wxyz(transform_orn))
                 shape_vertex = shape_vertex.dot(orn[:3, :3].T)
             if transform_pos is not None:
-                # shape_vertex is using the scale of original obj file
-                # before scaling in the URDF.
-                # However, transform_pos is already scaled by "scale"
-                # Therefore, to avoid transform_pos from being scaled twice,
-                # we need to divide transform_pos by "scale" first.
-                shape_vertex += np.array(transform_pos) / scale
+                # Translate the shape after they are scaled
+                shape_vertex += np.array(transform_pos)
 
             v0 = shape_vertex[0::3, :]
             v1 = shape_vertex[1::3, :]
@@ -467,7 +466,7 @@ class MeshRenderer(object):
             bitangent = bitangent.repeat(3, axis=0)
             tangent = tangent.repeat(3, axis=0)
             vertices = np.concatenate(
-                [shape_vertex * scale, shape_normal, shape_texcoord, tangent, bitangent], axis=-1)
+                [shape_vertex, shape_normal, shape_texcoord, tangent, bitangent], axis=-1)
             faces = np.array(range(len(vertices))).reshape(
                 (len(vertices) // 3, 3))
             vertexData = vertices.astype(np.float32)
@@ -944,7 +943,7 @@ class MeshRenderer(object):
             ]
             fbo_list += [self.fbo_ms]
 
-        if self.optimized:
+        if self.optimized and self.optimization_process_executed:
             self.r.clean_meshrenderer_optimized(clean_list, [self.tex_id_1, self.tex_id_2], fbo_list,
                                                 [self.optimized_VAO], [self.optimized_VBO], [self.optimized_EBO])
         else:
@@ -1074,7 +1073,7 @@ class MeshRenderer(object):
                 or_buffer_idx_end = len(duplicate_vao_ids)
                 # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this Instance will use
                 instance.or_buffer_indices = list(
-                    np.arange(or_buffer_idx_start, or_buffer_idx_end)).copy()
+                    np.arange(or_buffer_idx_start, or_buffer_idx_end))
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * len(ids))
                 pbr_data_array.extend(
@@ -1094,7 +1093,7 @@ class MeshRenderer(object):
                     temp_or_buffer_indices.extend(
                         list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
                     id_sum += len(ids)
-                instance.or_buffer_indices = temp_or_buffer_indices.copy()
+                instance.or_buffer_indices = list(temp_or_buffer_indices)
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * id_sum)
                 pbr_data_array.extend(

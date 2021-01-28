@@ -64,6 +64,7 @@ import h5py
 import numpy as np
 import pybullet as p
 import time
+import copy
 
 from gibson2.utils.vr_utils import VrData, convert_events_to_binary
 
@@ -82,7 +83,7 @@ class VRLogWriter():
     """
 
     # TIMELINE: Initialize the VRLogger just before simulation starts, once all bodies have been loaded
-    def __init__(self, frames_before_write, log_filepath, profiling_mode=False):
+    def __init__(self, frames_before_write, log_filepath, profiling_mode=False, log_status=True):
         # The number of frames to store data on the stack before writing to HDF5.
         # We buffer and flush data like this to cause a small an impact as possible
         # on the VR frame-rate.
@@ -91,9 +92,11 @@ class VRLogWriter():
         self.log_filepath = log_filepath
         # If true, will print out time it takes to save to hd5
         self.profiling_mode = profiling_mode
+        # Whether to log status during program run time
+        self.log_status = log_status
         # PyBullet body ids to be saved
         self.pb_ids = [p.getBodyUniqueId(i) for i in range(p.getNumBodies())]
-        self.pb_id_data_len_map = dict()
+        self.joint_map = {pbid: p.getNumJoints(pbid) for pbid in self.pb_ids}
         self.data_map = None
         # Sentinel that indicates a certain value was not set in the HDF5 
         self.default_fill_sentinel = -1.0
@@ -115,7 +118,10 @@ class VRLogWriter():
         self.name_path_data.extend([['frame_data']])
 
         for n in self.pb_ids:
-            self.name_path_data.append(['physics_data', 'body_id_{0}'.format(n)])
+            base = ['physics_data', 'body_id_{0}'.format(n)]
+            for registered_property in ['position', 'orientation', 'aabb', 'joint_state']:
+                self.name_path_data.append(copy.deepcopy(base) + [ registered_property ])
+
         
         self.name_path_data.extend([
                 ['vr', 'vr_camera', 'right_eye_view'],
@@ -141,10 +147,12 @@ class VRLogWriter():
 
         self.data_map['physics_data'] = dict()
         for pb_id in self.pb_ids:
-            # pos + orn + number of joints
-            array_len = 7 + p.getNumJoints(pb_id)
-            self.pb_id_data_len_map[pb_id] = array_len
-            self.data_map['physics_data']['body_id_{0}'.format(pb_id)] = np.full((self.frames_before_write, array_len), self.default_fill_sentinel)
+            self.data_map['physics_data']['body_id_{0}'.format(pb_id)] = dict()
+            handle = self.data_map['physics_data']['body_id_{0}'.format(pb_id)] 
+            handle['position'] = np.full((self.frames_before_write, 3), self.default_fill_sentinel)
+            handle['orientation'] = np.full((self.frames_before_write, 4), self.default_fill_sentinel)
+            handle['aabb'] = np.full((self.frames_before_write, 6), self.default_fill_sentinel)
+            handle['joint_state'] = np.full((self.frames_before_write, self.joint_map[pb_id]), self.default_fill_sentinel)
 
         self.data_map['vr'] = {
             'vr_camera': {
@@ -321,13 +329,17 @@ class VRLogWriter():
         for pb_id in self.pb_ids:
             data_list = []
             pos, orn = p.getBasePositionAndOrientation(pb_id)
-            data_list.extend(pos)
-            data_list.extend(orn)
-            data_list.extend([p.getJointState(pb_id, n)[0] for n in range(p.getNumJoints(pb_id))])
-            self.data_map['physics_data']['body_id_{0}'.format(pb_id)][self.frame_counter] = np.array(data_list)
+            pos = np.array(pos)
+            orn = np.array(orn)
+            aabb = p.getAABB(pb_id)
+            handle = self.data_map['physics_data']['body_id_{0}'.format(pb_id)]
+            handle['position'][self.frame_counter] = pos
+            handle['orientation'][self.frame_counter] = orn
+            handle['aabb'][self.frame_counter] = np.array([*aabb[0]] + [*aabb[1]])
+            handle['joint_state'][self.frame_counter] = np.array([p.getJointState(pb_id, n)[0] for n in range(self.joint_map[pb_id])])
 
     # TIMELINE: Call this at the end of each frame (eg. at end of while loop)
-    def process_frame(self, s):
+    def process_frame(self, s, print_vr_data=False):
         """Asks the VRLogger to process frame data. This includes:
         -- updating pybullet data
         -- incrementing frame counter by 1
@@ -344,6 +356,11 @@ class VRLogWriter():
             self.frame_counter = 0
             # We have accumulated enough data, which we will write to hd5
             self.write_to_hd5()
+            if print_vr_data:
+                self.temp_vr_data = VrData()
+                for hf_idx in range(self.persistent_frame_count - self.frames_before_write, self.persistent_frame_count):
+                    self.temp_vr_data.refresh_action_replay_data(self.hf, hf_idx)
+                    self.temp_vr_data.print_data()
 
     def refresh_data_map(self):
         """Resets all values stored in self.data_map to the default sentinel value.
@@ -357,7 +374,8 @@ class VRLogWriter():
         """Writes data stored in self.data_map to hd5.
         The data is saved each time this function is called, so data
         will be saved even if a Ctrl+C event interrupts the program."""
-        print('----- Writing log data to hd5 on frame: {0} -----'.format(self.persistent_frame_count))
+        if self.log_status:
+            print('----- Writing log data to hd5 on frame: {0} -----'.format(self.persistent_frame_count))
         start_time = time.time()
         for name_path in self.name_path_data:
             curr_dset = self.hf['/'.join(name_path)]
@@ -373,7 +391,8 @@ class VRLogWriter():
 
     def end_log_session(self):
         """Closes hdf5 log file at end of logging session."""
-        print('VR LOGGER INFO: Ending log writing session after {} frames'.format(self.persistent_frame_count))
+        if self.log_status:
+            print('VR LOGGER INFO: Ending log writing session after {} frames'.format(self.persistent_frame_count))
         self.hf.close()
 
 class VRLogReader():
@@ -381,24 +400,25 @@ class VRLogReader():
     def __init__(self, log_filepath):
         self.log_filepath = log_filepath
         # Frame counter keeping track of how many frames have been reproduced
-        # The counter starts at -1 and is incremented to 0 at the start of the first replay frame
         self.frame_counter = -1
         self.hf = h5py.File(self.log_filepath, 'r')
         self.pb_ids = self.extract_pb_ids()
         # Get total frame num (dataset row length) from an arbitary dataset
         self.total_frame_num = self.hf['vr/vr_device_data/hmd'].shape[0]
-        # Boolean indicating if we still have data left to read
-        self.data_left_to_read = True
         # Placeholder VrData object, which will be filled every frame if we are performing action replay
         self.vr_data = VrData()
         print('----- VRLogReader initialized -----')
         print('Preparing to read {0} frames'.format(self.total_frame_num))
 
     def extract_pb_ids(self):
-        """Extracts pybullet body ids from saved data."""
+        """ Extracts pybullet body ids from saved data."""
         return [int(metadata[0].split('_')[-1]) for metadata in self.hf['physics_data'].items()]
 
-    def read_frame(self, s, fullReplay=True):
+    def get_phys_step_n(self):
+        """ Gets the number of physics step for the current frame. """
+        return int(self.hf['frame_data'][self.frame_counter][3])
+
+    def read_frame(self, s, full_replay=True, print_vr_data=False):
         """Reads a frame from the VR logger and steps simulation with stored data."""
 
         """Reads a frame from the VR logger and steps simulation with stored data.
@@ -408,20 +428,16 @@ class VRLogReader():
 
         Args:
             s (simulator): used to set camera view and projection matrices
-            fullReplay: boolean indicating if we should replay full state of the world or not.
+            full_replay: boolean indicating if we should replay full state of the world or not.
                 If this value is set to false, we simply increment the frame counter each frame, 
                 and let the user take control of processing actions and simulating them
+            print_vr_data: boolean indicating whether all vr data should be printed each frame (for debugging purposes)
         """
-        # Increment frame counter
-        self.frame_counter += 1
-
-        # Catch error where the user tries to keep reading a frame when all frames have been read
-        if self.frame_counter >= self.total_frame_num:
-            return
+        if print_vr_data:
+            self.get_vr_action_data().print_data()
 
         # Get all frame statistics for the most recent frame
-        _, _, render_t, _, frame_duration = list(self.hf['frame_data'][self.frame_counter])
-        s.set_render_timestep(render_t)
+        frame_duration = self.hf['frame_data'][self.frame_counter][4]
 
         read_start_time = time.time()
         # Each frame we first set the camera data
@@ -431,7 +447,7 @@ class VRLogReader():
         s.renderer.camera = right_cam_pos
         s.renderer.set_light_position_direction([right_cam_pos[0], right_cam_pos[1], 10], [right_cam_pos[0], right_cam_pos[1], 0])
 
-        if fullReplay:
+        if full_replay:
             # If doing full replay we update the physics manually each frame
             for pb_id in self.pb_ids:
                 id_name = 'body_id_{0}'.format(pb_id)
@@ -442,9 +458,6 @@ class VRLogReader():
                 p.resetBasePositionAndOrientation(pb_id, pos, orn)
                 for i in range(len(joint_data)):
                     p.resetJointState(pb_id, i, joint_data[i])
-
-        if self.frame_counter >= self.total_frame_num - 1:
-            self.data_left_to_read = False
         
         # Sleep to simulate accurate timestep
         read_duration = time.time() - read_start_time
@@ -483,7 +496,11 @@ class VRLogReader():
     # TIMELINE: Use this as the while loop condition to keep reading frames!
     def get_data_left_to_read(self):
         """Returns whether there is still data left to read."""
-        return self.data_left_to_read
+        self.frame_counter += 1
+        if self.frame_counter >= self.total_frame_num:
+            return False
+        else:
+            return True
     
     def end_log_session(self):
         """Call this once reading has finished to clean up resources used."""
