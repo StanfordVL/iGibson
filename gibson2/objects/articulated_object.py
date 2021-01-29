@@ -18,8 +18,6 @@ from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
-from gibson2.object_properties.factory import get_object_property_class
-from gibson2.object_states.factory import get_object_state_instance
 
 
 class ArticulatedObject(Object):
