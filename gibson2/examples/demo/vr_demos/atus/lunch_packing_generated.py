@@ -53,7 +53,7 @@ s = Simulator(mode='vr',
             rendering_settings=vr_rendering_settings,
             vr_settings=vr_settings)
 igtn_task = iGTNTask('lunchpacking_demo', 0)
-igtn_task.initialize_simulator(handmade_simulator=s, scene_id='Beechwood_0_int')
+igtn_task.initialize_simulator(simulator=s, scene_id='Beechwood_0_int')
 
 kitchen_middle = [-3.7, -2.7, 1.8]
 
