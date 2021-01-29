@@ -55,3 +55,21 @@ def get_object_state_instance(state_name, obj, online=True):
 
     state_class = _STATE_NAME_TO_CLASS_MAPPING[state_name]
     return state_class(obj)
+
+
+def prepare_object_states(obj, abilities=[], online=True):
+    state_names = list(get_default_state_names())
+
+    for ability in abilities:
+        state_names.extend(get_state_names_for_ability(ability))
+
+    states = dict()
+    for state_name in state_names:
+        states[state_name] = get_object_state_instance(state_name, obj)
+
+        # Add each state's dependencies, too
+        for dependency in states[state_name].get_dependencies():
+            if dependency not in state_names:
+                state_names.append(dependency)
+
+    return states
