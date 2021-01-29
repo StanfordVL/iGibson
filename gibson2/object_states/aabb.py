@@ -1,17 +1,17 @@
-
-from gibson2.object_states.object_state_base import BaseObjectState
+from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.external.pybullet_tools.utils import aabb_union, get_aabb, get_all_links
 import numpy as np
 import pybullet as p
 
 
-class AABB(BaseObjectState):
-
-    def __init__(self, obj, online=True):
-        super(AABB, self).__init__(obj, online=online)
+class AABB(AbsoluteObjectState):
+    def __init__(self, obj):
+        super(AABB, self).__init__(obj)
+        self.value = None
 
     def get_value(self):
-        if self.online:
+        # Compute this once per simulation step.
+        if self.value is None:
             body_id = self.obj.get_body_id()
             all_links = get_all_links(body_id)
             if p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
@@ -24,5 +24,10 @@ class AABB(BaseObjectState):
 
         return self.value
 
-    def update_online(self, simulator):
-        pass
+    def set_value(self, new_value):
+        raise NotImplementedError("AABB state currently does not support setting.")
+
+    def update(self, simulator):
+        # During a single simulation step we want to use the same value for multiple calls
+        # but we need to reset it between every simulation step.
+        self.value = None
