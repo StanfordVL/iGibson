@@ -1,24 +1,22 @@
-
-from gibson2.object_properties.kinematics import Kinematics
-from gibson2.object_properties.utils import sample_kinematics
+from gibson2.object_states.kinematics import KinematicsMixin
+from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
+from gibson2.object_states.utils import sample_kinematics
 from gibson2.external.pybullet_tools.utils import get_aabb_center, aabb_contains_point, aabb2d_from_aabb
 from gibson2.utils.constants import UNDER_OBJECTS
 
 
-class Under(Kinematics):
+class Under(KinematicsMixin, RelativeObjectState, BooleanState):
 
-    @staticmethod
-    def set_binary_state(objA, objB, binary_state):
+    def set_value(self, other, new_value):
         sampling_success = sample_kinematics(
-            'under', objA, objB, binary_state)
+            'under', self.obj, other, new_value)
         if sampling_success:
-            assert Under.get_binary_state(objA, objB) == binary_state
+            assert self.get_value(other) == new_value
         return sampling_success
 
-    @staticmethod
-    def get_binary_state(objA, objB):
-        objA_states = objA.states
-        objB_states = objB.states
+    def get_value(self, other):
+        objA_states = self.obj.states
+        objB_states = other.states
 
         assert 'aabb' in objA_states
         assert 'aabb' in objB_states
@@ -30,7 +28,7 @@ class Under(Kinematics):
             get_aabb_center(objA_aabb)[:2],
             aabb2d_from_aabb(objB_aabb))
 
-        if objB.category in UNDER_OBJECTS:  # tables, chairs, etc
+        if other.category in UNDER_OBJECTS:  # tables, chairs, etc
             below = objA_aabb[1][2] <= objB_aabb[1][2]
         else:  # other objects
             below = objA_aabb[1][2] <= objB_aabb[0][2]

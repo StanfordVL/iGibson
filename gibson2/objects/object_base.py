@@ -1,8 +1,8 @@
 import pybullet as p
 import os
 import gibson2
-from gibson2.object_properties.factory import get_object_property_class
-from gibson2.object_states.factory import get_object_state_instance
+from gibson2.object_states.factory import get_object_state_instance, get_default_state_names, \
+    get_state_names_for_ability
 
 
 class Object(object):
@@ -14,7 +14,7 @@ class Object(object):
         self.body_id = None
         self.loaded = False
 
-        self.prepare_object_properties()
+        self.prepare_object_states()
 
     def load(self):
         """
@@ -79,22 +79,18 @@ class Object(object):
         self.set_orientation(p.getQuaternionFromEuler(
             [e_x + x, e_y + y, e_z + z]))
 
-    def prepare_object_properties(self):
-        self.properties_name = ['onTop', 'inside',
-                                'nextTo', 'under', 'touching']
-        # TODO: append more properties name based on object taxonomy
-        self.properties_name += []
+    def prepare_object_states(self):
+        state_names = list(get_default_state_names())
 
-        self.properties = {}
-        for prop_name in self.properties_name:
-            self.properties[prop_name] = get_object_property_class(prop_name)
+        abilities = []  # TODO: get the object's ability names from taxonomy
+        for ability in abilities:
+            state_names.extend(get_state_names_for_ability(ability))
 
-        self.state_names = set()
-        for prop_name in self.properties:
-            self.state_names.update(
-                self.properties[prop_name].get_relevant_states())
+        self.states = dict()
+        for state_name in state_names:
+            self.states[state_name] = get_object_state_instance(state_name, self)
 
-        self.states = {}
-        for state_name in self.state_names:
-            self.states[state_name] = get_object_state_instance(
-                state_name, self)
+            # Add each state's dependencies, too
+            for dependency in self.states[state_name].get_dependencies():
+                if dependency not in state_names:
+                    state_names.append(dependency)
