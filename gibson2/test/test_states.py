@@ -38,14 +38,14 @@ def test_on_top():
             s.step()
 
         # Now check that the box is on top of the lower cabinet
-        assert obj3.properties['touching'].get_binary_state(obj3, obj1)
-        assert obj3.properties['onTop'].get_binary_state(obj3, obj1)
-        assert not obj3.properties['inside'].get_binary_state(obj3, obj1)
+        assert obj3.states['touching'].get_value(obj1)
+        assert obj3.states['onTop'].get_value(obj1)
+        assert not obj3.states['inside'].get_value(obj1)
 
         # Now check that the box is not on top / touching of the upper cabinet
-        assert not obj3.properties['touching'].get_binary_state(obj3, obj2)
-        assert not obj3.properties['onTop'].get_binary_state(obj3, obj2)
-        assert not obj3.properties['inside'].get_binary_state(obj3, obj2)
+        assert not obj3.states['touching'].get_value(obj2)
+        assert not obj3.states['onTop'].get_value(obj2)
+        assert not obj3.states['inside'].get_value(obj2)
     finally:
         s.disconnect()
 
@@ -79,13 +79,13 @@ def test_inside():
             s.step()
 
         # Now check that the box is inside / touching the upper cabinet
-        assert obj3.properties['touching'].get_binary_state(obj3, obj2)
-        assert obj3.properties['inside'].get_binary_state(obj3, obj2)
-        assert not obj3.properties['onTop'].get_binary_state(obj3, obj2)
+        assert obj3.states['touching'].get_value(obj2)
+        assert obj3.states['inside'].get_value(obj2)
+        assert not obj3.states['onTop'].get_value(obj2)
 
         # Now check that the box is not inside / touching the upper cabinet
-        assert not obj3.properties['touching'].get_binary_state(obj3, obj1)
-        assert not obj3.properties['inside'].get_binary_state(obj3, obj1)
-        assert not obj3.properties['onTop'].get_binary_state(obj3, obj1)
+        assert not obj3.states['touching'].get_value(obj1)
+        assert not obj3.states['inside'].get_value(obj1)
+        assert not obj3.states['onTop'].get_value(obj1)
     finally:
         s.disconnect()
