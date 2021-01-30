@@ -116,7 +116,6 @@ class CustomWrappedObject:
     def _create_stochastic_location_pos_sampler(self, env, only_top=False):
         """
         Helper function to generate stochastic sampler for sampling a random location for this object to be placed.
-
         Args:
             env (iGibsonEnv): active environment instance
             only_top (bool): determine whether sampled surfaces only consist of the top surface (i.e.: "on" the object),
@@ -128,15 +127,14 @@ class CustomWrappedObject:
         # Define sampling function to return
         def sampler():
             # Sample random location according to the specified probability distribution
-            location = np.random.choice(list(self.sample_at.keys()), p=list(self.sample_at.values()))
+            location = np.random.choice(list(self.sample_at.keys()), p=[loc["prob"] for loc in self.sample_at.values()])
             # Sample a specific pos at this location
             sampler_args = {
                 "obj_radius": self.radius + 0.01,
                 "obj_height": self.height + 0.01,
-                "bottom_offset": self.bottom_offset + 0.01,
+                "bottom_offset": self.bottom_offset - 0.02,
+                "surfaces": "top" if only_top else self.sample_at[location].get("surfaces", None),
             }
-            if only_top:
-                sampler_args["surface_name"] = "top"
             return env.scene.objects_by_name[location].sample_obj_position(**sampler_args)
 
         # Return this sampler
@@ -147,7 +145,7 @@ class CustomWrappedObject:
         Samples a new pose for this object.
 
         Returns:
-            2-tuple:
+            4-tuple:
                 3-array: (x,y,z) cartesian global pos for this object
                 4-array: (x,y,z,w) quaternion global orientation for this object
         """

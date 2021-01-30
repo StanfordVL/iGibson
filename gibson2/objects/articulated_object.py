@@ -703,7 +703,7 @@ class URDFObject(Object):
                         body_id, j, p.VELOCITY_CONTROL,
                         targetVelocity=0.0, force=self.joint_friction)
 
-    def sample_obj_position(self, obj_radius=0.0, obj_height=0.0, bottom_offset=0.0, surface_name=None):
+    def sample_obj_position(self, obj_radius=0.0, obj_height=0.0, bottom_offset=0.0, surfaces=None):
         """
         Samples a valid location on / in this object for another object defined by @obj_radius and @obj_height to
         be placed.
@@ -716,23 +716,32 @@ class URDFObject(Object):
             bottom_offset (float): Distance from center of object to bottom surface of object being placed. Defaults to
                 0, which corresponds to center of object being assumed to be the bottom surface (presumably this should
                 be negative)
-            surface_name (None or str): If specified, will sample location specifically from this surface. Otherwise,
-                will be randomly sampled.
+            surfaces (None or str or list of str): If specified, will sample location specifically from this surface(s).
+                Otherwise, will be randomly sampled.
 
         Returns:
             np.array: (x,y,z) global coordinates sampled representing a valid location on / in this object
         """
-        # First, sample location on this object if surface name is not specified
-        if surface_name is None:
-            surface_names = np.random.choice(
-                list(self.sampling_surfaces.keys()),
-                size=len(self.sampling_surfaces.keys()),
-                replace=False,
-                p=[v["prob"] for v in self.sampling_surfaces.values()]
-            )
+        # Create valid surfaces
+        if type(surfaces) is str:
+            surfaces = [surfaces]
+        elif surfaces is None:
+            surfaces = list(self.sampling_surfaces.keys())
         else:
-            # Only use requested surface for sampling
-            surface_names = [surface_name]
+            # Assumed to be list or tuple
+            surfaces = list(surfaces)
+
+        # Get probabilities for possible surfaces and normalize
+        probs = np.array([self.sampling_surfaces[s]["prob"] for s in surfaces])
+        probs /= np.sum(probs)
+
+        # Sample surface location
+        surface_names = np.random.choice(
+            a=surfaces,
+            size=len(surfaces),
+            replace=False,
+            p=probs,
+        )
 
         # Next sample appropriate location
         success = False

@@ -6,6 +6,7 @@ from gibson2.termination_conditions.timeout import Timeout
 from gibson2.termination_conditions.out_of_bound import OutOfBound
 from gibson2.reward_functions.null_reward import NullReward
 from gibson2.objects.custom_wrapped_object import CustomWrappedObject
+import gibson2.external.pybullet_tools.utils as PBU
 
 import logging
 import numpy as np
@@ -91,6 +92,8 @@ class SemanticRearrangementTask(BaseTask):
             env.scene.reset_scene_objects()
             env.scene.force_wakeup_scene_objects()
 
+        env.simulator.sync()
+
         # Sample new target object and reset exlude body ids
         self.target_object = np.random.choice(list(self.target_objects.values()))
         self.exclude_body_ids = []
@@ -165,9 +168,15 @@ class SemanticRearrangementTask(BaseTask):
         obs_cat = []
         obj_dist = np.array(self.target_object.get_position())
         if self.task_obs_format == "egocentric":
-            obj_dist -= np.array(env.robots[0].get_end_effector_position())
+            obj_dist -= np.array(env.robots[0].get_eef_position())
         task_obs[self.target_object.name] = obj_dist
         obs_cat.append(obj_dist)
+        # TODO: Make this not hardcoded (pull furniture names from cfg instead)
+        table_body_id = env.scene.objects_by_name["desk_76"].body_id[0]
+        table_drawer1_joint = PBU.get_joint(body=table_body_id, joint_or_name="desk_76_joint_0")
+        table_drawer1_joint_pos = PBU.get_joint_position(body=table_body_id, joint=table_drawer1_joint)
+        task_obs["furniture_joints"] = np.array([table_drawer1_joint_pos])
+        obs_cat.append(task_obs["furniture_joints"])
         # Add concatenated obs also
         task_obs["object-state"] = np.concatenate(obs_cat)
         # Add task id

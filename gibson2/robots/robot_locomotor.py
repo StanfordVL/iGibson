@@ -276,11 +276,19 @@ class LocomotorRobot(BaseRobot):
 
         :return: proprioceptive states
         """
-        j = np.array([j.get_joint_relative_state()
+        j = np.array([j.get_state()
                       for j in self.ordered_joints]).astype(np.float32).flatten()
+
+        jn = np.array([j.get_joint_relative_state()
+                      for j in self.ordered_joints]).astype(np.float32).flatten()
+
+        # Get raw values and normalized versions (for obs)
         self.joint_position = j[0::3]
         self.joint_velocity = j[1::3]
         self.joint_torque = j[2::3]
+        self.joint_position_normalized = jn[0::3]
+        self.joint_velocity_normalized = jn[1::3]
+        self.joint_torque_normalized = jn[2::3]
         self.joint_at_limit = np.count_nonzero(
             np.abs(self.joint_position) > 0.99)
 

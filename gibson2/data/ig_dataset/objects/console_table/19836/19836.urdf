@@ -1,0 +1,85 @@
+<robot name="19836" version="1.0">
+  <link name="link_0">
+    <visual name="link_0___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/visual/link_0_m1_vm.obj" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/collision/link_0_cm.obj" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="link_1">
+    <visual name="link_1___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/visual/link_1_m1_vm.obj" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/collision/link_1_cm.obj" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="link_2">
+    <visual name="link_2___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/visual/link_2_m1_vm.obj" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/collision/link_2_cm.obj" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="base_link">
+    <visual name="link_3___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/visual/link_3_m1_vm.obj" />
+      </geometry>
+    </visual>
+    <visual name="link_3___2">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/visual/link_3_m2_vm.obj" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/collision/link_3_cm.obj" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="joint_0" type="prismatic">
+    <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+    <axis xyz="0.0 -1.0 0.0" />
+    <parent link="base_link" />
+    <child link="link_0" />
+    <limit lower="0.03" upper="0.636" />
+  </joint>
+  <joint name="joint_1" type="prismatic">
+    <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+    <axis xyz="0.0 -1.0 0.0" />
+    <parent link="base_link" />
+    <child link="link_1" />
+    <limit lower="0.030000000000000027" upper="0.6219999999999999" />
+  </joint>
+  <joint name="joint_2" type="prismatic">
+    <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+    <axis xyz="0.0 -1.0 0.0" />
+    <parent link="base_link" />
+    <child link="link_2" />
+    <limit lower="0.029999999999999916" upper="0.6579999999999998" />
+  </joint>
+</robot>
