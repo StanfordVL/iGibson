@@ -8,7 +8,6 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.objects.articulated_object import URDFObject, ArticulatedObject
-from tasknet.condition_evaluation import OnTop, Inside
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path
