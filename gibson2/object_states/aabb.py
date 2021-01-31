@@ -7,27 +7,17 @@ import pybullet as p
 class AABB(AbsoluteObjectState):
     def __init__(self, obj):
         super(AABB, self).__init__(obj)
-        self.value = None
 
     def get_value(self):
-        # Compute this once per simulation step.
-        if self.value is None:
-            body_id = self.obj.get_body_id()
-            all_links = get_all_links(body_id)
-            if p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
-                all_links.remove(-1)
-            aabbs = [get_aabb(body_id, link=link)
-                     for link in all_links]
-            aabb_low, aabb_hi = aabb_union(aabbs)
+        body_id = self.obj.get_body_id()
+        all_links = get_all_links(body_id)
+        if p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            all_links.remove(-1)
+        aabbs = [get_aabb(body_id, link=link)
+                 for link in all_links]
+        aabb_low, aabb_hi = aabb_union(aabbs)
 
-            self.value = (np.array(aabb_low), np.array(aabb_hi))
-
-        return self.value
+        return (np.array(aabb_low), np.array(aabb_hi))
 
     def set_value(self, new_value):
         raise NotImplementedError("AABB state currently does not support setting.")
-
-    def update(self, simulator):
-        # During a single simulation step we want to use the same value for multiple calls
-        # but we need to reset it between every simulation step.
-        self.value = None
