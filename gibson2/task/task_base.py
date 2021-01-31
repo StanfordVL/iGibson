@@ -27,38 +27,32 @@ class iGTNTask(TaskNetTask):
         :param task_instance: int, specific instance of atus_activity init/final conditions
                                    optional, randomly generated if not specified
         '''
-        super().__init__(atus_activity, task_instance=task_instance)
+        super().__init__(atus_activity,
+                         task_instance=task_instance,
+                         scene_path=os.path.join(gibson2.ig_dataset_path, 'scenes'))
 
     def initialize_simulator(self,
                              mode='iggui',
                              scene_id=None,
-                             handmade_simulator=None,
-                             handmade_sim_objs=None,
-                             handmade_sim_obj_categories=None,
-                             handmade_dsl_objs=None):
+                             simulator=None):
         '''
         Get scene populated with objects such that scene satisfies initial conditions
-        :param handmade_simulator: Simulator class, populated simulator that should completely
+        :param simulator: Simulator class, populated simulator that should completely
                                    replace this function. Use if you would like to bypass internal
                                    Simulator instantiation and population based on initial conditions
                                    and use your own. Warning that if you use this option, we cannot
                                    guarantee that the final conditions will be reachable.
-        :param handmade_sim_objs:
-        :param handmade_dsl_objs:
         '''
         # Set self.scene_name, self.scene, self.sampled_simulator_objects, and self.sampled_dsl_objects
-        if handmade_simulator is None:
+        if simulator is None:
             self.simulator = Simulator(
                 mode=mode, image_width=960, image_height=720, device_idx=0)
             self.prepare_object_properties()
             self.initialize(InteractiveIndoorScene,
                             scene_id=scene_id)
         else:
-            print('HANDMADE SIMULATOR')
-            self.simulator = handmade_simulator
-            self.sampled_simulator_objects = handmade_sim_objs
-            self.sim_obj_categories = handmade_sim_obj_categories
-            self.sampled_dsl_objects = handmade_dsl_objs
+            print('INITIALIZING TASK WITH PREDEFINED SIMULATOR')
+            self.simulator = simulator
             self.prepare_object_properties()
             self.initialize(InteractiveIndoorScene,
                             scene_id=scene_id)
