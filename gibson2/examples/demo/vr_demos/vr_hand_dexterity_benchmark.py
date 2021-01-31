@@ -74,9 +74,10 @@ scene._set_obj_names_to_load(benchmark_names)
 s.import_ig_scene(scene)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
+# TODO: Change back to default settings after experimentation
 vr_agent = VrAgent(s, use_gripper=USE_GRIPPER)
 # Move VR agent to the middle of the kitchen
-s.set_vr_start_pos(start_pos=[0,2.3,0], vr_height_offset=0)
+s.set_vr_start_pos(start_pos=[0,2.1,0], vr_height_offset=0)
 
 # Mass values to use for each object type - len(masses) objects will be created of each type
 masses = [1, 5, 10]
