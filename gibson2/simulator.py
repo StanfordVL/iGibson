@@ -12,7 +12,7 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.scene_base import Scene
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.objects.object_base import Object
-
+from gibson2.objects.particles import ParticleSystem
 
 import pybullet as p
 import gibson2
@@ -311,9 +311,14 @@ class Simulator:
         :param use_pbr_mapping: Whether to use pbr mapping
         :param shadow_caster: Whether to cast shadow
         """
-        assert isinstance(obj, Object), \
-            'import_object can only be called with Object'
+        assert isinstance(obj, Object) or isinstance(obj, ParticleSystem), \
+            'import_object can only be called with Object or ParticleSystem'
         # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
+        if isinstance(obj, ParticleSystem):
+            ids = []
+            for o in obj.particles:
+                ids.append(self.import_object(o,use_pbr=False, use_pbr_mapping=False, shadow_caster=False))
+            return ids
         new_object_pb_id_or_ids = obj.load()
         if isinstance(new_object_pb_id_or_ids, list):
             new_object_pb_ids = new_object_pb_id_or_ids
