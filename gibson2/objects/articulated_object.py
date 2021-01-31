@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 from gibson2.objects.object_base import Object
 import pybullet as p
 import trimesh
+import random
 import cv2
 import time
 import random
@@ -180,6 +181,10 @@ class URDFObject(Object):
                 meta_data = json.load(f)
                 bbox_size = np.array(meta_data['bbox_size'])
                 base_link_offset = np.array(meta_data['base_link_offset'])
+                if 'orientations' in meta_data and len(meta_data['orientations'])>0:
+                    self.orientations = meta_data['orientations']
+                else:
+                    self.orientations = None
         elif os.path.isfile(bbox_json):
             with open(bbox_json, 'r') as bbox_file:
                 bbox_data = json.load(bbox_file)
@@ -342,6 +347,15 @@ class URDFObject(Object):
                     height_maps[(new_body_id, new_link_id)].append(
                         (z_value, xy_map))
             self.supporting_surfaces[predicate] = height_maps
+
+    def sample_orientation(self):
+        if self.orientations is None:
+            raise ValueError('No orientation probabilities set')
+        orientations = [np.array(o['rotation']) for o in self.orientations]
+        probabilities = [o['prob'] for o in self.orientations]
+        chosen_orientation = random.choices(orientations, weights=probabilities, k=1)[0]
+        # TODO do random variation about Z axis based on variation key
+        return chosen_orientation
 
     def rename_urdf(self):
         """
