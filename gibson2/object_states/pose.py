@@ -17,8 +17,9 @@ class Pose(BaseObjectState):
 
     def set_value(self, new_value):
         self.value = new_value
-        pos, orn = self.value
-        self.obj.set_position_orientation(pos, orn)
+        if self.online:
+            pos, orn = self.value
+            self.obj.set_position_orientation(pos, orn)
 
     def update_online(self, simulator):
         pass
