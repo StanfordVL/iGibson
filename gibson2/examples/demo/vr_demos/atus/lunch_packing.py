@@ -79,7 +79,7 @@ if not vr_settings.use_vr:
     s.renderer.set_fov(90)
 
 # Create a VrAgent and it will handle all initialization and importing under-the-hood
-vr_agent = VrAgent(s, use_gripper=True)
+vr_agent = VrAgent(s, use_gripper=False)
 
 # List of object names to filename mapping
 lunch_pack_folder = os.path.join(gibson2.assets_path, 'models', 'pack_lunch')

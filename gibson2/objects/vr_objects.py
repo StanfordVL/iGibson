@@ -97,9 +97,9 @@ class VrAgent(object):
 
             self.sim.set_vr_offset(new_offset)
 
-    def print_positions(self):
+    def _print_positions(self):
         """
-        Prints out all the positions of the VrAgent, including helpful VrAgent information for debugging.
+        Prints out all the positions of the VrAgent, including helpful VrAgent information for debugging (hidden API)
         """
         print('Data for VrAgent number {}'.format(self.agent_num))
         print('Using hands: {}, using constraints: {}, using body: {}, using gripper: {}'.format(self.hands, self.use_constraints, self.use_body, self.use_gripper))
@@ -348,7 +348,7 @@ class VrHandBase(ArticulatedObject):
         dist_to_dest = np.linalg.norm(curr_pos - dest)
         if dist_to_dest < 2.0:
             final_rot = multQuatLists(rot, self.base_rot)
-            p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=100)
+            p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=150)
 
     def set_close_fraction(self, close_frac):
         """
@@ -356,32 +356,23 @@ class VrHandBase(ArticulatedObject):
         """
         raise NotImplementedError()
 
-
 class VrHand(VrHandBase):
     """
-    Represents the human hand used for VR programs.
+    Represents the human hand used for VR programs. Has 11 joints, including invisible base joint.
+    Joint information:
 
-    Joint indices and names:
-    Joint 0 has name palm__base
-    Joint 1 has name Rproximal__palm
-    Joint 2 has name Rmiddle__Rproximal
-    Joint 3 has name Rtip__Rmiddle
-    Joint 4 has name Mproximal__palm
-    Joint 5 has name Mmiddle__Mproximal
-    Joint 6 has name Mtip__Mmiddle
-    Joint 7 has name Pproximal__palm
-    Joint 8 has name Pmiddle__Pproximal
-    Joint 9 has name Ptip__Pmiddle
-    Joint 10 has name palm__thumb_base
-    Joint 11 has name Tproximal__thumb_base
-    Joint 12 has name Tmiddle__Tproximal
-    Joint 13 has name Ttip__Tmiddle
-    Joint 14 has name Iproximal__palm
-    Joint 15 has name Imiddle__Iproximal
-    Joint 16 has name Itip__Imiddle
+    Joint index 0, name b'palm__base', type 4 (fixed)
+    Joint index 1, name b'Rproximal__palm', type 0 (revolute)
+    Joint index 2, name b'Rmiddle__Rproximal', type 0
+    Joint index 3, name b'Mproximal__palm', type 0
+    Joint index 4, name b'Mmiddle__Mproximal', type 0
+    Joint index 5, name b'Pproximal__palm', type 0
+    Joint index 6, name b'Pmiddle__Pproximal', type 0
+    Joint index 7, name b'Tproximal__palm', type 0
+    Joint index 8, name b'Tmiddle__Tproximal', type 0
+    Joint index 9, name b'Iproximal__palm', type 0
+    Joint index 10, name b'Imiddle__Iproximal', type 0
     """
-
-    # VR hand can be one of three types - no_pbr (diffuse white/grey color), skin or metal
     def __init__(self, s, hand='right', use_constraints=True, normal_color=True):
         self.normal_color = normal_color
         hand_path = 'normal_color' if self.normal_color else 'alternative_color'
@@ -401,13 +392,13 @@ class VrHand(VrHandBase):
         self.thumb_base_idxs = [10]
         # Thumb indices (proximal, middle, tip)
         self.thumb_idxs = [11, 12, 13]
-        # Open positions for all joints
-        # Alternate starting joint positions for more closed gripping: [0, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 0.2, 0.3, 0.4, 1.0, 0.1, 0.1, 0.1, 0.2, 0.3, 0.4]
-        self.open_pos = [0.1] * 17
-        self.open_pos[10] = 1.0 
-        # Closed positions for all joints
-        self.close_pos = [0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 1.2, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8]
-        self.hand_friction = 2.5
+        # Open and positions for all joints
+        self.open_pos = [0] * 11
+        self.close_pos = [1.0] * 11
+        # Thumb does not close as much to match other fingers
+        self.close_pos[7] = 0.7
+        self.close_pos[8] = 0.7
+        self.hand_friction = 1.5
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 
     def hand_setup(self, z_coord):
@@ -419,6 +410,8 @@ class VrHand(VrHandBase):
         for joint_index in range(p.getNumJoints(self.body_id)):
             # Make masses larger for greater stability
             # Mass is in kg, friction is coefficient
+            info = p.getJointInfo(self.body_id, joint_index)
+            print("Joint index {}, name {}, type {}".format(info[0], info[1], info[2]))
             p.changeDynamics(self.body_id, joint_index, mass=0.1, lateralFriction=self.hand_friction)
             open_pos = self.open_pos[joint_index]
             p.resetJointState(self.body_id, joint_index, targetValue=open_pos, targetVelocity=0.0)
