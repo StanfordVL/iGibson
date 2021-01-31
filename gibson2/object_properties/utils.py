@@ -32,7 +32,11 @@ def sample_kinematics(predicate, objA, objB, binary_state):
 
     max_trials = 100
     z_offset = 0.01
-    objA.set_position_orientation([100, 100, 100], [0, 0, 0, 1])
+    if objA.orientations is not None:
+        orientation = objA.sample_orientation()
+    else:
+        orientation = [0, 0, 0, 1]
+    objA.set_position_orientation([100, 100, 100], orientation)
     state_id = p.saveState()
     for i in range(max_trials):
         random_idx = np.random.randint(
@@ -82,7 +86,7 @@ def sample_kinematics(predicate, objA, objB, binary_state):
             objA_states, ([0, 0, pos[2]], [0, 0, pos[2]]))
 
         pos[2] = z
-        objA.set_position_orientation(pos, [0, 0, 0, 1])
+        objA.set_position_orientation(pos, orientation)
 
         p.stepSimulation()
         success = len(p.getContactPoints(objA.get_body_id())) == 0
@@ -92,7 +96,7 @@ def sample_kinematics(predicate, objA, objB, binary_state):
             break
 
     if success:
-        objA.set_position_orientation(pos, [0, 0, 0, 1])
+        objA.set_position_orientation(pos, orientation)
         # Let it fall for 0.1 second
         physics_timestep = p.getPhysicsEngineParameters()['fixedTimeStep']
         for _ in range(int(0.1 / physics_timestep)):

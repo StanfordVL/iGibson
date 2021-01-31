@@ -7,20 +7,11 @@ import os
 import json
 import argparse
 
-def main(args):
-    scene_name = args.scene_name
-    scene_names = ['Beechwood_1_int','Benevolence_1_int','Ihlen_0_int','Merom_0_int','Pomaria_0_int','Pomaria_2_int',
-                   'Wainscott_0_int','Beechwood_0_int','Benevolence_0_int','Benevolence_2_int','Ihlen_1_int','Merom_1_int',
-                   'Pomaria_1_int','Rs_int','Wainscott_1_int']
-    if scene_name not in scene_names:
-        print('%s is not a valid scene name'%scene_name)
-        return
-
-    support_obj_dicts = []
+def get_scene_support_objs(scene_name):
     support_objs_json = 'data/ig_dataset/scenes/%s/misc/all_support_objs.json'%scene_name
     if os.path.isfile(support_objs_json):
         with open(support_objs_json, 'r') as f:
-            support_obj_dicts+=json.load(f)
+            support_obj_dicts = json.load(f)
     else:
         settings = MeshRendererSettings(enable_shadow=False, msaa=False, enable_pbr=False)
         s = Simulator(mode='headless', image_width=800,
@@ -43,6 +34,18 @@ def main(args):
         with open(support_objs_json, 'w') as f:
             json.dump(support_obj_dicts, f)
         s.disconnect()
+    return support_obj_dicts
+
+def main(args):
+    scene_name = args.scene_name
+    scene_names = ['Beechwood_1_int','Benevolence_1_int','Ihlen_0_int','Merom_0_int','Pomaria_0_int','Pomaria_2_int',
+                   'Wainscott_0_int','Beechwood_0_int','Benevolence_0_int','Benevolence_2_int','Ihlen_1_int','Merom_1_int',
+                   'Pomaria_1_int','Rs_int','Wainscott_1_int']
+    if scene_name not in scene_names:
+        print('%s is not a valid scene name'%scene_name)
+        return
+
+    support_obj_dicts = get_scene_support_objs(scene_name)
 
     unique_categories = set()
     unique_rooms = set()
