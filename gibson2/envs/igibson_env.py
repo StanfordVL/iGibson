@@ -457,7 +457,7 @@ if __name__ == '__main__':
         help='which config file to use [default: use yaml files in examples/configs]')
     parser.add_argument('--mode',
                         '-m',
-                        choices=['headless', 'gui', 'iggui', 'pbgui'],
+                        choices=['headless', 'gui', 'iggui'],
                         default='headless',
                         help='which mode for simulation (default: headless)')
     args = parser.parse_args()
