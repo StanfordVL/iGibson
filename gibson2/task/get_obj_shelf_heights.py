@@ -11,6 +11,8 @@ import trimesh
 from pyquaternion import Quaternion
 from transformations import euler_from_matrix
 import pybullet as pb
+
+from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.simulator import Simulator
 from gibson2.objects.articulated_object import ArticulatedObject
 import matplotlib.pyplot as plt
@@ -22,6 +24,8 @@ find the discrete set of heights the shelves are at.
 '''
 
 simulator = Simulator(image_width=640, image_height=640)
+scene = EmptyScene()
+simulator.import_scene(scene)
 parser = argparse.ArgumentParser(description='Finds heights of shelves in a container object.')
 parser.add_argument('object_file', type=str)
 args = parser.parse_args()
