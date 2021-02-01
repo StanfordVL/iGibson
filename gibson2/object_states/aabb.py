@@ -8,7 +8,7 @@ class AABB(AbsoluteObjectState):
     def __init__(self, obj):
         super(AABB, self).__init__(obj)
 
-    def get_value(self):
+    def update(self, simulator):
         body_id = self.obj.get_body_id()
         all_links = get_all_links(body_id)
         if p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
@@ -17,7 +17,7 @@ class AABB(AbsoluteObjectState):
                  for link in all_links]
         aabb_low, aabb_hi = aabb_union(aabbs)
 
-        return (np.array(aabb_low), np.array(aabb_hi))
+        self.value = (np.array(aabb_low), np.array(aabb_hi))
 
     def set_value(self, new_value):
         raise NotImplementedError("AABB state currently does not support setting.")

@@ -24,9 +24,15 @@ class AbsoluteObjectState(BaseObjectState):
     the value.
     """
 
-    @abstractmethod
+    def __init__(self, obj):
+        super(AbsoluteObjectState, self).__init__(obj)
+        self.value = None
+
     def get_value(self):
-        raise NotImplementedError()
+        if self.value is None:
+            raise ValueError("The simulator has not stepped yet.")
+
+        return self.value
 
     @abstractmethod
     def set_value(self, new_value):
