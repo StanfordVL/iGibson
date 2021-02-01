@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 import argparse
 import threading
@@ -42,12 +43,20 @@ print('Inititating V-HACD for {} meshes...'.format(len(objs)))
 def vhacd(cmd):
     subprocess.call(cmd, shell=True,
         stdout=subprocess.DEVNULL)
+def vhacd_windows(name_in, name_out):
+    import pybullet as p
+    p.vhacd(name_in, name_out, "vhacd-log.txt")
 threads = []
 for o in objs:
     in_f = os.path.join(input_dir, o)
     out_f = os.path.join(tmp_dir, o)
-    cmd = '../../blender_utils/vhacd --input {} --output {}'.format(in_f, out_f)
-    thread = threading.Thread(target=vhacd, args=(cmd,))
+    if sys.platform.startswith('win32'):
+        thread = threading.Thread(target=vhacd_windows, args=(in_f, out_f))
+    elif sys.platform.startswith('linux'):
+        cmd = '../../blender_utils/vhacd --input {} --output {}'.format(in_f, out_f)
+        thread = threading.Thread(target=vhacd, args=(cmd,))
+    else:
+        print("Unsupported platform")
     thread.start()
     threads.append(thread)
 

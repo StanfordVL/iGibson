@@ -23,19 +23,36 @@ def input_number_or_name(selection_name, options):
         obj_num = int(user_input)
         choice = options[obj_num]
     except:
-        if user_input not in options:
+        if user_input.lower() not in [option.lower() for option in options]:
             print('Input %s is not valid, try again'%user_input)
             return False
-        choice = user_input
+        choice = [option for option in options if option.lower()==user_input.lower()][0]
 
     return choice
 
 def main(args):
-    obj_json_path = 'data/ig_dataset/objects/%s/blender_fixed/misc/placement_probs.json'%(args.object_name)
-    obj_misc_dir = os.path.dirname(obj_json_path)
-    if not os.path.isdir(obj_misc_dir):
-        print('%s is not a valid object name'%args.object_name)
+    object_cat_dir = 'data/ig_dataset/objects/%s'%(args.object_cat)
+
+    if not os.path.isdir(object_cat_dir):
+        print('%s is not a valid object'%(args.object_cat))
         return
+
+    if args.object_id:
+        object_ids = [args.object_id]
+    else:
+        object_ids = os.listdir(object_cat_dir)
+
+    obj_json_paths = []
+    for object_id in object_ids:
+        obj_dir = '%s/%s/misc/'%(object_cat_dir, object_id)
+        if not os.path.isdir(obj_dir):
+            print('%s %s is not a valid object'%(args.object_cat, object_id))
+            return
+        obj_json_path = '%s/placement_probs.json'%(obj_dir)
+        if os.path.isfile(obj_json_path) and not args.overwrite:
+            print('%s exists and overwrite false, quitting'%obj_json_path)
+            return
+        obj_json_paths.append(obj_json_path)
 
     scene_names = ['Beechwood_1_int','Benevolence_1_int','Ihlen_0_int','Merom_0_int','Pomaria_0_int','Pomaria_2_int',
                    'Wainscott_0_int','Beechwood_0_int','Benevolence_0_int','Benevolence_2_int','Ihlen_1_int','Merom_1_int',
@@ -116,18 +133,21 @@ def main(args):
             break
 
         prob = float(input('Enter probability for object %s being %s %s in room %s\n'%\
-                           (args.object_name, support_type, obj_category, room)))
+                           (args.object_cat, support_type, obj_category, room)))
         obj_probs['%s-%s-%s'%(obj_category,room,support_type)] = prob
         total_prob+=prob
 
-    for key in obj_probs:
-        obj_probs[key]/=total_prob
+        for key in obj_probs:
+            obj_probs[key]/=total_prob
 
-    with open(obj_json_path, 'w') as f:
-        json.dump(obj_probs, f)
+        for obj_json_path in obj_json_paths:
+            with open(obj_json_path, 'w') as f:
+                json.dump(obj_probs, f)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Configure which surfaces and containers in a scene an object might go in.')
-    parser.add_argument('object_name', type=str)
+    parser.add_argument('object_cat', type=str, default=None)
+    parser.add_argument('--object_id', type=str, default=None)
+    parser.add_argument('--overwrite', action='store_true', default=False)
     args = parser.parse_args()
     main(args)
