@@ -4,9 +4,9 @@ import numpy as np
 
 class Pose(AbsoluteObjectState):
 
-    def get_value(self):
+    def update(self, simulator):
         pos, orn = self.obj.get_position_orientation()
-        return np.array(pos), np.array(orn)
+        self.value = (np.array(pos), np.array(orn))
 
     def set_value(self, new_value):
         pos, orn = new_value
