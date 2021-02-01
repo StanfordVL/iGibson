@@ -8,6 +8,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from gibson2.render.mesh_renderer.instances import InstanceGroup, Instance, Robot
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer, ViewerVR, ViewerSimple
+from gibson2.object_states.factory import get_states_by_dependency_order
 from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.scene_base import Scene
@@ -121,6 +122,8 @@ class Simulator:
 
         self.class_name_to_class_id = get_class_name_to_class_id()
         self.body_links_awake = 0
+
+        self.object_state_names = get_states_by_dependency_order()
 
     def set_timestep(self, physics_timestep, render_timestep):
         """
@@ -639,6 +642,16 @@ class Simulator:
 
         return ids
 
+    def _non_physics_step(self):
+        """
+        Complete any non-physics steps such as state updates.
+        """
+        # Step the object states in global topological order.
+        for state_name in self.object_state_names:
+            for obj in self.scene.get_objects():
+                if state_name in obj.states:
+                    obj.states[state_name].update(self)
+
     def step(self, print_time=False, use_render_timestep_lpf=True, print_timestep=False, forced_timestep=None):
         """
         Step the simulation at self.render_timestep and update positions in renderer
@@ -662,6 +675,7 @@ class Simulator:
             self.frame_count += 1
         for _ in range(physics_timestep_num):
             p.stepSimulation()
+            self._non_physics_step()
         physics_dur = time.time() - physics_start_time
 
         render_start_time = time.time()
