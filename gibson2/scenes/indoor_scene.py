@@ -1,5 +1,7 @@
 import logging
 import pickle
+from abc import ABC
+
 import networkx as nx
 import cv2
 from PIL import Image
@@ -13,7 +15,7 @@ import os
 from gibson2.scenes.scene_base import Scene
 
 
-class IndoorScene(Scene):
+class IndoorScene(Scene, ABC):
     """
     Indoor scene class for Gibson and iGibson.
     Contains the functionalities for navigation such as shortest path computation
