@@ -1,8 +1,7 @@
 import pybullet as p
 import os
 import gibson2
-from gibson2.object_states.factory import get_object_state_instance, get_default_state_names, \
-    get_state_names_for_ability, prepare_object_states
+
 
 
 class Object(object):
@@ -13,7 +12,8 @@ class Object(object):
     def __init__(self):
         self.body_id = None
         self.loaded = False
-        self.states = prepare_object_states(self, online=True)
+        # self.states = prepare_object_states(self, online=True)
+        # moved to derived classes, too high-level to be here
 
     def load(self):
         """

@@ -8,6 +8,9 @@ from gibson2.object_states.dummy_state import DummyState
 from gibson2.object_states.temperature import Temperature
 from gibson2.object_states.touching import Touching
 from gibson2.object_states.under import Under
+from gibson2.object_states.soaked import Soaked
+from gibson2.object_states.dirty import Dirty
+from gibson2.object_states.stained import Stained
 
 _STATE_NAME_TO_CLASS_MAPPING = {
     'pose': Pose,
@@ -19,10 +22,18 @@ _STATE_NAME_TO_CLASS_MAPPING = {
     'nextTo': NextTo,
     'under': Under,
     'touching': Touching,
+    'soaked': Soaked,
+    'dirty': Dirty,
+    'stained': Stained,
 }
 
 _ABILITY_TO_STATE_MAPPING = {
     "cookable": ["cooked"],
+    "soakable": ["soaked"],
+    "dustable": ["dirty"],
+    "scrubbale": ["stained"],
+    "water_source": [],
+    "cleaning_tool": [],
 }
 
 _DEFAULT_STATE_SET = {
