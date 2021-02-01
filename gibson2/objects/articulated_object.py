@@ -19,6 +19,7 @@ from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from gibson2.object_states.factory import prepare_object_states
 
 
 class ArticulatedObject(Object):
@@ -31,6 +32,8 @@ class ArticulatedObject(Object):
         super(ArticulatedObject, self).__init__()
         self.filename = filename
         self.scale = scale
+        self.abilities = []
+        self.states = prepare_object_states(self, online=True)
 
     def _load(self):
         """
@@ -72,6 +75,7 @@ class URDFObject(Object):
                  filename,
                  name='object_0',
                  category='object',
+                 abilities=[],
                  model_path=None,
                  bounding_box=None,
                  scale=None,
@@ -107,7 +111,8 @@ class URDFObject(Object):
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
-
+        self.abilities = abilities
+        self.states = prepare_object_states(self, abilities, online=True)
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
             self.joint_friction = joint_friction

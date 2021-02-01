@@ -12,6 +12,8 @@ from gibson2.objects.articulated_object import URDFObject
 import gibson2
 import os
 from gibson2.utils.assets_utils import get_ig_model_path
+from gibson2.object_states.factory import prepare_object_states
+import pybullet as p
 
 def main():
     config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
@@ -40,17 +42,17 @@ def main():
 
     model_path = os.path.join(get_ig_model_path('table', '19898'), '19898.urdf')
 
-    obj = URDFObject(filename=model_path,
+    desk = URDFObject(filename=model_path,
                      category='table',
                      name='19898',
                      scale=np.array([0.8, 0.8, 0.8])
                      )
 
-    s.import_object(obj)
-    obj.set_position([1, -2, 0.4])
+    desk.abilities = ['dustable']
+    desk.states = prepare_object_states(desk, abilities=['dustable'], online=True)
 
-    dust = Dust()
-    s.import_object(dust)
+    s.import_object(desk)
+    desk.set_position([1, -2, 0.4])
 
     particles = WaterStream(pos=[0.4,1,1.15], num=10)
     s.import_object(particles)
@@ -58,18 +60,15 @@ def main():
     particles2 = WaterStream(pos=[1.48, 1, 1.15], num=10)
     s.import_object(particles2)
 
-    print(s.renderer.instances)
-
     for _ in range(100):
-        s.step()
-
-    dust.attach(obj)
+        p.stepSimulation()
 
     for i in range(10000):
         with Profiler('Simulator step'):
             turtlebot.apply_action([0.1, 0.1])
             particles.animate()
             particles2.animate()
+            desk.states['dirty'].update(s)
             s.step()
             rgb = s.renderer.render_robot_cameras(modes=('rgb'))
     s.disconnect()

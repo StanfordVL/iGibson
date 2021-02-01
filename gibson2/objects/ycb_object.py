@@ -2,7 +2,7 @@ import os
 import gibson2
 from gibson2.objects.object_base import Object
 import pybullet as p
-
+from gibson2.object_states.factory import prepare_object_states
 
 class YCBObject(Object):
     """
@@ -17,6 +17,8 @@ class YCBObject(Object):
         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
                                                'textured_simple_vhacd.obj')
         self.scale = scale
+        self.abilities = []
+        self.states = prepare_object_states(self, online=True)
 
     def _load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH,
