@@ -1,24 +1,21 @@
-
-from gibson2.object_properties.kinematics import Kinematics
-from gibson2.object_properties.utils import sample_kinematics
+from gibson2.object_states.kinematics import KinematicsMixin
+from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
+from gibson2.object_states.utils import sample_kinematics
 from gibson2.external.pybullet_tools.utils import get_aabb_center, get_aabb_extent, aabb_contains_point, get_aabb_volume
 import numpy as np
 
 
-class Inside(Kinematics):
-
-    @staticmethod
-    def set_binary_state(objA, objB, binary_state):
+class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
+    def set_value(self, other, new_value):
         sampling_success = sample_kinematics(
-            'inside', objA, objB, binary_state)
+            'inside', self.obj, other, new_value)
         if sampling_success:
-            assert Inside.get_binary_state(objA, objB) == binary_state
+            assert self.get_value(other) == new_value
         return sampling_success
 
-    @staticmethod
-    def get_binary_state(objA, objB):
-        objA_states = objA.states
-        objB_states = objB.states
+    def get_value(self, other):
+        objA_states = self.obj.states
+        objB_states = other.states
 
         assert 'aabb' in objA_states
         assert 'aabb' in objB_states
