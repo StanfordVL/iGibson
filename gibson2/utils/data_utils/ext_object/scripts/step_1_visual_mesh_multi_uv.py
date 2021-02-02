@@ -99,6 +99,12 @@ if should_bake:
 #############################################
 export_ig_object(dest_dir, save_material=not should_bake)
 
+has_glass = False
+# detect glass
+for i in range(len(bpy.data.materials)):
+    if 'glass' in bpy.data.materials[i].name.lower():
+        has_glass = True
+
 #############################################
 # Optional Texture Baking
 #############################################
@@ -115,11 +121,22 @@ if should_bake:
     bpy.ops.object.join()
 
     channels = {
-    'DIFFUSE':(2048, 32),
-    'ROUGHNESS':(1024, 16),
-    'METALLIC':(1024, 16),
-    'NORMAL':(1024, 16),
+      'DIFFUSE':(2048, 32),
+      'ROUGHNESS':(1024, 16),
+      'METALLIC':(1024, 16),
+      'NORMAL':(1024, 16),
     }
+    if has_glass:
+        channels['TRANSMISSION'] = (1024, 32)
+        # add world light
+        world = bpy.data.worlds['World']
+        world.use_nodes = True
+
+        # changing these values does affect the render.
+        bg = world.node_tree.nodes['Background']
+        bg.inputs[0].default_value[:3] = (1,1,1)
+        bg.inputs[1].default_value = 1.0
+
     bake_model(mat_dir, channels, overwrite=True, add_uv_node=True)
 
 #bpy.ops.wm.quit_blender()
