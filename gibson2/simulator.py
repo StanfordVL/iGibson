@@ -21,6 +21,7 @@ import numpy as np
 import platform
 import logging
 import time
+from time import sleep
 
 class Simulator:
     """
@@ -32,6 +33,7 @@ class Simulator:
                  gravity=9.8,
                  physics_timestep=1 / 120.0,
                  render_timestep=1 / 30.0,
+                 use_fixed_fps = False,
                  mode='gui',
                  image_width=128,
                  image_height=128,
@@ -45,6 +47,7 @@ class Simulator:
         :param gravity: gravity on z direction.
         :param physics_timestep: timestep of physical simulation, p.stepSimulation()
         :param render_timestep: timestep of rendering, and Simulator.step() function
+        :param use_variable_step_num: whether to use a fixed (1) or variable physics step number
         :param mode: choose mode from gui, headless, iggui (only open iGibson UI), or pbgui(only open pybullet UI)
         :param image_width: width of the camera image
         :param image_height: height of the camera image
@@ -60,6 +63,7 @@ class Simulator:
         self.gravity = gravity
         self.physics_timestep = physics_timestep
         self.render_timestep = render_timestep
+        self.use_fixed_fps = use_fixed_fps
         self.mode = mode
 
         # TODO: remove this, currently used for testing only
@@ -104,9 +108,11 @@ class Simulator:
         # We must be using the Simulator's vr mode and have use_vr set to true in the settings to access the VR context
         self.can_access_vr_context = self.use_vr_renderer and self.vr_settings.use_vr
 
-        # Settings for adjusting physics and render timestep in vr
-        # Fraction to multiple previous render timestep by in low-pass filter
-        self.lp_filter_frac = 0.9
+        self.fixed_frame_dur = 1/float(self.vr_settings.vr_fps)
+        # Number of physics steps based on fixed VR fps
+        # Use integer division to guarantee we don't exceed 1.0 realtime factor
+        # It is recommended to use an FPS that is a multiple of the timestep
+        self.num_phys_steps = int(self.fixed_frame_dur/self.physics_timestep)
 
         # Variables for data saving and replay in VR
         self.last_physics_timestep = -1
@@ -187,7 +193,7 @@ class Simulator:
             p.resetSimulation()
             p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
         if self.mode == 'vr':
-            p.setPhysicsEngineParameter(numSolverIterations=200)
+            p.setPhysicsEngineParameter(numSolverIterations=100)
         p.setTimeStep(self.physics_timestep)
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
@@ -197,9 +203,6 @@ class Simulator:
         self.next_class_id = 0
         if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and not self.render_to_tensor:
             self.add_viewer()
-
-    def optimize_vertex_and_texture(self):
-        self.renderer.optimize_vertex_and_texture()
 
     def load_without_pybullet_vis(load_func):
         """
@@ -621,7 +624,7 @@ class Simulator:
             if instance.dynamic:
                 self.update_position(instance)
 
-    def step(self, print_time=False, use_render_timestep_lpf=True, print_timestep=False, forced_timestep=None):
+    def step(self, print_time=False, print_timestep=False, print_realtime=False, sleep_until_dur=True, forced_timestep=None):
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
@@ -634,11 +637,14 @@ class Simulator:
             self.fix_eye_tracking_value()
 
         physics_start_time = time.time()
+
         # Always guarantee at least one physics timestep
-        physics_timestep_num = max(1, int(self.render_timestep / self.physics_timestep)) if not forced_timestep else forced_timestep
+        if self.use_fixed_fps:
+            physics_timestep_num = self.num_phys_steps if not forced_timestep else forced_timestep
+        else:
+            physics_timestep_num = 1
         if print_timestep:
             print("Frame {} - physics timestep num: {}".format(self.frame_count, physics_timestep_num))
-            self.frame_count += 1
         for _ in range(physics_timestep_num):
             p.stepSimulation()
         physics_dur = time.time() - physics_start_time
@@ -646,10 +652,23 @@ class Simulator:
         render_start_time = time.time()
         self.sync()
         render_dur = time.time() - render_start_time
-        # Update render timestep using low-pass filter function
-        if use_render_timestep_lpf:
-            self.render_timestep = self.lp_filter_frac * self.render_timestep + (1 - self.lp_filter_frac) * render_dur
-        frame_dur = physics_dur + render_dur
+
+        other_start_time = time.time()
+
+        # Sets the VR starting position if one has been specified by the user
+        self.perform_vr_start_pos_move()
+        self.frame_count += 1
+        
+        other_dur = time.time() - other_start_time
+        dur_pre_sleep = physics_dur + render_dur + other_dur
+
+        sleep_start_time = time.time()
+        if self.use_fixed_fps and sleep_until_dur:  
+            # Sleep until frame has lasted the expected amount of time
+            if dur_pre_sleep < self.fixed_frame_dur:
+                sleep(self.fixed_frame_dur - dur_pre_sleep)
+        sleep_dur = time.time() - sleep_start_time
+        frame_dur = physics_dur + render_dur + other_dur + sleep_dur
 
         # Set variables for data saving and replay
         self.last_physics_timestep = physics_dur
@@ -657,14 +676,13 @@ class Simulator:
         self.last_physics_step_num = physics_timestep_num
         self.last_frame_dur = frame_dur
 
-        # Sets the VR starting position if one has been specified by the user
-        self.perform_vr_start_pos_move()
-
         if print_time:
-            print('Total frame duration: {} and FPS: {}'.format(round(frame_dur, 2), round(1/max(frame_dur, 0.002), 2)))
             print('Total physics duration: {} and FPS: {}'.format(round(physics_dur, 2), round(1/max(physics_dur, 0.002), 2)))
-            print('Number of physics steps: {}'.format(physics_timestep_num))
             print('Total render duration: {} and FPS: {}'.format(round(render_dur, 2), round(1/max(render_dur, 0.002), 2)))
+            print('Total frame duration: {} and FPS: {}'.format(round(frame_dur, 2), round(1/max(frame_dur, 0.002), 2)))
+        if print_realtime:
+            print('Realtime factor: {}'.format(round(physics_timestep_num * self.physics_timestep / frame_dur, 3)))
+        if print_time or print_realtime:
             print('-------------------------')
 
     def sync(self):

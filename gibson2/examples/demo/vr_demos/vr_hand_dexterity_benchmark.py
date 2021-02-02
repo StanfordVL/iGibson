@@ -39,6 +39,13 @@ benchmark_names = [
     'top_cabinet_51'
 ]
 
+# IMPORTANT: Change this value if you have a more powerful machine
+# 40fps is recommended for desktops, and 15fps is recommended for laptops
+VR_FPS = 30
+# Set to true to print FPS time, realtime multiplier
+PRINT_TIME = True
+# Set to true to print realtime multiplier
+PRINT_REALTIME = True
 # Set to true to use gripper instead of VR hands
 USE_GRIPPER = False
 
@@ -64,8 +71,9 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             msaa=True,
                                             light_dimming_factor=1.0)
 
-vr_settings = VrSettings(use_vr=True)
+vr_settings = VrSettings(use_vr=True, vr_fps=30)
 s = Simulator(mode='vr', 
+            use_fixed_fps = True,
             rendering_settings=vr_rendering_settings, 
             vr_settings=vr_settings)
 
@@ -74,7 +82,6 @@ scene._set_obj_names_to_load(benchmark_names)
 s.import_ig_scene(scene)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-# TODO: Change back to default settings after experimentation
 vr_agent = VrAgent(s, use_gripper=USE_GRIPPER)
 # Move VR agent to the middle of the kitchen
 s.set_vr_start_pos(start_pos=[0,2.1,0], vr_height_offset=0)
@@ -115,7 +122,7 @@ s.optimize_vertex_and_texture()
 
 # Main simulation loop
 while True:
-    s.step()
+    s.step(print_time=PRINT_TIME, print_timestep=True, print_realtime=PRINT_REALTIME)
     vr_agent.update()
 
 s.disconnect()

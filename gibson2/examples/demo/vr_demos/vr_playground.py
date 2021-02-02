@@ -26,6 +26,8 @@ from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
 
+# IMPORTANT: Change this value if you have a more powerful machine
+VR_FPS = 30
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = False
 # Set to true to print out render, physics and overall frame FPS
@@ -56,8 +58,9 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             light_dimming_factor=1.0)
 # VR system settings
 # Change use_vr to toggle VR mode on/off
-vr_settings = VrSettings(use_vr=True)
+vr_settings = VrSettings(use_vr=True, vr_fps=VR_FPS)
 s = Simulator(mode='vr', 
+            use_fixed_fps = True,
             rendering_settings=vr_rendering_settings, 
             vr_settings=vr_settings)
 scene = InteractiveIndoorScene('Rs_int')
@@ -84,8 +87,6 @@ for i in range(len(mass_list)):
     s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
     mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
     p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
-
-s.optimize_vertex_and_texture()
 
 if vr_settings.use_vr:
     # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos

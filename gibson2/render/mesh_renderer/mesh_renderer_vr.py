@@ -15,7 +15,8 @@ class VrSettings(object):
                 movement_controller = 'right',
                 relative_movement_device = 'hmd',
                 movement_speed = 0.01,
-                reset_sim = True):
+                reset_sim = True,
+                vr_fps = 45):
         """
         Initializes VR settings:
         1) use_vr - whether to render to the HMD and use VR system or just render to screen (used for debugging)
@@ -25,6 +26,7 @@ class VrSettings(object):
         4) relative_movement_device - which device to use to control touchpad movement direction (can be any VR device)
         5) movement_speed - touchpad movement speed
         6) reset_sim - whether to call resetSimulation at the start of each simulation
+        7) vr_fps - the fixed fps to run VR at
         """
         assert movement_controller in ['left', 'right']
 
@@ -35,6 +37,7 @@ class VrSettings(object):
         self.relative_movement_device = relative_movement_device
         self.movement_speed = movement_speed
         self.reset_sim = reset_sim
+        self.vr_fps = vr_fps
 
 
 class MeshRendererVR(MeshRenderer):

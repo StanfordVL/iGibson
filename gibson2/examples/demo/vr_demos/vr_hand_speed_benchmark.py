@@ -20,6 +20,8 @@ from gibson2 import assets_path
 import signal
 import sys
 
+# IMPORTANT: Change this value if you have a more powerful machine
+VR_FPS = 30
 # Set to true to use viewer manipulation instead of VR
 # Set to false by default so this benchmark task can be performed in VR
 VIEWER_MANIP = False
@@ -57,8 +59,9 @@ if VIEWER_MANIP:
                 rendering_settings=vr_rendering_settings, 
                 )
 else:
-    vr_settings = VrSettings(use_vr=True)
+    vr_settings = VrSettings(use_vr=True, vr_fps=VR_FPS)
     s = Simulator(mode='vr', 
+                use_fixed_fps = True,
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
 
@@ -114,8 +117,6 @@ obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects',
                         scale=2)
 s.import_object(obj)
 obj.set_position_orientation([1.1, 0.300000, 0.750000], [0, 0, 0, 1])
-
-s.optimize_vertex_and_texture()
 
 # Main simulation loop
 while True:
