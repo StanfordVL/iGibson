@@ -90,9 +90,9 @@ class FetchGripper(LocomotorRobot):
     def tucked_default_joints(self):
         return np.array([
             0.0, 0.0,  # wheels
-            -8.94255e-01,  # trunk
+            0.02,  # trunk
             0.0, 0.0,  # head
-            7.29284e-01, 9.65373e-01, -4.00009e-01, 7.42225e-01, -5.08728e-05, 7.27318e-01, 5.44435e-05,  # arm
+            1.1707963267948966, 1.4707963267948965, -0.4, 1.6707963267948966, 0.0, 1.5707963267948966, 0.0,  # arm
             0.05, 0.05,  # gripper
         ])
 

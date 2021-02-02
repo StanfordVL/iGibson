@@ -172,11 +172,11 @@ class SemanticRearrangementTask(BaseTask):
         task_obs[self.target_object.name] = obj_dist
         obs_cat.append(obj_dist)
         # TODO: Make this not hardcoded (pull furniture names from cfg instead)
-        table_body_id = env.scene.objects_by_name["desk_76"].body_id[0]
-        table_drawer1_joint = PBU.get_joint(body=table_body_id, joint_or_name="desk_76_joint_0")
-        table_drawer1_joint_pos = PBU.get_joint_position(body=table_body_id, joint=table_drawer1_joint)
-        task_obs["furniture_joints"] = np.array([table_drawer1_joint_pos])
-        obs_cat.append(task_obs["furniture_joints"])
+        # table_body_id = env.scene.objects_by_name["desk_76"].body_id[0]
+        # table_drawer1_joint = PBU.get_joint(body=table_body_id, joint_or_name="desk_76_joint_0")
+        # table_drawer1_joint_pos = PBU.get_joint_position(body=table_body_id, joint=table_drawer1_joint)
+        # task_obs["furniture_joints"] = np.array([table_drawer1_joint_pos])
+        # obs_cat.append(task_obs["furniture_joints"])
         # Add concatenated obs also
         task_obs["object-state"] = np.concatenate(obs_cat)
         # Add task id
