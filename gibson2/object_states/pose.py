@@ -1,13 +1,13 @@
-from gibson2.object_states.object_state_base import AbsoluteObjectState
+from gibson2.object_states.object_state_base import CachingEnabledObjectState
 import numpy as np
 
 
-class Pose(AbsoluteObjectState):
+class Pose(CachingEnabledObjectState):
 
-    def update(self, simulator):
+    def _compute_value(self):
         pos = self.obj.get_position()
         orn = self.obj.get_orientation()
-        self.value = (np.array(pos), np.array(orn))
+        return np.array(pos), np.array(orn)
 
     def set_value(self, new_value):
         pos, orn = new_value

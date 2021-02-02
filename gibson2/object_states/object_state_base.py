@@ -25,20 +25,44 @@ class AbsoluteObjectState(BaseObjectState):
     This class is used to track object states that are absolute, e.g. do not require a second object to compute
     the value.
     """
-
-    def __init__(self, obj):
-        super(AbsoluteObjectState, self).__init__(obj)
-        self.value = None
-
+    @abstractmethod
     def get_value(self):
-        if self.value is None:
-            raise ValueError("The simulator has not stepped yet.")
-
-        return self.value
+        raise NotImplementedError()
 
     @abstractmethod
     def set_value(self, new_value):
         raise NotImplementedError()
+
+
+class CachingEnabledObjectState(AbsoluteObjectState):
+    """
+    This class is used to track absolute states that are expensive to compute. It adds out-of-the-box support for
+    caching the results for each simulator step.
+    """
+    def __init__(self, obj):
+        super(CachingEnabledObjectState, self).__init__(obj)
+        self.value = None
+
+    @abstractmethod
+    def _compute_value(self):
+        """
+        This function should compute the value of the state and return it. It should not set self.value.
+
+        :return: The computed value.
+        """
+        raise NotImplementedError()
+
+    def get_value(self):
+        # If we don't have a value cached, compute it now.
+        if self.value is None:
+            self.value = self._compute_value()
+
+        return self.value
+
+    def update(self, simulator):
+        # Reset the cached state value on Simulator step.
+        super(CachingEnabledObjectState, self).update(simulator)
+        self.value = None
 
 
 class RelativeObjectState(BaseObjectState):
