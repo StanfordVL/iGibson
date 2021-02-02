@@ -1,9 +1,11 @@
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
+
+from future.utils import with_metaclass
 
 from gibson2.objects.visual_marker import VisualMarker
 
 
-class Scene(ABC):
+class Scene(with_metaclass(ABCMeta)):
     """
     Base class for all Scene objects
     Contains the base functionalities and the functions that all derived classes need to implement
@@ -53,17 +55,22 @@ class Scene(ABC):
         """
         raise NotImplementedError()
 
-    def add_object(self, obj):
+    def add_object(self, obj, _is_call_from_simulator=False):
         """
         Add an object to the scene, loading it if the scene is already loaded.
 
         Note that calling add_object to an already loaded scene should only be done by the simulator's import_object()
-        function. Otherwise the object that you added will not be loaded/displayed.
+        function.
 
         :param obj: The object to load.
+        :param _is_call_from_simulator: Bool indicating if the caller is the simulator. This should
+            **not** be set by any callers that are not the Simulator class.
         :return: The body ID(s) of the loaded object if the scene was already loaded, or None if the scene is not loaded
             (in that case, the object is stored to be loaded together with the scene).
         """
+        if self.loaded and not _is_call_from_simulator:
+            raise ValueError("To add an object to an already-loaded scene, use the Simulator's import_object function.")
+
         if isinstance(obj, VisualMarker):
             raise ValueError("VisualMarker objects and subclasses should be added directly to simulator.")
 

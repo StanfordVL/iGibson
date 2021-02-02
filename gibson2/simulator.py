@@ -327,7 +327,7 @@ class Simulator:
             # Non-marker objects require a Scene to be imported.
             assert self.scene is not None, "A scene must be imported before additional objects can be imported."
             # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
-            new_object_pb_id_or_ids = self.scene.add_object(obj)
+            new_object_pb_id_or_ids = self.scene.add_object(obj, _is_call_from_simulator=True)
 
         # If no new bodies are immediately imported into pybullet, we have no rendering steps.
         if new_object_pb_id_or_ids is None:
