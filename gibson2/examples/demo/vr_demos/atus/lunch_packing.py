@@ -28,6 +28,9 @@ from gibson2 import assets_path
 import signal
 import sys
 
+# IMPORTANT: Change this value if you have a more powerful machine
+# 45fps is recommended for desktops, and 15fps is recommended for laptops
+VR_FPS = 15
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = False
 # Set to true to print out render, physics and overall frame FPS
@@ -56,8 +59,10 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             light_dimming_factor=1.0)
 # VR system settings
 # Change use_vr to toggle VR mode on/off
-vr_settings = VrSettings(use_vr=True)
+# IMPORTANT: Change the vr_fps settings
+vr_settings = VrSettings(use_vr=True, vr_fps=VR_FPS)
 s = Simulator(mode='vr', 
+            use_fixed_fps = True,
             rendering_settings=vr_rendering_settings, 
             vr_settings=vr_settings)
 scene = InteractiveIndoorScene('Beechwood_0_int')
@@ -180,7 +185,7 @@ if vr_settings.use_vr:
 
 # Main simulation loop
 while True:
-    s.step(print_time=PRINT_FPS)
+    s.step(print_time=True, print_realtime=True, print_timestep=True)
 
     # Don't update VR agents or query events if we are not using VR
     if not vr_settings.use_vr:

@@ -35,8 +35,10 @@ from gibson2.simulator import Simulator
 from gibson2.utils.vr_logging import VRLogReader, VRLogWriter
 from gibson2 import assets_path
 
+# IMPORTANT: Change this value if you have a more powerful machine
+VR_FPS = 30
 # Number of frames to save
-FRAMES_TO_SAVE = 3000
+FRAMES_TO_SAVE = 2000
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = True
 # Set to true to print out render, physics and overall frame FPS
@@ -75,6 +77,7 @@ def run_state_sr(mode):
     # Change use_vr to toggle VR mode on/off
     vr_settings = VrSettings(use_vr=(mode == 'save'))
     s = Simulator(mode='vr', 
+                use_fixed_fps=True,
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
     scene = InteractiveIndoorScene('Rs_int')
@@ -158,11 +161,8 @@ def run_state_sr(mode):
         for i in range(FRAMES_TO_SAVE):
             s.step(print_time=PRINT_FPS, print_timestep=True)
 
-            # Example of querying VR events to hide object
-            # We will store this as a mock action, even though it is saved by default
-            if s.query_vr_event('right_controller', 'touchpad_press'):
-                s.set_hidden_state(mustard, hide=not s.get_hidden_state(mustard))
-                vr_writer.save_action(mock_vr_action_path, np.array([1]))
+            # Example of storing a simple mock action
+            vr_writer.save_action(mock_vr_action_path, np.array([1]))
 
             # Update VR objects
             vr_agent.update()
@@ -180,15 +180,15 @@ def run_state_sr(mode):
     else:
         # The VR reader automatically shuts itself down and performs cleanup once the while loop has finished running
         while vr_reader.get_data_left_to_read():
-            s.step(print_timestep=True, forced_timestep=vr_reader.get_phys_step_n())
+            vr_reader.pre_step()
+            # Don't sleep until the frame duration, as the VR logging system sleeps for this duration instead
+            s.step(print_timestep=True, sleep_until_dur=False, forced_timestep=vr_reader.get_phys_step_n())
 
             # Note that fullReplay is set to False for action replay
             vr_reader.read_frame(s, full_replay=False, print_vr_data=False)
 
-            # Read our mock action and hide/unhide the mustard based on its value
+            # Read our mock action (but don't do anything with it for now)
             mock_action = int(vr_reader.read_action(mock_vr_action_path)[0])
-            if mock_action == 1:
-                s.set_hidden_state(mustard, hide=not s.get_hidden_state(mustard))
 
             # Get relevant VR action data and update VR agent
             vr_action_data = vr_reader.get_vr_action_data()

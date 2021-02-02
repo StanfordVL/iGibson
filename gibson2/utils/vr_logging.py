@@ -435,6 +435,10 @@ class VRLogReader():
             pos, orn = p.getBasePositionAndOrientation(pb_id)
             print("{} - pos: {} and orn: {}".format(pb_id, pos, orn))
 
+    def pre_step(self):
+        """Function called right before step to set various parameters - eg. timing variables."""
+        self.frame_start_time = time.time()
+
     def read_frame(self, s, full_replay=True, print_vr_data=False):
         """Reads a frame from the VR logger and steps simulation with stored data."""
 
@@ -456,7 +460,6 @@ class VRLogReader():
         # Get all frame statistics for the most recent frame
         frame_duration = self.hf['frame_data'][self.frame_counter][4]
 
-        read_start_time = time.time()
         # Each frame we first set the camera data
         s.renderer.V = self.hf['vr/vr_camera/right_eye_view'][self.frame_counter]
         s.renderer.P = self.hf['vr/vr_camera/right_eye_proj'][self.frame_counter]
@@ -477,10 +480,10 @@ class VRLogReader():
                     p.resetJointState(pb_id, i, joint_data[i])
         
         # Sleep to simulate accurate timestep
-        read_duration = time.time() - read_start_time
+        reader_frame_duration = time.time() - self.frame_start_time
         # Sleep to match duration of this frame, to create an accurate replay
-        if self.emulate_save_fps and read_duration < frame_duration:
-            time.sleep(frame_duration - read_duration)
+        if self.emulate_save_fps and reader_frame_duration < frame_duration:
+            time.sleep(frame_duration - reader_frame_duration)
 
     def get_vr_action_data(self):
         """
