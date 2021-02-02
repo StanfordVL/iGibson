@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from gibson2.objects.visual_marker import VisualMarker
+
 
 class Scene(ABC):
     """
@@ -62,6 +64,9 @@ class Scene(ABC):
         :return: The body ID(s) of the loaded object if the scene was already loaded, or None if the scene is not loaded
             (in that case, the object is stored to be loaded together with the scene).
         """
+        if isinstance(obj, VisualMarker):
+            raise ValueError("VisualMarker objects and subclasses should be added directly to simulator.")
+
         self._add_object(obj)
 
         # If the scene is already loaded, we need to load this object separately. Otherwise, don't do anything now,
