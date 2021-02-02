@@ -1,3 +1,4 @@
+from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
 from gibson2.utils.semantics_utils import get_class_name_to_class_id
 from gibson2.utils.constants import SemanticClass, PyBulletSleepState
@@ -315,9 +316,17 @@ class Simulator:
         """
         assert isinstance(obj, Object), \
             'import_object can only be called with Object'
-        assert self.scene is not None, "A scene must be imported before additional objects can be imported."
-        # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
-        new_object_pb_id_or_ids = self.scene.add_object(obj)
+
+        if isinstance(obj, VisualMarker):
+            # Marker objects can be imported without a scene.
+            new_object_pb_id_or_ids = obj.load()
+        else:
+            # Non-marker objects require a Scene to be imported.
+            assert self.scene is not None, "A scene must be imported before additional objects can be imported."
+            # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
+            new_object_pb_id_or_ids = self.scene.add_object(obj)
+
+        # If no new bodies are immediately imported into pybullet, we have no rendering steps.
         if new_object_pb_id_or_ids is None:
             return None
 
