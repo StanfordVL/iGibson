@@ -1,21 +1,19 @@
 import logging
-import pickle
-from abc import ABC
-
-import networkx as nx
-import cv2
-from PIL import Image
-import numpy as np
-from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
-from gibson2.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZWFromRotMat
-from gibson2.utils.assets_utils import get_scene_path, get_texture_file, get_ig_scene_path
-import pybullet_data
-import pybullet as p
 import os
+import pickle
+from abc import ABCMeta
+
+import cv2
+import networkx as nx
+import numpy as np
+from PIL import Image
+from future.utils import with_metaclass
+
 from gibson2.scenes.scene_base import Scene
+from gibson2.utils.utils import l2_distance
 
 
-class IndoorScene(Scene, ABC):
+class IndoorScene(with_metaclass(ABCMeta, Scene)):
     """
     Indoor scene class for Gibson and iGibson.
     Contains the functionalities for navigation such as shortest path computation
@@ -134,7 +132,7 @@ class IndoorScene(Scene, ABC):
                         (i + 1, j - 1), (i - 1, j)]
                     for n in neighbors:
                         if 0 <= n[0] < self.trav_map_size and \
-                            0 <= n[1] < self.trav_map_size and \
+                                0 <= n[1] < self.trav_map_size and \
                                 trav_map[n[0], n[1]] > 0:
                             g.add_edge(
                                 n, (i, j), weight=l2_distance(n, (i, j)))
