@@ -1,9 +1,11 @@
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
+
+from future.utils import with_metaclass
 
 from gibson2.objects.visual_marker import VisualMarker
 
 
-class Scene(ABC):
+class Scene(with_metaclass(ABCMeta)):
     """
     Base class for all Scene objects
     Contains the base functionalities and the functions that all derived classes need to implement
