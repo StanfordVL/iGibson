@@ -1,9 +1,12 @@
-from gibson2.simulator import Simulator
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.objects.articulated_object import ArticulatedObject
-import gibson2
 import os
+
+import gibson2
+import networkx as nx
+from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
+from gibson2.objects.articulated_object import ArticulatedObject
+from gibson2.objects.ycb_object import YCBObject
+from gibson2.scenes.empty_scene import EmptyScene
+from gibson2.simulator import Simulator
 from gibson2.utils.assets_utils import download_assets
 
 download_assets()
@@ -89,3 +92,15 @@ def test_inside():
         assert not obj3.states['onTop'].get_value(obj1)
     finally:
         s.disconnect()
+
+
+def test_state_graph():
+    # Construct the state graph
+    G = get_state_dependency_graph()
+    assert nx.algorithms.is_directed_acyclic_graph(G), "State dependency graph needs to be a DAG."
+
+    # Get the dependency-sorted list of states.
+    ordered_states = get_states_by_dependency_order()
+    assert "inside" in ordered_states
+    assert "aabb" in ordered_states
+    assert ordered_states.index("aabb") < ordered_states.index("inside"), "Each state should be preceded by its deps."
