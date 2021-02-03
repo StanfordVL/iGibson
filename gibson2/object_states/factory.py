@@ -5,6 +5,7 @@ from gibson2.object_states.dummy_state import DummyState
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.next_to import NextTo
 from gibson2.object_states.on_top import OnTop
+from gibson2.object_states.open import Open
 from gibson2.object_states.pose import Pose
 from gibson2.object_states.temperature import Temperature
 from gibson2.object_states.touching import Touching
@@ -16,6 +17,7 @@ _STATE_NAME_TO_CLASS_MAPPING = {
     'contact_bodies': ContactBodies,
     'temperature': Temperature,
     'onTop': OnTop,
+    'open': Open,
     'inside': Inside,
     'nextTo': NextTo,
     'under': Under,
@@ -31,7 +33,8 @@ _DEFAULT_STATE_SET = {
     'inside',
     'nextTo',
     'under',
-    'touching'
+    'touching',
+    'open',
 }
 
 
