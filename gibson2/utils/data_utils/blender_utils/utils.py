@@ -57,7 +57,7 @@ def setup_cycles(samples=2048):
     bpy.context.scene.cycles.volume_bounces = 0
     bpy.context.scene.render.tile_x = 200
     bpy.context.scene.render.tile_y = 200
-    bpy.context.scene.cycles.samples = samples 
+    bpy.context.scene.cycles.samples = samples
 
 def setup_resolution(x=1920,y=1080):
     bpy.context.scene.render.resolution_x = x
@@ -65,7 +65,7 @@ def setup_resolution(x=1920,y=1080):
 
 def bake_model(mat_dir, channels, 
                objects=None, overwrite=False,
-               set_default_samples=True):
+               set_default_samples=True, add_uv_node=False):
 
     if objects is None:
         for on in bpy.context.scene.objects.keys():
@@ -90,7 +90,7 @@ def bake_model(mat_dir, channels,
                 bpy.data.images.remove(bpy.data.images[c])
             res,margin = channels[c]
             for mat in bpy.data.materials:
-                node = create_empty_image(mat.node_tree, c, False, dim=(res,res))
+                node = create_empty_image(mat.node_tree, c, False, dim=(res,res), add_uv_node=add_uv_node)
                 node.select = True
                 mat.node_tree.nodes.active = node
             with redirect_output():
@@ -99,6 +99,26 @@ def bake_model(mat_dir, channels,
                                              'INDIRECT', 'COLOR', 'DIFFUSE', 
                                              'GLOSSY', 'TRANSMISSION'}, 
                                 margin=margin) 
+            bpy.data.images[c].filepath_raw = '{}/{}.png'.format(mat_dir, c)
+            bpy.data.images[c].file_format = 'PNG'
+            bpy.data.images[c].save()
+
+    c = 'TRANSMISSION'
+    if c in channels:
+        print('baking transmission...')
+        if overwrite or not os.path.isfile('{}/{}.png'.format(mat_dir, c)):
+        # if not os.path.isfile('{}/{}.png'.format(mat_dir, c)):
+            if c in bpy.data.images:
+                bpy.data.images.remove(bpy.data.images[c])
+            res,margin = channels[c]
+            for mat in bpy.data.materials:
+                node = create_empty_image(mat.node_tree, c, False, dim=(res,res), add_uv_node=add_uv_node)
+                node.select = True
+                mat.node_tree.nodes.active = node
+            with redirect_output():
+                bpy.ops.object.bake(type=c,
+                                pass_filter={'DIRECT', 'INDIRECT', 'COLOR'},
+                                margin=0)
             bpy.data.images[c].filepath_raw = '{}/{}.png'.format(mat_dir, c)
             bpy.data.images[c].file_format = 'PNG'
             bpy.data.images[c].save()
@@ -112,7 +132,7 @@ def bake_model(mat_dir, channels,
                 bpy.data.images.remove(bpy.data.images[c])
             res,margin = channels[c]
             for mat in bpy.data.materials:
-                node = create_empty_image(mat.node_tree, c, False, dim=(res,res))
+                node = create_empty_image(mat.node_tree, c, False, dim=(res,res), add_uv_node=add_uv_node)
                 node.select = True
                 mat.node_tree.nodes.active = node
             with redirect_output():
@@ -157,7 +177,7 @@ def bake_model(mat_dir, channels,
                     mat.node_tree.links.new(metallic_node.outputs['Color'], roughness_port)
 
             for mat in bpy.data.materials:
-                node = create_empty_image(mat.node_tree, c, False, dim=(res,res))
+                node = create_empty_image(mat.node_tree, c, False, dim=(res,res), add_uv_node=add_uv_node)
                 node.select = True
                 mat.node_tree.nodes.active = node
             with redirect_output():
@@ -199,7 +219,7 @@ def bake_model(mat_dir, channels,
                 bpy.data.images.remove(bpy.data.images[c])
             res,margin = channels[c]
             for mat in bpy.data.materials:
-                node = create_empty_image(mat.node_tree, c, True, dim=(res,res))
+                node = create_empty_image(mat.node_tree, c, True, dim=(res,res), add_uv_node=add_uv_node)
                 node.select = True
                 mat.node_tree.nodes.active = node
             with redirect_output():
@@ -242,7 +262,7 @@ def bake_model(mat_dir, channels,
                     mat.node_tree.links.new(normal_node.outputs['Color'], diffuse_port)
             for mat in bpy.data.materials:
                 node = create_empty_image(mat.node_tree, c, True, 
-                                          dim=(res,res))
+                                          dim=(res,res), add_uv_node=add_uv_node)
                 node.select = True
                 mat.node_tree.nodes.active = node
             with redirect_output():

@@ -39,9 +39,15 @@ def create_texture_node(node_tree: bpy.types.NodeTree,
 
 def create_empty_image(node_tree: bpy.types.NodeTree, 
                        name: str, is_color_data: bool,
-                       dim: Tuple[int, int] = (2048, 2048)) -> bpy.types.Node:
+                       dim: Tuple[int, int] = (2048, 2048), add_uv_node: bool = False) -> bpy.types.Node:
     # Instantiate a new texture image node
     texture_node = node_tree.nodes.new(type='ShaderNodeTexImage')
+
+    if add_uv_node:
+        uv_node = node_tree.nodes.new(type='ShaderNodeUVMap')
+        uv_node.uv_map = 'obj_uv'
+        node_tree.links.new(uv_node.outputs['UV'], texture_node.inputs['Vector'])
+
     # Open an image and set it to the node
     width,height = dim
     if name in bpy.data.images:
@@ -137,7 +143,6 @@ def build_pbr_textured_nodes(node_tree: bpy.types.NodeTree,
         node_tree.links.new(texture_node.outputs['Color'], output_node.inputs['Displacement'])
 
     arrange_nodes(node_tree, use_current_layout_as_initial_guess=False)
-
 
 
 def build_pbr_textured_nodes_from_name(material_name: str, 
