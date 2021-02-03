@@ -11,11 +11,17 @@ class EmptyScene(Scene):
     """
     A empty scene for debugging
     """
-
     def __init__(self):
         super(EmptyScene, self).__init__()
+        self.objects = []
 
-    def load(self):
+    def get_objects(self):
+        return list(self.objects)
+
+    def _add_object(self, obj):
+        self.objects.append(obj)
+
+    def _load(self):
         """
         Load the scene into pybullet
         """
@@ -25,7 +31,10 @@ class EmptyScene(Scene):
         p.changeDynamics(self.floor_body_ids[0], -1, lateralFriction=1)
         # white floor plane for visualization purpose if needed
         p.changeVisualShape(self.floor_body_ids[0], -1, rgbaColor=[1, 1, 1, 1])
-        return self.floor_body_ids
+
+        # Load additional objects & merge body IDs
+        additional_object_body_ids = [x for obj in self.objects for x in obj.load()]
+        return self.floor_body_ids + additional_object_body_ids
 
     def get_random_point(self, floor=None):
         """

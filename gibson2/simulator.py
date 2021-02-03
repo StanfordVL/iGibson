@@ -1,3 +1,4 @@
+from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
 from gibson2.utils.semantics_utils import get_class_name_to_class_id
 from gibson2.utils.constants import SemanticClass, PyBulletSleepState
@@ -60,6 +61,8 @@ class Simulator:
         self.physics_timestep = physics_timestep
         self.render_timestep = render_timestep
         self.mode = mode
+
+        self.scene = None
 
         # TODO: remove this, currently used for testing only
         self.objects = []
@@ -313,8 +316,20 @@ class Simulator:
         """
         assert isinstance(obj, Object), \
             'import_object can only be called with Object'
-        # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
-        new_object_pb_id_or_ids = obj.load()
+
+        if isinstance(obj, VisualMarker):
+            # Marker objects can be imported without a scene.
+            new_object_pb_id_or_ids = obj.load()
+        else:
+            # Non-marker objects require a Scene to be imported.
+            assert self.scene is not None, "A scene must be imported before additional objects can be imported."
+            # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
+            new_object_pb_id_or_ids = self.scene.add_object(obj, _is_call_from_simulator=True)
+
+        # If no new bodies are immediately imported into pybullet, we have no rendering steps.
+        if new_object_pb_id_or_ids is None:
+            return None
+
         if isinstance(new_object_pb_id_or_ids, list):
             new_object_pb_ids = new_object_pb_id_or_ids
         else:
@@ -624,19 +639,13 @@ class Simulator:
 
         return ids
 
-    def _step_simulation(self):
-        """
-        Step the simulation for one step and update positions in renderer
-        """
-        p.stepSimulation()
-        for instance in self.renderer.instances:
-            if instance.dynamic:
-                self.update_position(instance)
-
     def step(self, print_time=False, use_render_timestep_lpf=True, print_timestep=False, forced_timestep=None):
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
+        assert self.scene is not None, \
+            "A scene must be imported before running the simulator. Use EmptyScene for an empty scene."
+
         # First poll VR events and store them
         if self.can_access_vr_context:
             # Note: this should only be called once per frame - use get_vr_events to read the event data list in
