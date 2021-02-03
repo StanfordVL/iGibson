@@ -222,20 +222,28 @@ class InteractiveIndoorScene(StaticIndoorScene):
                      if joint.find("child").attrib["link"]
                      == object_name][0]
 
-                self.add_object(
+                obj = URDFObject(
                     filename,
-                    object_name=object_name,
+                    name=object_name,
                     category=category,
                     model_path=model_path,
                     bounding_box=bounding_box,
                     scale=scale,
                     connecting_joint=joint_connecting_embedded_link,
+                    avg_obj_dims=self.avg_obj_dims.get(category),
                     in_rooms=in_rooms,
-                    texture_randomization=self.texture_randomization)
+                    texture_randomization=texture_randomization,
+                    overwrite_inertial=True,
+                    scene_instance_folder=self.scene_instance_folder)
+
+                self.add_object(obj)
 
             elif link.attrib["name"] != "world":
                 logging.error(
                     "iGSDF should only contain links that represent embedded URDF objects")
+
+    def get_objects(self):
+        return list(self.objects_by_name.values())
 
     def filter_rooms_and_object_categories(self,
                                            load_object_categories,
@@ -369,33 +377,19 @@ class InteractiveIndoorScene(StaticIndoorScene):
         else:
             return []
 
-    def add_object(self,
-                   filename,
-                   object_name=None,
-                   category='object',
-                   model_path=None,
-                   bounding_box=None,
-                   scale=None,
-                   connecting_joint=None,
-                   in_rooms=None,
-                   texture_randomization=False,
-                   overwrite_inertial=True,
-                   ):
+    def _add_object(self, obj):
         """
         Adds an object to the scene
 
-        :param filename: urdf file path of that object model
-        :param object_name: object name, unique for each object instance, e.g. door_3
-        :param category: object category, e.g. door
-        :param model_path: folder path of that object model
-        :param bounding_box: bounding box of this object
-        :param scale: scaling factor of this object
-        :param connecting_joint: connecting joint to the scene that defines the object's initial pose (optional)
-        :param in_rooms: which room(s) this object is in. It can be in more than one rooms if it sits at room boundary (e.g. doors)
-        :param texture_randomization: whether to enable texture randomization
-        :param overwrite_inertial: whether to overwrite the inertial frame of the original URDF using trimesh + density estimate
+        :param obj: Object instance to add to scene.
         """
-        if object_name is None:
+        category = 'object'
+        if hasattr(obj, "category"):
+            category = obj.category
+
+        if hasattr(obj, "name"):
+            object_name = obj.name
+        else:
             object_name = '{}_{}'.format(
                 category, len(self.objects_by_category.get(category, [])))
 
@@ -404,32 +398,19 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 "Object names need to be unique! Existing name " + object_name)
             exit(-1)
 
-        added_object = URDFObject(
-            filename,
-            name=object_name,
-            category=category,
-            model_path=model_path,
-            bounding_box=bounding_box,
-            scale=scale,
-            connecting_joint=connecting_joint,
-            avg_obj_dims=self.avg_obj_dims.get(category),
-            in_rooms=in_rooms,
-            texture_randomization=texture_randomization,
-            overwrite_inertial=overwrite_inertial,
-            scene_instance_folder=self.scene_instance_folder)
-
         # Add object to database
-        self.objects_by_name[object_name] = added_object
+        self.objects_by_name[object_name] = obj
         if category not in self.objects_by_category.keys():
             self.objects_by_category[category] = []
-        self.objects_by_category[category].append(added_object)
-        if in_rooms is not None:
-            for in_room in in_rooms:
-                if in_room not in self.objects_by_room.keys():
-                    self.objects_by_room[in_room] = []
-                self.objects_by_room[in_room].append(added_object)
+        self.objects_by_category[category].append(obj)
 
-        return added_object
+        if hasattr(obj, "in_rooms"):
+            in_rooms = obj.in_rooms
+            if in_rooms is not None:
+                for in_room in in_rooms:
+                    if in_room not in self.objects_by_room.keys():
+                        self.objects_by_room[in_room] = []
+                    self.objects_by_room[in_room].append(obj)
 
     def randomize_texture(self):
         """
@@ -720,7 +701,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         return self.open_all_objs_by_category('door', mode='max')
 
-    def load(self):
+    def _load(self):
         """
         Load all scene objects into pybullet
         """
