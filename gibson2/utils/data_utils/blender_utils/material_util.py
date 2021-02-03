@@ -41,6 +41,8 @@ def create_empty_image(node_tree: bpy.types.NodeTree,
                        name: str, is_color_data: bool,
                        dim: Tuple[int, int] = (2048, 2048), add_uv_node: bool = False) -> bpy.types.Node:
     # Instantiate a new texture image node
+    if node_tree is None:
+        return
     texture_node = node_tree.nodes.new(type='ShaderNodeTexImage')
 
     if add_uv_node:

@@ -59,13 +59,15 @@ bpy.ops.wm.open_mainfile(filepath=source_blend_file)
 #############################################
 # Importing obj files from source dir
 #############################################
-for on in bpy.context.scene.objects.keys():
-    obj = bpy.context.scene.objects[on]
-    if not 'AM' in on or 'Cam' in on:
-        bpy.data.objects.remove(obj)
-        print(on)
-    # only keep evermotion models
-clean_unused()
+
+# uncomment this part for evermotion models
+# for on in bpy.context.scene.objects.keys():
+#     obj = bpy.context.scene.objects[on]
+#     if not 'AM' in on or 'Cam' in on:
+#         bpy.data.objects.remove(obj)
+#         print(on)
+#     # only keep evermotion models
+# clean_unused()
 
 #############################################
 # Optional UV Unwrapping
