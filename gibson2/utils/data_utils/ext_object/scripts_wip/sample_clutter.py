@@ -64,7 +64,8 @@ def main(args):
             for attempt in range(args.num_attempts):
                 object_id = random.choice(ids)
                 urdf_path = '%s/%s/%s.urdf'%(object_cat_dirs[category], object_id, object_id)
-                urdf_object = URDFObject(urdf_path)
+                name = '%s-%s-%d'%(category,object_id,i)
+                urdf_object = URDFObject(urdf_path, name=name, category=category)
                 placement_rules_path = os.path.join(urdf_object.model_path, 'misc', 'placement_probs.json')
                 with open(placement_rules_path, 'r') as f:
                     placement_rules = json.load(f)
