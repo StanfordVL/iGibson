@@ -11,6 +11,7 @@ from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 import random
 import json
 from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
+from gibson2.external.pybullet_tools.utils import euler_from_quat
 from PIL import Image
 
 SCENE_SOURCE = ['IG', 'CUBICASA', 'THREEDFRONT']
@@ -63,7 +64,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param load_room_types: only load objects in these room types into the scene (a list of str)
         :param load_room_instances: only load objects in these room instances into the scene (a list of str)
         :param seg_map_resolution: room segmentation map resolution
-        :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT 
+        :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT
         """
 
         super(InteractiveIndoorScene, self).__init__(
@@ -898,3 +899,36 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if self.objects_by_name[obj_name].body_id is not None:
                 ids.extend(self.objects_by_name[obj_name].body_id)
         return ids
+
+    def save_modified_urdf(self, path_to_urdf):
+        TEMPLATE = """
+	<link bounding_box="{bounding box}" category="{category}" model="{model}" name="{name}" room="{room}"/>
+	<joint name="j_{name}" type="floating">
+		<origin rpy="{rpy}" xyz="{xyz}"/>
+		<child link="{name}"/>
+		<parent link="world"/>
+	</joint>"""
+        with open(self.scene_file, 'r') as f:
+            urdf_string = f.read()
+        add_string = ''
+        for name in self.objects_by_name:
+            if name in urdf_string:
+                continue
+            obj = self.objects_by_name[name]
+            category = obj.category
+            model = name.split('-')[1]
+            room = obj.in_rooms[0]
+            bounding_box = ' '.join([str(b) for b in obj.bounding_box])
+            position = obj.get_position()
+            xyz = ' '.join([str(p) for p in position])
+            euler = euler_from_quat(obj.get_orientation())
+            rpy = ' '.join([str(e) for e in euler])
+            new_string = TEMPLATE.format(bounding_box = bounding_box,
+                                        category = category,
+                                        model = model,
+                                        name = name,
+                                        room = room,
+                                        rpy = rpy,
+                                        xyz = xyz)
+            print(new_string)
+
