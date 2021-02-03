@@ -14,8 +14,9 @@ class StadiumScene(Scene):
 
     def __init__(self):
         super(StadiumScene, self).__init__()
+        self.objects = []
 
-    def load(self):
+    def _load(self):
         """
         Load the scene into pybullet
         """
@@ -30,7 +31,10 @@ class StadiumScene(Scene):
             self.floor_body_ids[0], [pos[0], pos[1], pos[2] - 0.005], orn)
         p.changeVisualShape(
             self.floor_body_ids[0], -1, rgbaColor=[1, 1, 1, 0.5])
-        return list(self.stadium) + self.floor_body_ids
+
+        # Load additional objects & merge body IDs
+        additional_object_body_ids = [x for obj in self.objects for x in obj.load()]
+        return list(self.stadium) + self.floor_body_ids + additional_object_body_ids
 
     def get_random_point(self, floor=None):
         """
@@ -51,3 +55,9 @@ class StadiumScene(Scene):
         shortest_path = np.stack((source_world, target_world))
         geodesic_distance = l2_distance(source_world, target_world)
         return shortest_path, geodesic_distance
+
+    def get_objects(self):
+        return list(self.objects)
+
+    def _add_object(self, obj):
+        self.objects.append(obj)

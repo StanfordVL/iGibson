@@ -52,6 +52,7 @@ class StaticIndoorScene(IndoorScene):
             pybullet_load_texture,
         )
         logging.info("StaticIndoorScene scene: {}".format(scene_id))
+        self.objects = []
 
     def load_floor_metadata(self):
         """
@@ -116,7 +117,7 @@ class StaticIndoorScene(IndoorScene):
             self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
         self.floor_body_ids.append(floor_body_id)
 
-    def load(self):
+    def _load(self):
         """
         Load the scene (including scene mesh and floor plane) into pybullet
         """
@@ -125,7 +126,15 @@ class StaticIndoorScene(IndoorScene):
         self.load_floor_planes()
 
         self.load_trav_map(get_scene_path(self.scene_id))
-        return [self.mesh_body_id] + self.floor_body_ids
+
+        additional_object_body_ids = [x for obj in self.objects for x in obj.load()]
+        return [self.mesh_body_id] + self.floor_body_ids + additional_object_body_ids
+
+    def get_objects(self):
+        return list(self.objects)
+
+    def _add_object(self, obj):
+        self.objects.append(obj)
 
     def get_random_floor(self):
         """

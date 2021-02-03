@@ -138,11 +138,13 @@ class iGTNTask(TaskNetTask):
                     model = random.choice(os.listdir(category_path))
                     model_path = get_ig_model_path(obj_cat, model)
                     filename = os.path.join(model_path, model + ".urdf")
-                    simulator_obj = self.scene.add_object(
+                    simulator_obj = URDFObject(
                         filename,
                         category=obj_cat,
                         model_path=model_path,
-                    )
+                        texture_randomization=False,
+                        overwrite_inertial=True)
+                    self.scene.add_object(simulator_obj)
                     self.object_scope[obj_inst] = simulator_obj
 
         return True

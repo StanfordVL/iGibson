@@ -1,7 +1,9 @@
-from abc import abstractmethod, ABC
+from abc import abstractmethod, ABCMeta
+
+from future.utils import with_metaclass
 
 
-class BaseObjectState(ABC):
+class BaseObjectState(with_metaclass(ABCMeta)):
     """
     Base ObjectState class. Do NOT inherit from this class directly - use either AbsoluteObjectState or
     RelativeObjectState.

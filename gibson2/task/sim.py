@@ -302,7 +302,8 @@ class ContainerObjectsEnv(object):
     def add_object(self, obj):
         with suppress_stdout_stderr():
             new_obj_id = self.simulator.import_object(obj)
-            self.objects[new_obj_id] = obj
+            if new_obj_id is not None:
+                self.objects[new_obj_id] = obj
             return new_obj_id
 
     def get_object(self, body_id):
