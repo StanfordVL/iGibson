@@ -91,8 +91,9 @@ def bake_model(mat_dir, channels,
             res,margin = channels[c]
             for mat in bpy.data.materials:
                 node = create_empty_image(mat.node_tree, c, False, dim=(res,res), add_uv_node=add_uv_node)
-                node.select = True
-                mat.node_tree.nodes.active = node
+                if node is not None:
+                    node.select = True
+                    mat.node_tree.nodes.active = node
             with redirect_output():
                 bpy.ops.object.bake(type=c, 
                                 pass_filter={'AO', 'EMIT', 'DIRECT', 
@@ -113,8 +114,11 @@ def bake_model(mat_dir, channels,
             res,margin = channels[c]
             for mat in bpy.data.materials:
                 node = create_empty_image(mat.node_tree, c, False, dim=(res,res), add_uv_node=add_uv_node)
-                node.select = True
-                mat.node_tree.nodes.active = node
+                if node is not None:
+                    node.select = True
+                    mat.node_tree.nodes.active = node
+                else:
+                    print("{} skipped".format(mat))
             with redirect_output():
                 bpy.ops.object.bake(type=c,
                                 pass_filter={'DIRECT', 'INDIRECT', 'COLOR'},
@@ -133,8 +137,11 @@ def bake_model(mat_dir, channels,
             res,margin = channels[c]
             for mat in bpy.data.materials:
                 node = create_empty_image(mat.node_tree, c, False, dim=(res,res), add_uv_node=add_uv_node)
-                node.select = True
-                mat.node_tree.nodes.active = node
+                if node is not None:
+                    node.select = True
+                    mat.node_tree.nodes.active = node
+                else:
+                    print("{} skipped".format(mat))
             with redirect_output():
                 bpy.ops.object.bake(type=c, margin=margin) 
             bpy.data.images[c].filepath_raw = '{}/{}.png'.format(mat_dir, c)
@@ -152,6 +159,9 @@ def bake_model(mat_dir, channels,
                 bpy.data.images.remove(bpy.data.images[c])
             res,margin = channels[c]
             for mat in bpy.data.materials:
+                if mat.node_tree is None or 'Principled BSDF' not in mat.node_tree.nodes:
+                    print("{} skipped".format(mat))
+                    continue
                 principle_bsdf = mat.node_tree.nodes['Principled BSDF']
                 metallic_port = principle_bsdf.inputs['Metallic']
                 if len(metallic_port.links) == 0:
@@ -178,8 +188,11 @@ def bake_model(mat_dir, channels,
 
             for mat in bpy.data.materials:
                 node = create_empty_image(mat.node_tree, c, False, dim=(res,res), add_uv_node=add_uv_node)
-                node.select = True
-                mat.node_tree.nodes.active = node
+                if node is not None:
+                    node.select = True
+                    mat.node_tree.nodes.active = node
+                else:
+                    print("{} skipped".format(mat))
             with redirect_output():
                 bpy.ops.object.bake(type='ROUGHNESS', margin=margin) 
             bpy.data.images[c].filepath_raw = '{}/{}.png'.format(mat_dir, c)
@@ -191,7 +204,8 @@ def bake_model(mat_dir, channels,
     #######################################
     if 'DIFFUSE' in channels or 'NORMAL' in channels:
         for mat in bpy.data.materials:
-            if 'Principled BSDF' not in mat.node_tree.nodes:
+            if mat.node_tree is None or 'Principled BSDF' not in mat.node_tree.nodes:
+                print("{} skipped".format(mat))
                 continue
             principle_bsdf = mat.node_tree.nodes['Principled BSDF']
             metallic_port = principle_bsdf.inputs['Metallic']
@@ -220,8 +234,11 @@ def bake_model(mat_dir, channels,
             res,margin = channels[c]
             for mat in bpy.data.materials:
                 node = create_empty_image(mat.node_tree, c, True, dim=(res,res), add_uv_node=add_uv_node)
-                node.select = True
-                mat.node_tree.nodes.active = node
+                if node is not None:
+                    node.select = True
+                    mat.node_tree.nodes.active = node
+                else:
+                    print("{} skipped".format(mat))
             with redirect_output():
                 bpy.ops.object.bake(type=c, pass_filter={'COLOR'}, 
                                 margin=margin)
@@ -240,7 +257,8 @@ def bake_model(mat_dir, channels,
                 bpy.data.images.remove(bpy.data.images[c])
             res,margin = channels[c]
             for mat in bpy.data.materials:
-                if 'Principled BSDF' not in mat.node_tree.nodes:
+                if mat.node_tree is None or 'Principled BSDF' not in mat.node_tree.nodes:
+                    print("{} skipped".format(mat))
                     continue
                 principle_bsdf = mat.node_tree.nodes['Principled BSDF']
                 diffuse_port = principle_bsdf.inputs['Base Color']
@@ -263,8 +281,11 @@ def bake_model(mat_dir, channels,
             for mat in bpy.data.materials:
                 node = create_empty_image(mat.node_tree, c, True, 
                                           dim=(res,res), add_uv_node=add_uv_node)
-                node.select = True
-                mat.node_tree.nodes.active = node
+                if node is not None:
+                    node.select = True
+                    mat.node_tree.nodes.active = node
+                else:
+                    print("{} skipped".format(mat))
             with redirect_output():
                 bpy.ops.object.bake(type='DIFFUSE', pass_filter={'COLOR'}, 
                                 margin=margin)
