@@ -2,7 +2,7 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from gibson2.objects.articulated_object import URDFObject
-from gibson2.object_properties.utils import sample_kinematics
+from gibson2.object_states.utils import sample_kinematics
 import matplotlib.pyplot as plt
 import numpy as np
 import math
@@ -68,15 +68,13 @@ def main(args):
         ids = object_id_dict[category]
         for i in range(count):
             object_id = random.choice(ids)
-            print(object_id)
             urdf_path = '%s/%s/%s.urdf'%(object_cat_dirs[category], object_id, object_id)
-            urdf_object = URDFObject(urdf_path)
+            name = '%s-%s-%d'%(category,object_id,i)
+            urdf_object = URDFObject(urdf_path, name=name, category=category)
             simulator.import_object(urdf_object)
             for attempt in range(args.num_attempts):
                 object_id = random.choice(ids)
                 urdf_path = '%s/%s/%s.urdf'%(object_cat_dirs[category], object_id, object_id)
-                name = '%s-%s-%d'%(category,object_id,i)
-                urdf_object = URDFObject(urdf_path, name=name, category=category)
                 placement_rules_path = os.path.join(urdf_object.model_path, 'misc', 'placement_probs.json')
                 with open(placement_rules_path, 'r') as f:
                     placement_rules = json.load(f)
@@ -113,8 +111,12 @@ def main(args):
                         plt.imshow(frame)
                         plt.savefig('placement_imgs/placement_%d_%d.png'%(placement_count, i))
                         plt.close()
+
+                urdf_object.in_rooms = chosen_support_obj.in_rooms
+                scene._add_object(urdf_object)
                 break
 
+    scene.save_modified_urdf('test.urdf')
 
     s.disconnect()
 

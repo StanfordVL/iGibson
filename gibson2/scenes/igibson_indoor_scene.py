@@ -912,6 +912,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             urdf_string = f.read()
         add_string = ''
         for name in self.objects_by_name:
+            print(name)
             if name in urdf_string:
                 continue
             obj = self.objects_by_name[name]
