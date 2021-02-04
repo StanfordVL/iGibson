@@ -2,6 +2,7 @@ import os
 
 import gibson2
 import networkx as nx
+import pybullet as p
 from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.ycb_object import YCBObject
@@ -90,6 +91,71 @@ def test_inside():
         assert not obj3.states['touching'].get_value(obj1)
         assert not obj3.states['inside'].get_value(obj1)
         assert not obj3.states['onTop'].get_value(obj1)
+    finally:
+        s.disconnect()
+
+
+def test_open():
+    s = Simulator(mode='headless')
+
+    try:
+        scene = EmptyScene()
+        s.import_scene(scene)
+
+        cabinet_0007 = os.path.join(
+            gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf')
+
+        obj = ArticulatedObject(filename=cabinet_0007)
+        s.import_object(obj)
+        obj.set_position([0, 0, 0.5])
+
+        # --------------------------------------------
+        # PART 1: Run with joints at default position.
+        # --------------------------------------------
+        # Run simulation for a few steps
+        for _ in range(5):
+            s.step()
+
+        # Check that the cabinet is not open.
+        assert not obj.states['open'].get_value()
+
+        # --------------------------------------------
+        # PART 2: Set one joint to the max position
+        # --------------------------------------------
+        joint_id = 2
+        max_pos = p.getJointInfo(obj.get_body_id(), joint_id)[9]
+        p.resetJointState(obj.get_body_id(), joint_id, max_pos)
+
+        # Simulate a bit more
+        for _ in range(5):
+            s.step()
+
+        # Check that the cabinet is open.
+        assert obj.states['open'].get_value()
+
+        # --------------------------------------------
+        # PART 3: Now try sampling a closed position.
+        # --------------------------------------------
+        obj.states['open'].set_value(False)
+
+        # Simulate a bit more
+        for _ in range(5):
+            s.step()
+
+        # Check that the cabinet is closed.
+        assert not obj.states['open'].get_value()
+
+        # --------------------------------------------
+        # PART 4: Finally, sample an open position.
+        # --------------------------------------------
+        obj.states['open'].set_value(True)
+
+        # Simulate a bit more
+        for _ in range(5):
+            s.step()
+
+        # Check that the cabinet is open.
+        assert obj.states['open'].get_value()
     finally:
         s.disconnect()
 
