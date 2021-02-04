@@ -39,16 +39,14 @@ def main(args):
             object_ids = os.listdir(object_cat_dir)
             object_id_dict[cat] = object_ids
 
-    settings = MeshRendererSettings(enable_shadow=False, msaa=False, enable_pbr=False)
+    settings = MeshRendererSettings(enable_shadow=False, msaa=False, enable_pbr=True)
     s = Simulator(mode='headless', image_width=800,
                   image_height=800, rendering_settings=settings)
-    #s = Simulator(image_width=800, image_height=800, rendering_settings=settings)
-    support_categories = ['table', 'fridge', 'counter', 'top_cabinet', 'shelf']
+    #support_categories = ['table', 'fridge', 'counter', 'top_cabinet', 'shelf']
+    support_categories = ['table']
     simulator = s
     scene = InteractiveIndoorScene(args.scene_name, texture_randomization=False, object_randomization=False,
                                   load_object_categories=support_categories)
-    for category in support_categories:
-        scene.open_all_objs_by_category(category, 'max')
     s.import_ig_scene(scene)
     renderer = s.renderer
 
@@ -70,7 +68,7 @@ def main(args):
             object_id = random.choice(ids)
             urdf_path = '%s/%s/%s.urdf'%(object_cat_dirs[category], object_id, object_id)
             name = '%s-%s-%d'%(category,object_id,i)
-            urdf_object = URDFObject(urdf_path, name=name, category=category)
+            urdf_object = URDFObject(urdf_path, name=name, category=category, overwrite_inertial=True)
             simulator.import_object(urdf_object)
             for attempt in range(args.num_attempts):
                 object_id = random.choice(ids)
@@ -111,12 +109,13 @@ def main(args):
                         plt.imshow(frame)
                         plt.savefig('placement_imgs/placement_%d_%d.png'%(placement_count, i))
                         plt.close()
+                    scene.open_one_obj(chosen_support_obj.body_ids[0], 'zero')
 
                 urdf_object.in_rooms = chosen_support_obj.in_rooms
-                scene._add_object(urdf_object)
                 break
 
-    scene.save_modified_urdf('test.urdf')
+    if args.urdf_name:
+        scene.save_modified_urdf(args.urdf_name)
 
     s.disconnect()
 
@@ -124,6 +123,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Configure which surfaces and containers in a scene an object might go in.')
     parser.add_argument('scene_name', type=str)
     parser.add_argument('csv_name', type=str)
+    parser.add_argument('--urdf_name', type=str)
     parser.add_argument('--num_attempts', type=int, default=10)
     parser.add_argument('--save_images', action='store_true', default=False)
     args = parser.parse_args()
