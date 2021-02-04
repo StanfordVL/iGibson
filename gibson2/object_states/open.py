@@ -40,14 +40,14 @@ class Open(CachingEnabledObjectState):
 
     def _compute_value(self):
         # Use generators to support lazy evaluation.
-        joint_ids = list(range(p.getNumJoints(self.obj.body_id)))
+        joint_ids = list(range(p.getNumJoints(self.obj.get_body_id())))
 
         # Get joint infos and compute openness thresholds.
-        joint_infos = (p.getJointInfo(self.obj.body_id, joint_id) for joint_id in joint_ids)
+        joint_infos = (p.getJointInfo(self.obj.get_body_id(), joint_id) for joint_id in joint_ids)
         joint_thresholds = (_compute_joint_threshold(joint_info) for joint_info in joint_infos)
 
         # Get joint states and compute current joint positions.
-        joint_states = (p.getJointState(self.obj.body_id, joint_id) for joint_id in joint_ids)
+        joint_states = (p.getJointState(self.obj.get_body_id(), joint_id) for joint_id in joint_ids)
         joint_positions = (_get_joint_position(joint_state) for joint_state in joint_states)
 
         # Compute a boolean openness state for each joint by comparing positions to thresholds.
@@ -59,10 +59,10 @@ class Open(CachingEnabledObjectState):
 
     def set_value(self, new_value):
         # Randomly sample the joints to set.
-        joint_ids = list(range(p.getNumJoints(self.obj.body_id)))
+        joint_ids = list(range(p.getNumJoints(self.obj.get_body_id())))
 
         # Get joint infos and compute openness thresholds.
-        joint_infos = (p.getJointInfo(self.obj.body_id, joint_id) for joint_id in joint_ids)
+        joint_infos = (p.getJointInfo(self.obj.get_body_id(), joint_id) for joint_id in joint_ids)
         joint_types = (_get_joint_type(joint_info) for joint_info in joint_infos)
 
         relevant_joints = [joint_id for joint_id, joint_type in zip(joint_ids, joint_types)
@@ -77,7 +77,7 @@ class Open(CachingEnabledObjectState):
 
         # Go through the relevant joints & set random positions.
         for joint_id in relevant_joints:
-            joint_info = p.getJointInfo(self.obj.body_id, joint_id)
+            joint_info = p.getJointInfo(self.obj.get_body_id(), joint_id)
             joint_min_pos, joint_max_pos = _get_joint_limits(joint_info)
             joint_threshold = _compute_joint_threshold(joint_info)
 
@@ -89,4 +89,4 @@ class Open(CachingEnabledObjectState):
                 joint_pos = np.random.uniform(joint_min_pos, joint_threshold)
 
             # Save sampled position.
-            p.resetJointState(self.obj.body_id, joint_id, joint_pos)
+            p.resetJointState(self.obj.get_body_id(), joint_id, joint_pos)
