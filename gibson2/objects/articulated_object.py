@@ -80,7 +80,7 @@ class URDFObject(Object):
                  joint_friction=None,
                  in_rooms=None,
                  texture_randomization=False,
-                 overwrite_inertial=False,
+                 overwrite_inertial=True,
                  scene_instance_folder=None,
                  ):
         """
@@ -256,8 +256,8 @@ class URDFObject(Object):
         # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
         # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
         x, y, z = self.scaled_bbxc_in_blf
-        yaw = joint_rpy[2]
-        x, y = rotate_vector_2d(np.array([x, y]), -yaw)
+        roll, pitch, yaw = joint_rpy
+        x, y, z = rotate_vector_3d(self.scaled_bbxc_in_blf, roll, pitch, yaw, False)
         joint_xyz += np.array([x, y, z])
 
         # if the joint is floating, we save the transformation of the floating joint to be used when we load the

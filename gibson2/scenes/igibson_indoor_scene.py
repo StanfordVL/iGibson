@@ -3,7 +3,7 @@ import gibson2
 import logging
 import numpy as np
 from gibson2.objects.articulated_object import URDFObject
-from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from gibson2.utils.utils import rotate_vector_3d, rotate_vector_2d
 import pybullet as p
 import os
 import xml.etree.ElementTree as ET
@@ -28,6 +28,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
     def __init__(self,
                  scene_id,
+                 urdf_file=None,
                  trav_map_resolution=0.1,
                  trav_map_erosion=2,
                  trav_map_type='with_obj',
@@ -48,6 +49,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  ):
         """
         :param scene_id: Scene id
+        :param urdf_file: Optional specification of which urdf file to load
         :param trav_map_resolution: traversability map resolution
         :param trav_map_erosion: erosion radius of traversability areas, should be robot footprint radius
         :param trav_map_type: type of traversability map, with_obj | no_obj
@@ -80,14 +82,17 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
         self.should_open_all_doors = should_open_all_doors
-        if object_randomization:
-            if object_randomization_idx is None:
-                fname = scene_id
+        if urdf_file is None:
+            if object_randomization:
+                if object_randomization_idx is None:
+                    fname = scene_id
+                else:
+                    fname = '{}_random_{}'.format(scene_id,
+                                                  object_randomization_idx)
             else:
-                fname = '{}_random_{}'.format(scene_id,
-                                              object_randomization_idx)
+                fname = '{}_best'.format(scene_id)
         else:
-            fname = '{}_best'.format(scene_id)
+            fname = urdf_file
         if scene_source not in SCENE_SOURCE:
             raise ValueError(
                 'Unsupported scene source: {}'.format(scene_source))
@@ -881,9 +886,14 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 ids.extend(self.objects_by_name[obj_name].body_id)
         return ids
 
-    def save_modified_urdf(self, path_to_urdf):
+    def save_modified_urdf(self, urdf_name):
+        """
+        Saves a modified URDF file in the scene urdf directory having all objects added to the scene.
+
+        :param urdf_name: Name of urdf file to save (without .urdf)
+        """
         TEMPLATE = """
-	<link bounding_box="{bounding box}" category="{category}" model="{model}" name="{name}" room="{room}"/>
+	<link bounding_box="{bounding_box}" category="{category}" model="{model}" name="{name}" room="{room}"/>
 	<joint name="j_{name}" type="floating">
 		<origin rpy="{rpy}" xyz="{xyz}"/>
 		<child link="{name}"/>
@@ -893,17 +903,35 @@ class InteractiveIndoorScene(StaticIndoorScene):
             urdf_string = f.read()
         add_string = ''
         for name in self.objects_by_name:
-            print(name)
             if name in urdf_string:
                 continue
             obj = self.objects_by_name[name]
+            if not hasattr(obj, 'in_rooms') or obj.in_rooms is None:
+                continue
             category = obj.category
             model = name.split('-')[1]
             room = obj.in_rooms[0]
             bounding_box = ' '.join([str(b) for b in obj.bounding_box])
-            position = obj.get_position()
-            xyz = ' '.join([str(p) for p in position])
+
+            # Convert from center of mass to base link position
+            body_id = obj.body_ids[obj.main_body]
+            dynamics_info = p.getDynamicsInfo(body_id, -1)
+            inertial_pos = dynamics_info[3]
+            inertial_orn = dynamics_info[4]
+
+            pos, orn = obj.get_position_orientation()
+            inv_inertial_pos, inv_inertial_orn =\
+                p.invertTransform(inertial_pos, inertial_orn)
+            base_link_position, base_link_orientation = p.multiplyTransforms(
+                pos, orn, inv_inertial_pos, inv_inertial_orn)
+
+            # Convert to XYZ position for URDF
             euler = euler_from_quat(obj.get_orientation())
+            roll, pitch, yaw = euler
+            offset = rotate_vector_3d(obj.scaled_bbxc_in_blf, roll, pitch, yaw, False)
+            bbox_pos = base_link_position - offset
+
+            xyz = ' '.join([str(p) for p in bbox_pos])
             rpy = ' '.join([str(e) for e in euler])
             new_string = TEMPLATE.format(bounding_box = bounding_box,
                                         category = category,
@@ -912,5 +940,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                         room = room,
                                         rpy = rpy,
                                         xyz = xyz)
-            print(new_string)
-
+            add_string+=new_string
+        add_string+='\n</robot>'
+        urdf_string = urdf_string.replace('</robot>', add_string)
+        path_to_urdf = os.path.join(self.scene_dir, 'urdf', urdf_name+'.urdf')
+        with open(path_to_urdf, 'w') as f:
+            f.write(urdf_string)

@@ -36,9 +36,9 @@ def sample_kinematics(predicate, objA, objB, binary_state):
         orientation = objA.sample_orientation()
     else:
         orientation = [0, 0, 0, 1]
-    objA.set_position_orientation([100, 100, 100], orientation)
     objBorientation = objB.get_orientation()
     orientation = quat_from_matrix(matrix_from_quat(objBorientation) @ matrix_from_quat(orientation))
+    objA.set_position_orientation([100, 100, 100], orientation)
     state_id = p.saveState()
     for i in range(max_trials):
         random_idx = np.random.randint(
@@ -111,4 +111,6 @@ def sample_kinematics(predicate, objA, objB, binary_state):
         objA_states['pose'].set_value(objA.get_position_orientation())
         return True
     else:
+        #move back so it's not in scene anymore
+        objA.set_position_orientation([100, 100, 100], orientation)
         return False
