@@ -438,7 +438,7 @@ class FetchGripper(LocomotorRobot):
             # Return whether we succeeded or not
             return success
 
-    def calculate_head_joint_velocities(self):
+    def calculate_head_wheel_joint_velocities(self, wheel_action):
         """
         Calculates the head joint velocities based on a heuristic, where it is fixed during navigation (tucked mode),
         but tracking the hand when manipulating (untucked mode)
@@ -478,15 +478,26 @@ class FetchGripper(LocomotorRobot):
 
                 # to make sure our velocity isn't too fast
 
-                if abs(ee_pixel_coords[0]) > boundary_of_movement or abs(ee_pixel_coords[1]) > boundary_of_movement:
-                    if abs(ee_pixel_coords[0] - desired_pixel[0]) < threshold and abs(
-                            ee_pixel_coords[1] - desired_pixel[1]) < threshold:
+                # if abs(ee_pixel_coords[0]) > boundary_of_movement or abs(ee_pixel_coords[1]) > boundary_of_movement:
+                #     if abs(ee_pixel_coords[0] - desired_pixel[0]) < threshold and abs(
+                #             ee_pixel_coords[1] - desired_pixel[1]) < threshold:
+                #         self.head_error_planning.append((0.0, 0.0))
+                #     else:
+
+                #         pan_diff = (desired_pixel[0] - ee_pixel_coords[0]) / regularization
+                #         tilt_diff = (desired_pixel[1] - ee_pixel_coords[1]) / regularization
+                #         self.head_error_planning.append((pan_diff, tilt_diff))
+
+                if abs(ee_pixel_coords[1]) > boundary_of_movement:
+                    if abs(ee_pixel_coords[1] - desired_pixel[1]) < threshold:
                         self.head_error_planning.append((0.0, 0.0))
                     else:
-
-                        pan_diff = (desired_pixel[0] - ee_pixel_coords[0]) / regularization
                         tilt_diff = (desired_pixel[1] - ee_pixel_coords[1]) / regularization
-                        self.head_error_planning.append((pan_diff, tilt_diff))
+                        self.head_error_planning.append((0.0, tilt_diff))
+                elif ee_pixel_coords[0] > boundary_of_movement: 
+                    wheel_action = np.array([0., 0.5])
+                elif ee_pixel_coords[0] < -boundary_of_movement:
+                    wheel_action = np.array([0., -0.5])
             else:
                 if abs(ee_pixel_coords[0] - desired_pixel[0]) > threshold or abs(
                         ee_pixel_coords[1] - desired_pixel[1]) > threshold:
@@ -508,7 +519,7 @@ class FetchGripper(LocomotorRobot):
                 self.head_error_planning.pop(0)
 
         # Return the computed head command
-        return head_cmd
+        return head_cmd, wheel_action
 
     def policy_action_to_robot_action(self, action):
         """
@@ -527,8 +538,7 @@ class FetchGripper(LocomotorRobot):
         action = action[1:]
 
         # Add in the diff drive, head tracking commands, and gripper command
-        modified_action[self.wheel_joint_action_idx] = action[self.wheel_joint_action_idx]
-        modified_action[self.head_joint_action_idx] = self.calculate_head_joint_velocities()
+        modified_action[self.head_joint_action_idx], modified_action[self.wheel_joint_action_idx] = self.calculate_head_wheel_joint_velocities(action[self.wheel_joint_action_idx])
         modified_action[self.gripper_joint_action_idx] = action[-1]
 
         # If we didn't update our tucking, apply the rest of the action
