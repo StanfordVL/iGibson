@@ -1,6 +1,7 @@
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
 from gibson2.utils.mesh_util import lookat
 import numpy as np
+import time
 
 
 class VrSettings(object):
@@ -64,6 +65,11 @@ class MeshRendererVR(MeshRenderer):
                 self.vr_settings.eye_tracking = False
             self.vrsys.initVR(self.vr_settings.eye_tracking)
 
+    # Calls WaitGetPoses() to acquire pose data, and returns 3ms before next vsync so
+    # rendering can benefit from a "running start"
+    def update_vr_data(self):
+        self.vrsys.updateVRData()
+
     # Renders VR scenes and returns the left eye frame
     def render(self):
         if self.vr_settings.use_vr:
@@ -88,7 +94,8 @@ class MeshRendererVR(MeshRenderer):
             super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=False)
             self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
 
-            self.vrsys.postRenderVRUpdate(True)
+            # Signal to the VR compositor that we are done with rendering
+            self.vrsys.postRenderVR(True)
         else:
             super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
 

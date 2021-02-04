@@ -41,11 +41,10 @@ benchmark_names = [
 
 # IMPORTANT: Change this value if you have a more powerful machine
 # 40fps is recommended for desktops, and 15fps is recommended for laptops
-VR_FPS = 30
-# Set to true to print FPS time, realtime multiplier
-PRINT_TIME = True
-# Set to true to print realtime multiplier
-PRINT_REALTIME = True
+# TODO: Change this back later!
+VR_FPS = 200
+# Set to true to print Simulator step() statistics
+PRINT_STATS = True
 # Set to true to use gripper instead of VR hands
 USE_GRIPPER = False
 
@@ -71,7 +70,7 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             msaa=True,
                                             light_dimming_factor=1.0)
 
-vr_settings = VrSettings(use_vr=True, vr_fps=30)
+vr_settings = VrSettings(use_vr=True, vr_fps=VR_FPS)
 s = Simulator(mode='vr', 
             use_fixed_fps = True,
             rendering_settings=vr_rendering_settings, 
@@ -118,11 +117,13 @@ for name in obj_to_load:
         handle.set_orientation(orn)
         p.changeDynamics(handle.body_id, -1, mass=masses[i])
 
-s.optimize_vertex_and_texture()
-
 # Main simulation loop
 while True:
-    s.step(print_time=PRINT_TIME, print_timestep=True, print_realtime=PRINT_REALTIME)
+    step_start = time.perf_counter()
+    s.step(print_stats=PRINT_STATS)
+    step_dur = time.perf_counter() - step_start
+    print('Step dur: {}'.format(step_dur))
+
     vr_agent.update()
 
 s.disconnect()
