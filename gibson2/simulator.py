@@ -624,51 +624,45 @@ class Simulator:
             if instance.dynamic:
                 self.update_position(instance)
 
-    def step(self, print_time=False, print_timestep=False, print_realtime=False, sleep_until_dur=True, forced_timestep=None):
+    def step_vr(self, print_stats=False):
         """
-        Step the simulation at self.render_timestep and update positions in renderer
+        Step the simulation when using VR - we need this function since the order of physics and rendering is swapped.
         """
-        # First poll VR events and store them
-        if self.can_access_vr_context:
-            # Note: this should only be called once per frame - use get_vr_events to read the event data list in
-            # subsequent read operations
-            self.poll_vr_events()
-            # This is necessary to fix the eye tracking value for the current frame, since it is multi-threaded
-            self.fix_eye_tracking_value()
-
-        physics_start_time = time.time()
-
-        # Always guarantee at least one physics timestep
-        if self.use_fixed_fps:
-            physics_timestep_num = self.num_phys_steps if not forced_timestep else forced_timestep
-        else:
-            physics_timestep_num = 1
-        if print_timestep:
-            print("Frame {} - physics timestep num: {}".format(self.frame_count, physics_timestep_num))
+        # Simulate Physics in PyBullet
+        physics_start_time = time.perf_counter()
+        physics_timestep_num = self.num_phys_steps
         for _ in range(physics_timestep_num):
             p.stepSimulation()
-        physics_dur = time.time() - physics_start_time
+        physics_dur = time.perf_counter() - physics_start_time
 
-        render_start_time = time.time()
-        self.sync()
-        render_dur = time.time() - render_start_time
-
-        other_start_time = time.time()
-
-        # Sets the VR starting position if one has been specified by the user
+        vr_data_start = time.perf_counter()
+        # Note: this should only be called once per frame - use get_vr_events to read the event data list in
+        # subsequent read operations
+        self.poll_vr_events()
+        # This is necessary to fix the eye tracking value for the current frame, since it is multi-threaded
+        self.fix_eye_tracking_value()
+        # Move user to their starting location
         self.perform_vr_start_pos_move()
-        self.frame_count += 1
-        
-        other_dur = time.time() - other_start_time
-        dur_pre_sleep = physics_dur + render_dur + other_dur
 
-        sleep_start_time = time.time()
-        if self.use_fixed_fps and sleep_until_dur:  
-            # Sleep until frame has lasted the expected amount of time
-            if dur_pre_sleep < self.fixed_frame_dur:
-                sleep(self.fixed_frame_dur - dur_pre_sleep)
-        sleep_dur = time.time() - sleep_start_time
-        frame_dur = physics_dur + render_dur + other_dur + sleep_dur
+        # Update VR data and wait until 3ms before the next vsync, at the start of the frame
+        self.renderer.update_vr_data()
+        vr_data_dur = time.perf_counter() - vr_data_start
+
+        # Submit rendering to the GPU as soon as possible after VRFrameStart()
+        render_start_time = time.perf_counter()
+        self.sync()
+        render_dur = time.perf_counter() - render_start_time
+
+        # Sleep until fixed FPS value is reached
+        dur_pre_sleep = vr_data_dur + physics_dur + render_dur
+        sleep_start_time = time.perf_counter()
+        if dur_pre_sleep < self.fixed_frame_dur:
+            sleep(self.fixed_frame_dur - dur_pre_sleep)
+        sleep_dur = time.perf_counter() - sleep_start_time
+
+        # Calculate final frame duration
+        # Make sure it is non-zero for FPS calculation (set to max of 1000 if so)
+        frame_dur = max(1e-3, dur_pre_sleep + sleep_dur)
 
         # Set variables for data saving and replay
         self.last_physics_timestep = physics_dur
@@ -676,14 +670,30 @@ class Simulator:
         self.last_physics_step_num = physics_timestep_num
         self.last_frame_dur = frame_dur
 
-        if print_time:
-            print('Total physics duration: {} and FPS: {}'.format(round(physics_dur, 2), round(1/max(physics_dur, 0.002), 2)))
-            print('Total render duration: {} and FPS: {}'.format(round(render_dur, 2), round(1/max(render_dur, 0.002), 2)))
-            print('Total frame duration: {} and FPS: {}'.format(round(frame_dur, 2), round(1/max(frame_dur, 0.002), 2)))
-        if print_realtime:
+        if print_stats:
+            print('Total VR data collection duration: {}'.format(vr_data_dur * 1000))
+            print('Total render duration: {}'.format(render_dur * 1000))
+            print('Total physics duration: {}'.format(physics_dur * 1000))
+            print('Total frame duration: {} and fps: {}'.format(frame_dur * 1000, 1/frame_dur))
             print('Realtime factor: {}'.format(round(physics_timestep_num * self.physics_timestep / frame_dur, 3)))
-        if print_time or print_realtime:
             print('-------------------------')
+
+        self.frame_count += 1
+
+    def step(self, print_stats=False, forced_timestep=None):
+        """
+        Step the simulation at self.render_timestep and update positions in renderer
+        """
+        # Call separate step function for VR
+        if self.can_access_vr_context:
+            self.step_vr(print_stats=print_stats)
+            return
+
+        # Always guarantee at least one physics timestep
+        physics_timestep_num = forced_timestep if forced_timestep else max(1, int(self.render_timestep / self.physics_timestep))
+        for _ in range(physics_timestep_num):
+            p.stepSimulation()
+        self.sync()
 
     def sync(self):
         """
