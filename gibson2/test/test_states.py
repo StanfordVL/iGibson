@@ -123,8 +123,8 @@ def test_open():
         # PART 2: Set one joint to the max position
         # --------------------------------------------
         joint_id = 2
-        max_pos = p.getJointInfo(obj.body_id, joint_id)[9]
-        p.resetJointState(obj.body_id, joint_id, max_pos)
+        max_pos = p.getJointInfo(obj.get_body_id(), joint_id)[9]
+        p.resetJointState(obj.get_body_id(), joint_id, max_pos)
 
         # Simulate a bit more
         for _ in range(5):
