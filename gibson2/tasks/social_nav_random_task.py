@@ -18,47 +18,30 @@ class SocialNavRandomTask(PointNavRandomTask):
 
     def __init__(self, env):
         """
-        num_steps_stop              Consecutive timesteps each pedestrian had
-                                    to stop due to backoff detection or due to
-                                    its nearby neighbor backing off
-        neighbor_stop_radius        Maximum distance to be considered a nearby
-                                    neighbor to the pedestrian
-        num_steps_stop_thresh       Number of consecutive steps that pedestrians
-                                    should stop for before resampling waypoints
-        backoff_radian_thresh       If the angle (in radian) between the pedestrian's
-                                    orientation and the direction of the next
-                                    goal is greater than the backoff_radian_thresh,
-                                    then the pedestrian is considered backing off
-                                    Default radian threshold is 2.70 (which is
-                                    approximately 154 degrees)
-        num_backoff_resampling      Number of consecutive times waypoints were
-                                    resampled for each pedestrian due to stopping
-                                    over long consecutive time steps
-        num_steps_disable_detection Timesteps left to disable backoff
-                                    detection algorithm for each pedestrian
-        num_steps_disable_thresh    Number of timesteps the backoff detection
-                                    algorithm should be disabled for each
-                                    pedestrian due to possible deadlock
-        backoff_resampling_thresh   Maximum Number of consecutive waypoint
-                                    resampling before disabling backoff detection
+        numStepsStop        A list of number of consecutive timesteps
+                            each pedestrian had to stop for.
+        numStepsStopThresh  The maximum number of consecutive timesteps
+                            the pedestrian should stop for before sampling
+                            a new waypoint.
+        maxNeighborRadius   Maximum distance to be considered a nearby
+                            a new waypoint.
+        backoffRadianThresh If the angle (in radian) between the pedestrian's
+                            orientation and the next direction of the next
+                            goal is greater than the backoffRadianThresh,
+                            then the pedestrian is considered backing off.
         """
         super(SocialNavRandomTask, self).__init__(env)
         # For debugging purposes, so that we can simulate colliding pedestrians
-        np.random.seed(4)
+        # np.random.seed(5)
         self.num_pedestrians = self.config.get('num_pedestrians', 3)
         self.num_steps_stop = [0] * self.num_pedestrians
         self.neighbor_stop_radius = self.config.get(
             'neighbor_stop_radius', 1.0)
         self.num_steps_stop_thresh = self.config.get(
             'num_steps_stop_thresh', 5)
+        # backoff when angle is greater than 2.7 radians
         self.backoff_radian_thresh = self.config.get(
             'backoff_radian_thresh', 2.7)
-        self.num_backoff_resampling = [0] * self.num_pedestrians
-        self.num_steps_disable_detection = [0] * self.num_pedestrians
-        self.num_steps_disable_thresh = self.config.get(
-            'num_steps_disable_thresh', 10)
-        self.backoff_resampling_thresh = self.config.get(
-            'backoff_resampling_thresh', 3)
 
         self.neighbor_dist = self.config.get('orca_neighbor_dist', 5)
         self.max_neighbors = self.num_pedestrians + 1
@@ -291,24 +274,14 @@ class SocialNavRandomTask(PointNavRandomTask):
                               self.pedestrian_waypoints)):
             current_pos = np.array(ped.get_position())
 
-            # Sample new waypoints if empty OR if the pedestrian stopped for more than
-            # |self.num_steps_stop_thresh| number of timesteps.
+            # Sample new waypoints if empty OR if the pedestrian froze for x amount of time.
             if len(waypoints) == 0 or self.num_steps_stop[i] >= self.num_steps_stop_thresh:
-                if self.num_steps_stop[i] > self.num_steps_stop_thresh:
+                if self.num_steps_stop[i] >= self.num_steps_stop_thresh:
                     print("sampling new point because pedestrian #${} \
                           stoped for too long".format(i))
                 waypoints = self.sample_new_target_pos(env, current_pos)
                 self.pedestrian_waypoints[i] = waypoints
                 self.num_steps_stop[i] = 0
-                self.num_backoff_resampling[i] += 1
-
-            # If the waypoint for this pedestrian was resampled more than
-            # |self.backoff_resampling_thresh|, then disable the backoff
-            # detection algorithm for the next |self.num_steps_disable_thresh|
-            # time step
-            if self.num_backoff_resampling[i] >= self.backoff_resampling_thresh:
-                self.num_backoff_resampling[i] = 0
-                self.num_steps_disable_detection[i] = self.num_steps_disable_thresh
 
             next_goal = waypoints[0]
             self.pedestrian_goals[i].set_position(
@@ -333,19 +306,10 @@ class SocialNavRandomTask(PointNavRandomTask):
                               self.pedestrian_waypoints)):
             pos_xyz = next_peds_pos_xyz[i]
             if next_peds_stop_flag[i] is True:
-                # Pedestrain needs to stop.
-                # Revert pedestrian position in the PyRVOSimulator to
-                # the old position
                 self.orca_sim.setAgentPosition(orca_pred, pos_xyz[:2])
                 self.num_steps_stop[i] += 1
             else:
-                # Pedestrian does not need to stop.
-                # Update pedestrian position with the new positions
-                # from the results of the PyRVOSimulator
                 self.num_steps_stop[i] = 0
-                self.num_backoff_resampling[i] = 0
-                self.num_steps_disable_detection[i] = max(
-                    self.num_steps_disable_detection[i] - 1, 0)
                 ped.set_position(pos_xyz)
                 next_goal = waypoints[0]
                 if np.linalg.norm(next_goal - np.array(pos_xyz[:2])) \
@@ -373,9 +337,7 @@ class SocialNavRandomTask(PointNavRandomTask):
             prev_pos_xyz = ped.get_position()
             pos = np.array([pos_xy[0], pos_xy[1], prev_pos_xyz[2]])
 
-            if self.num_steps_disable_detection[i] == 0 and self.detect_backoff(ped, orca_ped):
-                # If backoff is detected and backoff detection algorithm
-                # is not disabled, then hold all nearby neighbors
+            if self.detect_backoff(ped, orca_ped):
                 self.stop_neighbor_pedestrians(i,
                                                next_peds_stop_flag,
                                                next_peds_pos_xyz)
@@ -384,22 +346,18 @@ class SocialNavRandomTask(PointNavRandomTask):
                 # If there are no other neighboring pedestrians that forces
                 # this pedestrian to stop, then simply update next position.
                 next_peds_pos_xyz[i] = pos
+
         return next_peds_pos_xyz, next_peds_stop_flag
 
     def stop_neighbor_pedestrians(self, id, peds_stop_flags, peds_next_pos_xyz):
         """
-        If the pedestrian whose instance stored in |self.pedestrians| with
+        If the pedestrian whose instance stored in self.pedestrians with
         index |id| is attempting to backoff, all the other neighboring
-        pedestrians within |self.neighbor_stop_radius| will stop. For any
-        pedestrian stopping at next step, its xyz position in the PyRVOSimulator
-        should revert back to the old position.
+        pedestrians within |self.neighbor_stop_radius| will stop
 
         :param id: the index of the pedestrian object
         :param peds_stop_flags: list of boolean corresponding to if the pestrian
-                                at index i should stop for the next timestep
-        :peds_next_pos_xyz: list of xyz position that the pedestrian would
-                            move in the next timestep or the position in the
-                            PyRVOSimulator that the pedestrian would revert to
+                                at index i should stop for the next
         """
 
         orca_ped = self.orca_pedestrians[id]
@@ -410,11 +368,16 @@ class SocialNavRandomTask(PointNavRandomTask):
         for neighbor_index in range(num_neighbors):
             orca_neighbor_id = self.orca_sim.getAgentAgentNeighbor(
                 orca_ped, neighbor_index)
-            neighbor_pos_xyz = self.pedestrians[orca_neighbor_id].get_position()
+            neighbor_pos_xyz = self.pedestrians[orca_neighbor_id].get_position(
+            )
+
             dist = np.linalg.norm([neighbor_pos_xyz[0] - ped_pos_xyz[0],
                                    neighbor_pos_xyz[1] - ped_pos_xyz[1]])
+            # print("Distance from pedestrian #{} to neighbor #{}: {:0.2f}" \
+            #         .format(orca_ped, orca_neighbor_id, dist))
             if dist >= self.neighbor_stop_radius:
                 continue
+            # print("Stopping neighboring pedestrian #{}!".format(orca_neighbor_id))
             peds_stop_flags[orca_neighbor_id] = True
             peds_next_pos_xyz[orca_neighbor_id] = neighbor_pos_xyz
         peds_stop_flags[id] = True
@@ -426,7 +389,7 @@ class SocialNavRandomTask(PointNavRandomTask):
         due to some form of imminent collision
 
         :param ped: the pedestrain object
-        :param orca_ped: the pedestrian id in the PyRVOSimulator
+        :param orca_ped: the pedestrian id in the orca simulator
         :return: whether the pedestrian is backing off
         """
         pos_xy = self.orca_sim.getAgentPosition(orca_ped)
@@ -450,4 +413,7 @@ class SocialNavRandomTask(PointNavRandomTask):
         angle = np.arccos(np.dot(normalized_dir, next_normalized_dir))
         is_backoff_detected = "TRUE" if angle >= self.backoff_radian_thresh \
             else "FALSE"
+        # print("Ped index #{} at loc ({:0.2f}, {:0.2f}): angle (radians) between \
+        #         current orientation and next direction: {:0.2f}. Is backoff Detected: {}"\
+        #         .format(orca_ped, pos_xy[0], pos_xy[1], angle, is_backoff_detected))
         return angle >= self.backoff_radian_thresh
