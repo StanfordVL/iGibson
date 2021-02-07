@@ -1,8 +1,11 @@
 import networkx as nx
 from gibson2.object_states.aabb import AABB
+from gibson2.object_states.burnt import Burnt
 from gibson2.object_states.contact_bodies import ContactBodies
+from gibson2.object_states.cooked import Cooked
 from gibson2.object_states.dummy_state import DummyState
 from gibson2.object_states.inside import Inside
+from gibson2.object_states.max_temperature import MaxTemperature
 from gibson2.object_states.next_to import NextTo
 from gibson2.object_states.on_top import OnTop
 from gibson2.object_states.open import Open
@@ -12,20 +15,27 @@ from gibson2.object_states.touching import Touching
 from gibson2.object_states.under import Under
 
 _STATE_NAME_TO_CLASS_MAPPING = {
+    # Kinematic states
     'pose': Pose,
     'aabb': AABB,
     'contact_bodies': ContactBodies,
-    'temperature': Temperature,
     'onTop': OnTop,
     'open': Open,
     'inside': Inside,
     'nextTo': NextTo,
     'under': Under,
     'touching': Touching,
+
+    # Temperature / cooking states
+    'temperature': Temperature,
+    'maxTemperature': MaxTemperature,
+    'burnt': Burnt,
+    'cooked': Cooked,
 }
 
 _ABILITY_TO_STATE_MAPPING = {
     "cookable": ["cooked"],
+    "burnable": ["burnt"],
 }
 
 _DEFAULT_STATE_SET = {
