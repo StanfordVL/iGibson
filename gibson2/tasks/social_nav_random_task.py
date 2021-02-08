@@ -1,13 +1,11 @@
 from gibson2.tasks.point_nav_random_task import PointNavRandomTask
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.pedestrian import Pedestrian
-from gibson2.utils.utils import quatToXYZW
-from transforms3d.euler import euler2quat
 import pybullet as p
 
 import numpy as np
 import rvo2
-from IPython import embed
+from gibson2.termination_conditions.pedestrian_collision import PedestrianCollision
 
 
 class SocialNavRandomTask(PointNavRandomTask):
@@ -43,12 +41,20 @@ class SocialNavRandomTask(PointNavRandomTask):
         self.backoff_radian_thresh = self.config.get(
             'backoff_radian_thresh', 2.7)
 
+        self.termination_conditions.append(PedestrianCollision(self.config))
+        # Each pixel is 0.01 square meter
+        num_sqrt_meter = env.scene.floor_map[0].nonzero()[0].shape[0] / 100.0
+        self.num_sqrt_meter_per_ped = self.config.get(
+            'num_sqrt_meter_per_ped', 10)
+        self.num_pedestrians = int(
+            num_sqrt_meter / self.num_sqrt_meter_per_ped)
+
         self.neighbor_dist = self.config.get('orca_neighbor_dist', 5)
         self.max_neighbors = self.num_pedestrians + 1
         self.time_horizon = self.config.get('orca_time_horizon', 2.0)
         self.time_horizon_obst = self.config.get('orca_time_horizon_obst', 2.0)
         self.radius = self.config.get('orca_radius', 0.3)
-        self.max_speed = self.config.get('orca_max_speed', 1.0)
+        self.max_speed = self.config.get('orca_max_speed', 0.5)
         self.pedestrian_velocity = self.config.get('pedestrian_velocity', 1.0)
         self.pedestrian_goal_thresh = \
             self.config.get('pedestrian_goal_thresh', 0.2)
@@ -110,6 +116,7 @@ class SocialNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         :return: a list of pedestrians
         """
+        self.robot_orca_ped = self.orca_sim.addAgent((0, 0))
         pedestrians = []
         orca_pedestrians = []
         colors = [
@@ -221,6 +228,17 @@ class SocialNavRandomTask(PointNavRandomTask):
             waypoints = self.sample_new_target_pos(env, initial_pos)
             self.pedestrian_waypoints.append(waypoints)
 
+    def reset_agent(self, env):
+        """
+        Reset robot initial pose.
+        Sample initial pose and target position, check validity, and land it.
+
+        :param env: environment instance
+        """
+        super(SocialNavRandomTask, self).reset_agent(env)
+        self.orca_sim.setAgentPosition(self.robot_orca_ped,
+                                       tuple(self.initial_pos[0:2]))
+
     def sample_new_target_pos(self, env, initial_pos):
         while True:
             _, target_pos = env.scene.get_random_point(floor=self.floor_num)
@@ -282,6 +300,10 @@ class SocialNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         """
         super(SocialNavRandomTask, self).step(env)
+        self.orca_sim.setAgentPosition(
+            self.robot_orca_ped,
+            tuple(env.robots[0].get_position()[0:2]))
+
         for i, (ped, orca_ped, waypoints) in \
                 enumerate(zip(self.pedestrians,
                               self.orca_pedestrians,
@@ -390,11 +412,8 @@ class SocialNavRandomTask(PointNavRandomTask):
 
             dist = np.linalg.norm([neighbor_pos_xyz[0] - ped_pos_xyz[0],
                                    neighbor_pos_xyz[1] - ped_pos_xyz[1]])
-            # print("Distance from pedestrian #{} to neighbor #{}: {:0.2f}" \
-            #         .format(orca_ped, orca_neighbor_id, dist))
             if dist >= self.neighbor_stop_radius:
                 continue
-            # print("Stopping neighboring pedestrian #{}!".format(orca_neighbor_id))
             peds_stop_flags[orca_neighbor_id] = True
             peds_next_pos_xyz[orca_neighbor_id] = neighbor_pos_xyz
         peds_stop_flags[id] = True
@@ -415,8 +434,7 @@ class SocialNavRandomTask(PointNavRandomTask):
 
         yaw = ped.get_yaw()
 
-        # Computing the direction vector from roll, pitch, yaw
-        # https://stackoverflow.com/questions/1568568/how-to-convert-euler-angles-to-directional-vector
+        # Computing the directional vectors from yaw
         orient_x_dir = np.cos(yaw)
         orient_y_dir = np.sin(yaw)
         orient_dir = (orient_x_dir, orient_y_dir)
@@ -430,7 +448,4 @@ class SocialNavRandomTask(PointNavRandomTask):
         angle = np.arccos(np.dot(normalized_dir, next_normalized_dir))
         is_backoff_detected = "TRUE" if angle >= self.backoff_radian_thresh \
             else "FALSE"
-        print("Ped index #{} at loc ({:0.2f}, {:0.2f}): angle (radians) between \
-                current orientation and next direction: {:0.2f}. Is backoff Detected: {}"\
-                .format(orca_ped, pos_xy[0], pos_xy[1], angle, is_backoff_detected))
         return angle >= self.backoff_radian_thresh
