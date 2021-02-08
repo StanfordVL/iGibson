@@ -11,6 +11,26 @@ class BaseObjectState(with_metaclass(ABCMeta)):
 
     @staticmethod
     def get_dependencies():
+        """
+        Get the dependency states for this state, e.g. states that need to be explicitly enabled on the current object
+        before the current state is usable. States listed here will be enabled for all objects that have this current
+        state, and all dependency states will be processed on *all* objects prior to this state being processed on
+        *any* object.
+
+        :return: List of strings corresponding to state keys.
+        """
+        return []
+
+    @staticmethod
+    def get_optional_dependencies():
+        """
+        Get states that should be processed prior to this state if they are already enabled. These states will not be
+        enabled because of this state's dependency on them, but if they are already enabled for another reason (e.g.
+        because of an ability or another state's dependency etc.), they will be processed on *all* objects prior to this
+        state being processed on *any* object.
+
+        :return: List of strings corresponding to state keys.
+        """
         return []
 
     def __init__(self, obj):
