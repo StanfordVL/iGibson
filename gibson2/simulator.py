@@ -1,3 +1,4 @@
+from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
 from gibson2.utils.semantics_utils import get_class_name_to_class_id
 from gibson2.utils.constants import SemanticClass, PyBulletSleepState
@@ -7,6 +8,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from gibson2.render.mesh_renderer.instances import InstanceGroup, Instance, Robot
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer, ViewerVR, ViewerSimple
+from gibson2.object_states.factory import get_states_by_dependency_order
 from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.scene_base import Scene
@@ -60,6 +62,8 @@ class Simulator:
         self.physics_timestep = physics_timestep
         self.render_timestep = render_timestep
         self.mode = mode
+
+        self.scene = None
 
         # TODO: remove this, currently used for testing only
         self.objects = []
@@ -118,6 +122,8 @@ class Simulator:
 
         self.class_name_to_class_id = get_class_name_to_class_id()
         self.body_links_awake = 0
+
+        self.object_state_names = get_states_by_dependency_order()
 
     def set_timestep(self, physics_timestep, render_timestep):
         """
@@ -312,14 +318,24 @@ class Simulator:
         :param shadow_caster: Whether to cast shadow
         """
         assert isinstance(obj, Object) or isinstance(obj, ParticleSystem), \
-            'import_object can only be called with Object or ParticleSystem'
-        # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
+            'import_object can only be called with Object'
+        new_object_pb_id_or_ids = []
         if isinstance(obj, ParticleSystem):
-            ids = []
             for o in obj.particles:
-                ids.append(self.import_object(o,use_pbr=False, use_pbr_mapping=False, shadow_caster=False))
-            return ids
-        new_object_pb_id_or_ids = obj.load()
+                new_object_pb_id_or_ids.append(self.scene.add_object(o, _is_call_from_simulator=True))
+        elif isinstance(obj, VisualMarker):
+            # Marker objects can be imported without a scene.
+            new_object_pb_id_or_ids = obj.load()
+        else:
+            # Non-marker objects require a Scene to be imported.
+            assert self.scene is not None, "A scene must be imported before additional objects can be imported."
+            # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
+            new_object_pb_id_or_ids = self.scene.add_object(obj, _is_call_from_simulator=True)
+
+        # If no new bodies are immediately imported into pybullet, we have no rendering steps.
+        if new_object_pb_id_or_ids is None:
+            return None
+
         if isinstance(new_object_pb_id_or_ids, list):
             new_object_pb_ids = new_object_pb_id_or_ids
         else:
@@ -629,19 +645,23 @@ class Simulator:
 
         return ids
 
-    def _step_simulation(self):
+    def _non_physics_step(self):
         """
-        Step the simulation for one step and update positions in renderer
+        Complete any non-physics steps such as state updates.
         """
-        p.stepSimulation()
-        for instance in self.renderer.instances:
-            if instance.dynamic:
-                self.update_position(instance)
+        # Step the object states in global topological order.
+        for state_name in self.object_state_names:
+            for obj in self.scene.get_objects():
+                if state_name in obj.states:
+                    obj.states[state_name].update(self)
 
     def step(self, print_time=False, use_render_timestep_lpf=True, print_timestep=False, forced_timestep=None):
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
+        assert self.scene is not None, \
+            "A scene must be imported before running the simulator. Use EmptyScene for an empty scene."
+
         # First poll VR events and store them
         if self.can_access_vr_context:
             # Note: this should only be called once per frame - use get_vr_events to read the event data list in
@@ -658,6 +678,7 @@ class Simulator:
             self.frame_count += 1
         for _ in range(physics_timestep_num):
             p.stepSimulation()
+            self._non_physics_step()
         physics_dur = time.time() - physics_start_time
 
         render_start_time = time.time()

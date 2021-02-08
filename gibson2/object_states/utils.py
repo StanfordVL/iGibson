@@ -1,7 +1,7 @@
 import numpy as np
 import pybullet as p
 import cv2
-from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent
+from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, quat_from_matrix
 
 
 def get_center_extent(obj_states):
@@ -37,6 +37,8 @@ def sample_kinematics(predicate, objA, objB, binary_state):
     else:
         orientation = [0, 0, 0, 1]
     objA.set_position_orientation([100, 100, 100], orientation)
+    objBorientation = objB.get_orientation()
+    orientation = quat_from_matrix(matrix_from_quat(objBorientation) @ matrix_from_quat(orientation))
     state_id = p.saveState()
     for i in range(max_trials):
         random_idx = np.random.randint(
@@ -55,6 +57,8 @@ def sample_kinematics(predicate, objA, objB, binary_state):
             height_map, np.ones(obj_half_size_scaled, np.uint8))
 
         valid_pos = np.array(height_map_eroded.nonzero())
+        if valid_pos.shape[1]==0:
+            return False
         random_pos_idx = np.random.randint(valid_pos.shape[1])
         random_pos = valid_pos[:, random_pos_idx]
         y_map, x_map = random_pos

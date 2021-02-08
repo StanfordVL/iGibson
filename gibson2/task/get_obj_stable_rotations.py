@@ -11,6 +11,8 @@ import math
 from pyquaternion import Quaternion
 from transformations import euler_from_matrix
 import pybullet as pb
+
+from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.simulator import Simulator
 from gibson2.objects.articulated_object import ArticulatedObject
 import matplotlib.pyplot as plt
@@ -21,6 +23,8 @@ Use by running without --ask_probs or --save_yaml to see rotations, and then wit
 '''
 
 simulator = Simulator(image_width=640, image_height=640)#, mode='headless')
+scene = EmptyScene()
+simulator.import_scene(scene)
 parser = argparse.ArgumentParser(description='Analyze objects that can be placed in a container.')
 parser.add_argument('object_file', type=str)
 parser.add_argument('--ask_probs', action='store_true', help='Whether to ask probability per rotation.')

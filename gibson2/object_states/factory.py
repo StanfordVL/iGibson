@@ -1,10 +1,12 @@
-from gibson2.object_states.inside import Inside
-from gibson2.object_states.next_to import NextTo
-from gibson2.object_states.on_top import OnTop
-from gibson2.object_states.pose import Pose
+import networkx as nx
 from gibson2.object_states.aabb import AABB
 from gibson2.object_states.contact_bodies import ContactBodies
 from gibson2.object_states.dummy_state import DummyState
+from gibson2.object_states.inside import Inside
+from gibson2.object_states.next_to import NextTo
+from gibson2.object_states.on_top import OnTop
+from gibson2.object_states.open import Open
+from gibson2.object_states.pose import Pose
 from gibson2.object_states.temperature import Temperature
 from gibson2.object_states.touching import Touching
 from gibson2.object_states.under import Under
@@ -18,6 +20,7 @@ _STATE_NAME_TO_CLASS_MAPPING = {
     'contact_bodies': ContactBodies,
     'temperature': Temperature,
     'onTop': OnTop,
+    'open': Open,
     'inside': Inside,
     'nextTo': NextTo,
     'under': Under,
@@ -41,7 +44,8 @@ _DEFAULT_STATE_SET = {
     'inside',
     'nextTo',
     'under',
-    'touching'
+    'touching',
+    'open',
 }
 
 
@@ -84,3 +88,19 @@ def prepare_object_states(obj, abilities=[], online=True):
                 state_names.append(dependency)
 
     return states
+
+
+def get_state_dependency_graph():
+    """
+    Produce dependency graph of supported object states.
+    """
+    dependencies = {state_name: _STATE_NAME_TO_CLASS_MAPPING[state_name].get_dependencies()
+                    for state_name in get_all_state_names()}
+    return nx.DiGraph(dependencies)
+
+
+def get_states_by_dependency_order():
+    """
+    Produce a list of all states in topological order of dependency.
+    """
+    return list(reversed(list(nx.algorithms.topological_sort(get_state_dependency_graph()))))

@@ -18,4 +18,4 @@ class DummyState(AbsoluteObjectState):
 
     def update_offline(self, overwrite_value):
         # TODO: Remove this - it is only for avoiding compatibility issues w/ old code.
-        return self.set_value(new_value)
+        return self.set_value(overwrite_value)
