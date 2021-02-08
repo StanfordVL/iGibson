@@ -4,6 +4,7 @@ from gibson2.object_states.burnt import Burnt
 from gibson2.object_states.contact_bodies import ContactBodies
 from gibson2.object_states.cooked import Cooked
 from gibson2.object_states.dummy_state import DummyState
+from gibson2.object_states.heat_source import HeatSource
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.max_temperature import MaxTemperature
 from gibson2.object_states.next_to import NextTo
@@ -27,6 +28,7 @@ _STATE_NAME_TO_CLASS_MAPPING = {
     'touching': Touching,
 
     # Temperature / cooking states
+    'heatSource': HeatSource,
     'temperature': Temperature,
     'maxTemperature': MaxTemperature,
     'burnt': Burnt,
@@ -36,6 +38,7 @@ _STATE_NAME_TO_CLASS_MAPPING = {
 _ABILITY_TO_STATE_MAPPING = {
     "cookable": ["cooked"],
     "burnable": ["burnt"],
+    "heatSource": ["heatSource"]
 }
 
 _DEFAULT_STATE_SET = {
