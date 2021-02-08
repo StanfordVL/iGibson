@@ -10,7 +10,6 @@ from PIL import Image
 parser = argparse.ArgumentParser("Generate Mesh meta-data...")
 parser.add_argument('--input_dir', dest='input_dir')
 parser.add_argument('--material', dest='material', default='wood')
-parser.add_argument('--composite_transmission', action='store_true')
 
 use_mat = 'mtllib default.mtl\nusemtl default\n'
 default_mtl = '''newmtl default
@@ -155,6 +154,7 @@ def composite_transmission_material(input_dir):
     Image.fromarray(roughness).save(roughness_fn)
     Image.fromarray(normal).save(normal_fn)
 
+
 args = parser.parse_args()
 if os.path.isdir(args.input_dir):
     misc_dir = os.path.join(args.input_dir, 'misc')
@@ -162,7 +162,7 @@ if os.path.isdir(args.input_dir):
     gen_bbox(args.input_dir)
     gen_material(args.input_dir, args.material)
     bake_dir = os.path.join(args.input_dir, 'material')
-    if os.path.isdir(bake_dir) and len(os.listdir(bake_dir)) == 4:
+    if os.path.isdir(bake_dir) and len(os.listdir(bake_dir)) >= 4:
         gen_object_mtl(args.input_dir)
-    if args.composite_transmission:
+    if os.path.isfile(os.path.join(bake_dir, 'TRANSMISSION.png')):
         composite_transmission_material(args.input_dir)
