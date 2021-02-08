@@ -1,13 +1,11 @@
 from gibson2.tasks.point_nav_random_task import PointNavRandomTask
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.pedestrian import Pedestrian
-from gibson2.utils.utils import quatToXYZW
-from transforms3d.euler import euler2quat
 import pybullet as p
 
 import numpy as np
 import rvo2
-from IPython import embed
+from gibson2.termination_conditions.pedestrian_collision import PedestrianCollision
 
 
 class SocialNavRandomTask(PointNavRandomTask):
@@ -18,13 +16,19 @@ class SocialNavRandomTask(PointNavRandomTask):
 
     def __init__(self, env):
         super(SocialNavRandomTask, self).__init__(env)
-        self.num_pedestrians = self.config.get('num_pedestrians', 3)
+        self.termination_conditions.append(PedestrianCollision(self.config))
+        # Each pixel is 0.01 square meter
+        num_sqrt_meter = env.scene.floor_map[0].nonzero()[0].shape[0] / 100.0
+        self.num_sqrt_meter_per_ped = self.config.get(
+            'num_sqrt_meter_per_ped', 10)
+        self.num_pedestrians = int(
+            num_sqrt_meter / self.num_sqrt_meter_per_ped)
         self.neighbor_dist = self.config.get('orca_neighbor_dist', 5)
         self.max_neighbors = self.num_pedestrians + 1
         self.time_horizon = self.config.get('orca_time_horizon', 2.0)
         self.time_horizon_obst = self.config.get('orca_time_horizon_obst', 2.0)
         self.radius = self.config.get('orca_radius', 0.3)
-        self.max_speed = self.config.get('orca_max_speed', 1.0)
+        self.max_speed = self.config.get('orca_max_speed', 0.5)
         self.pedestrian_velocity = self.config.get('pedestrian_velocity', 1.0)
         self.pedestrian_goal_thresh = \
             self.config.get('pedestrian_goal_thresh', 0.2)
@@ -86,6 +90,7 @@ class SocialNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         :return: a list of pedestrians
         """
+        self.robot_orca_ped = self.orca_sim.addAgent((0, 0))
         pedestrians = []
         orca_pedestrians = []
         colors = [
@@ -183,6 +188,17 @@ class SocialNavRandomTask(PointNavRandomTask):
             waypoints = self.sample_new_target_pos(env, initial_pos)
             self.pedestrian_waypoints.append(waypoints)
 
+    def reset_agent(self, env):
+        """
+        Reset robot initial pose.
+        Sample initial pose and target position, check validity, and land it.
+
+        :param env: environment instance
+        """
+        super(SocialNavRandomTask, self).reset_agent(env)
+        self.orca_sim.setAgentPosition(self.robot_orca_ped,
+                                       tuple(self.initial_pos[0:2]))
+
     def sample_new_target_pos(self, env, initial_pos):
         while True:
             _, target_pos = env.scene.get_random_point(floor=self.floor_num)
@@ -244,6 +260,10 @@ class SocialNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         """
         super(SocialNavRandomTask, self).step(env)
+        self.orca_sim.setAgentPosition(
+            self.robot_orca_ped,
+            tuple(env.robots[0].get_position()[0:2]))
+
         for i, (ped, orca_ped, waypoints) in \
                 enumerate(zip(self.pedestrians,
                               self.orca_pedestrians,

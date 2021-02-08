@@ -16,27 +16,26 @@ class InteractiveNavRandomTask(PointNavRandomTask):
 
     def __init__(self, env):
         super(InteractiveNavRandomTask, self).__init__(env)
-        self.interactive_objects = self.load_interactive_objects(env)
-        self.obj_mass = self.get_obj_mass(env)
-        self.obj_body_ids = self.get_obj_body_ids(env)
+        # Load all 20 training interactive objects
+        self.all_interactive_objects = self.load_all_interactive_objects(env)
+        # For each episode, populate self.interactive_objects based on path length
+        self.interactive_objects = []
         self.robot_mass = p.getDynamicsInfo(env.robots[0].robot_ids[0], -1)[0]
 
-    def load_interactive_objects(self, env):
+    def load_all_interactive_objects(self, env):
         """
-        Load interactive objects (YCB objects)
+        Load interactive objects
 
         :param env: environment instance
         :return: a list of interactive objects
         """
         # TODO: change the number of objects based on scene size
-        num_interactive_objs = 5
         clutter_obj_dir = os.path.join(
             gibson2.assets_path, 'models', 'clutter_objects')
-        obj_dirs = np.random.choice(os.listdir(
-            clutter_obj_dir), num_interactive_objs, replace=True)
+        obj_dirs = os.listdir(clutter_obj_dir)
+        assert len(obj_dirs) == 20, 'clutter objects should have 20 objects'
 
         interactive_objects = []
-
         for obj_dir in obj_dirs:
             obj_dir = os.path.join(clutter_obj_dir, obj_dir)
             obj_path = os.path.join(obj_dir, 'meshes', 'model_new.urdf')
@@ -52,7 +51,16 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         """
 
-        shortest_path, _ = self.get_shortest_path(env, entire_path=True)
+        shortest_path, geodesic_dist = self.get_shortest_path(env, entire_path=True)
+        # Increase one interactive object for every 0.5 meter geodesic distance
+        num_interactive_objects = int(geodesic_dist / 0.5)
+        self.interactive_objects = np.random.choice(
+            self.all_interactive_objects,
+            num_interactive_objects,
+            replace=False)
+        self.obj_mass = self.get_obj_mass(env)
+        self.obj_body_ids = self.get_obj_body_ids(env)
+
         max_trials = 100
         for obj in self.interactive_objects:
             # TODO: p.saveState takes a few seconds, need to speed up
@@ -86,8 +94,8 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         """
         super(InteractiveNavRandomTask, self).reset_scene(env)
-        for obj in self.interactive_objects:
-            obj.set_position([100.0, 100.0, 100.0])
+        for i, obj in enumerate(self.all_interactive_objects):
+            obj.set_position([100.0 + i, 100.0, 100.0])
 
     def get_obj_pos(self, env):
         obj_pos = []
