@@ -5,10 +5,12 @@ import argparse
 import json
 import glob
 import gibson2
+from PIL import Image
 
 parser = argparse.ArgumentParser("Generate Mesh meta-data...")
 parser.add_argument('--input_dir', dest='input_dir')
 parser.add_argument('--material', dest='material', default='wood')
+parser.add_argument('--composite_transmission', action='store_true')
 
 use_mat = 'mtllib default.mtl\nusemtl default\n'
 default_mtl = '''newmtl default
@@ -119,6 +121,39 @@ def gen_material(input_dir, material_string):
     with open(save_path, 'w') as fp:
         json.dump([material_entry, mesh_to_material], fp)
 
+def composite_transmission_material(input_dir):
+    # run some composition on transmission
+    transmissio_fn = os.path.join(input_dir, 'material', 'TRANSMISSION.png')
+    transmission = np.array(Image.open(transmissio_fn))
+    transmission_mask = np.sum(transmission, axis=2) > 0
+
+    # assume transmission has the same resolution as diffuse
+    # and higher resolution than metallic, roughness
+
+    diffuse_fn = os.path.join(input_dir, 'material', 'DIFFUSE.png')
+    diffuse = np.array(Image.open(diffuse_fn))
+    diffuse[transmission_mask] = transmission[transmission_mask]
+    Image.fromarray(diffuse).save(diffuse_fn)
+
+    metallic_fn = os.path.join(input_dir, 'material', 'METALLIC.png')
+    metallic = np.array(Image.open(metallic_fn))
+
+    roughness_fn = os.path.join(input_dir, 'material', 'ROUGHNESS.png')
+    roughness = np.array(Image.open(roughness_fn))
+
+    normal_fn = os.path.join(input_dir, 'material', 'NORMAL.png')
+    normal = np.array(Image.open(normal_fn))
+
+    transmission_low_res = np.array(Image.open(transmissio_fn).resize(metallic.shape[:2]))
+    transmission_mask_low_res = np.sum(transmission_low_res, axis=2) > 0
+
+    metallic[transmission_mask_low_res] = 127
+    roughness[transmission_mask_low_res] = 127
+    normal[transmission_mask_low_res] = np.array([127,127,255])
+
+    Image.fromarray(metallic).save(metallic_fn)
+    Image.fromarray(roughness).save(roughness_fn)
+    Image.fromarray(normal).save(normal_fn)
 
 args = parser.parse_args()
 if os.path.isdir(args.input_dir):
@@ -129,3 +164,5 @@ if os.path.isdir(args.input_dir):
     bake_dir = os.path.join(args.input_dir, 'material')
     if os.path.isdir(bake_dir) and len(os.listdir(bake_dir)) == 4:
         gen_object_mtl(args.input_dir)
+    if args.composite_transmission:
+        composite_transmission_material(args.input_dir)
