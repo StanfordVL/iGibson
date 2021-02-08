@@ -121,7 +121,7 @@ if should_bake:
             obj.select_set(True)
         bpy.ops.object.editmode_toggle()
         bpy.ops.mesh.select_all(action="SELECT")
-        bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.0, area_weight=0.0, correct_aspect=True, scale_to_bounds=False)
+        bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.002, area_weight=0.0, correct_aspect=True, scale_to_bounds=False)
         bpy.context.tool_settings.mesh_select_mode = (False, False, True)
         bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -158,7 +158,7 @@ if should_bake:
         'NORMAL': (1024, 16),
     }
     if has_glass:
-        channels['TRANSMISSION'] = (1024, 32)
+        channels['TRANSMISSION'] = (2048, 32)
         # add world light
         world = bpy.data.worlds['World']
         world.use_nodes = True
