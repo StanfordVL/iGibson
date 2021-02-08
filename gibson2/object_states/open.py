@@ -1,4 +1,4 @@
-from gibson2.object_states.object_state_base import CachingEnabledObjectState
+from gibson2.object_states.object_state_base import CachingEnabledObjectState, BooleanState
 import numpy as np
 import pybullet as p
 
@@ -6,8 +6,8 @@ import pybullet as p
 # Should be a number in the range [0, 1] which will be transformed
 # to a position in the joint's min-max range.
 _JOINT_THRESHOLD_BY_TYPE = {
-    p.JOINT_REVOLUTE: 0.5,
-    p.JOINT_PRISMATIC: 0.5,
+    p.JOINT_REVOLUTE: 0.05,
+    p.JOINT_PRISMATIC: 0.05,
 }
 
 
@@ -36,7 +36,7 @@ def _compute_joint_threshold(joint_info):
     return None
 
 
-class Open(CachingEnabledObjectState):
+class Open(CachingEnabledObjectState, BooleanState):
 
     def _compute_value(self):
         # Use generators to support lazy evaluation.
