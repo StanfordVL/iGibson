@@ -121,7 +121,7 @@ if should_bake:
             obj.select_set(True)
         bpy.ops.object.editmode_toggle()
         bpy.ops.mesh.select_all(action="SELECT")
-        bpy.ops.uv.smart_project(angle_limit=66, island_margin=0.02)
+        bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.0, area_weight=0.0, correct_aspect=True, scale_to_bounds=False)
         bpy.context.tool_settings.mesh_select_mode = (False, False, True)
         bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -129,7 +129,6 @@ if should_bake:
 #############################################
 # Export models
 #############################################
-export_ig_object(dest_dir, save_material=not should_bake)
 
 has_glass = False
 # detect glass
@@ -171,10 +170,10 @@ if should_bake:
 
     bake_model(mat_dir, channels, overwrite=True, add_uv_node=True)
 
-
+export_ig_object(dest_dir, save_material=not should_bake)
 bpy.ops.wm.quit_blender()
 
 # optionally save blend file
 # output_blend_file = os.path.dirname(
-#     source_blend_file) + 'processed_' + os.path.basename(source_blend_file)
+# source_blend_file) + 'processed_' + os.path.basename(source_blend_file)
 # bpy.ops.wm.save_as_mainfile(filepath=output_blend_file)
