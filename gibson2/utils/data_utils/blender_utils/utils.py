@@ -9,7 +9,9 @@ import os
 import sys
 import glob
 import tempfile
+import getpass
 import xml.etree.ElementTree as ET
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -27,7 +29,7 @@ def look_at(obj_camera, point):
 
 class redirect_output():
     def __init__(self):
-        logfile = os.path.join(tempfile.gettempdir(), 'blender_command.log')
+        logfile = os.path.join(tempfile.gettempdir(), 'blender_command_{}.log'.format(getpass.getuser()))
         with open(logfile, 'a') as f:
             f.close()
         self.old = os.dup(1)
