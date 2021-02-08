@@ -32,7 +32,7 @@ class SocialNavRandomTask(PointNavRandomTask):
         """
         super(SocialNavRandomTask, self).__init__(env)
         # For debugging purposes, so that we can simulate colliding pedestrians
-        # np.random.seed(5)
+        # np.random.seed(1)
         self.num_pedestrians = self.config.get('num_pedestrians', 3)
         self.num_steps_stop = [0] * self.num_pedestrians
         self.neighbor_stop_radius = self.config.get(
@@ -196,11 +196,25 @@ class SocialNavRandomTask(PointNavRandomTask):
 
         :param env: environment instance
         """
-        # TODO: re-sample if too close to other pedestrians
         # TODO: re-sample if too close to robot
         self.pedestrian_waypoints = []
-        for ped, orca_ped in zip(self.pedestrians, self.orca_pedestrians):
-            _, initial_pos = env.scene.get_random_point(floor=self.floor_num)
+        for id, (ped, orca_ped) in enumerate(zip(self.pedestrians, self.orca_pedestrians)):
+            initial_pos = None
+            must_resample_pos = True
+
+            # resample pedestrian's initial position
+            while must_resample_pos:
+                _, initial_pos = env.scene.get_random_point(floor=self.floor_num)
+                must_resample_pos = False
+                for neighbor_id in range(id):
+                    neighbor_ped = self.pedestrians[neighbor_id]
+                    neighbor_pos_xyz = neighbor_ped.get_position()
+                    dist = np.linalg.norm([neighbor_pos_xyz[0] - initial_pos[0],
+                                           neighbor_pos_xyz[1] - initial_pos[1]])
+                    if dist < self.radius:
+                        must_resample_pos = True
+                        break
+
             ped.set_position_orientation(
                 initial_pos, p.getQuaternionFromEuler(ped.default_orn_euler))
             self.orca_sim.setAgentPosition(orca_ped, tuple(initial_pos[0:2]))
@@ -358,6 +372,9 @@ class SocialNavRandomTask(PointNavRandomTask):
         :param id: the index of the pedestrian object
         :param peds_stop_flags: list of boolean corresponding to if the pestrian
                                 at index i should stop for the next
+        :param peds_next_pos_xyz: list of xyz position that the pedestrian would
+                            move in the next timestep or the position in the
+                            PyRVOSimulator that the pedestrian would revert to
         """
 
         orca_ped = self.orca_pedestrians[id]
@@ -413,7 +430,7 @@ class SocialNavRandomTask(PointNavRandomTask):
         angle = np.arccos(np.dot(normalized_dir, next_normalized_dir))
         is_backoff_detected = "TRUE" if angle >= self.backoff_radian_thresh \
             else "FALSE"
-        # print("Ped index #{} at loc ({:0.2f}, {:0.2f}): angle (radians) between \
-        #         current orientation and next direction: {:0.2f}. Is backoff Detected: {}"\
-        #         .format(orca_ped, pos_xy[0], pos_xy[1], angle, is_backoff_detected))
+        print("Ped index #{} at loc ({:0.2f}, {:0.2f}): angle (radians) between \
+                current orientation and next direction: {:0.2f}. Is backoff Detected: {}"\
+                .format(orca_ped, pos_xy[0], pos_xy[1], angle, is_backoff_detected))
         return angle >= self.backoff_radian_thresh
