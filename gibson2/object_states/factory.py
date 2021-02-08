@@ -71,7 +71,7 @@ def prepare_object_states(obj, abilities=[], online=True):
     for state_name in state_names:
         states[state_name] = get_object_state_instance(state_name, obj)
 
-        # Add each state's dependencies, too
+        # Add each state's dependencies, too. Note that only required dependencies are added.
         for dependency in states[state_name].get_dependencies():
             if dependency not in state_names:
                 state_names.append(dependency)
@@ -83,8 +83,11 @@ def get_state_dependency_graph():
     """
     Produce dependency graph of supported object states.
     """
-    dependencies = {state_name: _STATE_NAME_TO_CLASS_MAPPING[state_name].get_dependencies()
-                    for state_name in get_all_state_names()}
+    dependencies = {
+        state_name: (
+                _STATE_NAME_TO_CLASS_MAPPING[state_name].get_dependencies() +
+                _STATE_NAME_TO_CLASS_MAPPING[state_name].get_optional_dependencies())
+        for state_name in get_all_state_names()}
     return nx.DiGraph(dependencies)
 
 
