@@ -42,8 +42,13 @@ def main(args):
     settings = MeshRendererSettings(enable_shadow=False, msaa=False, enable_pbr=False)
     s = Simulator(mode='headless', image_width=800,
                   image_height=800, rendering_settings=settings)
+    #s = Simulator(image_width=800, image_height=800, rendering_settings=settings)
+    support_categories = ['table', 'fridge', 'counter', 'top_cabinet', 'shelf']
     simulator = s
-    scene = InteractiveIndoorScene(args.scene_name, texture_randomization=False, object_randomization=False)
+    scene = InteractiveIndoorScene(args.scene_name, texture_randomization=False, object_randomization=False,
+                                  load_object_categories=support_categories)
+    for category in support_categories:
+        scene.open_all_objs_by_category(category, 'max')
     s.import_ig_scene(scene)
     renderer = s.renderer
 
@@ -58,13 +63,16 @@ def main(args):
             category_supporting_objects[(cat,room)] = []
         category_supporting_objects[(cat,room)].append(obj)
 
+    placement_count = 0
     for category, count in objects_to_sample:
         ids = object_id_dict[category]
         for i in range(count):
+            object_id = random.choice(ids)
+            print(object_id)
+            urdf_path = '%s/%s/%s.urdf'%(object_cat_dirs[category], object_id, object_id)
+            urdf_object = URDFObject(urdf_path)
+            simulator.import_object(urdf_object)
             for attempt in range(args.num_attempts):
-                object_id = random.choice(ids)
-                urdf_path = '%s/%s/%s.urdf'%(object_cat_dirs[category], object_id, object_id)
-                urdf_object = URDFObject(urdf_path)
                 placement_rules_path = os.path.join(urdf_object.model_path, 'misc', 'placement_probs.json')
                 with open(placement_rules_path, 'r') as f:
                     placement_rules = json.load(f)
@@ -75,10 +83,11 @@ def main(args):
                         valid_placement_rules[placement_rule] = placement_rules[placement_rule]
                 if len(valid_placement_rules) == 0:
                     continue
-                simulator.import_object(urdf_object)
                 placement_rule = random.choices(list(valid_placement_rules.keys()),
                                                 weights=valid_placement_rules.values(), k=1)[0]
                 support_obj_cat, room, predicate = placement_rule.split('-')
+                if predicate=='ontop':
+                    predicate='onTop'
                 support_objs = category_supporting_objects[(support_obj_cat,room)]
                 chosen_support_obj = random.choice(support_objs)
                 print('Sampling %s %s %s %s in %s'%(category, object_id, predicate, support_obj_cat,room))
@@ -86,14 +95,23 @@ def main(args):
                 if not result:
                     print('Failed kinematic sampling! Attempt %d'%attempt)
                     continue
+                placement_count+=1
+
                 if args.save_images:
+                    simulator.sync()
+                    scene.open_one_obj(chosen_support_obj.body_ids[0], 'max')
                     pos = urdf_object.get_position()
-                    camera_pos = np.array([pos[0]-0.5, pos[1], pos[2]+0.5])
-                    renderer.set_camera(camera_pose, pos, [0, 0, 1])
-                    frame = renderer.render(modes=('rgb'))[0]
-                    plt.imshow(frame)
-                    plt.savefig('placement_imgs/overhead_%d.png'%step_num)
-                    plt.close()
+                    offsets = [[-0.6,0],[0.0,-0.6], [0.6, 0.0], [0.0, 0.6]]
+                    for i in range(4):
+                        camera_pos = np.array([pos[0]-offsets[i][0], pos[1]-offsets[i][1], pos[2]+0.1])
+                        renderer.set_camera(camera_pos, pos, [0, 0, 1])
+                        frame = renderer.render(modes=('rgb'))[0]
+                        plt.imshow(frame)
+                        plt.savefig('placement_imgs/placement_%d_%d.png'%(placement_count, i))
+                        plt.close()
+
+                break
+
 
 
     s.disconnect()

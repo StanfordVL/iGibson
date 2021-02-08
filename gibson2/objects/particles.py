@@ -14,6 +14,7 @@ class Particle(Object):
         self.visual_only = visual_only
         self.mass = mass
         self.color = color
+        self.states = dict()
 
     def _load(self):
         """
