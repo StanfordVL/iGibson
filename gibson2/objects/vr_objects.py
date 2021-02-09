@@ -398,7 +398,7 @@ class VrHand(VrHandBase):
         # Thumb does not close as much to match other fingers
         self.close_pos[7] = 0.7
         self.close_pos[8] = 0.7
-        self.hand_friction = 1.5
+        self.hand_friction = 2.0
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 
     def hand_setup(self, z_coord):
