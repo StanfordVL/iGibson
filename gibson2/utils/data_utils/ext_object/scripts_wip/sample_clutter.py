@@ -42,8 +42,8 @@ def main(args):
     settings = MeshRendererSettings(enable_shadow=False, msaa=False, enable_pbr=True)
     s = Simulator(mode='headless', image_width=800,
                   image_height=800, rendering_settings=settings)
-    #support_categories = ['table', 'fridge', 'counter', 'top_cabinet', 'shelf']
-    support_categories = ['table']
+    support_categories = ['table', 'fridge', 'counter', 'top_cabinet', 'shelf', 'bottom_cabinet',
+                          'bottom_cabinet_no_top', 'coffee_table']
     simulator = s
     scene = InteractiveIndoorScene(args.scene_name, texture_randomization=False, object_randomization=False,
                                   load_object_categories=support_categories)
@@ -99,7 +99,7 @@ def main(args):
 
                 if args.save_images:
                     simulator.sync()
-                    scene.open_one_obj(chosen_support_obj.body_ids[0], 'max')
+                    scene.open_one_obj(chosen_support_obj.body_ids[chosen_support_obj.main_body], 'max')
                     pos = urdf_object.get_position()
                     offsets = [[-0.6,0],[0.0,-0.6], [0.6, 0.0], [0.0, 0.6]]
                     for i in range(4):
@@ -109,7 +109,7 @@ def main(args):
                         plt.imshow(frame)
                         plt.savefig('placement_imgs/placement_%d_%d.png'%(placement_count, i))
                         plt.close()
-                    scene.open_one_obj(chosen_support_obj.body_ids[0], 'zero')
+                    scene.open_one_obj(chosen_support_obj.body_ids[chosen_support_obj.main_body], 'zero')
 
                 urdf_object.in_rooms = chosen_support_obj.in_rooms
                 break

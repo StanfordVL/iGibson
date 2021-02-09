@@ -19,6 +19,7 @@ from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from gibson2.utils.utils import z_rotation, matrix_from_quat, quat_from_matrix
 
 
 class ArticulatedObject(Object):
@@ -349,11 +350,22 @@ class URDFObject(Object):
     def sample_orientation(self):
         if self.orientations is None:
             raise ValueError('No orientation probabilities set')
+        indeces = list(range(len(self.orientations)))
         orientations = [np.array(o['rotation']) for o in self.orientations]
         probabilities = [o['prob'] for o in self.orientations]
-        chosen_orientation = random.choices(orientations, weights=probabilities, k=1)[0]
-        # TODO do random variation about Z axis based on variation key
-        return chosen_orientation
+        variation = [o['variation'] for o in self.orientations]
+        chosen_orientation_idx = random.choices(indeces, weights=probabilities, k=1)[0]
+        chosen_orientation = orientations[chosen_orientation_idx]
+        max_rotation = variation[chosen_orientation_idx]
+
+        if max_rotation > 0:
+            rotation_about_z = random.random()*max_rotation
+            rotation_z_quat = z_rotation(rotation_about_z)
+            rotated_quat = quat_from_matrix(matrix_from_quat(chosen_orientation) @
+                                            matrix_from_quat(rotation_z_quat))
+            return rotated_quat
+        else:
+            return chosen_orientation
 
     def rename_urdf(self):
         """
