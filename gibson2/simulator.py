@@ -31,7 +31,7 @@ class Simulator:
 
     def __init__(self,
                  gravity=9.8,
-                 physics_timestep=1 / 90.0,
+                 physics_timestep=1 / 120.0,
                  render_timestep=1 / 30.0,
                  use_fixed_fps = False,
                  mode='gui',
@@ -660,15 +660,10 @@ class Simulator:
         self.sync()
         render_dur = time.perf_counter() - render_start_time
 
-        # Sleep until we reach the last frame before desired vsync point
-        phys_rend_dur = outside_step_dur + physics_dur + render_dur
-        sleep_start_time = time.perf_counter()
-        if phys_rend_dur < self.non_block_frame_time:
-            sleep(self.non_block_frame_time - phys_rend_dur)
-        sleep_dur = time.perf_counter() - sleep_start_time
-
         # Update VR compositor and VR data
         vr_system_start = time.perf_counter()
+        # First sync VR compositor - this is where Oculus blocks (as opposed to Vive, which blocks in update_vr_data)
+        self.sync_vr_compositor()
         # Note: this should only be called once per frame - use get_vr_events to read the event data list in
         # subsequent read operations
         self.poll_vr_events()
@@ -680,9 +675,17 @@ class Simulator:
         self.renderer.update_vr_data()
         vr_system_dur = time.perf_counter() - vr_system_start
 
+        # Sleep until we reach the last frame before desired vsync point
+        phys_rend_dur = outside_step_dur + physics_dur + render_dur + vr_system_dur
+        sleep_start_time = time.perf_counter()
+        # TODO: Change this back to non block frame time? Also get rid of non block frame time if we don't use it
+        if phys_rend_dur < self.fixed_frame_dur:
+            sleep(self.fixed_frame_dur - phys_rend_dur)
+        sleep_dur = time.perf_counter() - sleep_start_time
+
         # Calculate final frame duration
         # Make sure it is non-zero for FPS calculation (set to max of 1000 if so)
-        frame_dur = max(1e-3, phys_rend_dur + sleep_dur + vr_system_dur)
+        frame_dur = max(1e-3, phys_rend_dur + sleep_dur)
 
         # Set variables for data saving and replay
         self.last_physics_timestep = physics_dur
@@ -729,6 +732,12 @@ class Simulator:
                 self.body_links_awake += self.update_position(instance)
         if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and not self.viewer is None:
             self.viewer.update()
+
+    def sync_vr_compositor(self):
+        """
+        Sync VR compositor.
+        """
+        self.renderer.vr_compositor_update()
 
     # Sets the VR position on the first step iteration where the hmd tracking is valid. Not to be confused
     # with self.set_vr_start_pos, which simply records the desired start position before the simulator starts running.
