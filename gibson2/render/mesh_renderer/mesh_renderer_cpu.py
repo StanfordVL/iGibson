@@ -13,6 +13,7 @@ import sys
 from gibson2.render.mesh_renderer.materials import Material, RandomizedMaterial
 from gibson2.render.mesh_renderer.instances import Instance, InstanceGroup, Robot
 from gibson2.render.mesh_renderer.visual_object import VisualObject
+from gibson2.robots.robot_base import BodyPart
 from PIL import Image
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 Image.MAX_IMAGE_PIXELS = None
@@ -1010,17 +1011,20 @@ class MeshRenderer(object):
         frames = []
         for instance in self.instances:
             if isinstance(instance, Robot):
-                camera_pos = instance.robot.eyes.get_position()
-                orn = instance.robot.eyes.get_orientation()
-                mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
-                view_direction = mat.dot(np.array([1, 0, 0]))
-                self.set_camera(camera_pos, camera_pos +
-                                view_direction, [0, 0, 1], cache=True)
-                hidden_instances = []
-                if self.rendering_settings.hide_robot:
-                    hidden_instances.append(instance)
-                for item in self.render(modes=modes, hidden=hidden_instances):
-                    frames.append(item)
+                eyes = [instance.robot.eyes] if isinstance(instance.robot.eyes, BodyPart) else instance.robot.eyes
+                for eye in eyes:
+                    camera_pos = eye.get_position()
+                    orn = eye.get_orientation()
+                    mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+                    view_direction = mat.dot(np.array([1, 0, 0]))
+                    view_up = mat.dot(np.array([0, 0, 1]))
+                    self.set_camera(camera_pos, camera_pos +
+                                    view_direction, view_up, cache=True)# [0, 0, 1], cache=True)
+                    hidden_instances = []
+                    if self.rendering_settings.hide_robot:
+                        hidden_instances.append(instance)
+                    for item in self.render(modes=modes, hidden=hidden_instances):
+                        frames.append(item)
         return frames
 
     def optimize_vertex_and_texture(self):

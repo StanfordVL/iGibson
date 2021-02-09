@@ -26,6 +26,7 @@ class VisionSensor(BaseSensor):
         self.noise_model = DropoutSensorNoise(env)
         self.noise_model.set_noise_rate(self.depth_noise_rate)
         self.noise_model.set_noise_value(0.0)
+        self.env = env
 
         if 'rgb_filled' in modalities:
             try:
@@ -68,7 +69,10 @@ class VisionSensor(BaseSensor):
         """
         :return: RGB sensor reading, normalized to [0.0, 1.0]
         """
-        return raw_vision_obs['rgb'][:, :, :3]
+        return {
+            f"rgb{eye.body_name.split('eyes')[1]}": frame[:, :, :3] for
+            eye, frame in zip(self.env.robots[0].eyes, raw_vision_obs['rgb'])
+        }
 
     def get_rgb_filled(self, raw_vision_obs):
         """
@@ -84,16 +88,21 @@ class VisionSensor(BaseSensor):
         """
         :return: depth sensor reading, normalized to [0.0, 1.0]
         """
-        depth = -raw_vision_obs['3d'][:, :, 2:3]
-        # 0.0 is a special value for invalid entries
-        depth[depth < self.depth_low] = 0.0
-        depth[depth > self.depth_high] = 0.0
+        depth_return = {}
+        for eye, frame in zip(self.env.robots[0].eyes, raw_vision_obs['3d']):
+            depth = -frame[:, :, 2:3]
+            # 0.0 is a special value for invalid entries
+            depth[depth < self.depth_low] = 0.0
+            depth[depth > self.depth_high] = 0.0
 
-        # re-scale depth to [0.0, 1.0]
-        depth /= self.depth_high
-        depth = self.noise_model.add_noise(depth)
+            # re-scale depth to [0.0, 1.0]
+            depth /= self.depth_high
+            depth = self.noise_model.add_noise(depth)
 
-        return depth
+            # Append to output
+            depth_return[f"depth{eye.body_name.split('eyes')[1]}"] = depth
+
+        return depth_return
 
     def get_pc(self, raw_vision_obs):
         """
@@ -136,25 +145,31 @@ class VisionSensor(BaseSensor):
             modes=self.raw_modalities)
 
         raw_vision_obs = {
-            mode: value
-            for mode, value in zip(self.raw_modalities, raw_vision_obs)
+            mode: raw_vision_obs[i::len(self.raw_modalities)]
+            for i, mode in enumerate(self.raw_modalities)
         }
 
         vision_obs = OrderedDict()
         if 'rgb' in self.modalities:
-            vision_obs['rgb'] = self.get_rgb(raw_vision_obs)
+            vision_obs.update(self.get_rgb(raw_vision_obs))
         if 'rgb_filled' in self.modalities:
+            raise NotImplementedError("Can be broken due to modifications to vision sensor pipeline")
             vision_obs['rgb_filled'] = self.get_rgb_filled(raw_vision_obs)
         if 'depth' in self.modalities:
-            vision_obs['depth'] = self.get_depth(raw_vision_obs)
+            vision_obs.update(self.get_depth(raw_vision_obs))
         if 'pc' in self.modalities:
+            raise NotImplementedError("Can be broken due to modifications to vision sensor pipeline")
             vision_obs['pc'] = self.get_pc(raw_vision_obs)
         if 'optical_flow' in self.modalities:
+            raise NotImplementedError("Can be broken due to modifications to vision sensor pipeline")
             vision_obs['optical_flow'] = self.get_optical_flow(raw_vision_obs)
         if 'scene_flow' in self.modalities:
+            raise NotImplementedError("Can be broken due to modifications to vision sensor pipeline")
             vision_obs['scene_flow'] = self.get_scene_flow(raw_vision_obs)
         if 'normal' in self.modalities:
+            raise NotImplementedError("Can be broken due to modifications to vision sensor pipeline")
             vision_obs['normal'] = self.get_normal(raw_vision_obs)
         if 'seg' in self.modalities:
+            raise NotImplementedError("Can be broken due to modifications to vision sensor pipeline")
             vision_obs['seg'] = self.get_seg(raw_vision_obs)
         return vision_obs
