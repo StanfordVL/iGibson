@@ -49,10 +49,12 @@ class ParticleSystem:
                                            visual_only=visual_only,
                                            mass=mass,
                                            color=color))
+        self.visual_only = visual_only
 
-class WaterStream(ParticleSystem):
+
+class WaterStreamAnimation(ParticleSystem):
     def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,1,1]):
-        super(WaterStream, self).__init__(
+        super(WaterStreamAnimation, self).__init__(
             pos=pos,
             dim=dim,
             offset=offset,
@@ -76,6 +78,31 @@ class WaterStream(ParticleSystem):
         # detect soakable around it, and change soakable state
         self.animate()
         pass
+
+class WaterStreamPhysicsBased(ParticleSystem):
+    def __init__(self, pos=[0, 0, 0], dim=0.01, offset=-0.04, num=15, visual_only=False, mass=0.1, color=[0, 0, 1, 1]):
+        super(WaterStreamPhysicsBased, self).__init__(
+            pos=pos,
+            dim=dim,
+            offset=offset,
+            num=num,
+            visual_only=visual_only,
+            mass=mass,
+            color=color
+        )
+        self.step_elapsed = 0
+        self.water_source_pos = pos
+        # set a rest position somewhere
+
+    def step(self):
+        # every n steps, move to a particle the water source
+        # detect sinks soakable around it, and change soakable state
+        self.step_elapsed += 1
+        period = 10
+        n_particle = len(self.particles)
+        if self.step_elapsed % period == 0:
+            particle_idx = self.step_elapsed // period % n_particle
+            self.particles[particle_idx].set_position(self.water_source_pos)
 
 
 class Dust(ParticleSystem):
