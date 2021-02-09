@@ -38,6 +38,14 @@ class Particle(Object):
 
         return body_id
 
+    def force_sleep(self):
+        activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + p.ACTIVATION_STATE_SLEEP
+        p.changeDynamics(self.body_id, -1, activationState=activationState)
+
+    def force_wakeup(self):
+        activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + p.ACTIVATION_STATE_WAKE_UP
+        p.changeDynamics(self.body_id, -1, activationState=activationState)
+
 class ParticleSystem:
     def __init__(self, pos=[0,0,0], dim=0.1, offset=0.4, num=15, visual_only=False, mass=0.1, color=[1, 1, 1, 1]):
         self.particles = []
@@ -51,6 +59,9 @@ class ParticleSystem:
                                            color=color))
         self.visual_only = visual_only
 
+    def register_parent_obj(self, obj):
+        self.parent_obj = obj
+        obj.attached_particle_system = self
 
 class WaterStreamAnimation(ParticleSystem):
     def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,1,1]):
@@ -77,7 +88,6 @@ class WaterStreamAnimation(ParticleSystem):
     def step(self):
         # detect soakable around it, and change soakable state
         self.animate()
-        pass
 
 class WaterStreamPhysicsBased(ParticleSystem):
     def __init__(self, pos=[0, 0, 0], dim=0.01, offset=-0.04, num=15, visual_only=False, mass=0.1, color=[0, 0, 1, 1]):
@@ -93,17 +103,27 @@ class WaterStreamPhysicsBased(ParticleSystem):
         self.step_elapsed = 0
         self.water_source_pos = pos
         # set a rest position somewhere
+        self.on = False
+
+    def set_value(self, on):
+        self.on = on
 
     def step(self):
-        # every n steps, move to a particle the water source
-        # detect sinks soakable around it, and change soakable state
-        self.step_elapsed += 1
-        period = 10
-        n_particle = len(self.particles)
-        if self.step_elapsed % period == 0:
-            particle_idx = self.step_elapsed // period % n_particle
-            self.particles[particle_idx].set_position(self.water_source_pos)
+        if self.on:
+            # every n steps, move to a particle the water source
+            # detect sinks soakable around it, and change soakable state
+            self.step_elapsed += 1
+            period = 30 # assuming a 30 fps simulation, 1 second 1 drop seems reasonable
+            n_particle = len(self.particles)
+            if self.step_elapsed % period == 0:
+                particle_idx = self.step_elapsed // period % n_particle
+                self.particles[particle_idx].set_position(self.water_source_pos)
+                self.particles[particle_idx].force_wakeup()
 
+        else:
+            for particle_idx in range(len(self.particles)):
+                self.particles[particle_idx].set_position([np.random.uniform(-10,10), np.random.uniform(-10,10), -100])
+                self.particles[particle_idx].force_sleep()
 
 class Dust(ParticleSystem):
     def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,0,1]):
@@ -131,16 +151,13 @@ class Dust(ParticleSystem):
                 zmax = aabb[1][2] + 0.1
                 zmin = aabb[0][2]
                 res = p.rayTest(rayFromPosition=[x,y,zmax], rayToPosition=[x,y,zmin])
-                print(x,y,zmin, zmax,res, iter)
+                # print(x,y,zmin, zmax,res, iter)
                 if len(res) > 0 and res[0][0] == obj.get_body_id():
                     good_hit = True
                     hit_pos = res[0][3]
                     self.particles[i].set_position(hit_pos)
                 iter += 1
 
-    def step(self):
-        # detect sponges around it and remove particles
-        pass
 
 class Stain(Dust):
     def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,0,1]):
@@ -154,6 +171,3 @@ class Stain(Dust):
             color=color
         )
 
-    def step(self):
-        # detect wet sponges around it and remove particles
-        pass

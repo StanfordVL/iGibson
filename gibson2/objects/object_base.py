@@ -12,6 +12,8 @@ class Object(object):
     def __init__(self):
         self.body_id = None
         self.loaded = False
+        # a handle to particle systems attached to an object
+        self.attached_particle_system = None
         # self.states = prepare_object_states(self, online=True)
         # moved to derived classes, too high-level to be here
 

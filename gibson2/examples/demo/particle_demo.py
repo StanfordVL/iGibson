@@ -35,7 +35,7 @@ def main():
                      category='sink',
                      name='sink_1',
                      scale=np.array([0.8,0.8,0.8]),
-                     abilities=['toggleable']
+                     abilities=['toggleable', 'water_source']
                      )
 
     s.import_object(sink)
@@ -47,7 +47,6 @@ def main():
     # assume block can soak water
 
     model_path = os.path.join(get_ig_model_path('table', '19898'), '19898.urdf')
-
     desk = URDFObject(filename=model_path,
                      category='table',
                      name='19898',
@@ -60,22 +59,15 @@ def main():
     s.import_object(desk)
     desk.set_position([1, -2, 0.4])
 
-    particles = WaterStreamPhysicsBased(pos=[0.4,1,1.15], num=10)
-    s.import_object(particles)
-
-    particles2 = WaterStreamAnimation(pos=[1.48, 1, 1.15], num=10)
-    s.import_object(particles2)
-
     for _ in range(100):
         p.stepSimulation()
 
     for i in range(10000):
         with Profiler('Simulator step'):
             turtlebot.apply_action([0.1, 0.1])
-            particles.step()
-            particles2.animate()
             desk.states['dirty'].update(s)
-            sink.states['toggledopen'].update(s)
+            sink.states['toggled_open'].update(s)
+            sink.states['water_source'].update(s)
             s.step()
             rgb = s.renderer.render_robot_cameras(modes=('rgb'))
     s.disconnect()
