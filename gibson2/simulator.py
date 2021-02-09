@@ -652,7 +652,7 @@ class Simulator:
         # Step the object states in global topological order.
         for state_name in self.object_state_names:
             for obj in self.scene.get_objects():
-                if state_name in obj.states:
+                if hasattr(obj, 'states') and state_name in obj.states:
                     obj.states[state_name].update(self)
 
     def step(self, print_time=False, use_render_timestep_lpf=True, print_timestep=False, forced_timestep=None):
