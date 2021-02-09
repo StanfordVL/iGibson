@@ -8,6 +8,19 @@ from collections import defaultdict
 import yaml
 
 
+def get_ig_avg_category_specs():
+    """
+    Load average object specs (dimension and mass) for objects
+    """
+    avg_obj_dim_file = os.path.join(
+        gibson2.ig_dataset_path, 'objects', 'avg_category_specs.json')
+    if os.path.isfile(avg_obj_dim_file):
+        with open(avg_obj_dim_file) as f:
+            return json.load(f)
+    else:
+        return {}
+
+
 def get_ig_category_ids():
     """
     Get iGibson object categories

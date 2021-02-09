@@ -59,10 +59,13 @@ class CachingEnabledObjectState(AbsoluteObjectState):
 
         return self.value
 
+    def clear_cached_value(self):
+        self.value = None
+
     def update(self, simulator):
         # Reset the cached state value on Simulator step.
         super(CachingEnabledObjectState, self).update(simulator)
-        self.value = None
+        self.clear_cached_value()
 
 
 class RelativeObjectState(BaseObjectState):
