@@ -13,6 +13,8 @@ from gibson2.object_states.under import Under
 from gibson2.object_states.soaked import Soaked
 from gibson2.object_states.dirty import Dirty
 from gibson2.object_states.stained import Stained
+from gibson2.object_states.toggle import ToggledOpen
+
 
 _STATE_NAME_TO_CLASS_MAPPING = {
     'pose': Pose,
@@ -28,6 +30,7 @@ _STATE_NAME_TO_CLASS_MAPPING = {
     'soaked': Soaked,
     'dirty': Dirty,
     'stained': Stained,
+    'toggledopen': ToggledOpen
 }
 
 _ABILITY_TO_STATE_MAPPING = {
@@ -37,6 +40,7 @@ _ABILITY_TO_STATE_MAPPING = {
     "scrubbale": ["stained"],
     "water_source": [],
     "cleaning_tool": [],
+    "toggleable": ["toggledopen"]
 }
 
 _DEFAULT_STATE_SET = {

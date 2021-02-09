@@ -3,7 +3,7 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.ycb_object import YCBObject
-from gibson2.objects.particles import ParticleSystem, WaterStream, Dust
+from gibson2.objects.particles import ParticleSystem, WaterStreamAnimation, Dust, WaterStreamPhysicsBased
 from gibson2.utils.utils import parse_config
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import numpy as np
@@ -31,14 +31,20 @@ def main():
     s.import_robot(turtlebot)
     model_path = os.path.join(get_ig_model_path('sink', 'sink_1'), 'sink_1.urdf')
 
-    obj = URDFObject(filename=model_path,
+    sink = URDFObject(filename=model_path,
                      category='sink',
                      name='sink_1',
-                     scale=np.array([0.8,0.8,0.8])
+                     scale=np.array([0.8,0.8,0.8]),
+                     abilities=['toggleable']
                      )
 
-    s.import_object(obj)
-    obj.set_position([1,1,0.8])
+    s.import_object(sink)
+    sink.set_position([1,1,0.8])
+
+    block = YCBObject(name='036_wood_block')
+    s.import_object(block)
+    block.set_position([1, 1, 1.8])
+    # assume block can soak water
 
     model_path = os.path.join(get_ig_model_path('table', '19898'), '19898.urdf')
 
@@ -54,10 +60,10 @@ def main():
     s.import_object(desk)
     desk.set_position([1, -2, 0.4])
 
-    particles = WaterStream(pos=[0.4,1,1.15], num=10)
+    particles = WaterStreamPhysicsBased(pos=[0.4,1,1.15], num=10)
     s.import_object(particles)
 
-    particles2 = WaterStream(pos=[1.48, 1, 1.15], num=10)
+    particles2 = WaterStreamAnimation(pos=[1.48, 1, 1.15], num=10)
     s.import_object(particles2)
 
     for _ in range(100):
@@ -66,9 +72,10 @@ def main():
     for i in range(10000):
         with Profiler('Simulator step'):
             turtlebot.apply_action([0.1, 0.1])
-            particles.animate()
+            particles.step()
             particles2.animate()
             desk.states['dirty'].update(s)
+            sink.states['toggledopen'].update(s)
             s.step()
             rgb = s.renderer.render_robot_cameras(modes=('rgb'))
     s.disconnect()
