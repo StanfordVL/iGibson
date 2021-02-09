@@ -11,6 +11,7 @@ import math
 from pyquaternion import Quaternion
 import pybullet as p
 import matplotlib.pyplot as plt
+import signal
 
 '''
 Analyzes a model for possible ways to place it flat on a surface.
@@ -26,25 +27,61 @@ def viz_transform(body_id, mesh, transform):
         [quat.vector[0], quat.vector[1], quat.vector[2], quat.real])
     return r, v
 
+def compute_poses(mesh, threshold):
+    poses = trimesh.poses.compute_stable_poses(
+        mesh, n_samples=5, threshold=threshold)
+    return poses
+
+class TimeoutError(Exception):
+    pass
+
+def handler(signum, frame):
+    raise TimeoutError()
+
 def main(args):
     p.connect(p.GUI)
     cat_ids = []
-    with open(args.cat_id_file, 'r') as f:
-        for line in f:
-            cat_ids.append(line.split())
+    if args.object_cat is not None:
+        cat_dir = 'data/ig_dataset/objects/%s'%(args.object_cat)
+        for obj_id in os.listdir(cat_dir):
+            cat_ids.append((args.object_cat, obj_id))
+    elif args.cat_file is not None:
+        with open(args.cat_file, 'r') as f:
+            for line in f:
+                cat = line.strip()
+                cat_dir = 'data/ig_dataset/objects/%s'%(cat)
+                for obj_id in os.listdir(cat_dir):
+                    cat_ids.append((cat, obj_id))
+    else:
+        with open(args.cat_id_file, 'r') as f:
+            for line in f:
+                cat_ids.append(line.split())
     for object_cat, object_id in cat_ids:
         print('Processing %s %s'%(object_cat, object_id))
         metadata_file = 'data/ig_dataset/objects/%s/%s/misc/metadata.json'%(object_cat, object_id)
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
+
+        if args.skip_processed and 'orientations' in metadata and len(metadata['orientations'])>0:
+            continue
         obj_dir = 'data/ig_dataset/objects/%s/%s/shape/visual'%(object_cat, object_id)
         obj_name = [f for f in os.listdir(obj_dir) if 'obj' in f][0]
         object_file = os.path.join(obj_dir,obj_name)
 
         mesh = trimesh.load(object_file, force='mesh')
-        poses = trimesh.poses.compute_stable_poses(
-            mesh, n_samples=5, threshold=args.threshold)
 
+        poses = [np.eye(3)]
+        # set the timeout handler
+        signal.signal(signal.SIGALRM, handler)
+        signal.alarm(10)
+        try:
+            new_poses=compute_poses(mesh, args.threshold)
+            for pose in new_poses[0]:
+                poses.append(pose)
+        except TimeoutError as exc:
+            pass
+        finally:
+            signal.alarm(0)
         visualShapeId = p.createVisualShape(shapeType=p.GEOM_MESH,
                                             fileName=object_file)
         collisionShapeId = p.createCollisionShape(shapeType=p.GEOM_MESH,
@@ -57,9 +94,9 @@ def main(args):
         print('Showing all stable placement rotations:')
         dicts = []
 
-        for i in range(len(poses[0])):
+        for i in range(len(poses)):
             rotation_dict = {}
-            transform = poses[0][i]
+            transform = poses[i]
             r, v = viz_transform(body_id, mesh, transform)
             prob = 0
             if args.save_json:
@@ -112,11 +149,18 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Analyze objects that can be placed in a container for their plausible rotations.')
-    parser.add_argument('cat_id_file', type=str,
+    parser.add_argument('--object_cat', type=str, default=None,
+                        help="A category to set rotation for")
+    parser.add_argument('--cat_id_file', type=str, default=None,
+                        help="A text file containing category and id of each object to set rotation for, one per line")
+    parser.add_argument('--cat_file', type=str, default=None,
                         help="A text file containing category and id of each object to set rotation for, one per line")
     parser.add_argument('--save_json', action='store_true',
                         help='Whether to ask for and save orientations and probabilities to json.')
     parser.add_argument('--threshold', type=float, default=0.03,
                         help='Threshold for including orientations or not.')
+    parser.add_argument('--skip_processed', action='store_true')
     args = parser.parse_args()
+    if args.object_cat is None and args.cat_id_file is None and args.cat_file is None:
+        raise ValueError('Either object_cat or cat_id_file or cat_file must be set')
     main(args)
