@@ -17,7 +17,7 @@ class VrSettings(object):
                 relative_movement_device = 'hmd',
                 movement_speed = 0.01,
                 reset_sim = True,
-                vr_fps = 45):
+                vr_fps = 30):
         """
         Initializes VR settings:
         1) use_vr - whether to render to the HMD and use VR system or just render to screen (used for debugging)
@@ -27,7 +27,7 @@ class VrSettings(object):
         4) relative_movement_device - which device to use to control touchpad movement direction (can be any VR device)
         5) movement_speed - touchpad movement speed
         6) reset_sim - whether to call resetSimulation at the start of each simulation
-        7) vr_fps - the fixed fps to run VR at
+        7) vr_fps - the fixed fps to run VR at - initialized to 33 by default, since this FPS works well in all iGibson environments
         """
         assert movement_controller in ['left', 'right']
 
@@ -52,7 +52,7 @@ class MeshRendererVR(MeshRenderer):
         self.vr_settings = vr_settings
         self.base_width = 1080
         self.base_height = 1200
-        self.scale_factor = 1.4
+        self.scale_factor = 1.2
         self.width = int(self.base_width * self.scale_factor)
         self.height = int(self.base_height * self.scale_factor)
         super().__init__(width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings)
@@ -64,6 +64,9 @@ class MeshRendererVR(MeshRenderer):
             if self.vr_settings.eye_tracking and not self.vrsys.hasEyeTrackingSupport():
                 self.vr_settings.eye_tracking = False
             self.vrsys.initVR(self.vr_settings.eye_tracking)
+
+        # Always turn MSAA off for VR
+        self.msaa = False
 
     # Calls WaitGetPoses() to acquire pose data, and returns 3ms before next vsync so
     # rendering can benefit from a "running start"
@@ -94,10 +97,12 @@ class MeshRendererVR(MeshRenderer):
             super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=False)
             self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
 
-            # Signal to the VR compositor that we are done with rendering
-            self.vrsys.postRenderVR(True)
+            # Don't call PostPresentHandoff in C++ code to synchronize between Oculus and Vive
+            self.vrsys.postRenderVR(False)
         else:
             super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
+
+    # Submit data to the compositor
 
     # Releases VR system and renderer
     def release(self):

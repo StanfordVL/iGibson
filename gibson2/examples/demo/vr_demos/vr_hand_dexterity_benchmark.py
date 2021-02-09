@@ -39,10 +39,6 @@ benchmark_names = [
     'top_cabinet_51'
 ]
 
-# IMPORTANT: Change this value if you have a more powerful machine
-# 40fps is recommended for desktops, and 15fps is recommended for laptops
-# TODO: Change this back later!
-VR_FPS = 200
 # Set to true to print Simulator step() statistics
 PRINT_STATS = True
 # Set to true to use gripper instead of VR hands
@@ -70,7 +66,7 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             msaa=True,
                                             light_dimming_factor=1.0)
 
-vr_settings = VrSettings(use_vr=True, vr_fps=VR_FPS)
+vr_settings = VrSettings(use_vr=True)
 s = Simulator(mode='vr', 
             use_fixed_fps = True,
             rendering_settings=vr_rendering_settings, 
@@ -119,10 +115,7 @@ for name in obj_to_load:
 
 # Main simulation loop
 while True:
-    step_start = time.perf_counter()
     s.step(print_stats=PRINT_STATS)
-    step_dur = time.perf_counter() - step_start
-    print('Step dur: {}'.format(step_dur))
 
     vr_agent.update()
 

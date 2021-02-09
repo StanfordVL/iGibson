@@ -69,7 +69,7 @@ int GLFWRendererContext::init() {
     }
 
     glfwMakeContextCurrent(this->window);
-    glfwSwapInterval(0);
+    //glfwSwapInterval(0);
 
 
     // Load all OpenGL function pointers through GLAD
