@@ -1,6 +1,6 @@
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
-from gibson2.object_states.utils import sample_kinematics
+from gibson2.object_states.utils import sample_kinematics, clear_cached_states
 from gibson2.external.pybullet_tools.utils import get_aabb_center, aabb_contains_point, aabb2d_from_aabb
 from gibson2.utils.constants import UNDER_OBJECTS
 
@@ -11,6 +11,8 @@ class Under(KinematicsMixin, RelativeObjectState, BooleanState):
         sampling_success = sample_kinematics(
             'under', self.obj, other, new_value)
         if sampling_success:
+            clear_cached_states(self.obj)
+            clear_cached_states(other)
             assert self.get_value(other) == new_value
         return sampling_success
 

@@ -1,7 +1,7 @@
 
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
-from gibson2.object_states.utils import sample_kinematics, get_center_extent
+from gibson2.object_states.utils import sample_kinematics, get_center_extent, clear_cached_states
 from gibson2.external.pybullet_tools.utils import aabb_contains_point, aabb2d_from_aabb
 import numpy as np
 
@@ -15,7 +15,10 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         sampling_success = sample_kinematics(
             'onTop', self.obj, other, new_value)
         if sampling_success:
+            clear_cached_states(self.obj)
+            clear_cached_states(other)
             assert self.get_value(other) == new_value
+
         return sampling_success
 
     def get_value(self, other):

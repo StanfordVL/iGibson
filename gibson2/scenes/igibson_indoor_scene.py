@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 import random
 import json
-from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
+from gibson2.utils.assets_utils import get_ig_avg_category_specs, get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
 from PIL import Image
 
 SCENE_SOURCE = ['IG', 'CUBICASA', 'THREEDFRONT']
@@ -126,7 +126,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             load_object_categories, load_room_types, load_room_instances)
 
         # Load average object density if exists
-        self.avg_obj_dims = self.load_avg_obj_dims()
+        self.avg_obj_dims = get_ig_avg_category_specs()
 
         # load overlapping bboxes in scene annotation
         self.overlapped_bboxes = self.load_overlapped_bboxes()
@@ -351,18 +351,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.room_ins_map = img_ins
         self.room_sem_map = img_sem
 
-    def load_avg_obj_dims(self):
-        """
-        Load average object dimensions for scene objects
-        """
-        avg_obj_dim_file = os.path.join(
-            gibson2.ig_dataset_path, 'objects', 'avg_category_specs.json')
-        if os.path.isfile(avg_obj_dim_file):
-            with open(avg_obj_dim_file) as f:
-                return json.load(f)
-        else:
-            return {}
-
     def load_overlapped_bboxes(self):
         """
         Load overlapped bounding boxes in scene definition.
@@ -382,9 +370,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         :param obj: Object instance to add to scene.
         """
-        category = 'object'
         if hasattr(obj, "category"):
             category = obj.category
+        else:
+            category = 'object'
 
         if hasattr(obj, "name"):
             object_name = obj.name

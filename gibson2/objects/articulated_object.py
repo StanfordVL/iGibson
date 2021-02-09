@@ -75,6 +75,7 @@ class URDFObject(Object):
                  model_path=None,
                  bounding_box=None,
                  scale=None,
+                 fit_avg_dim_volume=False,
                  connecting_joint=None,
                  avg_obj_dims=None,
                  joint_friction=None,
@@ -90,6 +91,7 @@ class URDFObject(Object):
         :param model_path: folder path of that object model
         :param bounding_box: bounding box of this object
         :param scale: scaling factor of this object
+        :param: fit_avg_dim_volume: whether to fit the object to have the same volume as the average dimension while keeping the aspect ratio
         :param connecting_joint: connecting joint to the scene that defines the object's initial pose (optional)
         :param avg_obj_dims: average object dimension of this object
         :param joint_friction: joint friction for joints in this object
@@ -179,7 +181,7 @@ class URDFObject(Object):
                 meta_data = json.load(f)
                 bbox_size = np.array(meta_data['bbox_size'])
                 base_link_offset = np.array(meta_data['base_link_offset'])
-                if 'orientations' in meta_data and len(meta_data['orientations'])>0:
+                if 'orientations' in meta_data and len(meta_data['orientations']) > 0:
                     self.orientations = meta_data['orientations']
                 else:
                     self.orientations = None
@@ -195,7 +197,18 @@ class URDFObject(Object):
             base_link_offset = np.zeros(3)
 
         if bbox_size is not None:
-            if bounding_box is not None:
+            if fit_avg_dim_volume:
+                if avg_obj_dims is None:
+                    scale = np.ones(3)
+                else:
+                    spec_vol = avg_obj_dims['size'][0] * \
+                        avg_obj_dims['size'][1] * avg_obj_dims['size'][2]
+                    cur_vol = bbox_size[0] * bbox_size[1] * bbox_size[2]
+                    volume_ratio = spec_vol / cur_vol
+                    size_ratio = np.cbrt(volume_ratio)
+                    scale = np.array([size_ratio] * 3)
+                bounding_box = bbox_size * scale
+            elif bounding_box is not None:
                 # Obtain the scale as the ratio between the desired bounding box size
                 # and the original bounding box size of the object at scale (1, 1, 1)
                 scale = bounding_box / bbox_size
@@ -351,7 +364,8 @@ class URDFObject(Object):
             raise ValueError('No orientation probabilities set')
         orientations = [np.array(o['rotation']) for o in self.orientations]
         probabilities = [o['prob'] for o in self.orientations]
-        chosen_orientation = random.choices(orientations, weights=probabilities, k=1)[0]
+        chosen_orientation = random.choices(
+            orientations, weights=probabilities, k=1)[0]
         # TODO do random variation about Z axis based on variation key
         return chosen_orientation
 
