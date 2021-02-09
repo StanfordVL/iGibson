@@ -31,7 +31,7 @@ class Simulator:
 
     def __init__(self,
                  gravity=9.8,
-                 physics_timestep=1 / 120.0,
+                 physics_timestep=1 / 90.0,
                  render_timestep=1 / 30.0,
                  use_fixed_fps = False,
                  mode='gui',
@@ -117,8 +117,8 @@ class Simulator:
         self.vsync_frame_num = int(round(self.fixed_frame_dur / self.vsync_frame_dur))
         # Total amount of time we want non-blocking actions to take each frame
         # This leaves 1 entire vsync frame for blocking, to make sure we don't wait too long
-        # Add 5e-3 to go halfway into the next frame
-        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + 5e-3
+        # Add 1e-3 to go halfway into the next frame
+        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + 1e-3
         # Number of physics steps based on fixed VR fps
         # Use integer division to guarantee we don't exceed 1.0 realtime factor
         # It is recommended to use an FPS that is a multiple of the timestep
@@ -663,7 +663,6 @@ class Simulator:
         # Sleep until we reach the last frame before desired vsync point
         phys_rend_dur = outside_step_dur + physics_dur + render_dur
         sleep_start_time = time.perf_counter()
-        # TODO: Change this back to self.non_block_frame_time
         if phys_rend_dur < self.non_block_frame_time:
             sleep(self.non_block_frame_time - phys_rend_dur)
         sleep_dur = time.perf_counter() - sleep_start_time
