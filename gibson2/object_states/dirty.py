@@ -22,6 +22,7 @@ class Dirty(AbsoluteObjectState, BooleanState):
         if not self.dust_added:
             simulator.import_object(self.dust)
             self.dust.attach(self.obj)
+            self.dust.register_parent_obj(self.obj)
             self.dust_added = True
 
         # TODO: implemented the cleaning logic
