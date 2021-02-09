@@ -96,13 +96,12 @@ class MeshRendererVR(MeshRenderer):
             # We don't need to render the shadow pass a second time for the second eye
             super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=False)
             self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
-
-            # Don't call PostPresentHandoff in C++ code to synchronize between Oculus and Vive
-            self.vrsys.postRenderVR(False)
         else:
             super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
 
     # Submit data to the compositor
+    def vr_compositor_update(self):
+        self.vrsys.postRenderVR(True)
 
     # Releases VR system and renderer
     def release(self):
