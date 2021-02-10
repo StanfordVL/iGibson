@@ -17,6 +17,8 @@ from gibson2.simulator import Simulator
 from gibson2.utils.vr_utils import move_player
 from gibson2 import assets_path
 
+# IMPORTANT: Change this value if you have a more powerful machine
+VR_FPS = 20
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = True
 # Set to false to just use FetchVR in non-VR mode
@@ -45,8 +47,9 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             light_dimming_factor=1.0)
 if VR_MODE:
     s = Simulator(mode='vr', 
+                use_fixed_fps = True,
                 rendering_settings=vr_rendering_settings, 
-                vr_settings=VrSettings())
+                vr_settings=VrSettings(vr_fps=VR_FPS))
 else:
     s = Simulator(mode='iggui', image_width=960,
                   image_height=720, device_idx=0, rendering_settings=vr_rendering_settings)
@@ -104,17 +107,6 @@ for i in range(3):
     obj = YCBObject('003_cracker_box')
     s.import_object(obj)
     obj.set_position_orientation([1.100000 + 0.12 * i, -0.300000, 0.750000], [0, 0, 0, 1])
-
-"""
-obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects', 
-    'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
-                        scale=2)
-s.import_object(obj)
-p.changeDynamics(obj.body_id, -1, mass=100, lateralFriction=2)
-obj.set_position_orientation([1.15, 0.300000, 0.750000], [0, 0, 0, 1])
-"""
-
-s.optimize_vertex_and_texture()
 
 # Main simulation loop
 while True:

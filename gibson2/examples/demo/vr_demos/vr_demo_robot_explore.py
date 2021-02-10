@@ -16,6 +16,8 @@ from gibson2.simulator import Simulator
 from gibson2.utils.vr_utils import move_player
 from gibson2 import assets_path
 
+# IMPORTANT: Change this value if you have a more powerful machine
+VR_FPS = 20
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = True
 # Set to true to print out render, physics and overall frame FPS
@@ -46,8 +48,9 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             light_dimming_factor=1.0)
 if VR_MODE:
     s = Simulator(mode='vr', 
+                use_fixed_fps = True,
                 rendering_settings=vr_rendering_settings, 
-                vr_settings=VrSettings())
+                vr_settings=VrSettings(vr_fps=VR_FPS))
 else:
     s = Simulator(mode='iggui', image_width=960,
                   image_height=720, device_idx=0, rendering_settings=vr_rendering_settings)
@@ -76,8 +79,6 @@ for i in range(len(mass_list)):
     s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
     mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
     p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
-
-s.optimize_vertex_and_texture()
 
 # Main simulation loop
 while True:

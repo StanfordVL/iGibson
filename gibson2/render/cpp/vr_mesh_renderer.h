@@ -113,7 +113,7 @@ public:
 
 	void postRenderVRForEye(char* eye, GLuint texID);
 
-	void postRenderVRUpdate(bool shouldHandoff);
+	void postRenderVR(bool shouldHandoff);
 
 	py::list preRenderVR();
 
@@ -122,6 +122,8 @@ public:
 	void setVROffset(float x, float y, float z);
 
 	void triggerHapticPulseForDevice(char* device, unsigned short microSecondDuration);
+
+	void updateVRData();
 	
 private:
 	glm::mat4 convertSteamVRMatrixToGlmMat4(const vr::HmdMatrix34_t& matPose);
@@ -149,8 +151,6 @@ private:
 	void setCoordinateTransformMatrices();
 
 	void setSteamVRMatrixPos(glm::vec3& pos, vr::HmdMatrix34_t& mat);
-
-	void updateVRData();
 };
 
 #endif
