@@ -1,7 +1,8 @@
 import numpy as np
 import pybullet as p
 import cv2
-from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, quat_from_matrix
+from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, quat_from_matrix, stable_z_on_aabb
+from gibson2.object_states.object_state_base import CachingEnabledObjectState
 
 
 def get_center_extent(obj_states):
@@ -11,14 +12,10 @@ def get_center_extent(obj_states):
     return center, extent
 
 
-def stable_z_on_aabb(obj_states, surface_aabb):
-    assert 'aabb' in obj_states
-    aabb = obj_states['aabb'].get_value()
-    center, extent = get_aabb_center(aabb), get_aabb_extent(aabb)
-    _, upper = surface_aabb
-    assert 'pose' in obj_states
-    return (upper + extent/2 +
-            (obj_states['pose'].get_value()[0] - center))[2]
+def clear_cached_states(obj):
+    for _, obj_state in obj.states.items():
+        if isinstance(obj_state, CachingEnabledObjectState):
+            obj_state.clear_cached_value()
 
 
 def sample_kinematics(predicate, objA, objB, binary_state):
@@ -28,17 +25,17 @@ def sample_kinematics(predicate, objA, objB, binary_state):
     if predicate not in objB.supporting_surfaces:
         return False
 
-    objA_states = objA.states
-
     max_trials = 100
     z_offset = 0.01
     if objA.orientations is not None:
         orientation = objA.sample_orientation()
     else:
         orientation = [0, 0, 0, 1]
+
     objA.set_position_orientation([100, 100, 100], orientation)
     objBorientation = objB.get_orientation()
-    orientation = quat_from_matrix(matrix_from_quat(objBorientation) @ matrix_from_quat(orientation))
+    orientation = quat_from_matrix(
+        matrix_from_quat(objBorientation) @ matrix_from_quat(orientation))
     state_id = p.saveState()
     for i in range(max_trials):
         random_idx = np.random.randint(
@@ -57,7 +54,7 @@ def sample_kinematics(predicate, objA, objB, binary_state):
             height_map, np.ones(obj_half_size_scaled, np.uint8))
 
         valid_pos = np.array(height_map_eroded.nonzero())
-        if valid_pos.shape[1]==0:
+        if valid_pos.shape[1] == 0:
             return False
         random_pos_idx = np.random.randint(valid_pos.shape[1])
         random_pos = valid_pos[:, random_pos_idx]
@@ -87,7 +84,7 @@ def sample_kinematics(predicate, objA, objB, binary_state):
         pos[2] += z_offset
 
         z = stable_z_on_aabb(
-            objA_states, ([0, 0, pos[2]], [0, 0, pos[2]]))
+            objA.get_body_id(), ([0, 0, pos[2]], [0, 0, pos[2]]))
 
         pos[2] = z
         objA.set_position_orientation(pos, orientation)
@@ -107,8 +104,6 @@ def sample_kinematics(predicate, objA, objB, binary_state):
             p.stepSimulation()
             if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:
                 break
-        assert 'pose' in objA_states
-        objA_states['pose'].set_value(objA.get_position_orientation())
         return True
     else:
         return False
