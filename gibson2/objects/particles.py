@@ -1,12 +1,13 @@
 from gibson2.objects.object_base import Object
 import pybullet as p
 import numpy as np
+
 class Particle(Object):
     """
     Cube shape primitive
     """
 
-    def __init__(self, pos=[0,0,0], dim=0.1, visual_only=False, mass=0.1, color=[1, 1, 1, 1]):
+    def __init__(self, pos=[0,0,0], dim=0.1, visual_only=False, mass=0.1, color=[1, 1, 1, 1], base_shape="box"):
         super(Particle, self).__init__()
         self.basePos = pos
         self.dimension = [dim, dim, dim]
@@ -15,16 +16,25 @@ class Particle(Object):
         self.color = color
         self.states = dict()
         self.active = True
+        self.base_shape = base_shape
 
     def _load(self):
         """
         Load the object into pybullet
         """
         baseOrientation = [0, 0, 0, 1]
-        colBoxId = p.createCollisionShape(
-            p.GEOM_BOX, halfExtents=self.dimension)
-        visualShapeId = p.createVisualShape(
-            p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
+
+        if self.base_shape == "box":
+            colBoxId = p.createCollisionShape(
+                p.GEOM_BOX, halfExtents=self.dimension)
+            visualShapeId = p.createVisualShape(
+                p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
+        elif self.base_shape == 'sphere':
+            colBoxId = p.createCollisionShape(
+                p.GEOM_SPHERE, radius=self.dimension[0])
+            visualShapeId = p.createVisualShape(
+                p.GEOM_SPHERE, radius=self.dimension[0], rgbaColor=self.color)
+
         if self.visual_only:
             body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
                                         baseVisualShapeIndex=visualShapeId)
@@ -47,7 +57,8 @@ class Particle(Object):
         p.changeDynamics(self.body_id, -1, activationState=activationState)
 
 class ParticleSystem:
-    def __init__(self, pos=[0,0,0], dim=0.1, offset=0.4, num=15, visual_only=False, mass=0.1, color=[1, 1, 1, 1]):
+    def __init__(self, pos=[0,0,0], dim=0.1, offset=0.4, num=15, visual_only=False, mass=0.1, color=[1, 1, 1, 1],
+                 base_shape="box"):
         self.particles = []
         self.offset = offset
         self.num = num
@@ -56,7 +67,8 @@ class ParticleSystem:
                                            dim=dim,
                                            visual_only=visual_only,
                                            mass=mass,
-                                           color=color))
+                                           color=color,
+                                           base_shape=base_shape))
         self.visual_only = visual_only
 
     def register_parent_obj(self, obj):
@@ -82,7 +94,8 @@ class WaterStreamAnimation(ParticleSystem):
             num=num,
             visual_only=visual_only,
             mass=mass,
-            color=color
+            color=color,
+            base_shape="sphere",
         )
         self.animation_step = 0
 
@@ -108,7 +121,8 @@ class WaterStreamPhysicsBased(ParticleSystem):
             num=num,
             visual_only=visual_only,
             mass=mass,
-            color=color
+            color=color,
+            base_shape="sphere",
         )
         self.step_elapsed = 0
         self.water_source_pos = pos
