@@ -1,6 +1,7 @@
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
 from gibson2.utils.mesh_util import lookat
 import numpy as np
+import time
 
 
 class VrSettings(object):
@@ -15,7 +16,8 @@ class VrSettings(object):
                 movement_controller = 'right',
                 relative_movement_device = 'hmd',
                 movement_speed = 0.01,
-                reset_sim = True):
+                reset_sim = True,
+                vr_fps = 30):
         """
         Initializes VR settings:
         1) use_vr - whether to render to the HMD and use VR system or just render to screen (used for debugging)
@@ -25,6 +27,7 @@ class VrSettings(object):
         4) relative_movement_device - which device to use to control touchpad movement direction (can be any VR device)
         5) movement_speed - touchpad movement speed
         6) reset_sim - whether to call resetSimulation at the start of each simulation
+        7) vr_fps - the fixed fps to run VR at - initialized to 33 by default, since this FPS works well in all iGibson environments
         """
         assert movement_controller in ['left', 'right']
 
@@ -35,6 +38,7 @@ class VrSettings(object):
         self.relative_movement_device = relative_movement_device
         self.movement_speed = movement_speed
         self.reset_sim = reset_sim
+        self.vr_fps = vr_fps
 
 
 class MeshRendererVR(MeshRenderer):
@@ -48,7 +52,7 @@ class MeshRendererVR(MeshRenderer):
         self.vr_settings = vr_settings
         self.base_width = 1080
         self.base_height = 1200
-        self.scale_factor = 1.4
+        self.scale_factor = 1.2
         self.width = int(self.base_width * self.scale_factor)
         self.height = int(self.base_height * self.scale_factor)
         super().__init__(width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings)
@@ -60,6 +64,14 @@ class MeshRendererVR(MeshRenderer):
             if self.vr_settings.eye_tracking and not self.vrsys.hasEyeTrackingSupport():
                 self.vr_settings.eye_tracking = False
             self.vrsys.initVR(self.vr_settings.eye_tracking)
+
+        # Always turn MSAA off for VR
+        self.msaa = False
+
+    # Calls WaitGetPoses() to acquire pose data, and returns 3ms before next vsync so
+    # rendering can benefit from a "running start"
+    def update_vr_data(self):
+        self.vrsys.updateVRData()
 
     # Renders VR scenes and returns the left eye frame
     def render(self):
@@ -84,10 +96,12 @@ class MeshRendererVR(MeshRenderer):
             # We don't need to render the shadow pass a second time for the second eye
             super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=False)
             self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
-
-            self.vrsys.postRenderVRUpdate(True)
         else:
             super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
+
+    # Submit data to the compositor
+    def vr_compositor_update(self):
+        self.vrsys.postRenderVR(True)
 
     # Releases VR system and renderer
     def release(self):

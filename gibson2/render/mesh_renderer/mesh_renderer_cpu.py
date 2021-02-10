@@ -15,6 +15,7 @@ from gibson2.render.mesh_renderer.instances import Instance, InstanceGroup, Robo
 from gibson2.render.mesh_renderer.visual_object import VisualObject
 from PIL import Image
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+import time
 Image.MAX_IMAGE_PIXELS = None
 
 
@@ -764,7 +765,6 @@ class MeshRenderer(object):
         :param render_shadow_pass: whether to render shadow
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-
         # run optimization process the first time render is called
         if self.optimized and not self.optimization_process_executed:
             self.optimize_vertex_and_texture()
@@ -848,7 +848,6 @@ class MeshRenderer(object):
 
         if self.msaa:
             self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
-
         if return_buffer:
             return self.readbuffer(modes)
 
