@@ -43,33 +43,34 @@ if import_axis_forward not in axis:
         .format(import_axis_forward))
 
 source_blend_file = get_arg(sys.argv, '--source_blend_file')
-if source_blend_file is None:
-    raise ValueError('Source directory not specified.')
+source_dir = get_arg(sys.argv, '--source_dir')
+if source_blend_file is None and source_dir is None:
+    raise ValueError('Source directory and source blend file are both empty.')
 dest_dir = get_arg(sys.argv, '--dest_dir')
 if dest_dir is None:
     raise ValueError('Destination directory not specified.')
 os.makedirs(dest_dir, exist_ok=True)
 
-
-# import_obj_folder(model_id, source_dir,
-#                  up=import_axis_up,
-#                  forward=import_axis_forward)
-
-# open blend file here source_blend_file
-bpy.ops.wm.open_mainfile(filepath=source_blend_file)
-
 #############################################
-# Importing obj files from source dir
+# Open source blend file or import obj files from source dir
 #############################################
+if source_blend_file is not None:
+    # open source blend file
+    bpy.ops.wm.open_mainfile(filepath=source_blend_file)
 
-# uncomment this part for evermotion models
-# for on in bpy.context.scene.objects.keys():
-#     obj = bpy.context.scene.objects[on]
-#     if not 'AM' in on or 'Cam' in on:
-#         bpy.data.objects.remove(obj)
-#         print(on)
-#     # only keep evermotion models
-# clean_unused()
+else:
+    # import obj files from source dir
+    for on in bpy.context.scene.objects.keys():
+        obj = bpy.context.scene.objects[on]
+        bpy.data.objects.remove(obj)
+    clean_unused()
+
+    model_id = os.path.basename(source_dir)
+    import_obj_folder(model_id,
+                      source_dir,
+                      up=import_axis_up,
+                      forward=import_axis_forward)
+
 
 #############################################
 # Decimate the mesh
@@ -86,16 +87,17 @@ print('max_num_verts', max_num_verts)
 if total_num_verts > max_num_verts:
     ratio = float(max_num_verts) / total_num_verts
     bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.object.editmode_toggle()
+    bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
+    bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='SELECT')
     bpy.ops.mesh.decimate(ratio=ratio)
-    bpy.ops.object.editmode_toggle()
-    print('ratio', ratio)
+    bpy.ops.object.mode_set(mode='OBJECT')
     meshes = []
     for obj in bpy.data.objects:
         if obj.type == "MESH":
             meshes.append(obj)
     total_num_verts = sum([len(mesh.data.vertices) for mesh in meshes])
+    print('decimation ratio', ratio)
     print('total_num_verts (after decimation)', total_num_verts)
 
 #############################################
@@ -109,6 +111,7 @@ if should_bake:
     #        uv_unwrapped = False
     if not uv_unwrapped:
         bpy.ops.object.select_all(action='SELECT')
+        bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
         bpy.ops.object.mode_set(mode='OBJECT')
         vl = bpy.context.view_layer
         bpy.ops.object.select_all(action='DESELECT')
@@ -119,7 +122,7 @@ if should_bake:
             new_uv.active = True
             vl.objects.active = obj
             obj.select_set(True)
-        bpy.ops.object.editmode_toggle()
+        bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action="SELECT")
         bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.002, area_weight=0.0, correct_aspect=True, scale_to_bounds=False)
         bpy.context.tool_settings.mesh_select_mode = (False, False, True)
@@ -171,9 +174,13 @@ if should_bake:
     bake_model(mat_dir, channels, overwrite=True, add_uv_node=True)
 
 export_ig_object(dest_dir, save_material=not should_bake)
-bpy.ops.wm.quit_blender()
 
-# optionally save blend file
-# output_blend_file = os.path.dirname(
-# source_blend_file) + 'processed_' + os.path.basename(source_blend_file)
+
+# # optionally save blend file
+# if source_blend_file is not None:
+#     output_blend_file = os.path.join(os.path.dirname(source_blend_file), 'processed.blend')
+# else:
+#     output_blend_file = os.path.join(source_dir, 'processed.blend')
 # bpy.ops.wm.save_as_mainfile(filepath=output_blend_file)
+
+bpy.ops.wm.quit_blender()
