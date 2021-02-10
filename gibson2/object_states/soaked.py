@@ -15,4 +15,5 @@ class Soaked(AbsoluteObjectState, BooleanState):
         self.value = new_value
 
     def update(self, simulator):
+        # they are updated in water source
         pass

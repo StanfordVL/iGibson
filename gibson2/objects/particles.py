@@ -1,7 +1,6 @@
 from gibson2.objects.object_base import Object
 import pybullet as p
 import numpy as np
-
 class Particle(Object):
     """
     Cube shape primitive
@@ -15,6 +14,7 @@ class Particle(Object):
         self.mass = mass
         self.color = color
         self.states = dict()
+        self.active = True
 
     def _load(self):
         """
@@ -63,6 +63,16 @@ class ParticleSystem:
         self.parent_obj = obj
         obj.attached_particle_system = self
 
+    def get_num(self):
+        return self.num
+
+    def get_num_active(self):
+        s = 0
+        for i in range(self.num):
+            if self.particles[i].active:
+                s += 1
+        return s
+
 class WaterStreamAnimation(ParticleSystem):
     def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,1,1]):
         super(WaterStreamAnimation, self).__init__(
@@ -108,6 +118,11 @@ class WaterStreamPhysicsBased(ParticleSystem):
     def set_value(self, on):
         self.on = on
 
+    def stash_particle(self, particle):
+        particle.set_position([np.random.uniform(-10, 10), np.random.uniform(-10, 10), -100])
+        particle.force_sleep()
+        particle.active = False
+
     def step(self):
         if self.on:
             # every n steps, move to a particle the water source
@@ -117,13 +132,14 @@ class WaterStreamPhysicsBased(ParticleSystem):
             n_particle = len(self.particles)
             if self.step_elapsed % period == 0:
                 particle_idx = self.step_elapsed // period % n_particle
-                self.particles[particle_idx].set_position(self.water_source_pos)
-                self.particles[particle_idx].force_wakeup()
-
+                particle = self.particles[particle_idx]
+                if not particle.active:
+                    particle.set_position(self.water_source_pos)
+                    particle.force_wakeup()
+                    particle.active = True
         else:
             for particle_idx in range(len(self.particles)):
-                self.particles[particle_idx].set_position([np.random.uniform(-10,10), np.random.uniform(-10,10), -100])
-                self.particles[particle_idx].force_sleep()
+                self.stash_particle(self.particles[particle_idx])
 
 class Dust(ParticleSystem):
     def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,0,1]):
@@ -137,8 +153,6 @@ class Dust(ParticleSystem):
             color=color
         )
 
-    def animate(self):
-        pass
 
     def attach(self, obj):
         aabb = obj.states['aabb'].get_value()
@@ -158,6 +172,11 @@ class Dust(ParticleSystem):
                     self.particles[i].set_position(hit_pos)
                 iter += 1
 
+    def stash_particle(self, particle):
+        particle.set_position([np.random.uniform(-10, 10), np.random.uniform(-10, 10), -100])
+        particle.force_sleep()
+        particle.active = False
+
 
 class Stain(Dust):
     def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,0,1]):
@@ -171,3 +190,8 @@ class Stain(Dust):
             color=color
         )
 
+
+    def stash_particle(self, particle):
+        particle.set_position([np.random.uniform(-10, 10), np.random.uniform(-10, 10), -100])
+        particle.force_sleep()
+        particle.active = False

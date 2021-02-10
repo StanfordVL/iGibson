@@ -244,6 +244,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
     def get_objects(self):
         return list(self.objects_by_name.values())
 
+    def get_objects_with_state(self, state):
+        return [item for item in self.get_objects() if hasattr(item, 'states') and state in item.states]
+
     def filter_rooms_and_object_categories(self,
                                            load_object_categories,
                                            load_room_types,
