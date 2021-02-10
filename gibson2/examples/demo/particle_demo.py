@@ -1,6 +1,5 @@
 from gibson2.robots.turtlebot_robot import Turtlebot
 from gibson2.simulator import Simulator
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.utils.utils import parse_config
