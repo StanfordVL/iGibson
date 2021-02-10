@@ -15,8 +15,16 @@ class WaterSource(AbsoluteObjectState):
             for water_source in self.water_sources:
                 simulator.import_object(water_source)
                 water_source.register_parent_obj(self.obj)
-                water_source.set_value(True) # turn on the water
+
             self.water_added = True
+
+        if "toggled_open" in self.obj.states:
+            for water_source in self.water_sources:
+                water_source.set_value(self.obj.states["toggled_open"].get_value())
+                # sync water source state with toggleable
+        else:
+            for water_source in self.water_sources:
+                water_source.set_value(True)  # turn on the water by default
 
         for water_source in self.water_sources:
             water_source.step()

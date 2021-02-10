@@ -137,9 +137,6 @@ class WaterStreamPhysicsBased(ParticleSystem):
                     particle.set_position(self.water_source_pos)
                     particle.force_wakeup()
                     particle.active = True
-        else:
-            for particle_idx in range(len(self.particles)):
-                self.stash_particle(self.particles[particle_idx])
 
 class Dust(ParticleSystem):
     def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,0,1]):

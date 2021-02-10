@@ -41,10 +41,10 @@ _ABILITY_TO_STATE_MAPPING = {
     "cookable": ["cooked"],
     "soakable": ["soaked"],
     "dustable": ["dirty"],
-    "scrubbale": ["stained"],
+    "scrubbable": ["stained"],
     "water_source": ["water_source"],
     "cleaning_tool": ["cleaning_tool"],
-    "toggleable": ["toggled_open"]
+    "toggleable": ["toggled_open"],
 }
 
 _DEFAULT_STATE_SET = {
