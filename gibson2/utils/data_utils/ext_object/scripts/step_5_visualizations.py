@@ -13,6 +13,11 @@ from gibson2.simulator import Simulator
 from gibson2.render.profiler import Profiler
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from transforms3d.euler import euler2quat
+from gibson2.utils.utils import quatToXYZW
+from gibson2.utils.utils import rotate_vector_2d
+
+
 
 parser = argparse.ArgumentParser("Generate visulization for iGibson object")
 parser.add_argument('--input_dir', dest='input_dir')
@@ -59,8 +64,6 @@ def main():
     print(urdf_path)
     obj = ArticulatedObject(filename=urdf_path, scale=scale)
     s.import_object(obj)
-    obj.set_position(center)
-    s.sync()
 
     _mouse_ix, _mouse_iy = -1, -1
     down = False
@@ -77,8 +80,10 @@ def main():
     save_dir = os.path.join(model_path, 'visualizations')
     os.makedirs(save_dir, exist_ok=True)
     for i in range(num_views):
-        theta += np.pi*2/(num_views+1)
-        obj.set_orientation([0., 0., 1.0, np.cos(theta/2)])
+        theta = np.pi * 2 / num_views * i
+        pos = np.append(rotate_vector_2d(center[:2], theta), center[2])
+        orn = quatToXYZW(euler2quat(0.0, 0.0, -theta), 'wxyz')
+        obj.set_position_orientation(pos, orn)
         s.sync()
         with Profiler('Render'):
             frame = s.renderer.render(modes=('rgb'))

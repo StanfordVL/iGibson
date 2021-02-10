@@ -10,10 +10,9 @@ from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.objects.articulated_object import URDFObject, ArticulatedObject
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS
-from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path
+from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 import random
 import pybullet as p
-from IPython import embed
 import cv2
 
 
@@ -114,6 +113,7 @@ class iGTNTask(TaskNetTask):
             if not room_type_success:
                 return False
 
+        avg_category_spec = get_ig_avg_category_specs()
         for obj_cat in self.objects:
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
                 # Remaining non-sampleable objects that have NOT been sampled
@@ -138,10 +138,16 @@ class iGTNTask(TaskNetTask):
                     model = random.choice(os.listdir(category_path))
                     model_path = get_ig_model_path(obj_cat, model)
                     filename = os.path.join(model_path, model + ".urdf")
+                    obj_name = '{}_{}'.format(
+                        obj_cat,
+                        len(self.scene.objects_by_category.get(obj_cat, [])))
                     simulator_obj = URDFObject(
                         filename,
+                        name=obj_name,
                         category=obj_cat,
                         model_path=model_path,
+                        avg_obj_dims=avg_category_spec.get(obj_cat),
+                        fit_avg_dim_volume=True,
                         texture_randomization=False,
                         overwrite_inertial=True)
                     self.scene.add_object(simulator_obj)

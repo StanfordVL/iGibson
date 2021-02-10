@@ -10,6 +10,4 @@ class Pose(CachingEnabledObjectState):
         return np.array(pos), np.array(orn)
 
     def set_value(self, new_value):
-        pos, orn = new_value
-        self.obj.set_position(pos)
-        self.obj.set_orientation(orn)
+        raise NotImplementedError("Pose state currently does not support setting.")
