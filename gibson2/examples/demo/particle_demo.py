@@ -3,7 +3,6 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.ycb_object import YCBObject
-from gibson2.objects.particles import ParticleSystem, WaterStreamAnimation, Dust, WaterStreamPhysicsBased
 from gibson2.utils.utils import parse_config
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import numpy as np
@@ -44,17 +43,17 @@ def main():
     block = YCBObject(name='036_wood_block')
     s.import_object(block)
     block.set_position([1, 1, 1.8])
+    block.abilities = ["soakable", "cleaning_tool"]
+    block.states = prepare_object_states(block, abilities=["soakable", "cleaning_tool"])
     # assume block can soak water
 
     model_path = os.path.join(get_ig_model_path('table', '19898'), '19898.urdf')
     desk = URDFObject(filename=model_path,
                      category='table',
                      name='19898',
-                     scale=np.array([0.8, 0.8, 0.8])
+                     scale=np.array([0.8, 0.8, 0.8]),
+                     abilities=['dustable']
                      )
-
-    desk.abilities = ['dustable']
-    desk.states = prepare_object_states(desk, abilities=['dustable'], online=True)
 
     s.import_object(desk)
     desk.set_position([1, -2, 0.4])

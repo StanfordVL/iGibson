@@ -21,6 +21,22 @@ class WaterSource(AbsoluteObjectState):
         for water_source in self.water_sources:
             water_source.step()
 
+        # water reusing logic
+        contacted_water_body_ids = set(item[1] for item in list(self.obj.states["contact_bodies"].get_value()))
+        for water_source in self.water_sources:
+            for particle in water_source.particles:
+                if particle.body_id in contacted_water_body_ids:
+                    water_source.stash_particle(particle)
+
+        #soaking logic
+        soaked = simulator.scene.get_objects_with_state("soaked")
+        for object in soaked:
+            contacted_water_body_ids = set(item[1] for item in list(object.states["contact_bodies"].get_value()))
+            for water_source in self.water_sources:
+                for particle in water_source.particles:
+                    if particle.body_id in contacted_water_body_ids:
+                        object.states["soaked"].set_value(True)
+
     def set_value(self, new_value):
         pass
 
