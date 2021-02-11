@@ -314,7 +314,9 @@ class FetchGripper(LocomotorRobot):
         robot_id = self.robot_ids[0]
 
         # Add wrist eye camera
-        self.eyes = [self.eyes, self.parts["eyes_wrist"]]
+        self.eyes = [self.eyes]
+        if not self.gripper_visualization:
+            self.eyes.append(self.parts["eyes_wrist"])
 
         disable_collision_names = [
             ['torso_lift_joint', 'shoulder_lift_joint'],
