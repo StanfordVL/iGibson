@@ -763,6 +763,7 @@ class Simulator:
             1, int(self.render_timestep / self.physics_timestep))
         for _ in range(physics_timestep_num):
             p.stepSimulation()
+            self._non_physics_step()
         self.sync()
 
     def sync(self):
