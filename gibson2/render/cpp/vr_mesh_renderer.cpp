@@ -263,12 +263,10 @@ void VRRendererContext::postRenderVRForEye(char* eye, GLuint texID) {
 // Tell the compositor to begin work immediately instead of waiting for the next WaitGetPoses() call if the user wants
 // And then update VR data
 // TIMELINE: Call immediately after calling postRenderVRForEye on both left and right eyes
-void VRRendererContext::postRenderVRUpdate(bool shouldHandoff) {
+void VRRendererContext::postRenderVR(bool shouldHandoff) {;
 	if (shouldHandoff) {
 		vr::VRCompositor()->PostPresentHandoff();
 	}
-
-	updateVRData();
 }
 
 // Returns the projection and view matrices for the left and right eyes, to be used in rendering
@@ -354,6 +352,93 @@ void VRRendererContext::triggerHapticPulseForDevice(char* device, unsigned short
 	// Currently haptics are only supported on one axis (touchpad axis)
 	uint32_t hapticAxis = 0;
 	m_pHMD->TriggerHapticPulse(ddata.index, hapticAxis, microSecondDuration);
+}
+
+// Calls WaitGetPoses and updates all hmd and controller transformations
+void VRRendererContext::updateVRData() {
+	hmdData.isValidData = false;
+	leftControllerData.isValidData = false;
+	rightControllerData.isValidData = false;
+	// Stores controller information - see github.com/ValveSoftware/openvr/wiki/IVRSystem::GetControllerState for more info
+	vr::VRControllerState_t controllerState;
+
+	vr::TrackedDevicePose_t trackedDevices[vr::k_unMaxTrackedDeviceCount];
+	vr::VRCompositor()->WaitGetPoses(trackedDevices, vr::k_unMaxTrackedDeviceCount, NULL, 0);
+
+	for (unsigned int idx = 0; idx < vr::k_unMaxTrackedDeviceCount; idx++) {
+		if (!trackedDevices[idx].bPoseIsValid || !m_pHMD->IsTrackedDeviceConnected(idx)) continue;
+
+		vr::HmdMatrix34_t transformMat = trackedDevices[idx].mDeviceToAbsoluteTracking;
+		vr::ETrackedDeviceClass trackedDeviceClass = m_pHMD->GetTrackedDeviceClass(idx);
+
+		if (trackedDeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_HMD) {
+			hmdData.index = idx;
+			hmdData.isValidData = true;
+			hmdActualPos = getPositionFromSteamVRMatrix(transformMat);
+
+			setSteamVRMatrixPos(hmdActualPos + vrOffsetVec, transformMat);
+
+			hmdData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
+			hmdData.devicePos = getPositionFromSteamVRMatrix(transformMat);
+			hmdData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+		}
+		else if (trackedDeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
+			vr::ETrackedControllerRole role = m_pHMD->GetControllerRoleForTrackedDeviceIndex(idx);
+			if (role == vr::TrackedControllerRole_Invalid) {
+				continue;
+			}
+
+			int trigger_index, touchpad_index;
+
+			// Figures out indices that correspond with trigger and trackpad axes. Index used to read into VRControllerState_t struct array of axes.
+			for (int i = 0; i < vr::k_unControllerStateAxisCount; i++) {
+				int axisType = m_pHMD->GetInt32TrackedDeviceProperty(idx, (vr::ETrackedDeviceProperty)(vr::Prop_Axis0Type_Int32 + i));
+				if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_Trigger) {
+					trigger_index = i;
+				}
+				// Detect trackpad on HTC Vive controller and Joystick on Oculus controller
+				else if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_TrackPad || axisType == vr::EVRControllerAxisType::k_eControllerAxis_Joystick) {
+					touchpad_index = i;
+				}
+			}
+
+			// If false, sets the controller data validity to false, as data is not valid if we can't read analog touch coordinates and trigger close fraction
+			bool getControllerDataResult = m_pHMD->GetControllerState(idx, &controllerState, sizeof(controllerState));
+
+			if (role == vr::TrackedControllerRole_LeftHand) {
+				leftControllerData.index = idx;
+				leftControllerData.trigger_axis_index = trigger_index;
+				leftControllerData.touchpad_axis_index = touchpad_index;
+				leftControllerData.isValidData = getControllerDataResult;
+
+				glm::vec3 leftControllerPos = getPositionFromSteamVRMatrix(transformMat);
+				setSteamVRMatrixPos(leftControllerPos + vrOffsetVec, transformMat);
+
+				leftControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
+				leftControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
+				leftControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+
+				leftControllerData.trig_frac = controllerState.rAxis[leftControllerData.trigger_axis_index].x;
+				leftControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[leftControllerData.touchpad_axis_index].x, controllerState.rAxis[leftControllerData.touchpad_axis_index].y);
+			}
+			else if (role == vr::TrackedControllerRole_RightHand) {
+				rightControllerData.index = idx;
+				rightControllerData.trigger_axis_index = trigger_index;
+				rightControllerData.touchpad_axis_index = touchpad_index;
+				rightControllerData.isValidData = getControllerDataResult;
+
+				glm::vec3 rightControllerPos = getPositionFromSteamVRMatrix(transformMat);
+				setSteamVRMatrixPos(rightControllerPos + vrOffsetVec, transformMat);
+
+				rightControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
+				rightControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
+				rightControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+
+				rightControllerData.trig_frac = controllerState.rAxis[rightControllerData.trigger_axis_index].x;
+				rightControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[rightControllerData.touchpad_axis_index].x, controllerState.rAxis[rightControllerData.touchpad_axis_index].y);
+			}
+		}
+	}
 }
 
 // Private methods
@@ -637,93 +722,6 @@ void VRRendererContext::setSteamVRMatrixPos(glm::vec3& pos, vr::HmdMatrix34_t& m
 	mat.m[2][3] = pos[2];
 }
 
-// Calls WaitGetPoses and updates all hmd and controller transformations
-void VRRendererContext::updateVRData() {
-	hmdData.isValidData = false;
-	leftControllerData.isValidData = false;
-	rightControllerData.isValidData = false;
-	// Stores controller information - see github.com/ValveSoftware/openvr/wiki/IVRSystem::GetControllerState for more info
-	vr::VRControllerState_t controllerState;
-
-	vr::TrackedDevicePose_t trackedDevices[vr::k_unMaxTrackedDeviceCount];
-	vr::VRCompositor()->WaitGetPoses(trackedDevices, vr::k_unMaxTrackedDeviceCount, NULL, 0);
-
-	for (unsigned int idx = 0; idx < vr::k_unMaxTrackedDeviceCount; idx++) {
-		if (!trackedDevices[idx].bPoseIsValid || !m_pHMD->IsTrackedDeviceConnected(idx)) continue;
-
-		vr::HmdMatrix34_t transformMat = trackedDevices[idx].mDeviceToAbsoluteTracking;
-		vr::ETrackedDeviceClass trackedDeviceClass = m_pHMD->GetTrackedDeviceClass(idx);
-
-		if (trackedDeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_HMD) {
-			hmdData.index = idx;
-			hmdData.isValidData = true;
-			hmdActualPos = getPositionFromSteamVRMatrix(transformMat);
-
-			setSteamVRMatrixPos(hmdActualPos + vrOffsetVec, transformMat);
-
-			hmdData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
-			hmdData.devicePos = getPositionFromSteamVRMatrix(transformMat);
-			hmdData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
-		}
-		else if (trackedDeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
-			vr::ETrackedControllerRole role = m_pHMD->GetControllerRoleForTrackedDeviceIndex(idx);
-			if (role == vr::TrackedControllerRole_Invalid) {
-				continue;
-			}
-
-			int trigger_index, touchpad_index;
-
-			// Figures out indices that correspond with trigger and trackpad axes. Index used to read into VRControllerState_t struct array of axes.
-			for (int i = 0; i < vr::k_unControllerStateAxisCount; i++) {
-				int axisType = m_pHMD->GetInt32TrackedDeviceProperty(idx, (vr::ETrackedDeviceProperty)(vr::Prop_Axis0Type_Int32 + i));
-				if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_Trigger) {
-					trigger_index = i;
-				}
-				// Detect trackpad on HTC Vive controller and Joystick on Oculus controller
-				else if (axisType == vr::EVRControllerAxisType::k_eControllerAxis_TrackPad || axisType == vr::EVRControllerAxisType::k_eControllerAxis_Joystick) {
-					touchpad_index = i;
-				}
-			}
-
-			// If false, sets the controller data validity to false, as data is not valid if we can't read analog touch coordinates and trigger close fraction
-			bool getControllerDataResult = m_pHMD->GetControllerState(idx, &controllerState, sizeof(controllerState));
-
-			if (role == vr::TrackedControllerRole_LeftHand) {
-				leftControllerData.index = idx;
-				leftControllerData.trigger_axis_index = trigger_index;
-				leftControllerData.touchpad_axis_index = touchpad_index;
-				leftControllerData.isValidData = getControllerDataResult;
-
-				glm::vec3 leftControllerPos = getPositionFromSteamVRMatrix(transformMat);
-				setSteamVRMatrixPos(leftControllerPos + vrOffsetVec, transformMat);
-
-				leftControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
-				leftControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
-				leftControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
-
-				leftControllerData.trig_frac = controllerState.rAxis[leftControllerData.trigger_axis_index].x;
-				leftControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[leftControllerData.touchpad_axis_index].x, controllerState.rAxis[leftControllerData.touchpad_axis_index].y);
-			}
-			else if (role == vr::TrackedControllerRole_RightHand) {
-				rightControllerData.index = idx;
-				rightControllerData.trigger_axis_index = trigger_index;
-				rightControllerData.touchpad_axis_index = touchpad_index;
-				rightControllerData.isValidData = getControllerDataResult;
-
-				glm::vec3 rightControllerPos = getPositionFromSteamVRMatrix(transformMat);
-				setSteamVRMatrixPos(rightControllerPos + vrOffsetVec, transformMat);
-
-				rightControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
-				rightControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
-				rightControllerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
-
-				rightControllerData.trig_frac = controllerState.rAxis[rightControllerData.trigger_axis_index].x;
-				rightControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[rightControllerData.touchpad_axis_index].x, controllerState.rAxis[rightControllerData.touchpad_axis_index].y);
-			}
-		}
-	}
-}
-
 PYBIND11_MODULE(VRRendererContext, m) {
 
 	py::class_<VRRendererContext> pymodule = py::class_<VRRendererContext>(m, "VRRendererContext");
@@ -798,11 +796,12 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("initVR", &VRRendererContext::initVR);
 	pymodule.def("pollVREvents", &VRRendererContext::pollVREvents);
 	pymodule.def("postRenderVRForEye", &VRRendererContext::postRenderVRForEye);
-	pymodule.def("postRenderVRUpdate", &VRRendererContext::postRenderVRUpdate);
+	pymodule.def("postRenderVR", &VRRendererContext::postRenderVR);
 	pymodule.def("preRenderVR", &VRRendererContext::preRenderVR);
 	pymodule.def("releaseVR", &VRRendererContext::releaseVR);
 	pymodule.def("setVROffset", &VRRendererContext::setVROffset);
 	pymodule.def("triggerHapticPulseForDevice", &VRRendererContext::triggerHapticPulseForDevice);
+	pymodule.def("updateVRData", &VRRendererContext::updateVRData);
 
 #ifdef VERSION_INFO
 	m.attr("__version__") = VERSION_INFO;

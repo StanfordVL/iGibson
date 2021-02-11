@@ -19,6 +19,7 @@ import argparse
 import numpy as np
 import os
 import pybullet as p
+import pybullet_data
 import time
 
 import gibson2
@@ -34,12 +35,16 @@ from gibson2.simulator import Simulator
 from gibson2.utils.vr_logging import VRLogReader, VRLogWriter
 from gibson2 import assets_path
 
-# Number of seconds to run the data saving for
-DATA_SAVE_RUNTIME = 30
+# IMPORTANT: Change this value if you have a more powerful machine
+VR_FPS = 30
+# Number of frames to save
+FRAMES_TO_SAVE = 2000
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = True
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = False
+# Set to true to print out poses of all pybullet objects, for debugging purposes
+DEBUG_PRINT = True
 
 def run_state_sr(mode):
     """
@@ -72,28 +77,63 @@ def run_state_sr(mode):
     # Change use_vr to toggle VR mode on/off
     vr_settings = VrSettings(use_vr=(mode == 'save'))
     s = Simulator(mode='vr', 
+                use_fixed_fps=True,
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
     scene = InteractiveIndoorScene('Rs_int')
-    # Turn this on when debugging to speed up loading
-    if LOAD_PARTIAL:
-        scene._set_first_n_objects(10)
+    scene._set_first_n_objects(2)
     s.import_ig_scene(scene)
+    p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     # Create a VrAgent and it will handle all initialization and importing under-the-hood
     # Data replay uses constraints during both save and replay modes
     vr_agent = VrAgent(s, use_constraints=True)
 
     # Objects to interact with
-    mass_list = [5, 10, 100, 500]
-    mustard_start = [-1, 1.55, 1.2]
-    for i in range(len(mass_list)):
-        mustard = YCBObject('006_mustard_bottle')
-        s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
-        mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
-        p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
+    objects = [
+        ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("jenga/jenga.urdf", (1.200000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("jenga/jenga.urdf", (1.100000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("jenga/jenga.urdf", (0.900000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("jenga/jenga.urdf", (0.800000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("table/table.urdf", (1.000000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107,
+                0.707107)),
+        ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107,
+                0.707107)),
+        ("duck_vhacd.urdf", (0.950000, -0.100000, 0.700000), (0.000000, 0.000000, 0.707107,
+                0.707107)),
+        ("sphere_small.urdf", (0.850000, -0.400000, 0.700000), (0.000000, 0.000000, 0.707107,
+                0.707107)),
+        ("duck_vhacd.urdf", (0.850000, -0.400000, 1.00000), (0.000000, 0.000000, 0.707107,
+                0.707107)),
+    ]
 
-    s.optimize_vertex_and_texture()
+    for item in objects:
+        fpath = item[0]
+        pos = item[1]
+        orn = item[2]
+        item_ob = ArticulatedObject(fpath, scale=1)
+        s.import_object(item_ob, use_pbr=False, use_pbr_mapping=False)
+        item_ob.set_position(pos)
+        item_ob.set_orientation(orn)
+
+    for i in range(3):
+        obj = YCBObject('003_cracker_box')
+        s.import_object(obj)
+        obj.set_position_orientation([1.100000 + 0.12 * i, -0.300000, 0.750000], [0, 0, 0, 1])
+
+    obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects', 
+        'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
+                            scale=2)
+    s.import_object(obj)
+    obj.set_position_orientation([1.1, 0.300000, 1.2], [0, 0, 0, 1])
 
     if vr_settings.use_vr:
         # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
@@ -105,7 +145,7 @@ def run_state_sr(mode):
 
     if mode == 'save':
         # Saves every 2 seconds or so (200 / 90fps is approx 2 seconds)
-        vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=True, log_status=True)
+        vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=False, log_status=False)
 
         # Save a single button press as a mock action that demonstrates action-saving capabilities.
         vr_writer.register_action(mock_vr_action_path, (1,))
@@ -114,22 +154,22 @@ def run_state_sr(mode):
         # Despite having no actions, we need to call this function
         vr_writer.set_up_data_storage()
     else:
-        vr_reader = VRLogReader(log_filepath=vr_log_path)
+        vr_reader = VRLogReader(log_filepath=vr_log_path, emulate_save_fps=True, log_status=False)
 
     if mode == 'save':
-        start_time = time.time()
         # Main simulation loop - run for as long as the user specified
-        while (time.time() - start_time < DATA_SAVE_RUNTIME):
+        for i in range(FRAMES_TO_SAVE):
             s.step(print_time=PRINT_FPS, print_timestep=True)
 
-            # Example of querying VR events to hide object
-            # We will store this as a mock action, even though it is saved by default
-            if s.query_vr_event('right_controller', 'touchpad_press'):
-                s.set_hidden_state(mustard, hide=not s.get_hidden_state(mustard))
-                vr_writer.save_action(mock_vr_action_path, np.array([1]))
+            # Example of storing a simple mock action
+            vr_writer.save_action(mock_vr_action_path, np.array([1]))
 
             # Update VR objects
             vr_agent.update()
+
+            # Print debugging information
+            if DEBUG_PRINT:
+                vr_writer._print_pybullet_data()
 
             # Record this frame's data in the VRLogWriter
             vr_writer.process_frame(s, print_vr_data=False)
@@ -140,19 +180,24 @@ def run_state_sr(mode):
     else:
         # The VR reader automatically shuts itself down and performs cleanup once the while loop has finished running
         while vr_reader.get_data_left_to_read():
-            s.step(print_timestep=True, forced_timestep=vr_reader.get_phys_step_n())
+            vr_reader.pre_step()
+            # Don't sleep until the frame duration, as the VR logging system sleeps for this duration instead
+            s.step(print_timestep=True, sleep_until_dur=False, forced_timestep=vr_reader.get_phys_step_n())
 
             # Note that fullReplay is set to False for action replay
             vr_reader.read_frame(s, full_replay=False, print_vr_data=False)
 
-            # Read our mock action and hide/unhide the mustard based on its value
+            # Read our mock action (but don't do anything with it for now)
             mock_action = int(vr_reader.read_action(mock_vr_action_path)[0])
-            if mock_action == 1:
-                s.set_hidden_state(mustard, hide=not s.get_hidden_state(mustard))
 
             # Get relevant VR action data and update VR agent
             vr_action_data = vr_reader.get_vr_action_data()
             vr_agent.update(vr_action_data)
+
+            # Print debugging information
+            if DEBUG_PRINT:
+                vr_reader._print_pybullet_data()
+
     
     s.disconnect()
 

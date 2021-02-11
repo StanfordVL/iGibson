@@ -29,12 +29,12 @@ from gibson2.simulator import Simulator
 from gibson2.utils.vr_logging import VRLogReader, VRLogWriter
 from gibson2 import assets_path
 
+# IMPORTANT: Change this value if you have a more powerful machine
+VR_FPS = 30
 # Number of seconds to run the data saving for
 DATA_SAVE_RUNTIME = 30
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = True
-# Set to true to print out render, physics and overall frame FPS
-PRINT_FPS = False
 
 def run_state_sr(mode):
     """
@@ -65,8 +65,9 @@ def run_state_sr(mode):
                                                 light_dimming_factor=1.0)
     # VR system settings
     # Change use_vr to toggle VR mode on/off
-    vr_settings = VrSettings(use_vr=(mode == 'save'))
+    vr_settings = VrSettings(use_vr=(mode == 'save'), vr_fps=VR_FPS)
     s = Simulator(mode='vr', 
+                use_fixed_fps=True,
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
     scene = InteractiveIndoorScene('Rs_int')
@@ -87,8 +88,6 @@ def run_state_sr(mode):
         mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
         p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
 
-    s.optimize_vertex_and_texture()
-
     if vr_settings.use_vr:
         # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
         s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
@@ -97,24 +96,20 @@ def run_state_sr(mode):
     vr_log_path = 'vr_logs/vr_states_sr.h5'
 
     if mode == 'save':
-        # Saves every 2 seconds or so (200 / 90fps is approx 2 seconds)
-        vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=True)
+        # Saves every few seconds
+        vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=False)
 
         # Call set_up_data_storage once all actions have been registered (in this demo we only save states so there are none)
         # Despite having no actions, we need to call this function
         vr_writer.set_up_data_storage()
     else:
-        vr_reader = VRLogReader(log_filepath=vr_log_path)
+        vr_reader = VRLogReader(log_filepath=vr_log_path, emulate_save_fps=True)
 
     if mode == 'save':
         start_time = time.time()
         # Main simulation loop - run for as long as the user specified
         while (time.time() - start_time < DATA_SAVE_RUNTIME):
-            s.step(print_time=PRINT_FPS)
-
-            # Example of querying VR events to hide object
-            if s.query_vr_event('right_controller', 'touchpad_press'):
-                s.set_hidden_state(mustard, hide=not s.get_hidden_state(mustard))
+            s.step()
 
             # Update VR objects
             vr_agent.update()
@@ -128,7 +123,8 @@ def run_state_sr(mode):
     else:
         # The VR reader automatically shuts itself down and performs cleanup once the while loop has finished running
         while vr_reader.get_data_left_to_read():
-            s.step()
+            vr_reader.pre_step()
+            s.step(sleep_until_dur=False, forced_timestep=vr_reader.get_phys_step_n())
             vr_reader.read_frame(s, full_replay=True)
     
     s.disconnect()
