@@ -319,25 +319,16 @@ class Simulator:
 
         assert isinstance(obj, ParticleSystem), 'import_particle_system can only be called with ParticleSystem'
 
-        new_object_pb_id_or_ids = []
+        new_object_pb_ids = []
         for o in obj.particles:
-            new_object_pb_id_or_ids.append(self.scene.add_object(o, _is_call_from_simulator=True))
+            particle_pb_id = self.import_object(o,
+                                    class_id=class_id,
+                                    use_pbr=use_pbr,
+                                    use_pbr_mapping=use_pbr_mapping,
+                                    shadow_caster=shadow_caster)
+            new_object_pb_ids.append(particle_pb_id)
 
-        # If no new bodies are immediately imported into pybullet, we have no rendering steps.
-        if new_object_pb_id_or_ids is None:
-            return None
-
-        self.objects += new_object_pb_id_or_ids
-        for new_object_pb_id in new_object_pb_id_or_ids:
-            self.load_object_in_renderer(
-                new_object_pb_id,
-                class_id,
-                softbody=False,
-                use_pbr=use_pbr,
-                use_pbr_mapping=use_pbr_mapping,
-                shadow_caster=shadow_caster)
-
-        return new_object_pb_id_or_ids
+        return new_object_pb_ids
 
     @load_without_pybullet_vis
     def import_object(self,

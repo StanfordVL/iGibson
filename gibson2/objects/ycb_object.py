@@ -1,10 +1,10 @@
 import os
 import gibson2
-from gibson2.objects.object_base import Object
+from gibson2.objects.stateful_object import StatefulObject
 import pybullet as p
 from gibson2.object_states.factory import prepare_object_states
 
-class YCBObject(Object):
+class YCBObject(StatefulObject):
     """
     YCB Object from assets/models/ycb
     Reference: https://www.ycbbenchmarks.com/

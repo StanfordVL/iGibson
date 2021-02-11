@@ -2,8 +2,6 @@ import pybullet as p
 import os
 import gibson2
 
-
-
 class Object(object):
     """
     Base Object class
