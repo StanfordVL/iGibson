@@ -303,3 +303,42 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
     assert np.sum([val[3] for val in urdfs_no_floating.values()]) == 1
 
     return urdfs_no_floating
+
+
+def add_fixed_link(tree, link_name, offset):
+    """
+    Add a fixed link onto a URDF tree.
+
+    :param tree: The URDF tree (ElementTree) to add to.
+    :param link_name: The name of the link to add.
+    :param offset: The 3-length sequence XYZ offset of the link from the base.
+    :return: None
+    """
+    tree = tree.getroot()
+    base_link_name = get_base_link_name(tree)
+
+    # Assert that the link does not exist.
+    assert tree.find("link[@name='%s']" % link_name) is None
+
+    # Add the link.
+    link = ET.SubElement(tree, "link", {"name": link_name})
+
+    # The below commented code can be used to add a visual to the area.
+    # TODO: Either fully remove this or make it possible to toggle this using a global flag.
+    # visual = ET.SubElement(link, "visual")
+    # ET.SubElement(visual, "origin", {"xyz": "0 0 0", "rpy": "0 0 0"})
+    #
+    # geo = ET.SubElement(visual, "geometry")
+    # ET.SubElement(geo, "box", {"size": "0.1 0.1 0.1"})
+    #
+    # mat = ET.SubElement(visual, "material", {"name": "red"})
+    # ET.SubElement(mat, "color", {"rgba": "255 0 0 1.0"})
+
+    # Add the joint
+    joint = ET.SubElement(tree, "joint", {"name": link_name + "_joint", "type": "fixed"})
+    ET.SubElement(joint, "parent", {"link": base_link_name})
+    ET.SubElement(joint, "child", {"link": link_name})
+
+    # Finally, apply the offset
+    offset_str = "%.4f %.4f %.4f" % tuple(offset)
+    ET.SubElement(joint, "origin", {"rpy": "0 0 0", "xyz": offset_str})
