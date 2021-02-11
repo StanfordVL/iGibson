@@ -15,7 +15,32 @@ class SocialNavRandomTask(PointNavRandomTask):
     """
 
     def __init__(self, env):
+        """
+        numStepsStop        A list of number of consecutive timesteps
+                            each pedestrian had to stop for.
+        numStepsStopThresh  The maximum number of consecutive timesteps
+                            the pedestrian should stop for before sampling
+                            a new waypoint.
+        maxNeighborRadius   Maximum distance to be considered a nearby
+                            a new waypoint.
+        backoffRadianThresh If the angle (in radian) between the pedestrian's
+                            orientation and the next direction of the next
+                            goal is greater than the backoffRadianThresh,
+                            then the pedestrian is considered backing off.
+        """
         super(SocialNavRandomTask, self).__init__(env)
+        # For debugging purposes, so that we can simulate colliding pedestrians
+        # np.random.seed(1)
+        self.num_pedestrians = self.config.get('num_pedestrians', 3)
+        self.num_steps_stop = [0] * self.num_pedestrians
+        self.neighbor_stop_radius = self.config.get(
+            'neighbor_stop_radius', 1.0)
+        self.num_steps_stop_thresh = self.config.get(
+            'num_steps_stop_thresh', 5)
+        # backoff when angle is greater than 2.7 radians
+        self.backoff_radian_thresh = self.config.get(
+            'backoff_radian_thresh', 2.7)
+
         self.termination_conditions.append(PedestrianCollision(self.config))
         # Each pixel is 0.01 square meter
         num_sqrt_meter = env.scene.floor_map[0].nonzero()[0].shape[0] / 100.0
@@ -23,6 +48,7 @@ class SocialNavRandomTask(PointNavRandomTask):
             'num_sqrt_meter_per_ped', 10)
         self.num_pedestrians = int(
             num_sqrt_meter / self.num_sqrt_meter_per_ped)
+
         self.neighbor_dist = self.config.get('orca_neighbor_dist', 5)
         self.max_neighbors = self.num_pedestrians + 1
         self.time_horizon = self.config.get('orca_time_horizon', 2.0)
@@ -177,11 +203,25 @@ class SocialNavRandomTask(PointNavRandomTask):
 
         :param env: environment instance
         """
-        # TODO: re-sample if too close to other pedestrians
         # TODO: re-sample if too close to robot
         self.pedestrian_waypoints = []
-        for ped, orca_ped in zip(self.pedestrians, self.orca_pedestrians):
-            _, initial_pos = env.scene.get_random_point(floor=self.floor_num)
+        for id, (ped, orca_ped) in enumerate(zip(self.pedestrians, self.orca_pedestrians)):
+            initial_pos = None
+            must_resample_pos = True
+
+            # resample pedestrian's initial position
+            while must_resample_pos:
+                _, initial_pos = env.scene.get_random_point(floor=self.floor_num)
+                must_resample_pos = False
+                for neighbor_id in range(id):
+                    neighbor_ped = self.pedestrians[neighbor_id]
+                    neighbor_pos_xyz = neighbor_ped.get_position()
+                    dist = np.linalg.norm([neighbor_pos_xyz[0] - initial_pos[0],
+                                           neighbor_pos_xyz[1] - initial_pos[1]])
+                    if dist < self.radius:
+                        must_resample_pos = True
+                        break
+
             ped.set_position_orientation(
                 initial_pos, p.getQuaternionFromEuler(ped.default_orn_euler))
             self.orca_sim.setAgentPosition(orca_ped, tuple(initial_pos[0:2]))
@@ -269,10 +309,15 @@ class SocialNavRandomTask(PointNavRandomTask):
                               self.orca_pedestrians,
                               self.pedestrian_waypoints)):
             current_pos = np.array(ped.get_position())
-            # Sample new waypoints if empty
-            if len(waypoints) == 0:
+
+            # Sample new waypoints if empty OR if the pedestrian froze for x amount of time.
+            if len(waypoints) == 0 or self.num_steps_stop[i] >= self.num_steps_stop_thresh:
+                if self.num_steps_stop[i] >= self.num_steps_stop_thresh:
+                    print("sampling new point because pedestrian #${} \
+                          stoped for too long".format(i))
                 waypoints = self.sample_new_target_pos(env, current_pos)
                 self.pedestrian_waypoints[i] = waypoints
+                self.num_steps_stop[i] = 0
 
             next_goal = waypoints[0]
             self.pedestrian_goals[i].set_position(
@@ -280,7 +325,6 @@ class SocialNavRandomTask(PointNavRandomTask):
             yaw = np.arctan2(next_goal[1] - current_pos[1],
                              next_goal[0] - current_pos[0])
             ped.set_yaw(yaw)
-
             desired_vel = next_goal - current_pos[0:2]
             desired_vel = desired_vel / \
                 np.linalg.norm(desired_vel) * self.pedestrian_velocity
@@ -288,16 +332,120 @@ class SocialNavRandomTask(PointNavRandomTask):
 
         self.orca_sim.doStep()
 
-        for ped, orca_ped, waypoints in \
-                zip(self.pedestrians,
-                    self.orca_pedestrians,
-                    self.pedestrian_waypoints):
+        next_peds_pos_xyz, next_peds_stop_flag = self.update_pos_and_stop_flags()
+
+        # Update the pedestrian position in PyBullet if it does not stop
+        # or update the position in RVO2 simulator if it needs to stop
+        for i, (ped, orca_pred, waypoints) in \
+                enumerate(zip(self.pedestrians,
+                              self.orca_pedestrians,
+                              self.pedestrian_waypoints)):
+            pos_xyz = next_peds_pos_xyz[i]
+            if next_peds_stop_flag[i] is True:
+                self.orca_sim.setAgentPosition(orca_pred, pos_xyz[:2])
+                self.num_steps_stop[i] += 1
+            else:
+                self.num_steps_stop[i] = 0
+                ped.set_position(pos_xyz)
+                next_goal = waypoints[0]
+                if np.linalg.norm(next_goal - np.array(pos_xyz[:2])) \
+                        <= self.pedestrian_goal_thresh:
+                    waypoints.pop(0)
+
+    def update_pos_and_stop_flags(self):
+        """
+        Wrapper function that updates pedestrians' next position and whether
+        they should stop for the next time step
+
+        :return: the list of next position for all pedestrians,
+                 the list of flags whether the pedestrian should stop for the
+                 next time step
+        """
+        next_peds_pos_xyz = \
+            {i: ped.get_position() for i, ped in enumerate(self.pedestrians)}
+        next_peds_stop_flag = [False for i in range(len(self.pedestrians))]
+
+        for i, (ped, orca_ped, waypoints) in \
+                enumerate(zip(self.pedestrians,
+                              self.orca_pedestrians,
+                              self.pedestrian_waypoints)):
             pos_xy = self.orca_sim.getAgentPosition(orca_ped)
             prev_pos_xyz = ped.get_position()
             pos = np.array([pos_xy[0], pos_xy[1], prev_pos_xyz[2]])
-            ped.set_position(pos)
-            # print('next_goal', next_goal, 'pos_xy', pos_xy)
-            next_goal = waypoints[0]
-            if np.linalg.norm(next_goal - np.array(pos_xy)) \
-                    <= self.pedestrian_goal_thresh:
-                waypoints.pop(0)
+
+            if self.detect_backoff(ped, orca_ped):
+                self.stop_neighbor_pedestrians(i,
+                                               next_peds_stop_flag,
+                                               next_peds_pos_xyz)
+                next_peds_pos_xyz[i] = prev_pos_xyz
+            elif next_peds_stop_flag[i] is False:
+                # If there are no other neighboring pedestrians that forces
+                # this pedestrian to stop, then simply update next position.
+                next_peds_pos_xyz[i] = pos
+
+        return next_peds_pos_xyz, next_peds_stop_flag
+
+    def stop_neighbor_pedestrians(self, id, peds_stop_flags, peds_next_pos_xyz):
+        """
+        If the pedestrian whose instance stored in self.pedestrians with
+        index |id| is attempting to backoff, all the other neighboring
+        pedestrians within |self.neighbor_stop_radius| will stop
+
+        :param id: the index of the pedestrian object
+        :param peds_stop_flags: list of boolean corresponding to if the pestrian
+                                at index i should stop for the next
+        :param peds_next_pos_xyz: list of xyz position that the pedestrian would
+                            move in the next timestep or the position in the
+                            PyRVOSimulator that the pedestrian would revert to
+        """
+
+        orca_ped = self.orca_pedestrians[id]
+        ped = self.pedestrians[id]
+        num_neighbors = self.orca_sim.getAgentNumAgentNeighbors(orca_ped)
+        ped_pos_xyz = ped.get_position()
+
+        for neighbor_index in range(num_neighbors):
+            orca_neighbor_id = self.orca_sim.getAgentAgentNeighbor(
+                orca_ped, neighbor_index)
+            neighbor_pos_xyz = self.pedestrians[orca_neighbor_id].get_position(
+            )
+
+            dist = np.linalg.norm([neighbor_pos_xyz[0] - ped_pos_xyz[0],
+                                   neighbor_pos_xyz[1] - ped_pos_xyz[1]])
+            if dist >= self.neighbor_stop_radius:
+                continue
+            peds_stop_flags[orca_neighbor_id] = True
+            peds_next_pos_xyz[orca_neighbor_id] = neighbor_pos_xyz
+        peds_stop_flags[id] = True
+        peds_next_pos_xyz[id] = ped_pos_xyz
+
+    def detect_backoff(self, ped, orca_ped):
+        """
+        Detects if the pedestrian is attempting to perform a backoff
+        due to some form of imminent collision
+
+        :param ped: the pedestrain object
+        :param orca_ped: the pedestrian id in the orca simulator
+        :return: whether the pedestrian is backing off
+        """
+        pos_xy = self.orca_sim.getAgentPosition(orca_ped)
+        prev_pos_xyz = ped.get_position()
+        pos = np.array([pos_xy[0], pos_xy[1], prev_pos_xyz[2]])
+
+        yaw = ped.get_yaw()
+
+        # Computing the directional vectors from yaw
+        orient_x_dir = np.cos(yaw)
+        orient_y_dir = np.sin(yaw)
+        orient_dir = (orient_x_dir, orient_y_dir)
+
+        normalized_dir = orient_dir / \
+            (np.linalg.norm([orient_x_dir, orient_y_dir]))
+
+        next_dir = (pos_xy[0] - prev_pos_xyz[0], pos_xy[1] - prev_pos_xyz[1])
+        next_normalized_dir = (next_dir) / np.linalg.norm(next_dir)
+
+        angle = np.arccos(np.dot(normalized_dir, next_normalized_dir))
+        is_backoff_detected = "TRUE" if angle >= self.backoff_radian_thresh \
+            else "FALSE"
+        return angle >= self.backoff_radian_thresh
