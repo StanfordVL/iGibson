@@ -23,6 +23,7 @@ import numpy as np
 import platform
 import logging
 import time
+from time import sleep
 
 
 class Simulator:
@@ -35,6 +36,7 @@ class Simulator:
                  gravity=9.8,
                  physics_timestep=1 / 120.0,
                  render_timestep=1 / 30.0,
+                 use_fixed_fps=False,
                  mode='gui',
                  image_width=128,
                  image_height=128,
@@ -47,6 +49,7 @@ class Simulator:
         :param gravity: gravity on z direction.
         :param physics_timestep: timestep of physical simulation, p.stepSimulation()
         :param render_timestep: timestep of rendering, and Simulator.step() function
+        :param use_variable_step_num: whether to use a fixed (1) or variable physics step number
         :param mode: choose mode from gui, headless, iggui (only open iGibson UI), or pbgui(only open pybullet UI)
         :param image_width: width of the camera image
         :param image_height: height of the camera image
@@ -61,6 +64,7 @@ class Simulator:
         self.gravity = gravity
         self.physics_timestep = physics_timestep
         self.render_timestep = render_timestep
+        self.use_fixed_fps = use_fixed_fps
         self.mode = mode
 
         self.scene = None
@@ -93,6 +97,7 @@ class Simulator:
 
         # Starting position for the VR (default set to None if no starting position is specified by the user)
         self.vr_start_pos = None
+        self.eye_tracking_data = None
         self.max_haptic_duration = 4000
         self.image_width = image_width
         self.image_height = image_height
@@ -107,9 +112,26 @@ class Simulator:
         # We must be using the Simulator's vr mode and have use_vr set to true in the settings to access the VR context
         self.can_access_vr_context = self.use_vr_renderer and self.vr_settings.use_vr
 
-        # Settings for adjusting physics and render timestep in vr
-        # Fraction to multiple previous render timestep by in low-pass filter
-        self.lp_filter_frac = 0.9
+        # Get expected duration of frame
+        self.fixed_frame_dur = 1/float(self.vr_settings.vr_fps)
+        # Duration of a vsync frame - assumes 90Hz refresh rate
+        self.vsync_frame_dur = 11.11e-3
+        # Get expected number of vsync frames per iGibson frame
+        # Note: currently assumes a 90Hz VR system
+        self.vsync_frame_num = int(
+            round(self.fixed_frame_dur / self.vsync_frame_dur))
+        # Total amount of time we want non-blocking actions to take each frame
+        # This leaves 1 entire vsync frame for blocking, to make sure we don't wait too long
+        # Add 1e-3 to go halfway into the next frame
+        self.non_block_frame_time = (
+            self.vsync_frame_num - 1) * self.vsync_frame_dur + 1e-3
+        # Number of physics steps based on fixed VR fps
+        # Use integer division to guarantee we don't exceed 1.0 realtime factor
+        # It is recommended to use an FPS that is a multiple of the timestep
+        self.num_phys_steps = max(
+            1, int(self.fixed_frame_dur/self.physics_timestep))
+        # Timing variables for functions called outside of step() that also take up frame time
+        self.frame_end_time = None
 
         # Variables for data saving and replay in VR
         self.last_physics_timestep = -1
@@ -193,7 +215,7 @@ class Simulator:
             p.resetSimulation()
             p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
         if self.mode == 'vr':
-            p.setPhysicsEngineParameter(numSolverIterations=200)
+            p.setPhysicsEngineParameter(numSolverIterations=100)
         p.setTimeStep(self.physics_timestep)
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
@@ -202,9 +224,6 @@ class Simulator:
         self.scene = None
         if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and not self.render_to_tensor:
             self.add_viewer()
-
-    def optimize_vertex_and_texture(self):
-        self.renderer.optimize_vertex_and_texture()
 
     def load_without_pybullet_vis(load_func):
         """
@@ -327,7 +346,8 @@ class Simulator:
             # Non-marker objects require a Scene to be imported.
             assert self.scene is not None, "A scene must be imported before additional objects can be imported."
             # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
-            new_object_pb_id_or_ids = self.scene.add_object(obj, _is_call_from_simulator=True)
+            new_object_pb_id_or_ids = self.scene.add_object(
+                obj, _is_call_from_simulator=True)
 
         # If no new bodies are immediately imported into pybullet, we have no rendering steps.
         if new_object_pb_id_or_ids is None:
@@ -652,40 +672,60 @@ class Simulator:
                 if state_name in obj.states:
                     obj.states[state_name].update(self)
 
-    def step(self, print_time=False, use_render_timestep_lpf=True, print_timestep=False, forced_timestep=None):
+    def step_vr(self, print_stats=False):
         """
-        Step the simulation at self.render_timestep and update positions in renderer
+        Step the simulation when using VR. Order of function calls:
+        1) Simulate physics
+        2) Render frame
+        3) Submit rendered frame to VR compositor
+        4) Update VR data for use in the next frame
         """
         assert self.scene is not None, \
             "A scene must be imported before running the simulator. Use EmptyScene for an empty scene."
 
-        # First poll VR events and store them
-        if self.can_access_vr_context:
-            # Note: this should only be called once per frame - use get_vr_events to read the event data list in
-            # subsequent read operations
-            self.poll_vr_events()
-
-        physics_start_time = time.time()
-        # Always guarantee at least one physics timestep
-        physics_timestep_num = max(1, int(
-            self.render_timestep / self.physics_timestep)) if not forced_timestep else forced_timestep
-        if print_timestep:
-            print(
-                "Frame {} - physics timestep num: {}".format(self.frame_count, physics_timestep_num))
-            self.frame_count += 1
+        # Calculate time outside of step
+        outside_step_dur = 0
+        if self.frame_end_time is not None:
+            outside_step_dur = time.perf_counter() - self.frame_end_time
+        # Simulate Physics in PyBullet
+        physics_start_time = time.perf_counter()
+        physics_timestep_num = self.num_phys_steps
         for _ in range(physics_timestep_num):
             p.stepSimulation()
             self._non_physics_step()
-        physics_dur = time.time() - physics_start_time
+        physics_dur = time.perf_counter() - physics_start_time
 
-        render_start_time = time.time()
+        # Sync PyBullet bodies to renderer and then render to Viewer
+        render_start_time = time.perf_counter()
         self.sync()
-        render_dur = time.time() - render_start_time
-        # Update render timestep using low-pass filter function
-        if use_render_timestep_lpf:
-            self.render_timestep = self.lp_filter_frac * \
-                self.render_timestep + (1 - self.lp_filter_frac) * render_dur
-        frame_dur = physics_dur + render_dur
+        render_dur = time.perf_counter() - render_start_time
+
+        # Update VR compositor and VR data
+        vr_system_start = time.perf_counter()
+        # First sync VR compositor - this is where Oculus blocks (as opposed to Vive, which blocks in update_vr_data)
+        self.sync_vr_compositor()
+        # Note: this should only be called once per frame - use get_vr_events to read the event data list in
+        # subsequent read operations
+        self.poll_vr_events()
+        # This is necessary to fix the eye tracking value for the current frame, since it is multi-threaded
+        self.fix_eye_tracking_value()
+        # Move user to their starting location
+        self.perform_vr_start_pos_move()
+        # Update VR data and wait until 3ms before the next vsync
+        self.renderer.update_vr_data()
+        vr_system_dur = time.perf_counter() - vr_system_start
+
+        # Sleep until we reach the last frame before desired vsync point
+        phys_rend_dur = outside_step_dur + physics_dur + render_dur + vr_system_dur
+        sleep_start_time = time.perf_counter()
+        # TODO: Change this back to non block frame time? Also get rid of non block frame time if we don't use it
+        if phys_rend_dur < self.fixed_frame_dur:
+            sleep(self.fixed_frame_dur - phys_rend_dur)
+        sleep_dur = time.perf_counter() - sleep_start_time
+
+        # Calculate final frame duration
+        # Make sure it is non-zero for FPS calculation (set to max of 1000 if so)
+        frame_dur = max(1e-3, phys_rend_dur + sleep_dur)
 
         # Set variables for data saving and replay
         self.last_physics_timestep = physics_dur
@@ -693,19 +733,37 @@ class Simulator:
         self.last_physics_step_num = physics_timestep_num
         self.last_frame_dur = frame_dur
 
-        # Sets the VR starting position if one has been specified by the user
-        self.perform_vr_start_pos_move()
-
-        if print_time:
-
-            print('Total frame duration: {} and FPS: {}'.format(
-                round(frame_dur, 2), round(1/max(frame_dur, 0.002), 2)))
-            print('Total physics duration: {} and FPS: {}'.format(
-                round(physics_dur, 2), round(1/max(physics_dur, 0.002), 2)))
-            print('Number of physics steps: {}'.format(physics_timestep_num))
-            print('Total render duration: {} and FPS: {}'.format(
-                round(render_dur, 2), round(1/max(render_dur, 0.002), 2)))
+        if print_stats:
+            print('Frame number {} statistics (ms)'.format(self.frame_count))
+            print('Total out-of-step duration: {}'.format(outside_step_dur * 1000))
+            print('Total physics duration: {}'.format(physics_dur * 1000))
+            print('Total render duration: {}'.format(render_dur * 1000))
+            print('Total sleep duration: {}'.format(sleep_dur * 1000))
+            print('Total VR system duration: {}'.format(vr_system_dur * 1000))
+            print('Total frame duration: {} and fps: {}'.format(
+                frame_dur * 1000, 1/frame_dur))
+            print('Realtime factor: {}'.format(
+                round(physics_timestep_num * self.physics_timestep / frame_dur, 3)))
             print('-------------------------')
+
+        self.frame_count += 1
+        self.frame_end_time = time.perf_counter()
+
+    def step(self, print_stats=False, forced_timestep=None):
+        """
+        Step the simulation at self.render_timestep and update positions in renderer
+        """
+        # Call separate step function for VR
+        if self.can_access_vr_context:
+            self.step_vr(print_stats=print_stats)
+            return
+
+        # Always guarantee at least one physics timestep
+        physics_timestep_num = forced_timestep if forced_timestep else max(
+            1, int(self.render_timestep / self.physics_timestep))
+        for _ in range(physics_timestep_num):
+            p.stepSimulation()
+        self.sync()
 
     def sync(self):
         """
@@ -717,6 +775,12 @@ class Simulator:
                 self.body_links_awake += self.update_position(instance)
         if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and self.viewer is not None:
             self.viewer.update()
+
+    def sync_vr_compositor(self):
+        """
+        Sync VR compositor.
+        """
+        self.renderer.vr_compositor_update()
 
     # Sets the VR position on the first step iteration where the hmd tracking is valid. Not to be confused
     # with self.set_vr_start_pos, which simply records the desired start position before the simulator starts running.
@@ -733,6 +797,12 @@ class Simulator:
                     offset_to_start[2] = self.vr_height_offset
                 self.set_vr_offset(offset_to_start)
                 self.vr_start_pos = None
+
+    # Calculates and fixes eye tracking data to its value during step(). This is necessary, since multiple
+    # calls to get eye tracking data return different results, due to the SRAnipal multithreaded loop that
+    # runs in parallel to the iGibson main thread
+    def fix_eye_tracking_value(self):
+        self.eye_tracking_data = self.renderer.vrsys.getEyeTrackingData()
 
     # Returns VR event data as list of lists. Each sub-list contains deviceType and eventType.
     # List is empty if all events are invalid.
@@ -799,11 +869,7 @@ class Simulator:
     # Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
     # Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
     def get_eye_tracking_data(self):
-        if not self.can_access_vr_context:
-            raise RuntimeError(
-                'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
-
-        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.renderer.vrsys.getEyeTrackingData()
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.eye_tracking_data
         return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
 
     # Sets the starting position of the VR system in iGibson space

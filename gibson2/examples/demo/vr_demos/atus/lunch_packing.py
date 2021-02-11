@@ -28,10 +28,13 @@ from gibson2 import assets_path
 import signal
 import sys
 
+# IMPORTANT: Change this value if you have a more powerful machine
+# 45fps is recommended for desktops, and 15fps is recommended for laptops
+VR_FPS = 100
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = False
-# Set to true to print out render, physics and overall frame FPS
-PRINT_FPS = True
+# Set to true to print simulator statistics
+PRINT_STATS = True
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -56,8 +59,10 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             light_dimming_factor=1.0)
 # VR system settings
 # Change use_vr to toggle VR mode on/off
-vr_settings = VrSettings(use_vr=True)
+# IMPORTANT: Change the vr_fps settings
+vr_settings = VrSettings(use_vr=True, vr_fps=VR_FPS)
 s = Simulator(mode='vr', 
+            use_fixed_fps = True,
             rendering_settings=vr_rendering_settings, 
             vr_settings=vr_settings)
 scene = InteractiveIndoorScene('Beechwood_0_int')
@@ -72,14 +77,13 @@ s.import_ig_scene(scene)
 # Position that is roughly in the middle of the kitchen - used to help place objects
 kitchen_middle = [-3.7, -2.7, 1.8]
 
-if not vr_settings.use_vr:
-    camera_pose = np.array(kitchen_middle)
-    view_direction = np.array([0, 1, 0])
-    s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
-    s.renderer.set_fov(90)
+camera_pose = np.array(kitchen_middle)
+view_direction = np.array([0, 1, 0])
+s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
+s.renderer.set_fov(90)
 
 # Create a VrAgent and it will handle all initialization and importing under-the-hood
-vr_agent = VrAgent(s, use_gripper=True)
+vr_agent = VrAgent(s, use_gripper=False)
 
 # List of object names to filename mapping
 lunch_pack_folder = os.path.join(gibson2.assets_path, 'models', 'pack_lunch')
@@ -158,8 +162,6 @@ item_start_pos_orn = {
     ]
 }
 
-
-
 # Import all objects and put them in the correct positions
 pack_items = list(lunch_pack_files.keys())
 for item in pack_items:
@@ -172,19 +174,12 @@ for item in pack_items:
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
 
-s.optimize_vertex_and_texture()
-
-if vr_settings.use_vr:
-    # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
-    s.set_vr_start_pos(kitchen_middle, vr_height_offset=-0.1)
+# Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
+s.set_vr_start_pos(kitchen_middle, vr_height_offset=-0.1)
 
 # Main simulation loop
 while True:
-    s.step(print_time=PRINT_FPS)
-
-    # Don't update VR agents or query events if we are not using VR
-    if not vr_settings.use_vr:
-        continue
+    s.step(print_stats=PRINT_STATS)
 
     # Update VR objects
     vr_agent.update()
