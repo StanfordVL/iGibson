@@ -39,6 +39,8 @@ benchmark_names = [
     'top_cabinet_51'
 ]
 
+# Set to true to print Simulator step() statistics
+PRINT_STATS = True
 # Set to true to use gripper instead of VR hands
 USE_GRIPPER = False
 
@@ -64,8 +66,9 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             msaa=True,
                                             light_dimming_factor=1.0)
 
-vr_settings = VrSettings(use_vr=True)
+vr_settings = VrSettings(use_vr=True, vr_fps=30)
 s = Simulator(mode='vr', 
+            use_fixed_fps = True,
             rendering_settings=vr_rendering_settings, 
             vr_settings=vr_settings)
 
@@ -76,7 +79,7 @@ p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
 vr_agent = VrAgent(s, use_gripper=USE_GRIPPER)
 # Move VR agent to the middle of the kitchen
-s.set_vr_start_pos(start_pos=[0,2.3,0], vr_height_offset=0)
+s.set_vr_start_pos(start_pos=[0,2.1,0], vr_height_offset=0)
 
 # Mass values to use for each object type - len(masses) objects will be created of each type
 masses = [1, 5, 10]
@@ -110,11 +113,10 @@ for name in obj_to_load:
         handle.set_orientation(orn)
         p.changeDynamics(handle.body_id, -1, mass=masses[i])
 
-s.optimize_vertex_and_texture()
-
 # Main simulation loop
 while True:
-    s.step()
+    s.step(print_stats=PRINT_STATS)
+
     vr_agent.update()
 
 s.disconnect()
