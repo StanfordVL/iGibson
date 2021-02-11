@@ -39,7 +39,6 @@ class SocialNavRandomTask(PointNavRandomTask):
             'num_sqrt_meter_per_ped', 10)
         self.num_pedestrians = int(
             num_sqrt_meter / self.num_sqrt_meter_per_ped)
-        self.num_pedestrians = 4
 
         self.num_steps_stop = [0] * self.num_pedestrians
         self.neighbor_stop_radius = self.config.get(
