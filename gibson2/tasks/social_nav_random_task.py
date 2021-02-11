@@ -430,15 +430,15 @@ class SocialNavRandomTask(PointNavRandomTask):
         yaw = ped.get_yaw()
 
         # Computing the directional vectors from yaw
-        orient_x_dir = np.cos(yaw)
-        orient_y_dir = np.sin(yaw)
-        orient_dir = (orient_x_dir, orient_y_dir)
+        normalized_dir = np.array([np.cos(yaw), np.sin(yaw)])
 
-        normalized_dir = orient_dir / \
-            (np.linalg.norm([orient_x_dir, orient_y_dir]))
+        next_dir = np.array([pos_xy[0] - prev_pos_xyz[0],
+                             pos_xy[1] - prev_pos_xyz[1]])
 
-        next_dir = (pos_xy[0] - prev_pos_xyz[0], pos_xy[1] - prev_pos_xyz[1])
-        next_normalized_dir = (next_dir) / np.linalg.norm(next_dir)
+        if np.linalg.norm(next_dir) == 0.0:
+            return False
+
+        next_normalized_dir = next_dir / np.linalg.norm(next_dir)
 
         angle = np.arccos(np.dot(normalized_dir, next_normalized_dir))
         return angle >= self.backoff_radian_thresh
