@@ -10,7 +10,8 @@ DEFAULT_TEMPERATURE = 23.0  # degrees Celsius
 TEMPERATURE_DECAY_SPEED = 0.02  # per second. We'll do the conversion to steps later.
 
 # Search distance for heat sources. We'll get heat from sources closer than this.
-HEAT_SOURCE_DISTANCE_THRESHOLD = 1.0  # meters.
+# TODO: Figure out a way of finding distance between heat source and our object's boundary.
+HEAT_SOURCE_DISTANCE_THRESHOLD = 0.2  # meters.
 
 # TODO: Consider sourcing heat source temperature from heat source object metadata.
 # The temperature of the heat source.
@@ -25,6 +26,10 @@ class Temperature(AbsoluteObjectState):
     @staticmethod
     def get_dependencies():
         return AbsoluteObjectState.get_dependencies() + ['aabb']
+
+    @staticmethod
+    def get_optional_dependencies():
+        return AbsoluteObjectState.get_optional_dependencies() + ['heatSource']
 
     def __init__(self, obj):
         super(Temperature, self).__init__(obj)
