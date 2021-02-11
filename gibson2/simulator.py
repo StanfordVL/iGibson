@@ -302,6 +302,44 @@ class Simulator:
         return new_object_ids
 
     @load_without_pybullet_vis
+    def import_particle_system(self,
+                               obj,
+                               class_id=SemanticClass.USER_ADDED_OBJS,
+                               use_pbr=False,
+                               use_pbr_mapping=False,
+                               shadow_caster=True):
+        """
+        Import an object into the simulator
+        :param obj: ParticleSystem to load
+        :param class_id: Class id for rendering semantic segmentation
+        :param use_pbr: Whether to use pbr, default to False
+        :param use_pbr_mapping: Whether to use pbr mapping, default to False
+        :param shadow_caster: Whether to cast shadow
+        """
+
+        assert isinstance(obj, ParticleSystem), 'import_particle_system can only be called with ParticleSystem'
+
+        new_object_pb_id_or_ids = []
+        for o in obj.particles:
+            new_object_pb_id_or_ids.append(self.scene.add_object(o, _is_call_from_simulator=True))
+
+        # If no new bodies are immediately imported into pybullet, we have no rendering steps.
+        if new_object_pb_id_or_ids is None:
+            return None
+
+        self.objects += new_object_pb_id_or_ids
+        for new_object_pb_id in new_object_pb_id_or_ids:
+            self.load_object_in_renderer(
+                new_object_pb_id,
+                class_id,
+                softbody=False,
+                use_pbr=use_pbr,
+                use_pbr_mapping=use_pbr_mapping,
+                shadow_caster=shadow_caster)
+
+        return new_object_pb_id_or_ids
+
+    @load_without_pybullet_vis
     def import_object(self,
                       obj,
                       class_id=SemanticClass.USER_ADDED_OBJS,
@@ -317,13 +355,10 @@ class Simulator:
         :param use_pbr_mapping: Whether to use pbr mapping
         :param shadow_caster: Whether to cast shadow
         """
-        assert isinstance(obj, Object) or isinstance(obj, ParticleSystem), \
+        assert isinstance(obj, Object), \
             'import_object can only be called with Object'
-        new_object_pb_id_or_ids = []
-        if isinstance(obj, ParticleSystem):
-            for o in obj.particles:
-                new_object_pb_id_or_ids.append(self.scene.add_object(o, _is_call_from_simulator=True))
-        elif isinstance(obj, VisualMarker):
+
+        if isinstance(obj, VisualMarker):
             # Marker objects can be imported without a scene.
             new_object_pb_id_or_ids = obj.load()
         else:
@@ -652,7 +687,7 @@ class Simulator:
         # Step the object states in global topological order.
         for state_name in self.object_state_names:
             for obj in self.scene.get_objects():
-                if hasattr(obj, 'states') and state_name in obj.states:
+                if state_name in obj.states:
                     obj.states[state_name].update(self)
 
     def step(self, print_time=False, use_render_timestep_lpf=True, print_timestep=False, forced_timestep=None):

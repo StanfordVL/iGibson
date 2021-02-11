@@ -13,7 +13,7 @@ class WaterSource(AbsoluteObjectState):
     def update(self, simulator):
         if not self.water_added:
             for water_source in self.water_sources:
-                simulator.import_object(water_source)
+                simulator.import_particle_system(water_source)
                 water_source.register_parent_obj(self.obj)
 
             self.water_added = True

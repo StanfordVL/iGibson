@@ -14,8 +14,8 @@ class Object(object):
         self.loaded = False
         # a handle to particle systems attached to an object
         self.attached_particle_system = None
-        # self.states = prepare_object_states(self, online=True)
-        # moved to derived classes, too high-level to be here
+        # initialize with empty states
+        self.states = dict()
 
     def load(self):
         """

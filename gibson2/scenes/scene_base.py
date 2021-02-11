@@ -43,6 +43,9 @@ class Scene(with_metaclass(ABCMeta)):
     def get_objects(self):
         raise NotImplementedError()
 
+    def get_objects_with_state(self, state):
+        return [item for item in self.get_objects() if hasattr(item, 'states') and state in item.states]
+
     @abstractmethod
     def _add_object(self, obj):
         """
