@@ -105,10 +105,6 @@ for _ in range(100):
 # Main simulation loop
 while True:
 
-    desk.states['dirty'].update(s)
-    sink.states['toggled_open'].update(s)
-    sink.states['water_source'].update(s)
-
     s.step(print_time=PRINT_FPS)
 
     if not VIEWER_MANIP:

@@ -50,3 +50,11 @@ class WaterSource(AbsoluteObjectState):
 
     def get_value(self):
         pass
+
+    @staticmethod
+    def get_optional_dependencies():
+        return ["toggled_open"]
+
+    @staticmethod
+    def get_dependencies():
+        return ["contact_bodies"]
