@@ -4,7 +4,7 @@ import numpy as np
 
 class Particle(Object):
     """
-    Cube shape primitive
+    A particle object, used to simulate water stream and dust/stain
     """
 
     def __init__(self, pos=[0,0,0], dim=0.1, visual_only=False, mass=0.1, color=[1, 1, 1, 1], base_shape="box"):

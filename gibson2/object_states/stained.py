@@ -19,7 +19,7 @@ class Stained(AbsoluteObjectState, BooleanState):
 
     def update(self, simulator):
         if not self.dust_added:
-            simulator.import_object(self.dust)
+            simulator.import_particle_system(self.dust)
             self.stain.attach(self.obj)
             self.stain.register_parent_obj(self.obj)
             self.stain_added = True
@@ -56,3 +56,7 @@ class Stained(AbsoluteObjectState, BooleanState):
 
         # update self.value based on particle count
         self.value = self.stain.get_num_active() > self.stain.get_num() * 0.9
+
+
+    def get_dependencies(self):
+        return ["aabb"]

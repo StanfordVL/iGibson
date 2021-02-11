@@ -20,7 +20,7 @@ class Dirty(AbsoluteObjectState, BooleanState):
 
     def update(self, simulator):
         if not self.dust_added:
-            simulator.import_object(self.dust)
+            simulator.import_particle_system(self.dust)
             self.dust.attach(self.obj)
             self.dust.register_parent_obj(self.obj)
             self.dust_added = True
@@ -52,3 +52,6 @@ class Dirty(AbsoluteObjectState, BooleanState):
 
         # update self.value based on particle count
         self.value = self.dust.get_num_active() > self.dust.get_num() * 0.9
+
+    def get_dependencies(self):
+        return ["aabb"]
