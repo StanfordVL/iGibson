@@ -63,9 +63,6 @@ def main():
     for i in range(10000):
         with Profiler('Simulator step'):
             turtlebot.apply_action([0.1, 0.1])
-            desk.states['dirty'].update(s)
-            sink.states['toggled_open'].update(s)
-            sink.states['water_source'].update(s)
             s.step()
             rgb = s.renderer.render_robot_cameras(modes=('rgb'))
     s.disconnect()

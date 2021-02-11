@@ -17,3 +17,7 @@ class Soaked(AbsoluteObjectState, BooleanState):
     def update(self, simulator):
         # they are updated in water source
         pass
+
+    @staticmethod
+    def get_optional_dependencies():
+        return ["water_source"]

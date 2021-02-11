@@ -53,5 +53,10 @@ class Dirty(AbsoluteObjectState, BooleanState):
         # update self.value based on particle count
         self.value = self.dust.get_num_active() > self.dust.get_num() * 0.9
 
-    def get_dependencies(self):
+    @staticmethod
+    def get_dependencies():
         return ["aabb"]
+
+    @staticmethod
+    def get_optional_dependencies():
+        return ["cleaning_tool"]

@@ -13,3 +13,7 @@ class CleaningTool(AbsoluteObjectState):
 
     def get_value(self):
         pass
+
+    @staticmethod
+    def get_optional_dependencies():
+        return ["toggled_open"]

@@ -217,14 +217,13 @@ def test_dirty():
         assert 'dustable' in sink.abilities
         assert 'dirty' in sink.states
 
-        sink.states['dirty'].update(s)
-        # load the particles
+        for i in range(10):
+            s.step()
+
         assert sink.attached_particle_system is not None
 
     finally:
         s.disconnect()
-
-
 
 def test_water_source():
     s = Simulator(mode='headless')
@@ -246,8 +245,9 @@ def test_water_source():
         assert 'water_source' in sink.abilities
         assert 'water_source' in sink.states
 
-        sink.states['water_source'].update(s)
-        # load the particles
+        for i in range(10):
+            s.step()
+
         assert sink.attached_particle_system is not None
 
     finally:

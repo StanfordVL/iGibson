@@ -58,5 +58,10 @@ class Stained(AbsoluteObjectState, BooleanState):
         self.value = self.stain.get_num_active() > self.stain.get_num() * 0.9
 
 
-    def get_dependencies(self):
+    @staticmethod
+    def get_dependencies():
         return ["aabb"]
+
+    @staticmethod
+    def get_optional_dependencies():
+        return ["soaked", "cleaning_tool"]
