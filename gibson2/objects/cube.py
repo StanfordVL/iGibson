@@ -1,10 +1,10 @@
 import math
 
-from gibson2.objects.object_base import Object
+from gibson2.objects.stateful_object import StatefulObject
 import pybullet as p
 
 
-class Cube(Object):
+class Cube(StatefulObject):
     """
     Cube shape primitive
     """
