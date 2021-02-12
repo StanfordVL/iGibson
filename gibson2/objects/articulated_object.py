@@ -18,8 +18,8 @@ from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_u
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
+from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
 from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
-from gibson2.utils.utils import z_rotation, matrix_from_quat, quat_from_matrix
 
 
 class ArticulatedObject(Object):
