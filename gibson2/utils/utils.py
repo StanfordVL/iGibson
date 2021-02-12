@@ -1,3 +1,4 @@
+import json
 import os
 import numpy as np
 import yaml
@@ -14,8 +15,92 @@ scipy_version = version.parse(scipy.version.version)
 # File I/O related
 
 
-def parse_config(config):
+def get_current_dir():
+    return os.getcwd()
 
+
+def combine_paths(path, *argv):
+    """
+    Joins the path and the list of subdirectory names to create a single
+    absolute path.
+
+    :param path: the root path
+    :param *argv: names of subdirectories that are nested inside this root path
+    :return path: the combined absolute path
+    """
+    for dir in argv:
+        if isinstance(dir, str):
+            path = os.path.join(path, dir)
+        else:
+            assert("The parameter '{}' is not in string format".format(dir))
+    return path
+
+
+def create_directory(path):
+    """
+    Recursively creates a new directory. But if the path already exists,
+    the function does nothing.
+
+    :param dir_path: absolute path of the directory
+    """
+    if os.path.isfile(path):
+        assert('There is a filename "{}". Please remove the file or rename the directory'.format(
+            dir_path))
+    elif not os.path.exists(path):
+        os.makedirs(path)
+
+
+def save_json_config(config, path):
+    """
+    Saves an object as a json file.
+
+    :param config: an object that is of some mapping
+    :param path: save the file at that path
+    """
+    try:
+        collectionsAbc = collections.abc
+    except AttributeError:
+        collectionsAbc = collections
+
+    if isinstance(config, collectionsAbc.Mapping):
+
+        if os.path.exists(path):
+            base_path = os.path.splitext(path)[0]
+            file_num = 1
+            # handle filenames that already exist, to avoid overwrite
+            while os.path.exists(path):
+                path = '{}_({}).json'.format(base_path, file_num)
+                file_num+=1
+        with open(path, 'w+') as file:
+            json.dump(config, file, sort_keys=True, indent=2)
+    else:
+        assert("The task episode config file is not hashable or is a mapping. "
+               "Please check the format of the config file")
+
+
+def load_json_config(path):
+    """
+    Loads the json config file.
+
+    :param path: save the file at that path
+    """
+    try:
+        collectionsAbc = collections.abc
+    except AttributeError:
+        collectionsAbc = collections
+
+    config = None
+    if os.path.exists(path):
+        with open(path, 'r') as file:
+            data = file.read()
+            config = json.loads(data)
+    else:
+        assert("The path `{}` does not exist".format(path))
+
+    return config
+
+
+def parse_config(config):
     """
     Parse iGibson config file / object
     """
@@ -34,7 +119,25 @@ def parse_config(config):
             'config path {} does not exist. Please either pass in a dict or a string that represents the file path to the config yaml.'.format(config))
     with open(config, 'r') as f:
         config_data = yaml.load(f, Loader=yaml.FullLoader)
+
     return config_data
+
+
+def load_json_config(path):
+    try:
+        collectionsAbc = collections.abc
+    except AttributeError:
+        collectionsAbc = collections
+
+    config = None
+    if os.path.exists(path):
+        with open(path, 'r') as file:
+            data = file.read()
+            config = json.loads(data)
+    else:
+        assert("The path `{}` does not exist".format(path))
+
+    return config
 
 # Geometry related
 
@@ -71,7 +174,7 @@ def get_transform_from_xyz_rpy(xyz, rpy):
 
 def get_rpy_from_transform(transform):
     """
-    Returns the roll, pitch, yaw angles (Euler) for a given rotation or 
+    Returns the roll, pitch, yaw angles (Euler) for a given rotation or
     homogeneous transformation matrix
     transformation = Array with the rotation (3x3) or full transformation (4x4)
     """
