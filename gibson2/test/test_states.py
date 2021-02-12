@@ -191,7 +191,7 @@ def test_toggle():
         s.import_object(sink)
         sink.set_position([1, 1, 0.8])
         assert 'toggleable' in sink.abilities
-        assert 'toggled_open' in sink.states
+        assert 'toggled_on' in sink.states
 
     finally:
         s.disconnect()

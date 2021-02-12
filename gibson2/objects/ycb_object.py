@@ -17,8 +17,6 @@ class YCBObject(StatefulObject):
         self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
                                                'textured_simple_vhacd.obj')
         self.scale = scale
-        self.abilities = []
-        self.states = prepare_object_states(self, online=True)
 
     def _load(self):
         collision_id = p.createCollisionShape(p.GEOM_MESH,

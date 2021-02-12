@@ -18,9 +18,9 @@ class WaterSource(AbsoluteObjectState):
 
             self.water_added = True
 
-        if "toggled_open" in self.obj.states:
+        if "toggled_on" in self.obj.states:
             for water_source in self.water_sources:
-                water_source.set_value(self.obj.states["toggled_open"].get_value())
+                water_source.set_value(self.obj.states["toggled_on"].get_value())
                 # sync water source state with toggleable
         else:
             for water_source in self.water_sources:
@@ -53,7 +53,7 @@ class WaterSource(AbsoluteObjectState):
 
     @staticmethod
     def get_optional_dependencies():
-        return ["toggled_open"]
+        return ["toggled_on"]
 
     @staticmethod
     def get_dependencies():

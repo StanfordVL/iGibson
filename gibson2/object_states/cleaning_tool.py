@@ -16,4 +16,4 @@ class CleaningTool(AbsoluteObjectState):
 
     @staticmethod
     def get_optional_dependencies():
-        return ["toggled_open"]
+        return ["toggled_on"]
