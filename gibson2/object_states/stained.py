@@ -9,8 +9,8 @@ class Stained(AbsoluteObjectState, BooleanState):
     def __init__(self, obj):
         super(Stained, self).__init__(obj)
         self.value = False
-        self.stain_added = False
         self.stain = Stain()
+        self.stain.register_parent_obj(self.obj)
 
     def get_value(self):
         return self.value
@@ -26,12 +26,6 @@ class Stained(AbsoluteObjectState, BooleanState):
                 self.stain.stash_particle(particle)
 
     def update(self, simulator):
-        if not self.stain_added:
-            simulator.import_particle_system(self.stain)
-            self.stain.attach(self.obj)
-            self.stain.register_parent_obj(self.obj)
-            self.stain_added = True
-
         # cleaning logic
         cleaning_tools = simulator.scene.get_objects_with_state("cleaning_tool")
         cleaning_tools_wet = []

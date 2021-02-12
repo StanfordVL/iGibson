@@ -405,6 +405,16 @@ class Simulator:
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
                     shadow_caster=shadow_caster)
+
+        # if there are attached particle system, import them into simulation
+        if len(obj.attached_particle_system) > 0:
+            for particle_system in obj.attached_particle_system:
+                particle_pb_ids = self.import_particle_system(particle_system)
+                if isinstance(new_object_pb_id_or_ids, list):
+                    new_object_pb_id_or_ids += particle_pb_ids
+                else:
+                    new_object_pb_id_or_ids = [new_object_pb_id_or_ids] + particle_pb_ids
+
         return new_object_pb_id_or_ids
 
     @load_without_pybullet_vis

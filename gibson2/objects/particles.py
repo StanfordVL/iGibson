@@ -72,7 +72,7 @@ class ParticleSystem:
 
     def register_parent_obj(self, obj):
         self.parent_obj = obj
-        obj.attached_particle_system = self
+        obj.attached_particle_system.append(self)
 
     def get_num(self):
         return self.num
@@ -162,7 +162,6 @@ class Dust(ParticleSystem):
             mass=mass,
             color=color
         )
-
 
     def attach(self, obj):
         aabb = obj.states['aabb'].get_value()
