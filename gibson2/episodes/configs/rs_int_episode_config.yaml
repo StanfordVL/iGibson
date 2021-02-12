@@ -1,4 +1,3 @@
-# scene
 env_config: '../examples/configs/locobot_social_nav.yaml'
 num_episodes: 3
 episode_length: 5 # maximum value is 500

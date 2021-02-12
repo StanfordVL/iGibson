@@ -70,7 +70,7 @@ def save_json_config(config, path):
             # handle filenames that already exist, to avoid overwrite
             while os.path.exists(path):
                 path = '{}_({}).json'.format(base_path, file_num)
-                file_num+=1
+                file_num += 1
         with open(path, 'w+') as file:
             json.dump(config, file, sort_keys=True, indent=2)
     else:

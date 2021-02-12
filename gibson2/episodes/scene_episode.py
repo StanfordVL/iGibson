@@ -181,7 +181,8 @@ if __name__ == '__main__':
 
     num_episodes = episode_config.get('num_episodes', 100)
     num_pedestrians = episode_config.get('num_pedestrians', 5)
-    episode_length = episode_config.get('episode_length', EpisodeConfig.MAX_EPISODE_LENGTH)
+    episode_length = episode_config.get(
+        'episode_length', EpisodeConfig.MAX_EPISODE_LENGTH)
     numpy_seed = episode_config.get('numpy_seed', 1)
     orca_radius = env_config.get('orca_radius', 0.3)
     scene_id = env_config['scene_id']
