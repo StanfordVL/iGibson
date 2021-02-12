@@ -70,7 +70,7 @@ def main(args):
 
         mesh = trimesh.load(object_file, force='mesh')
 
-        poses = [np.eye(3)]
+        poses = [np.eye(4)]
         # set the timeout handler
         signal.signal(signal.SIGALRM, handler)
         signal.alarm(10)
@@ -101,19 +101,29 @@ def main(args):
             prob = 0
             if args.save_json:
                 inp = input(
-                    'Enter probability of rotation, or +/- to rotate about Z:')
+                    'Enter probability of rotation, or +x/-x or/ +y/-y or +z/-z to rotate:')
                 if inp == '':
                     continue
                 while inp[0] == '+' or inp[0] == '-':
-                    rot_num = float(inp[1:])
+                    rot_num = float(inp.split()[1])
                     if inp[0] == '-':
                         rot_num *= -1
-                    z_rot = np.array([[math.cos(math.pi*rot_num), -math.sin(math.pi*rot_num), 0.0, 0.0],
-                                      [math.sin(math.pi*rot_num),
-                                       math.cos(math.pi*rot_num), 0.0, 0.0],
+                    if inp[1]=='z':
+                        rot = np.array([[math.cos(math.pi*rot_num), -math.sin(math.pi*rot_num), 0.0, 0.0],
+                                      [math.sin(math.pi*rot_num), math.cos(math.pi*rot_num), 0.0, 0.0],
                                       [0.0, 0.0, 1.0, 0.0],
                                       [0.0, 0.0, 0.0, 1.0]])
-                    transform = np.matmul(z_rot, transform)
+                    elif inp[1]=='y':
+                        rot = np.array([[math.cos(math.pi*rot_num), 0.0, math.sin(math.pi*rot_num),  0.0],
+                                      [0.0, 1.0, 0.0, 0.0],
+                                      [-math.sin(math.pi*rot_num), 0.0, math.cos(math.pi*rot_num), 0.0],
+                                      [0.0, 0.0, 0.0, 1.0]])
+                    elif inp[1]=='x':
+                        rot = np.array([[1.0, 0.0, 0.0, 0.0],
+                            [0.0, math.cos(math.pi*rot_num), -math.sin(math.pi*rot_num), 0.0],
+                            [0.0, math.sin(math.pi*rot_num), math.cos(math.pi*rot_num), 0.0],
+                                      [0.0, 0.0, 0.0, 1.0]])
+                    transform = np.matmul(rot, transform)
                     r, v = viz_transform(body_id, mesh, transform)
                     inp = input(
                         'Enter probability of rotation, or +/- to rotate about Z:')

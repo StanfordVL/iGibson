@@ -3,6 +3,7 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.object_states.utils import sample_kinematics
+from gibson2.utils.assets_utils import get_ig_avg_category_specs
 import matplotlib.pyplot as plt
 import numpy as np
 import math
@@ -62,13 +63,15 @@ def main(args):
         category_supporting_objects[(cat,room)].append(obj)
 
     placement_count = 0
+    avg_category_spec = get_ig_avg_category_specs()
     for category, count in objects_to_sample:
         ids = object_id_dict[category]
         for i in range(count):
             object_id = random.choice(ids)
             urdf_path = '%s/%s/%s.urdf'%(object_cat_dirs[category], object_id, object_id)
             name = '%s-%s-%d'%(category,object_id,i)
-            urdf_object = URDFObject(urdf_path, name=name, category=category, overwrite_inertial=True)
+            urdf_object = URDFObject(urdf_path, name=name, category=category, overwrite_inertial=True,
+                                     avg_obj_dims=avg_category_spec.get(category))
             simulator.import_object(urdf_object)
             for attempt in range(args.num_attempts):
                 object_id = random.choice(ids)
