@@ -2,6 +2,7 @@ from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.particles import Stain
 
+CLEAN_THRESHOLD = 0.9
 
 class Stained(AbsoluteObjectState, BooleanState):
 
@@ -16,10 +17,17 @@ class Stained(AbsoluteObjectState, BooleanState):
 
     def set_value(self, new_value):
         self.value = new_value
+        if self.value:
+            self.stain.attach(self.obj)
+            for particle in self.stain.particles:
+                particle.active = True
+        else:
+            for particle in self.stain.particles:
+                self.stain.stash_particle(particle)
 
     def update(self, simulator):
-        if not self.dust_added:
-            simulator.import_particle_system(self.dust)
+        if not self.stain_added:
+            simulator.import_particle_system(self.stain)
             self.stain.attach(self.obj)
             self.stain.register_parent_obj(self.obj)
             self.stain_added = True
@@ -55,7 +63,7 @@ class Stained(AbsoluteObjectState, BooleanState):
                     self.stain.stash_particle(particle)
 
         # update self.value based on particle count
-        self.value = self.stain.get_num_active() > self.stain.get_num() * 0.9
+        self.value = self.stain.get_num_active() > self.stain.get_num() * CLEAN_THRESHOLD
 
 
     @staticmethod

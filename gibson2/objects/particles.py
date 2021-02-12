@@ -9,12 +9,11 @@ class Particle(Object):
 
     def __init__(self, pos=[0,0,0], dim=0.1, visual_only=False, mass=0.1, color=[1, 1, 1, 1], base_shape="box"):
         super(Particle, self).__init__()
-        self.basePos = pos
+        self.base_pos = pos
         self.dimension = [dim, dim, dim]
         self.visual_only = visual_only
         self.mass = mass
         self.color = color
-        self.states = dict()
         self.active = True
         self.base_shape = base_shape
 
@@ -22,7 +21,7 @@ class Particle(Object):
         """
         Load the object into pybullet
         """
-        baseOrientation = [0, 0, 0, 1]
+        base_orientation = [0, 0, 0, 1]
 
         if self.base_shape == "box":
             colBoxId = p.createCollisionShape(
@@ -44,7 +43,7 @@ class Particle(Object):
                                         baseVisualShapeIndex=visualShapeId)
 
         p.resetBasePositionAndOrientation(
-            body_id, np.array(self.basePos), baseOrientation)
+            body_id, np.array(self.base_pos), base_orientation)
 
         return body_id
 
@@ -84,6 +83,11 @@ class ParticleSystem:
             if self.particles[i].active:
                 s += 1
         return s
+
+    def stash_particle(self, particle):
+        particle.set_position([np.random.uniform(-10, 10), np.random.uniform(-10, 10), -100])
+        particle.force_sleep()
+        particle.active = False
 
 class WaterStreamAnimation(ParticleSystem):
     def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,1,1]):
@@ -132,11 +136,6 @@ class WaterStreamPhysicsBased(ParticleSystem):
     def set_value(self, on):
         self.on = on
 
-    def stash_particle(self, particle):
-        particle.set_position([np.random.uniform(-10, 10), np.random.uniform(-10, 10), -100])
-        particle.force_sleep()
-        particle.active = False
-
     def step(self):
         if self.on:
             # every n steps, move to a particle the water source
@@ -183,12 +182,6 @@ class Dust(ParticleSystem):
                     self.particles[i].set_position(hit_pos)
                 iter += 1
 
-    def stash_particle(self, particle):
-        particle.set_position([np.random.uniform(-10, 10), np.random.uniform(-10, 10), -100])
-        particle.force_sleep()
-        particle.active = False
-
-
 class Stain(Dust):
     def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,0,1]):
         super(Stain, self).__init__(
@@ -200,9 +193,3 @@ class Stain(Dust):
             mass=mass,
             color=color
         )
-
-
-    def stash_particle(self, particle):
-        particle.set_position([np.random.uniform(-10, 10), np.random.uniform(-10, 10), -100])
-        particle.force_sleep()
-        particle.active = False

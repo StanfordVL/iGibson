@@ -33,8 +33,6 @@ class ArticulatedObject(StatefulObject):
         super(ArticulatedObject, self).__init__()
         self.filename = filename
         self.scale = scale
-        self.abilities = []
-        self.states = prepare_object_states(self, online=True)
 
     def _load(self):
         """

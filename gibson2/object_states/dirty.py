@@ -2,6 +2,7 @@ from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.particles import Dust
 
+CLEAN_THRESHOLD = 0.9
 
 class Dirty(AbsoluteObjectState, BooleanState):
 
@@ -16,7 +17,13 @@ class Dirty(AbsoluteObjectState, BooleanState):
 
     def set_value(self, new_value):
         self.value = new_value
-        # TODO: reset dirty not implemented yet
+        if self.value:
+            self.dust.attach(self.obj)
+            for particle in self.dust.particles:
+                particle.active = True
+        else:
+            for particle in self.dust.particles:
+                self.dust.stash_particle(particle)
 
     def update(self, simulator):
         if not self.dust_added:
@@ -51,7 +58,7 @@ class Dirty(AbsoluteObjectState, BooleanState):
                     self.dust.stash_particle(particle)
 
         # update self.value based on particle count
-        self.value = self.dust.get_num_active() > self.dust.get_num() * 0.9
+        self.value = self.dust.get_num_active() > self.dust.get_num() * CLEAN_THRESHOLD
 
     @staticmethod
     def get_dependencies():

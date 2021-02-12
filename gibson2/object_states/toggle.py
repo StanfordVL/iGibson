@@ -4,10 +4,12 @@ from gibson2.objects.visual_marker import VisualMarker
 import numpy as np
 from collections import deque
 
-class ToggledOpen(AbsoluteObjectState, BooleanState):
+TOGGLE_DISTANCE_THRESHOLD = 0.1
+
+class ToggledOn(AbsoluteObjectState, BooleanState):
 
     def __init__(self, obj):
-        super(ToggledOpen, self).__init__(obj)
+        super(ToggledOn, self).__init__(obj)
         self.value = False
         self.marker_added = False
         # TODO: hard coded for now, need to parse from obj
@@ -47,13 +49,13 @@ class ToggledOpen(AbsoluteObjectState, BooleanState):
 
         vr_hands = []
         for object in simulator.scene.get_objects():
-            if object.__class__.__name__ == "YCBObject":
+            if object.__class__.__name__ == "VrHand":
                vr_hands.append(object)
 
         hand_in_marker = False
         # detect marker and hand interaction
         for hand in vr_hands:
-            if np.linalg.norm(np.array(hand.get_position()) - np.array(marker_on_position)) < 0.1:
+            if np.linalg.norm(np.array(hand.get_position()) - np.array(marker_on_position)) < TOGGLE_DISTANCE_THRESHOLD:
                 # hand in marker
                 hand_in_marker = True
 
