@@ -14,7 +14,8 @@ import cv2
 import time
 import random
 
-from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_aabb_urdf, get_base_link_name
+from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_aabb_urdf, get_base_link_name, \
+    add_fixed_link
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
@@ -181,15 +182,21 @@ class URDFObject(StatefulObject):
 
         meta_json = os.path.join(self.model_path, 'misc', 'metadata.json')
         bbox_json = os.path.join(self.model_path, 'misc', 'bbox.json')
+        meta_links = dict()  # In the format of {link_name: [linkX, linkY, linkZ]}
         if os.path.isfile(meta_json):
             with open(meta_json, 'r') as f:
                 meta_data = json.load(f)
                 bbox_size = np.array(meta_data['bbox_size'])
                 base_link_offset = np.array(meta_data['base_link_offset'])
+
                 if 'orientations' in meta_data and len(meta_data['orientations']) > 0:
                     self.orientations = meta_data['orientations']
                 else:
                     self.orientations = None
+
+                if 'links' in meta_data:
+                    meta_links = meta_data['links']
+
         elif os.path.isfile(bbox_json):
             with open(bbox_json, 'r') as bbox_file:
                 bbox_data = json.load(bbox_file)
@@ -239,10 +246,9 @@ class URDFObject(StatefulObject):
 
         self.avg_obj_dims = avg_obj_dims
 
-        self.base_link_name = get_base_link_name(self.object_tree)
-
-        self.scale_object()
         self.rename_urdf()
+        self.add_meta_links(meta_links)
+        self.scale_object()
         self.compute_object_pose()
         self.remove_floating_joints(self.scene_instance_folder)
         if self.texture_randomization:
@@ -379,12 +385,14 @@ class URDFObject(StatefulObject):
         Helper function that renames the file paths in the object urdf
         from relative paths to absolute paths
         """
+        base_link_name = get_base_link_name(self.object_tree)
+
         # Change the links of the added object to adapt to the given name
         for link_emb in self.object_tree.iter('link'):
             # If the original urdf already contains world link, do not rename
             if link_emb.attrib['name'] == 'world':
                 pass
-            elif link_emb.attrib['name'] == self.base_link_name:
+            elif link_emb.attrib['name'] == base_link_name:
                 # The base_link get renamed as the link tag indicates
                 # Just change the name of the base link in the embedded urdf
                 link_emb.attrib['name'] = self.name
@@ -404,7 +412,7 @@ class URDFObject(StatefulObject):
                 # If the original urdf already contains world link, do not rename
                 if child_emb.attrib['link'] == 'world':
                     pass
-                elif child_emb.attrib['link'] == self.base_link_name:
+                elif child_emb.attrib['link'] == base_link_name:
                     child_emb.attrib['link'] = self.name
                 else:
                     child_emb.attrib['link'] = self.name + \
@@ -414,7 +422,7 @@ class URDFObject(StatefulObject):
                 # If the original urdf already contains world link, do not rename
                 if parent_emb.attrib['link'] == 'world':
                     pass
-                elif parent_emb.attrib['link'] == self.base_link_name:
+                elif parent_emb.attrib['link'] == base_link_name:
                     parent_emb.attrib['link'] = self.name
                 else:
                     parent_emb.attrib['link'] = self.name + \
@@ -431,7 +439,8 @@ class URDFObject(StatefulObject):
 
         # First, define the scale in each link reference frame
         # and apply it to the joint values
-        scales_in_lf = {self.base_link_name: self.scale}
+        base_link_name = get_base_link_name(self.object_tree)
+        scales_in_lf = {base_link_name: self.scale}
         all_processed = False
         while not all_processed:
             all_processed = True
@@ -520,7 +529,7 @@ class URDFObject(StatefulObject):
                 all_links_trimesh.append(trimesh_obj)
                 volume = trimesh_obj.volume
                 # a hack to artificially increase the density of the lamp base
-                if link.attrib['name'] == self.base_link_name and self.base_link_name != 'world':
+                if link.attrib['name'] == base_link_name and base_link_name != 'world':
                     if self.category in ['lamp']:
                         volume *= 10.0
                 total_volume += volume
@@ -583,7 +592,7 @@ class URDFObject(StatefulObject):
 
                 if link_trimesh is not None:
                     # a hack to artificially increase the density of the lamp base
-                    if link.attrib['name'] == self.base_link_name and self.base_link_name != 'world':
+                    if link.attrib['name'] == base_link_name and base_link_name != 'world':
                         if self.category in ['lamp']:
                             link_trimesh.density *= 10.0
 
@@ -919,3 +928,14 @@ class URDFObject(StatefulObject):
 
     def get_body_id(self):
         return self.body_ids[self.main_body]
+
+    def add_meta_links(self, meta_links):
+        """
+        Adds the meta links (e.g. heating element position, water source position) from the metadata file
+        into the URDF tree for this object prior to loading.
+
+        :param meta_links: Dictionary of meta links in the form of {link_name: [linkX, linkY, linkZ]}
+        :return: None.
+        """
+        for meta_link_name, offset in meta_links.items():
+            add_fixed_link(self.object_tree, meta_link_name, offset)
