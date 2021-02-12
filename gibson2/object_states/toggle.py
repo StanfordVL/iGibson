@@ -21,7 +21,7 @@ class ToggledOpen(AbsoluteObjectState, BooleanState):
             radius=0.1,
             initial_offset=[0, 0, 0])
 
-        self.queue = deque(maxlen=10)
+        self.hand_in_marker_steps = 0
 
     def get_value(self):
         return self.value
@@ -47,19 +47,22 @@ class ToggledOpen(AbsoluteObjectState, BooleanState):
 
         vr_hands = []
         for object in simulator.scene.get_objects():
-            if object.__class__.__name__ == "VrHand":
+            if object.__class__.__name__ == "YCBObject":
                vr_hands.append(object)
 
-        hand_in_marker = 0
+        hand_in_marker = False
         # detect marker and hand interaction
         for hand in vr_hands:
             if np.linalg.norm(np.array(hand.get_position()) - np.array(marker_on_position)) < 0.1:
                 # hand in marker
-                hand_in_marker = 1
+                hand_in_marker = True
 
-        self.queue.append(hand_in_marker)
+        if hand_in_marker:
+            self.hand_in_marker_steps += 1
+        else:
+            self.hand_in_marker_steps = 0
 
-        if list(self.queue) == [0,0,0,0,0,1,1,1,1,1]:
+        if self.hand_in_marker_steps == 5:
             self.value = not self.value
 
         # swap two types of markers when toggled
