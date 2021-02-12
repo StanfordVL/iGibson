@@ -3,12 +3,15 @@ import os
 import gibson2
 import networkx as nx
 import pybullet as p
+import numpy as np
 from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.simulator import Simulator
 from gibson2.utils.assets_utils import download_assets
+from gibson2.utils.assets_utils import get_ig_model_path
+from gibson2.objects.articulated_object import URDFObject
 
 download_assets()
 
@@ -159,7 +162,6 @@ def test_open():
     finally:
         s.disconnect()
 
-
 def test_state_graph():
     # Construct the state graph
     G = get_state_dependency_graph()
@@ -170,3 +172,84 @@ def test_state_graph():
     assert "inside" in ordered_states
     assert "aabb" in ordered_states
     assert ordered_states.index("aabb") < ordered_states.index("inside"), "Each state should be preceded by its deps."
+
+def test_toggle():
+    s = Simulator(mode='headless')
+
+    try:
+        scene = EmptyScene()
+        s.import_scene(scene)
+        model_path = os.path.join(get_ig_model_path('sink', 'sink_1'), 'sink_1.urdf')
+
+        sink = URDFObject(filename=model_path,
+                          category='sink',
+                          name='sink_1',
+                          scale=np.array([0.8, 0.8, 0.8]),
+                          abilities=['toggleable']
+                          )
+
+        s.import_object(sink)
+        sink.set_position([1, 1, 0.8])
+        assert 'toggleable' in sink.abilities
+        assert 'toggled_on' in sink.states
+
+    finally:
+        s.disconnect()
+
+
+def test_dirty():
+    s = Simulator(mode='headless')
+
+    try:
+        scene = EmptyScene()
+        s.import_scene(scene)
+        model_path = os.path.join(get_ig_model_path('sink', 'sink_1'), 'sink_1.urdf')
+
+        sink = URDFObject(filename=model_path,
+                          category='sink',
+                          name='sink_1',
+                          scale=np.array([0.8, 0.8, 0.8]),
+                          abilities=['dustable']
+                          )
+
+        s.import_object(sink)
+        sink.set_position([1, 1, 0.8])
+        assert 'dustable' in sink.abilities
+        assert 'dirty' in sink.states
+
+        for i in range(10):
+            s.step()
+
+        assert len(sink.attached_particle_system) > 0
+
+    finally:
+        s.disconnect()
+
+def test_water_source():
+    s = Simulator(mode='headless')
+
+    try:
+        scene = EmptyScene()
+        s.import_scene(scene)
+        model_path = os.path.join(get_ig_model_path('sink', 'sink_1'), 'sink_1.urdf')
+
+        sink = URDFObject(filename=model_path,
+                          category='sink',
+                          name='sink_1',
+                          scale=np.array([0.8, 0.8, 0.8]),
+                          abilities=['water_source']
+                          )
+
+        s.import_object(sink)
+        sink.set_position([1, 1, 0.8])
+        assert 'water_source' in sink.abilities
+        assert 'water_source' in sink.states
+
+        for i in range(10):
+            s.step()
+
+        assert len(sink.attached_particle_system) > 0
+
+    finally:
+        s.disconnect()
+
