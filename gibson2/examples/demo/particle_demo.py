@@ -60,6 +60,8 @@ def main():
     for _ in range(100):
         p.stepSimulation()
 
+    desk.states['dirty'].set_value(True)
+
     for i in range(10000):
         with Profiler('Simulator step'):
             turtlebot.apply_action([0.1, 0.1])

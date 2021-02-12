@@ -9,8 +9,8 @@ class Dirty(AbsoluteObjectState, BooleanState):
     def __init__(self, obj):
         super(Dirty, self).__init__(obj)
         self.value = False
-        self.dust_added = False
         self.dust = Dust()
+        self.dust.register_parent_obj(self.obj)
 
     def get_value(self):
         return self.value
@@ -26,12 +26,6 @@ class Dirty(AbsoluteObjectState, BooleanState):
                 self.dust.stash_particle(particle)
 
     def update(self, simulator):
-        if not self.dust_added:
-            simulator.import_particle_system(self.dust)
-            self.dust.attach(self.obj)
-            self.dust.register_parent_obj(self.obj)
-            self.dust_added = True
-
         # cleaning logic
         cleaning_tools = simulator.scene.get_objects_with_state("cleaning_tool")
         for object in cleaning_tools:

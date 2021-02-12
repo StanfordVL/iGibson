@@ -5,19 +5,13 @@ class WaterSource(AbsoluteObjectState):
 
     def __init__(self, obj):
         super(WaterSource, self).__init__(obj)
-        self.water_added = False
         self.water_sources = [WaterStreamPhysicsBased(pos=[0.4, 1, 1.15], num=10),
                               WaterStreamPhysicsBased(pos=[1.48, 1, 1.15], num=10)]
+        for water_source in self.water_sources:
+            water_source.register_parent_obj(self.obj)
         # TODO: now hard coded, need to read from obj annotation
 
     def update(self, simulator):
-        if not self.water_added:
-            for water_source in self.water_sources:
-                simulator.import_particle_system(water_source)
-                water_source.register_parent_obj(self.obj)
-
-            self.water_added = True
-
         if "toggled_on" in self.obj.states:
             for water_source in self.water_sources:
                 water_source.set_value(self.obj.states["toggled_on"].get_value())

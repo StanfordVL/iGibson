@@ -11,7 +11,7 @@ class Object(object):
         self.body_id = None
         self.loaded = False
         # a handle to particle systems attached to an object
-        self.attached_particle_system = None
+        self.attached_particle_system = []
         # initialize with empty states
         self.states = dict()
 

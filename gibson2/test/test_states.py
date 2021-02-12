@@ -220,7 +220,7 @@ def test_dirty():
         for i in range(10):
             s.step()
 
-        assert sink.attached_particle_system is not None
+        assert len(sink.attached_particle_system) > 0
 
     finally:
         s.disconnect()
@@ -248,7 +248,7 @@ def test_water_source():
         for i in range(10):
             s.step()
 
-        assert sink.attached_particle_system is not None
+        assert len(sink.attached_particle_system) > 0
 
     finally:
         s.disconnect()
