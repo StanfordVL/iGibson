@@ -32,7 +32,7 @@ def combine_paths(path, *argv):
         if isinstance(dir, str):
             path = os.path.join(path, dir)
         else:
-            assert("The parameter '{}' is not in string format".format(dir))
+            raise ValueError("The parameter '{}' is not in string format".format(dir))
     return path
 
 
@@ -44,7 +44,7 @@ def create_directory(path):
     :param dir_path: absolute path of the directory
     """
     if os.path.isfile(path):
-        assert('There is a filename "{}". Please remove the file or rename the directory'.format(
+        raise IOError('There is a filename "{}". Please remove the file or rename the directory'.format(
             dir_path))
     elif not os.path.exists(path):
         os.makedirs(path)
@@ -74,7 +74,7 @@ def save_json_config(config, path):
         with open(path, 'w+') as file:
             json.dump(config, file, sort_keys=True, indent=2)
     else:
-        assert("The task episode config file is not hashable or is a mapping. "
+        raise ValueError("The task episode config file is not hashable or is a mapping. "
                "Please check the format of the config file")
 
 
@@ -95,7 +95,7 @@ def load_json_config(path):
             data = file.read()
             config = json.loads(data)
     else:
-        assert("The path `{}` does not exist".format(path))
+        raise IOError("The path `{}` does not exist".format(path))
 
     return config
 
