@@ -2,7 +2,7 @@ import gym
 import numpy as np
 import pybullet as p
 from gibson2.external.pybullet_tools.utils import joints_from_names, set_joint_positions, joint_from_name,\
-    plan_joint_motion, link_from_name, set_joint_positions, get_joint_positions, get_relative_pose
+    plan_joint_motion, link_from_name, set_joint_positions, get_joint_positions, get_relative_pose, get_joint_info
 from gibson2.robots.robot_locomotor import LocomotorRobot
 import gibson2.utils.transform_utils as T
 from gibson2.controllers.ik_controller import IKController
@@ -57,13 +57,16 @@ class FetchGripper(LocomotorRobot):
         self.controller = None
 
         # Tucked info
-        self.tucked = False
+        self.tucked = True          # Always starts tucked by default
         self.disabled_tucking_collisions = None
 
         # Action limits
         self.action_high = None
         self.action_low = None
         self.action_space = None
+
+        # Tucking visualization
+        self.skip_tuck_visualization = self.config.get("skip_tuck_animation", True)
 
         # Gripper visualizations
         self.gripper_visualization = self.config.get("gripper_visualization", False)
@@ -81,6 +84,10 @@ class FetchGripper(LocomotorRobot):
     @property
     def joint_ids(self):
         return np.array([1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 20, 21])
+
+    @property
+    def joint_damping(self):
+        return np.array([get_joint_info(self.robot_ids[0], joint_id)[6] for joint_id in self.joint_ids])
 
     @property
     def num_joints(self):
@@ -245,10 +252,10 @@ class FetchGripper(LocomotorRobot):
 
         # Initiate robot in untucked pose
         idx = np.sort(np.concatenate([self.head_joint_action_idx, self.arm_joint_action_idx]))
-        set_joint_positions(self.robot_ids[0], self.joint_ids[idx], self.untucked_default_joints[idx])
+        set_joint_positions(self.robot_ids[0], self.joint_ids, self.tucked_default_joints)
 
         # Reset internal vars
-        self.tucked = False
+        self.tucked = True
         self.head_error_planning = []
 
     def get_head_pan_qpos(self):
@@ -391,50 +398,66 @@ class FetchGripper(LocomotorRobot):
             # last_joint_positions = PBU.get_joint_positions(self.robot_id, self.joint_ids[2:])
             success = False
             if tuck:
-                # We want to TUCK if tuck is True
-                arm_path = plan_joint_motion(
-                    self.robot_ids[0],
-                    self.arm_joint_ids,
-                    self.tucked_arm_joint_positions,
-                    disabled_collisions=self.disabled_tucking_collisions,
-                    self_collisions=True,
-                    obstacles=[],
-                    algorithm='birrt')
+                # Only actually plan and execute MP if we want to visualize animation
+                if not self.skip_tuck_visualization:
+                    # We want to TUCK if tuck is True
+                    arm_path = plan_joint_motion(
+                        self.robot_ids[0],
+                        self.arm_joint_ids,
+                        self.tucked_arm_joint_positions,
+                        disabled_collisions=self.disabled_tucking_collisions,
+                        self_collisions=True,
+                        obstacles=[],
+                        algorithm='birrt')
 
-                # grasping_goal_joint_positions = np.zeros((10, 11))
-                if arm_path is not None:
-                    print('planning tucking', len(arm_path))
-                    # for i in range(len(arm_path)):
-                    for joint_way_point in arm_path:
-                        set_joint_positions(
-                            self.robot_ids[0], self.arm_joint_ids, joint_way_point)
-                        self.env.simulator.sync()
-                        p.stepSimulation()
-                    success = True
+                    # grasping_goal_joint_positions = np.zeros((10, 11))
+                    if arm_path is not None:
+                        print('planning tucking', len(arm_path))
+                        # for i in range(len(arm_path)):
+                        for joint_way_point in arm_path:
+                            set_joint_positions(
+                                self.robot_ids[0], self.arm_joint_ids, joint_way_point)
+                            self.env.simulator.sync()
+                            p.stepSimulation()
+                        success = True
+                    else:
+                        print("WARNING: Failed to plan the motion trajectory of tucking")
+                # Otherwise, just directly set states
                 else:
-                    print("WARNING: Failed to plan the motion trajectory of tucking")
+                    set_joint_positions(self.robot_ids[0], self.joint_ids[:-2], self.tucked_default_joints[:-2])
+                    self.env.simulator.sync()
+                    p.stepSimulation()
+                    success = True
             else:
-                # We want to UNTUCK if tuck is False
-                arm_path = plan_joint_motion(
-                    self.robot_ids[0],
-                    self.arm_joint_ids,
-                    self.untucked_arm_joint_positions,
-                    disabled_collisions=self.disabled_tucking_collisions,
-                    self_collisions=True,
-                    obstacles=[],
-                    algorithm='birrt')
+                # Only actually plan and execute MP if we want to visualize animation
+                if not self.skip_tuck_visualization:
+                    # We want to UNTUCK if tuck is False
+                    arm_path = plan_joint_motion(
+                        self.robot_ids[0],
+                        self.arm_joint_ids,
+                        self.untucked_arm_joint_positions,
+                        disabled_collisions=self.disabled_tucking_collisions,
+                        self_collisions=True,
+                        obstacles=[],
+                        algorithm='birrt')
 
-                # grasping_goal_joint_positions = np.zeros((10, 11))
-                if arm_path is not None:
-                    print('planning untucking', len(arm_path))
-                    for joint_way_point in arm_path:
-                        set_joint_positions(
-                            self.robot_ids[0], self.arm_joint_ids, joint_way_point)
-                        self.env.simulator.sync()
-                        p.stepSimulation()
-                    success = True
+                    # grasping_goal_joint_positions = np.zeros((10, 11))
+                    if arm_path is not None:
+                        print('planning untucking', len(arm_path))
+                        for joint_way_point in arm_path:
+                            set_joint_positions(
+                                self.robot_ids[0], self.arm_joint_ids, joint_way_point)
+                            self.env.simulator.sync()
+                            p.stepSimulation()
+                        success = True
+                    else:
+                        print("WARNING: Failed to plan the motion trajectory of untucking")
+                # Otherwise, just directly set states
                 else:
-                    print("WARNING: Failed to plan the motion trajectory of untucking")
+                    set_joint_positions(self.robot_ids[0], self.joint_ids[:-2], self.untucked_default_joints[:-2])
+                    self.env.simulator.sync()
+                    p.stepSimulation()
+                    success = True
 
             # Update tuck accordingly based on whether the tuck was a success
             if success:
@@ -586,6 +609,7 @@ class FetchGripper(LocomotorRobot):
             "eef_quat": self.get_relative_eef_orientation(),
             "tucked": np.array([1.0 if self.tucked else -1.0]),
         }
+
         return obs_dict
 
     def sync_state(self):

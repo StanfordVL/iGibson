@@ -20,6 +20,8 @@ class IKController:
         self.input_min = np.array(config["controller"]["input_min"])
         self.output_max = np.array(config["controller"]["output_max"])
         self.output_min = np.array(config["controller"]["output_min"])
+        self.damping = self.robot.joint_damping
+        #self.damping = np.array(config["controller"].get("damping", [0.01] * self.robot.num_joints))
         self.action_scale = abs(self.output_max - self.output_min) / abs(self.input_max - self.input_min)
         self.action_output_transform = (self.output_max + self.output_min) / 2.0
         self.action_input_transform = (self.input_max + self.input_min) / 2.0
@@ -118,7 +120,7 @@ class IKController:
                 upperLimits=self.robot.upper_joint_limits.tolist(),
                 jointRanges=self.robot.joint_range.tolist(),
                 restPoses=self.robot.rest_joints.tolist(),
-                jointDamping=[0.01] * self.robot.num_joints,
+                jointDamping=self.damping.tolist(),
                 # p.IK_DLS,
                 # self.robot.joint_position.tolist(),
             )

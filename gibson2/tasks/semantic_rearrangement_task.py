@@ -61,6 +61,13 @@ class SemanticRearrangementTask(BaseTask):
         self.task_obs_format = self.config.get("task_obs_format", "global") # Options are global, egocentric
         assert self.task_obs_format in {"global", "egocentric"}, \
             f"Task obs format must be one of: [global, egocentric]. Got: {self.task_obs_format}"
+        # Store all possible scene locations for the target object
+        self.target_locations = None
+        self.target_location = None         # Where the object is actually located this episode
+        self.target_location_ids = None     # maps location names to id number
+
+        # Store env
+        self.env = env
 
     def _create_objects(self, env):
         """
@@ -110,6 +117,25 @@ class SemanticRearrangementTask(BaseTask):
                 self.exclude_body_ids.append(self.target_object.body_id)
             obj.set_position_orientation(pos, ori)
         p.stepSimulation()
+
+        # Store location info
+        self.update_location_info()
+
+    def update_location_info(self):
+        """
+        Helper function to update location info based on current target object
+        """
+        # Store relevant location info
+        self.target_locations = {
+            k: self.env.scene.objects_by_name[k] for k in self.target_object.sample_at.keys()
+        }
+        location_names = list(self.target_locations.keys())
+        self.target_location = min(
+            self.target_locations.keys(),
+            key=lambda x: np.linalg.norm(self.target_object.get_position()[:2] - self.target_locations[x].init_pos[:2]))
+        self.target_location_ids = {
+            name: i for i, name in enumerate(location_names)
+        }
 
     def sample_initial_pose(self, env):
         """
@@ -183,6 +209,17 @@ class SemanticRearrangementTask(BaseTask):
         task_id_one_hot = np.zeros(len(self.target_objects.keys()))
         task_id_one_hot[self.target_objects_id[self.target_object.name]] = 1
         task_obs["task_id"] = task_id_one_hot
+        # Add location -- this is ID of object robot is at if untucked, else returns -1 (assumes we're not at a location)
+        if env.robots[0].tucked:
+            task_obs["robot_location"] = -1
+        else:
+            robot_pos = np.array(env.robots[0].get_eef_position())
+            robot_location = min(
+                self.target_locations.keys(),
+                key=lambda x: np.linalg.norm(robot_pos[:2] - self.target_locations[x].init_pos[:2]))
+            task_obs["robot_location"] = self.target_location_ids[robot_location]
+        # Object location
+        task_obs["target_obj_location"] = self.target_location_ids[self.target_location]
 
         return task_obs
 
@@ -214,6 +251,9 @@ class SemanticRearrangementTask(BaseTask):
             raise TypeError("Identifier must be either an int or str!")
 
         self.target_object = self.target_objects[obj_name]
+
+        # Update location info as well
+        self.update_location_info()
 
     def update_target_object_init_pos(self):
         """
@@ -266,4 +306,6 @@ class SemanticRearrangementTask(BaseTask):
                 if np.linalg.norm(obj.get_position()) < 45:
                     # This is the target object, update it and break
                     self.target_object = obj
+                    # Also update location info
+                    self.update_location_info()
                     break
