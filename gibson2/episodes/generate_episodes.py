@@ -84,42 +84,4 @@ if __name__ == '__main__':
 
     # Save episodeConfig object
     path = episode_config.save_scene_episodes(file_name)
-
-    # load back episodeConfig object for sanity check
-    # path = '/cvgl2/u/jangj8523/iGibson/gibson2/episodes/data/Pomaria_2_int/Pomaria_2_int_sample.json'
-    # duplicateConfig = EpisodeConfig.load_scene_episode_config(path)
-    # print(duplicateConfig)
-    # print(episodeConfig)
     env.close()
-
-    # env_config['load_scene_episode_config'] = False
-    # env_config['scene_episode_config_name'] = file_name
-    #
-    # env = iGibsonEnv(config_file=env_config,
-    #                  mode='headless',
-    #                  action_timestep=1.0 / 10.0,
-    #                  physics_timestep=1.0 / 40.0)
-    #
-    # done_episode_index = []
-    # for episode in range(10):
-    #     print('Episode: {}'.format(episode))
-    #     start = time.time()
-    #     env.reset()
-    #     for _ in range(100):  # 10 seconds
-    #         action = env.action_space.sample()
-    #         state, reward, done, _ = env.step(action)
-    #         # print('state', state)
-    #         if done:
-    #             done_episode_index.append((episode, env.current_step))
-    #             break
-    #     print('Episode finished after {} timesteps, took {} seconds.'.format(
-    #         env.current_step, time.time() - start))
-    #
-    # print("Size of successful episodes: {}".format(len(done_episode_index)))
-    # env.task.episode_config.episodes = [episode_config.episodes[i]
-    #                            for i in done_episode_index[:100]]
-    # env.task.episode_config.num_episodes = len(env.task.episode_config.episodes)
-    # env.task.episode_config.save_scene_episodes(
-    #     'default_robot_task_complete_episodes({}_{})'.format(env.scene.scene_id, env_config['task']))
-    #
-    # env.close()
