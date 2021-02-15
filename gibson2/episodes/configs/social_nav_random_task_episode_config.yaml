@@ -1,4 +1,4 @@
 env_config: '../examples/configs/locobot_social_nav.yaml'
-num_episodes: 100
+num_episodes: 500
 episode_length: 500 # maximum value is 500
 numpy_seed: 2

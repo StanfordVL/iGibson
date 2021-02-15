@@ -1,4 +1,4 @@
-from gibson2.episodes.episode_sample import EpisodeConfig
+from gibson2.episodes.episode_sample import SocialNavEpisodesConfig
 from gibson2.tasks.point_nav_random_task import PointNavRandomTask
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.pedestrian import Pedestrian
@@ -34,7 +34,7 @@ class SocialNavRandomTask(PointNavRandomTask):
                             data (i.e pedestrians' initial position, initial
                             orientation, goal position) for each episode
                             or generate those samples in real time.
-        episode_config      an instance of EpisodeConfig. Only relevant if
+        episode_config      an instance of SocialNavEpisodesConfig. Only relevant if
                             |use_sample_episode| is True.
         """
         super(SocialNavRandomTask, self).__init__(env)
@@ -55,12 +55,12 @@ class SocialNavRandomTask(PointNavRandomTask):
             'num_steps_stop_thresh', 5)
         # backoff when angle is greater than 2.7 radians
         self.backoff_radian_thresh = self.config.get(
-            'backoff_radian_thresh', 2.5)
+            'backoff_radian_thresh', 2.3)
 
         self.use_sample_episode = self.config.get(
             'load_scene_episode_config', False)
         scene_episode_config_path = self.config.get(
-            'scene_episode_config_name', 'Rs_int_sample_(5).json')
+            'scene_episode_config_name', None)
 
         self.neighbor_dist = self.config.get('orca_neighbor_dist', 5)
         self.max_neighbors = self.num_pedestrians + 1
@@ -76,9 +76,10 @@ class SocialNavRandomTask(PointNavRandomTask):
         # Make sure the task simulation configuration does not conflict
         # with the configuration used to sample our episode
         if self.use_sample_episode:
-            path = combine_paths(EpisodeConfig.BASE_DIR,
+            path = combine_paths(SocialNavEpisodesConfig.BASE_DIR,
                                  env.scene.scene_id, scene_episode_config_path)
-            self.episode_config = EpisodeConfig.load_scene_episode_config(path)
+            self.episode_config = SocialNavEpisodesConfig.load_scene_episode_config(
+                path)
             if self.num_pedestrians > self.episode_config.num_pedestrians:
                 raise ValueError("The episode samples did not record records for more than {} pedestrians".format(
                     self.num_pedestrians))
@@ -88,8 +89,8 @@ class SocialNavRandomTask(PointNavRandomTask):
                     env.scene.scene_id))
 
             if self.radius > self.episode_config.orca_radius:
-                print("value of orca_radius: ",
-                      self.episode_config.orca_radius)
+                print("value of orca_radius: {}".format(
+                      self.episode_config.orca_radius))
                 raise ValueError("The orca radius set for the simulation is {}, which is greater than "
                                  "the orca radius used to collect the pedestrians' initial position "
                                  " for our samples. These sampled initial positions may cause pedestrian deadlock. ".format(self.radius))

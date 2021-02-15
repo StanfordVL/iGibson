@@ -32,7 +32,8 @@ def combine_paths(path, *argv):
         if isinstance(dir, str):
             path = os.path.join(path, dir)
         else:
-            raise ValueError("The parameter '{}' is not in string format".format(dir))
+            raise ValueError(
+                "The parameter '{}' is not in string format".format(dir))
     return path
 
 
@@ -75,7 +76,7 @@ def save_json_config(config, path):
             json.dump(config, file, sort_keys=True, indent=2)
     else:
         raise ValueError("The task episode config file is not hashable or is a mapping. "
-               "Please check the format of the config file")
+                         "Please check the format of the config file")
 
 
 def load_json_config(path):
@@ -115,8 +116,9 @@ def parse_config(config):
         assert isinstance(config, str)
 
     if not os.path.exists(config):
-        raise IOError(
-            'config path {} does not exist. Please either pass in a dict or a string that represents the file path to the config yaml.'.format(config))
+        error_msg = 'config path {} does not exist. Please either pass in a dict or a string that represents ' \
+                    'the file path to the config yaml.'.format(config)
+        raise IOError(error_msg)
     with open(config, 'r') as f:
         config_data = yaml.load(f, Loader=yaml.FullLoader)
 

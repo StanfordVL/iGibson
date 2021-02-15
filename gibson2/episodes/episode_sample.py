@@ -8,11 +8,22 @@ import numpy as np
 
 
 class EpisodeConfig:
+    def __init__(self, num_pedestrians, scene_id, num_episodes, orca_radius=0.5, scene='igibson', numpy_seed=1):
+        np.random.seed(numpy_seed)
+        self.numpy_seed = numpy_seed
+        self.orca_radius = orca_radius
+        self.scene_id = scene_id
+        self.scene = scene
+        # reset_episode() is called first before this index is used.
+        # We will eventually use zero-indexing
+        self.episode_index = -1
+
+
+class SocialNavEpisodesConfig(EpisodeConfig):
     """
     Object that holds information about the sampled episodes
     for a particular scene.
     """
-
     MAX_EPISODE_LENGTH = 500
     BASE_DIR = combine_paths(get_current_dir(), '..', 'episodes/data')
 
@@ -26,13 +37,10 @@ class EpisodeConfig:
         scene               Either iGibson or Gibson
         numpy_seed          Seed number so that we can generate deterministic samples
         """
-        np.random.seed(numpy_seed)
-        self.numpy_seed = numpy_seed
+        super(SocialNavEpisodesConfig, self).__init__(num_pedestrians, scene_id,
+                                                      num_episodes, orca_radius=0.5, scene='igibson', numpy_seed=1)
         self.num_pedestrians = num_pedestrians
         self.num_episodes = num_episodes
-        self.orca_radius = orca_radius
-        self.scene_id = scene_id
-        self.scene = scene
         # inital pos, goal pos, orientation
         self.episodes = [
             [{} for _ in range(num_pedestrians)] for _ in range(num_episodes)]
@@ -41,9 +49,6 @@ class EpisodeConfig:
                 self.episodes[episode_index][pedestrian_index] = {
                     'init_pos': None, 'goal_pos': [], 'init_orientation': None}
 
-        # reset_episode() is called first before this index is used.
-        # We will eventually use zero-indexing
-        self.episode_index = -1
         self.goal_index = [0] * num_pedestrians
 
     def reset_episode(self):
@@ -63,7 +68,7 @@ class EpisodeConfig:
         :return episode_config: EpisodeConfig instance
         """
         config = load_json_config(path)
-        episode_config = EpisodeConfig(
+        episode_config = SocialNavEpisodesConfig(
             num_pedestrians=config['config']['num_pedestrians'],
             scene_id=config['config']['scene_id'],
             num_episodes=config['config']['num_episodes'],

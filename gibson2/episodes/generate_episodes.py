@@ -6,12 +6,12 @@ from gibson2.utils.utils import load_json_config
 from gibson2.utils.utils import combine_paths
 from gibson2.utils.utils import get_current_dir
 from gibson2.envs.igibson_env import iGibsonEnv
-from gibson2.episodes.episode_sample import EpisodeConfig
+from gibson2.episodes.episode_sample import SocialNavEpisodesConfig
 import argparse
 import pybullet as p
 
 import numpy as np
-import collections
+import time
 
 
 if __name__ == '__main__':
@@ -31,48 +31,45 @@ if __name__ == '__main__':
 
     env_config_path = episode_config.get('env_config', None)
     if env_config_path is None:
-        raise ValueError('You must specify the .json files that you would use for'
-                         ' for running a task experiment')
+        raise ValueError('You must specify the .yaml configuration file'
+                         ' for the task environment')
     else:
         env_config = parse_config(env_config_path)
-        env_config['use_sample_episode'] = False
+        env_config['load_scene_episode_config'] = False
 
     num_episodes = episode_config.get('num_episodes', 100)
-    num_pedestrians = episode_config.get('num_pedestrians', 5)
     episode_length = episode_config.get(
-        'episode_length', EpisodeConfig.MAX_EPISODE_LENGTH)
+        'episode_length', SocialNavEpisodesConfig.MAX_EPISODE_LENGTH)
     numpy_seed = episode_config.get('numpy_seed', 1)
-    orca_radius = env_config.get('orca_radius', 0.3)
-    scene_id = env_config.get('scene_id', None)
-
     # Load the simulator
     env = iGibsonEnv(config_file=env_config,
                      mode='headless',
                      action_timestep=1.0 / 10.0,
                      physics_timestep=1.0 / 40.0)
 
+    print(env.task.radius, "!!!!!There you go")
+
     file_name = '{}_sample.json'.format(env.scene.scene_id)
 
-    # simulator = load_simulator(env_config)
-    # scene = load_scene(env_config, simulator)
-
-    episodeConfig = EpisodeConfig(
-        num_pedestrians=num_pedestrians,
-        scene_id=scene_id,
+    episode_config = SocialNavEpisodesConfig(
+        num_pedestrians=env.task.num_pedestrians,
+        scene_id=env.scene.scene_id,
         num_episodes=num_episodes,
-        orca_radius=orca_radius,
+        orca_radius=env.task.radius,
         numpy_seed=numpy_seed
     )
 
-    # hack to access pedestrian's default orientation
+    print(episode_config)
+
+    # instance used to ccess pedestrian's default orientation
     stubPedestrian = Pedestrian()
 
     for episode_index in range(num_episodes):
         env.reset()
-        episode_info = episodeConfig.episodes[episode_index]
+        episode_info = episode_config.episodes[episode_index]
 
-        for pedestrian_index in range(num_pedestrians):
-            init_pos = episodeConfig.sample_initial_pos(
+        for pedestrian_index in range(env.task.num_pedestrians):
+            init_pos = episode_config.sample_initial_pos(
                 env, pedestrian_index, episode_index)
             init_orientation = p.getQuaternionFromEuler(
                 stubPedestrian.default_orn_euler)
@@ -86,9 +83,43 @@ if __name__ == '__main__':
                 episode_info[pedestrian_index]['goal_pos'].append(target_pos)
 
     # Save episodeConfig object
-    path = episodeConfig.save_scene_episodes(file_name)
+    path = episode_config.save_scene_episodes(file_name)
+
     # load back episodeConfig object for sanity check
+    # path = '/cvgl2/u/jangj8523/iGibson/gibson2/episodes/data/Pomaria_2_int/Pomaria_2_int_sample.json'
     # duplicateConfig = EpisodeConfig.load_scene_episode_config(path)
     # print(duplicateConfig)
     # print(episodeConfig)
     env.close()
+
+    # env_config['load_scene_episode_config'] = False
+    # env_config['scene_episode_config_name'] = file_name
+    #
+    # env = iGibsonEnv(config_file=env_config,
+    #                  mode='headless',
+    #                  action_timestep=1.0 / 10.0,
+    #                  physics_timestep=1.0 / 40.0)
+    #
+    # done_episode_index = []
+    # for episode in range(10):
+    #     print('Episode: {}'.format(episode))
+    #     start = time.time()
+    #     env.reset()
+    #     for _ in range(100):  # 10 seconds
+    #         action = env.action_space.sample()
+    #         state, reward, done, _ = env.step(action)
+    #         # print('state', state)
+    #         if done:
+    #             done_episode_index.append((episode, env.current_step))
+    #             break
+    #     print('Episode finished after {} timesteps, took {} seconds.'.format(
+    #         env.current_step, time.time() - start))
+    #
+    # print("Size of successful episodes: {}".format(len(done_episode_index)))
+    # env.task.episode_config.episodes = [episode_config.episodes[i]
+    #                            for i in done_episode_index[:100]]
+    # env.task.episode_config.num_episodes = len(env.task.episode_config.episodes)
+    # env.task.episode_config.save_scene_episodes(
+    #     'default_robot_task_complete_episodes({}_{})'.format(env.scene.scene_id, env_config['task']))
+    #
+    # env.close()

@@ -1,6 +1,6 @@
 # scene
 scene: igibson
-scene_id: Rs_int
+scene_id: Pomaria_2_int
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
@@ -11,7 +11,8 @@ trav_map_erosion: 4
 should_open_all_doors: false
 not_load_object_categories: [door, carpet]
 texture_scale: 0.5
-
+load_scene_episode_config: True
+scene_episode_config_name: Pomaria_2_int_sample.json
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
