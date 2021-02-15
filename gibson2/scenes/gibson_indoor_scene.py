@@ -22,6 +22,7 @@ class StaticIndoorScene(IndoorScene):
     def __init__(self,
                  scene_id,
                  trav_map_resolution=0.1,
+                 trav_map_default_resolution=0.01,
                  trav_map_erosion=2,
                  trav_map_type='with_obj',
                  build_graph=True,
@@ -33,7 +34,8 @@ class StaticIndoorScene(IndoorScene):
         Load a building scene and compute traversability
 
         :param scene_id: Scene id
-        :param trav_map_resolution: traversability map resolution
+        :param trav_map_resolution: desired traversability map resolution
+        :param trav_map_default_resolution: original traversability map resolution
         :param trav_map_erosion: erosion radius of traversability areas, should be robot footprint radius
         :param trav_map_type: type of traversability map, with_obj | no_obj
         :param build_graph: build connectivity graph
@@ -44,6 +46,7 @@ class StaticIndoorScene(IndoorScene):
         super(StaticIndoorScene, self).__init__(
             scene_id,
             trav_map_resolution,
+            trav_map_default_resolution,
             trav_map_erosion,
             trav_map_type,
             build_graph,

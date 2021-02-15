@@ -28,6 +28,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
     def __init__(self,
                  scene_id,
                  trav_map_resolution=0.1,
+                 trav_map_default_resolution=0.01,
                  trav_map_erosion=2,
                  trav_map_type='with_obj',
                  build_graph=True,
@@ -40,6 +41,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  object_randomization_idx=None,
                  should_open_all_doors=False,
                  load_object_categories=None,
+                 not_load_object_categories=None,
                  load_room_types=None,
                  load_room_instances=None,
                  seg_map_resolution=0.1,
@@ -47,7 +49,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  ):
         """
         :param scene_id: Scene id
-        :param trav_map_resolution: traversability map resolution
+        :param trav_map_resolution: desired traversability map resolution
+        :param trav_map_default_resolution: original traversability map resolution
         :param trav_map_erosion: erosion radius of traversability areas, should be robot footprint radius
         :param trav_map_type: type of traversability map, with_obj | no_obj
         :param build_graph: build connectivity graph
@@ -59,7 +62,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param object_randomization: whether to randomize object
         :param object_randomization_idx: index of a pre-computed object randomization model that guarantees good scene quality
         :param should_open_all_doors: whether to open all doors after episode reset (usually required for navigation tasks)
-        :param load_object_categories: only load these object categories into the scene (a list of str)
+        :param load_object_categories: only load these object categories into the scene (a list of str)1
+        :param not_load_object_categories: do not load these object categories into the scene (a list of str)
         :param load_room_types: only load objects in these room types into the scene (a list of str)
         :param load_room_instances: only load objects in these room instances into the scene (a list of str)
         :param seg_map_resolution: room segmentation map resolution
@@ -69,6 +73,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         super(InteractiveIndoorScene, self).__init__(
             scene_id,
             trav_map_resolution,
+            trav_map_default_resolution,
             trav_map_erosion,
             trav_map_type,
             build_graph,
@@ -121,7 +126,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Decide which room(s) and object categories to load
         self.filter_rooms_and_object_categories(
-            load_object_categories, load_room_types, load_room_instances)
+            load_object_categories, not_load_object_categories,
+            load_room_types, load_room_instances)
 
         # Load average object density if exists
         self.avg_obj_dims = self.load_avg_obj_dims()
@@ -154,6 +160,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 # For other objects
                 else:
                     # This object does not belong to one of the selected object categories, skip
+                    if self.not_load_object_categories is not None and \
+                            category in self.not_load_object_categories:
+                        continue
                     if self.load_object_categories is not None and \
                             category not in self.load_object_categories:
                         continue
@@ -252,12 +261,14 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
     def filter_rooms_and_object_categories(self,
                                            load_object_categories,
+                                           not_load_object_categories,
                                            load_room_types,
                                            load_room_instances):
         """
         Handle partial scene loading based on object categories, room types or room instances
 
         :param load_object_categories: only load these object categories into the scene (a list of str)
+        :param not_load_object_categories: do not load these object categories into the scene (a list of str)
         :param load_room_types: only load objects in these room types into the scene (a list of str)
         :param load_room_instances: only load objects in these room instances into the scene (a list of str)
         """
@@ -265,6 +276,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if isinstance(load_object_categories, str):
             load_object_categories = [load_object_categories]
         self.load_object_categories = load_object_categories
+
+        if isinstance(not_load_object_categories, str):
+            not_load_object_categories = [not_load_object_categories]
+        self.not_load_object_categories = not_load_object_categories
 
         if load_room_instances is not None:
             if isinstance(load_room_instances, str):
@@ -437,6 +452,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Deal with the joint connecting the embedded urdf to the main link (world or building)
         joint_frame = np.eye(4)
+
+        added_object.bbox_pos = position
+        added_object.bbox_orientation_rpy = orientation_rpy
 
         # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
         # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
