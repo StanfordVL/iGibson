@@ -1,67 +1,80 @@
-from gibson2.envs.igibson_env import iGibsonEnv
-import os
-import json
+from gibson2.utils.utils import parse_config
 import numpy as np
+import json
+import os
+from gibson2.envs.igibson_env import iGibsonEnv
+import logging
+logging.getLogger().setLevel(logging.WARNING)
+
 
 class Challenge:
     def __init__(self):
         self.config_file = os.environ['CONFIG_FILE']
-        self.track = os.environ['TRACK']
-        self.nav_env = iGibsonEnv(config_file=self.config_file,
-                     mode='headless',
-                     action_timestep=1.0 / 10.0,
-                     physics_timestep=1.0 / 40.0)
+        self.phase = os.environ['PHASE']
+        self.episode_dir = os.environ['EPISODE_DIR']
+        self.eval_episodes_per_scene = os.environ.get(
+            'EVAL_EPISODES_PER_SCENE', 3)
 
     def submit(self, agent):
-        total_reward = 0.0
-        total_success = 0.0
-        total_spl = 0.0
-        num_eval_episodes = 10
-        for i in range(num_eval_episodes):
-            print('Episode: {}/{}'.format(i + 1, num_eval_episodes))
-            try:
-                agent.reset()
-            except:
-                pass
-            state = self.nav_env.reset()
-            while True:
-                action = agent.act(state)
-                state, reward, done, info = self.nav_env.step(action)
-                total_reward += reward
-                if done:
-                    break
-            total_success += info['success']
-            total_spl += info['spl']
+        env_config = parse_config(self.config_file)
 
-        avg_reward = total_reward / num_eval_episodes
-        avg_success = total_success / num_eval_episodes
-        avg_spl = total_spl / num_eval_episodes
-        results = {}
-        results["track"] = self.track
-        results["avg_spl"] = avg_spl
-        results["avg_success"] = avg_success
+        task = env_config['task']
+        if task == 'interactive_nav_random':
+            metrics = {key: 0.0 for key in [
+                'success', 'spl', 'effort_efficiency', 'ins', 'episode_return']}
+        elif task == 'social_nav_random':
+            metrics = {key: 0.0 for key in [
+                'success', 'stl', 'psc', 'episode_return']}
+        else:
+            assert False, 'unknown task: {}'.format(task)
 
-        if os.path.exists('/results'):
-            with open('/results/eval_result_{}.json'.format(self.track), 'w') as f:
-                json.dump(results, f)
+        num_episodes_per_scene = self.eval_episodes_per_scene
+        phase_dir = os.path.join(self.episode_dir, self.phase)
+        assert os.path.isdir(phase_dir)
+        num_scenes = len(os.listdir(phase_dir))
+        assert num_scenes > 0
+        total_num_episodes = num_scenes * num_episodes_per_scene
 
-        print('eval done, avg reward {}, avg success {}, avg spl {}'.format(avg_reward, avg_success, avg_spl))
-        return total_reward
+        idx = 0
+        for json_file in os.listdir(phase_dir):
+            scene_id = json_file.split('.')[0]
+            json_file = os.path.join(phase_dir, json_file)
 
-    # def gen_episode(self):
-    #     episodes = []
-    #     for i in range(10):
-    #         self.nav_env.reset()
-    #
-    #         episode_info = {}
-    #         episode_info['episode_id'] = str(i)
-    #         episode_info['scene_id'] = self.nav_env.config['model_id']
-    #         episode_info['start_pos'] = list(self.nav_env.initial_pos.astype(np.float32))
-    #         episode_info['end_pos'] = list(self.nav_env.target_pos.astype(np.float32))
-    #         episode_info['start_rotation'] = list(self.nav_env.initial_orn.astype(np.float32))
-    #         episode_info['end_rotation'] = list(self.nav_env.target_orn.astype(np.float32))
-    #         episodes.append(episode_info)
+            env_config['scene_id'] = scene_id
+            env_config['load_scene_episode_config'] = True
+            env_config['scene_episode_config_name'] = json_file
+            env = iGibsonEnv(config_file=env_config,
+                             mode='headless',
+                             action_timestep=1.0 / 10.0,
+                             physics_timestep=1.0 / 40.0)
 
-        #with open('eval_episodes.json', 'w') as f:
-        #    json.dump(str(episodes), f)
+            for _ in range(num_episodes_per_scene):
+                idx += 1
+                print('Episode: {}/{}'.format(idx, total_num_episodes))
+                try:
+                    agent.reset()
+                except:
+                    pass
+                state = env.reset()
+                episode_return = 0.0
+                while True:
+                    action = env.action_space.sample()
+                    action = agent.act(state)
+                    state, reward, done, info = env.step(action)
+                    episode_return += reward
+                    if done:
+                        break
 
+                metrics['episode_return'] += episode_return
+                for key in metrics:
+                    if key in info:
+                        metrics[key] += info[key]
+
+        for key in metrics:
+            metrics[key] /= total_num_episodes
+            print('Avg {}: {}'.format(key, metrics[key]))
+
+
+if __name__ == '__main__':
+    challenge = Challenge()
+    challenge.submit(None)
