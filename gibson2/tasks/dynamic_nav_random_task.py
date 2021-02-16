@@ -58,6 +58,9 @@ class DynamicNavRandomTask(PointNavRandomTask):
 
             env.land(robot, pos, orn)
 
+            # removed cached state to prevent memory leak
+            p.removeState(state_id)
+
     def reset_scene(self, env):
         """
         Task-specific scene reset: reset the dynamic objects after scene and agent reset

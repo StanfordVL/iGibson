@@ -6,6 +6,7 @@ import numpy as np
 from IPython import embed
 import os
 import gibson2
+from gibson2.episodes.episode_sample import InteractiveNavEpisodesConfig
 
 
 class InteractiveNavRandomTask(PointNavRandomTask):
@@ -21,6 +22,23 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         # For each episode, populate self.interactive_objects based on path length
         self.interactive_objects = []
         self.robot_mass = p.getDynamicsInfo(env.robots[0].robot_ids[0], -1)[0]
+
+        self.use_sample_episode = self.config.get(
+            'load_scene_episode_config', False)
+        scene_episode_config_path = self.config.get(
+            'scene_episode_config_name', None)
+
+        # Sanity check when loading our pre-sampled episodes
+        # Make sure the task simulation configuration does not conflict
+        # with the configuration used to sample our episode
+        if self.use_sample_episode:
+            path = scene_episode_config_path
+            self.episode_config = \
+                InteractiveNavEpisodesConfig.load_scene_episode_config(path)
+            if env.scene.scene_id != self.episode_config.scene_id:
+                raise ValueError("The scene to run the simulation in is '{}' from the " " \
+                                scene used to collect the episode samples".format(
+                    env.scene.scene_id))
 
     def load_all_interactive_objects(self, env):
         """
@@ -50,19 +68,36 @@ class InteractiveNavRandomTask(PointNavRandomTask):
 
         :param env: environment instance
         """
-
-        shortest_path, geodesic_dist = self.get_shortest_path(env, entire_path=True)
+        shortest_path, geodesic_dist = self.get_shortest_path(
+            env, entire_path=True)
         # Increase one interactive object for every 0.5 meter geodesic distance
         num_interactive_objects = int(geodesic_dist / 0.5)
-        self.interactive_objects = np.random.choice(
-            self.all_interactive_objects,
-            num_interactive_objects,
-            replace=False)
+
+        # If use sampled episode, re-use saved interactive objects idx
+        if self.use_sample_episode:
+            episode_index = self.episode_config.episode_index
+            self.interactive_objects_idx = np.array(
+                self.episode_config.episodes[episode_index]['interactive_objects_idx'])
+        else:
+            self.interactive_objects_idx = np.random.choice(
+                np.arange(len(self.all_interactive_objects)),
+                num_interactive_objects, replace=False)
+        self.interactive_objects = [
+            self.all_interactive_objects[idx]
+            for idx in self.interactive_objects_idx]
         self.obj_mass = self.get_obj_mass(env)
         self.obj_body_ids = self.get_obj_body_ids(env)
 
         max_trials = 100
-        for obj in self.interactive_objects:
+        for i, obj in enumerate(self.interactive_objects):
+            if self.use_sample_episode:
+                initial_pos = np.array(
+                    self.episode_config.episodes[episode_index]['interactive_objects'][i]['initial_pos'])
+                initial_orn = np.array(
+                    self.episode_config.episodes[episode_index]['interactive_objects'][i]['initial_orn'])
+                obj.set_position_orientation(initial_pos, initial_orn)
+                continue
+
             # TODO: p.saveState takes a few seconds, need to speed up
             state_id = p.saveState()
             for _ in range(max_trials):
@@ -86,6 +121,9 @@ class InteractiveNavRandomTask(PointNavRandomTask):
                 print("WARNING: Failed to reset interactive obj without collision")
 
             env.land(obj, pos, orn)
+
+            # removed cached state to prevent memory leak
+            p.removeState(state_id)
 
     def reset_scene(self, env):
         """
@@ -150,8 +188,20 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         """
         super(InteractiveNavRandomTask, self).reset_agent(env)
-        self.reset_interactive_objects(env)
+        if self.use_sample_episode:
+            self.episode_config.reset_episode()
+            episode_index = self.episode_config.episode_index
+            initial_pos = np.array(
+                self.episode_config.episodes[episode_index]['initial_pos'])
+            initial_orn = np.array(
+                self.episode_config.episodes[episode_index]['initial_orn'])
+            target_pos = np.array(
+                self.episode_config.episodes[episode_index]['target_pos'])
+            self.initial_pos = initial_pos
+            self.target_pos = target_pos
+            env.robots[0].set_position_orientation(initial_pos, initial_orn)
 
+        self.reset_interactive_objects(env)
         self.obj_disp_mass = 0.0
         self.ext_force_norm = 0.0
 
@@ -190,8 +240,17 @@ class InteractiveNavRandomTask(PointNavRandomTask):
             self.robot_gravity = env.current_step * self.robot_mass * 9.8
             info['dynamic_disturbance'] = self.robot_gravity / \
                 (self.robot_gravity + self.ext_force_norm)
+            info['effort_efficiency'] = (info['kinematic_disturbance'] +
+                                         info['dynamic_disturbance']) / 2.0
+            info['path_efficiency'] = info['spl']
+            alpha = 0.5
+            info['ins'] = alpha * info['path_efficiency'] + \
+                (1.0 - alpha) * info['effort_efficiency']
         else:
             info['kinematic_disturbance'] = 0.0
             info['dynamic_disturbance'] = 0.0
+            info['effort_efficiency'] = 0.0
+            info['path_efficiency'] = 0.0
+            info['ins'] = 0.0
 
         return done, info
