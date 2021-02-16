@@ -107,6 +107,8 @@ class RoomRearrangementTask(BaseTask):
             logging.warning("WARNING: Failed to reset robot without collision")
 
         env.land(env.robots[0], initial_pos, initial_orn)
+
+        # removed cached state to prevent memory leak
         p.removeState(state_id)
 
         for reward_function in self.reward_functions:

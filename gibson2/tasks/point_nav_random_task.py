@@ -78,6 +78,7 @@ class PointNavRandomTask(PointNavFixedTask):
         if not reset_success:
             logging.warning("WARNING: Failed to reset robot without collision")
 
+        # removed cached state to prevent memory leak
         p.removeState(state_id)
 
         self.target_pos = target_pos

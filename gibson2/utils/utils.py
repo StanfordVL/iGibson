@@ -1,3 +1,4 @@
+import json
 import os
 import numpy as np
 import yaml
@@ -11,11 +12,8 @@ from packaging import version
 import scipy
 scipy_version = version.parse(scipy.version.version)
 
-# File I/O related
-
 
 def parse_config(config):
-
     """
     Parse iGibson config file / object
     """
@@ -30,11 +28,14 @@ def parse_config(config):
         assert isinstance(config, str)
 
     if not os.path.exists(config):
-        raise IOError(
-            'config path {} does not exist. Please either pass in a dict or a string that represents the file path to the config yaml.'.format(config))
+        error_msg = 'config path {} does not exist. Please either pass in a dict or a string that represents ' \
+                    'the file path to the config yaml.'.format(config)
+        raise IOError(error_msg)
     with open(config, 'r') as f:
         config_data = yaml.load(f, Loader=yaml.FullLoader)
+
     return config_data
+
 
 # Geometry related
 
@@ -71,7 +72,7 @@ def get_transform_from_xyz_rpy(xyz, rpy):
 
 def get_rpy_from_transform(transform):
     """
-    Returns the roll, pitch, yaw angles (Euler) for a given rotation or 
+    Returns the roll, pitch, yaw angles (Euler) for a given rotation or
     homogeneous transformation matrix
     transformation = Array with the rotation (3x3) or full transformation (4x4)
     """

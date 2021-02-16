@@ -1,7 +1,10 @@
+from gibson2.episodes.episode_sample import SocialNavEpisodesConfig
 from gibson2.tasks.point_nav_random_task import PointNavRandomTask
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.pedestrian import Pedestrian
 from gibson2.termination_conditions.pedestrian_collision import PedestrianCollision
+from gibson2.utils.utils import l2_distance
+
 
 import pybullet as p
 import numpy as np
@@ -28,36 +31,69 @@ class SocialNavRandomTask(PointNavRandomTask):
                             orientation and the next direction of the next
                             goal is greater than the backoffRadianThresh,
                             then the pedestrian is considered backing off.
+        use_sample_episode  Flag that determines whether to use pre-sampled
+                            data (i.e pedestrians' initial position, initial
+                            orientation, goal position) for each episode
+                            or generate those samples in real time.
+        episode_config      an instance of SocialNavEpisodesConfig. Only relevant if
+                            |use_sample_episode| is True.
         """
         super(SocialNavRandomTask, self).__init__(env)
         # For debugging purposes, so that we can simulate colliding pedestrians
-        # np.random.seed(1)
         self.termination_conditions.append(PedestrianCollision(self.config))
         # Each pixel is 0.01 square meter
         num_sqrt_meter = env.scene.floor_map[0].nonzero()[0].shape[0] / 100.0
         self.num_sqrt_meter_per_ped = self.config.get(
-            'num_sqrt_meter_per_ped', 10)
-        self.num_pedestrians = int(
-            num_sqrt_meter / self.num_sqrt_meter_per_ped)
+            'num_sqrt_meter_per_ped', 8)
+        self.num_pedestrians = max(1, int(
+            num_sqrt_meter / self.num_sqrt_meter_per_ped))
 
         self.num_steps_stop = [0] * self.num_pedestrians
         self.neighbor_stop_radius = self.config.get(
             'neighbor_stop_radius', 1.0)
+        # By default, stop 2 seconds if stuck
         self.num_steps_stop_thresh = self.config.get(
-            'num_steps_stop_thresh', 5)
-        # backoff when angle is greater than 2.7 radians
+            'num_steps_stop_thresh', 20)
+        # backoff when angle is greater than 135 degrees
         self.backoff_radian_thresh = self.config.get(
-            'backoff_radian_thresh', 2.7)
+            'backoff_radian_thresh', np.deg2rad(135.0))
+
+        self.use_sample_episode = self.config.get(
+            'load_scene_episode_config', False)
+        scene_episode_config_path = self.config.get(
+            'scene_episode_config_name', None)
 
         self.neighbor_dist = self.config.get('orca_neighbor_dist', 5)
         self.max_neighbors = self.num_pedestrians + 1
         self.time_horizon = self.config.get('orca_time_horizon', 2.0)
         self.time_horizon_obst = self.config.get('orca_time_horizon_obst', 2.0)
-        self.radius = self.config.get('orca_radius', 0.3)
+        self.orca_radius = self.config.get('orca_radius', 0.5)
         self.max_speed = self.config.get('orca_max_speed', 0.5)
         self.pedestrian_velocity = self.config.get('pedestrian_velocity', 1.0)
         self.pedestrian_goal_thresh = \
             self.config.get('pedestrian_goal_thresh', 0.3)
+
+        # Sanity check when loading our pre-sampled episodes
+        # Make sure the task simulation configuration does not conflict
+        # with the configuration used to sample our episode
+        if self.use_sample_episode:
+            path = scene_episode_config_path
+            self.episode_config = \
+                SocialNavEpisodesConfig.load_scene_episode_config(path)
+            if self.num_pedestrians != self.episode_config.num_pedestrians:
+                raise ValueError("The episode samples did not record records for more than {} pedestrians".format(
+                    self.num_pedestrians))
+            if env.scene.scene_id != self.episode_config.scene_id:
+                raise ValueError("The scene to run the simulation in is '{}' from the " " \
+                                scene used to collect the episode samples".format(
+                    env.scene.scene_id))
+            if self.orca_radius != self.episode_config.orca_radius:
+                print("value of orca_radius: {}".format(
+                      self.episode_config.orca_radius))
+                raise ValueError("The orca radius set for the simulation is {}, which is different from "
+                                 "the orca radius used to collect the pedestrians' initial position "
+                                 " for our samples.".format(self.orca_radius))
+
         """
         timeStep        The time step of the simulation.
                         Must be positive.
@@ -103,11 +139,12 @@ class SocialNavRandomTask(PointNavRandomTask):
             self.max_neighbors,
             self.time_horizon,
             self.time_horizon_obst,
-            self.radius,
+            self.orca_radius,
             self.max_speed)
         self.pedestrians, self.orca_pedestrians = self.load_pedestrians(env)
         self.pedestrian_goals = self.load_pedestrian_goals(env)
         self.load_obstacles(env)
+        self.personal_space_violation_steps = 0
 
     def load_pedestrians(self, env):
         """
@@ -197,6 +234,38 @@ class SocialNavRandomTask(PointNavRandomTask):
 
         self.orca_sim.processObstacles()
 
+    def sample_initial_pos(self, env, ped_id):
+        """
+        Sample a new initial position for pedestrian with ped_id.
+        The inital position is sampled randomly until the position is
+        at least |self.orca_radius| away from all other pedestrians' initial
+        positions.
+        """
+        # resample pedestrian's initial position
+        must_resample_pos = True
+        while must_resample_pos:
+            _, initial_pos = env.scene.get_random_point(
+                floor=self.floor_num)
+            must_resample_pos = False
+
+            # If too close to the robot, resample
+            dist = np.linalg.norm(initial_pos[:2] - self.initial_pos[:2])
+            if dist < self.orca_radius:
+                must_resample_pos = True
+                continue
+
+            # If too close to the previous pedestrians, resample
+            for neighbor_id in range(ped_id):
+                neighbor_ped = self.pedestrians[neighbor_id]
+                neighbor_pos_xyz = neighbor_ped.get_position()
+                dist = np.linalg.norm(
+                    np.array(neighbor_pos_xyz)[:2] -
+                    initial_pos[:2])
+                if dist < self.orca_radius:
+                    must_resample_pos = True
+                    break
+        return initial_pos
+
     def reset_pedestrians(self, env):
         """
         Reset the poses of pedestrians to have no collisions with the scene or the robot and set waypoints to follow
@@ -204,37 +273,24 @@ class SocialNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         """
         self.pedestrian_waypoints = []
-        for id, (ped, orca_ped) in enumerate(zip(self.pedestrians, self.orca_pedestrians)):
-            initial_pos = None
-            must_resample_pos = True
+        for ped_id, (ped, orca_ped) in enumerate(zip(self.pedestrians, self.orca_pedestrians)):
+            if self.use_sample_episode:
+                episode_index = self.episode_config.episode_index
+                initial_pos = np.array(
+                    self.episode_config.episodes[episode_index]['pedestrians'][ped_id]['initial_pos'])
+                initial_orn = np.array(
+                    self.episode_config.episodes[episode_index]['pedestrians'][ped_id]['initial_orn'])
+                waypoints = self.sample_new_target_pos(
+                    env, initial_pos, ped_id)
+            else:
+                initial_pos = self.sample_initial_pos(env, ped_id)
+                initial_orn = p.getQuaternionFromEuler(ped.default_orn_euler)
+                waypoints = self.sample_new_target_pos(env, initial_pos)
 
-            # resample pedestrian's initial position
-            while must_resample_pos:
-                _, initial_pos = env.scene.get_random_point(
-                    floor=self.floor_num)
-                must_resample_pos = False
-
-                # If too close to the robot, resample
-                dist = np.linalg.norm(initial_pos[:2] - self.initial_pos[:2])
-                if dist < self.radius:
-                    must_resample_pos = True
-                    continue
-
-                # If too close to the previous pedestrians, resample
-                for neighbor_id in range(id):
-                    neighbor_ped = self.pedestrians[neighbor_id]
-                    neighbor_pos_xyz = neighbor_ped.get_position()
-                    dist = np.linalg.norm(
-                        np.array(neighbor_pos_xyz)[:2] -
-                        initial_pos[:2])
-                    if dist < self.radius:
-                        must_resample_pos = True
-                        break
-
+            # print(inital_pos, "Yay!!!!!!!")
             ped.set_position_orientation(
-                initial_pos, p.getQuaternionFromEuler(ped.default_orn_euler))
+                initial_pos, initial_orn)
             self.orca_sim.setAgentPosition(orca_ped, tuple(initial_pos[0:2]))
-            waypoints = self.sample_new_target_pos(env, initial_pos)
             self.pedestrian_waypoints.append(waypoints)
 
     def reset_agent(self, env):
@@ -245,13 +301,56 @@ class SocialNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         """
         super(SocialNavRandomTask, self).reset_agent(env)
+        if self.use_sample_episode:
+            self.episode_config.reset_episode()
+            episode_index = self.episode_config.episode_index
+            initial_pos = np.array(
+                self.episode_config.episodes[episode_index]['initial_pos'])
+            initial_orn = np.array(
+                self.episode_config.episodes[episode_index]['initial_orn'])
+            target_pos = np.array(
+                self.episode_config.episodes[episode_index]['target_pos'])
+            self.initial_pos = initial_pos
+            self.target_pos = target_pos
+            env.robots[0].set_position_orientation(initial_pos, initial_orn)
+
         self.orca_sim.setAgentPosition(self.robot_orca_ped,
                                        tuple(self.initial_pos[0:2]))
         self.reset_pedestrians(env)
+        self.personal_space_violation_steps = 0
 
-    def sample_new_target_pos(self, env, initial_pos):
+    def sample_new_target_pos(self, env, initial_pos, ped_id=None):
+        """
+        Samples waypoints to the new target position for a pedestrian.
+        The target position is sampled for a particular pedestrian when
+        |self.use_sample_episode| is true. If False, the target position
+        can be given to any pedestrian at |inital_pos|.
+
+        :param env: an environment instance
+        :param initial_pos: the pedestrian's initial position
+        :param ped_id: the pedestrian id to sample goal
+        :return waypoints: the path to the goal position
+        """
+
         while True:
-            _, target_pos = env.scene.get_random_point(floor=self.floor_num)
+            if self.use_sample_episode:
+                if ped_id is None:
+                    raise ValueError(
+                        "The id of the pedestrian to get the goal position was not specified")
+                episode_index = self.episode_config.episode_index
+                pos_index = self.episode_config.goal_index[ped_id]
+                sampled_goals = self.episode_config.episodes[
+                    episode_index]['pedestrians'][ped_id]['target_pos']
+
+                if pos_index >= len(sampled_goals):
+                    raise ValueError("The goal positions sampled for pedestrian #{} at "
+                                     "episode {} are exhausted".format(ped_id, episode_index))
+
+                target_pos = np.array(sampled_goals[pos_index])
+                self.episode_config.goal_index[ped_id] += 1
+            else:
+                _, target_pos = env.scene.get_random_point(
+                    floor=self.floor_num)
             # print('initial_pos', initial_pos)
             shortest_path, _ = env.scene.get_shortest_path(
                 self.floor_num,
@@ -316,7 +415,10 @@ class SocialNavRandomTask(PointNavRandomTask):
                 # if self.num_steps_stop[i] >= self.num_steps_stop_thresh:
                 #     print("sampling new point because pedestrian #${} \
                 #           stoped for too long".format(i))
-                waypoints = self.sample_new_target_pos(env, current_pos)
+                if self.use_sample_episode:
+                    waypoints = self.sample_new_target_pos(env, current_pos, i)
+                else:
+                    waypoints = self.sample_new_target_pos(env, current_pos)
                 self.pedestrian_waypoints[i] = waypoints
                 self.num_steps_stop[i] = 0
 
@@ -354,6 +456,16 @@ class SocialNavRandomTask(PointNavRandomTask):
                 if np.linalg.norm(next_goal - np.array(pos_xyz[:2])) \
                         <= self.pedestrian_goal_thresh:
                     waypoints.pop(0)
+
+        personal_space_violation = False
+        robot_pos = env.robots[0].get_position()[:2]
+        for ped in self.pedestrians:
+            ped_pos = ped.get_position()[:2]
+            if l2_distance(robot_pos, ped_pos) < self.orca_radius:
+                personal_space_violation = True
+                break
+        if personal_space_violation:
+            self.personal_space_violation_steps += 1
 
     def update_pos_and_stop_flags(self):
         """
@@ -442,3 +554,24 @@ class SocialNavRandomTask(PointNavRandomTask):
 
         angle = np.arccos(np.dot(normalized_dir, next_normalized_dir))
         return angle >= self.backoff_radian_thresh
+
+    def get_termination(self, env, collision_links=[], action=None, info={}):
+        """
+        Aggreate termination conditions and fill info
+        """
+        done, info = super(SocialNavRandomTask, self).get_termination(
+            env, collision_links, action, info)
+        if done:
+            info['psc'] = 1.0 - (self.personal_space_violation_steps /
+                                 env.config.get('max_step', 500))
+            if self.use_sample_episode:
+                episode_index = self.episode_config.episode_index
+                orca_timesteps = self.episode_config.episodes[episode_index]['orca_timesteps']
+                info['stl'] = float(info['success']) * \
+                    min(1.0, orca_timesteps / env.current_step)
+            else:
+                info['stl'] = float(info['success'])
+        else:
+            info['psc'] = 0.0
+            info['stl'] = 0.0
+        return done, info
