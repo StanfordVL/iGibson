@@ -21,7 +21,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         self.all_interactive_objects = self.load_all_interactive_objects(env)
         # For each episode, populate self.interactive_objects based on path length
         self.interactive_objects = []
-        self.robot_mass = p.getDynamicsInfo(env.robots[0].robot_ids[0], -1)[0]
+        self.robot_mass = p.getDynamicsInfo(env.robots[0].robot_ids[0], 0)[0]
 
         self.use_sample_episode = self.config.get(
             'load_scene_episode_config', False)
