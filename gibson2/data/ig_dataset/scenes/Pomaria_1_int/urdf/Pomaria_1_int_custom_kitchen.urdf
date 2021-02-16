@@ -25,6 +25,7 @@
 		<child link="table_0"/>
 		<parent link="world"/>
 	</joint>
+	<!--
 	<link bounding_box="0.770000 0.670000 0.792000" category="chair" model="2f1a67cdabe2a70c492d9da2668ec34c" name="chair_1" room="living_room_0"/>
 	<joint name="j_chair_1" type="floating">
 		<origin rpy="0 0 0.000000" xyz="-11.285000 0.885000 0.400000"/>
@@ -73,6 +74,7 @@
 		<child link="chair_8"/>
 		<parent link="world"/>
 	</joint>
+	-->
 	<!--
 	<link bounding_box="0.340119 0.341996 0.762300" category="chair" model="28a0b2a5afc96922ba63bc389be1ed5a" name="chair_9" room="kitchen_0"/>
 	<joint name="j_chair_9" type="floating">
@@ -177,9 +179,9 @@
 		<child link="top_cabinet_25"/>
 		<parent link="world"/>
 	</joint>
-	<link bounding_box="0.950000 0.590000 0.891000" category="bottom_cabinet" model="49140" name="bottom_cabinet_26" room="kitchen_0"/>
+	<link bounding_box="0.550000 0.590000 0.891000" category="bottom_cabinet" model="49140" name="bottom_cabinet_26" room="kitchen_0"/>
 	<joint name="j_bottom_cabinet_26" type="fixed">
-		<origin rpy="0 0 -3.141593" xyz="-2.705000 -2.625000 0.450000"/>
+		<origin rpy="0 0 -3.141593" xyz="-2.505000 -2.625000 0.450000"/>
 		<child link="bottom_cabinet_26"/>
 		<parent link="world"/>
 	</joint>
@@ -249,9 +251,9 @@
 		<child link="sink_37"/>
 		<parent link="world"/>
 	</joint>
-	<link bounding_box="0.170000 0.620000 0.891000" category="bottom_cabinet_no_top" model="45212" name="bottom_cabinet_no_top_38" room="kitchen_0"/>
+	<link bounding_box="0.570000 0.620000 0.891000" category="bottom_cabinet_no_top" model="45212" name="bottom_cabinet_no_top_38" room="kitchen_0"/>
 	<joint name="j_bottom_cabinet_no_top_38" type="fixed">
-		<origin rpy="0 0 -3.141593" xyz="-4.115000 -2.639000 0.450000"/>
+		<origin rpy="0 0 -3.141593" xyz="-3.915000 -2.639000 0.450000"/>
 		<child link="bottom_cabinet_no_top_38"/>
 		<parent link="world"/>
 	</joint>
@@ -267,9 +269,9 @@
 		<child link="counter_40"/>
 		<parent link="world"/>
 	</joint>
-	<link bounding_box="0.180000 0.660000 0.018810" category="counter" model="counter_0" name="counter_41" room="kitchen_0"/>
+	<link bounding_box="0.580000 0.660000 0.018810" category="counter" model="counter_0" name="counter_41" room="kitchen_0"/>
 	<joint name="j_counter_41" type="fixed">
-		<origin rpy="0 0 0.000000" xyz="-4.140000 -2.650000 0.910500"/>
+		<origin rpy="0 0 0.000000" xyz="-3.940000 -2.650000 0.910500"/>
 		<child link="counter_41"/>
 		<parent link="world"/>
 	</joint>
@@ -287,7 +289,7 @@
 	</joint>
 	<link bounding_box="0.800000 0.600000 0.891000" category="oven" model="oven_0013" name="oven_46" room="kitchen_0"/>
 	<joint name="j_oven_46" type="fixed">
-		<origin rpy="0 0 -3.141593" xyz="-3.580000 -2.630000 0.450000"/>
+		<origin rpy="0 0 -3.141593" xyz="-3.180000 -2.630000 0.450000"/>
 		<child link="oven_46"/>
 		<parent link="world"/>
 	</joint>
@@ -403,7 +405,7 @@
 	</joint>
 	<link bounding_box="0.800000 0.560000 0.059400" category="cooktop" model="cooktop_0" name="cooktop_64" room="kitchen_0"/>
 	<joint name="j_cooktop_64" type="fixed">
-		<origin rpy="0 0 -3.141593" xyz="-3.580000 -2.630000 0.940000"/>
+		<origin rpy="0 0 -3.141593" xyz="-3.180000 -2.630000 0.940000"/>
 		<child link="cooktop_64"/>
 		<parent link="world"/>
 	</joint>
@@ -471,15 +473,6 @@
 	<joint name="j_window_75" type="fixed">
 		<origin rpy="0 0 0.000000" xyz="-3.710000 4.235000 1.350000"/>
 		<child link="window_75"/>
-		<parent link="world"/>
-	</joint>
-
-	<!-- Added objects -->
-
-	<link bounding_box="1.8 0.5 0.9" category="console_table" model="19836" name="desk_76" room="corridor_0"/>
-	<joint name="j_desk_76" type="fixed">
-		<origin rpy="0 0 0" xyz="-6.15 3.8 0.45"/>
-		<child link="desk_76"/>
 		<parent link="world"/>
 	</joint>
 

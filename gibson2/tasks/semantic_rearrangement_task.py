@@ -189,6 +189,9 @@ class SemanticRearrangementTask(BaseTask):
         :param env: environment instance
         :return: task-specific observation
         """
+        # Force wakeup of target locations here
+        for location in self.target_locations.values():
+            location.force_wakeup()
         # Construct task obs -- consists of 3D locations of active target object
         task_obs = OrderedDict()
         obs_cat = []

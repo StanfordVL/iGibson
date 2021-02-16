@@ -469,6 +469,7 @@ class iGibsonEnv(BaseEnv):
         Helper function used to synchronize environment. Usually used after directly setting
         the state (e.g., reset_to(...))
         """
+        # TODO: Do we need to force scene object wakeup here?
         # Sync any robot-related stuff
         self.robots[0].sync_state()
         # Sync the task

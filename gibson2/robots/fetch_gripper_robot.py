@@ -128,39 +128,23 @@ class FetchGripper(LocomotorRobot):
     @property
     def lower_joint_limits(self):
         return np.array([
-            -100.0,
-            -100.0,
+            -100.0, -100.0,
             0.0,
-            -1.57,
-            -0.76,
-            -1.6056,
-            -1.221,
-            -4.71,
-            -2.251,
-            -4.71,
-            -2.16,
-            -4.71,
-            0.0,
-            0.0,
+            -1.57, -0.76,
+            -1.6056, -1.221, -100., -2.251,
+            -100., -2.16, -100.,
+            0.0, 0.0,
         ])
 
     @property
     def upper_joint_limits(self):
         return np.array([
-            100.0,
-            100.0,
+            100.0, 100.0,
             0.38615,
-            1.57,
-            1.45,
-            1.6056,
-            1.518,
-            4.71,
-            2.251,
-            4.71,
-            2.16,
-            4.71,
-            0.05,
-            0.05,
+            1.57, 1.45,
+            1.6056, 1.518, 100., 2.251,
+            100., 2.16, 100.,
+            0.05, 0.05,
         ])
 
     @property
@@ -257,6 +241,9 @@ class FetchGripper(LocomotorRobot):
         # Reset internal vars
         self.tucked = True
         self.head_error_planning = []
+
+        # Reset controller
+        self.controller.reset()
 
     def get_head_pan_qpos(self):
         """
@@ -523,9 +510,9 @@ class FetchGripper(LocomotorRobot):
                         tilt_diff = (desired_pixel[1] - ee_pixel_coords[1]) / regularization
                         self.head_error_planning.append((0.0, tilt_diff))
                 elif ee_pixel_coords[0] > boundary_of_movement: 
-                    wheel_action = np.array([0., 0.5])
+                    wheel_action = np.array([0., 0.2])
                 elif ee_pixel_coords[0] < -boundary_of_movement:
-                    wheel_action = np.array([0., -0.5])
+                    wheel_action = np.array([0., -0.2])
             else:
                 if abs(ee_pixel_coords[0] - desired_pixel[0]) > threshold or abs(
                         ee_pixel_coords[1] - desired_pixel[1]) > threshold:

@@ -2,7 +2,7 @@ import gibson2.utils.transform_utils as T
 import numpy as np
 import pybullet as p
 import gibson2.external.pybullet_tools.utils as PBU
-
+from gibson2.utils.filters import MovingAverageFilter
 
 class IKController:
     """
@@ -25,6 +25,13 @@ class IKController:
         self.action_scale = abs(self.output_max - self.output_min) / abs(self.input_max - self.input_min)
         self.action_output_transform = (self.output_max + self.output_min) / 2.0
         self.action_input_transform = (self.input_max + self.input_min) / 2.0
+        self.lpf = MovingAverageFilter(obs_dim=len(self.robot.upper_joint_limits), filter_width=2)
+
+    def reset(self):
+        """
+        Reset this controller
+        """
+        self.lpf = MovingAverageFilter(obs_dim=len(self.robot.upper_joint_limits), filter_width=2)
 
     def scale_command(self, command):
         """
@@ -119,12 +126,16 @@ class IKController:
                 lowerLimits=self.robot.lower_joint_limits.tolist(),
                 upperLimits=self.robot.upper_joint_limits.tolist(),
                 jointRanges=self.robot.joint_range.tolist(),
-                restPoses=self.robot.rest_joints.tolist(),
+                restPoses=self.robot.untucked_default_joints.tolist(),#self.robot.rest_joints.tolist(),
                 jointDamping=self.damping.tolist(),
                 # p.IK_DLS,
                 # self.robot.joint_position.tolist(),
             )
         )
+        #np.set_printoptions(precision=2)
+        cmd_joint_pos = self.lpf.estimate(np.array(cmd_joint_pos))
+        #cmd_joint_pos = np.clip(cmd_joint_pos, self.robot.joint_position - 0.05, self.robot.joint_position + 0.05)
+        #print(f"ik jnt: {np.array(cmd_joint_pos)[[2,5,6,7,8,9,10,11]]}")
 
         # Return this value (only the arm indexes)
         return cmd_joint_pos
