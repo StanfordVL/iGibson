@@ -60,7 +60,7 @@ if __name__ == '__main__':
                 num_pedestrians=env.task.num_pedestrians,
                 scene_id=env.scene.scene_id,
                 num_episodes=raw_num_episodes,
-                orca_radius=env.task.radius,
+                orca_radius=env.task.orca_radius,
                 numpy_seed=numpy_seed
             )
 
