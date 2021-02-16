@@ -6,7 +6,7 @@ import gibson2
 import numpy as np
 import xml.etree.ElementTree as ET
 
-from gibson2.objects.object_base import Object
+from gibson2.objects.stateful_object import StatefulObject
 import pybullet as p
 import trimesh
 import random
@@ -14,14 +14,16 @@ import cv2
 import time
 import random
 
-from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_aabb_urdf, get_base_link_name
+from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_aabb_urdf, get_base_link_name, \
+    add_fixed_link
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from gibson2.object_states.factory import prepare_object_states
 
 
-class ArticulatedObject(Object):
+class ArticulatedObject(StatefulObject):
     """
     Articulated objects are defined in URDF files.
     They are passive (no motors).
@@ -61,7 +63,7 @@ class RBOObject(ArticulatedObject):
         super(RBOObject, self).__init__(filename, scale)
 
 
-class URDFObject(Object):
+class URDFObject(StatefulObject):
     """
     URDFObjects are instantiated from a URDF file. They can be composed of one
     or more links and joints. They should be passive. We use this class to
@@ -72,6 +74,7 @@ class URDFObject(Object):
                  filename,
                  name='object_0',
                  category='object',
+                 abilities=[],
                  model_path=None,
                  bounding_box=None,
                  scale=None,
@@ -109,7 +112,8 @@ class URDFObject(Object):
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
-
+        self.abilities = abilities
+        self.states = prepare_object_states(self, abilities, online=True)
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
             self.joint_friction = joint_friction
@@ -176,15 +180,21 @@ class URDFObject(Object):
 
         meta_json = os.path.join(self.model_path, 'misc', 'metadata.json')
         bbox_json = os.path.join(self.model_path, 'misc', 'bbox.json')
+        meta_links = dict()  # In the format of {link_name: [linkX, linkY, linkZ]}
         if os.path.isfile(meta_json):
             with open(meta_json, 'r') as f:
                 meta_data = json.load(f)
                 bbox_size = np.array(meta_data['bbox_size'])
                 base_link_offset = np.array(meta_data['base_link_offset'])
+
                 if 'orientations' in meta_data and len(meta_data['orientations']) > 0:
                     self.orientations = meta_data['orientations']
                 else:
                     self.orientations = None
+
+                if 'links' in meta_data:
+                    meta_links = meta_data['links']
+
         elif os.path.isfile(bbox_json):
             with open(bbox_json, 'r') as bbox_file:
                 bbox_data = json.load(bbox_file)
@@ -234,10 +244,9 @@ class URDFObject(Object):
 
         self.avg_obj_dims = avg_obj_dims
 
-        self.base_link_name = get_base_link_name(self.object_tree)
-
-        self.scale_object()
         self.rename_urdf()
+        self.add_meta_links(meta_links)
+        self.scale_object()
         self.compute_object_pose()
         self.remove_floating_joints(self.scene_instance_folder)
         if self.texture_randomization:
@@ -374,12 +383,14 @@ class URDFObject(Object):
         Helper function that renames the file paths in the object urdf
         from relative paths to absolute paths
         """
+        base_link_name = get_base_link_name(self.object_tree)
+
         # Change the links of the added object to adapt to the given name
         for link_emb in self.object_tree.iter('link'):
             # If the original urdf already contains world link, do not rename
             if link_emb.attrib['name'] == 'world':
                 pass
-            elif link_emb.attrib['name'] == self.base_link_name:
+            elif link_emb.attrib['name'] == base_link_name:
                 # The base_link get renamed as the link tag indicates
                 # Just change the name of the base link in the embedded urdf
                 link_emb.attrib['name'] = self.name
@@ -399,7 +410,7 @@ class URDFObject(Object):
                 # If the original urdf already contains world link, do not rename
                 if child_emb.attrib['link'] == 'world':
                     pass
-                elif child_emb.attrib['link'] == self.base_link_name:
+                elif child_emb.attrib['link'] == base_link_name:
                     child_emb.attrib['link'] = self.name
                 else:
                     child_emb.attrib['link'] = self.name + \
@@ -409,7 +420,7 @@ class URDFObject(Object):
                 # If the original urdf already contains world link, do not rename
                 if parent_emb.attrib['link'] == 'world':
                     pass
-                elif parent_emb.attrib['link'] == self.base_link_name:
+                elif parent_emb.attrib['link'] == base_link_name:
                     parent_emb.attrib['link'] = self.name
                 else:
                     parent_emb.attrib['link'] = self.name + \
@@ -426,7 +437,8 @@ class URDFObject(Object):
 
         # First, define the scale in each link reference frame
         # and apply it to the joint values
-        scales_in_lf = {self.base_link_name: self.scale}
+        base_link_name = get_base_link_name(self.object_tree)
+        scales_in_lf = {base_link_name: self.scale}
         all_processed = False
         while not all_processed:
             all_processed = True
@@ -515,7 +527,7 @@ class URDFObject(Object):
                 all_links_trimesh.append(trimesh_obj)
                 volume = trimesh_obj.volume
                 # a hack to artificially increase the density of the lamp base
-                if link.attrib['name'] == self.base_link_name and self.base_link_name != 'world':
+                if link.attrib['name'] == base_link_name and base_link_name != 'world':
                     if self.category in ['lamp']:
                         volume *= 10.0
                 total_volume += volume
@@ -578,7 +590,7 @@ class URDFObject(Object):
 
                 if link_trimesh is not None:
                     # a hack to artificially increase the density of the lamp base
-                    if link.attrib['name'] == self.base_link_name and self.base_link_name != 'world':
+                    if link.attrib['name'] == base_link_name and base_link_name != 'world':
                         if self.category in ['lamp']:
                             link_trimesh.density *= 10.0
 
@@ -914,3 +926,14 @@ class URDFObject(Object):
 
     def get_body_id(self):
         return self.body_ids[self.main_body]
+
+    def add_meta_links(self, meta_links):
+        """
+        Adds the meta links (e.g. heating element position, water source position) from the metadata file
+        into the URDF tree for this object prior to loading.
+
+        :param meta_links: Dictionary of meta links in the form of {link_name: [linkX, linkY, linkZ]}
+        :return: None.
+        """
+        for meta_link_name, offset in meta_links.items():
+            add_fixed_link(self.object_tree, meta_link_name, offset)

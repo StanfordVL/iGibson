@@ -14,7 +14,7 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.scene_base import Scene
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.objects.object_base import Object
-
+from gibson2.objects.particles import ParticleSystem
 
 import pybullet as p
 import gibson2
@@ -321,6 +321,35 @@ class Simulator:
         return new_object_ids
 
     @load_without_pybullet_vis
+    def import_particle_system(self,
+                               obj,
+                               class_id=SemanticClass.USER_ADDED_OBJS,
+                               use_pbr=False,
+                               use_pbr_mapping=False,
+                               shadow_caster=True):
+        """
+        Import an object into the simulator
+        :param obj: ParticleSystem to load
+        :param class_id: Class id for rendering semantic segmentation
+        :param use_pbr: Whether to use pbr, default to False
+        :param use_pbr_mapping: Whether to use pbr mapping, default to False
+        :param shadow_caster: Whether to cast shadow
+        """
+
+        assert isinstance(obj, ParticleSystem), 'import_particle_system can only be called with ParticleSystem'
+
+        new_object_pb_ids = []
+        for o in obj.particles:
+            particle_pb_id = self.import_object(o,
+                                    class_id=class_id,
+                                    use_pbr=use_pbr,
+                                    use_pbr_mapping=use_pbr_mapping,
+                                    shadow_caster=shadow_caster)
+            new_object_pb_ids.append(particle_pb_id)
+
+        return new_object_pb_ids
+
+    @load_without_pybullet_vis
     def import_object(self,
                       obj,
                       class_id=SemanticClass.USER_ADDED_OBJS,
@@ -376,6 +405,16 @@ class Simulator:
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
                     shadow_caster=shadow_caster)
+
+        # if there are attached particle system, import them into simulation
+        if len(obj.attached_particle_system) > 0:
+            for particle_system in obj.attached_particle_system:
+                particle_pb_ids = self.import_particle_system(particle_system)
+                if isinstance(new_object_pb_id_or_ids, list):
+                    new_object_pb_id_or_ids += particle_pb_ids
+                else:
+                    new_object_pb_id_or_ids = [new_object_pb_id_or_ids] + particle_pb_ids
+
         return new_object_pb_id_or_ids
 
     @load_without_pybullet_vis
@@ -763,6 +802,7 @@ class Simulator:
             1, int(self.render_timestep / self.physics_timestep))
         for _ in range(physics_timestep_num):
             p.stepSimulation()
+            self._non_physics_step()
         self.sync()
 
     def sync(self):
