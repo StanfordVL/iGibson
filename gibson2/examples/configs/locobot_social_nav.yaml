@@ -1,7 +1,7 @@
 # scene
 scene: igibson
 scene_id: Rs_int
-load_scene_episode_config: False
+load_scene_episode_config: false
 scene_episode_config_name: null
 build_graph: true
 load_texture: true
@@ -31,6 +31,8 @@ target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
 waypoint_resolution: 0.1
+orca_radius: 0.5
+pedestrian_collision_threshold: 0.3
 
 # reward
 reward_type: geodesic

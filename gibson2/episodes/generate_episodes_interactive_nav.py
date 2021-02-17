@@ -37,7 +37,13 @@ if __name__ == '__main__':
     numpy_seed = episode_config.get('numpy_seed', 0)
 
     dataset_split = {
-        'minival': ['Rs_int']
+        'minival': ['Rs_int'],
+        'train': ['Merom_0_int', 'Benevolence_0_int', 'Pomaria_0_int',
+                  'Wainscott_1_int', 'Rs_int', 'Ihlen_0_int',
+                  'Beechwood_1_int', 'Ihlen_1_int'],
+        'dev':  ['Benevolence_1_int', 'Wainscott_0_int'],
+        'test': ['Pomaria_2_int', 'Benevolence_2_int', 'Beechwood_0_int',
+                 'Pomaria_1_int', 'Merom_1_int']
     }
 
     for split in dataset_split:
@@ -47,6 +53,10 @@ if __name__ == '__main__':
             env_config['load_scene_episode_config'] = False
             env_config['scene_episode_config_name'] = None
             env_config['scene_id'] = scene_id
+            if split in ['dev', 'test']:
+                env_config['use_test_objs'] = True
+            else:
+                env_config['use_test_objs'] = False
 
             # Load the simulator
             env = iGibsonEnv(config_file=env_config,

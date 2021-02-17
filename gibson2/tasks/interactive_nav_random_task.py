@@ -1,9 +1,7 @@
 from gibson2.tasks.point_nav_random_task import PointNavRandomTask
 import pybullet as p
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.ycb_object import YCBObject
 import numpy as np
-from IPython import embed
 import os
 import gibson2
 from gibson2.episodes.episode_sample import InteractiveNavEpisodesConfig
@@ -17,13 +15,15 @@ class InteractiveNavRandomTask(PointNavRandomTask):
 
     def __init__(self, env):
         super(InteractiveNavRandomTask, self).__init__(env)
+        self.use_test_objs = self.config.get(
+            'use_test_objs', False)
         # Load all 20 training interactive objects
         self.all_interactive_objects = self.load_all_interactive_objects(env)
         # For each episode, populate self.interactive_objects based on path length
         self.interactive_objects = []
         self.robot_mass = p.getDynamicsInfo(env.robots[0].robot_ids[0], 0)[0]
 
-        self.use_sample_episode = self.config.get(
+        self.offline_eval = self.config.get(
             'load_scene_episode_config', False)
         scene_episode_config_path = self.config.get(
             'scene_episode_config_name', None)
@@ -31,7 +31,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         # Sanity check when loading our pre-sampled episodes
         # Make sure the task simulation configuration does not conflict
         # with the configuration used to sample our episode
-        if self.use_sample_episode:
+        if self.offline_eval:
             path = scene_episode_config_path
             self.episode_config = \
                 InteractiveNavEpisodesConfig.load_scene_episode_config(path)
@@ -47,16 +47,24 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         :return: a list of interactive objects
         """
-        # TODO: change the number of objects based on scene size
-        clutter_obj_dir = os.path.join(
-            gibson2.assets_path, 'models', 'clutter_objects')
-        obj_dirs = os.listdir(clutter_obj_dir)
-        assert len(obj_dirs) == 20, 'clutter objects should have 20 objects'
+        if not self.use_test_objs:
+            clutter_obj_dir = os.path.join(
+                gibson2.assets_path, 'models', 'clutter_objects')
+            obj_dirs = sorted(os.listdir(clutter_obj_dir))
+            assert len(obj_dirs) == 20, 'clutter objects should have 20 objects'
+        else:
+            clutter_obj_dir = os.path.join(
+                gibson2.assets_path, 'models', 'clutter_objects_test')
+            obj_dirs = sorted(os.listdir(clutter_obj_dir))
+            assert len(
+                obj_dirs) == 10, 'clutter objects test should have 10 objects'
+            # duplicate these 10 objects
+            obj_dirs = obj_dirs + obj_dirs
 
         interactive_objects = []
-        for obj_dir in obj_dirs:
-            obj_dir = os.path.join(clutter_obj_dir, obj_dir)
-            obj_path = os.path.join(obj_dir, 'meshes', 'model_new.urdf')
+        for obj_inst_name in obj_dirs:
+            obj_dir = os.path.join(clutter_obj_dir, obj_inst_name)
+            obj_path = os.path.join(obj_dir, '{}.urdf'.format(obj_inst_name))
             obj = ArticulatedObject(obj_path)
             env.simulator.import_object(obj)
             interactive_objects.append(obj)
@@ -71,10 +79,12 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         shortest_path, geodesic_dist = self.get_shortest_path(
             env, entire_path=True)
         # Increase one interactive object for every 0.5 meter geodesic distance
+        # The larger the geodesic distance is, the more interactive objects
+        # we will spawn along the path (with some noise) to the goal.
         num_interactive_objects = int(geodesic_dist / 0.5)
 
         # If use sampled episode, re-use saved interactive objects idx
-        if self.use_sample_episode:
+        if self.offline_eval:
             episode_index = self.episode_config.episode_index
             self.interactive_objects_idx = np.array(
                 self.episode_config.episodes[episode_index]['interactive_objects_idx'])
@@ -82,6 +92,10 @@ class InteractiveNavRandomTask(PointNavRandomTask):
             self.interactive_objects_idx = np.random.choice(
                 np.arange(len(self.all_interactive_objects)),
                 num_interactive_objects, replace=False)
+
+        # Populate self.interactive_objects with objects that are "active"
+        # in this episode. Other "inactive" objects have already been set to
+        # position [100.0 + i, 100.0, 100.0]
         self.interactive_objects = [
             self.all_interactive_objects[idx]
             for idx in self.interactive_objects_idx]
@@ -90,7 +104,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
 
         max_trials = 100
         for i, obj in enumerate(self.interactive_objects):
-            if self.use_sample_episode:
+            if self.offline_eval:
                 initial_pos = np.array(
                     self.episode_config.episodes[episode_index]['interactive_objects'][i]['initial_pos'])
                 initial_orn = np.array(
@@ -132,10 +146,14 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         """
         super(InteractiveNavRandomTask, self).reset_scene(env)
+        # Set all interactive objects to be very far away first.
+        # The "active" ones will be brought back to the scene later
+        # (in reset_interactive_objects)
         for i, obj in enumerate(self.all_interactive_objects):
             obj.set_position([100.0 + i, 100.0, 100.0])
 
     def get_obj_pos(self, env):
+        # Get object position for all scene objs and active interactive objs
         obj_pos = []
         for _, obj in env.scene.objects_by_name.items():
             if obj.category in ['walls', 'floors', 'ceilings']:
@@ -153,6 +171,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         return obj_pos
 
     def get_obj_mass(self, env):
+        # Get object mass for all scene objs and active interactive objs
         obj_mass = []
         for _, obj in env.scene.objects_by_name.items():
             if obj.category in ['walls', 'floors', 'ceilings']:
@@ -171,6 +190,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         return obj_mass
 
     def get_obj_body_ids(self, env):
+        # Get object body id for all scene objs and active interactive objs
         body_ids = []
         for _, obj in env.scene.objects_by_name.items():
             if obj.category in ['walls', 'floors', 'ceilings']:
@@ -188,7 +208,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         :param env: environment instance
         """
         super(InteractiveNavRandomTask, self).reset_agent(env)
-        if self.use_sample_episode:
+        if self.offline_eval:
             self.episode_config.reset_episode()
             episode_index = self.episode_config.episode_index
             initial_pos = np.array(
@@ -210,10 +230,12 @@ class InteractiveNavRandomTask(PointNavRandomTask):
     def step(self, env):
         super(InteractiveNavRandomTask, self).step(env)
 
+        # Accumulate the external force that the robot exerts to the env
         ext_force = [col[9] * np.array(col[7]) for col in env.collision_links]
         net_force = np.sum(ext_force, axis=0)  # sum of all forces
         self.ext_force_norm += np.linalg.norm(net_force)
 
+        # Accumulate the object displacement (scaled by mass) by the robot
         collision_objects = set([col[2] for col in env.collision_links])
         new_obj_pos = self.get_obj_pos(env)
         obj_disp_mass = 0.0

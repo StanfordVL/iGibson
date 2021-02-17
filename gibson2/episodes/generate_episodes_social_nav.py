@@ -39,7 +39,13 @@ if __name__ == '__main__':
     raw_num_episodes = num_episodes * 3
 
     dataset_split = {
-        'minival': ['Rs_int']
+        'minival': ['Rs_int'],
+        'train': ['Merom_0_int', 'Benevolence_0_int', 'Pomaria_0_int',
+                  'Wainscott_1_int', 'Rs_int', 'Ihlen_0_int',
+                  'Beechwood_1_int', 'Ihlen_1_int'],
+        'dev':  ['Benevolence_1_int', 'Wainscott_0_int'],
+        'test': ['Pomaria_2_int', 'Benevolence_2_int', 'Beechwood_0_int',
+                 'Pomaria_1_int', 'Merom_1_int']
     }
 
     for split in dataset_split:
@@ -118,7 +124,7 @@ if __name__ == '__main__':
                     desired_vel = next_goal - current_pos[0:2]
                     desired_vel = desired_vel / \
                         np.linalg.norm(desired_vel) * \
-                        env.task.pedestrian_velocity
+                        env.task.orca_max_speed
                     env.task.orca_sim.setAgentPrefVelocity(
                         env.task.robot_orca_ped, tuple(desired_vel))
                     env.task.step(env)

@@ -1,8 +1,9 @@
 # scene
 scene: igibson
 scene_id: Rs_int
-load_scene_episode_config: False
+load_scene_episode_config: false
 scene_episode_config_name: null
+use_test_objs: false
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
