@@ -7,7 +7,7 @@ def main():
     s = Simulator(mode='gui', image_width=512,
                   image_height=512, device_idx=0)
     scene = InteractiveIndoorScene(
-        'Rs_int', texture_randomization=False, object_randomization=False)
+        'Beechwood_0_int', texture_randomization=False, object_randomization=False)
     s.import_ig_scene(scene)
 
     np.random.seed(0)
@@ -15,7 +15,8 @@ def main():
         pt = scene.get_random_point_by_room_type('living_room')[1]
         print('random point in living_room', pt)
 
-    for _ in range(1000):
+    # for _ in range(1000):
+    while True:
         s.step()
     s.disconnect()
 
