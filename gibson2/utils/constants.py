@@ -32,8 +32,31 @@ class PyBulletSleepState(IntEnum):
 
 
 # iGATUS-related
+SAMPLEABLE_SCENE_OBJECTS = [
+    'basket', 
+    'coffee_machine',
+    'cushion', 
+    'guitar', 
+    'laptop', 
+    'loudspeaker',
+    'monitor',
+    'plant',
+    'trash_can',
+    'wall_clock',
+    'table_lamp'    
+]
+
+IG_NAME_TO_HUMAN_NAME = {
+    'standing_tv': 'tv',
+    'wall_mounted_tv': 'tv',
+    'cooktop': 'stove',
+    'top_cabinet': 'cabinet',
+    'bottom_cabinet': 'cabinet',
+    'bottom_cabinet_no_top': 'cabinet'
+}
+
 with open(os.path.join(gibson2.ig_dataset_path, 'metadata/categories.txt')) as f:
-    NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines()]
+    NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines() if line.strip() not in SAMPLEABLE_SCENE_OBJECTS]
 
 UNDER_OBJECTS = ['table', 'console_table', 'coffee_table', 'chair', 'bench']
 

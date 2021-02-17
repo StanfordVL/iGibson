@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import pdb
 
 import tasknet as tn
 from tasknet.task_base import TaskNetTask
@@ -14,6 +15,22 @@ from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, 
 import random
 import pybullet as p
 import cv2
+
+
+import sys
+def info(type, value, tb):
+    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
+        # we are in interactive mode or we don't have a tty-like
+        # device, so we call the default hook
+        sys.__excepthook__(type, value, tb)
+    else:
+        import traceback, pdb
+        # we are NOT in interactive mode, print the exception...
+        traceback.print_exception(type, value, tb)
+        print
+        # ...then start the debugger in post-mortem mode.
+        pdb.post_mortem(tb)
+sys.excepthook = info
 
 
 class iGTNTask(TaskNetTask):
@@ -58,6 +75,7 @@ class iGTNTask(TaskNetTask):
                 continue
             if obj_cat not in self.scene.objects_by_category or \
                     len(self.objects[obj_cat]) > len(self.scene.objects_by_category[obj_cat]):
+                pdb.set_trace()
                 return False
 
         room_type_to_obj_inst = {}
@@ -67,6 +85,7 @@ class iGTNTask(TaskNetTask):
 
                 # Room type missing in the scene
                 if room_type not in self.scene.room_sem_name_to_ins_name:
+                    pdb.set_trace()
                     return False
 
                 if room_type not in room_type_to_obj_inst:
@@ -93,6 +112,7 @@ class iGTNTask(TaskNetTask):
                         if obj.category == obj_cat
                         and obj.name not in tmp_selected_obj_names]
                     if len(room_objs_of_cat) == 0:
+                        pdb.set_trace()
                         room_inst_success = False
                         break
 
@@ -111,6 +131,7 @@ class iGTNTask(TaskNetTask):
             # Fail to assign obj instances to any room instance;
             # Hence, initial condition cannot be fulfilled
             if not room_type_success:
+                pdb.set_trace()
                 return False
 
         avg_category_spec = get_ig_avg_category_specs()
@@ -165,7 +186,11 @@ class iGTNTask(TaskNetTask):
         for failed_condition in failed_conditions:
             success = failed_condition.sample(binary_state=True)
             if not success:
+                # print('FAILURE:', failed_condition.body, failed_condition.state_name)
+                print('FAILURE:',  failed_condition.body)
                 return False
+            else:
+                print('SUCCESS OF CONDITION SAMPLE!')
         return True
 
     #### CHECKERS ####
