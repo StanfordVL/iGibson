@@ -10,7 +10,7 @@ logging.getLogger().setLevel(logging.WARNING)
 class Challenge:
     def __init__(self):
         self.config_file = os.environ['CONFIG_FILE']
-        self.phase = os.environ['PHASE']
+        self.split = os.environ['SPLIT']
         self.episode_dir = os.environ['EPISODE_DIR']
         self.eval_episodes_per_scene = os.environ.get(
             'EVAL_EPISODES_PER_SCENE', 100)
@@ -29,16 +29,16 @@ class Challenge:
             assert False, 'unknown task: {}'.format(task)
 
         num_episodes_per_scene = self.eval_episodes_per_scene
-        phase_dir = os.path.join(self.episode_dir, self.phase)
-        assert os.path.isdir(phase_dir)
-        num_scenes = len(os.listdir(phase_dir))
+        split_dir = os.path.join(self.episode_dir, self.split)
+        assert os.path.isdir(split_dir)
+        num_scenes = len(os.listdir(split_dir))
         assert num_scenes > 0
         total_num_episodes = num_scenes * num_episodes_per_scene
 
         idx = 0
-        for json_file in os.listdir(phase_dir):
+        for json_file in os.listdir(split_dir):
             scene_id = json_file.split('.')[0]
-            json_file = os.path.join(phase_dir, json_file)
+            json_file = os.path.join(split_dir, json_file)
 
             env_config['scene_id'] = scene_id
             env_config['load_scene_episode_config'] = True
