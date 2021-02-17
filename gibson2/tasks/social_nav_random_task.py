@@ -157,7 +157,7 @@ class SocialNavRandomTask(PointNavRandomTask):
         pedestrians = []
         orca_pedestrians = []
         for i in range(self.num_pedestrians):
-            ped = Pedestrian()
+            ped = Pedestrian(style=(i % 3))
             env.simulator.import_object(ped)
             pedestrians.append(ped)
             orca_ped = self.orca_sim.addAgent((0, 0))
