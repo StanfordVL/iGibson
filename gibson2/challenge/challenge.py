@@ -13,7 +13,7 @@ class Challenge:
         self.phase = os.environ['PHASE']
         self.episode_dir = os.environ['EPISODE_DIR']
         self.eval_episodes_per_scene = os.environ.get(
-            'EVAL_EPISODES_PER_SCENE', 3)
+            'EVAL_EPISODES_PER_SCENE', 100)
 
     def submit(self, agent):
         env_config = parse_config(self.config_file)

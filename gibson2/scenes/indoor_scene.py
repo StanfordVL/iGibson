@@ -118,34 +118,29 @@ class IndoorScene(Scene):
         :param trav_map: traversability map
         """
         graph_file = os.path.join(maps_path, 'floor_trav_{}.p'.format(floor))
-        if os.path.isfile(graph_file):
-            logging.info("Loading traversable graph")
-            with open(graph_file, 'rb') as pfile:
-                g = pickle.load(pfile)
-        else:
-            logging.info("Building traversable graph")
-            g = nx.Graph()
-            for i in range(self.trav_map_size):
-                for j in range(self.trav_map_size):
-                    if trav_map[i, j] == 0:
-                        continue
-                    g.add_node((i, j))
-                    # 8-connected graph
-                    neighbors = [
-                        (i - 1, j - 1), (i, j - 1),
-                        (i + 1, j - 1), (i - 1, j)]
-                    for n in neighbors:
-                        if 0 <= n[0] < self.trav_map_size and \
-                            0 <= n[1] < self.trav_map_size and \
-                                trav_map[n[0], n[1]] > 0:
-                            g.add_edge(
-                                n, (i, j), weight=l2_distance(n, (i, j)))
+        logging.info("Building traversable graph")
+        g = nx.Graph()
+        for i in range(self.trav_map_size):
+            for j in range(self.trav_map_size):
+                if trav_map[i, j] == 0:
+                    continue
+                g.add_node((i, j))
+                # 8-connected graph
+                neighbors = [
+                    (i - 1, j - 1), (i, j - 1),
+                    (i + 1, j - 1), (i - 1, j)]
+                for n in neighbors:
+                    if 0 <= n[0] < self.trav_map_size and \
+                        0 <= n[1] < self.trav_map_size and \
+                            trav_map[n[0], n[1]] > 0:
+                        g.add_edge(
+                            n, (i, j), weight=l2_distance(n, (i, j)))
 
-            # only take the largest connected component
-            largest_cc = max(nx.connected_components(g), key=len)
-            g = g.subgraph(largest_cc).copy()
-            with open(graph_file, 'wb') as pfile:
-                pickle.dump(g, pfile)
+        # only take the largest connected component
+        largest_cc = max(nx.connected_components(g), key=len)
+        g = g.subgraph(largest_cc).copy()
+        with open(graph_file, 'wb') as pfile:
+            pickle.dump(g, pfile)
 
         self.floor_graph.append(g)
 

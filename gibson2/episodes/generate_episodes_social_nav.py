@@ -116,6 +116,11 @@ if __name__ == '__main__':
                     env.task.initial_pos[:2],
                     env.task.target_pos[:2],
                     entire_path=True)
+
+                # Handle round off error during map_to_world/world_to_map conversion
+                if np.linalg.norm(shortest_path[-1] - env.task.target_pos[:2]) > 0.01:
+                    shortest_path = np.vstack(
+                        [shortest_path, env.task.target_pos[:2]])
                 waypoints = env.task.shortest_path_to_waypoints(shortest_path)
 
                 for step in range(episode_length):
