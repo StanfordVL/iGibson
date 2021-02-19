@@ -26,7 +26,7 @@ class VrAgent(object):
     use of this class is recommended for most VR applications, especially if you
     just want to get a VR scene up and running quickly.
     """
-    def __init__(self, sim, agent_num=1, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True, use_gripper=False, normal_color=True):
+    def __init__(self, sim, agent_num=1, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True, use_gripper=False, normal_color=True, test_shape=None):
         """
         Initializes VR body:
         sim - iGibson simulator object
@@ -49,16 +49,18 @@ class VrAgent(object):
         self.use_gaze_marker = use_gaze_marker
         self.use_gripper = use_gripper
         self.normal_color = normal_color
+        # TODO: Remove test shape!
+        self.test_shape = test_shape
 
         # Dictionary of vr object names to objects
         self.vr_dict = dict()
 
         if 'left' in self.hands:
-            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', use_constraints=self.use_constraints, normal_color=self.normal_color) if not use_gripper 
+            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', use_constraints=self.use_constraints, normal_color=self.normal_color, test_shape=self.test_shape) if not use_gripper 
                                         else VrGripper(self.sim, hand='left', use_constraints=self.use_constraints))
             self.vr_dict['left_hand'].hand_setup(self.z_coord)
         if 'right' in self.hands:
-            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', use_constraints=self.use_constraints, normal_color=self.normal_color) if not use_gripper 
+            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', use_constraints=self.use_constraints, normal_color=self.normal_color, test_shape=self.test_shape) if not use_gripper 
                                         else VrGripper(self.sim, hand='right', use_constraints=self.use_constraints))
             self.vr_dict['right_hand'].hand_setup(self.z_coord)
         if self.use_body:
@@ -373,11 +375,19 @@ class VrHand(VrHandBase):
     Joint index 9, name b'Iproximal__palm', type 0
     Joint index 10, name b'Imiddle__Iproximal', type 0
     """
-    def __init__(self, s, hand='right', use_constraints=True, normal_color=True):
+    # TODO: Remove test parameter and suffix
+    def __init__(self, s, hand='right', use_constraints=True, normal_color=True, test_shape=None):
         self.normal_color = normal_color
         hand_path = 'normal_color' if self.normal_color else 'alternative_color'
         self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', hand_path)
-        super(VrHand, self).__init__(s, os.path.join(self.vr_hand_folder, 'vr_hand_{}.urdf'.format(hand)),
+        if test_shape == 'cylinder':
+            suffix = 'vr_hand_cyl_test'
+        elif test_shape == 'box':
+            suffix = 'vr_hand_box_test'
+        else:
+            suffix = 'vr_hand'.format(hand)
+        final_suffix = '{}_{}.urdf'.format(suffix, hand)
+        super(VrHand, self).__init__(s, os.path.join(self.vr_hand_folder, final_suffix),
                                     hand=hand, use_constraints=use_constraints, base_rot=p.getQuaternionFromEuler([0, 160, -80 if hand == 'right' else 80]))
 
         # Lists of joint indices for hand part
