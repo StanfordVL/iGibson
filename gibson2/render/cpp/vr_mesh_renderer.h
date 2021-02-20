@@ -13,10 +13,12 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <map>
 #include <openvr.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
+#include <queue>
 
 namespace py = pybind11;
 
@@ -93,6 +95,11 @@ public:
 
 	EyeTrackingData eyeTrackingData;
 
+	// Stores mapping from overlay names to handles
+	std::map<std::string, vr::VROverlayHandle_t> overlayNamesToHandles;
+
+	// Main VR methods
+
 	VRRendererContext(int w, int h, int glVersionMajor, int glVersionMinor, bool render_window = false, bool fullscreen = false) : GLFWRendererContext(w, h, glVersionMajor, glVersionMinor, render_window, fullscreen), m_pHMD(NULL), nearClip(0.1f), farClip(30.0f) {};
 
 	py::list getButtonDataForController(char* controllerType);
@@ -124,6 +131,18 @@ public:
 	void triggerHapticPulseForDevice(char* device, unsigned short microSecondDuration);
 
 	void updateVRData();
+
+	// VR Overlay methods
+
+	void createOverlay(char* name, float width, float pos_x, float pos_y, float pos_z, char* fpath);
+
+	void cropOverlay(char* name, float start_u, float start_v, float end_u, float end_v);
+
+	void hideOverlay(char* name);
+
+	void showOverlay(char* name);
+
+	void updateOverlayTexture(char* name, GLuint texID);
 	
 private:
 	glm::mat4 convertSteamVRMatrixToGlmMat4(const vr::HmdMatrix34_t& matPose);

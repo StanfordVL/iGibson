@@ -441,6 +441,62 @@ void VRRendererContext::updateVRData() {
 	}
 }
 
+// VR overlay methods
+void VRRendererContext::createOverlay(char* name, float width, float pos_x, float pos_y, float pos_z, char* fpath) {
+	vr::VROverlayHandle_t handle;
+	vr::VROverlay()->CreateOverlay(name, name, &handle);
+	if (strcmp(fpath, "") != 0) {
+		vr::VROverlay()->SetOverlayFromFile(handle, fpath);
+	}
+	vr::VROverlay()->SetOverlayWidthInMeters(handle, width);
+	
+	vr::HmdMatrix34_t transform = {
+		1.0f, 0.0f, 0.0f, pos_x,
+		0.0f, 1.0f, 0.0f, pos_y,
+		0.0f, 0.0f, 1.0f, pos_z
+	};
+	std::string ovName = std::string(name);
+	this->overlayNamesToHandles[ovName] = handle;
+
+	vr::VROverlayError overlayError = vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(handle, vr::k_unTrackedDeviceIndex_Hmd, &transform);
+	if (overlayError != vr::VROverlayError_None) {
+		std::cerr << "VR OVERLAY ERROR: unable to set overlay relative to HMD for name " << ovName << std::endl;
+	}
+}
+
+void VRRendererContext::cropOverlay(char* name, float start_u, float start_v, float end_u, float end_v) {
+	std::string ovName(name);
+	vr::VROverlayHandle_t handle = this->overlayNamesToHandles[ovName];
+
+	// Create texture bounds and crop overlay
+	vr::VRTextureBounds_t texBounds;
+	texBounds.uMin = start_u;
+	texBounds.vMin = start_v;
+	texBounds.uMax = end_u;
+	texBounds.vMax = end_v;
+
+	vr::VROverlayError overlayError = vr::VROverlay()->SetOverlayTextureBounds(handle, &texBounds);
+	if (overlayError != vr::VROverlayError_None) {
+		std::cerr << "VR OVERLAY ERROR: unable to crop overlay with name " << ovName << std::endl;
+	}
+}
+
+void VRRendererContext::hideOverlay(char* name) {
+	vr::VROverlay()->HideOverlay(this->overlayNamesToHandles[std::string(name)]);
+}
+
+void VRRendererContext::showOverlay(char* name) {
+	vr::VROverlay()->ShowOverlay(this->overlayNamesToHandles[std::string(name)]);
+}
+
+void VRRendererContext::updateOverlayTexture(char* name, GLuint texID) {
+	vr::Texture_t texture = { (void*)(uintptr_t)texID, vr::TextureType_OpenGL, vr::ColorSpace_Auto };
+	vr::VROverlayError overlayError = vr::VROverlay()->SetOverlayTexture(this->overlayNamesToHandles[std::string(name)], &texture);
+	if (overlayError != vr::VROverlayError_None) {
+		std::cerr << "VR OVERLAY ERROR: unable to set texture for overlay with name " << std::string(name) << std::endl;
+	}
+}
+
 // Private methods
 
 // Converts a SteamVR Matrix to a glm mat4
@@ -802,6 +858,13 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("setVROffset", &VRRendererContext::setVROffset);
 	pymodule.def("triggerHapticPulseForDevice", &VRRendererContext::triggerHapticPulseForDevice);
 	pymodule.def("updateVRData", &VRRendererContext::updateVRData);
+
+	// VR overlay methods
+	pymodule.def("createOverlay", &VRRendererContext::createOverlay);
+	pymodule.def("cropOverlay", &VRRendererContext::cropOverlay);
+	pymodule.def("hideOverlay", &VRRendererContext::hideOverlay);
+	pymodule.def("showOverlay", &VRRendererContext::showOverlay);
+	pymodule.def("updateOverlayTexture", &VRRendererContext::updateOverlayTexture);
 
 #ifdef VERSION_INFO
 	m.attr("__version__") = VERSION_INFO;
