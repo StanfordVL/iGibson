@@ -887,6 +887,25 @@ class Simulator:
             raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
       
         self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
+    
+    # Creates a VR overlay with the specified width, position and filename (if an image is to be loaded)
+    # Here x is left, y is up and negative z is away from the user
+    def create_overlay(self, overlay_name, width=1, pos=[0, 0, -1], fpath=''):
+        self.renderer.vrsys.createOverlay(overlay_name, width, pos[0], pos[1], pos[2], fpath)
+
+    # Hides a VR overlay
+    def hide_overlay(self, overlay_name):
+        self.renderer.vrsys.hideOverlay(overlay_name)
+
+    # Show a VR overlay
+    def show_overlay(self, overlay_name):
+        self.renderer.vrsys.showOverlay(overlay_name)
+
+    # TODO: Add destroy VR overlay!
+
+    # Updatres the texture on a VR overlay
+    def updateOverlayTexture(self, overlay_name, tex_id):
+        self.renderer.vrsys.updateOverlayTexture(overlay_name, tex_id)
 
     # Note: this function must be called after optimize_vertex_and_texture is called
     # Note: this function currently only works with the optimized renderer - please use the renderer hidden list
