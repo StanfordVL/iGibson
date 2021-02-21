@@ -390,12 +390,15 @@ class Simulator:
 
         for new_object_pb_id in new_object_pb_ids:
             if isinstance(obj, ArticulatedObject) or isinstance(obj, URDFObject):
+                visual_mesh_to_material = None
+                if hasattr(obj, 'visual_mesh_to_material'):
+                    visual_mesh_to_material = obj.visual_mesh_to_material
                 self.load_articulated_object_in_renderer(
                     new_object_pb_id,
                     class_id,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
-                    visual_mesh_to_material=obj.visual_mesh_to_material,
+                    visual_mesh_to_material=visual_mesh_to_material,
                     shadow_caster=shadow_caster)
             else:
                 softbody = obj.__class__.__name__ == 'SoftObject'

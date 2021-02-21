@@ -12,5 +12,5 @@ class TextureChangeMixin(BaseObjectState):
 
     def update(self, simulator):
         super(TextureChangeMixin, self).update(simulator)
-        self.material_callback(self.get_value())
-        print("aaaaa", self.get_value())
+        if self.material_callback is not None:
+            self.material_callback(self.get_value())
