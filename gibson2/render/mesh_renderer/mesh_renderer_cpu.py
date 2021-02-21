@@ -16,6 +16,8 @@ from gibson2.render.mesh_renderer.visual_object import VisualObject
 from PIL import Image
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import time
+from gibson2.utils.utils import transform_texture
+import uuid
 Image.MAX_IMAGE_PIXELS = None
 
 
@@ -283,14 +285,18 @@ class MeshRenderer(object):
         return texture_id
 
     def synthesize_procedural_material(self, material: ProceduralMaterial):
-
-        material.texture_id = self.load_texture_file(os.path.join(material.material_folder, "DIFFUSE.png"))
+        diffuse_tex_filename = os.path.join(material.material_folder, "DIFFUSE.png")
+        material.texture_id = self.load_texture_file(diffuse_tex_filename)
         material.metallic_texture_id = self.load_texture_file(os.path.join(material.material_folder, "METALLIC.png"))
         material.roughness_texture_id = self.load_texture_file(os.path.join(material.material_folder, "ROUGHNESS.png"))
         material.normal_texture_id = self.load_texture_file(os.path.join(material.material_folder, "NORMAL.png"))
 
-        #TODO: this is placeholder
-        material.texture_ids = [material.texture_id, material.metallic_texture_id]
+        diffuse_tex_filename_transformed = os.path.join('/tmp', str(uuid.uuid4()) + '.png')
+        #0.5 mixture with brown
+        transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (139,69,19))
+        transformed_diffuse_id = self.load_texture_file(diffuse_tex_filename_transformed)
+
+        material.texture_ids = [material.texture_id, transformed_diffuse_id]
 
 
     def load_randomized_material(self, material):
