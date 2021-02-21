@@ -292,8 +292,13 @@ class MeshRenderer(object):
         material.normal_texture_id = self.load_texture_file(os.path.join(material.material_folder, "NORMAL.png"))
 
         diffuse_tex_filename_transformed = os.path.join('/tmp', str(uuid.uuid4()) + '.png')
-        #0.5 mixture with brown
-        transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (139,69,19))
+        if material.state_type == "cooked":
+            # 0.5 mixture with brown
+            transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (139,69,19))
+        elif material.state_type == "soaked":
+            # 0.5 mixture with blue
+            transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (0, 0, 200))
+
         transformed_diffuse_id = self.load_texture_file(diffuse_tex_filename_transformed)
 
         material.texture_ids = [material.texture_id, transformed_diffuse_id]

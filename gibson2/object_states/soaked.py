@@ -1,8 +1,9 @@
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
+from gibson2.object_states.texture_mixin import TextureChangeMixin
 
 
-class Soaked(AbsoluteObjectState, BooleanState):
+class Soaked(AbsoluteObjectState, BooleanState, TextureChangeMixin):
 
     def __init__(self, obj):
         super(Soaked, self).__init__(obj)
