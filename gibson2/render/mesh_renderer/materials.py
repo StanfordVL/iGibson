@@ -5,7 +5,6 @@ import json
 import random
 import math
 
-
 class Material(object):
     """
     Material class used for iG renderer
@@ -61,6 +60,57 @@ class Material(object):
 
     def __repr__(self):
         return self.__str__()
+
+class ProceduralMaterial(Material):
+    def __init__(self,
+                 state_type,
+                 material_folder="",
+                 material_type='texture',
+                 kd=[0.5, 0.5, 0.5],
+                 texture_id=None,
+                 metallic_texture_id=None,
+                 roughness_texture_id=None,
+                 normal_texture_id=None):
+        """
+        :param state_type: 'cooked' | 'burnt' | 'soaked'
+        :param material_type: color or texture
+        :param kd: color parameters
+        :param texture_id: albedo texture id
+        :param metallic_texture_id: metallic texture id
+        :param roughness_texture_id: roughness texture id
+        :param normal_texture_id: normal texture id
+        :param transform_param: x scale, y scale, rotation
+        """
+        super(ProceduralMaterial, self).__init__(
+            material_type=material_type,
+            kd=kd,
+            texture_id=texture_id,
+            metallic_texture_id=metallic_texture_id,
+            roughness_texture_id=roughness_texture_id,
+            normal_texture_id=normal_texture_id,
+        )
+        self.state_type = state_type
+        self.material_folder = material_folder
+        self.texture_ids = []
+
+    def __str__(self):
+        return (
+            "ProceduralMaterial(material_type: {}, texture_id: {}, "
+            "metallic_texture_id: {}, roughness_texture_id: {}, "
+            "normal_texture_id: {}, color: {})".format(
+                self.material_type, self.texture_id, self.metallic_texture_id,
+                self.roughness_texture_id, self.normal_texture_id, self.kd)
+        )
+
+    def register_material_callback_to_state(self, state):
+        state.material_callback = self.material_callback
+
+    def material_callback(self, state_bool):
+        if state_bool:
+            self.texture_id = self.texture_ids[1]
+        else:
+            self.texture_id = self.texture_ids[0]
+        print(self.texture_id)
 
 
 class RandomizedMaterial(Material):
