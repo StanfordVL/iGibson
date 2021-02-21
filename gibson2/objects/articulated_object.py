@@ -804,10 +804,12 @@ class URDFObject(StatefulObject):
                 self.model_path, 'shape', 'visual', old_path)
             visual_mesh_to_idx[new_path] = visual_mesh_to_idx[old_path]
             del visual_mesh_to_idx[old_path]
+        for state in ["cooked", "soaked"]:
+            if state in self.states:
+                procedural_material = ProceduralMaterial(state_type=state,
+                                                         material_folder=os.path.join(self.model_path, 'material'))
+                procedural_material.register_material_callback_to_state(self.states[state])
 
-        procedural_material = ProceduralMaterial(state_type="cooked",
-                                                 material_folder=os.path.join(self.model_path, 'material'))
-        procedural_material.register_material_callback_to_state(self.states['cooked'])
         # check each visual object belongs to which sub URDF in case of splitting
         for i, urdf_path in enumerate(self.urdf_paths):
             sub_urdf_tree = ET.parse(urdf_path)
