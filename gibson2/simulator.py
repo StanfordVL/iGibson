@@ -395,6 +395,7 @@ class Simulator:
                     class_id,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
+                    visual_mesh_to_material=obj.visual_mesh_to_material,
                     shadow_caster=shadow_caster)
             else:
                 softbody = obj.__class__.__name__ == 'SoftObject'

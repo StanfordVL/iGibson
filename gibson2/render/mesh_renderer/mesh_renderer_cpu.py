@@ -10,7 +10,7 @@ from gibson2.utils.constants import AVAILABLE_MODALITIES, ShadowPass
 import numpy as np
 import os
 import sys
-from gibson2.render.mesh_renderer.materials import Material, RandomizedMaterial
+from gibson2.render.mesh_renderer.materials import Material, RandomizedMaterial, ProceduralMaterial
 from gibson2.render.mesh_renderer.instances import Instance, InstanceGroup, Robot
 from gibson2.render.mesh_renderer.visual_object import VisualObject
 from PIL import Image
@@ -282,6 +282,17 @@ class MeshRenderer(object):
         self.texture_files[tex_filename] = texture_id
         return texture_id
 
+    def synthesize_procedural_material(self, material: ProceduralMaterial):
+
+        material.texture_id = self.load_texture_file(os.path.join(material.material_folder, "DIFFUSE.png"))
+        material.metallic_texture_id = self.load_texture_file(os.path.join(material.material_folder, "METALLIC.png"))
+        material.roughness_texture_id = self.load_texture_file(os.path.join(material.material_folder, "ROUGHNESS.png"))
+        material.normal_texture_id = self.load_texture_file(os.path.join(material.material_folder, "NORMAL.png"))
+
+        #TODO: this is placeholder
+        material.texture_ids = [material.texture_id, material.metallic_texture_id]
+
+
     def load_randomized_material(self, material):
         """
         Load all the texture files in the RandomizedMaterial.
@@ -369,7 +380,10 @@ class MeshRenderer(object):
 
         for i, item in enumerate(materials):
             if overwrite_material is not None:
-                self.load_randomized_material(overwrite_material)
+                if isinstance(overwrite_material, RandomizedMaterial):
+                    self.load_randomized_material(overwrite_material)
+                elif isinstance(overwrite_material, ProceduralMaterial):
+                    self.synthesize_procedural_material(overwrite_material)
                 material = overwrite_material
             elif item.diffuse_texname != '' and load_texture:
                 obj_dir = os.path.dirname(obj_path)

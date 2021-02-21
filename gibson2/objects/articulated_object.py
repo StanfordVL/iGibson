@@ -17,7 +17,7 @@ import random
 from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_aabb_urdf, get_base_link_name, \
     add_fixed_link
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
-from gibson2.render.mesh_renderer.materials import RandomizedMaterial
+from gibson2.render.mesh_renderer.materials import RandomizedMaterial, ProceduralMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
 from gibson2.object_states.factory import prepare_object_states
@@ -84,6 +84,7 @@ class URDFObject(StatefulObject):
                  joint_friction=None,
                  in_rooms=None,
                  texture_randomization=False,
+                 texture_procedural_generation=False,
                  overwrite_inertial=False,
                  scene_instance_folder=None,
                  ):
@@ -110,6 +111,7 @@ class URDFObject(StatefulObject):
         self.in_rooms = in_rooms
         self.connecting_joint = connecting_joint
         self.texture_randomization = texture_randomization
+        self.texture_procedural_generation = texture_procedural_generation
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
         self.abilities = abilities
@@ -251,6 +253,8 @@ class URDFObject(StatefulObject):
         self.remove_floating_joints(self.scene_instance_folder)
         if self.texture_randomization:
             self.prepare_texture()
+        if self.texture_procedural_generation:
+            self.generate_texture()
 
     def compute_object_pose(self):
         if self.connecting_joint is not None:
@@ -772,6 +776,50 @@ class URDFObject(StatefulObject):
         if os.path.isfile(friction_json):
             with open(friction_json) as f:
                 self.material_to_friction = json.load(f)
+
+
+    def generate_texture(self):
+        """
+        Set up mapping from visual meshes to randomizable materials
+        """
+        for _ in range(len(self.urdf_paths)):
+            self.visual_mesh_to_material.append({})
+
+        if self.category in ["walls", "floors", "ceilings"]:
+            material_groups_file = os.path.join(
+                self.model_path, 'misc', '{}_material_groups.json'.format(self.category))
+        else:
+            material_groups_file = os.path.join(
+                self.model_path, 'misc', 'material_groups.json')
+
+        assert os.path.isfile(material_groups_file), \
+            'cannot find material group: {}'.format(material_groups_file)
+        with open(material_groups_file) as f:
+            material_groups = json.load(f)
+
+        # make visual mesh file path absolute
+        visual_mesh_to_idx = material_groups[1]
+        for old_path in list(visual_mesh_to_idx.keys()):
+            new_path = os.path.join(
+                self.model_path, 'shape', 'visual', old_path)
+            visual_mesh_to_idx[new_path] = visual_mesh_to_idx[old_path]
+            del visual_mesh_to_idx[old_path]
+
+        procedural_material = ProceduralMaterial(state_type="cooked",
+                                                 material_folder=os.path.join(self.model_path, 'material'))
+        procedural_material.register_material_callback_to_state(self.states['cooked'])
+        # check each visual object belongs to which sub URDF in case of splitting
+        for i, urdf_path in enumerate(self.urdf_paths):
+            sub_urdf_tree = ET.parse(urdf_path)
+            for visual_mesh_path in visual_mesh_to_idx:
+                # check if this visual object belongs to this URDF
+                if sub_urdf_tree.find(".//mesh[@filename='{}']".format(visual_mesh_path)) is not None:
+                    self.visual_mesh_to_material[i][visual_mesh_path] = procedural_material
+
+        # TODO: why do I have to add this??
+        self.visual_mesh_to_material = self.visual_mesh_to_material[0]
+
+        self.materials = [procedural_material]
 
     def _load(self):
         """
