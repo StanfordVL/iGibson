@@ -130,14 +130,20 @@ if should_bake:
 
 
 #############################################
-# Export models
+# Detect glass
 #############################################
-
 has_glass = False
-# detect glass
 for i in range(len(bpy.data.materials)):
+    print(bpy.data.materials[i].name.lower())
     if 'glass' in bpy.data.materials[i].name.lower():
         has_glass = True
+        # sometimes the glass effect is achieved by Metallic=1.0
+        # change it to Transmission=1.0
+        if 'Principled BSDF' in bpy.data.materials[i].node_tree.nodes:
+            principled_bsdf = bpy.data.materials[i].node_tree.nodes['Principled BSDF']
+            principled_bsdf.inputs['Transmission'].default_value = 1.0
+            principled_bsdf.inputs['Metallic'].default_value = 0.0
+
 
 #############################################
 # Optional Texture Baking
@@ -154,14 +160,15 @@ if should_bake:
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.join()
 
+    resolution = 1024
     channels = {
-        'DIFFUSE': (2048, 32),
-        'ROUGHNESS': (1024, 16),
-        'METALLIC': (1024, 16),
-        'NORMAL': (1024, 16),
+        'DIFFUSE': (resolution * 2, 32),
+        'ROUGHNESS': (resolution, 16),
+        'METALLIC': (resolution, 16),
+        'NORMAL': (resolution, 16),
     }
     if has_glass:
-        channels['TRANSMISSION'] = (2048, 32)
+        channels['TRANSMISSION'] = (resolution * 2, 32)
         # add world light
         world = bpy.data.worlds['World']
         world.use_nodes = True
@@ -173,8 +180,11 @@ if should_bake:
 
     bake_model(mat_dir, channels, overwrite=True, add_uv_node=True)
 
-export_ig_object(dest_dir, save_material=not should_bake)
 
+#############################################
+# Export the model
+#############################################
+export_ig_object(dest_dir, save_material=not should_bake)
 
 # # optionally save blend file
 # if source_blend_file is not None:

@@ -27,7 +27,9 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         objA_states = self.obj.states
         objB_states = other.states
 
-        below_epsilon, above_epsilon = 0.025, 0.025
+        # This tolerance is needed because pybullet getAABB is not accurate
+        # (prone to over-estimation)
+        below_epsilon, above_epsilon = 0.05, 0.05
 
         center, extent = get_center_extent(objA_states)
         assert 'aabb' in objB_states

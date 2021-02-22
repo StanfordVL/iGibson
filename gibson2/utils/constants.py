@@ -32,28 +32,51 @@ class PyBulletSleepState(IntEnum):
 
 
 # iGATUS-related
-SAMPLEABLE_SCENE_OBJECTS = [
-    'basket', 
-    'coffee_machine',
-    'cushion', 
-    'guitar', 
-    'laptop', 
-    'loudspeaker',
-    'monitor',
-    'plant',
-    'trash_can',
+# with open(os.path.join(gibson2.ig_dataset_path, 'metadata/non_sampleable_categories.txt')) as f:
+#     NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines()]
+
+NON_SAMPLEABLE_OBJECTS = [
+    'bathtub',
+    'bed',
+    'bench',
+    'bookshelf',
+    'burner',
+    'cabinet',
+    'carpet',
+    'chair',
+    'chest',
+    'countertop',
+    'crib',
+    'dishwasher',
+    'door',
+    'dryer',
+    'floor_lamp',
+    'floors',
+    'fridge',
+    'grandfather_clock',
+    'heater',
+    'microwave',
+    'mirror',
+    'oven',
+    'piano',
+    'picture',
+    'rail_fence',
+    'range_hood',
+    'shower',
+    'sink',
+    'sofa',
+    'speaker_system',
+    'stove',
+    'table',
+    'toilet',
+    'towel_rack',
+    'treadmill',
+    'tv',
     'wall_clock',
-    'table_lamp'    
+    'washer',
+    'window',
 ]
 
-HUMAN_OBJ_TO_IG_NAME = {
-    'tv': set(['standing_tv', 'wall_mounted_tv']),
-    'stove': set(['stove', 'cooktop']),
-    'cabinet': set(['top_cabinet', 'bottom_cabinet', 'bottom_cabinet_no_top'])
-}
-
-with open(os.path.join(gibson2.ig_dataset_path, 'metadata/categories.txt')) as f:
-    NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines() if line.strip() not in SAMPLEABLE_SCENE_OBJECTS]
 
 UNDER_OBJECTS = ['table', 'console_table', 'coffee_table', 'chair', 'bench']
 

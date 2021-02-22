@@ -159,6 +159,13 @@ class URDFObject(StatefulObject):
 
         logging.info("Category " + self.category)
         self.filename = filename
+        dirname = os.path.dirname(filename)
+        urdf = os.path.basename(filename)
+        urdf_name, _ = os.path.splitext(urdf)
+        simplified_urdf = os.path.join(dirname, urdf_name + "_simplified.urdf")
+        if os.path.exists(simplified_urdf):
+            self.filename = simplified_urdf
+            filename = simplified_urdf
         logging.info("Loading the following URDF template " + filename)
         self.object_tree = ET.parse(filename)  # Parse the URDF
 
@@ -640,6 +647,16 @@ class URDFObject(StatefulObject):
                     new_scale = np.array([round_up(val, 10)
                                           for val in scale_in_lf])
                     mesh.set('scale', ' '.join(map(str, new_scale)))
+
+            for box in link.iter("box"):
+                if "size" in box.attrib:
+                    box_scale = np.array(
+                        [float(val) for val in box.attrib["size"].split(" ")])
+                    new_scale = np.multiply(box_scale, scale_in_lf)
+                    new_scale = np.array([round_up(val, 10)
+                                          for val in new_scale])
+                    box.attrib['size'] = ' '.join(map(str, new_scale))
+
             for origin in link.iter("origin"):
                 origin_xyz = np.array(
                     [float(val) for val in origin.attrib["xyz"].split(" ")])
