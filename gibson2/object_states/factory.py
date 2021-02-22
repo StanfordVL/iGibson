@@ -82,7 +82,22 @@ def get_state_names_for_ability(ability):
     return _ABILITY_TO_STATE_MAPPING[ability]
 
 
-def get_object_state_instance(state_name, obj, online=True):
+def get_object_state_instance(state_name, obj, params=None, online=True):
+    """
+    Create an BaseObjectState child class instance for a given object & state.
+
+    The parameters passed in as a dictionary through params are passed as
+    kwargs to the object state class constructor.
+
+    :param state_name: The state name from the state name dictionary.
+    :param obj: The object for which the state is being constructed.
+    :param params: Dict of {param: value} corresponding to the state's params.
+    :param online: Whether or not the instance should be generated for an online
+        object. Offline mode involves using dummy objects rather than real state
+        objects.
+    :return: The constructed state object, an instance of a child of
+        BaseObjectState.
+    """
     if state_name not in _STATE_NAME_TO_CLASS_MAPPING:
         assert False, 'unknown state name: {}'.format(state_name)
 
@@ -90,25 +105,45 @@ def get_object_state_instance(state_name, obj, online=True):
         return DummyState(obj)
 
     state_class = _STATE_NAME_TO_CLASS_MAPPING[state_name]
-    return state_class(obj)
+
+    if params is None:
+        params = {}
+
+    return state_class(obj, **params)
 
 
-def prepare_object_states(obj, abilities=[], online=True):
-    state_names = list(get_default_state_names())
+def prepare_object_states(obj, abilities=None, online=True):
+    """
+    Prepare the state dictionary for an object by generating the appropriate
+    object state instances.
 
-    for ability in abilities:
-        state_names.extend(get_state_names_for_ability(ability))
+    This uses the abilities of the object and the state dependency graph to
+    find & instantiate all relevant states.
 
-    states = dict()
-    for state_name in state_names:
-        states[state_name] = get_object_state_instance(state_name, obj)
+    :param obj: The object to generate states for.
+    :param abilities: dict in the form of {ability: {param: value}} containing
+        object abilities and parameters.
+    :param online: Whether or not the states should be generated for an online
+        object. Offline mode involves using dummy objects rather than real state
+        objects.
+    """
+    if abilities is None:
+        abilities = {}
+
+    state_names_and_params = [(state_name, {}) for state_name in get_default_state_names()]
+
+    # Map the ability params to the states immediately imported by the abilities
+    for ability, params in abilities.items():
+        state_names_and_params.extend((state_name, params) for state_name in get_state_names_for_ability(ability))
+
+    obj.states = dict()
+    for state_name, params in state_names_and_params:
+        obj.states[state_name] = get_object_state_instance(state_name, obj, params)
 
         # Add each state's dependencies, too. Note that only required dependencies are added.
-        for dependency in states[state_name].get_dependencies():
-            if dependency not in state_names:
-                state_names.append(dependency)
-
-    return states
+        for dependency in obj.states[state_name].get_dependencies():
+            if dependency not in state_names_and_params:
+                state_names_and_params.append((dependency, {}))
 
 
 def get_state_dependency_graph():
