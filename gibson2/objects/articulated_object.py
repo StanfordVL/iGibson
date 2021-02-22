@@ -1,26 +1,31 @@
 import json
 import logging
 import os
-
-import gibson2
-import numpy as np
+import random
+import time
 import xml.etree.ElementTree as ET
 
-from gibson2.objects.stateful_object import StatefulObject
+import cv2
+import gibson2
+import numpy as np
 import pybullet as p
 import trimesh
-import random
-import cv2
-import time
-import random
-
-from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_aabb_urdf, get_base_link_name, \
-    add_fixed_link
-from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
-from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
-from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
 from gibson2.object_states.factory import prepare_object_states
+from gibson2.objects.stateful_object import StatefulObject
+from gibson2.render.mesh_renderer.materials import RandomizedMaterial
+from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_base_link_name, \
+    add_fixed_link
+from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
+
+# Optionally import tasknet for object taxonomy.
+try:
+    from tasknet.object_taxonomy import ObjectTaxonomy
+
+    OBJECT_TAXONOMY = ObjectTaxonomy()
+except ImportError:
+    OBJECT_TAXONOMY = None
 
 
 class ArticulatedObject(StatefulObject):
@@ -74,7 +79,7 @@ class URDFObject(StatefulObject):
                  filename,
                  name='object_0',
                  category='object',
-                 abilities=[],
+                 abilities=None,
                  model_path=None,
                  bounding_box=None,
                  scale=None,
@@ -112,8 +117,20 @@ class URDFObject(StatefulObject):
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
+
+        # Load abilities from taxonomy if needed & possible
+        OBJECT_TAXONOMY = ObjectTaxonomy()
+        if abilities is None and OBJECT_TAXONOMY is not None:
+            taxonomy_class = (
+                OBJECT_TAXONOMY.get_class_name_from_igibson_category(
+                    self.category))
+            if taxonomy_class is not None:
+                abilities = OBJECT_TAXONOMY.get_abilities(taxonomy_class)
+            else:
+                abilities = dict()
+
         self.abilities = abilities
-        self.states = prepare_object_states(self, abilities, online=True)
+
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
             self.joint_friction = joint_friction
@@ -259,11 +276,13 @@ class URDFObject(StatefulObject):
         if self.texture_randomization:
             self.prepare_texture()
 
+        prepare_object_states(self, abilities, online=True)
+
     def compute_object_pose(self):
         if self.connecting_joint is not None:
             joint_type = self.connecting_joint.attrib['type']
             joint_xyz = np.array(
-                [float(val)for val in self.connecting_joint.find("origin").attrib["xyz"].split(" ")])
+                [float(val) for val in self.connecting_joint.find("origin").attrib["xyz"].split(" ")])
             if 'rpy' in self.connecting_joint.find("origin").attrib:
                 joint_rpy = np.array(
                     [float(val) for val in self.connecting_joint.find("origin").attrib["rpy"].split(" ")])

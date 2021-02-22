@@ -27,12 +27,12 @@ def main():
         saucepan_urdf = os.path.join(saucepan_dir, "38_2.urdf")
 
         stove = URDFObject(stove_urdf, name="stove", model_path=stove_dir)
-        stove.states = prepare_object_states(stove, ["heatSource"])
+        prepare_object_states(stove, {"heatSource": {}})
         s.import_object(stove)
         stove.set_position([0, 0, 0.76])
 
         saucepan = URDFObject(saucepan_urdf, name="saucepan", model_path=saucepan_dir, scale=np.array([0.5, 0.5, 0.5]))
-        saucepan.states = prepare_object_states(saucepan, ["cookable"])
+        prepare_object_states(saucepan, {"cookable": {}})
         s.import_object(saucepan)
         saucepan.set_position([-0.2, -0.2, 1.7])
 
