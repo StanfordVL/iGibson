@@ -32,7 +32,7 @@ igtn_task = iGTNTask('sampling_test', task_instance=0)
 igtn_task.initialize_simulator(scene_id='Rs_int', mode='gui')
 
 while True:
-    igtn_task.simulator.step(use_render_timestep_lpf=False)
+    igtn_task.simulator.step()
     success, sorted_conditions = igtn_task.check_success()
     print('TASK SUCCESS:', success)
     if not success:
