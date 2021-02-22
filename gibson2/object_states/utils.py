@@ -33,9 +33,9 @@ def sample_kinematics(predicate, objA, objB, binary_state):
         orientation = [0, 0, 0, 1]
 
     objA.set_position_orientation([100, 100, 100], orientation)
-    objBorientation = objB.get_orientation()
-    orientation = quat_from_matrix(
-        matrix_from_quat(objBorientation) @ matrix_from_quat(orientation))
+    # objBorientation = objB.get_orientation()
+    # orientation = quat_from_matrix(
+    #     matrix_from_quat(objBorientation) @ matrix_from_quat(orientation))
     state_id = p.saveState()
     for i in range(max_trials):
         random_idx = np.random.randint(
@@ -46,7 +46,7 @@ def sample_kinematics(predicate, objA, objB, binary_state):
             len(objB.supporting_surfaces[predicate][(body_id, link_id)]))
         height, height_map = objB.supporting_surfaces[predicate][(
             body_id, link_id)][random_height_idx]
-        obj_half_size = np.max(objA.bounding_box[0:2]) / 2 * 100
+        obj_half_size = np.max(objA.bounding_box) / 2 * 100
         obj_half_size_scaled = np.array(
             [obj_half_size / objB.scale[1], obj_half_size / objB.scale[0]])
         obj_half_size_scaled = np.ceil(obj_half_size_scaled).astype(np.int)
