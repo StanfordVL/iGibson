@@ -2,19 +2,19 @@ import numpy as np
 import os
 import pdb
 
-import tasknet as tn
 from tasknet.task_base import TaskNetTask
 import gibson2
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.objects.articulated_object import URDFObject, ArticulatedObject
+from gibson2.objects.articulated_object import URDFObject
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, HUMAN_OBJ_TO_IG_NAME
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
-import random
 import pybullet as p
 import cv2
+from tasknet.condition_evaluation import Negation
+import logging
+import networkx as nx
 
 
 import sys
@@ -70,124 +70,131 @@ class iGTNTask(TaskNetTask):
                             scene_id=scene_id)
 
     def check_scene(self):
-#         for obj_cat in self.objects:
-# =            if obj_cat not in NON_SAMPLEABLE_OBJECTS:
-#                 continue
-#             if obj_cat not in self.scene.objects_by_category or \
-#                     len(self.objects[obj_cat]) > len(self.scene.objects_by_category[obj_cat]):
-#                 pdb.set_trace()
-#                 return False
-        for obj_cat in self.objects:
-            obj_cat_ig_names = HUMAN_OBJ_TO_IG_NAME[obj_cat] if obj_cat in HUMAN_OBJ_TO_IG_NAME else set([obj_cat])
-            if not obj_cat_ig_names & set(NON_SAMPLEABLE_OBJECTS):
-                continue
-            if not obj_cat_ig_names & set(self.scene.objects_by_category.keys()) or \
-                    len(self.objects[obj_cat]) > sum(len(self.scene.objects_by_category[obj_cat_ig_name]) for obj_cat_ig_name in obj_cat_ig_names):
-                pdb.set_trace()
-                return False
-
         room_type_to_obj_inst = {}
+        self.non_sampleable_object_inst = set()
         for cond in self.parsed_initial_conditions:
             if cond[0] == 'inroom':
                 obj_inst, room_type = cond[1], cond[2]
-
+                obj_cat = self.obj_inst_to_obj_cat[obj_inst]
+                assert obj_cat in NON_SAMPLEABLE_OBJECTS, \
+                    'Only non-sampleable objects can have room assignment: [{}].'.format(
+                        obj_cat)
                 # Room type missing in the scene
                 if room_type not in self.scene.room_sem_name_to_ins_name:
                     pdb.set_trace()
+                    logging.warning(
+                        'Room type [{}] missing in scene [{}].'.format(
+                            room_type, self.scene.scene_id))
                     return False
 
                 if room_type not in room_type_to_obj_inst:
                     room_type_to_obj_inst[room_type] = []
 
                 room_type_to_obj_inst[room_type].append(obj_inst)
+                assert obj_inst not in self.non_sampleable_object_inst, \
+                    'Object [{}] has more than one room assignment'.format(
+                        obj_inst)
+                self.non_sampleable_object_inst.add(obj_inst)
 
-        selected_obj_names = set()
+        for obj_cat in self.objects:
+            if obj_cat not in NON_SAMPLEABLE_OBJECTS:
+                continue
+            for obj_inst in self.objects[obj_cat]:
+                assert obj_inst in self.non_sampleable_object_inst, \
+                    'All non-sampleable objects should have room assignment: [{}].'.format(
+                        obj_inst)
+
+        room_type_to_scene_objs = {}
         for room_type in room_type_to_obj_inst:
-            room_type_success = False
-            # Loop through all instances of the room, e.g. bedroom_0, bedroom_1
-            for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
-                tmp_scope = {}
-                tmp_selected_obj_names = set()
-                room_inst_success = True
-                room_objs = self.scene.objects_by_room[room_inst]
-                # Try to assign obj instances to this room instance
-                for obj_inst in room_type_to_obj_inst[room_type]:
-                    obj_cat = self.obj_inst_to_obj_cat[obj_inst]
-                    pdb.set_trace()
-                    # Assume inroom relationship can only be defined w.r.t non-sampleable object
-                    obj_cat_ig_names = HUMAN_OBJ_TO_IG_NAME[obj_cat] if obj_cat in HUMAN_OBJ_TO_IG_NAME else set([obj_cat])
-                    assert len(obj_cat_ig_names & set(NON_SAMPLEABLE_OBJECTS)) > 0
+            room_type_to_scene_objs[room_type] = {}
+            for obj_inst in room_type_to_obj_inst[room_type]:
+                room_type_to_scene_objs[room_type][obj_inst] = {}
+                lemma = self.obj_inst_to_obj_cat[obj_inst]
+                categories = \
+                    self.object_taxonomy.get_igibson_categories_from_lemma(
+                        lemma)
+                for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
+                    room_objs = self.scene.objects_by_room[room_inst]
+                    scene_objs = [obj for obj in room_objs
+                                  if obj.category in categories]
+                    if len(scene_objs) != 0:
+                        room_type_to_scene_objs[room_type][obj_inst][room_inst] = scene_objs
 
-                    room_objs_of_cat = [
-                        obj for obj in room_objs
-                        # if obj.category == obj_cat
-                        if obj.category in obj_cat_ig_names
-                        and obj.name not in tmp_selected_obj_names]
-                    if len(room_objs_of_cat) == 0:
-                        pdb.set_trace()
-                        room_inst_success = False
-                        break
+        # Store options for non-sampleable objects in self.non_sampleable_object_scope
+        # {
+        #     "table1": {
+        #         "living_room_0": [URDFObject, URDFObject, URDFObject],
+        #         "living_room_1": [URDFObject]
+        #     },
+        #     "table2": {
+        #         "living_room_0": [URDFObject, URDFObject],
+        #         "living_room_1": [URDFObject, URDFObject]
+        #     },
+        #     "chair1": {
+        #         "living_room_0": [URDFObject],
+        #         "living_room_1": [URDFObject]
+        #     },
+        # }
+        for room_type in room_type_to_scene_objs:
+            # For each room_type, filter in room_inst that has non-empty
+            # options for all obj_inst in this room_type
+            room_inst_satisfied = set.intersection(
+                *[set(room_type_to_scene_objs[room_type][obj_inst].keys())
+                  for obj_inst in room_type_to_scene_objs[room_type]]
+            )
+            for obj_inst in room_type_to_scene_objs[room_type]:
+                room_type_to_scene_objs[room_type][obj_inst] = \
+                    {key: val for key, val
+                     in room_type_to_scene_objs[room_type][obj_inst].items()
+                     if key in room_inst_satisfied}
+                if len(room_type_to_scene_objs[room_type][obj_inst]) == 0:
+                    logging.warning(
+                        'Room type [{}] of scene [{}] does not contain all the objects needed.'.format(
+                            room_type, self.scene.scene_id))
+                    return False
 
-                    selected_obj = np.random.choice(room_objs_of_cat)
-                    tmp_scope[obj_inst] = selected_obj
-                    tmp_selected_obj_names.add(selected_obj.name)
+        self.non_sampleable_object_scope = room_type_to_scene_objs
 
-                # If successful, permanently assign object scope
-                if room_inst_success:
-                    pdb.set_trace()
-                    for obj_inst in tmp_scope:
-                        self.object_scope[obj_inst] = tmp_scope[obj_inst]
-                        selected_obj_names.add(tmp_scope[obj_inst].name)
-                    room_type_success = True
-                    break
-
-            # Fail to assign obj instances to any room instance;
-            # Hence, initial condition cannot be fulfilled
-            if not room_type_success:
-                pdb.set_trace()
-                return False
-
+        # Only populate self.object_scope for sampleable objects
         avg_category_spec = get_ig_avg_category_specs()
         for obj_cat in self.objects:
-            obj_cat_ig_names = HUMAN_OBJ_TO_IG_NAME[obj_cat] if obj_cat in HUMAN_OBJ_TO_IG_NAME else set([obj_cat])
-            if len(obj_cat_ig_names & set(NON_SAMPLEABLE_OBJECTS)) > 0:
-            # if obj_cat in NON_SAMPLEABLE_OBJECTS:
-                # Remaining non-sampleable objects that have NOT been sampled
-                # in the previous room assignment phase
-                obj_inst_remain = [
-                    obj_inst for obj_inst in self.objects[obj_cat]
-                    if self.object_scope[obj_inst] is None]
-
-                obj_remain = [
-                    obj for obj in self.scene.objects_by_category[obj_cat]
-                    if obj.name not in selected_obj_names
-                ]
-
-                simulator_objs = np.random.choice(
-                    obj_remain, len(obj_inst_remain), replace=False)
-                for obj_inst, simulator_obj in \
-                        zip(obj_inst_remain, simulator_objs):
+            if obj_cat in NON_SAMPLEABLE_OBJECTS:
+                continue
+            categories = \
+                self.object_taxonomy.get_igibson_categories_from_lemma(
+                    obj_cat)
+            existing_scene_objs = []
+            for category in categories:
+                existing_scene_objs += self.scene.objects_by_category.get(
+                    category, [])
+            for obj_inst in self.objects[obj_cat]:
+                # This obj category already exists in the scene
+                # Priortize using those objects first before importing new ones
+                if len(existing_scene_objs) > 0:
+                    simulator_obj = np.random.choice(existing_scene_objs)
                     self.object_scope[obj_inst] = simulator_obj
-            else:
-                category_path = get_ig_category_path(obj_cat)
-                for i, obj_inst in enumerate(self.objects[obj_cat]):
-                    model = random.choice(os.listdir(category_path))
-                    model_path = get_ig_model_path(obj_cat, model)
-                    filename = os.path.join(model_path, model + ".urdf")
-                    obj_name = '{}_{}'.format(
-                        obj_cat,
-                        len(self.scene.objects_by_category.get(obj_cat, [])))
-                    simulator_obj = URDFObject(
-                        filename,
-                        name=obj_name,
-                        category=obj_cat,
-                        model_path=model_path,
-                        avg_obj_dims=avg_category_spec.get(obj_cat),
-                        fit_avg_dim_volume=True,
-                        texture_randomization=False,
-                        overwrite_inertial=True)
-                    self.scene.add_object(simulator_obj)
-                    self.object_scope[obj_inst] = simulator_obj
+                    existing_scene_objs.remove(simulator_obj)
+                    continue
+
+                category = np.random.choice(categories)
+                category_path = get_ig_category_path(category)
+                model = np.random.choice(os.listdir(category_path))
+                model_path = get_ig_model_path(category, model)
+                filename = os.path.join(model_path, model + ".urdf")
+                obj_name = '{}_{}'.format(
+                    obj_cat,
+                    len(self.scene.objects_by_category.get(obj_cat, [])))
+                simulator_obj = URDFObject(
+                    filename,
+                    name=obj_name,
+                    category=obj_cat,
+                    model_path=model_path,
+                    avg_obj_dims=avg_category_spec.get(obj_cat),
+                    fit_avg_dim_volume=True,
+                    texture_randomization=False,
+                    overwrite_inertial=True)
+                self.scene.add_object(simulator_obj)
+                self.object_scope[obj_inst] = simulator_obj
 
         return True
 
@@ -195,17 +202,119 @@ class iGTNTask(TaskNetTask):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
 
-    def sample(self, failed_conditions):
-        failed_conditions = [cond.children[0] for cond in failed_conditions]
-        # TODO: assume initial condition is always true
-        for failed_condition in failed_conditions:
-            success = failed_condition.sample(binary_state=True)
-            if not success:
-                # print('FAILURE:', failed_condition.body, failed_condition.state_name)
-                print('FAILURE:',  failed_condition.body)
-                return False
+    def sample(self):
+        non_sampleable_obj_conditions = []
+        sampleable_obj_conditions = []
+
+        # TODO: currently we assume self.initial_conditions is a list of
+        # tasknet.condition_evaluation.HEAD, each with one child.
+        # This chid is either a BinaryAtomicPredicate/BinaryAtomicPredicate or
+        # a Negation of a BinaryAtomicPredicate/BinaryAtomicPredicate
+        for condition in self.initial_conditions:
+            if isinstance(condition.children[0], Negation):
+                condition = condition.children[0].children[0]
+                positive = False
             else:
-                print('SUCCESS OF CONDITION SAMPLE!')
+                condition = condition.children[0]
+                positive = True
+            condition_body = set(condition.body)
+            if len(self.non_sampleable_object_inst.intersection(condition_body)) > 0:
+                non_sampleable_obj_conditions.append((condition, positive))
+            else:
+                sampleable_obj_conditions.append((condition, positive))
+
+        # First, try to fulfill the initial conditions that involve non-sampleable objects
+        # Filter in all simulator objects that allow successful sampling for each object inst
+        scene_object_scope_filtered = {}
+        for room_type in self.non_sampleable_object_scope:
+            scene_object_scope_filtered[room_type] = {}
+            for scene_obj in self.non_sampleable_object_scope[room_type]:
+                scene_object_scope_filtered[room_type][scene_obj] = {}
+                for room_inst in self.non_sampleable_object_scope[room_type][scene_obj]:
+                    scene_object_scope_filtered[room_type][scene_obj][room_inst] = [
+                    ]
+                    for obj in self.non_sampleable_object_scope[room_type][scene_obj][room_inst]:
+                        self.object_scope[scene_obj] = obj
+
+                        success = True
+                        for condition, positive in non_sampleable_obj_conditions:
+                            # Only sample conditions that involve this object
+                            if scene_obj not in condition.body:
+                                continue
+                            print(room_type, scene_obj, room_inst, obj.name)
+                            success = condition.sample(
+                                binary_state=positive)
+
+                            if not success:
+                                break
+                        if success:
+                            scene_object_scope_filtered[room_type][scene_obj][room_inst].append(
+                                obj)
+
+        for room_type in scene_object_scope_filtered:
+            # For each room_type, filter in room_inst that has successful
+            # sampling options for all obj_inst in this room_type
+            room_inst_satisfied = set.intersection(
+                *[set(scene_object_scope_filtered[room_type][obj_inst].keys())
+                  for obj_inst in scene_object_scope_filtered[room_type]]
+            )
+            for obj_inst in scene_object_scope_filtered[room_type]:
+                scene_object_scope_filtered[room_type][obj_inst] = {key: val for key, val
+                                                                    in scene_object_scope_filtered[room_type][obj_inst].items()
+                                                                    if key in room_inst_satisfied}
+                if len(scene_object_scope_filtered[room_type][obj_inst]) == 0:
+                    logging.warning(
+                        'Room type [{}] of scene [{}] cannot sample all the objects needed.'.format(
+                            room_type, self.scene.scene_id))
+                    return False
+
+        # For each room instance, perform maximum bipartite matching between object instance in scope to simulator objects
+        # Left nodes: a list of object instance in scope
+        # Right nodes: a list of simulator objects
+        # Edges: if the simulator object can support the sampling requirement of ths object instance
+        for room_type in scene_object_scope_filtered:
+            some_obj = list(scene_object_scope_filtered[room_type].keys())[0]
+            room_insts = list(scene_object_scope_filtered[room_type][some_obj].keys(
+            ))
+            success = False
+            for room_inst in room_insts:
+                graph = nx.Graph()
+                obj_inst_to_obj_per_room_inst = {}
+                for obj_inst in scene_object_scope_filtered[room_type]:
+                    obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered[room_type][obj_inst][room_inst]
+                for obj_inst in obj_inst_to_obj_per_room_inst:
+                    for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
+                        graph.add_edge(obj_inst, obj)
+                # The matches will have two items for each match (e.g. A -> B, B -> A)
+                matches = nx.bipartite.maximum_matching(graph)
+                if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
+                    for obj_inst, obj in matches.items():
+                        if obj_inst in obj_inst_to_obj_per_room_inst:
+                            self.object_scope[obj_inst] = obj
+                            print(obj_inst, obj.name)
+                    success = True
+                    break
+            if not success:
+                logging.warning(
+                    'Room type [{}] of scene [{}] do not have enough successful sampling options to support all the objects needed'.format(
+                        room_type, self.scene.scene_id))
+                return False
+
+        # Do sampling again using the object instance -> simulator object mapping from maximum bipartite matching
+        for condition, positive in non_sampleable_obj_conditions:
+            success = condition.sample(binary_state=positive)
+            # This should always succeed because it has succeeded before.
+            assert success
+
+        # Do sampling that only involves sampleable object (e.g. apple is cooked)
+        for condition, positive in sampleable_obj_conditions:
+            success = condition.sample(binary_state=positive)
+            if not success:
+                logging.warning(
+                    'Sampleable object conditions failed: {}'.format(
+                        condition.body))
+                return False
+
         return True
 
     #### CHECKERS ####
