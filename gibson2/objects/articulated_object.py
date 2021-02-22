@@ -119,15 +119,19 @@ class URDFObject(StatefulObject):
         self.scene_instance_folder = scene_instance_folder
 
         # Load abilities from taxonomy if needed & possible
-        if abilities is None and OBJECT_TAXONOMY is not None:
-            taxonomy_class = (
-                OBJECT_TAXONOMY.get_class_name_from_igibson_category(
-                    self.category))
-            if taxonomy_class is not None:
-                abilities = OBJECT_TAXONOMY.get_abilities(taxonomy_class)
+        if abilities is None:
+            if OBJECT_TAXONOMY is not None:
+                taxonomy_class = (
+                    OBJECT_TAXONOMY.get_class_name_from_igibson_category(
+                        self.category))
+                if taxonomy_class is not None:
+                    abilities = OBJECT_TAXONOMY.get_abilities(taxonomy_class)
+                else:
+                    abilities = {}
             else:
-                abilities = dict()
+                abilities = {}
 
+        assert isinstance(abilities, dict), "Object abilities must be in dictionary form."
         self.abilities = abilities
 
         # Friction for all prismatic and revolute joints
