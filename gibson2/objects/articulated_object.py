@@ -119,7 +119,6 @@ class URDFObject(StatefulObject):
         self.scene_instance_folder = scene_instance_folder
 
         # Load abilities from taxonomy if needed & possible
-        OBJECT_TAXONOMY = ObjectTaxonomy()
         if abilities is None and OBJECT_TAXONOMY is not None:
             taxonomy_class = (
                 OBJECT_TAXONOMY.get_class_name_from_igibson_category(
