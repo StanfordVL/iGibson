@@ -32,8 +32,51 @@ class PyBulletSleepState(IntEnum):
 
 
 # iGATUS-related
-with open(os.path.join(gibson2.ig_dataset_path, 'metadata/non_sampleable_categories.txt')) as f:
-    NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines()]
+# with open(os.path.join(gibson2.ig_dataset_path, 'metadata/non_sampleable_categories.txt')) as f:
+#     NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines()]
+
+NON_SAMPLEABLE_OBJECTS = [
+    'bathtub',
+    'bed',
+    'bench',
+    'bookshelf',
+    'burner',
+    'cabinet',
+    'carpet',
+    'chair',
+    'chest',
+    'countertop',
+    'crib',
+    'dishwasher',
+    'door',
+    'dryer',
+    'floor_lamp',
+    'floors',
+    'fridge',
+    'grandfather_clock',
+    'heater',
+    'microwave',
+    'mirror',
+    'oven',
+    'piano',
+    'picture',
+    'rail_fence',
+    'range_hood',
+    'shower',
+    'sink',
+    'sofa',
+    'speaker_system',
+    'stove',
+    'table',
+    'toilet',
+    'towel_rack',
+    'treadmill',
+    'tv',
+    'wall_clock',
+    'washer',
+    'window',
+]
+
 
 UNDER_OBJECTS = ['table', 'console_table', 'coffee_table', 'chair', 'bench']
 
