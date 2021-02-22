@@ -33,7 +33,7 @@ WAIT_FOR_CLIENT = True
 # Note: This is where the VR configuration for the MUVR experience can be changed.
 RUN_SETTINGS = {
     'client': VrSettings(use_vr=True),
-    'server': VrSettings(use_vr=False)
+    'server': VrSettings(use_vr=True)
 }
 
 
@@ -95,8 +95,6 @@ def run_muvr(mode='server', host='localhost', port='8885'):
         s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
         p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
-
-    s.optimize_vertex_and_texture()
 
     # Start the two agents at different points so they don't collide upon entering the scene
     if vr_settings.use_vr:
