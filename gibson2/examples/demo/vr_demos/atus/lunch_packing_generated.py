@@ -65,7 +65,7 @@ vr_settings = VrSettings(use_vr=True)
 s = Simulator(mode='vr', 
             rendering_settings=vr_rendering_settings,
             vr_settings=vr_settings)
-igtn_task = iGTNTask('assembling_gift_baskets_filtered', 1)
+igtn_task = iGTNTask('assembling_gift_baskets_filtered', 0)
 # igtn_task = iGTNTask('packing_lunches_filtered', 1)
 # igtn_task = iGTNTask('sorting_books_filtered', 0)
 # igtn_task.initialize_simulator(simulator=s, scene_id='Beechwood_0_int')

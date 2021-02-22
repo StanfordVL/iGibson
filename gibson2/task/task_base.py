@@ -10,7 +10,7 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.objects.articulated_object import URDFObject, ArticulatedObject
 from gibson2.external.pybullet_tools.utils import *
-from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS
+from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, HUMAN_OBJ_TO_IG_NAME
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 import random
 import pybullet as p
@@ -70,11 +70,19 @@ class iGTNTask(TaskNetTask):
                             scene_id=scene_id)
 
     def check_scene(self):
+#         for obj_cat in self.objects:
+# =            if obj_cat not in NON_SAMPLEABLE_OBJECTS:
+#                 continue
+#             if obj_cat not in self.scene.objects_by_category or \
+#                     len(self.objects[obj_cat]) > len(self.scene.objects_by_category[obj_cat]):
+#                 pdb.set_trace()
+#                 return False
         for obj_cat in self.objects:
-            if obj_cat not in NON_SAMPLEABLE_OBJECTS:
+            obj_cat_ig_names = HUMAN_OBJ_TO_IG_NAME[obj_cat] if obj_cat in HUMAN_OBJ_TO_IG_NAME else set([obj_cat])
+            if not obj_cat_ig_names & set(NON_SAMPLEABLE_OBJECTS):
                 continue
-            if obj_cat not in self.scene.objects_by_category or \
-                    len(self.objects[obj_cat]) > len(self.scene.objects_by_category[obj_cat]):
+            if not obj_cat_ig_names & set(self.scene.objects_by_category.keys()) or \
+                    len(self.objects[obj_cat]) > sum(len(self.scene.objects_by_category[obj_cat_ig_name]) for obj_cat_ig_name in obj_cat_ig_names):
                 pdb.set_trace()
                 return False
 
@@ -105,11 +113,15 @@ class iGTNTask(TaskNetTask):
                 # Try to assign obj instances to this room instance
                 for obj_inst in room_type_to_obj_inst[room_type]:
                     obj_cat = self.obj_inst_to_obj_cat[obj_inst]
+                    pdb.set_trace()
                     # Assume inroom relationship can only be defined w.r.t non-sampleable object
-                    assert obj_cat in NON_SAMPLEABLE_OBJECTS
+                    obj_cat_ig_names = HUMAN_OBJ_TO_IG_NAME[obj_cat] if obj_cat in HUMAN_OBJ_TO_IG_NAME else set([obj_cat])
+                    assert len(obj_cat_ig_names & set(NON_SAMPLEABLE_OBJECTS)) > 0
+
                     room_objs_of_cat = [
                         obj for obj in room_objs
-                        if obj.category == obj_cat
+                        # if obj.category == obj_cat
+                        if obj.category in obj_cat_ig_names
                         and obj.name not in tmp_selected_obj_names]
                     if len(room_objs_of_cat) == 0:
                         pdb.set_trace()
@@ -122,6 +134,7 @@ class iGTNTask(TaskNetTask):
 
                 # If successful, permanently assign object scope
                 if room_inst_success:
+                    pdb.set_trace()
                     for obj_inst in tmp_scope:
                         self.object_scope[obj_inst] = tmp_scope[obj_inst]
                         selected_obj_names.add(tmp_scope[obj_inst].name)
@@ -136,7 +149,9 @@ class iGTNTask(TaskNetTask):
 
         avg_category_spec = get_ig_avg_category_specs()
         for obj_cat in self.objects:
-            if obj_cat in NON_SAMPLEABLE_OBJECTS:
+            obj_cat_ig_names = HUMAN_OBJ_TO_IG_NAME[obj_cat] if obj_cat in HUMAN_OBJ_TO_IG_NAME else set([obj_cat])
+            if len(obj_cat_ig_names & set(NON_SAMPLEABLE_OBJECTS)) > 0:
+            # if obj_cat in NON_SAMPLEABLE_OBJECTS:
                 # Remaining non-sampleable objects that have NOT been sampled
                 # in the previous room assignment phase
                 obj_inst_remain = [

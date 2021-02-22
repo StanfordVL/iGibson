@@ -46,13 +46,10 @@ SAMPLEABLE_SCENE_OBJECTS = [
     'table_lamp'    
 ]
 
-IG_NAME_TO_HUMAN_NAME = {
-    'standing_tv': 'tv',
-    'wall_mounted_tv': 'tv',
-    'cooktop': 'stove',
-    'top_cabinet': 'cabinet',
-    'bottom_cabinet': 'cabinet',
-    'bottom_cabinet_no_top': 'cabinet'
+HUMAN_OBJ_TO_IG_NAME = {
+    'tv': set(['standing_tv', 'wall_mounted_tv']),
+    'stove': set(['stove', 'cooktop']),
+    'cabinet': set(['top_cabinet', 'bottom_cabinet', 'bottom_cabinet_no_top'])
 }
 
 with open(os.path.join(gibson2.ig_dataset_path, 'metadata/categories.txt')) as f:
