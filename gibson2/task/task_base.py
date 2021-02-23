@@ -14,6 +14,7 @@ import cv2
 from tasknet.condition_evaluation import Negation
 import logging
 import networkx as nx
+from IPython import embed
 
 
 class iGTNTask(TaskNetTask):
@@ -137,6 +138,7 @@ class iGTNTask(TaskNetTask):
 
         self.non_sampleable_object_scope = room_type_to_scene_objs
 
+        num_new_obj = 0
         # Only populate self.object_scope for sampleable objects
         avg_category_spec = get_ig_avg_category_specs()
         for obj_cat in self.objects:
@@ -174,9 +176,11 @@ class iGTNTask(TaskNetTask):
                     avg_obj_dims=avg_category_spec.get(obj_cat),
                     fit_avg_dim_volume=True,
                     texture_randomization=False,
-                    overwrite_inertial=True)
+                    overwrite_inertial=True,
+                    initial_pos=[100 + num_new_obj, 100, 100])
                 self.scene.add_object(simulator_obj)
                 self.object_scope[obj_inst] = simulator_obj
+                num_new_obj += 1
 
         return True
 
@@ -264,11 +268,15 @@ class iGTNTask(TaskNetTask):
                 obj_inst_to_obj_per_room_inst = {}
                 for obj_inst in scene_object_scope_filtered[room_type]:
                     obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered[room_type][obj_inst][room_inst]
+                top_nodes = []
                 for obj_inst in obj_inst_to_obj_per_room_inst:
                     for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
                         graph.add_edge(obj_inst, obj)
+                        top_nodes.append(obj_inst)
+                # Need to provide top_nodes that contain all nodes in one bipartite node set
                 # The matches will have two items for each match (e.g. A -> B, B -> A)
-                matches = nx.bipartite.maximum_matching(graph)
+                matches = nx.bipartite.maximum_matching(
+                    graph, top_nodes=top_nodes)
                 if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
                     for obj_inst, obj in matches.items():
                         if obj_inst in obj_inst_to_obj_per_room_inst:

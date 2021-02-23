@@ -80,6 +80,8 @@ class URDFObject(StatefulObject):
                  scale=None,
                  fit_avg_dim_volume=False,
                  connecting_joint=None,
+                 initial_pos=None,
+                 initial_orn=None,
                  avg_obj_dims=None,
                  joint_friction=None,
                  in_rooms=None,
@@ -96,6 +98,8 @@ class URDFObject(StatefulObject):
         :param scale: scaling factor of this object
         :param: fit_avg_dim_volume: whether to fit the object to have the same volume as the average dimension while keeping the aspect ratio
         :param connecting_joint: connecting joint to the scene that defines the object's initial pose (optional)
+        :param initial_pos: initial position of the object (lower priority than connecting_joint)
+        :param initial_orn: initial orientation of the object (lower priority than connecting_joint)
         :param avg_obj_dims: average object dimension of this object
         :param joint_friction: joint friction for joints in this object
         :param in_rooms: which room(s) this object is in. It can be in more than one rooms if it sits at room boundary (e.g. doors)
@@ -109,6 +113,8 @@ class URDFObject(StatefulObject):
         self.category = category
         self.in_rooms = in_rooms
         self.connecting_joint = connecting_joint
+        self.initial_pos = initial_pos
+        self.initial_orn = initial_orn
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
@@ -187,7 +193,8 @@ class URDFObject(StatefulObject):
 
         meta_json = os.path.join(self.model_path, 'misc', 'metadata.json')
         bbox_json = os.path.join(self.model_path, 'misc', 'bbox.json')
-        meta_links = dict()  # In the format of {link_name: [linkX, linkY, linkZ]}
+        # In the format of {link_name: [linkX, linkY, linkZ]}
+        meta_links = dict()
         if os.path.isfile(meta_json):
             with open(meta_json, 'r') as f:
                 meta_data = json.load(f)
@@ -274,8 +281,14 @@ class URDFObject(StatefulObject):
             assert joint_parent == 'world'
         else:
             joint_type = 'floating'
-            joint_xyz = np.array([0., 0., 0.])
-            joint_rpy = np.array([0., 0., 0.])
+            if self.initial_pos is not None:
+                joint_xyz = self.initial_pos
+            else:
+                joint_xyz = np.array([0., 0., 0.])
+            if self.initial_orn is not None:
+                joint_rpy = self.initial_orn
+            else:
+                joint_rpy = np.array([0., 0., 0.])
             joint_name = None
             joint_parent = None
 
