@@ -291,9 +291,13 @@ class iGTNTask(TaskNetTask):
                 return False
 
         # Do sampling again using the object instance -> simulator object mapping from maximum bipartite matching
+        num_trials = 10
         for condition, positive in non_sampleable_obj_conditions:
-            success = condition.sample(binary_state=positive)
-            # This should always succeed because it has succeeded before.
+            for _ in range(num_trials):
+                success = condition.sample(binary_state=positive)
+                # This should always succeed because it has succeeded before.
+                if success:
+                    break
             assert success
 
         # Do sampling that only involves sampleable object (e.g. apple is cooked)
