@@ -1,4 +1,7 @@
-from gibson2.external.pybullet_tools.utils import link_from_name, get_link_state
+from gibson2.external.pybullet_tools.utils import link_from_name, get_link_state, AABB
+from gibson2.object_states.inside import Inside
+from gibson2.object_states.toggle import ToggledOn
+from gibson2.object_states.open import Open
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
 from gibson2.object_states.utils import get_aabb_center
 
@@ -50,13 +53,13 @@ class HeatSource(CachingEnabledObjectState):
         # If the heat source needs to be toggled on, we assert the presence
         # of that ability.
         if requires_toggled_on:
-            assert "toggle" in self.obj.states
+            assert ToggledOn in self.obj.states
         self.requires_toggled_on = requires_toggled_on
 
         # If the heat source needs to be closed, we assert the presence
         # of that ability.
         if requires_closed:
-            assert "open" in self.obj.states
+            assert Open in self.obj.states
         self.requires_closed = requires_closed
 
         # If the heat source needs to contain an object inside to heat it,
@@ -65,19 +68,19 @@ class HeatSource(CachingEnabledObjectState):
 
     @staticmethod
     def get_dependencies():
-        return CachingEnabledObjectState.get_dependencies() + ["aabb", "inside"]
+        return CachingEnabledObjectState.get_dependencies() + [AABB, Inside]
 
     @staticmethod
     def get_optional_dependencies():
-        return CachingEnabledObjectState.get_optional_dependencies() + ["toggle", "open"]
+        return CachingEnabledObjectState.get_optional_dependencies() + [ToggledOn, Open]
 
     def _compute_value(self):
         # Check the toggle state.
-        if self.requires_toggled_on and not self.obj.states["toggle"].get_value():
+        if self.requires_toggled_on and not self.obj.states[ToggledOn].get_value():
             return None
 
         # Check the open state.
-        if self.requires_closed and self.obj.states["open"].get_value():
+        if self.requires_closed and self.obj.states[Open].get_value():
             return None
 
         # Get heating element position from URDF

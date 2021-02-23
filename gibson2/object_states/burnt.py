@@ -1,3 +1,4 @@
+from gibson2.object_states.max_temperature import MaxTemperature
 from gibson2.object_states.object_state_base import CachingEnabledObjectState, BooleanState
 
 _DEFAULT_BURN_TEMPERATURE = 200
@@ -10,10 +11,10 @@ class Burnt(CachingEnabledObjectState, BooleanState):
 
     @staticmethod
     def get_dependencies():
-        return CachingEnabledObjectState.get_dependencies() + ['max_temperature']
+        return CachingEnabledObjectState.get_dependencies() + [MaxTemperature]
 
     def set_value(self, new_value):
         raise NotImplementedError("Burnt cannot be set directly - set temperature instead.")
 
     def _compute_value(self):
-        return self.obj.states['max_temperature'].get_value() >= self.burn_temperature
+        return self.obj.states[MaxTemperature].get_value() >= self.burn_temperature

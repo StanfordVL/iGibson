@@ -145,7 +145,7 @@ class Simulator:
         self.class_name_to_class_id = get_class_name_to_class_id()
         self.body_links_awake = 0
 
-        self.object_state_names = get_states_by_dependency_order()
+        self.object_state_types = get_states_by_dependency_order()
 
     def set_timestep(self, physics_timestep, render_timestep):
         """
@@ -706,10 +706,10 @@ class Simulator:
         Complete any non-physics steps such as state updates.
         """
         # Step the object states in global topological order.
-        for state_name in self.object_state_names:
+        for state_type in self.object_state_types:
             for obj in self.scene.get_objects():
-                if state_name in obj.states:
-                    obj.states[state_name].update(self)
+                if state_type in obj.states:
+                    obj.states[state_type].update(self)
 
     def step_vr(self, print_stats=False):
         """

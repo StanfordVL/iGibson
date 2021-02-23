@@ -1,3 +1,4 @@
+from gibson2.object_states import AABB
 from gibson2.objects.object_base import Object
 import pybullet as p
 import numpy as np
@@ -164,7 +165,7 @@ class Dust(ParticleSystem):
         )
 
     def attach(self, obj):
-        aabb = obj.states['aabb'].get_value()
+        aabb = obj.states[AABB].get_value()
         for i in range(self.num):
             good_hit = False
             iter = 0
