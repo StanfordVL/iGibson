@@ -12,6 +12,7 @@ import os
 import sys
 from gibson2.render.mesh_renderer.materials import Material, RandomizedMaterial
 from gibson2.render.mesh_renderer.instances import Instance, InstanceGroup, Robot
+from gibson2.render.mesh_renderer.text import TextManager, Text
 from gibson2.render.mesh_renderer.visual_object import VisualObject
 from PIL import Image
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
@@ -62,6 +63,9 @@ class MeshRenderer(object):
         self.pose_rot_array = None
         self.last_trans_array = None
         self.last_rot_array = None
+        # Manages text data that is shared across multiple Text instances
+        self.text_manager = TextManager(self)
+        self.texts = []
 
         device = None
         """
@@ -148,6 +152,13 @@ class MeshRenderer(object):
                     "".join(open(
                         os.path.join(os.path.dirname(mesh_renderer.__file__),
                                      'shaders', '410', 'frag.shader')).readlines()))
+                self.textShaderProgram = self.r.compile_shader_meshrenderer(
+                "".join(open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                 'shaders', '410', 'text_vert.shader')).readlines()),
+                "".join(open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                 'shaders', '410', 'text_frag.shader')).readlines()))
             else:
                 if self.optimized:
                     self.shaderProgram = self.r.compile_shader_meshrenderer(
@@ -165,6 +176,13 @@ class MeshRenderer(object):
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                          'shaders', '450', 'frag.shader')).readlines()))
+                self.textShaderProgram = self.r.compile_shader_meshrenderer(
+                "".join(open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                 'shaders', '450', 'text_vert.shader')).readlines()),
+                "".join(open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                 'shaders', '450', 'text_frag.shader')).readlines()))
 
             self.skyboxShaderProgram = self.r.compile_shader_meshrenderer(
                 "".join(open(
@@ -632,6 +650,36 @@ class MeshRenderer(object):
                       use_pbr_mapping=False)
         self.instances.append(robot)
 
+    def add_text(self,
+                 text_data='PLACEHOLDER: PLEASE REPLACE!',
+                 font_name='OpenSans',
+                 font_style='Regular',
+                 font_size=48,
+                 color=[0, 0, 0],
+                 pos=[0, 0],
+                 scale=1.0):
+        """
+        Creates a Text object with the given parameters. Returns the text object to the caller,
+        so various settings can be changed - eg. text content, position, scale, etc.
+        :param text_data: starting text to display (can be changed at a later time by set_text)
+        :param font_name: name of font to render - same as font folder in iGibson assets
+        :param font_size: size of font to render
+        :param font_style: style of font - one of [regular, italic, bold]
+        :param color: [r, g, b] color
+        :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
+        :param scale: scale factor for resizing text
+        """
+        text = Text(text_data=text_data,
+                    font_name=font_name, 
+                    font_style=font_style, 
+                    font_size=font_size, 
+                    color=color, 
+                    pos=pos,
+                    scale=scale,
+                    text_manager=self.text_manager)
+        self.texts.append(text)
+        return text
+
     def set_camera(self, camera, target, up, cache=False):
         """
         Set camera pose
@@ -843,6 +891,10 @@ class MeshRenderer(object):
                     else:
                         instance.render(
                             shadow_pass=ShadowPass.NO_SHADOW)
+
+        # render text
+        for text in self.texts:
+            text.render()
 
         self.r.render_meshrenderer_post()
 

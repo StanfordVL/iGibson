@@ -627,6 +627,33 @@ class Simulator:
 
         return ids
 
+    def add_text(self,
+                 text_data='PLACEHOLDER: PLEASE REPLACE!',
+                 font_name='OpenSans',
+                 font_style='Regular',
+                 font_size=48,
+                 color=[0, 0, 0],
+                 pos=[0, 0],
+                 scale=1.0):
+        """
+        Creates a Text object with the given parameters. Returns the text object to the caller,
+        so various settings can be changed - eg. text content, position, scale, etc.
+        :param text_data: starting text to display (can be changed at a later time by set_text)
+        :param font_name: name of font to render - same as font folder in iGibson assets
+        :param font_size: size of font to render
+        :param font_style: style of font - one of [regular, italic, bold]
+        :param color: [r, g, b] color
+        :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
+        :param scale: scale factor for resizing text
+        """
+        return self.renderer.add_text(text_data=text_data,
+                                      font_name=font_name,
+                                      font_style=font_style,
+                                      font_size=font_size,
+                                      color=color,
+                                      pos=pos,
+                                      scale=scale)
+
     def _step_simulation(self):
         """
         Step the simulation for one step and update positions in renderer
@@ -818,6 +845,9 @@ class Simulator:
     # Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
     # Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
     def get_eye_tracking_data(self):
+        # TODO: Remove hack!
+        if self.eye_tracking_data is None:
+            return [0, [0,0,0], [0,0,0], 0, 0]
         is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.eye_tracking_data
         return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
 
