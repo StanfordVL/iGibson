@@ -898,7 +898,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if not hasattr(obj, 'in_rooms') or obj.in_rooms is None:
                 continue
             category = obj.category
-            model = name.split('-')[1]
+            model = name.split('|')[1]
             room = obj.in_rooms[0]
             bounding_box = ' '.join([str(b) for b in obj.bounding_box])
 
