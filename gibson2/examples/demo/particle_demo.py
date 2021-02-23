@@ -1,3 +1,4 @@
+from gibson2.object_states import Dirty
 from gibson2.robots.turtlebot_robot import Turtlebot
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -60,7 +61,7 @@ def main():
     for _ in range(100):
         p.stepSimulation()
 
-    desk.states['dirty'].set_value(True)
+    desk.states[Dirty].set_value(True)
 
     for i in range(10000):
         with Profiler('Simulator step'):

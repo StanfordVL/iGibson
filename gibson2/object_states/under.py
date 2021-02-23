@@ -1,7 +1,7 @@
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
-from gibson2.external.pybullet_tools.utils import get_aabb_center, aabb_contains_point, aabb2d_from_aabb
+from gibson2.external.pybullet_tools.utils import get_aabb_center, aabb_contains_point, aabb2d_from_aabb, AABB
 from gibson2.utils.constants import UNDER_OBJECTS
 
 
@@ -20,11 +20,11 @@ class Under(KinematicsMixin, RelativeObjectState, BooleanState):
         objA_states = self.obj.states
         objB_states = other.states
 
-        assert 'aabb' in objA_states
-        assert 'aabb' in objB_states
+        assert AABB in objA_states
+        assert AABB in objB_states
 
-        objA_aabb = objA_states['aabb'].get_value()
-        objB_aabb = objB_states['aabb'].get_value()
+        objA_aabb = objA_states[AABB].get_value()
+        objB_aabb = objB_states[AABB].get_value()
 
         within = aabb_contains_point(
             get_aabb_center(objA_aabb)[:2],
