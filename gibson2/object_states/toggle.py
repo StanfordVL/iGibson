@@ -1,3 +1,4 @@
+from gibson2.object_states.aabb import AABB
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.visual_marker import VisualMarker
@@ -39,7 +40,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState):
 
         # TODO: currently marker position is hard coded, to get marker offset from annotation
         marker_offset = [0,0,0.6]
-        aabb = self.obj.states['aabb'].get_value()
+        aabb = self.obj.states[AABB].get_value()
         x_center = (aabb[0][0] + aabb[1][0]) / 2
         y_center = (aabb[0][1] + aabb[1][1]) / 2
         z_center = (aabb[0][2] + aabb[1][2]) / 2

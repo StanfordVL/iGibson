@@ -1,7 +1,9 @@
+from gibson2.object_states import AABB
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
-from gibson2.external.pybullet_tools.utils import get_aabb_center, get_aabb_extent, aabb_contains_point, get_aabb_volume
+from gibson2.external.pybullet_tools.utils import get_aabb_center, get_aabb_extent, aabb_contains_point, \
+    get_aabb_volume
 import numpy as np
 
 
@@ -19,11 +21,11 @@ class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
         objA_states = self.obj.states
         objB_states = other.states
 
-        assert 'aabb' in objA_states
-        assert 'aabb' in objB_states
+        assert AABB in objA_states
+        assert AABB in objB_states
 
-        aabbA = objA_states['aabb'].get_value()
-        aabbB = objB_states['aabb'].get_value()
+        aabbA = objA_states[AABB].get_value()
+        aabbB = objB_states[AABB].get_value()
 
         center_inside = aabb_contains_point(get_aabb_center(aabbA), aabbB)
         volume_lesser = get_aabb_volume(aabbA) < get_aabb_volume(aabbB)
