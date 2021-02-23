@@ -177,7 +177,7 @@ class iGTNTask(TaskNetTask):
                     fit_avg_dim_volume=True,
                     texture_randomization=False,
                     overwrite_inertial=True,
-                    initial_pos=[100 + num_new_obj, 100, 100])
+                    initial_pos=[100 + num_new_obj, 100, -100])
                 self.scene.add_object(simulator_obj)
                 self.object_scope[obj_inst] = simulator_obj
                 num_new_obj += 1
