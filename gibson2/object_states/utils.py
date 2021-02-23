@@ -18,7 +18,7 @@ def clear_cached_states(obj):
             obj_state.clear_cached_value()
 
 
-def sample_kinematics(predicate, objA, objB, binary_state):
+def sample_kinematics(predicate, objA, objB, binary_state, height_idx = None):
     if not binary_state:
         raise NotImplementedError()
 
@@ -41,11 +41,13 @@ def sample_kinematics(predicate, objA, objB, binary_state):
             len(objB.supporting_surfaces[predicate].keys()))
         body_id, link_id = list(objB.supporting_surfaces[predicate].keys())[
             random_idx]
-        random_height_idx = np.random.randint(
-            len(objB.supporting_surfaces[predicate][(body_id, link_id)]))
+        if height_idx is None:
+            random_height_idx = np.random.randint(
+                len(objB.supporting_surfaces[predicate][(body_id, link_id)]))
+            height_idx = random_height_idx
         height, height_map = objB.supporting_surfaces[predicate][(
-            body_id, link_id)][random_height_idx]
-        obj_half_size = np.max(objA.bounding_box[0:2]) / 2 * 100
+            body_id, link_id)][height_idx]
+        obj_half_size = np.max(objA.bounding_box) / 2 * 100
         obj_half_size_scaled = np.array(
             [obj_half_size / objB.scale[1], obj_half_size / objB.scale[0]])
         obj_half_size_scaled = np.ceil(obj_half_size_scaled).astype(np.int)

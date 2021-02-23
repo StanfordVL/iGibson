@@ -10,6 +10,7 @@ from gibson2.objects.object_base import Object
 import pybullet as p
 import trimesh
 import random
+import math
 import cv2
 import time
 import random
@@ -375,13 +376,14 @@ class URDFObject(Object):
         variation = [o['variation'] for o in self.orientations]
         chosen_orientation_idx = random.choices(indeces, weights=probabilities, k=1)[0]
         chosen_orientation = orientations[chosen_orientation_idx]
-        max_rotation = variation[chosen_orientation_idx]
+        max_rotation = variation[chosen_orientation_idx]+0.05
 
         if max_rotation > 0:
-            rotation_about_z = random.random()*max_rotation
-            rotation_z_quat = z_rotation(rotation_about_z)
-            rotated_quat = quat_from_matrix(matrix_from_quat(chosen_orientation) @
-                                            matrix_from_quat(rotation_z_quat))
+            rot_num = random.random()*max_rotation
+            rot_matrix = np.array([[math.cos(math.pi*rot_num), -math.sin(math.pi*rot_num), 0.0],
+                          [math.sin(math.pi*rot_num), math.cos(math.pi*rot_num), 0.0],
+                          [0.0, 0.0, 1.0]])
+            rotated_quat = quat_from_matrix(matrix_from_quat(chosen_orientation) @ rot_matrix)
             return rotated_quat
         else:
             return chosen_orientation
