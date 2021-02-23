@@ -12,12 +12,16 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         return KinematicsMixin.get_dependencies() + ["touching"]
 
     def set_value(self, other, new_value):
-        sampling_success = sample_kinematics(
-            'onTop', self.obj, other, new_value)
-        if sampling_success:
-            clear_cached_states(self.obj)
-            clear_cached_states(other)
-            assert self.get_value(other) == new_value
+        for _ in range(10):
+            sampling_success = sample_kinematics(
+                'onTop', self.obj, other, new_value)
+            if sampling_success:
+                clear_cached_states(self.obj)
+                clear_cached_states(other)
+                if self.get_value(other) != new_value:
+                    sampling_success = False
+            if sampling_success:
+                break
 
         return sampling_success
 
