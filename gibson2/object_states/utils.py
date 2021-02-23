@@ -3,6 +3,7 @@ import pybullet as p
 import cv2
 from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, quat_from_matrix, stable_z_on_aabb
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
+from IPython import embed
 
 
 def get_center_extent(obj_states):
@@ -26,7 +27,7 @@ def sample_kinematics(predicate, objA, objB, binary_state):
         return False
 
     max_trials = 100
-    z_offset = 0.01
+    z_offset = 0.05
     if objA.orientations is not None:
         orientation = objA.sample_orientation()
     else:
@@ -98,9 +99,9 @@ def sample_kinematics(predicate, objA, objB, binary_state):
 
     if success:
         objA.set_position_orientation(pos, orientation)
-        # Let it fall for 0.1 second
+        # Let it fall for 0.2 second
         physics_timestep = p.getPhysicsEngineParameters()['fixedTimeStep']
-        for _ in range(int(0.1 / physics_timestep)):
+        for _ in range(int(0.2 / physics_timestep)):
             p.stepSimulation()
             if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:
                 break

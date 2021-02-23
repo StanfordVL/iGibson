@@ -76,8 +76,24 @@ NON_SAMPLEABLE_OBJECTS = [
     'window.n.01',
 ]
 
-
-UNDER_OBJECTS = ['table', 'console_table', 'coffee_table', 'chair', 'bench']
+UNDER_OBJECTS = [
+    'breakfast_table',
+    'coffee_table',
+    'console_table',
+    'desk',
+    'gaming_table',
+    'pedestal_table',
+    'pool_table',
+    'stand',
+    'armchair',
+    'chaise_longue',
+    'folding_chair',
+    'highchair',
+    'rocking_chair',
+    'straight_chair',
+    'swivel_chair',
+    'bench'
+]
 
 hdr_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
