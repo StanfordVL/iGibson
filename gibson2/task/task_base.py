@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import pdb
 
 from tasknet.task_base import TaskNetTask
 import gibson2
@@ -7,13 +8,29 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.external.pybullet_tools.utils import *
-from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS
+from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, HUMAN_OBJ_TO_IG_NAME
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
 import logging
 import networkx as nx
+
+
+import sys
+def info(type, value, tb):
+    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
+        # we are in interactive mode or we don't have a tty-like
+        # device, so we call the default hook
+        sys.__excepthook__(type, value, tb)
+    else:
+        import traceback, pdb
+        # we are NOT in interactive mode, print the exception...
+        traceback.print_exception(type, value, tb)
+        print
+        # ...then start the debugger in post-mortem mode.
+        pdb.post_mortem(tb)
+sys.excepthook = info
 
 
 class iGTNTask(TaskNetTask):
@@ -64,6 +81,7 @@ class iGTNTask(TaskNetTask):
                         obj_cat)
                 # Room type missing in the scene
                 if room_type not in self.scene.room_sem_name_to_ins_name:
+                    pdb.set_trace()
                     logging.warning(
                         'Room type [{}] missing in scene [{}].'.format(
                             room_type, self.scene.scene_id))

@@ -12,6 +12,7 @@ Important - VR functionality and where to find it:
 
 import numpy as np
 import os
+import pdb
 
 import gibson2
 from gibson2.objects.vr_objects import VrAgent
@@ -21,6 +22,18 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.simulator import Simulator
 from gibson2.task.task_base import iGTNTask
 from gibson2.utils.vr_logging import VRLogWriter
+
+
+import sys 
+def info(type, value, tb):
+    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
+        sys.__excepthook__(type, value, tb)
+    else:
+        traceback.print_exception(type, value, tb)
+        print
+        pdb.post_mortem(tb)
+        
+
 
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = False
@@ -52,8 +65,12 @@ vr_settings = VrSettings(use_vr=True)
 s = Simulator(mode='vr', 
             rendering_settings=vr_rendering_settings,
             vr_settings=vr_settings)
-igtn_task = iGTNTask('lunchpacking_demo', 0)
-igtn_task.initialize_simulator(simulator=s, scene_id='Beechwood_0_int')
+igtn_task = iGTNTask('assembling_gift_baskets_filtered', 0)
+# igtn_task = iGTNTask('packing_lunches_filtered', 1)
+# igtn_task = iGTNTask('sorting_books_filtered', 0)
+# igtn_task.initialize_simulator(simulator=s, scene_id='Beechwood_0_int')
+pdb.set_trace()
+igtn_task.initialize_simulator(simulator=s)
 
 kitchen_middle = [-3.7, -2.7, 1.8]
 
@@ -83,7 +100,7 @@ if mode == 'save':
     # Despite having no actions, we need to call this function
     vr_writer.set_up_data_storage()
 
-s.optimize_vertex_and_texture()
+# s.optimize_vertex_and_texture()
 
 # Main simulation loop
 while True:

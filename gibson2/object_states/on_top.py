@@ -17,6 +17,8 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         if sampling_success:
             clear_cached_states(self.obj)
             clear_cached_states(other)
+            print('GET VALUE OF OTHER:', self.get_value(other))
+            print('NEW VALUE:', new_value)
             assert self.get_value(other) == new_value
 
         return sampling_success
