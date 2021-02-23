@@ -91,10 +91,10 @@ class iGTNTask(TaskNetTask):
             room_type_to_scene_objs[room_type] = {}
             for obj_inst in room_type_to_obj_inst[room_type]:
                 room_type_to_scene_objs[room_type][obj_inst] = {}
-                lemma = self.obj_inst_to_obj_cat[obj_inst]
+                obj_cat = self.obj_inst_to_obj_cat[obj_inst]
                 categories = \
-                    self.object_taxonomy.get_igibson_categories_from_lemma(
-                        lemma)
+                    self.object_taxonomy.get_igibson_categories_from_class_name(
+                        obj_cat)
                 for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
                     room_objs = self.scene.objects_by_room[room_inst]
                     scene_objs = [obj for obj in room_objs
@@ -143,7 +143,7 @@ class iGTNTask(TaskNetTask):
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
                 continue
             categories = \
-                self.object_taxonomy.get_igibson_categories_from_lemma(
+                self.object_taxonomy.get_igibson_categories_from_class_name(
                     obj_cat)
             existing_scene_objs = []
             for category in categories:
