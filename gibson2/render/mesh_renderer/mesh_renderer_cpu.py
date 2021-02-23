@@ -57,6 +57,7 @@ class MeshRenderer(object):
         self.texture_files = {}
         self.enable_shadow = rendering_settings.enable_shadow
         self.platform = platform.system()
+        self.robot_eye = None
         self.optimization_process_executed = False
         self.pose_trans_array = None
         self.pose_rot_array = None
@@ -633,6 +634,35 @@ class MeshRenderer(object):
                       use_pbr_mapping=False)
         self.instances.append(robot)
 
+    def set_active_camera(self, cam_name):
+        """
+        Sets the active camera for this renderer
+
+        Args:
+            cam_name (str): Camera to use -- only option currently is "robot", which corresponds
+                to the robot head
+        """
+        assert cam_name in {"robot"}, "Only robot camera currently supported!"
+
+        if cam_name == "robot":
+            # Grab robot head camera reference
+            eye = self.robot_eye
+        else:
+            raise ValueError("Invalid cam name specified!")
+
+        # Set this as active camera
+        camera_pos = eye.get_position()
+        orn = eye.get_orientation()
+        mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+        view_direction = mat.dot(np.array([1, 0, 0]))
+        view_up = mat.dot(np.array([0, 0, 1]))
+        # We only want to set the first camera (this is the main robot camera)
+        self.set_camera(camera_pos, camera_pos +
+                        view_direction, view_up, cache=True)  # [0, 0, 1], cache=True)
+        hidden_instances = []
+        if self.rendering_settings.hide_robot:
+            hidden_instances.append(instance)
+
     def set_camera(self, camera, target, up, cache=False):
         """
         Set camera pose
@@ -1012,12 +1042,16 @@ class MeshRenderer(object):
         for instance in self.instances:
             if isinstance(instance, Robot):
                 eyes = [instance.robot.eyes] if isinstance(instance.robot.eyes, BodyPart) else instance.robot.eyes
-                for eye in eyes:
+                for i, eye in enumerate(eyes):
+                    # If this is the first camera, save this as the robot eye
+                    if i == 0:
+                        self.robot_eye = eye
                     camera_pos = eye.get_position()
                     orn = eye.get_orientation()
                     mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                     view_direction = mat.dot(np.array([1, 0, 0]))
                     view_up = mat.dot(np.array([0, 0, 1]))
+                    # We only want to set the first camera (this is the main robot camera)
                     self.set_camera(camera_pos, camera_pos +
                                     view_direction, view_up, cache=True)# [0, 0, 1], cache=True)
                     hidden_instances = []
