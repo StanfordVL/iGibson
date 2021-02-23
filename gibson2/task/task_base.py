@@ -166,14 +166,14 @@ class iGTNTask(TaskNetTask):
                 model_path = get_ig_model_path(category, model)
                 filename = os.path.join(model_path, model + ".urdf")
                 obj_name = '{}_{}'.format(
-                    obj_cat,
-                    len(self.scene.objects_by_category.get(obj_cat, [])))
+                    category,
+                    len(self.scene.objects_by_category.get(category, [])))
                 simulator_obj = URDFObject(
                     filename,
                     name=obj_name,
-                    category=obj_cat,
+                    category=category,
                     model_path=model_path,
-                    avg_obj_dims=avg_category_spec.get(obj_cat),
+                    avg_obj_dims=avg_category_spec.get(category),
                     fit_avg_dim_volume=True,
                     texture_randomization=False,
                     overwrite_inertial=True,
