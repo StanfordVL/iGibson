@@ -1,3 +1,6 @@
+from gibson2.object_states.aabb import AABB
+from gibson2.object_states.cleaning_tool import CleaningTool
+from gibson2.object_states.soaked import Soaked
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.particles import Stain
@@ -27,16 +30,16 @@ class Stained(AbsoluteObjectState, BooleanState):
 
     def update(self, simulator):
         # cleaning logic
-        cleaning_tools = simulator.scene.get_objects_with_state("cleaning_tool")
+        cleaning_tools = simulator.scene.get_objects_with_state(CleaningTool)
         cleaning_tools_wet = []
         for tool in cleaning_tools:
-            if "soaked" in tool.states and tool.states["soaked"].get_value():
+            if Soaked in tool.states and tool.states[Soaked].get_value():
                 cleaning_tools_wet.append(tool)
 
         for object in cleaning_tools_wet:
             for particle in self.stain.particles:
                 particle_pos = particle.get_position()
-                aabb = object.states["aabb"].get_value()
+                aabb = object.states[AABB].get_value()
                 xmin = aabb[0][0]
                 xmax = aabb[1][0]
                 ymin = aabb[0][1]
@@ -62,8 +65,8 @@ class Stained(AbsoluteObjectState, BooleanState):
 
     @staticmethod
     def get_dependencies():
-        return ["aabb"]
+        return [AABB]
 
     @staticmethod
     def get_optional_dependencies():
-        return ["soaked", "cleaning_tool"]
+        return [Soaked, CleaningTool]

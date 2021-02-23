@@ -1,3 +1,5 @@
+from gibson2.object_states.aabb import AABB
+from gibson2.object_states.cleaning_tool import CleaningTool
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.particles import Dust
@@ -27,11 +29,11 @@ class Dirty(AbsoluteObjectState, BooleanState):
 
     def update(self, simulator):
         # cleaning logic
-        cleaning_tools = simulator.scene.get_objects_with_state("cleaning_tool")
+        cleaning_tools = simulator.scene.get_objects_with_state(CleaningTool)
         for object in cleaning_tools:
             for particle in self.dust.particles:
                 particle_pos = particle.get_position()
-                aabb = object.states["aabb"].get_value()
+                aabb = object.states[AABB].get_value()
                 xmin = aabb[0][0]
                 xmax = aabb[1][0]
                 ymin = aabb[0][1]
@@ -56,8 +58,8 @@ class Dirty(AbsoluteObjectState, BooleanState):
 
     @staticmethod
     def get_dependencies():
-        return ["aabb"]
+        return [AABB]
 
     @staticmethod
     def get_optional_dependencies():
-        return ["cleaning_tool"]
+        return [CleaningTool]

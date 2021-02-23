@@ -1,4 +1,5 @@
-
+from gibson2.object_states import AABB
+from gibson2.object_states.touching import Touching
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 from gibson2.object_states.utils import sample_kinematics, get_center_extent, clear_cached_states
@@ -9,7 +10,7 @@ import numpy as np
 class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
     @staticmethod
     def get_dependencies():
-        return KinematicsMixin.get_dependencies() + ["touching"]
+        return KinematicsMixin.get_dependencies() + [Touching]
 
     def set_value(self, other, new_value):
         sampling_success = sample_kinematics(
@@ -32,8 +33,8 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         below_epsilon, above_epsilon = 0.05, 0.05
 
         center, extent = get_center_extent(objA_states)
-        assert 'aabb' in objB_states
-        bottom_aabb = objB_states['aabb'].get_value()
+        assert AABB in objB_states
+        bottom_aabb = objB_states[AABB].get_value()
 
         base_center = center - np.array([0, 0, extent[2]])/2
         top_z_min = base_center[2]
@@ -43,5 +44,5 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         bbox_contain = (aabb_contains_point(
             base_center[:2], aabb2d_from_aabb(bottom_aabb)))
 
-        touching = self.obj.states['touching'].get_value(other)
+        touching = self.obj.states[Touching].get_value(other)
         return height_correct and bbox_contain and touching

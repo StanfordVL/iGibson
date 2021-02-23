@@ -1,3 +1,4 @@
+from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 
 class CleaningTool(AbsoluteObjectState):
@@ -16,4 +17,4 @@ class CleaningTool(AbsoluteObjectState):
 
     @staticmethod
     def get_optional_dependencies():
-        return ["toggled_on"]
+        return [ToggledOn]
