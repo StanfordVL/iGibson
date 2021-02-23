@@ -27,6 +27,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
 #include "glfw_mesh_renderer.h"
@@ -165,6 +166,13 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
     //for skybox
     pymodule.def("loadSkyBox", &GLFWRendererContext::loadSkyBox, "TBA");
     pymodule.def("renderSkyBox", &GLFWRendererContext::renderSkyBox, "TBA");
+
+	// for text
+	pymodule.def("loadCharTexture", &GLFWRendererContext::loadCharTexture, "TBA");
+	pymodule.def("setupTextRender", &GLFWRendererContext::setupTextRender, "TBA");
+	pymodule.def("preRenderText", &GLFWRendererContext::preRenderText, "TBA");
+	pymodule.def("renderChar", &GLFWRendererContext::renderChar, "TBA");
+	pymodule.def("postRenderText", &GLFWRendererContext::postRenderText, "TBA");
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

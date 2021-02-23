@@ -8,6 +8,9 @@
 #endif
 #include <fstream>
 
+// TODO: Remove this!
+#include <bitset>
+
 #ifdef USE_GLAD
 
 #include  <glad/egl.h>
@@ -19,9 +22,10 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
-#include  <glad/gl.h>
+#include <glad/gl.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
@@ -1630,4 +1634,106 @@ void MeshRendererContext::renderSkyBox(int shaderProgram, py::array_t<float> V, 
 
 	glBindVertexArray(m_skybox_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+GLuint MeshRendererContext::loadCharTexture(int rows, int width, py::array_t<int> buffer) {
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	int buffer_len = rows * width;
+	int* buffer_ptr = (int*)buffer.request().ptr;
+	// Convert buffer integers to unsigned char before loading into texture
+	std::vector<unsigned char> buffer_vals;
+	for (int i = 0; i < buffer_len; i++) {
+		buffer_vals.push_back((unsigned char)buffer_ptr[i]);
+	}
+
+	GLuint tex;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		GL_RED,
+		width,
+		rows,
+		0,
+		GL_RED,
+		GL_UNSIGNED_BYTE,
+		&buffer_vals[0]
+	);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return tex;
+}
+
+py::list MeshRendererContext::setupTextRender() {
+	GLuint VAO, VBO;
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	// Each quad requires 6 vertices, containing 4 floats - x, y, tex_u and tex_v
+	// Enable GL_DYNAMIC_DRAW since we will be changing this VBO frequently when rendering the text
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	py::list textRenderData;
+	textRenderData.append(VAO);
+	textRenderData.append(VBO);
+
+	return textRenderData;
+}
+
+void MeshRendererContext::preRenderText(int shaderProgram, int VAO, float color_x, float color_y, float color_z) {
+	// Enable alpha blending so text appears correctly
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glUseProgram(shaderProgram);
+	// Orthographic projection used to render text
+	glm::mat4 ortho_proj = glm::ortho(0.0f, static_cast<float>(this->m_windowWidth), 0.0f, static_cast<float>(this->m_windowHeight));
+	glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(ortho_proj));
+
+	// Set text color
+	glUniform3f(glGetUniformLocation(shaderProgram, "textColor"), color_x, color_y, color_z);
+	glActiveTexture(GL_TEXTURE13);
+	glUniform1i(glGetUniformLocation(shaderProgram, "text"), 13);
+	glBindVertexArray(VAO);
+};
+
+void MeshRendererContext::renderChar(float xpos, float ypos, float w, float h, GLuint tex_id, int VBO) {
+	// Generate vertices for this character's quad
+	// First two values are the x and y positions, second two are the texture coordinates
+	float vertices[6][4] = {
+		{ xpos,     ypos + h,   0.0f, 0.0f },
+		{ xpos,     ypos,       0.0f, 1.0f },
+		{ xpos + w, ypos,       1.0f, 1.0f },
+
+		{ xpos,     ypos + h,   0.0f, 0.0f },
+		{ xpos + w, ypos,       1.0f, 1.0f },
+		{ xpos + w, ypos + h,   1.0f, 0.0f }
+	};
+
+	glBindTexture(GL_TEXTURE_2D, tex_id);
+
+	// Load character quad data into VBO
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	// Render quad
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+void MeshRendererContext::postRenderText() {
+	glBindVertexArray(0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	// Disable alpha blending so rest of iGibson rendering is not affected
+	glDisable(GL_BLEND);
 }

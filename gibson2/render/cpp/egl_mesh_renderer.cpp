@@ -24,6 +24,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
 #include "egl_mesh_renderer.h"
@@ -286,6 +287,14 @@ PYBIND11_MODULE(EGLRendererContext, m) {
     //for skybox
     pymodule.def("loadSkyBox", &EGLRendererContext::loadSkyBox, "TBA");
     pymodule.def("renderSkyBox", &EGLRendererContext::renderSkyBox, "TBA");
+
+	// for text
+	pymodule.def("loadCharTexture", &EGLRendererContext::loadCharTexture, "TBA");
+	pymodule.def("setupTextRender", &EGLRendererContext::setupTextRender, "TBA");
+	pymodule.def("preRenderText", &EGLRendererContext::preRenderText, "TBA");
+	pymodule.def("renderChar", &EGLRendererContext::renderChar, "TBA");
+	pymodule.def("postRenderText", &EGLRendererContext::postRenderText, "TBA")
+
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
 #else

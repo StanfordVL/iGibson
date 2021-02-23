@@ -16,6 +16,7 @@
 #include <glad/egl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -838,9 +839,16 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("renderOptimized", &VRRendererContext::renderOptimized, "TBA");
 	pymodule.def("clean_meshrenderer_optimized", &VRRendererContext::clean_meshrenderer_optimized, "TBA");
 
-	//for skybox
+	// for skybox
 	pymodule.def("loadSkyBox", &VRRendererContext::loadSkyBox, "TBA");
 	pymodule.def("renderSkyBox", &VRRendererContext::renderSkyBox, "TBA");
+
+	// for text
+	pymodule.def("loadCharTexture", &VRRendererContext::loadCharTexture, "TBA");
+	pymodule.def("setupTextRender", &VRRendererContext::setupTextRender, "TBA");
+	pymodule.def("preRenderText", &VRRendererContext::preRenderText, "TBA");
+	pymodule.def("renderChar", &VRRendererContext::renderChar, "TBA");
+	pymodule.def("postRenderText", &VRRendererContext::postRenderText, "TBA");
 
 	// VR functions
 	pymodule.def("getButtonDataForController", &VRRendererContext::getButtonDataForController);
