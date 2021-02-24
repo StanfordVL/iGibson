@@ -1,6 +1,8 @@
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
 from gibson2.utils.mesh_util import lookat
+from gibson2 import assets_path
 import numpy as np
+import os
 import time
 
 
@@ -64,7 +66,6 @@ class VrHUDOverlay(VrOverlayBase):
         rtex = self.renderer.text_manager.get_render_tex()
         self.renderer.vrsys.updateOverlayTexture(self.overlay_name, rtex)
 
-
 class VrStaticImageOverlay(VrOverlayBase):
     """
     Class that renders a static image to the VR overlay a single time.
@@ -101,8 +102,8 @@ class VrSettings(object):
                 movement_speed = 0.01,
                 reset_sim = True,
                 vr_fps = 30,
-                hud_width = 2,
-                hud_pos = [0, 0, -3]):
+                hud_width = 0.7,
+                hud_pos = [0, 0, -0.8]):
         """
         Initializes VR settings.
         :param use_vr: whether to render to the HMD and use VR system or just render to screen (used for debugging)
@@ -143,11 +144,8 @@ class MeshRendererVR(MeshRenderer):
         """
         self.vr_rendering_settings = rendering_settings
         self.vr_settings = vr_settings
-        self.base_width = 1080
-        self.base_height = 1200
-        self.scale_factor = 1.2
-        self.width = int(self.base_width * self.scale_factor)
-        self.height = int(self.base_height * self.scale_factor)
+        self.width = 1296
+        self.height = 1440
         super().__init__(width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings)
 
         # Rename self.r to self.vrsys
@@ -175,13 +173,14 @@ class MeshRendererVR(MeshRenderer):
                                    pos=self.vr_settings.hud_pos)
         self.vr_hud.set_overlay_state('show')
 
-    def gen_static_overlay(image_fpath, width=1, pos=[0, 0, -1]):
+    def gen_static_overlay(self, image_fpath, width=1, pos=[0, 0, -1]):
         """
         Generates and returns an overlay containing a static image. This will display in addition to the HUD.
         """
         uniq_name = 'overlay{}'.format(time.perf_counter())
         static_overlay = VrStaticImageOverlay(uniq_name, 
                                     self, 
+                                    image_fpath,
                                     width=width, 
                                     pos=pos)
         static_overlay.set_overlay_state('show')

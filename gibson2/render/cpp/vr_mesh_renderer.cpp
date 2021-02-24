@@ -855,11 +855,13 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	// for text
 	pymodule.def("loadCharTexture", &VRRendererContext::loadCharTexture, "TBA");
 	pymodule.def("setupTextRender", &VRRendererContext::setupTextRender, "TBA");
+	pymodule.def("preRenderTextFramebufferSetup", &VRRendererContext::preRenderTextFramebufferSetup, "TBA");
 	pymodule.def("preRenderText", &VRRendererContext::preRenderText, "TBA");
 	pymodule.def("renderChar", &VRRendererContext::renderChar, "TBA");
 	pymodule.def("postRenderText", &VRRendererContext::postRenderText, "TBA");
 	pymodule.def("genTextFramebuffer", &VRRendererContext::genTextFramebuffer, "TBA");
 	pymodule.def("renderBackgroundQuad", &VRRendererContext::renderBackgroundQuad, "TBA");
+	pymodule.def("read_fbo_color_tex_to_numpy", &VRRendererContext::read_fbo_color_tex_to_numpy, "TBA");
 
 	// VR functions
 	pymodule.def("getButtonDataForController", &VRRendererContext::getButtonDataForController);

@@ -227,6 +227,8 @@ public:
 
 	py::list setupTextRender();
 
+	void preRenderTextFramebufferSetup(int FBO);
+
 	void preRenderText(int shaderProgram, int FBO, int VAO, float color_x, float color_y, float color_z);
 
 	void renderChar(float xpos, float ypos, float w, float h, GLuint tex_id, int VBO);
@@ -236,6 +238,8 @@ public:
 	void postRenderText();
 
 	py::list genTextFramebuffer();
+
+	py::array_t<float> read_fbo_color_tex_to_numpy(GLuint fbo);
 };
 
 
