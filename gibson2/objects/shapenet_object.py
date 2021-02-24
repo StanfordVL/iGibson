@@ -1,9 +1,9 @@
-from gibson2.objects.object_base import Object
+from gibson2.objects.stateful_object import StatefulObject
 import pybullet as p
 import numpy as np
 
 
-class ShapeNetObject(Object):
+class ShapeNetObject(StatefulObject):
     """
     ShapeNet object
     Reference: https://www.shapenet.org/

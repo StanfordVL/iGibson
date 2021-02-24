@@ -14,6 +14,13 @@ from gibson2.object_states.pose import Pose
 from gibson2.object_states.temperature import Temperature
 from gibson2.object_states.touching import Touching
 from gibson2.object_states.under import Under
+from gibson2.object_states.soaked import Soaked
+from gibson2.object_states.dirty import Dirty
+from gibson2.object_states.stained import Stained
+from gibson2.object_states.toggle import ToggledOn
+from gibson2.object_states.water_source import WaterSource
+from gibson2.object_states.cleaning_tool import CleaningTool
+
 
 _STATE_NAME_TO_CLASS_MAPPING = {
     # Kinematic states
@@ -26,7 +33,13 @@ _STATE_NAME_TO_CLASS_MAPPING = {
     'nextTo': NextTo,
     'under': Under,
     'touching': Touching,
-
+    'toggled_on': ToggledOn,
+    # Particle-related states
+    'soaked': Soaked,
+    'dirty': Dirty,
+    'stained': Stained,
+    'water_source': WaterSource,
+    'cleaning_tool': CleaningTool,
     # Temperature / cooking states
     'heatSource': HeatSource,
     'temperature': Temperature,
@@ -37,6 +50,12 @@ _STATE_NAME_TO_CLASS_MAPPING = {
 
 _ABILITY_TO_STATE_MAPPING = {
     "cookable": ["cooked"],
+    "soakable": ["soaked"],
+    "dustable": ["dirty"],
+    "scrubbable": ["stained"],
+    "water_source": ["water_source"],
+    "cleaning_tool": ["cleaning_tool"],
+    "toggleable": ["toggled_on"],
     "burnable": ["burnt"],
     "heatSource": ["heatSource"]
 }

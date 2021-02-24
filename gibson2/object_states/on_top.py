@@ -12,12 +12,16 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         return KinematicsMixin.get_dependencies() + ["touching"]
 
     def set_value(self, other, new_value):
-        sampling_success = sample_kinematics(
-            'onTop', self.obj, other, new_value)
-        if sampling_success:
-            clear_cached_states(self.obj)
-            clear_cached_states(other)
-            assert self.get_value(other) == new_value
+        for _ in range(10):
+            sampling_success = sample_kinematics(
+                'onTop', self.obj, other, new_value)
+            if sampling_success:
+                clear_cached_states(self.obj)
+                clear_cached_states(other)
+                if self.get_value(other) != new_value:
+                    sampling_success = False
+            if sampling_success:
+                break
 
         return sampling_success
 
@@ -25,7 +29,9 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         objA_states = self.obj.states
         objB_states = other.states
 
-        below_epsilon, above_epsilon = 0.025, 0.025
+        # This tolerance is needed because pybullet getAABB is not accurate
+        # (prone to over-estimation)
+        below_epsilon, above_epsilon = 0.05, 0.05
 
         center, extent = get_center_extent(objA_states)
         assert 'aabb' in objB_states

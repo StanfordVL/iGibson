@@ -29,7 +29,8 @@ def look_at(obj_camera, point):
 
 class redirect_output():
     def __init__(self):
-        logfile = os.path.join(tempfile.gettempdir(), 'blender_command_{}.log'.format(getpass.getuser()))
+        logfile = os.path.join(tempfile.gettempdir(
+        ), 'blender_command_{}.log'.format(getpass.getuser()))
         with open(logfile, 'a') as f:
             f.close()
         self.old = os.dup(1)
@@ -344,12 +345,16 @@ def import_ig_scene_structure(scene_dir, import_mat=False):
         clean_unused()
 
 
-def import_obj_folder(object_name, obj_dir, up='Z', forward='X'):
+def import_obj_folder(object_name, obj_dir, up='Z', forward='X', use_split_objects=False):
     scene_collection = bpy.context.view_layer.layer_collection
     bpy.context.view_layer.active_layer_collection = scene_collection
     bpy.ops.object.select_all(action='DESELECT')
     collection = bpy.data.collections.new(object_name)
     bpy.context.scene.collection.children.link(collection)
+    if use_split_objects:
+        split_mode = 'ON'
+    else:
+        split_mode = 'OFF'
     with redirect_output():
         for o in os.listdir(obj_dir):
             if os.path.splitext(o)[-1] != '.obj':
@@ -360,11 +365,11 @@ def import_obj_folder(object_name, obj_dir, up='Z', forward='X'):
                 axis_forward=forward,
                 use_edges=True,
                 use_smooth_groups=True,
-                use_split_objects=False,
+                use_split_objects=use_split_objects,
                 use_split_groups=False,
                 use_groups_as_vgroups=False,
                 use_image_search=False,
-                split_mode='OFF')
+                split_mode=split_mode)
             imported = bpy.context.selected_objects[:]
             for obj in imported:
                 collection.objects.link(obj)
