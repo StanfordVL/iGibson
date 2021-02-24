@@ -482,6 +482,15 @@ void VRRendererContext::cropOverlay(char* name, float start_u, float start_v, fl
 	}
 }
 
+void VRRendererContext::destroyOverlay(char* name) {
+	std::string ovName(name);
+	vr::VROverlayHandle_t handle = this->overlayNamesToHandles[ovName];
+	vr::VROverlayError overlayError = vr::VROverlay()->DestroyOverlay(handle);
+	if (overlayError != vr::VROverlayError_None) {
+		std::cerr << "VR OVERLAY ERROR: unable to destroy overlay with name " << ovName << std::endl;
+	}
+}
+
 void VRRendererContext::hideOverlay(char* name) {
 	vr::VROverlay()->HideOverlay(this->overlayNamesToHandles[std::string(name)]);
 }
@@ -849,6 +858,8 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("preRenderText", &VRRendererContext::preRenderText, "TBA");
 	pymodule.def("renderChar", &VRRendererContext::renderChar, "TBA");
 	pymodule.def("postRenderText", &VRRendererContext::postRenderText, "TBA");
+	pymodule.def("genTextFramebuffer", &VRRendererContext::genTextFramebuffer, "TBA");
+	pymodule.def("renderBackgroundQuad", &VRRendererContext::renderBackgroundQuad, "TBA");
 
 	// VR functions
 	pymodule.def("getButtonDataForController", &VRRendererContext::getButtonDataForController);
@@ -870,6 +881,7 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	// VR overlay methods
 	pymodule.def("createOverlay", &VRRendererContext::createOverlay);
 	pymodule.def("cropOverlay", &VRRendererContext::cropOverlay);
+	pymodule.def("destroyOverlay", &VRRendererContext::destroyOverlay);
 	pymodule.def("hideOverlay", &VRRendererContext::hideOverlay);
 	pymodule.def("showOverlay", &VRRendererContext::showOverlay);
 	pymodule.def("updateOverlayTexture", &VRRendererContext::updateOverlayTexture);

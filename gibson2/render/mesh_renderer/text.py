@@ -50,6 +50,19 @@ class TextManager(object):
         # Font data is stored in dictionary - TODO: Keep this here? Change data type based on what is stored?
         self.font_data = {}
 
+    def gen_text_fbo(self):
+        """
+        Generates the separate framebuffer used to render all text.
+        """
+        self.FBO, self.render_tex = self.renderer.r.genTextFramebuffer()
+
+    def get_render_tex(self):
+        """
+        Returns the render texture belonging to the TextManager,
+        which contains all Text that has the render_to_tex flag set to True.
+        """
+        return self.render_tex
+
     def load_font(self, font_name, font_style, font_size):
         """
         Loads font. TextManager stores data for each font, and only loads once for efficiency.
@@ -103,6 +116,8 @@ class Text(object):
                  color=[0, 0, 0],
                  pos=[0, 0],
                  scale=1.0,
+                 render_to_tex=False,
+                 background_color=None,
                  text_manager=None):
         """
         :param text_data: starting text to display (can be changed at a later time by set_text)
@@ -112,6 +127,8 @@ class Text(object):
         :param color: [r, g, b] color
         :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
         :param scale: scale factor for resizing text
+        :param background_color: color of the background in form [r, g, b, a] - background will only appear if this is not None
+        :param render_to_tex: whether text should be rendered to an OpenGL texture or the screen (the default)
         :param text_manager: TextManager object that handles raw character data for fonts
         """
         if not text_manager:
@@ -120,12 +137,16 @@ class Text(object):
         self.font_style = font_style
         # Note: font size is in pixels
         self.font_size = font_size
-        # TODO: Experiment with this value until it looks good for all letters!
+        self.render_to_tex = render_to_tex
         self.line_sep = 2 * self.font_size
         self.space_x = self.font_size
         # Text stores list of lines, which are each rendered
         self.set_text(text_data)
         self.set_attribs(pos=pos, scale=scale, color=color)
+        self.background_color = background_color
+        # Background margin in pixels (in both x and y directions)
+        # TODO: Tweak this until it looks good!
+        self.background_margin = 10
         # Text manager stores data for characters in a font
         self.tm = text_manager
         # Load font and extract character data
@@ -151,7 +172,7 @@ class Text(object):
             self.scale = scale
         if color:
             self.color = color
-            
+
     def render(self):
         """
         Render the current text object
@@ -162,23 +183,23 @@ class Text(object):
         if self.tm.renderer is None:
             return
         
-        self.tm.renderer.r.preRenderText(self.tm.renderer.textShaderProgram, self.VAO, self.color[0], self.color[1], self.color[2])
+        # Pass in -1 if we want to render to the screen
+        self.tm.renderer.r.preRenderText(self.tm.renderer.textShaderProgram, self.tm.FBO if self.render_to_tex else -1, self.VAO, self.color[0], self.color[1], self.color[2])
 
-        # Start with text in user-specified bottom-left corner
-        next_x = self.pos[0]
-        next_y = self.pos[1]
-
-        # Loop over lines, then characters
-        # Render lines backwards, since user-specified position is the bottom-left corner
+        # Precalculate render data for each character so we can figure out the bounds of the background quad
         text_to_render = self.text[::-1]
+        # Store characte render data as list of tuples (xpos, ypos, w, h, tex_id)
+        char_render_data = []
         for i in range(len(text_to_render)):
             line = text_to_render[i]
-            next_y = next_y + i * self.line_sep
+            # x pos resets back to left each time a new line is rendered
+            next_x = self.pos[0]
+            next_y = self.pos[1] + i * self.line_sep
             for c in line:
                 # Convert character to ASCII
                 c = ord(c)
-                # Deal with spaces
-                if c == 32:
+                # Deal with spaces - and add space for unrecognized characters
+                if c <= 32 or c >= 127:
                     next_x += self.space_x
                     continue
 
@@ -188,11 +209,42 @@ class Text(object):
                 w = c_data.size[0] * self.scale
                 h = c_data.size[1] * self.scale
 
-                self.tm.renderer.r.renderChar(xpos, ypos, w, h, c_data.tex_id, self.VBO)
+                char_render_data.append((xpos, ypos, w, h, c_data.tex_id))
 
                 # Advance x position to next glyph - advance is stored in units of 1/64 pixels, so we need to divide by 64
                 next_x += ((c_data.advance / 64.0) * self.scale)
 
-        self.tm.renderer.r.postRenderText()
+        # Optionally render background first so alpha blending works correctly
+        if self.background_color:
+            # Find bottom-left corner
+            min_x = sorted(char_render_data, key=lambda x: x[0])[0][0]
+            min_y = sorted(char_render_data, key=lambda x: x[1])[0][1]
+            bottom_left_x = min_x - self.background_margin
+            bottom_left_y = min_y - self.background_margin
+            # Find top-right corner
+            max_x, max_y = 0.0, 0.0
+            for d in char_render_data:
+                letter_right = d[0] + d[2]
+                letter_top = d[1] + d[3]
+                if letter_right > max_x:
+                    max_x = letter_right
+                if letter_top > max_y:
+                    max_y = letter_top
+            top_right_x = max_x + self.background_margin
+            top_right_y = max_y + self.background_margin
+            b_w = top_right_x - bottom_left_x
+            b_h = top_right_y - bottom_left_y
 
-    # TODO: Add code to render to alternate FBO and extract texture - after I test on normal iGibson rendering!
+            # Unpack color data
+            b_r, b_g, b_b, b_a = self.background_color
+            # Render background
+            self.tm.renderer.r.renderBackgroundQuad(bottom_left_x, bottom_left_y, b_w, b_h, self.VBO, 
+                                                    self.tm.renderer.textShaderProgram, b_a, b_r, b_g, b_b)
+
+        # Finally render all characters
+        for r_data in char_render_data:
+            xpos, ypos, w, h, tex_id = r_data
+            self.tm.renderer.r.renderChar(xpos, ypos, w, h, tex_id, self.VBO)
+
+        # Perform render clean-up
+        self.tm.renderer.r.postRenderText()

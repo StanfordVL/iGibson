@@ -81,6 +81,10 @@ public:
 	GLuint m_skybox_vao;
 	GLuint m_skybox_vbo;
 
+	// Text data
+	bool restore_prev_FBO = false;
+	GLint m_prevFBO;
+
 #ifdef USE_CUDA
     cudaGraphicsResource* cuda_res[MAX_NUM_RESOURCES];
 #endif
@@ -217,15 +221,21 @@ public:
 	void loadSkyBox(int shaderProgram, float skybox_size);
 	void renderSkyBox(int shaderProgram, py::array_t<float> V, py::array_t<float> P);
 
+	// Text rendering methods
+
 	GLuint loadCharTexture(int rows, int width, py::array_t<int> buffer);
 
 	py::list setupTextRender();
 
-	void preRenderText(int shaderProgram, int VAO, float color_x, float color_y, float color_z);
+	void preRenderText(int shaderProgram, int FBO, int VAO, float color_x, float color_y, float color_z);
 
 	void renderChar(float xpos, float ypos, float w, float h, GLuint tex_id, int VBO);
 
+	void renderBackgroundQuad(float xpos, float ypos, float w, float h, int VBO, int shaderProgram, float alpha, float color_x, float color_y, float color_z);
+
 	void postRenderText();
+
+	py::list genTextFramebuffer();
 };
 
 
