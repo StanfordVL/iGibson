@@ -3,6 +3,7 @@ import pybullet as p
 import cv2
 from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, quat_from_matrix, stable_z_on_aabb
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
+from IPython import embed
 
 
 def get_center_extent(obj_states):
@@ -18,7 +19,7 @@ def clear_cached_states(obj):
             obj_state.clear_cached_value()
 
 
-def sample_kinematics(predicate, objA, objB, binary_state, height_idx = None):
+def sample_kinematics(predicate, objA, objB, binary_state):
     if not binary_state:
         raise NotImplementedError()
 
@@ -26,7 +27,7 @@ def sample_kinematics(predicate, objA, objB, binary_state, height_idx = None):
         return False
 
     max_trials = 100
-    z_offset = 0.01
+    z_offset = 0.05
     if objA.orientations is not None:
         orientation = objA.sample_orientation()
     else:
@@ -41,12 +42,10 @@ def sample_kinematics(predicate, objA, objB, binary_state, height_idx = None):
             len(objB.supporting_surfaces[predicate].keys()))
         body_id, link_id = list(objB.supporting_surfaces[predicate].keys())[
             random_idx]
-        if height_idx is None:
-            random_height_idx = np.random.randint(
-                len(objB.supporting_surfaces[predicate][(body_id, link_id)]))
-            height_idx = random_height_idx
+        random_height_idx = np.random.randint(
+            len(objB.supporting_surfaces[predicate][(body_id, link_id)]))
         height, height_map = objB.supporting_surfaces[predicate][(
-            body_id, link_id)][height_idx]
+            body_id, link_id)][random_height_idx]
         obj_half_size = np.max(objA.bounding_box) / 2 * 100
         obj_half_size_scaled = np.array(
             [obj_half_size / objB.scale[1], obj_half_size / objB.scale[0]])
@@ -99,9 +98,9 @@ def sample_kinematics(predicate, objA, objB, binary_state, height_idx = None):
 
     if success:
         objA.set_position_orientation(pos, orientation)
-        # Let it fall for 0.1 second
+        # Let it fall for 0.2 second
         physics_timestep = p.getPhysicsEngineParameters()['fixedTimeStep']
-        for _ in range(int(0.1 / physics_timestep)):
+        for _ in range(int(0.2 / physics_timestep)):
             p.stepSimulation()
             if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:
                 break

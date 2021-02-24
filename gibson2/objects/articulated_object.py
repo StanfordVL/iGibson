@@ -6,7 +6,7 @@ import gibson2
 import numpy as np
 import xml.etree.ElementTree as ET
 
-from gibson2.objects.object_base import Object
+from gibson2.objects.stateful_object import StatefulObject
 import pybullet as p
 import trimesh
 import random
@@ -22,9 +22,10 @@ from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
 from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from gibson2.object_states.factory import prepare_object_states
 
 
-class ArticulatedObject(Object):
+class ArticulatedObject(StatefulObject):
     """
     Articulated objects are defined in URDF files.
     They are passive (no motors).
@@ -64,7 +65,7 @@ class RBOObject(ArticulatedObject):
         super(RBOObject, self).__init__(filename, scale)
 
 
-class URDFObject(Object):
+class URDFObject(StatefulObject):
     """
     URDFObjects are instantiated from a URDF file. They can be composed of one
     or more links and joints. They should be passive. We use this class to
@@ -75,11 +76,14 @@ class URDFObject(Object):
                  filename,
                  name='object_0',
                  category='object',
+                 abilities=[],
                  model_path=None,
                  bounding_box=None,
                  scale=None,
                  fit_avg_dim_volume=False,
                  connecting_joint=None,
+                 initial_pos=None,
+                 initial_orn=None,
                  avg_obj_dims=None,
                  joint_friction=None,
                  in_rooms=None,
@@ -96,6 +100,8 @@ class URDFObject(Object):
         :param scale: scaling factor of this object
         :param: fit_avg_dim_volume: whether to fit the object to have the same volume as the average dimension while keeping the aspect ratio
         :param connecting_joint: connecting joint to the scene that defines the object's initial pose (optional)
+        :param initial_pos: initial position of the object (lower priority than connecting_joint)
+        :param initial_orn: initial orientation of the object (lower priority than connecting_joint)
         :param avg_obj_dims: average object dimension of this object
         :param joint_friction: joint friction for joints in this object
         :param in_rooms: which room(s) this object is in. It can be in more than one rooms if it sits at room boundary (e.g. doors)
@@ -109,10 +115,13 @@ class URDFObject(Object):
         self.category = category
         self.in_rooms = in_rooms
         self.connecting_joint = connecting_joint
+        self.initial_pos = initial_pos
+        self.initial_orn = initial_orn
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
-
+        self.abilities = abilities
+        self.states = prepare_object_states(self, abilities, online=True)
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
             self.joint_friction = joint_friction
@@ -158,6 +167,13 @@ class URDFObject(Object):
 
         logging.info("Category " + self.category)
         self.filename = filename
+        dirname = os.path.dirname(filename)
+        urdf = os.path.basename(filename)
+        urdf_name, _ = os.path.splitext(urdf)
+        simplified_urdf = os.path.join(dirname, urdf_name + "_simplified.urdf")
+        if os.path.exists(simplified_urdf):
+            self.filename = simplified_urdf
+            filename = simplified_urdf
         logging.info("Loading the following URDF template " + filename)
         self.object_tree = ET.parse(filename)  # Parse the URDF
 
@@ -179,7 +195,8 @@ class URDFObject(Object):
 
         meta_json = os.path.join(self.model_path, 'misc', 'metadata.json')
         bbox_json = os.path.join(self.model_path, 'misc', 'bbox.json')
-        meta_links = dict()  # In the format of {link_name: [linkX, linkY, linkZ]}
+        # In the format of {link_name: [linkX, linkY, linkZ]}
+        meta_links = dict()
         if os.path.isfile(meta_json):
             with open(meta_json, 'r') as f:
                 meta_data = json.load(f)
@@ -266,8 +283,14 @@ class URDFObject(Object):
             assert joint_parent == 'world'
         else:
             joint_type = 'floating'
-            joint_xyz = np.array([0., 0., 0.])
-            joint_rpy = np.array([0., 0., 0.])
+            if self.initial_pos is not None:
+                joint_xyz = self.initial_pos
+            else:
+                joint_xyz = np.array([0., 0., 0.])
+            if self.initial_orn is not None:
+                joint_rpy = self.initial_orn
+            else:
+                joint_rpy = np.array([0., 0., 0.])
             joint_name = None
             joint_parent = None
 
@@ -650,6 +673,16 @@ class URDFObject(Object):
                     new_scale = np.array([round_up(val, 10)
                                           for val in scale_in_lf])
                     mesh.set('scale', ' '.join(map(str, new_scale)))
+
+            for box in link.iter("box"):
+                if "size" in box.attrib:
+                    box_scale = np.array(
+                        [float(val) for val in box.attrib["size"].split(" ")])
+                    new_scale = np.multiply(box_scale, scale_in_lf)
+                    new_scale = np.array([round_up(val, 10)
+                                          for val in new_scale])
+                    box.attrib['size'] = ' '.join(map(str, new_scale))
+
             for origin in link.iter("origin"):
                 origin_xyz = np.array(
                     [float(val) for val in origin.attrib["xyz"].split(" ")])

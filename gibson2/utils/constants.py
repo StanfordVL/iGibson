@@ -32,10 +32,68 @@ class PyBulletSleepState(IntEnum):
 
 
 # iGATUS-related
-with open(os.path.join(gibson2.ig_dataset_path, 'metadata/categories.txt')) as f:
-    NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines()]
+# with open(os.path.join(gibson2.ig_dataset_path, 'metadata/non_sampleable_categories.txt')) as f:
+#     NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines()]
 
-UNDER_OBJECTS = ['table', 'console_table', 'coffee_table', 'chair', 'bench']
+NON_SAMPLEABLE_OBJECTS = [
+    'bathtub.n.01',
+    'bed.n.01',
+    'bench.n.01',
+    'burner.n.01',
+    'cabinet.n.01',
+    'rug.n.01',
+    'chair.n.01',
+    'chest.n.02',
+    'countertop.n.01',
+    'crib.n.01',
+    'dishwasher.n.01',
+    'door.n.01',
+    'dryer.n.01',
+    'floor_lamp.n.01',
+    'electric_refrigerator.n.01',
+    'grandfather_clock.n.01',
+    'heater.n.01',
+    'microwave.n.02',
+    'mirror.n.01',
+    'oven.n.01',
+    'piano.n.01',
+    'photograph.n.01',
+    'rail_fence.n.01',
+    'range_hood.n.01',
+    'shelf.n.01',
+    'shower.n.01',
+    'sink.n.01',
+    'sofa.n.01',
+    'loudspeaker.n.01',
+    'stove.n.01',
+    'table.n.02',
+    'toilet.n.02',
+    'towel_rack.n.01',
+    'treadmill.n.01',
+    'television_receiver.n.01',
+    'wall_clock.n.01',
+    'washer.n.03',
+    'window.n.01',
+]
+
+UNDER_OBJECTS = [
+    'breakfast_table',
+    'coffee_table',
+    'console_table',
+    'desk',
+    'gaming_table',
+    'pedestal_table',
+    'pool_table',
+    'stand',
+    'armchair',
+    'chaise_longue',
+    'folding_chair',
+    'highchair',
+    'rocking_chair',
+    'straight_chair',
+    'swivel_chair',
+    'bench'
+]
 
 hdr_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
