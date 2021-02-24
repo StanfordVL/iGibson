@@ -667,7 +667,7 @@ class Simulator:
                  color=[0, 0, 0],
                  pos=[500, 500],
                  scale=1.0,
-                 background_color=[1,1,1,0.5]):
+                 background_color=[1,1,1,0.8]):
         """
         Creates Text for use in a VR overlay. Returns the text object to the caller,
         so various settings can be changed - eg. text content, position, scale, etc.
@@ -694,6 +694,7 @@ class Simulator:
                                       color=color,
                                       pos=pos,
                                       scale=scale,
+                                      background_color=background_color,
                                       render_to_tex=True)
 
     def add_overlay_image(self,

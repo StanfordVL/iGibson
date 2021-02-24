@@ -291,11 +291,13 @@ PYBIND11_MODULE(EGLRendererContext, m) {
 	// for text
 	pymodule.def("loadCharTexture", &EGLRendererContext::loadCharTexture, "TBA");
 	pymodule.def("setupTextRender", &EGLRendererContext::setupTextRender, "TBA");
+	pymodule.def("preRenderTextFramebufferSetup", &EGLRendererContext::preRenderTextFramebufferSetup, "TBA");
 	pymodule.def("preRenderText", &EGLRendererContext::preRenderText, "TBA");
 	pymodule.def("renderChar", &EGLRendererContext::renderChar, "TBA");
 	pymodule.def("postRenderText", &EGLRendererContext::postRenderText, "TBA");
 	pymodule.def("genTextFramebuffer", &EGLRendererContext::genTextFramebuffer, "TBA");
 	pymodule.def("renderBackgroundQuad", &EGLRendererContext::renderBackgroundQuad, "TBA");
+	pymodule.def("read_fbo_color_tex_to_numpy", &EGLRendererContext::read_fbo_color_tex_to_numpy, "TBA");
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

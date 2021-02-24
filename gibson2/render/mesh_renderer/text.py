@@ -49,6 +49,8 @@ class TextManager(object):
         self.font_folder = os.path.join(assets_path, 'fonts')
         # Font data is stored in dictionary - TODO: Keep this here? Change data type based on what is stored?
         self.font_data = {}
+        # List of all texture ids - used when cleaning up text manager
+        self.tex_ids = []
 
     def gen_text_fbo(self):
         """
@@ -95,6 +97,7 @@ class TextManager(object):
             # Convert list buffer into int numpy array so we can access raw data easily in C++ code
             buffer_data = np.ascontiguousarray(bmap.buffer, dtype=np.int32)
             tex_id = self.renderer.r.loadCharTexture(bmap.rows, bmap.width, buffer_data)
+            self.tex_ids.append(tex_id)
             next_c = Character(tex_id, [bmap.width, bmap.rows], [g.bitmap_left, g.bitmap_top], 
                                g.advance.x, bmap.buffer)
             font_chars[code] = next_c

@@ -903,6 +903,7 @@ class MeshRenderer(object):
 
         # render text
         if render_text_pass:
+            self.r.preRenderTextFramebufferSetup(self.text_manager.FBO)
             for text in self.texts:
                 text.render()
 
@@ -994,9 +995,9 @@ class MeshRenderer(object):
         """
         clean_list = [
             self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-            self.depth_tex, self.color_tex_scene_flow, self.color_tex_optical_flow
-        ]
-        fbo_list = [self.fbo]
+            self.depth_tex, self.color_tex_scene_flow, self.color_tex_optical_flow, self.text_manager.render_tex
+        ] + [i for i in self.text_manager.tex_ids]
+        fbo_list = [self.fbo, self.text_manager.FBO]
         if self.msaa:
             clean_list += [
                 self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
@@ -1006,10 +1007,11 @@ class MeshRenderer(object):
 
         if self.optimized:
             self.r.clean_meshrenderer_optimized(clean_list, [self.tex_id_1, self.tex_id_2], fbo_list,
-                                                [self.optimized_VAO], [self.optimized_VBO], [self.optimized_EBO])
+                                                [self.optimized_VAO] + text_vaos, [self.optimized_VBO] + text_vbos, [self.optimized_EBO])
         else:
             self.r.clean_meshrenderer(
-                clean_list, self.textures, fbo_list, self.VAOs, self.VBOs)
+                clean_list, self.textures, fbo_list, self.VAOs + text_vaos, self.VBOs + text_vbos)
+        self.text_manager.tex_ids = []
         self.color_tex_rgb = None
         self.color_tex_normal = None
         self.color_tex_semantics = None

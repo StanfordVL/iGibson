@@ -1688,15 +1688,23 @@ py::list MeshRendererContext::setupTextRender() {
 	return textRenderData;
 }
 
+void MeshRendererContext::preRenderTextFramebufferSetup(int FBO) {
+	// Clears framebuffer in preparation for rendering text
+	int prev_FBO;
+	glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_FBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+	// Make framebuffer completely transparent by default, since we only want to render text
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glBindFramebuffer(GL_FRAMEBUFFER, prev_FBO);
+}
+
 void MeshRendererContext::preRenderText(int shaderProgram, int FBO, int VAO, float color_x, float color_y, float color_z) {
 	if (FBO != -1) {
-		// Get previous FBO and store it, so we can go back
+		// Get previous FBO and store it, so we can go back (if texture and non-texture text rendering is interleaved)
 		this->restore_prev_FBO = true;
 		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &this->m_prevFBO);
 		glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-		// Make framebuffer completely transparent by default, since we only want to render text
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 	else {
 		this->restore_prev_FBO = false;
@@ -1705,6 +1713,7 @@ void MeshRendererContext::preRenderText(int shaderProgram, int FBO, int VAO, flo
 	// Enable alpha blending so text appears correctly
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_DEPTH_TEST);
 	glUseProgram(shaderProgram);
 	// Orthographic projection used to render text
 	glm::mat4 ortho_proj = glm::ortho(0.0f, static_cast<float>(this->m_windowWidth), 0.0f, static_cast<float>(this->m_windowHeight));
@@ -1773,6 +1782,7 @@ void MeshRendererContext::postRenderText() {
 	glBindTexture(GL_TEXTURE_2D, 0);
 	// Disable alpha blending so rest of iGibson rendering is not affected
 	glDisable(GL_BLEND);
+	glDisable(GL_DEPTH_TEST);
 
 	// Restore previous FBO if one was bound
 	// This allows us to render text both to the screen and to a texture
@@ -1782,9 +1792,12 @@ void MeshRendererContext::postRenderText() {
 }
 
 py::list MeshRendererContext::genTextFramebuffer() {
+	// Create and bind framebuffer
 	GLuint fbo;
 	glGenFramebuffers(1, &fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	
+	// Create and bind color texture
 	GLuint render_tex;
 	glGenTextures(1, &render_tex);
 	glBindTexture(GL_TEXTURE_2D, render_tex);
@@ -1792,14 +1805,35 @@ py::list MeshRendererContext::genTextFramebuffer() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, this->m_windowWidth, this->m_windowHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, render_tex, 0);
+
+	// Create a renderbuffer object for depth and stencil, since we won't be sampling either
+	GLuint rbo;
+	glGenRenderbuffers(1, &rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, this->m_windowWidth, this->m_windowHeight);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+	// Check that framebuffer is complete
+	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 	glViewport(0, 0, this->m_windowWidth, this->m_windowHeight);
 	GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
-	glDrawBuffers(1, draw_buffers); 
-	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+	glDrawBuffers(1, draw_buffers);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	py::list genOut;
 	genOut.append(fbo);
 	genOut.append(render_tex);
-	
+
 	return genOut;
+}
+
+py::array_t<float> MeshRendererContext::read_fbo_color_tex_to_numpy(GLuint fbo) {
+	// Used for debugging the contents of an FBO's color attachment
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
+	py::array_t<float> data = py::array_t<float>(4 * this->m_windowWidth * this->m_windowHeight);
+	py::buffer_info buf = data.request();
+	float* ptr = (float*)buf.ptr;
+	glReadPixels(0, 0, this->m_windowWidth, this->m_windowHeight, GL_RGBA, GL_FLOAT, ptr);
+	return data;
 }
