@@ -228,6 +228,9 @@ class MeshRenderer(object):
 
         self.setup_lidar_param()
 
+        # Set up text FBO
+        self.text_manager.gen_text_fbo()
+
     def setup_pbr(self):
         """
         Set up physics-based rendering
@@ -657,17 +660,21 @@ class MeshRenderer(object):
                  font_size=48,
                  color=[0, 0, 0],
                  pos=[0, 0],
-                 scale=1.0):
+                 scale=1.0,
+                 background_color=None,
+                 render_to_tex=False):
         """
         Creates a Text object with the given parameters. Returns the text object to the caller,
         so various settings can be changed - eg. text content, position, scale, etc.
         :param text_data: starting text to display (can be changed at a later time by set_text)
         :param font_name: name of font to render - same as font folder in iGibson assets
-        :param font_size: size of font to render
         :param font_style: style of font - one of [regular, italic, bold]
+        :param font_size: size of font to render
         :param color: [r, g, b] color
         :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
         :param scale: scale factor for resizing text
+        :param background_color: color of the background in form [r, g, b, a] - background will only appear if this is not None
+        :param render_to_tex: whether text should be rendered to an OpenGL texture or the screen (the default)
         """
         text = Text(text_data=text_data,
                     font_name=font_name, 
@@ -676,6 +683,8 @@ class MeshRenderer(object):
                     color=color, 
                     pos=pos,
                     scale=scale,
+                    background_color=background_color,
+                    render_to_tex=render_to_tex,
                     text_manager=self.text_manager)
         self.texts.append(text)
         return text
@@ -803,7 +812,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-    def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True):
+    def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -893,8 +902,9 @@ class MeshRenderer(object):
                             shadow_pass=ShadowPass.NO_SHADOW)
 
         # render text
-        for text in self.texts:
-            text.render()
+        if render_text_pass:
+            for text in self.texts:
+                text.render()
 
         self.r.render_meshrenderer_post()
 

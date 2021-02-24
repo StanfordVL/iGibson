@@ -173,6 +173,8 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
 	pymodule.def("preRenderText", &GLFWRendererContext::preRenderText, "TBA");
 	pymodule.def("renderChar", &GLFWRendererContext::renderChar, "TBA");
 	pymodule.def("postRenderText", &GLFWRendererContext::postRenderText, "TBA");
+	pymodule.def("genTextFramebuffer", &GLFWRendererContext::genTextFramebuffer, "TBA");
+	pymodule.def("renderBackgroundQuad", &GLFWRendererContext::renderBackgroundQuad, "TBA");
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

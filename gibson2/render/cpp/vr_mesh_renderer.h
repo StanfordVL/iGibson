@@ -138,6 +138,8 @@ public:
 
 	void cropOverlay(char* name, float start_u, float start_v, float end_u, float end_v);
 
+	void destroyOverlay(char* name);
+
 	void hideOverlay(char* name);
 
 	void showOverlay(char* name);

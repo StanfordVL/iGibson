@@ -105,6 +105,7 @@ class Simulator:
         self.rendering_settings = rendering_settings
         self.viewer = None
         self.vr_settings = vr_settings
+        self.vr_overlay_initialized = False
         # We must be using the Simulator's vr mode and have use_vr set to true in the settings to access the VR context
         self.can_access_vr_context = self.use_vr_renderer and self.vr_settings.use_vr
 
@@ -627,24 +628,26 @@ class Simulator:
 
         return ids
 
-    def add_text(self,
+    def add_normal_text(self,
                  text_data='PLACEHOLDER: PLEASE REPLACE!',
                  font_name='OpenSans',
                  font_style='Regular',
                  font_size=48,
                  color=[0, 0, 0],
                  pos=[0, 0],
-                 scale=1.0):
+                 scale=1.0,
+                 background_color=None):
         """
-        Creates a Text object with the given parameters. Returns the text object to the caller,
+        Creates a Text object to be rendered to a non-VR screen. Returns the text object to the caller,
         so various settings can be changed - eg. text content, position, scale, etc.
         :param text_data: starting text to display (can be changed at a later time by set_text)
         :param font_name: name of font to render - same as font folder in iGibson assets
-        :param font_size: size of font to render
         :param font_style: style of font - one of [regular, italic, bold]
+        :param font_size: size of font to render
         :param color: [r, g, b] color
         :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
         :param scale: scale factor for resizing text
+        :param background_color: color of the background in form [r, g, b, a] - background will only appear if this is not None
         """
         return self.renderer.add_text(text_data=text_data,
                                       font_name=font_name,
@@ -652,7 +655,59 @@ class Simulator:
                                       font_size=font_size,
                                       color=color,
                                       pos=pos,
-                                      scale=scale)
+                                      scale=scale,
+                                      background_color=background_color,
+                                      render_to_tex=False)
+
+    def add_vr_overlay_text(self,
+                 text_data='PLACEHOLDER: PLEASE REPLACE!',
+                 font_name='OpenSans',
+                 font_style='Regular',
+                 font_size=48,
+                 color=[0, 0, 0],
+                 pos=[500, 500],
+                 scale=1.0,
+                 background_color=[1,1,1,0.5]):
+        """
+        Creates Text for use in a VR overlay. Returns the text object to the caller,
+        so various settings can be changed - eg. text content, position, scale, etc.
+        :param text_data: starting text to display (can be changed at a later time by set_text)
+        :param font_name: name of font to render - same as font folder in iGibson assets
+        :param font_style: style of font - one of [regular, italic, bold]
+        :param font_size: size of font to render
+        :param color: [r, g, b] color
+        :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
+        :param scale: scale factor for resizing text
+        :param background_color: color of the background in form [r, g, b, a] - default is semi-transparent white so text is easy to read in VR
+        """
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+        if not self.vr_overlay_initialized:
+            # This function automatically creates a VR text overlay the first time text is added
+            self.renderer.gen_vr_hud()
+            self.vr_overlay_initialized = True
+
+        return self.renderer.add_text(text_data=text_data,
+                                      font_name=font_name,
+                                      font_style=font_style,
+                                      font_size=font_size,
+                                      color=color,
+                                      pos=pos,
+                                      scale=scale,
+                                      render_to_tex=True)
+
+    def add_overlay_image(self,
+                        image_fpath,
+                        width=1,
+                        pos=[0,0,-1]):
+        """
+        Add an image with a given file path to the VR overlay. This image will be displayed
+        in addition to any text that the users wishes to display. This function returns a handle
+        to the VrStaticImageOverlay, so the user can display/hide it at will.
+        """
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+        return self.renderer.gen_static_overlay(image_fpath, width=width, pos=pos)
 
     def _step_simulation(self):
         """
@@ -845,7 +900,6 @@ class Simulator:
     # Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, left pupil diameter, right pupil diameter (both in millimeters)
     # Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
     def get_eye_tracking_data(self):
-        # TODO: Remove hack!
         if self.eye_tracking_data is None:
             return [0, [0,0,0], [0,0,0], 0, 0]
         is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.eye_tracking_data
@@ -917,25 +971,6 @@ class Simulator:
             raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
       
         self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
-    
-    # Creates a VR overlay with the specified width, position and filename (if an image is to be loaded)
-    # Here x is left, y is up and negative z is away from the user
-    def create_overlay(self, overlay_name, width=1, pos=[0, 0, -1], fpath=''):
-        self.renderer.vrsys.createOverlay(overlay_name, width, pos[0], pos[1], pos[2], fpath)
-
-    # Hides a VR overlay
-    def hide_overlay(self, overlay_name):
-        self.renderer.vrsys.hideOverlay(overlay_name)
-
-    # Show a VR overlay
-    def show_overlay(self, overlay_name):
-        self.renderer.vrsys.showOverlay(overlay_name)
-
-    # TODO: Add destroy VR overlay!
-
-    # Updatres the texture on a VR overlay
-    def updateOverlayTexture(self, overlay_name, tex_id):
-        self.renderer.vrsys.updateOverlayTexture(overlay_name, tex_id)
 
     # Note: this function must be called after optimize_vertex_and_texture is called
     # Note: this function currently only works with the optimized renderer - please use the renderer hidden list
@@ -951,6 +986,16 @@ class Simulator:
                 instance.hidden = hide
                 self.renderer.update_hidden_state([instance])
                 return
+
+    def set_hud_state(self, state):
+        """
+        Sets state of the VR HUD (heads-up-display)
+        :param state: one of 'show' or 'hide'
+        """
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+        if self.renderer.vr_hud:
+            self.renderer.vr_hud.set_overlay_state(state)
 
     def get_hidden_state(self, obj):
         """

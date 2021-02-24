@@ -8,9 +8,6 @@
 #endif
 #include <fstream>
 
-// TODO: Remove this!
-#include <bitset>
-
 #ifdef USE_GLAD
 
 #include  <glad/egl.h>
@@ -1691,7 +1688,20 @@ py::list MeshRendererContext::setupTextRender() {
 	return textRenderData;
 }
 
-void MeshRendererContext::preRenderText(int shaderProgram, int VAO, float color_x, float color_y, float color_z) {
+void MeshRendererContext::preRenderText(int shaderProgram, int FBO, int VAO, float color_x, float color_y, float color_z) {
+	if (FBO != -1) {
+		// Get previous FBO and store it, so we can go back
+		this->restore_prev_FBO = true;
+		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &this->m_prevFBO);
+		glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+		// Make framebuffer completely transparent by default, since we only want to render text
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	}
+	else {
+		this->restore_prev_FBO = false;
+	}
+	
 	// Enable alpha blending so text appears correctly
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1731,9 +1741,65 @@ void MeshRendererContext::renderChar(float xpos, float ypos, float w, float h, G
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
+void MeshRendererContext::renderBackgroundQuad(float xpos, float ypos, float w, float h, int VBO, int shaderProgram, float alpha, float color_x, float color_y, float color_z) {
+	// Renders background quad with the given boundary
+	glUniform1f(glGetUniformLocation(shaderProgram, "background"), 1.0);
+	glUniform1f(glGetUniformLocation(shaderProgram, "backgroundAlpha"), alpha);
+	glUniform3f(glGetUniformLocation(shaderProgram, "backgroundColor"), color_x, color_y, color_z);
+
+	// Set all tex coords to 0 since we don't need them
+	float vertices[6][4] = {
+		{ xpos,     ypos + h,   0.0f, 0.0f },
+		{ xpos,     ypos,       0.0f, 0.0f },
+		{ xpos + w, ypos,       0.0f, 0.0f },
+
+		{ xpos,     ypos + h,   0.0f, 0.0f },
+		{ xpos + w, ypos,       0.0f, 0.0f },
+		{ xpos + w, ypos + h,   0.0f, 0.0f }
+	};
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	// Clear all background variables
+	glUniform1f(glGetUniformLocation(shaderProgram, "background"), 0.0);
+	glUniform1f(glGetUniformLocation(shaderProgram, "backgroundAlpha"), -1.0);
+}
+
 void MeshRendererContext::postRenderText() {
 	glBindVertexArray(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	// Disable alpha blending so rest of iGibson rendering is not affected
 	glDisable(GL_BLEND);
+
+	// Restore previous FBO if one was bound
+	// This allows us to render text both to the screen and to a texture
+	if (this->restore_prev_FBO = true) {
+		glBindFramebuffer(GL_FRAMEBUFFER, this->m_prevFBO);
+	}
+}
+
+py::list MeshRendererContext::genTextFramebuffer() {
+	GLuint fbo;
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	GLuint render_tex;
+	glGenTextures(1, &render_tex);
+	glBindTexture(GL_TEXTURE_2D, render_tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, this->m_windowWidth, this->m_windowHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, render_tex, 0);
+	glViewport(0, 0, this->m_windowWidth, this->m_windowHeight);
+	GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, draw_buffers); 
+	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+
+	py::list genOut;
+	genOut.append(fbo);
+	genOut.append(render_tex);
+	
+	return genOut;
 }
