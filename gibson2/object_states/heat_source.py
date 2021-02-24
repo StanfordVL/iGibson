@@ -9,6 +9,7 @@ _DEFAULT_TEMPERATURE = 200
 _DEFAULT_HEATING_RATE = 0.04
 _DEFAULT_DISTANCE_THRESHOLD = 0.2
 
+
 class HeatSource(CachingEnabledObjectState):
     """
     This state indicates the heat source state of the object.
@@ -83,9 +84,14 @@ class HeatSource(CachingEnabledObjectState):
         # Get heating element position from URDF
         # This raises an error if element cannot be found, which we propagate.
         body_id = self.obj.get_body_id()
-        link_id = link_from_name(body_id, _HEATING_ELEMENT_LINK_NAME)
+        try:
+            link_id = link_from_name(body_id, _HEATING_ELEMENT_LINK_NAME)
+        except ValueError:
+            return None
+
         heating_element_state = get_link_state(body_id, link_id)
         return heating_element_state.linkWorldPosition
 
     def set_value(self, new_value):
-        raise NotImplementedError("Setting heat source capability is not supported.")
+        raise NotImplementedError(
+            "Setting heat source capability is not supported.")
