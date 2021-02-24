@@ -4,7 +4,8 @@ import gibson2
 import networkx as nx
 import pybullet as p
 import numpy as np
-from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
+from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order, \
+    prepare_object_states
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.scenes.empty_scene import EmptyScene
@@ -111,6 +112,9 @@ def test_open():
         obj = ArticulatedObject(filename=cabinet_0007)
         s.import_object(obj)
         obj.set_position([0, 0, 0.5])
+
+        obj.abilities = {"openable": {}}
+        prepare_object_states(obj, obj.abilities)
 
         # --------------------------------------------
         # PART 1: Run with joints at default position.
