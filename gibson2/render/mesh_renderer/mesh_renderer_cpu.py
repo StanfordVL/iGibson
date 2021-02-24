@@ -1004,6 +1004,9 @@ class MeshRenderer(object):
                 self.depth_tex_ms, self.color_tex_scene_flow_ms, self.color_tex_optical_flow_ms
             ]
             fbo_list += [self.fbo_ms]
+            
+        text_vaos = [t.VAO for t in self.texts]
+        text_vbos = [t.VBO for t in self.texts]
 
         if self.optimized:
             self.r.clean_meshrenderer_optimized(clean_list, [self.tex_id_1, self.tex_id_2], fbo_list,
