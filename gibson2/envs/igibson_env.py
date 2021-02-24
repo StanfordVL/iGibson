@@ -10,6 +10,7 @@ from gibson2.sensors.scan_sensor import ScanSensor
 from gibson2.sensors.vision_sensor import VisionSensor
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
+from gibson2.sensors.bump_sensor import BumpSensor
 
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -181,6 +182,12 @@ class iGibsonEnv(BaseEnv):
             observation_space['occupancy_grid'] = self.occupancy_grid_space
             scan_modalities.append('occupancy_grid')
 
+        if 'bump' in self.output:
+            observation_space['bump'] = gym.spaces.Box(low=0.0,
+                                                       high=1.0,
+                                                       shape=(1,))
+            sensors['bump'] = BumpSensor(self)
+
         if len(vision_modalities) > 0:
             sensors['vision'] = VisionSensor(self, vision_modalities)
 
@@ -233,6 +240,8 @@ class iGibsonEnv(BaseEnv):
             scan_obs = self.sensors['scan_occ'].get_obs(self)
             for modality in scan_obs:
                 state[modality] = scan_obs[modality]
+        if 'bump' in self.sensors:
+            state['bump'] = self.sensors['bump'].get_obs(self)
 
         return state
 

@@ -140,13 +140,12 @@ class Simulator:
         self.last_frame_dur = -1
         self.frame_count = 0
 
-        # First sync always sync all objects (regardless of their sleeping states)
-        self.first_sync = True
-
         self.load()
 
         self.class_name_to_class_id = get_class_name_to_class_id()
         self.body_links_awake = 0
+        # First sync always sync all objects (regardless of their sleeping states)
+        self.first_sync = True
 
         self.object_state_names = get_states_by_dependency_order()
 
@@ -462,8 +461,12 @@ class Simulator:
                                               load_texture=load_texture)
                     self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
                                         ] = len(self.renderer.visual_objects) - 1
-                visual_object = self.visual_objects[(filename, tuple(
-                    dimensions), tuple(rel_pos), tuple(rel_orn))]
+                visual_object = self.visual_objects[
+                    (filename,
+                     tuple(dimensions),
+                     tuple(rel_pos),
+                     tuple(rel_orn)
+                     )]
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
                     gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
