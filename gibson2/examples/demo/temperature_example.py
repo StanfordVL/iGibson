@@ -2,8 +2,7 @@ import os
 
 import gibson2
 import numpy as np
-from gibson2.object_states import Temperature
-
+from gibson2 import object_states
 from gibson2.object_states.factory import prepare_object_states
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.scenes.empty_scene import EmptyScene
@@ -40,7 +39,7 @@ def main():
         # Run simulation for 1000 steps
         while True:
             s.step()
-            print("Saucepan Temperature: ", saucepan.states[Temperature].get_value())
+            print("Saucepan Temperature: ", saucepan.states[object_states.Temperature].get_value())
     finally:
         s.disconnect()
 
