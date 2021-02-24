@@ -76,7 +76,6 @@ class Wall_bbox(object):
                 b = 0.05
             if t > self.t:
                 t = self.t - 0.05
-            bbox.z - (b,t)
         if l < self.l or r > self.r:
             if l < self.l:
                 l = self.l + 0.01

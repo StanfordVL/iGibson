@@ -33,7 +33,7 @@ def main():
                      category='sink',
                      name='sink_1',
                      scale=np.array([0.8,0.8,0.8]),
-                     abilities=['toggleable', 'water_source']
+                     abilities={'toggleable': {}, 'water_source': {}}
                      )
 
     s.import_object(sink)
@@ -43,7 +43,7 @@ def main():
     s.import_object(block)
     block.set_position([1, 1, 1.8])
     block.abilities = ["soakable", "cleaning_tool"]
-    block.states = prepare_object_states(block, abilities=["soakable", "cleaning_tool"])
+    prepare_object_states(block, abilities={"soakable": {}, "cleaning_tool": {}})
     # assume block can soak water
 
     model_path = os.path.join(get_ig_model_path('table', '19898'), '19898.urdf')
@@ -51,7 +51,7 @@ def main():
                      category='table',
                      name='19898',
                      scale=np.array([0.8, 0.8, 0.8]),
-                     abilities=['dustable']
+                     abilities={'dustable': {}}
                      )
 
     s.import_object(desk)

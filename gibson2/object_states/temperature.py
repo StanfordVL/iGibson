@@ -9,18 +9,6 @@ DEFAULT_TEMPERATURE = 23.0  # degrees Celsius
 # What fraction of the temperature difference with the default temperature should be decayed every step.
 TEMPERATURE_DECAY_SPEED = 0.02  # per second. We'll do the conversion to steps later.
 
-# Search distance for heat sources. We'll get heat from sources closer than this.
-# TODO: Figure out a way of finding distance between heat source and our object's boundary.
-HEAT_SOURCE_DISTANCE_THRESHOLD = 0.2  # meters.
-
-# TODO: Consider sourcing heat source temperature from heat source object metadata.
-# The temperature of the heat source.
-HEAT_SOURCE_TEMPERATURE = 200  # degrees Celsius
-
-# TODO: Consider sourcing heat source heating speed from heat source object metadata.
-# What fraction of the temperature difference with the heat source temperature should be received every step.
-HEAT_SOURCE_HEATING_SPEED = 0.04  # per second. We'll do the conversion to steps later.
-
 
 class Temperature(AbsoluteObjectState):
     @staticmethod
@@ -50,20 +38,27 @@ class Temperature(AbsoluteObjectState):
         new_temperature += (DEFAULT_TEMPERATURE - self.value) * TEMPERATURE_DECAY_SPEED * simulator.physics_timestep
 
         # Compute the center of our aabb.
+        # TODO: We need to be more clever about this. Check shortest dist between aabb and heat source.
         center = get_aabb_center(self.obj.states['aabb'].get_value())
 
         # Find all heat source objects.
         for obj2 in simulator.scene.get_objects():
             if 'heatSource' in obj2.states:
                 # Obtain heat source position.
+                heat_source = obj2.states['heatSource']
                 heat_source_position = obj2.states['heatSource'].get_value()
                 if heat_source_position:
                     # Compute distance to heat source from the center of our AABB.
                     dist = l2_distance(heat_source_position, center)
 
+                    # Check whether the requires_inside criteria is satisfied.
+                    inside_criteria_satisfied = True
+                    if heat_source.requires_inside:
+                        inside_criteria_satisfied = self.obj.states['inside'].get_value(obj2)
+
                     # If it is within range, we'll heat up.
-                    if dist < HEAT_SOURCE_DISTANCE_THRESHOLD:
-                        new_temperature += ((HEAT_SOURCE_TEMPERATURE - self.value) * HEAT_SOURCE_HEATING_SPEED *
+                    if dist < heat_source.distance_threshold and inside_criteria_satisfied:
+                        new_temperature += ((heat_source.temperature - self.value) * heat_source.heating_rate *
                                             simulator.physics_timestep)
 
         self.value = new_temperature
