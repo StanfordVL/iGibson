@@ -9,12 +9,17 @@ import numpy as np
 
 class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
     def set_value(self, other, new_value):
-        sampling_success = sample_kinematics(
-            'inside', self.obj, other, new_value)
-        if sampling_success:
-            clear_cached_states(self.obj)
-            clear_cached_states(other)
-            assert self.get_value(other) == new_value
+        for _ in range(10):
+            sampling_success = sample_kinematics(
+                'inside', self.obj, other, new_value)
+            if sampling_success:
+                clear_cached_states(self.obj)
+                clear_cached_states(other)
+                if self.get_value(other) != new_value:
+                    sampling_success = False
+            if sampling_success:
+                break
+
         return sampling_success
 
     def get_value(self, other):
@@ -31,5 +36,6 @@ class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
         volume_lesser = get_aabb_volume(aabbA) < get_aabb_volume(aabbB)
         extentA, extentB = get_aabb_extent(aabbA), get_aabb_extent(aabbB)
         two_dimensions_lesser = np.sum(np.less_equal(extentA, extentB)) >= 2
-        above = center_inside and aabbB[1][2] <= aabbA[0][2]
-        return (center_inside and volume_lesser and two_dimensions_lesser) or above
+
+        # TODO: handle transitive relationship
+        return center_inside and volume_lesser and two_dimensions_lesser
