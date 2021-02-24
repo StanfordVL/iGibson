@@ -185,7 +185,7 @@ def test_toggle():
                           category='sink',
                           name='sink_1',
                           scale=np.array([0.8, 0.8, 0.8]),
-                          abilities=['toggleable']
+                          abilities={'toggleable': {}}
                           )
 
         s.import_object(sink)
@@ -209,7 +209,7 @@ def test_dirty():
                           category='sink',
                           name='sink_1',
                           scale=np.array([0.8, 0.8, 0.8]),
-                          abilities=['dustable']
+                          abilities={'dustable': {}}
                           )
 
         s.import_object(sink)
@@ -237,7 +237,7 @@ def test_water_source():
                           category='sink',
                           name='sink_1',
                           scale=np.array([0.8, 0.8, 0.8]),
-                          abilities=['water_source']
+                          abilities={'water_source': {}}
                           )
 
         s.import_object(sink)
