@@ -36,10 +36,6 @@ benchmark_names = [
     'top_cabinet_51'
 ]
 
-# Change this to experiment with hand primitives/VHACD
-# Options: box (primitive), cylinder (primitive), normal (VHACD)
-TEST_SHAPE = 'cylinder'
-
 # Set to true to print Simulator step() statistics
 PRINT_STATS = True
 # Set to true to use gripper instead of VR hands
@@ -67,7 +63,7 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             msaa=True,
                                             light_dimming_factor=1.0)
 
-vr_settings = VrSettings(use_vr=True, vr_fps=30, eye_tracking=False)
+vr_settings = VrSettings(use_vr=True)
 s = Simulator(mode='vr', 
             use_fixed_fps = True,
             rendering_settings=vr_rendering_settings, 
@@ -78,9 +74,9 @@ scene._set_obj_names_to_load(benchmark_names)
 s.import_ig_scene(scene)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-vr_agent = VrAgent(s, use_gripper=USE_GRIPPER, test_shape=TEST_SHAPE if TEST_SHAPE != 'normal' else None)
+vr_agent = VrAgent(s, use_gripper=USE_GRIPPER)
 # Move VR agent to the middle of the kitchen
-s.set_vr_start_pos(start_pos=[0,2.1,0], vr_height_offset=-0.5)
+s.set_vr_start_pos(start_pos=[0,2.1,0], vr_height_offset=-0.02)
 
 # Mass values to use for each object type - len(masses) objects will be created of each type
 masses = [1, 5, 10]
@@ -114,20 +110,29 @@ for name in obj_to_load:
         handle.set_orientation(orn)
         p.changeDynamics(handle.body_id, -1, mass=masses[i])
 
-# Test overlays
-test_img_path = os.path.join(assets_path, 'test', 'test_overlay.jpg')
-ov_name = 'image'
-s.create_overlay(ov_name, width=0.2, pos=[-0.5, 0.5, -2], fpath=test_img_path)
-s.show_overlay(ov_name)
-
-ov_name2 = 'image2'
-s.create_overlay(ov_name2, width=0.2, pos=[0.5, -0.5, -2], fpath=test_img_path)
-s.show_overlay(ov_name2)
+title = s.add_vr_overlay_text(text_data='Welcome to iGibson VR!', font_size=85, font_style='Bold', 
+                        color=[0, 0, 0.5], pos=[150, 900])
+sample_condition_1 = s.add_vr_overlay_text(text_data='for box in cupboard:\n1) find box\n2) pick up box', font_size=40, font_style='Regular', 
+                        color=[0,0,0], pos=[800, 600])
+sample_condition_2 = s.add_vr_overlay_text(text_data='for all ducks:\n1) pet the duck', font_size=40, font_style='Regular', 
+                        color=[0,0,0], pos=[800, 400])
+# Start off by hiding sample condition 2
+sample_condition_2.set_show_state(False)
+timing_text = s.add_vr_overlay_text(text_data='Current time: {}'.format(time.time()), font_size=60, font_style='Italic', 
+                        color=[1,0,0], pos=[100, 100])
 
 # Main simulation loop
 while True:
     s.step(print_stats=PRINT_STATS)
 
+    timing_text.set_text('Current time: {}'.format(time.time()))
+
+    # Show/hide the sample conditions with button press
+    if s.query_vr_event('right_controller', 'grip_press'):
+        sample_condition_1.set_show_state(not sample_condition_1.get_show_state())
+        sample_condition_2.set_show_state(not sample_condition_2.get_show_state())
+        
     vr_agent.update()
+
 
 s.disconnect()
