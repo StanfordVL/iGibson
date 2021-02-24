@@ -54,7 +54,7 @@ class Temperature(AbsoluteObjectState):
                     # Check whether the requires_inside criteria is satisfied.
                     inside_criteria_satisfied = True
                     if heat_source.requires_inside:
-                        inside_criteria_satisfied = obj2.states['inside'].get_value(self.obj)
+                        inside_criteria_satisfied = self.obj.states['inside'].get_value(obj2)
 
                     # If it is within range, we'll heat up.
                     if dist < heat_source.distance_threshold and inside_criteria_satisfied:

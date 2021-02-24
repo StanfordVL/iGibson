@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import random
+import sys
 import time
 import xml.etree.ElementTree as ET
 
@@ -25,6 +26,7 @@ try:
 
     OBJECT_TAXONOMY = ObjectTaxonomy()
 except ImportError:
+    print("TaskNet cod not be imported - object taxonomy / abilities will be unavailable.", file=sys.stderr)
     OBJECT_TAXONOMY = None
 
 
