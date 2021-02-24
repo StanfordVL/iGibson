@@ -1635,6 +1635,15 @@ def has_link(body, name):
     return True
 
 
+def get_link_position_from_name(body_id, name):
+    try:
+        link_id = link_from_name(body_id, name)
+    except ValueError:
+        return None
+
+    return get_link_state(body_id, link_id).linkWorldPosition
+
+
 LinkState = namedtuple('LinkState', ['linkWorldPosition', 'linkWorldOrientation',
                                      'localInertialFramePosition', 'localInertialFrameOrientation',
                                      'worldLinkFramePosition', 'worldLinkFrameOrientation'])
