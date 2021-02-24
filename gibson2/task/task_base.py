@@ -1,6 +1,5 @@
 import numpy as np
 import os
-import pdb
 
 from tasknet.task_base import TaskNetTask
 import gibson2
@@ -8,29 +7,14 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.external.pybullet_tools.utils import *
-from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, HUMAN_OBJ_TO_IG_NAME
+from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
 import logging
 import networkx as nx
-
-
-import sys
-def info(type, value, tb):
-    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
-        # we are in interactive mode or we don't have a tty-like
-        # device, so we call the default hook
-        sys.__excepthook__(type, value, tb)
-    else:
-        import traceback, pdb
-        # we are NOT in interactive mode, print the exception...
-        traceback.print_exception(type, value, tb)
-        print
-        # ...then start the debugger in post-mortem mode.
-        pdb.post_mortem(tb)
-sys.excepthook = info
+from IPython import embed
 
 
 class iGTNTask(TaskNetTask):
@@ -81,7 +65,6 @@ class iGTNTask(TaskNetTask):
                         obj_cat)
                 # Room type missing in the scene
                 if room_type not in self.scene.room_sem_name_to_ins_name:
-                    pdb.set_trace()
                     logging.warning(
                         'Room type [{}] missing in scene [{}].'.format(
                             room_type, self.scene.scene_id))
@@ -109,10 +92,10 @@ class iGTNTask(TaskNetTask):
             room_type_to_scene_objs[room_type] = {}
             for obj_inst in room_type_to_obj_inst[room_type]:
                 room_type_to_scene_objs[room_type][obj_inst] = {}
-                lemma = self.obj_inst_to_obj_cat[obj_inst]
+                obj_cat = self.obj_inst_to_obj_cat[obj_inst]
                 categories = \
-                    self.object_taxonomy.get_igibson_categories_from_lemma(
-                        lemma)
+                    self.object_taxonomy.get_subtree_igibson_categories(
+                        obj_cat)
                 for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
                     room_objs = self.scene.objects_by_room[room_inst]
                     scene_objs = [obj for obj in room_objs
@@ -155,13 +138,14 @@ class iGTNTask(TaskNetTask):
 
         self.non_sampleable_object_scope = room_type_to_scene_objs
 
+        num_new_obj = 0
         # Only populate self.object_scope for sampleable objects
         avg_category_spec = get_ig_avg_category_specs()
         for obj_cat in self.objects:
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
                 continue
             categories = \
-                self.object_taxonomy.get_igibson_categories_from_lemma(
+                self.object_taxonomy.get_subtree_igibson_categories(
                     obj_cat)
             existing_scene_objs = []
             for category in categories:
@@ -182,19 +166,21 @@ class iGTNTask(TaskNetTask):
                 model_path = get_ig_model_path(category, model)
                 filename = os.path.join(model_path, model + ".urdf")
                 obj_name = '{}_{}'.format(
-                    obj_cat,
-                    len(self.scene.objects_by_category.get(obj_cat, [])))
+                    category,
+                    len(self.scene.objects_by_category.get(category, [])))
                 simulator_obj = URDFObject(
                     filename,
                     name=obj_name,
-                    category=obj_cat,
+                    category=category,
                     model_path=model_path,
-                    avg_obj_dims=avg_category_spec.get(obj_cat),
+                    avg_obj_dims=avg_category_spec.get(category),
                     fit_avg_dim_volume=True,
                     texture_randomization=False,
-                    overwrite_inertial=True)
+                    overwrite_inertial=True,
+                    initial_pos=[100 + num_new_obj, 100, -100])
                 self.scene.add_object(simulator_obj)
                 self.object_scope[obj_inst] = simulator_obj
+                num_new_obj += 1
 
         return True
 
@@ -282,11 +268,15 @@ class iGTNTask(TaskNetTask):
                 obj_inst_to_obj_per_room_inst = {}
                 for obj_inst in scene_object_scope_filtered[room_type]:
                     obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered[room_type][obj_inst][room_inst]
+                top_nodes = []
                 for obj_inst in obj_inst_to_obj_per_room_inst:
                     for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
                         graph.add_edge(obj_inst, obj)
+                        top_nodes.append(obj_inst)
+                # Need to provide top_nodes that contain all nodes in one bipartite node set
                 # The matches will have two items for each match (e.g. A -> B, B -> A)
-                matches = nx.bipartite.maximum_matching(graph)
+                matches = nx.bipartite.maximum_matching(
+                    graph, top_nodes=top_nodes)
                 if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
                     for obj_inst, obj in matches.items():
                         if obj_inst in obj_inst_to_obj_per_room_inst:
@@ -301,9 +291,13 @@ class iGTNTask(TaskNetTask):
                 return False
 
         # Do sampling again using the object instance -> simulator object mapping from maximum bipartite matching
+        num_trials = 10
         for condition, positive in non_sampleable_obj_conditions:
-            success = condition.sample(binary_state=positive)
-            # This should always succeed because it has succeeded before.
+            for _ in range(num_trials):
+                success = condition.sample(binary_state=positive)
+                # This should always succeed because it has succeeded before.
+                if success:
+                    break
             assert success
 
         # Do sampling that only involves sampleable object (e.g. apple is cooked)
