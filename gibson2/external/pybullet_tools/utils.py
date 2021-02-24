@@ -1624,7 +1624,7 @@ def link_from_name(body, name):
     for link in get_joints(body):
         if get_link_name(body, link) == name:
             return link
-    raise ValueError(body, name)
+    raise ValueError("Could not find link %s for body %d" % (name, body))
 
 
 def has_link(body, name):
