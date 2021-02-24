@@ -82,5 +82,6 @@ class PointNavRandomTask(PointNavFixedTask):
 
         self.target_pos = target_pos
         self.initial_pos = initial_pos
+        self.initial_orn = initial_orn
 
         super(PointNavRandomTask, self).reset_agent(env)
