@@ -39,9 +39,9 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
 
         base_center = center - np.array([0, 0, extent[2]])/2
         top_z_min = base_center[2]
-        bottom_z_min = bottom_aabb[0][2]
-        height_correct = top_z_min + epsilon > bottom_z_min
-
+        bottom_z_max = bottom_aabb[1][2]
+        height_correct = \
+            (bottom_z_max - epsilon) <= top_z_min <= (bottom_z_max + epsilon)
         bbox_contain = (aabb_contains_point(
             base_center[:2], aabb2d_from_aabb(bottom_aabb)))
 
