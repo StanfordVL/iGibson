@@ -139,14 +139,13 @@ class Text(object):
         self.font_size = font_size
         self.render_to_tex = render_to_tex
         self.line_sep = 2 * self.font_size
-        self.space_x = self.font_size
+        self.space_x = int(self.font_size / 2)
         # Text stores list of lines, which are each rendered
         self.set_text(text_data)
         self.set_attribs(pos=pos, scale=scale, color=color)
         self.background_color = background_color
         # Background margin in pixels (in both x and y directions)
-        # TODO: Tweak this until it looks good!
-        self.background_margin = 10
+        self.background_margin = 15
         # Text manager stores data for characters in a font
         self.tm = text_manager
         # Load font and extract character data
