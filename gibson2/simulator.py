@@ -87,6 +87,7 @@ class Simulator:
 
         self.class_name_to_class_id = get_class_name_to_class_id()
         self.body_links_awake = 0
+        self.first_sync = True
 
     def set_timestep(self, physics_timestep, render_timestep):
         """
@@ -321,7 +322,12 @@ class Simulator:
                                               load_texture=load_texture)
                     self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
                                         ] = len(self.renderer.visual_objects) - 1
-                visual_object = self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
+                visual_object = self.visual_objects[
+                    (filename,
+                     tuple(dimensions),
+                     tuple(rel_pos),
+                     tuple(rel_orn)
+                     )]
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
                     gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
@@ -585,9 +591,10 @@ class Simulator:
                 self.body_links_awake += self.update_position(instance)
         if self.use_ig_renderer and self.viewer is not None:
             self.viewer.update()
+        if self.first_sync:
+            self.first_sync = False
 
-    @staticmethod
-    def update_position(instance):
+    def update_position(self, instance):
         """
         Update position for an object or a robot in renderer.
 
@@ -598,7 +605,7 @@ class Simulator:
             dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
             inertial_pos = dynamics_info[3]
             inertial_orn = dynamics_info[4]
-            if len(dynamics_info) == 13:
+            if len(dynamics_info) == 13 and not self.first_sync:
                 activation_state = dynamics_info[12]
             else:
                 activation_state = PyBulletSleepState.AWAKE
@@ -631,7 +638,7 @@ class Simulator:
                         instance.pybullet_uuid, -1)
                     inertial_pos = dynamics_info[3]
                     inertial_orn = dynamics_info[4]
-                    if len(dynamics_info) == 13:
+                    if len(dynamics_info) == 13 and not self.first_sync:
                         activation_state = dynamics_info[12]
                     else:
                         activation_state = PyBulletSleepState.AWAKE
@@ -650,7 +657,7 @@ class Simulator:
                     dynamics_info = p.getDynamicsInfo(
                         instance.pybullet_uuid, link_id)
 
-                    if len(dynamics_info) == 13:
+                    if len(dynamics_info) == 13 and not self.first_sync:
                         activation_state = dynamics_info[12]
                     else:
                         activation_state = PyBulletSleepState.AWAKE
