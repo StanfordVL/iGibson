@@ -2,18 +2,17 @@ import os
 
 import gibson2
 import networkx as nx
-import pybullet as p
 import numpy as np
-from gibson2.object_states import Inside, OnTop, Open, Touching, AABB, ToggledOn, Dirty, WaterSource
-from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order, \
-    prepare_object_states
+import pybullet as p
+from gibson2 import object_states
+from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
 from gibson2.objects.articulated_object import ArticulatedObject
+from gibson2.objects.articulated_object import URDFObject
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.simulator import Simulator
 from gibson2.utils.assets_utils import download_assets
 from gibson2.utils.assets_utils import get_ig_model_path
-from gibson2.objects.articulated_object import URDFObject
 
 download_assets()
 
@@ -47,14 +46,14 @@ def test_on_top():
             s.step()
 
         # Now check that the box is on top of the lower cabinet
-        assert obj3.states[Touching].get_value(obj1)
-        assert obj3.states[OnTop].get_value(obj1)
-        assert not obj3.states[Inside].get_value(obj1)
+        assert obj3.states[object_states.Touching].get_value(obj1)
+        assert obj3.states[object_states.OnTop].get_value(obj1)
+        assert not obj3.states[object_states.Inside].get_value(obj1)
 
         # Now check that the box is not on top / touching of the upper cabinet
-        assert not obj3.states[Touching].get_value(obj2)
-        assert not obj3.states[OnTop].get_value(obj2)
-        assert not obj3.states[Inside].get_value(obj2)
+        assert not obj3.states[object_states.Touching].get_value(obj2)
+        assert not obj3.states[object_states.OnTop].get_value(obj2)
+        assert not obj3.states[object_states.Inside].get_value(obj2)
     finally:
         s.disconnect()
 
@@ -88,14 +87,14 @@ def test_inside():
             s.step()
 
         # Now check that the box is inside / touching the upper cabinet
-        assert obj3.states[Touching].get_value(obj2)
-        assert obj3.states[Inside].get_value(obj2)
-        assert not obj3.states[OnTop].get_value(obj2)
+        assert obj3.states[object_states.Touching].get_value(obj2)
+        assert obj3.states[object_states.Inside].get_value(obj2)
+        assert not obj3.states[object_states.OnTop].get_value(obj2)
 
         # Now check that the box is not inside / touching the upper cabinet
-        assert not obj3.states[Touching].get_value(obj1)
-        assert not obj3.states[Inside].get_value(obj1)
-        assert not obj3.states[OnTop].get_value(obj1)
+        assert not obj3.states[object_states.Touching].get_value(obj1)
+        assert not obj3.states[object_states.Inside].get_value(obj1)
+        assert not obj3.states[object_states.OnTop].get_value(obj1)
     finally:
         s.disconnect()
 
@@ -122,7 +121,7 @@ def test_open():
             s.step()
 
         # Check that the cabinet is not open.
-        assert not obj.states[Open].get_value()
+        assert not obj.states[object_states.Open].get_value()
 
         # --------------------------------------------
         # PART 2: Set one joint to the max position
@@ -136,31 +135,31 @@ def test_open():
             s.step()
 
         # Check that the cabinet is open.
-        assert obj.states[Open].get_value()
+        assert obj.states[object_states.Open].get_value()
 
         # --------------------------------------------
         # PART 3: Now try sampling a closed position.
         # --------------------------------------------
-        obj.states[Open].set_value(False)
+        obj.states[object_states.Open].set_value(False)
 
         # Simulate a bit more
         for _ in range(5):
             s.step()
 
         # Check that the cabinet is closed.
-        assert not obj.states[Open].get_value()
+        assert not obj.states[object_states.Open].get_value()
 
         # --------------------------------------------
         # PART 4: Finally, sample an open position.
         # --------------------------------------------
-        obj.states[Open].set_value(True)
+        obj.states[object_states.Open].set_value(True)
 
         # Simulate a bit more
         for _ in range(5):
             s.step()
 
         # Check that the cabinet is open.
-        assert obj.states[Open].get_value()
+        assert obj.states[object_states.Open].get_value()
     finally:
         s.disconnect()
 
@@ -171,9 +170,9 @@ def test_state_graph():
 
     # Get the dependency-sorted list of states.
     ordered_states = get_states_by_dependency_order()
-    assert Inside in ordered_states
-    assert AABB in ordered_states
-    assert ordered_states.index(AABB) < ordered_states.index(Inside), "Each state should be preceded by its deps."
+    assert object_states.Inside in ordered_states
+    assert object_states.AABB in ordered_states
+    assert ordered_states.index(object_states.AABB) < ordered_states.index(object_states.Inside), "Each state should be preceded by its deps."
 
 def test_toggle():
     s = Simulator(mode='headless')
@@ -193,7 +192,7 @@ def test_toggle():
         s.import_object(sink)
         sink.set_position([1, 1, 0.8])
         assert 'toggleable' in sink.abilities
-        assert ToggledOn in sink.states
+        assert object_states.ToggledOn in sink.states
 
     finally:
         s.disconnect()
@@ -217,7 +216,7 @@ def test_dirty():
         s.import_object(sink)
         sink.set_position([1, 1, 0.8])
         assert 'dustable' in sink.abilities
-        assert Dirty in sink.states
+        assert object_states.Dirty in sink.states
 
         for i in range(10):
             s.step()
@@ -245,7 +244,7 @@ def test_water_source():
         s.import_object(sink)
         sink.set_position([1, 1, 0.8])
         assert 'water_source' in sink.abilities
-        assert WaterSource in sink.states
+        assert object_states.WaterSource in sink.states
 
         for i in range(10):
             s.step()

@@ -1,18 +1,20 @@
-from gibson2.object_states import Dirty
-from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import numpy as np
-from gibson2.render.profiler import Profiler
-from gibson2.objects.articulated_object import URDFObject
-import gibson2
 import os
-from gibson2.utils.assets_utils import get_ig_model_path
-from gibson2.object_states.factory import prepare_object_states
+
+import gibson2
+import numpy as np
 import pybullet as p
+from gibson2 import object_states
+from gibson2.object_states.factory import prepare_object_states
+from gibson2.objects.articulated_object import URDFObject
+from gibson2.objects.ycb_object import YCBObject
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from gibson2.render.profiler import Profiler
+from gibson2.robots.turtlebot_robot import Turtlebot
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from gibson2.simulator import Simulator
+from gibson2.utils.assets_utils import get_ig_model_path
+from gibson2.utils.utils import parse_config
+
 
 def main():
     config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
@@ -61,7 +63,7 @@ def main():
     for _ in range(100):
         p.stepSimulation()
 
-    desk.states[Dirty].set_value(True)
+    desk.states[object_states.Dirty].set_value(True)
 
     for i in range(10000):
         with Profiler('Simulator step'):
