@@ -859,6 +859,8 @@ class URDFObject(StatefulObject):
             for joint_id in range(p.getNumJoints(body_id)):
                 p.changeDynamics(body_id, joint_id,
                                  activationState=p.ACTIVATION_STATE_WAKE_UP)
+            p.changeDynamics(body_id, -1,
+                             activationState=p.ACTIVATION_STATE_WAKE_UP)
 
     def reset(self):
         """
