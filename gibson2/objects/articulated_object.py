@@ -26,7 +26,7 @@ try:
 
     OBJECT_TAXONOMY = ObjectTaxonomy()
 except ImportError:
-    print("TaskNet cod not be imported - object taxonomy / abilities will be unavailable.", file=sys.stderr)
+    print("TaskNet could not be imported - object taxonomy / abilities will be unavailable.", file=sys.stderr)
     OBJECT_TAXONOMY = None
 
 
