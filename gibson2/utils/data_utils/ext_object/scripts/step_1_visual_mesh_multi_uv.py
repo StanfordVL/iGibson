@@ -170,9 +170,10 @@ if should_bake:
     if has_glass:
         channels['TRANSMISSION'] = (resolution * 2, 32)
         # add world light
-        world = bpy.data.worlds['World']
+        world = bpy.context.scene.world
+        if world is None:
+            world = bpy.data.worlds.new("World")
         world.use_nodes = True
-
         # changing these values does affect the render.
         bg = world.node_tree.nodes['Background']
         bg.inputs[0].default_value[:3] = (1, 1, 1)

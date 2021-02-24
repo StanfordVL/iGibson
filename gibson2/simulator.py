@@ -15,6 +15,7 @@ from gibson2.scenes.scene_base import Scene
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.objects.object_base import Object
 from gibson2.objects.particles import ParticleSystem
+from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 
 import pybullet as p
 import gibson2
@@ -139,6 +140,9 @@ class Simulator:
         self.last_physics_step_num = -1
         self.last_frame_dur = -1
         self.frame_count = 0
+
+        # First sync always sync all objects (regardless of their sleeping states)
+        self.first_sync = True
 
         self.load()
 
@@ -336,15 +340,16 @@ class Simulator:
         :param shadow_caster: Whether to cast shadow
         """
 
-        assert isinstance(obj, ParticleSystem), 'import_particle_system can only be called with ParticleSystem'
+        assert isinstance(obj, ParticleSystem), \
+            'import_particle_system can only be called with ParticleSystem'
 
         new_object_pb_ids = []
         for o in obj.particles:
             particle_pb_id = self.import_object(o,
-                                    class_id=class_id,
-                                    use_pbr=use_pbr,
-                                    use_pbr_mapping=use_pbr_mapping,
-                                    shadow_caster=shadow_caster)
+                                                class_id=class_id,
+                                                use_pbr=use_pbr,
+                                                use_pbr_mapping=use_pbr_mapping,
+                                                shadow_caster=shadow_caster)
             new_object_pb_ids.append(particle_pb_id)
 
         return new_object_pb_ids
@@ -413,7 +418,8 @@ class Simulator:
                 if isinstance(new_object_pb_id_or_ids, list):
                     new_object_pb_id_or_ids += particle_pb_ids
                 else:
-                    new_object_pb_id_or_ids = [new_object_pb_id_or_ids] + particle_pb_ids
+                    new_object_pb_id_or_ids = [new_object_pb_id_or_ids] + \
+                        particle_pb_ids
 
         return new_object_pb_id_or_ids
 
@@ -611,6 +617,64 @@ class Simulator:
                                          use_pbr=use_pbr,
                                          use_pbr_mapping=use_pbr_mapping,
                                          shadow_caster=shadow_caster)
+
+    def import_non_colliding_objects(self, objects, min_distance=0.2):
+        """
+        Loads objects into the scene such that they don't collide with existing objects.
+
+        :param objects: A dictionary with objects, from a scene loaded with a particular URDF
+        :param min_distance: A minimum distance to require for objects to load
+        """
+        objects_without_support = []
+        for obj_name in self.scene.objects_by_name:
+            obj = self.scene.objects_by_name[obj_name]
+            if len(obj.supporting_surfaces)==0:
+                objects_without_support.append(obj)
+        objects_to_add = []
+        for obj_name in objects:
+            obj = objects[obj_name]
+            if obj.category in self.scene.objects_by_category:
+                continue
+
+            add = True
+            body_ids = []
+            for idx in range(len(obj.urdf_paths)):
+                body_id = p.loadURDF(obj.urdf_paths[idx])
+                body_ids.append(body_id)
+                transformation = obj.poses[idx]
+                pos = transformation[0:3, 3]
+                orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+                dynamics_info = p.getDynamicsInfo(body_id, -1)
+                inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+                pos, orn = p.multiplyTransforms(
+                    pos, orn, inertial_pos, inertial_orn)
+                pos = list(pos)
+                pos[2]+=0.01 #slighly above to not touch furniture
+                p.resetBasePositionAndOrientation(body_id, pos, orn)
+                in_collision = len(p.getContactPoints(body_id)) > 0
+                if in_collision:
+                    add = False
+                    break
+
+                min_distance_to_existing_object = None
+                for existing_object in objects_without_support:
+                    distance = np.linalg.norm(np.array(pos) - np.array(existing_object.get_position()))
+                    if min_distance_to_existing_object is None or \
+                       min_distance_to_existing_object > distance:
+                        min_distance_to_existing_object = distance
+
+                if min_distance_to_existing_object < min_distance:
+                    add = False
+                    break
+
+            if add:
+                objects_to_add.append(obj)
+
+            for body_id in body_ids:
+                p.removeBody(body_id)
+
+        for obj in objects_to_add:
+            self.import_object(obj)
 
     @load_without_pybullet_vis
     def import_robot(self,
@@ -815,6 +879,8 @@ class Simulator:
                 self.body_links_awake += self.update_position(instance)
         if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and self.viewer is not None:
             self.viewer.update()
+        if self.first_sync:
+            self.first_sync = False
 
     def sync_vr_compositor(self):
         """
@@ -1017,8 +1083,7 @@ class Simulator:
             return []
         return [body_id for body_id in self.objects if body_id in self.scene.objects_by_id.keys() and self.scene.objects_by_id[body_id].category == category_name]
 
-    @staticmethod
-    def update_position(instance):
+    def update_position(self, instance):
         """
         Update position for an object or a robot in renderer.
         :param instance: Instance in the renderer
@@ -1028,7 +1093,7 @@ class Simulator:
             dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
             inertial_pos = dynamics_info[3]
             inertial_orn = dynamics_info[4]
-            if len(dynamics_info) == 13:
+            if len(dynamics_info) == 13 and not self.first_sync:
                 activation_state = dynamics_info[12]
             else:
                 activation_state = PyBulletSleepState.AWAKE
@@ -1061,7 +1126,7 @@ class Simulator:
                         instance.pybullet_uuid, -1)
                     inertial_pos = dynamics_info[3]
                     inertial_orn = dynamics_info[4]
-                    if len(dynamics_info) == 13:
+                    if len(dynamics_info) == 13 and not self.first_sync:
                         activation_state = dynamics_info[12]
                     else:
                         activation_state = PyBulletSleepState.AWAKE
@@ -1080,7 +1145,7 @@ class Simulator:
                     dynamics_info = p.getDynamicsInfo(
                         instance.pybullet_uuid, link_id)
 
-                    if len(dynamics_info) == 13:
+                    if len(dynamics_info) == 13 and not self.first_sync:
                         activation_state = dynamics_info[12]
                     else:
                         activation_state = PyBulletSleepState.AWAKE

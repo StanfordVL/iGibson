@@ -34,8 +34,13 @@ def sample_kinematics(predicate, objA, objB, binary_state):
         orientation = [0, 0, 0, 1]
 
     objBorientation = objB.get_orientation()
-    orientation = quat_from_matrix(matrix_from_quat(objBorientation) @ matrix_from_quat(orientation))
-    objA.set_position_orientation([100, 100, 100], orientation)
+    # objBorientation = objB.get_orientation()
+    # orientation = quat_from_matrix(
+    #     matrix_from_quat(objBorientation) @ matrix_from_quat(orientation))
+
+    objA.force_wakeup()
+    objB.force_wakeup()
+
     state_id = p.saveState()
     for i in range(max_trials):
         random_idx = np.random.randint(
