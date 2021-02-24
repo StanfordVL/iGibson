@@ -154,6 +154,8 @@ class Text(object):
         # Load font and extract character data
         self.char_data = self.tm.load_font(self.font_name, self.font_style, self.font_size)
         self.VAO, self.VBO = self.tm.renderer.r.setupTextRender()
+        # Text shows by default after it is first created
+        self.show_text = True
 
     def set_text(self, input_text):
         """
@@ -175,6 +177,19 @@ class Text(object):
         if color:
             self.color = color
 
+    def set_show_state(self, state):
+        """
+        Sets whether to hide/show text.
+        :param state: bool indicating whether to show (True) or hide (False)
+        """
+        self.show_text = state
+
+    def get_show_state(self):
+        """
+        Returns show state of Text.
+        """
+        return self.show_text
+
     def render(self):
         """
         Render the current text object
@@ -184,7 +199,9 @@ class Text(object):
             return
         if self.tm.renderer is None:
             return
-        
+        if not self.show_text:
+            return
+
         # Pass in -1 if we want to render to the screen
         self.tm.renderer.r.preRenderText(self.tm.renderer.textShaderProgram, self.tm.FBO if self.render_to_tex else -1, self.VAO, self.color[0], self.color[1], self.color[2])
 
