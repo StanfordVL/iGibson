@@ -43,7 +43,7 @@ _STATE_NAME_TO_CLASS_MAPPING = {
     # Temperature / cooking states
     'heatSource': HeatSource,
     'temperature': Temperature,
-    'maxTemperature': MaxTemperature,
+    'max_temperature': MaxTemperature,
     'burnt': Burnt,
     'cooked': Cooked,
 }
@@ -51,13 +51,14 @@ _STATE_NAME_TO_CLASS_MAPPING = {
 _ABILITY_TO_STATE_MAPPING = {
     "cookable": ["cooked"],
     "soakable": ["soaked"],
-    "dustable": ["dirty"],
+    "dustyable": ["dirty"],
     "scrubbable": ["stained"],
     "water_source": ["water_source"],
     "cleaning_tool": ["cleaning_tool"],
     "toggleable": ["toggled_on"],
     "burnable": ["burnt"],
-    "heatSource": ["heatSource"]
+    "heatSource": ["heatSource"],
+    'openable': ['open'],
 }
 
 _DEFAULT_STATE_SET = {
@@ -66,7 +67,6 @@ _DEFAULT_STATE_SET = {
     'nextTo',
     'under',
     'touching',
-    'open',
 }
 
 
@@ -79,6 +79,8 @@ def get_all_state_names():
 
 
 def get_state_names_for_ability(ability):
+    if ability not in _ABILITY_TO_STATE_MAPPING:
+        return []
     return _ABILITY_TO_STATE_MAPPING[ability]
 
 
@@ -130,15 +132,18 @@ def prepare_object_states(obj, abilities=None, online=True):
     if abilities is None:
         abilities = {}
 
-    state_names_and_params = [(state_name, {}) for state_name in get_default_state_names()]
+    state_names_and_params = [(state_name, {})
+                              for state_name in get_default_state_names()]
 
     # Map the ability params to the states immediately imported by the abilities
     for ability, params in abilities.items():
-        state_names_and_params.extend((state_name, params) for state_name in get_state_names_for_ability(ability))
+        state_names_and_params.extend(
+            (state_name, params) for state_name in get_state_names_for_ability(ability))
 
     obj.states = dict()
     for state_name, params in state_names_and_params:
-        obj.states[state_name] = get_object_state_instance(state_name, obj, params)
+        obj.states[state_name] = get_object_state_instance(
+            state_name, obj, params)
 
         # Add each state's dependencies, too. Note that only required dependencies are added.
         for dependency in obj.states[state_name].get_dependencies():
@@ -152,8 +157,8 @@ def get_state_dependency_graph():
     """
     dependencies = {
         state_name: (
-                _STATE_NAME_TO_CLASS_MAPPING[state_name].get_dependencies() +
-                _STATE_NAME_TO_CLASS_MAPPING[state_name].get_optional_dependencies())
+            _STATE_NAME_TO_CLASS_MAPPING[state_name].get_dependencies() +
+            _STATE_NAME_TO_CLASS_MAPPING[state_name].get_optional_dependencies())
         for state_name in get_all_state_names()}
     return nx.DiGraph(dependencies)
 
