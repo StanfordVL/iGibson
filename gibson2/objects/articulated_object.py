@@ -142,7 +142,8 @@ class URDFObject(StatefulObject):
             else:
                 abilities = {}
 
-        assert isinstance(abilities, dict), "Object abilities must be in dictionary form."
+        assert isinstance(
+            abilities, dict), "Object abilities must be in dictionary form."
         self.abilities = abilities
 
         # Friction for all prismatic and revolute joints
@@ -326,7 +327,8 @@ class URDFObject(StatefulObject):
         # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
         x, y, z = self.scaled_bbxc_in_blf
         roll, pitch, yaw = joint_rpy
-        x, y, z = rotate_vector_3d(self.scaled_bbxc_in_blf, roll, pitch, yaw, False)
+        x, y, z = rotate_vector_3d(
+            self.scaled_bbxc_in_blf, roll, pitch, yaw, False)
         joint_xyz += np.array([x, y, z])
 
         # if the joint is floating, we save the transformation of the floating joint to be used when we load the
@@ -418,23 +420,25 @@ class URDFObject(StatefulObject):
     def sample_orientation(self):
         if self.orientations is None:
             raise ValueError('No orientation probabilities set')
-        indeces = list(range(len(self.orientations)))
+        indices = list(range(len(self.orientations)))
         orientations = [np.array(o['rotation']) for o in self.orientations]
         probabilities = [o['prob'] for o in self.orientations]
         variation = [o['variation'] for o in self.orientations]
-        chosen_orientation_idx = random.choices(indeces, weights=probabilities, k=1)[0]
+        probabilities = np.array(probabilities) / np.sum(probabilities)
+        chosen_orientation_idx = np.random.choice(indices, p=probabilities)
         chosen_orientation = orientations[chosen_orientation_idx]
-        max_rotation = variation[chosen_orientation_idx]+0.05
+        min_rotation = 0.05
+        rotation_variance = max(
+            variation[chosen_orientation_idx], min_rotation)
 
-        if max_rotation > 0:
-            rot_num = random.random()*max_rotation
-            rot_matrix = np.array([[math.cos(math.pi*rot_num), -math.sin(math.pi*rot_num), 0.0],
-                          [math.sin(math.pi*rot_num), math.cos(math.pi*rot_num), 0.0],
-                          [0.0, 0.0, 1.0]])
-            rotated_quat = quat_from_matrix(matrix_from_quat(chosen_orientation) @ rot_matrix)
-            return rotated_quat
-        else:
-            return chosen_orientation
+        rot_num = np.random.random() * rotation_variance
+        rot_matrix = np.array([
+            [math.cos(math.pi*rot_num), -math.sin(math.pi*rot_num), 0.0],
+            [math.sin(math.pi*rot_num), math.cos(math.pi*rot_num), 0.0],
+            [0.0, 0.0, 1.0]])
+        rotated_quat = quat_from_matrix(
+            matrix_from_quat(chosen_orientation) @ rot_matrix)
+        return rotated_quat
 
     def rename_urdf(self):
         """

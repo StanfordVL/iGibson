@@ -32,7 +32,8 @@ class iGTNTask(TaskNetTask):
     def initialize_simulator(self,
                              mode='iggui',
                              scene_id=None,
-                             simulator=None):
+                             simulator=None,
+                             load_clutter=False):
         '''
         Get scene populated with objects such that scene satisfies initial conditions
         :param simulator: Simulator class, populated simulator that should completely
@@ -45,13 +46,11 @@ class iGTNTask(TaskNetTask):
         if simulator is None:
             self.simulator = Simulator(
                 mode=mode, image_width=960, image_height=720, device_idx=0)
-            self.initialize(InteractiveIndoorScene,
-                            scene_id=scene_id)
         else:
             print('INITIALIZING TASK WITH PREDEFINED SIMULATOR')
             self.simulator = simulator
-            self.initialize(InteractiveIndoorScene,
-                            scene_id=scene_id)
+        self.load_clutter = load_clutter
+        self.initialize(InteractiveIndoorScene, scene_id=scene_id)
 
     def check_scene(self):
         room_type_to_obj_inst = {}
@@ -311,7 +310,21 @@ class iGTNTask(TaskNetTask):
 
         return True
 
+    def clutter_scene(self):
+        if not self.load_clutter:
+            return
+
+        scene_id = self.scene.scene_id
+        clutter_scene = InteractiveIndoorScene(
+            scene_id, '{}_clutter'.format(scene_id))
+        existing_objects = list(self.object_scope.values())
+        self.simulator.import_non_colliding_objects(
+            objects=clutter_scene.objects_by_name,
+            existing_objects=existing_objects,
+            min_distance=0.5)
+
     #### CHECKERS ####
+
     def onTop(self, objA, objB):
         '''
         Checks if one object is on top of another.

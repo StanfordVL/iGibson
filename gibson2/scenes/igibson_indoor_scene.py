@@ -882,12 +882,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param urdf_name: Name of urdf file to save (without .urdf)
         """
         TEMPLATE = """
-	<link bounding_box="{bounding_box}" category="{category}" model="{model}" name="{name}" room="{room}"/>
-	<joint name="j_{name}" type="floating">
-		<origin rpy="{rpy}" xyz="{xyz}"/>
-		<child link="{name}"/>
-		<parent link="world"/>
-	</joint>"""
+        <link bounding_box="{bounding_box}" category="{category}" model="{model}" name="{name}" room="{room}"/>
+        <joint name="j_{name}" type="floating">
+            <origin rpy="{rpy}" xyz="{xyz}"/>
+            <child link="{name}"/>
+            <parent link="world"/>
+        </joint>"""
         with open(self.scene_file, 'r') as f:
             urdf_string = f.read()
         add_string = ''
@@ -917,20 +917,21 @@ class InteractiveIndoorScene(StaticIndoorScene):
             # Convert to XYZ position for URDF
             euler = euler_from_quat(obj.get_orientation())
             roll, pitch, yaw = euler
-            offset = rotate_vector_3d(obj.scaled_bbxc_in_blf, roll, pitch, yaw, False)
+            offset = rotate_vector_3d(
+                obj.scaled_bbxc_in_blf, roll, pitch, yaw, False)
             bbox_pos = base_link_position - offset
 
             xyz = ' '.join([str(p) for p in bbox_pos])
             rpy = ' '.join([str(e) for e in euler])
-            new_string = TEMPLATE.format(bounding_box = bounding_box,
-                                        category = category,
-                                        model = model,
-                                        name = name,
-                                        room = room,
-                                        rpy = rpy,
-                                        xyz = xyz)
-            add_string+=new_string
-        add_string+='\n</robot>'
+            new_string = TEMPLATE.format(bounding_box=bounding_box,
+                                         category=category,
+                                         model=model,
+                                         name=name,
+                                         room=room,
+                                         rpy=rpy,
+                                         xyz=xyz)
+            add_string += new_string
+        add_string += '\n</robot>'
         urdf_string = urdf_string.replace('</robot>', add_string)
         path_to_urdf = os.path.join(self.scene_dir, 'urdf', urdf_name+'.urdf')
         with open(path_to_urdf, 'w') as f:
