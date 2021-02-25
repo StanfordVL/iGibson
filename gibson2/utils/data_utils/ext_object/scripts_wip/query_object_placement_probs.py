@@ -43,6 +43,9 @@ def main(args):
         object_ids = os.listdir(object_cat_dir)
 
     obj_json_paths = []
+    existing_placement_rules = {}
+    obj_probs = {}
+    total_prob = 0.0
     for object_id in object_ids:
         obj_dir = '%s/%s/misc/'%(object_cat_dir, object_id)
         if not os.path.isdir(obj_dir):
@@ -50,8 +53,14 @@ def main(args):
             return
         obj_json_path = '%s/placement_probs.json'%(obj_dir)
         if os.path.isfile(obj_json_path) and not args.overwrite:
-            print('%s exists and overwrite false, quitting'%obj_json_path)
-            return
+            if args.add:
+                if total_prob == 0.0:
+                    with open(obj_json_path, 'r') as f:
+                        obj_probs = json.load(f)
+                    total_prob = 1.0
+            elif not args.overwrite:
+                print('%s exists and overwrite false, quitting'%obj_json_path)
+                return
         obj_json_paths.append(obj_json_path)
 
     scene_names = ['Beechwood_1_int','Benevolence_1_int','Ihlen_0_int','Merom_0_int','Pomaria_0_int','Pomaria_2_int',
@@ -108,9 +117,7 @@ def main(args):
     for room in room_categories:
         room_categories[room] = list(room_categories[room])
 
-    obj_probs = {}
     done = False
-    total_prob = 0.0
     while not done:
         room = input_number_or_name('room', unique_rooms)
         while not room:
@@ -140,14 +147,15 @@ def main(args):
         for key in obj_probs:
             obj_probs[key]/=total_prob
 
-        for obj_json_path in obj_json_paths:
-            with open(obj_json_path, 'w') as f:
-                json.dump(obj_probs, f)
+    for obj_json_path in obj_json_paths:
+        with open(obj_json_path, 'w') as f:
+            json.dump(obj_probs, f)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Configure which surfaces and containers in a scene an object might go in.')
     parser.add_argument('object_cat', type=str, default=None)
     parser.add_argument('--object_id', type=str, default=None)
     parser.add_argument('--overwrite', action='store_true', default=False)
+    parser.add_argument('--add', action='store_true', default=False)
     args = parser.parse_args()
     main(args)
