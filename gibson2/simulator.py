@@ -15,6 +15,7 @@ from gibson2.scenes.scene_base import Scene
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.objects.object_base import Object
 from gibson2.objects.particles import ParticleSystem
+from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 
 import pybullet as p
 import gibson2
@@ -409,15 +410,15 @@ class Simulator:
                     use_pbr_mapping=use_pbr_mapping,
                     shadow_caster=shadow_caster)
 
-        # if there are attached particle system, import them into simulation
-        if len(obj.attached_particle_system) > 0:
-            for particle_system in obj.attached_particle_system:
-                particle_pb_ids = self.import_particle_system(particle_system)
-                if isinstance(new_object_pb_id_or_ids, list):
-                    new_object_pb_id_or_ids += particle_pb_ids
-                else:
-                    new_object_pb_id_or_ids = [new_object_pb_id_or_ids] + \
-                        particle_pb_ids
+        # # if there are attached particle system, import them into simulation
+        # if len(obj.attached_particle_system) > 0:
+        #     for particle_system in obj.attached_particle_system:
+        #         particle_pb_ids = self.import_particle_system(particle_system)
+        #         if isinstance(new_object_pb_id_or_ids, list):
+        #             new_object_pb_id_or_ids += particle_pb_ids
+        #         else:
+        #             new_object_pb_id_or_ids = [new_object_pb_id_or_ids] + \
+        #                 particle_pb_ids
 
         return new_object_pb_id_or_ids
 
@@ -619,6 +620,80 @@ class Simulator:
                                          use_pbr=use_pbr,
                                          use_pbr_mapping=use_pbr_mapping,
                                          shadow_caster=shadow_caster)
+
+    def import_non_colliding_objects(self,
+                                     objects,
+                                     existing_objects=[],
+                                     min_distance=0.5):
+        """
+        Loads objects into the scene such that they don't collide with existing objects.
+
+        :param objects: A dictionary with objects, from a scene loaded with a particular URDF
+        :param existing_objects: A list of objects that needs to be kept min_distance away when loading the new objects
+        :param min_distance: A minimum distance to require for objects to load
+        """
+        state_id = p.saveState()
+        objects_to_add = []
+        for obj_name in objects:
+            obj = objects[obj_name]
+
+            # Do not allow duplicate object categories
+            if obj.category in self.scene.objects_by_category:
+                continue
+
+            add = True
+            body_ids = []
+
+            # Filter based on the minimum distance to any existing object
+            for idx in range(len(obj.urdf_paths)):
+                body_id = p.loadURDF(obj.urdf_paths[idx])
+                body_ids.append(body_id)
+                transformation = obj.poses[idx]
+                pos = transformation[0:3, 3]
+                orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+                dynamics_info = p.getDynamicsInfo(body_id, -1)
+                inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+                pos, orn = p.multiplyTransforms(
+                    pos, orn, inertial_pos, inertial_orn)
+                pos = list(pos)
+                min_distance_to_existing_object = None
+                for existing_object in existing_objects:
+                    distance = np.linalg.norm(
+                        np.array(pos) -
+                        np.array(existing_object.get_position()))
+                    if min_distance_to_existing_object is None or \
+                       min_distance_to_existing_object > distance:
+                        min_distance_to_existing_object = distance
+
+                if min_distance_to_existing_object < min_distance:
+                    add = False
+                    break
+
+                pos[2] += 0.01  # slighly above to not touch furniture
+                p.resetBasePositionAndOrientation(body_id, pos, orn)
+
+            # Filter based on collisions with any existing object
+            if add:
+                p.stepSimulation()
+
+                for body_id in body_ids:
+                    in_collision = len(p.getContactPoints(body_id)) > 0
+                    if in_collision:
+                        add = False
+                        break
+
+            if add:
+                objects_to_add.append(obj)
+
+            for body_id in body_ids:
+                p.removeBody(body_id)
+
+            p.restoreState(state_id)
+
+        p.removeState(state_id)
+
+        for obj in objects_to_add:
+            self.import_object(obj)
 
     @load_without_pybullet_vis
     def import_robot(self,

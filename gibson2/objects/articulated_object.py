@@ -11,7 +11,10 @@ import gibson2
 import numpy as np
 import pybullet as p
 import trimesh
+import math
+
 from gibson2.external.pybullet_tools.utils import link_from_name
+from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
 from gibson2.object_states.factory import prepare_object_states
 from gibson2.objects.stateful_object import StatefulObject
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
@@ -93,7 +96,7 @@ class URDFObject(StatefulObject):
                  joint_friction=None,
                  in_rooms=None,
                  texture_randomization=False,
-                 overwrite_inertial=False,
+                 overwrite_inertial=True,
                  scene_instance_folder=None,
                  ):
         """
@@ -139,7 +142,8 @@ class URDFObject(StatefulObject):
             else:
                 abilities = {}
 
-        assert isinstance(abilities, dict), "Object abilities must be in dictionary form."
+        assert isinstance(
+            abilities, dict), "Object abilities must be in dictionary form."
         self.abilities = abilities
 
         # Friction for all prismatic and revolute joints
@@ -322,8 +326,9 @@ class URDFObject(StatefulObject):
         # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
         # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
         x, y, z = self.scaled_bbxc_in_blf
-        yaw = joint_rpy[2]
-        x, y = rotate_vector_2d(np.array([x, y]), -yaw)
+        roll, pitch, yaw = joint_rpy
+        x, y, z = rotate_vector_3d(
+            self.scaled_bbxc_in_blf, roll, pitch, yaw, False)
         joint_xyz += np.array([x, y, z])
 
         # if the joint is floating, we save the transformation of the floating joint to be used when we load the
@@ -415,12 +420,25 @@ class URDFObject(StatefulObject):
     def sample_orientation(self):
         if self.orientations is None:
             raise ValueError('No orientation probabilities set')
+        indices = list(range(len(self.orientations)))
         orientations = [np.array(o['rotation']) for o in self.orientations]
         probabilities = [o['prob'] for o in self.orientations]
-        chosen_orientation = random.choices(
-            orientations, weights=probabilities, k=1)[0]
-        # TODO do random variation about Z axis based on variation key
-        return chosen_orientation
+        variation = [o['variation'] for o in self.orientations]
+        probabilities = np.array(probabilities) / np.sum(probabilities)
+        chosen_orientation_idx = np.random.choice(indices, p=probabilities)
+        chosen_orientation = orientations[chosen_orientation_idx]
+        min_rotation = 0.05
+        rotation_variance = max(
+            variation[chosen_orientation_idx], min_rotation)
+
+        rot_num = np.random.random() * rotation_variance
+        rot_matrix = np.array([
+            [math.cos(math.pi*rot_num), -math.sin(math.pi*rot_num), 0.0],
+            [math.sin(math.pi*rot_num), math.cos(math.pi*rot_num), 0.0],
+            [0.0, 0.0, 1.0]])
+        rotated_quat = quat_from_matrix(
+            matrix_from_quat(chosen_orientation) @ rot_matrix)
+        return rotated_quat
 
     def rename_urdf(self):
         """
