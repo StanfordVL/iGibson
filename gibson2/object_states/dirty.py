@@ -28,8 +28,8 @@ class Dirty(AbsoluteObjectState, BooleanState):
 
         # Load the dust if necessary.
         if self.dust is None:
-            self.dust = Dust()
-            self.dust.register_parent_obj(self.obj)
+            self.dust = Dust(self.obj)
+            simulator.import_particle_system(self.dust)
 
         # Attach if necessary
         if self.value and not self.prev_value:

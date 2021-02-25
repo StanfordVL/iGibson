@@ -28,8 +28,8 @@ class Stained(AbsoluteObjectState, BooleanState):
 
         # Load the stain if necessary.
         if self.stain is None:
-            self.stain = Stain()
-            self.stain.register_parent_obj(self.obj)
+            self.stain = Stain(self.obj)
+            simulator.import_particle_system(self.stain)
 
         # Attach if we went to stained in this step.
         if self.value and not self.prev_value:
