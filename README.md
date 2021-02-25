@@ -206,7 +206,7 @@ Note: we recommend looking at gibson2/render/mesh_renderer/mesh_renderer_vr.py t
 
 To use the VR assets, please access the Google drive folder at this link:
 https://drive.google.com/drive/folders/1zm3ZpPc7yHwyALEGfsb0_NybFMvV81Um?usp=sharing
-Please place all of these folders into your assets/models folder, with their original names.
+Please place all of these folders into your assets/models folder, with their original names. Place the fonts folder in the top-level assets directory.
 
 Have fun in VR!
 
