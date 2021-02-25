@@ -8,24 +8,35 @@ class Stained(AbsoluteObjectState, BooleanState):
 
     def __init__(self, obj):
         super(Stained, self).__init__(obj)
+        self.prev_value = False
         self.value = False
-        self.stain = Stain()
-        self.stain.register_parent_obj(self.obj)
+        self.stain = None
 
     def get_value(self):
         return self.value
 
     def set_value(self, new_value):
         self.value = new_value
-        if self.value:
-            self.stain.attach(self.obj)
-            for particle in self.stain.particles:
-                particle.active = True
-        else:
+        if not self.value:
             for particle in self.stain.particles:
                 self.stain.stash_particle(particle)
 
     def update(self, simulator):
+        # Nothing to do if not dusty.
+        if not self.value:
+            return
+
+        # Load the dust if necessary.
+        if self.stain is None:
+            self.stain = Stain()
+            self.stain.register_parent_obj(self.obj)
+
+        # Attach if we went to stained in this step.
+        if self.value and not self.prev_value:
+            self.stain.attach(self.obj)
+            for particle in self.stain.particles:
+                particle.active = True
+
         # cleaning logic
         cleaning_tools = simulator.scene.get_objects_with_state("cleaning_tool")
         cleaning_tools_wet = []
@@ -57,6 +68,7 @@ class Stained(AbsoluteObjectState, BooleanState):
                     self.stain.stash_particle(particle)
 
         # update self.value based on particle count
+        self.prev_value = self.value
         self.value = self.stain.get_num_active() > self.stain.get_num() * CLEAN_THRESHOLD
 
 
