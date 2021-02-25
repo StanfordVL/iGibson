@@ -101,8 +101,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.scene_file = os.path.join(
             scene_dir, "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
-        self.first_n_objects = np.inf
-        self.obj_names_to_load = []
         self.random_groups = {}
         self.objects_by_category = {}
         self.objects_by_name = {}
@@ -563,7 +561,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         :param first_n_objects: only load the first N objects (integer)
         """
-        self.first_n_objects = first_n_objects
+        raise ValueError(
+            "The _set_first_n_object function is now deprecated due to "
+            "incompatibility with recent object state features. Please "
+            "use the load_object_categories method for limiting the "
+            "objects to be loaded from the scene.")
 
     def _set_obj_names_to_load(self, obj_name_list):
         """
@@ -574,8 +576,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param obj_name_list: list of string object names. These names must
             all be in the scene URDF file.
         """
-        self.obj_names_to_load = obj_name_list
-        self.obj_names_to_load.extend(['walls', 'floors', 'ceilings'])
+        raise ValueError(
+            "The _set_obj_names_to_load function is now deprecated due "
+            "to incompatibility with recent object state features. Please "
+            "use the load_object_categories method for limiting the "
+            "objects to be loaded from the scene.")
 
     def open_one_obj(self, body_id, mode='random'):
         """
@@ -697,11 +702,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         body_ids = []
         fixed_body_ids = []
         visual_mesh_to_material = []
-        num_loaded = 0
         for int_object in self.objects_by_name:
-            # If object names to load are specified, skip loading if we encounter a name we don't want to load
-            if self.obj_names_to_load and int_object not in self.obj_names_to_load:
-                continue
             obj = self.objects_by_name[int_object]
             new_ids = obj.load()
             for id in new_ids:
@@ -711,9 +712,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
             fixed_body_ids += [body_id for body_id, is_fixed
                                in zip(obj.body_ids, obj.is_fixed)
                                if is_fixed]
-            num_loaded += 1
-            if num_loaded > self.first_n_objects:
-                break
 
         # disable collision between the fixed links of the fixed objects
         for i in range(len(fixed_body_ids)):
