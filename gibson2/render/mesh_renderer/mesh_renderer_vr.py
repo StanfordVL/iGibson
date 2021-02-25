@@ -1,6 +1,8 @@
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
 from gibson2.utils.mesh_util import lookat
 from gibson2 import assets_path
+import json
+from json_minify import json_minify
 import numpy as np
 import os
 import time
@@ -23,17 +25,22 @@ class VrOverlayBase(object):
         self.pos = pos
         # Note: overlay will only be instantiated in subclasses
     
-    def set_overlay_state(self, state):
+    def set_overlay_show_state(self, show):
         """
-        Sets state of an overlay
-        :param state: one of 'show' or 'hide'
+        Sets show state of an overlay
+        :param state: True to show, False to hide
         """
-        if state == 'show':
+        self.show_state = show
+        if self.show_state:
             self.renderer.vrsys.showOverlay(self.overlay_name)
-        elif state == 'hide':
-            self.renderer.vrsys.hideOverlay(self.overlay_name)
         else:
-            raise ValueError('State {} is not valid for VR overlays'.format(state))
+            self.renderer.vrsys.hideOverlay(self.overlay_name)
+    
+    def get_overlay_show_state(self):
+        """
+        Returns show state of an overlay
+        """
+        return self.show_state
 
 
 class VrHUDOverlay(VrOverlayBase):
@@ -93,43 +100,65 @@ class VrSettings(object):
     Class containing VR settings pertaining to both the VR renderer
     and VR functionality in the simulator/of VR objects
     """
-    def __init__(self,
-                use_vr = True,
-                eye_tracking = True,
-                touchpad_movement = True,
-                movement_controller = 'right',
-                relative_movement_device = 'hmd',
-                movement_speed = 0.01,
-                reset_sim = True,
-                vr_fps = 30,
-                hud_width = 0.7,
-                hud_pos = [0, 0, -0.8]):
+    def __init__(self):
         """
         Initializes VR settings.
-        :param use_vr: whether to render to the HMD and use VR system or just render to screen (used for debugging)
-        :param eye_tracking: whether to use eye tracking
-        :param touchpad_movement: whether to enable use of touchpad to move
-        :param movement_controller: device to controler movement - can be right or left (representing the corresponding controllers)
-        :param relative_movement_device: which device to use to control touchpad movement direction (can be any VR device)
-        :param movement_speed: touchpad movement speed
-        :param reset_sim: whether to call resetSimulation at the start of each simulation
-        :param vr_fps: the fixed fps to run VR at - initialized to 33 by default, since this FPS works well in all iGibson environments
-        :param hud_width: the width of the overlay, which acts as the VR HUD (heads-up-display)
-        :param hud_pos: the position of the VR HUD
         """
-        assert movement_controller in ['left', 'right']
+        # VR is enabled by default - can be set off on a case-by-case basis
+        self.use_vr = True
+        # Simulation is reset at start by default
+        self.reset_sim = True
+        # Fixed FPS is used by default
+        self.use_fixed_fps = True
 
-        self.use_vr = use_vr
-        self.eye_tracking = eye_tracking
-        self.touchpad_movement = touchpad_movement
-        self.movement_controller = movement_controller
-        self.relative_movement_device = relative_movement_device
-        self.movement_speed = movement_speed
-        self.reset_sim = reset_sim
-        self.vr_fps = vr_fps
-        self.hud_width = hud_width
-        self.hud_pos = hud_pos
+        mesh_renderer_folder = os.path.abspath(os.path.dirname(__file__))
+        self.vr_config_path = os.path.join(mesh_renderer_folder, '..', '..', 'vr_config.json')
+        self.load_vr_config()
 
+    def load_vr_config(self):
+        """
+        Loads in VR config and sets all settings accordingly.
+        """
+        with open(self.vr_config_path) as f_config:
+            config_str = ''.join(f_config.readlines())
+            vr_config = json.loads(json_minify(config_str))
+            
+            shared_settings = vr_config['shared_settings']
+            self.touchpad_movement = shared_settings['touchpad_movement']
+            self.movement_controller = shared_settings['movement_controller']
+            assert self.movement_controller in ['left', 'right']
+            self.relative_movement_device = shared_settings['relative_movement_device']
+            assert self.relative_movement_device in ['hmd', 'left_controller', 'right_controller']
+            self.movement_speed = shared_settings['movement_speed']
+            self.vr_fps = shared_settings['vr_fps']
+            self.hud_width = shared_settings['hud_width']
+            self.hud_pos = shared_settings['hud_pos']
+
+            device_settings = vr_config['device_settings']
+            curr_device_candidate = vr_config['current_device']
+            if curr_device_candidate not in device_settings.keys():
+                self.curr_device = 'OTHER_VR'
+            else:
+                self.curr_device = curr_device_candidate
+            specific_device_settings = device_settings[self.curr_device]
+            self.eye_tracking = specific_device_settings['eye_tracking']
+            self.action_button_map = specific_device_settings['action_button_map']
+            self.gen_button_action_map()
+
+    def gen_button_action_map(self):
+        """
+        Generates a button_action_map, which is needed to convert from
+        (button_idx, press_id) tuples back to actions.
+        """
+        self.button_action_map = {}
+        for k, v in self.action_button_map.items():
+            self.button_action_map[tuple(v)] = k
+
+    def turn_off_vr_mode(self):
+        """
+        Turns off VR mode so the MeshRendererVR can be debugged.
+        """
+        self.use_vr = False
 
 class MeshRendererVR(MeshRenderer):
     """
@@ -171,7 +200,7 @@ class MeshRendererVR(MeshRenderer):
                                    self, 
                                    width=self.vr_settings.hud_width, 
                                    pos=self.vr_settings.hud_pos)
-        self.vr_hud.set_overlay_state('show')
+        self.vr_hud.set_overlay_show_state(True)
 
     def gen_static_overlay(self, image_fpath, width=1, pos=[0, 0, -1]):
         """
@@ -183,7 +212,7 @@ class MeshRendererVR(MeshRenderer):
                                     image_fpath,
                                     width=width, 
                                     pos=pos)
-        static_overlay.set_overlay_state('show')
+        static_overlay.set_overlay_show_state(True)
         return static_overlay
 
     def update_vr_data(self):

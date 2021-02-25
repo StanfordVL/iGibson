@@ -167,7 +167,7 @@ private:
 
 	void printVec3(glm::vec3& v);
 
-	void processVREvent(vr::VREvent_t& vrEvent, std::string& deviceType, std::string& eventType);
+	void processVREvent(vr::VREvent_t& vrEvent, int* controller, int* event_idx, int* press);
 
 	void setCoordinateTransformMatrices();
 

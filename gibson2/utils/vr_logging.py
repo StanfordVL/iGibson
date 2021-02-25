@@ -53,9 +53,9 @@ the computer's display when the VR is running
 ------ vr_event_data (group)
 
 --------- left_controller (dataset)
------------- DATA: [grip press/unpress, trigger press/unpress, touchpad press/unpress, touchpad touch/untouch, menu press/unpress] (len 10)
+------------ DATA: [0 or 1 for every (button_idx, press) combo in OpenVR system] (len VR_BUTTON_COMBO_NUM) (see vr_utils.py)
 --------- right_controller (dataset)
------------- DATA: [grip press/unpress, trigger press/unpress, touchpad press/unpress, touchpad touch/untouch, menu press/unpress] (len 10)
+------------ DATA: [0 or 1 for every (button_idx, press) combo in OpenVR system] (len VR_BUTTON_COMBO_NUM)
 """
 
 import h5py
@@ -63,7 +63,7 @@ import numpy as np
 import pybullet as p
 import time
 
-from gibson2.utils.vr_utils import VrData, convert_events_to_binary
+from gibson2.utils.vr_utils import VrData, convert_button_data_to_binary, VR_BUTTON_COMBO_NUM
 
 
 class VRLogWriter():
@@ -167,8 +167,8 @@ class VRLogWriter():
             },
             'vr_eye_tracking_data': np.full((self.frames_before_write, 9), self.default_fill_sentinel, dtype=self.np_dtype),
             'vr_event_data': {
-                'left_controller': np.full((self.frames_before_write, 10), self.default_fill_sentinel, dtype=self.np_dtype),
-                'right_controller': np.full((self.frames_before_write, 10), self.default_fill_sentinel, dtype=self.np_dtype)
+                'left_controller': np.full((self.frames_before_write, VR_BUTTON_COMBO_NUM), self.default_fill_sentinel, dtype=self.np_dtype),
+                'right_controller': np.full((self.frames_before_write, VR_BUTTON_COMBO_NUM), self.default_fill_sentinel, dtype=self.np_dtype)
             }
         }
     
@@ -289,15 +289,7 @@ class VRLogWriter():
                 data_list.extend(list(right))
                 data_list.extend(list(up))
                 data_list.extend(list(forward))
-                #if device == 'right_controller':
-                #    print("Trans data going into HDF5: {}".format(data_list[1:4]))
-                #    print("Raw value: {}".format(data_list[2]))
-                #    print("Type of data: {}".format(type(data_list[2])))
                 self.data_map['vr']['vr_device_data'][device][self.frame_counter, ...] = np.array(data_list)
-                #if device == 'right_controller':
-                #    print("Trans data in numpy map: {}".format(self.data_map['vr']['vr_device_data'][device][self.frame_counter, 1:4]))
-                #    print("Raw value: {}".format(self.data_map['vr']['vr_device_data'][device][self.frame_counter, 2]))
-                #    print("Type of data: {}".format(type(self.data_map['vr']['vr_device_data'][device][self.frame_counter, 2])))
 
             if device == 'left_controller' or device == 'right_controller':
                 button_data_list = s.get_button_data_for_controller(device)
@@ -322,11 +314,12 @@ class VRLogWriter():
             'left_controller': [],
             'right_controller': []
         }
-        for device, event in s.get_vr_events():
-            controller_events[device].append(event)
+        for device_id, button_idx, press_id in s.get_vr_events():
+            device_name = 'left_controller' if device_id == 0 else 'right_controller'
+            controller_events[device].append((button_idx, press_id))
         for controller in controller_events.keys():
-            bin_events = convert_events_to_binary(controller_events[controller])
-            self.data_map['vr']['vr_event_data'][controller][self.frame_counter, ...] = np.array(bin_events)
+            bin_button_data = convert_button_data_to_binary(controller_events[controller])
+            self.data_map['vr']['vr_event_data'][controller][self.frame_counter, ...] = np.array(bin_button_data)
 
     def write_pybullet_data_to_map(self):
         """Write all pybullet data to the class' internal map."""
@@ -364,7 +357,7 @@ class VRLogWriter():
             # We have accumulated enough data, which we will write to hd5
             self.write_to_hd5()
             if print_vr_data:
-                self.temp_vr_data = VrData()
+                self.temp_vr_data = VrData(s)
                 for hf_idx in range(self.persistent_frame_count - self.frames_before_write, self.persistent_frame_count):
                     self.temp_vr_data.refresh_action_replay_data(self.hf, hf_idx)
                     self.temp_vr_data.print_data()
@@ -404,8 +397,15 @@ class VRLogWriter():
 
 class VRLogReader():
     # TIMELINE: Initialize the VRLogReader before reading any frames
-    def __init__(self, log_filepath, emulate_save_fps=True, log_status=True):
+    def __init__(self, log_filepath, s, emulate_save_fps=True, log_status=True):
+        """
+        :param log_filepath: path for logging files to be read from
+        :param s: current Simulator object
+        :param emulate_save_fps: whether to emulate the FPS when the data was recorded
+        :param log_status: whether to print status updates to the command line
+        """
         self.log_filepath = log_filepath
+        self.s = s
         self.emulate_save_fps = emulate_save_fps
         self.log_status = log_status
         # Frame counter keeping track of how many frames have been reproduced
@@ -415,7 +415,7 @@ class VRLogReader():
         # Get total frame num (dataset row length) from an arbitary dataset
         self.total_frame_num = self.hf['vr/vr_device_data/hmd'].shape[0]
         # Placeholder VrData object, which will be filled every frame if we are performing action replay
-        self.vr_data = VrData()
+        self.vr_data = VrData(self.s)
         if self.log_status:
             print('----- VRLogReader initialized -----')
             print('Preparing to read {0} frames'.format(self.total_frame_num))
@@ -513,7 +513,7 @@ class VRLogReader():
         full_action_path = 'action/' + action_path
         return self.hf[full_action_path][self.frame_counter]
     
-    # TIMELINE: Use this as the while loop condition to keep reading frames!
+    # TIMELINE: Use this as the while loop condition to keep reading frames
     def get_data_left_to_read(self):
         """Returns whether there is still data left to read."""
         self.frame_counter += 1

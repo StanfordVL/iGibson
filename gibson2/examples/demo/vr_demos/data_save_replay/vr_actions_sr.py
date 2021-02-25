@@ -154,7 +154,7 @@ def run_state_sr(mode):
         # Despite having no actions, we need to call this function
         vr_writer.set_up_data_storage()
     else:
-        vr_reader = VRLogReader(log_filepath=vr_log_path, emulate_save_fps=True, log_status=False)
+        vr_reader = VRLogReader(vr_log_path, s, emulate_save_fps=True, log_status=False)
 
     if mode == 'save':
         # Main simulation loop - run for as long as the user specified

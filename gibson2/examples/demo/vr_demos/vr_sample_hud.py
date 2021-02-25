@@ -1,9 +1,6 @@
-""" This VR hand dexterity benchmark allows the user to interact with many types of objects
-and interactive objects, and provides a good way to qualitatively measure the dexterity of a VR hand.
-
-You can use the left and right controllers to start/stop/reset the timer,
-as well as show/hide its display. The "overlay toggle" action and its
-corresponding button index mapping can be found in the vr_config.json file in the gibson2 folder.
+"""
+Demo to show a sample VR HUD (heads-up-display), constructed using
+VR overlay classes (found in render/mesh_renderer/mesh_renderer_vr.py) and Text (found in render/mesh_renderer/text.py)
 """
 import os
 import pybullet as p
@@ -18,7 +15,6 @@ from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.vr_objects import VrAgent
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
-from gibson2.utils.vr_utils import VrTimer
 from gibson2 import assets_path
 
 # Objects in the benchmark - corresponds to Rs kitchen environment, for range of items and
@@ -70,10 +66,8 @@ def main():
                                                 enable_pbr=True,
                                                 msaa=True,
                                                 light_dimming_factor=1.0)
-    s = Simulator(mode='vr', 
-                use_fixed_fps = True,
-                rendering_settings=vr_rendering_settings)
 
+    s = Simulator(mode='vr', rendering_settings=vr_rendering_settings)
     scene = InteractiveIndoorScene('Rs_int')
     scene._set_obj_names_to_load(benchmark_names)
     s.import_ig_scene(scene)
@@ -115,39 +109,31 @@ def main():
             handle.set_orientation(orn)
             p.changeDynamics(handle.body_id, -1, mass=masses[i])
 
-    # Time how long demo takes
-    time_text = s.add_vr_overlay_text(text_data='Current time: NOT STARTED', font_size=100, font_style='Bold', 
-                            color=[0,0,0], pos=[100, 100])
-    timer = VrTimer()
+    title = s.add_vr_overlay_text(text_data='Welcome to iGibson VR!', font_size=85, font_style='Bold', 
+                            color=[0, 0, 0.5], pos=[150, 900])
+    sample_condition_1 = s.add_vr_overlay_text(text_data='for box in cupboard:\n1) find box\n2) pick up box', font_size=40, font_style='Regular', 
+                            color=[0,0,0], pos=[800, 600])
+    sample_condition_2 = s.add_vr_overlay_text(text_data='for all ducks:\n1) pet the duck', font_size=40, font_style='Regular', 
+                            color=[0,0,0], pos=[800, 400])
+    # Start off by hiding sample condition 2
+    sample_condition_2.set_show_state(False)
+    timing_text = s.add_vr_overlay_text(text_data='Current time: {}'.format(time.time()), font_size=60, font_style='Italic', 
+                            color=[1,0,0], pos=[100, 100])
 
     # Main simulation loop
     while True:
         s.step(print_stats=PRINT_STATS)
 
-        # Events that manage timer functionality
-        r_toggle = s.query_vr_event('right_controller', 'overlay_toggle')
-        l_toggle = s.query_vr_event('left_controller', 'overlay_toggle')
-        # Overlay toggle action on right controller is used to start/stop timer
-        if r_toggle and not l_toggle:
-            if timer.is_timer_running():
-                timer.stop_timer()
-            else:
-                timer.start_timer()
-        # Overlay toggle action on left controller is used to show/hide timer
-        elif l_toggle and not r_toggle:
-            time_text.set_show_state(not time_text.get_show_state())
-        # Reset timer if both toggle buttons are pressed at once
-        elif r_toggle and l_toggle:
-            timer.refresh_timer()
+        timing_text.set_text('Current time: {}'.format(time.time()))
 
-        # Update timer value
-        time_text.set_text('Current time: {}'.format(round(timer.get_timer_val(), 1)))
-
-        # Update VR agent
+        # Show/hide the sample conditions with button press
+        if s.query_vr_event('right_controller', 'overlay_toggle'):
+            sample_condition_1.set_show_state(not sample_condition_1.get_show_state())
+            sample_condition_2.set_show_state(not sample_condition_2.get_show_state())
+            
         vr_agent.update()
 
     s.disconnect()
-
 
 if __name__ == '__main__':
     main()
