@@ -2,7 +2,7 @@ from gibson2.task.task_base import iGTNTask
 
 igtn_task = iGTNTask('sampling_test', task_instance=4)
 igtn_task.initialize_simulator(
-    scene_id='Rs_int', mode='gui', load_clutter=False)
+    scene_id='Rs_int', mode='gui', load_clutter=True)
 
 while True:
     igtn_task.simulator.step()
