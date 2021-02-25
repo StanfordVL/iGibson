@@ -1,4 +1,4 @@
-from gibson2.external.pybullet_tools.utils import link_from_name, get_link_state
+from gibson2.external.pybullet_tools.utils import get_link_position_from_name
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
 from gibson2.object_states.utils import get_aabb_center
 
@@ -82,15 +82,7 @@ class HeatSource(CachingEnabledObjectState):
             return None
 
         # Get heating element position from URDF
-        # This raises an error if element cannot be found, which we propagate.
-        body_id = self.obj.get_body_id()
-        try:
-            link_id = link_from_name(body_id, _HEATING_ELEMENT_LINK_NAME)
-        except ValueError:
-            return None
-
-        heating_element_state = get_link_state(body_id, link_id)
-        return heating_element_state.linkWorldPosition
+        return get_link_position_from_name(self.obj.get_body_id(), _HEATING_ELEMENT_LINK_NAME)
 
     def set_value(self, new_value):
         raise NotImplementedError(
