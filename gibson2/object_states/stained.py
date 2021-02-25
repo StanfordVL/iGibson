@@ -22,11 +22,11 @@ class Stained(AbsoluteObjectState, BooleanState):
                 self.stain.stash_particle(particle)
 
     def update(self, simulator):
-        # Nothing to do if not dusty.
+        # Nothing to do if not stained.
         if not self.value:
             return
 
-        # Load the dust if necessary.
+        # Load the stain if necessary.
         if self.stain is None:
             self.stain = Stain()
             self.stain.register_parent_obj(self.obj)
