@@ -217,23 +217,25 @@ void VRRendererContext::initVR(bool useEyeTracking) {
 }
 
 // Polls for VR events, such as button presses
+// Guaranteed to only return valid events
 // TIMELINE: Ideally call before rendering (eg. before simulator step function)
 py::list VRRendererContext::pollVREvents() {
 	vr::VREvent_t vrEvent;
 	py::list eventData;
 
 	while (m_pHMD->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
-		std::string deviceType, eventType;
-		processVREvent(vrEvent, deviceType, eventType);
+		int controller, event_idx, press;
+		processVREvent(vrEvent, &controller, &event_idx, &press);
 
-		if (deviceType == "invalid" || eventType == "invalid") {
+		// -1 for controller or event indicates an invalid event
+		if (controller == -1 || event_idx == -1 || press == -1) {
 			continue;
 		}
 
 		py::list singleEventData;
-		singleEventData.append(deviceType);
-		singleEventData.append(eventType);
-
+		singleEventData.append(controller);
+		singleEventData.append(event_idx);
+		singleEventData.append(press);
 		eventData.append(singleEventData);
 	}
 
@@ -673,98 +675,40 @@ void VRRendererContext::printVec3(glm::vec3& v) {
 }
 
 // Processes a single VR event
-void VRRendererContext::processVREvent(vr::VREvent_t& vrEvent, std::string& deviceType, std::string& eventType) {
+// Controller: -1 (invalid), 0 (left controller), 1 (right controller)
+// Event idx: integer given by EVRButtonId enum in openvr.h header file
+// Press: -1 (invalid), 0 (for unpress/untouch), 1 (for press/touch)
+void VRRendererContext::processVREvent(vr::VREvent_t& vrEvent, int* controller, int* event_idx, int* press) {
 	vr::ETrackedDeviceClass trackedDeviceClass = m_pHMD->GetTrackedDeviceClass(vrEvent.trackedDeviceIndex);
 
 	// Exit if we found a non-controller event
 	if (trackedDeviceClass != vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
-		deviceType = "invalid";
+		*controller = -1;
 		return;
 	}
 
 	vr::ETrackedControllerRole role = m_pHMD->GetControllerRoleForTrackedDeviceIndex(vrEvent.trackedDeviceIndex);
 	if (role == vr::TrackedControllerRole_Invalid) {
-		deviceType = "invalid";
+		*controller = -1;
 	}
 	else if (role == vr::TrackedControllerRole_LeftHand) {
-		deviceType = "left_controller";
+		*controller = 0;
 	}
 	else if (role == vr::TrackedControllerRole_RightHand) {
-		deviceType = "right_controller";
+		*controller = 1;
 	}
 
-	switch (vrEvent.data.controller.button) {
-	case vr::k_EButton_Grip:
-		switch (vrEvent.eventType) {
-		case vr::VREvent_ButtonPress:
-			eventType = "grip_press";
-			break;
-
-		case vr::VREvent_ButtonUnpress:
-			eventType = "grip_unpress";
-			break;
-		default:
-			eventType = "invalid";
-			break;
-		}
-		break;
-
-	case vr::k_EButton_SteamVR_Trigger:
-		switch (vrEvent.eventType) {
-		case vr::VREvent_ButtonPress:
-			eventType = "trigger_press";
-			break;
-
-		case vr::VREvent_ButtonUnpress:
-			eventType = "trigger_unpress";
-			break;
-		default:
-			eventType = "invalid";
-			break;
-		}
-		break;
-
-	case vr::k_EButton_SteamVR_Touchpad:
-		switch (vrEvent.eventType) {
-		case vr::VREvent_ButtonPress:
-			eventType = "touchpad_press";
-			break;
-
-		case vr::VREvent_ButtonUnpress:
-			eventType = "touchpad_unpress";
-			break;
-
-		case vr::VREvent_ButtonTouch:
-			eventType = "touchpad_touch";
-			break;
-
-		case vr::VREvent_ButtonUntouch:
-			eventType = "touchpad_untouch";
-			break;
-		default:
-			eventType = "invalid";
-			break;
-		}
-		break;
-
-	case vr::k_EButton_ApplicationMenu:
-		switch (vrEvent.eventType) {
-		case vr::VREvent_ButtonPress:
-			eventType = "menu_press";
-			break;
-
-		case vr::VREvent_ButtonUnpress:
-			eventType = "menu_unpress";
-			break;
-		default:
-			eventType = "invalid";
-			break;
-		}
-		break;
-
-	default:
-		eventType = "invalid";
-		break;
+	*event_idx = vrEvent.data.controller.button;
+	// Both ButtonPress and ButtonTouch count as "press" (same goes for unpress/untouch)
+	int press_id = vrEvent.eventType;
+	if (press_id == vr::VREvent_ButtonUnpress || press_id == vr::VREvent_ButtonUntouch) {
+		*press = 0;
+	}
+	else if (press_id == vr::VREvent_ButtonPress || press_id == vr::VREvent_ButtonTouch) {
+		*press = 1;
+	}
+	else {
+		*press = -1;
 	}
 }
 

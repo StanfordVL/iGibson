@@ -161,11 +161,26 @@ Important - VR functionality and where to find it:
 
 You can find all the VR demos in iGibson/gibson2/examples/demo/vr_demos, which has the following structure:
 
-- vr demo files for normal VR, multi-user VR and robot embodiment VR
+- vr demo files for normal VR
+
+- atus folder containing lunch packing demo
 
 - data_save_replay folder containing save/replay demos
 
-- atus folder containing lunch packing demo
+- muvr folder containing multi-user VR demos
+
+- robot_embodiment folder containing robot embodiment VR demos
+
+Benchmarks:
+
+We have two benchmarks - a hand and speed benchmark, both of which can be found in the top leve of the vr_demos folder. In these demos, you can time yourself performing various challenges,
+such as putting objects away into specific containers/cabinets. Please see the comments in these demo files for more information.
+
+VR settings and button mapping:
+
+You can find the global vr settings in the vr_config.json in the gibson2 folder. Please change all VR settings from here. Within the settings, you will also find the button mapping from actions to buttons.
+Please run vr_demos/vr_button_mapping.py to figure out which physical controller buttons correspond to which indices in OpenVR. It is only necessary to do this if you are remapping an existing controller,
+or adding in a mapping for a new controller.
 
 Additional information:
 1) Most VR functions can be found in the gibson2/simulator.py

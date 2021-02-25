@@ -28,11 +28,11 @@ LOAD_PARTIAL = True
 # Whether to print iGibson + networking FPS each frame
 PRINT_FPS = True
 # Whether to wait for client before simulating
-WAIT_FOR_CLIENT = True
+WAIT_FOR_CLIENT = False
 
 # Note: This is where the VR configuration for the MUVR experience can be changed.
 RUN_SETTINGS = {
-    'client': VrSettings(use_vr=True),
+    'client': VrSettings(use_vr=False),
     'server': VrSettings(use_vr=True)
 }
 
