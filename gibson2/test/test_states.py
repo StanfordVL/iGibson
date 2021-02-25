@@ -230,8 +230,6 @@ def test_dirty():
         for i in range(10):
             s.step()
 
-        assert len(sink.attached_particle_system) > 0
-
     finally:
         s.disconnect()
 
