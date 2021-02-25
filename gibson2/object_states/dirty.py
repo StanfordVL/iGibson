@@ -8,24 +8,35 @@ class Dirty(AbsoluteObjectState, BooleanState):
 
     def __init__(self, obj):
         super(Dirty, self).__init__(obj)
+        self.prev_value = False
         self.value = False
-        self.dust = Dust()
-        self.dust.register_parent_obj(self.obj)
+        self.dust = None
 
     def get_value(self):
         return self.value
 
     def set_value(self, new_value):
         self.value = new_value
-        if self.value:
-            self.dust.attach(self.obj)
-            for particle in self.dust.particles:
-                particle.active = True
-        else:
+        if not self.value:
             for particle in self.dust.particles:
                 self.dust.stash_particle(particle)
 
     def update(self, simulator):
+        # Nothing to do if not dusty.
+        if not self.value:
+            return
+
+        # Load the dust if necessary.
+        if self.dust is None:
+            self.dust = Dust(self.obj)
+            simulator.import_particle_system(self.dust)
+
+        # Attach if necessary
+        if self.value and not self.prev_value:
+            self.dust.attach(self.obj)
+            for particle in self.dust.particles:
+                particle.active = True
+
         # cleaning logic
         cleaning_tools = simulator.scene.get_objects_with_state("cleaning_tool")
         for object in cleaning_tools:
@@ -52,6 +63,7 @@ class Dirty(AbsoluteObjectState, BooleanState):
                     self.dust.stash_particle(particle)
 
         # update self.value based on particle count
+        self.prev_value = self.value
         self.value = self.dust.get_num_active() > self.dust.get_num() * CLEAN_THRESHOLD
 
     @staticmethod
