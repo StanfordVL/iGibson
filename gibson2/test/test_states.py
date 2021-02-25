@@ -230,8 +230,6 @@ def test_dirty():
         for i in range(10):
             s.step()
 
-        assert len(sink.attached_particle_system) > 0
-
     finally:
         s.disconnect()
 
@@ -249,9 +247,10 @@ def test_water_source():
                           category='sink',
                           name='sink_1',
                           scale=np.array([0.8, 0.8, 0.8]),
-                          abilities={'water_source': {}}
+                          abilities={'water_source': {}, 'toggleable': {}}
                           )
 
+        sink.states['toggled_on'].set_value(True)
         s.import_object(sink)
         sink.set_position([1, 1, 0.8])
         assert 'water_source' in sink.abilities
@@ -260,7 +259,7 @@ def test_water_source():
         for i in range(10):
             s.step()
 
-        assert len(sink.attached_particle_system) > 0
-
+        # Check that we have some loaded particles here.
+        assert sink.states['water_source'].water_stream.particles[0].body_id is not None
     finally:
         s.disconnect()
