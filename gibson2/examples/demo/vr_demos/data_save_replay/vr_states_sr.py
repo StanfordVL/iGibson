@@ -30,7 +30,7 @@ from gibson2.utils.vr_logging import VRLogReader, VRLogWriter
 from gibson2 import assets_path
 
 # Number of seconds to run the data saving for
-DATA_SAVE_RUNTIME = 15
+DATA_SAVE_RUNTIME = 45
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = True
 

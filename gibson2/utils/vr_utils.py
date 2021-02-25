@@ -79,9 +79,10 @@ class VrData(object):
         events = []
         for controller in self.controllers:
             for button_press_data in convert_binary_to_button_data(ar_data['vr/vr_event_data/{}'.format(controller)][frame_num]):
-                # Convert (button_idx, press_id) tuple back to an action
-                action = self.s.vr_settings.button_action_map[button_press_data]
-                events.append([controller, action])
+                # Convert (button_idx, press_id) tuple back to an action, if it exists
+                if button_press_data in self.s.vr_settings.button_action_map.keys():
+                    action = self.s.vr_settings.button_action_map[button_press_data]
+                    events.append((controller, action))
         self.vr_data_dict['event_data'] = events
 
         pos_data = ar_data['vr/vr_device_data/vr_position_data'][frame_num].tolist()
@@ -202,7 +203,7 @@ def convert_binary_to_button_data(bin_events):
     """
     button_press_data = []
     for i in range(VR_BUTTON_COMBO_NUM):
-        if bin_events[i]:
+        if bin_events[i] == 1:
             button_press_data.append(VR_BUTTON_COMBOS[i])
 
     return button_press_data

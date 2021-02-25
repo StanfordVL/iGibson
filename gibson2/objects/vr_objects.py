@@ -187,8 +187,8 @@ class VrBody(ArticulatedObject):
 
             # Reset the body position to the HMD if either of the controller reset buttons are pressed
             if vr_data:
-                reset_agent =(['left_controller', 'reset_agent'] in vr_data.query('event_data') 
-                            or ['right_controller', 'reset_agent'] in vr_data.query('event_data'))
+                reset_agent =(('left_controller', 'reset_agent') in vr_data.query('event_data') 
+                            or ('right_controller', 'reset_agent') in vr_data.query('event_data'))
             else:
                 reset_agent = (self.sim.query_vr_event('left_controller', 'reset_agent') or self.sim.query_vr_event('right_controller', 'reset_agent'))
             if reset_agent:
@@ -301,7 +301,7 @@ class VrHandBase(ArticulatedObject):
         if is_valid:
             # Detect hand-relevant VR events
             if vr_data:
-                reset_agent = [self.vr_device, 'reset_agent'] in vr_data.query('event_data')
+                reset_agent = (self.vr_device, 'reset_agent') in vr_data.query('event_data')
             else:
                 reset_agent = self.sim.query_vr_event(self.vr_device, 'reset_agent')
 

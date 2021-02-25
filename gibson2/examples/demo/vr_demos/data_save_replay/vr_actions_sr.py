@@ -35,22 +35,21 @@ from gibson2.simulator import Simulator
 from gibson2.utils.vr_logging import VRLogReader, VRLogWriter
 from gibson2 import assets_path
 
-# IMPORTANT: Change this value if you have a more powerful machine
-VR_FPS = 30
 # Number of frames to save
 FRAMES_TO_SAVE = 2000
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = True
-# Set to true to print out render, physics and overall frame FPS
-PRINT_FPS = False
-# Set to true to print out poses of all pybullet objects, for debugging purposes
-DEBUG_PRINT = True
+# Set to true to print PyBullet data - can be used to check whether replay was identical to saving
+PRINT_PB = True
+# Set to true to print VR data
+PRINT_VR_DATA = False
 
-def run_state_sr(mode):
+def run_action_sr(mode):
     """
-    Runs state save/replay. Mode can either be save or replay.
+    Runs action save/replay. Mode can either be save or replay.
     """
     assert mode in ['save', 'replay']
+    is_save = (mode == 'save')
 
     # HDR files for PBR rendering
     hdr_texture = os.path.join(
@@ -75,9 +74,10 @@ def run_state_sr(mode):
                                                 light_dimming_factor=1.0)
     # VR system settings
     # Change use_vr to toggle VR mode on/off
-    vr_settings = VrSettings(use_vr=(mode == 'save'))
+    vr_settings = VrSettings()
+    if not is_save:
+        vr_settings.turn_off_vr_mode()
     s = Simulator(mode='vr', 
-                use_fixed_fps=True,
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
     scene = InteractiveIndoorScene('Rs_int')
@@ -88,6 +88,10 @@ def run_state_sr(mode):
     # Create a VrAgent and it will handle all initialization and importing under-the-hood
     # Data replay uses constraints during both save and replay modes
     vr_agent = VrAgent(s, use_constraints=True)
+    
+    if is_save:
+        # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
+        s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
 
     # Objects to interact with
     objects = [
@@ -135,10 +139,6 @@ def run_state_sr(mode):
     s.import_object(obj)
     obj.set_position_orientation([1.1, 0.300000, 1.2], [0, 0, 0, 1])
 
-    if vr_settings.use_vr:
-        # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
-        s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
-
     # Note: Modify this path to save to different files
     vr_log_path = 'vr_logs/vr_actions_sr.h5'
     mock_vr_action_path = 'mock_vr_action'
@@ -154,12 +154,13 @@ def run_state_sr(mode):
         # Despite having no actions, we need to call this function
         vr_writer.set_up_data_storage()
     else:
-        vr_reader = VRLogReader(vr_log_path, s, emulate_save_fps=True, log_status=False)
+        # Playback faster than FPS during saving - can set emulate_save_fps to True to emulate saving FPS
+        vr_reader = VRLogReader(vr_log_path, s, emulate_save_fps=False, log_status=False)
 
-    if mode == 'save':
+    if is_save:
         # Main simulation loop - run for as long as the user specified
         for i in range(FRAMES_TO_SAVE):
-            s.step(print_time=PRINT_FPS, print_timestep=True)
+            s.step()
 
             # Example of storing a simple mock action
             vr_writer.save_action(mock_vr_action_path, np.array([1]))
@@ -168,11 +169,11 @@ def run_state_sr(mode):
             vr_agent.update()
 
             # Print debugging information
-            if DEBUG_PRINT:
+            if PRINT_PB:
                 vr_writer._print_pybullet_data()
 
             # Record this frame's data in the VRLogWriter
-            vr_writer.process_frame(s, print_vr_data=False)
+            vr_writer.process_frame(s, print_vr_data=PRINT_VR_DATA)
 
         # Note: always call this after the simulation is over to close the log file
         # and clean up resources used.
@@ -182,10 +183,10 @@ def run_state_sr(mode):
         while vr_reader.get_data_left_to_read():
             vr_reader.pre_step()
             # Don't sleep until the frame duration, as the VR logging system sleeps for this duration instead
-            s.step(print_timestep=True, sleep_until_dur=False, forced_timestep=vr_reader.get_phys_step_n())
+            s.step(forced_timestep=vr_reader.get_phys_step_n())
 
             # Note that fullReplay is set to False for action replay
-            vr_reader.read_frame(s, full_replay=False, print_vr_data=False)
+            vr_reader.read_frame(s, full_replay=False, print_vr_data=PRINT_VR_DATA)
 
             # Read our mock action (but don't do anything with it for now)
             mock_action = int(vr_reader.read_action(mock_vr_action_path)[0])
@@ -195,10 +196,9 @@ def run_state_sr(mode):
             vr_agent.update(vr_action_data)
 
             # Print debugging information
-            if DEBUG_PRINT:
+            if PRINT_PB:
                 vr_reader._print_pybullet_data()
 
-    
     s.disconnect()
 
 
@@ -206,4 +206,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='VR state saving and replay demo')
     parser.add_argument('--mode', default='save', help='Mode to run in: either save or replay')
     args = parser.parse_args()
-    run_state_sr(mode=args.mode)
+    run_action_sr(mode=args.mode)

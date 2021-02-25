@@ -316,7 +316,7 @@ class VRLogWriter():
         }
         for device_id, button_idx, press_id in s.get_vr_events():
             device_name = 'left_controller' if device_id == 0 else 'right_controller'
-            controller_events[device].append((button_idx, press_id))
+            controller_events[device_name].append((button_idx, press_id))
         for controller in controller_events.keys():
             bin_button_data = convert_button_data_to_binary(controller_events[controller])
             self.data_map['vr']['vr_event_data'][controller][self.frame_counter, ...] = np.array(bin_button_data)
