@@ -764,7 +764,6 @@ class Simulator:
         # Sleep until we reach the last frame before desired vsync point
         phys_rend_dur = outside_step_dur + physics_dur + render_dur + vr_system_dur
         sleep_start_time = time.perf_counter()
-        # TODO: Change this back to non block frame time? Also get rid of non block frame time if we don't use it
         if phys_rend_dur < self.fixed_frame_dur:
             sleep(self.fixed_frame_dur - phys_rend_dur)
         sleep_dur = time.perf_counter() - sleep_start_time
