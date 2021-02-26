@@ -99,6 +99,8 @@ class iGTNTask(TaskNetTask):
                 for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
                     room_objs = self.scene.objects_by_room[room_inst]
                     if obj_cat == FLOOR_SYNSET:
+                        # Create a RoomFloor for each room instance
+                        # This object is NOT imported by the simulator
                         scene_objs = [
                             RoomFloor(scene=self.scene,
                                       room_instance=room_inst)
