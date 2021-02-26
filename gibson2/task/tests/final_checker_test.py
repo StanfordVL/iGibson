@@ -13,6 +13,9 @@ import sys
 import numpy as np
 import pybullet as p
 
+import tasknet
+tasknet.set_backend("iGibson")
+
 
 scene_name = 'Beechwood_0_int'
 def test_import_igsdf():
