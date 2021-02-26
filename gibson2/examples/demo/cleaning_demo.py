@@ -46,7 +46,7 @@ def main():
     prepare_object_states(block, abilities={"soakable": {}, "cleaning_tool": {}})
     # assume block can soak water
 
-    model_path = os.path.join(get_ig_model_path('table', '19898'), '19898.urdf')
+    model_path = os.path.join(get_ig_model_path('breakfast_table', '19203'), '19203.urdf')
     desk = URDFObject(filename=model_path,
                       category='table',
                       name='19898',

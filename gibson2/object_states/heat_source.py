@@ -51,7 +51,7 @@ class HeatSource(CachingEnabledObjectState):
         # If the heat source needs to be toggled on, we assert the presence
         # of that ability.
         if requires_toggled_on:
-            assert "toggle" in self.obj.states
+            assert "toggled_on" in self.obj.states
         self.requires_toggled_on = requires_toggled_on
 
         # If the heat source needs to be closed, we assert the presence
@@ -70,11 +70,11 @@ class HeatSource(CachingEnabledObjectState):
 
     @staticmethod
     def get_optional_dependencies():
-        return CachingEnabledObjectState.get_optional_dependencies() + ["toggle", "open"]
+        return CachingEnabledObjectState.get_optional_dependencies() + ["toggled_on", "open"]
 
     def _compute_value(self):
         # Check the toggle state.
-        if self.requires_toggled_on and not self.obj.states["toggle"].get_value():
+        if self.requires_toggled_on and not self.obj.states["toggled_on"].get_value():
             return None
 
         # Check the open state.

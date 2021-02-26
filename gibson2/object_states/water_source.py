@@ -1,5 +1,18 @@
+import numpy as np
+
+from gibson2.external.pybullet_tools.utils import get_link_position_from_name
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.objects.particles import WaterStreamPhysicsBased
+
+_WATER_SOURCE_LINK_NAME = "water_source"
+
+# TODO: Replace this with a proper `sink` logic.
+# The problem right now is sometimes the particle "touches" the faucet when
+# generated, which leads to the particle being destroyed since water particles
+# that touch a water source object are immediately destroyed. Ideally we should
+# replace this with some reasonable water sink logic, but for now we just create
+# the particles slightly lower.
+_OFFSET_FROM_LINK = np.array([0, 0, -0.1])
 
 
 class WaterSource(AbsoluteObjectState):
@@ -11,9 +24,16 @@ class WaterSource(AbsoluteObjectState):
         self.water_stream = None
 
     def update(self, simulator):
+        water_source_position = get_link_position_from_name(self.obj.get_body_id(), _WATER_SOURCE_LINK_NAME)
+        if water_source_position is None:
+            return
+
+        water_source_position = list(np.array(water_source_position) + _OFFSET_FROM_LINK)
         if self.water_stream is None:
-            self.water_stream = WaterStreamPhysicsBased(self.obj, pos=[0.4, 1, 1.15], num=10)
+            self.water_stream = WaterStreamPhysicsBased(self.obj, pos=water_source_position, num=10)
             simulator.import_particle_system(self.water_stream)
+        else:
+            self.water_stream.water_source_pos = water_source_position
 
         if "toggled_on" in self.obj.states:
             # sync water source state with toggleable

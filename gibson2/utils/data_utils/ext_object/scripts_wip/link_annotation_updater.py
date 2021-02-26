@@ -19,9 +19,10 @@ def get_metadata_filename(objdir):
 
 
 def main():
-    for (cat, objdir), offset in OFFSETS:
+    for (cat, objdir), offset in OFFSETS.items():
         cd = get_category_directory(cat)
         objdirfull = os.path.join(cd, objdir)
+
 
         mfn = get_metadata_filename(objdirfull)
         print("Starting %s" % mfn)
