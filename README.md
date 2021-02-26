@@ -178,7 +178,7 @@ such as putting objects away into specific containers/cabinets. Please see the c
 
 VR settings and button mapping:
 
-You can find the global vr settings in the vr_config.json in the gibson2 folder. Please change all VR settings from here. Within the settings, you will also find the button mapping from actions to buttons.
+You can find the global vr settings in the vr_config.yaml in the gibson2 folder. Please change all VR settings from here. Within the settings, you will also find the button mapping from actions to buttons.
 Please run vr_demos/vr_button_mapping.py to figure out which physical controller buttons correspond to which indices in OpenVR. It is only necessary to do this if you are remapping an existing controller,
 or adding in a mapping for a new controller.
 
