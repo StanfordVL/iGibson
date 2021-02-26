@@ -51,7 +51,6 @@ class HeatSource(CachingEnabledObjectState):
         # If the heat source needs to be toggled on, we assert the presence
         # of that ability.
         if requires_toggled_on:
-            print(self.obj.states.keys())
             assert "toggled_on" in self.obj.states
         self.requires_toggled_on = requires_toggled_on
 
