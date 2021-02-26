@@ -23,7 +23,8 @@ _ALL_STATES = frozenset([
     Stained,
     ToggledOn,
     WaterSource,
-    CleaningTool
+    CleaningTool,
+    OnFloor,
 ])
 
 _ABILITY_TO_STATE_MAPPING = {
@@ -45,6 +46,7 @@ _DEFAULT_STATE_SET = frozenset([
     NextTo,
     Under,
     Touching,
+    OnFloor,
 ])
 
 

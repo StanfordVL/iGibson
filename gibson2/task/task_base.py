@@ -6,8 +6,9 @@ import gibson2
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import URDFObject
+from gibson2.objects.room_floor import RoomFloor
 from gibson2.external.pybullet_tools.utils import *
-from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS
+from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 import pybullet as p
 import cv2
@@ -97,8 +98,14 @@ class iGTNTask(TaskNetTask):
                         obj_cat)
                 for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
                     room_objs = self.scene.objects_by_room[room_inst]
-                    scene_objs = [obj for obj in room_objs
-                                  if obj.category in categories]
+                    if obj_cat == FLOOR_SYNSET:
+                        scene_objs = [
+                            RoomFloor(scene=self.scene,
+                                      room_instance=room_inst)
+                        ]
+                    else:
+                        scene_objs = [obj for obj in room_objs
+                                      if obj.category in categories]
                     if len(scene_objs) != 0:
                         room_type_to_scene_objs[room_type][obj_inst][room_inst] = scene_objs
 
