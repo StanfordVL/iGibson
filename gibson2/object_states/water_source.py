@@ -1,6 +1,8 @@
 import numpy as np
 
 from gibson2.external.pybullet_tools.utils import get_link_position_from_name
+from gibson2.object_states.contact_bodies import ContactBodies
+from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.objects.particles import WaterStreamPhysicsBased
 
@@ -35,28 +37,19 @@ class WaterSource(AbsoluteObjectState):
         else:
             self.water_stream.water_source_pos = water_source_position
 
-        if "toggled_on" in self.obj.states:
+        if ToggledOn in self.obj.states:
             # sync water source state with toggleable
-            self.water_stream.set_value(self.obj.states["toggled_on"].get_value())
+            self.water_stream.set_value(self.obj.states[ToggledOn].get_value())
         else:
             self.water_stream.set_value(True)  # turn on the water by default
 
         self.water_stream.step()
 
         # water reusing logic
-        contacted_water_body_ids = set(item[1] for item in list(self.obj.states["contact_bodies"].get_value()))
+        contacted_water_body_ids = set(item[1] for item in list(self.obj.states[ContactBodies].get_value()))
         for particle in self.water_stream.particles:
             if particle.body_id in contacted_water_body_ids:
                 self.water_stream.stash_particle(particle)
-
-        # soaking logic
-        soaked = simulator.scene.get_objects_with_state("soaked")
-        for soakable_object in soaked:
-            contacted_water_body_ids = set(
-                item[1] for item in list(soakable_object.states["contact_bodies"].get_value()))
-            for particle in self.water_stream.particles:
-                if particle.body_id in contacted_water_body_ids:
-                    soakable_object.states["soaked"].set_value(True)
 
     def set_value(self, new_value):
         pass
@@ -66,8 +59,8 @@ class WaterSource(AbsoluteObjectState):
 
     @staticmethod
     def get_optional_dependencies():
-        return ["toggled_on"]
+        return [ToggledOn]
 
     @staticmethod
     def get_dependencies():
-        return ["contact_bodies"]
+        return [ContactBodies]

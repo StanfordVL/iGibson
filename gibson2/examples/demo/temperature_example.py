@@ -2,7 +2,7 @@ import os
 
 import gibson2
 import numpy as np
-
+from gibson2 import object_states
 from gibson2.object_states.factory import prepare_object_states
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.scenes.empty_scene import EmptyScene
@@ -25,7 +25,7 @@ def main():
         stove = URDFObject(stove_urdf, name="stove", category="stove", model_path=stove_dir)
         s.import_object(stove)
         stove.set_position([0, 0, 0.782])
-        stove.states['toggled_on'].set_value(True)
+        stove.states[object_states.ToggledOn].set_value(True)
 
         microwave_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/microwave/7128/')
@@ -33,15 +33,15 @@ def main():
         microwave = URDFObject(microwave_urdf, name="microwave", category="microwave", model_path=microwave_dir)
         s.import_object(microwave)
         microwave.set_position([2, 0, 0.401])
-        microwave.states['toggled_on'].set_value(True)
-        
+        microwave.states[object_states.ToggledOn].set_value(True)
+
         oven_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/oven/7120/')
         oven_urdf = os.path.join(oven_dir, "7120.urdf")
         oven = URDFObject(oven_urdf, name="oven", category="oven", model_path=oven_dir)
         s.import_object(oven)
         oven.set_position([-2, 0, 0.816])
-        oven.states['toggled_on'].set_value(True)
+        oven.states[object_states.ToggledOn].set_value(True)
 
         apple_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/apple/00_0/')
@@ -53,7 +53,7 @@ def main():
         # Run simulation for 1000 steps
         while True:
             s.step()
-            print("Apple Temperature: ", apple.states['temperature'].get_value())
+            print("Apple Temperature: ", apple.states[object_states.Temperature].get_value())
     finally:
         s.disconnect()
 
