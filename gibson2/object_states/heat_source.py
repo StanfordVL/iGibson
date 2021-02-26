@@ -1,4 +1,5 @@
 from gibson2.external.pybullet_tools.utils import get_link_position_from_name
+from gibson2.object_states import AABB
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.open import Open
