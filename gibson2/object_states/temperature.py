@@ -1,4 +1,5 @@
-from gibson2.external.pybullet_tools.utils import get_aabb_center, AABB
+from gibson2.external.pybullet_tools.utils import get_aabb_center
+from gibson2.object_states.aabb import AABB
 from gibson2.object_states.heat_source import HeatSource
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.object_state_base import AbsoluteObjectState
