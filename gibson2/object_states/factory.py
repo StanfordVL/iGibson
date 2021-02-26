@@ -35,7 +35,7 @@ _ABILITY_TO_STATE_MAPPING = {
     "cleaning_tool": [CleaningTool],
     "toggleable": [ToggledOn],
     "burnable": [Burnt],
-    "heatSource": [HeatSource]
+    "heatSource": [HeatSource],
     'openable': [Open],
 }
 
