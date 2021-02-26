@@ -6,6 +6,7 @@ import os
 import pybullet as p
 
 import gibson2
+from gibson2 import object_states
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.objects.vr_objects import VrAgent
@@ -77,7 +78,7 @@ sink = URDFObject(filename=model_path,
 
 s.import_object(sink)
 sink.set_position([1,1,0.8])
-sink.states['toggled_on'].set_value(True)
+sink.states[object_states.ToggledOn].set_value(True)
 
 block = YCBObject(name='036_wood_block')
 s.import_object(block)
@@ -94,7 +95,7 @@ desk = URDFObject(filename=model_path,
                  abilities={'dustyable': {}}
                  )
 
-desk.states['dirty'].set_value(True)
+desk.states[object_states.Dirty].set_value(True)
 s.import_object(desk)
 desk.set_position([1, -2, 0.4])
 
