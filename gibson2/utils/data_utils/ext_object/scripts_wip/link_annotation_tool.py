@@ -13,10 +13,9 @@ from gibson2.utils.assets_utils import download_assets
 
 download_assets()
 
-# Categories that you want to annotate.
 CATEGORIES = ["stove", "oven", "microwave", "sink"]
-
 LINK_NAME = "toggle_button"
+SKIP_EXISTING = True
 
 
 def get_category_directory(category):
@@ -41,23 +40,35 @@ def main():
             with open(mfn, "r") as mf:
                 meta = json.load(mf)
 
+            offset = np.array([0., 0., 1.])
+
+            existing = False
             if "links" in meta and LINK_NAME in meta["links"]:
                 print("%s already has the requested link." % objdirfull)
-                continue
+
+                if SKIP_EXISTING:
+                    continue
+
+                existing = True
+                offset = np.array(meta["links"][LINK_NAME])
 
             s = Simulator(mode='gui')
             scene = EmptyScene()
             s.import_scene(scene)
             obj = get_obj(objdirfull)
             s.import_object(obj)
-            obj_pos = [0, 0, 1]
+            obj_pos = np.array([0., 0., 1.])
             obj.set_position(obj_pos)
 
-            m = VisualMarker(radius=0.02)
+            m = VisualMarker(radius=0.02, rgba_color=[0, 1, 0, 0.5])
             s.import_object(m)
 
-            m_pos = np.array([0., 0., 2.])
-            m.set_position(m_pos)
+            if existing:
+                e = VisualMarker(radius=0.02, rgba_color=[1, 0, 0, 0.5])
+                s.import_object(e)
+                e.set_position(obj_pos + offset)
+
+            m.set_position(obj_pos + offset)
 
             step_size = 0.01
             done = False
@@ -69,22 +80,22 @@ def main():
 
                         if event.key.char == "w":
                             print("Moving forward one")
-                            m_pos += np.array([0, 1, 0]) * step_size
+                            offset += np.array([0, 1, 0]) * step_size
                         elif event.key.char == "a":
                             print("Moving left one")
-                            m_pos += np.array([-1, 0, 0]) * step_size
+                            offset += np.array([-1, 0, 0]) * step_size
                         elif event.key.char == "s":
                             print("Moving back one")
-                            m_pos += np.array([0, -1, 0]) * step_size
+                            offset += np.array([0, -1, 0]) * step_size
                         elif event.key.char == "d":
                             print("Moving right one")
-                            m_pos += np.array([1, 0, 0]) * step_size
+                            offset += np.array([1, 0, 0]) * step_size
                         elif event.key.char == "q":
                             print("Moving up one")
-                            m_pos += np.array([0, 0, 1]) * step_size
+                            offset += np.array([0, 0, 1]) * step_size
                         elif event.key.char == "z":
                             print("Moving down one")
-                            m_pos += np.array([0, 0, -1]) * step_size
+                            offset += np.array([0, 0, -1]) * step_size
                         elif event.key.char == "h":
                             print("Sizing to 0.1")
                             step_size = 0.1
@@ -98,17 +109,17 @@ def main():
                             done = True
                             break
 
-                        print("New position:", m_pos)
-                        m.set_position(m_pos)
+                        print("New position:", offset)
+                        m.set_position(obj_pos + offset)
 
-            px, py, pz = tuple(np.array(m.get_position()) - np.array(obj_pos))
+            px, py, pz = tuple(offset)
             print("('%s', '%s'): [%.3f, %.3f, %.3f]," % (cat, objdir, px, py, pz))
 
             # Record it into the meta file.
             if 'links' not in meta:
                 meta['links'] = dict()
 
-            meta['links'][LINK_NAME] = [px, py, pz]
+            meta['links'][LINK_NAME] = list(offset)
 
             with open(mfn, "w") as mf:
                 json.dump(meta, mf)
