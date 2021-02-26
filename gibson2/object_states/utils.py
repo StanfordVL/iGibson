@@ -1,12 +1,9 @@
 import numpy as np
 import pybullet as p
 import cv2
-from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, \
-    quat_from_matrix, stable_z_on_aabb
+from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, stable_z_on_aabb
 from gibson2.object_states import AABB
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
-from IPython import embed
-from gibson2.objects.room_floor import RoomFloor
 
 
 def get_center_extent(obj_states):
@@ -26,7 +23,7 @@ def sample_kinematics(predicate, objA, objB, binary_state):
     if not binary_state:
         raise NotImplementedError()
 
-    sample_on_floor = isinstance(objB, RoomFloor)
+    sample_on_floor = predicate == 'onFloor'
 
     if not sample_on_floor and predicate not in objB.supporting_surfaces:
         return False
@@ -39,10 +36,6 @@ def sample_kinematics(predicate, objA, objB, binary_state):
         orientation = [0, 0, 0, 1]
 
     old_pos, old_orn = objA.get_position_orientation()
-
-    # objBorientation = objB.get_orientation()
-    # orientation = quat_from_matrix(
-    #     matrix_from_quat(objBorientation) @ matrix_from_quat(orientation))
 
     objA.force_wakeup()
     if not sample_on_floor:
