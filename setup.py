@@ -149,7 +149,6 @@ setup(
             'PyYAML',
             'tqdm',
             'freetype-py',
-            'JSON_minify',
             'matplotlib',
             'cloudpickle',
             'aenum',

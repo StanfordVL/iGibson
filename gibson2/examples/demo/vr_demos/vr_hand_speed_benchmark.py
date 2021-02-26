@@ -4,7 +4,7 @@ side of the table.
 
 You can use the left and right controllers to start/stop/reset the timer,
 as well as show/hide its display. The "overlay toggle" action and its
-corresponding button index mapping can be found in the vr_config.json file in the gibson2 folder.
+corresponding button index mapping can be found in the vr_config.yaml file in the gibson2 folder.
 """
 import os
 import pybullet as p

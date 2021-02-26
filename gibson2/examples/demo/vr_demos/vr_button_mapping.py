@@ -2,7 +2,7 @@
 Demo for figuring out optimal button mapping.
 The system will print out button events as they happen.
 It will show you the button idx and press id, in a format that
-can be directly pasted into the vr_config.json.
+can be directly pasted into the vr_config.yaml.
 
 Please use this if creating a custom action-button mapping for a VR controller
 that is neither an HTC Vive controller nor an Oculus controller.

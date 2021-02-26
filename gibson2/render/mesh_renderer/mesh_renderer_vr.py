@@ -1,8 +1,6 @@
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
-from gibson2.utils.mesh_util import lookat
+from gibson2.utils.utils import parse_config
 from gibson2 import assets_path
-import json
-from json_minify import json_minify
 import numpy as np
 import os
 import time
@@ -112,38 +110,36 @@ class VrSettings(object):
         self.use_fixed_fps = True
 
         mesh_renderer_folder = os.path.abspath(os.path.dirname(__file__))
-        self.vr_config_path = os.path.join(mesh_renderer_folder, '..', '..', 'vr_config.json')
+        self.vr_config_path = os.path.join(mesh_renderer_folder, '..', '..', 'vr_config.yaml')
         self.load_vr_config()
 
     def load_vr_config(self):
         """
         Loads in VR config and sets all settings accordingly.
         """
-        with open(self.vr_config_path) as f_config:
-            config_str = ''.join(f_config.readlines())
-            vr_config = json.loads(json_minify(config_str))
-            
-            shared_settings = vr_config['shared_settings']
-            self.touchpad_movement = shared_settings['touchpad_movement']
-            self.movement_controller = shared_settings['movement_controller']
-            assert self.movement_controller in ['left', 'right']
-            self.relative_movement_device = shared_settings['relative_movement_device']
-            assert self.relative_movement_device in ['hmd', 'left_controller', 'right_controller']
-            self.movement_speed = shared_settings['movement_speed']
-            self.vr_fps = shared_settings['vr_fps']
-            self.hud_width = shared_settings['hud_width']
-            self.hud_pos = shared_settings['hud_pos']
+        vr_config = parse_config(self.vr_config_path)
+        
+        shared_settings = vr_config['shared_settings']
+        self.touchpad_movement = shared_settings['touchpad_movement']
+        self.movement_controller = shared_settings['movement_controller']
+        assert self.movement_controller in ['left', 'right']
+        self.relative_movement_device = shared_settings['relative_movement_device']
+        assert self.relative_movement_device in ['hmd', 'left_controller', 'right_controller']
+        self.movement_speed = shared_settings['movement_speed']
+        self.vr_fps = shared_settings['vr_fps']
+        self.hud_width = shared_settings['hud_width']
+        self.hud_pos = shared_settings['hud_pos']
 
-            device_settings = vr_config['device_settings']
-            curr_device_candidate = vr_config['current_device']
-            if curr_device_candidate not in device_settings.keys():
-                self.curr_device = 'OTHER_VR'
-            else:
-                self.curr_device = curr_device_candidate
-            specific_device_settings = device_settings[self.curr_device]
-            self.eye_tracking = specific_device_settings['eye_tracking']
-            self.action_button_map = specific_device_settings['action_button_map']
-            self.gen_button_action_map()
+        device_settings = vr_config['device_settings']
+        curr_device_candidate = vr_config['current_device']
+        if curr_device_candidate not in device_settings.keys():
+            self.curr_device = 'OTHER_VR'
+        else:
+            self.curr_device = curr_device_candidate
+        specific_device_settings = device_settings[self.curr_device]
+        self.eye_tracking = specific_device_settings['eye_tracking']
+        self.action_button_map = specific_device_settings['action_button_map']
+        self.gen_button_action_map()
 
     def gen_button_action_map(self):
         """
