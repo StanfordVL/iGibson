@@ -22,24 +22,38 @@ def main():
         stove_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/stove/101930/')
         stove_urdf = os.path.join(stove_dir, "101930.urdf")
-        saucepan_dir = os.path.join(
-            gibson2.ig_dataset_path, 'objects/saucepan/38_2/')
-        saucepan_urdf = os.path.join(saucepan_dir, "38_2.urdf")
-
-        stove = URDFObject(stove_urdf, name="stove", model_path=stove_dir)
-        prepare_object_states(stove, {"heatSource": {}})
+        stove = URDFObject(stove_urdf, name="stove", category="stove", model_path=stove_dir)
         s.import_object(stove)
-        stove.set_position([0, 0, 0.76])
+        stove.set_position([0, 0, 0.782])
+        stove.states['toggled_on'].set_value(True)
 
-        saucepan = URDFObject(saucepan_urdf, name="saucepan", model_path=saucepan_dir, scale=np.array([0.5, 0.5, 0.5]))
-        prepare_object_states(saucepan, {"cookable": {}})
-        s.import_object(saucepan)
-        saucepan.set_position([-0.2, -0.2, 1.7])
+        microwave_dir = os.path.join(
+            gibson2.ig_dataset_path, 'objects/microwave/7128/')
+        microwave_urdf = os.path.join(microwave_dir, "7128.urdf")
+        microwave = URDFObject(microwave_urdf, name="microwave", category="microwave", model_path=microwave_dir)
+        s.import_object(microwave)
+        microwave.set_position([2, 0, 0.401])
+        microwave.states['toggled_on'].set_value(True)
+        
+        oven_dir = os.path.join(
+            gibson2.ig_dataset_path, 'objects/oven/7120/')
+        oven_urdf = os.path.join(oven_dir, "7120.urdf")
+        oven = URDFObject(oven_urdf, name="oven", category="oven", model_path=oven_dir)
+        s.import_object(oven)
+        oven.set_position([-2, 0, 0.816])
+        oven.states['toggled_on'].set_value(True)
+
+        apple_dir = os.path.join(
+            gibson2.ig_dataset_path, 'objects/apple/00_0/')
+        apple_urdf = os.path.join(apple_dir, "00_0.urdf")
+        apple = URDFObject(apple_urdf, name="apple", category="apple", model_path=apple_dir)
+        s.import_object(apple)
+        apple.set_position([0, -2, 0.05])
 
         # Run simulation for 1000 steps
         while True:
             s.step()
-            print("Saucepan Temperature: ", saucepan.states['temperature'].get_value())
+            print("Apple Temperature: ", apple.states['temperature'].get_value())
     finally:
         s.disconnect()
 

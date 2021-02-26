@@ -140,15 +140,18 @@ def prepare_object_states(obj, abilities=None, online=True):
         state_names_and_params.extend(
             (state_name, params) for state_name in get_state_names_for_ability(ability))
 
+    # Add the dependencies into the list, too.
+    for state_name, _ in state_names_and_params:
+        # Add each state's dependencies, too. Note that only required dependencies are added.
+        for dependency in _STATE_NAME_TO_CLASS_MAPPING[state_name].get_dependencies():
+            if all(other_state_name != dependency for other_state_name, _ in state_names_and_params):
+                state_names_and_params.append((dependency, {}))
+
+    # Now generate the states in topological order.
     obj.states = dict()
-    for state_name, params in state_names_and_params:
+    for state_name, params in reversed(state_names_and_params):
         obj.states[state_name] = get_object_state_instance(
             state_name, obj, params)
-
-        # Add each state's dependencies, too. Note that only required dependencies are added.
-        for dependency in obj.states[state_name].get_dependencies():
-            if dependency not in state_names_and_params:
-                state_names_and_params.append((dependency, {}))
 
 
 def get_state_dependency_graph():
