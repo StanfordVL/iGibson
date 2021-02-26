@@ -8,7 +8,7 @@ class Particle(Object):
     A particle object, used to simulate water stream and dust/stain
     """
 
-    def __init__(self, pos=[0,0,0], dim=0.1, visual_only=False, mass=0.1, color=[1, 1, 1, 1], base_shape="box"):
+    def __init__(self, pos=(0,0,0), dim=0.1, visual_only=False, mass=0.1, color=(1, 1, 1, 1), base_shape="box"):
         super(Particle, self).__init__()
         self.base_pos = pos
         self.dimension = [dim, dim, dim]
@@ -57,8 +57,9 @@ class Particle(Object):
         p.changeDynamics(self.body_id, -1, activationState=activationState)
 
 class ParticleSystem:
-    def __init__(self, pos=[0,0,0], dim=0.1, offset=0.4, num=15, visual_only=False, mass=0.1, color=[1, 1, 1, 1],
+    def __init__(self, parent_obj, pos=(0, 0, 0), dim=0.1, offset=0.4, num=15, visual_only=False, mass=0.1, color=(1, 1, 1, 1),
                  base_shape="box"):
+        self.parent_obj = parent_obj
         self.particles = []
         self.offset = offset
         self.num = num
@@ -70,10 +71,6 @@ class ParticleSystem:
                                            color=color,
                                            base_shape=base_shape))
         self.visual_only = visual_only
-
-    def register_parent_obj(self, obj):
-        self.parent_obj = obj
-        obj.attached_particle_system.append(self)
 
     def get_num(self):
         return self.num
@@ -91,8 +88,9 @@ class ParticleSystem:
         particle.active = False
 
 class WaterStreamAnimation(ParticleSystem):
-    def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,1,1]):
+    def __init__(self, parent_obj, pos=(0, 0, 0), dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=(0, 0, 1, 1)):
         super(WaterStreamAnimation, self).__init__(
+            parent_obj,
             pos=pos,
             dim=dim,
             offset=offset,
@@ -118,8 +116,9 @@ class WaterStreamAnimation(ParticleSystem):
         self.animate()
 
 class WaterStreamPhysicsBased(ParticleSystem):
-    def __init__(self, pos=[0, 0, 0], dim=0.01, offset=-0.04, num=15, visual_only=False, mass=0.1, color=[0, 0, 1, 1]):
+    def __init__(self, parent_obj, pos=(0, 0, 0), dim=0.01, offset=-0.04, num=15, visual_only=False, mass=0.1, color=(0, 0, 1, 1)):
         super(WaterStreamPhysicsBased, self).__init__(
+            parent_obj,
             pos=pos,
             dim=dim,
             offset=offset,
@@ -153,8 +152,9 @@ class WaterStreamPhysicsBased(ParticleSystem):
                     particle.active = True
 
 class Dust(ParticleSystem):
-    def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,0,1]):
+    def __init__(self, parent_obj, pos=(0, 0, 0), dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=(0,0,0,1)):
         super(Dust, self).__init__(
+            parent_obj,
             pos=pos,
             dim=dim,
             offset=offset,
@@ -183,8 +183,9 @@ class Dust(ParticleSystem):
                 iter += 1
 
 class Stain(Dust):
-    def __init__(self, pos=[0,0,0], dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=[0,0,0,1]):
+    def __init__(self, parent_obj, pos=(0,0,0), dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=(0,0,0,1)):
         super(Stain, self).__init__(
+            parent_obj,
             pos=pos,
             dim=dim,
             offset=offset,
