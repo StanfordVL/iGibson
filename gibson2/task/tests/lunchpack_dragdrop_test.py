@@ -27,6 +27,9 @@ from gibson2 import assets_path
 import signal
 import sys
 
+import tasknet
+tasknet.set_backend("iGibson")
+
 # def signal_handler(sig, frame):
 #         print('You pressed Ctrl+C!')
 #         p.stopStateLogging(logId)
