@@ -29,13 +29,14 @@ _ALL_STATES = frozenset([
 _ABILITY_TO_STATE_MAPPING = {
     "cookable": [Cooked],
     "soakable": [Soaked],
-    "dustable": [Dirty],
+    "dustyable": [Dirty],
     "scrubbable": [Stained],
     "water_source": [WaterSource],
     "cleaning_tool": [CleaningTool],
     "toggleable": [ToggledOn],
     "burnable": [Burnt],
     "heatSource": [HeatSource]
+    'openable': [Open],
 }
 
 _DEFAULT_STATE_SET = frozenset([
@@ -44,7 +45,6 @@ _DEFAULT_STATE_SET = frozenset([
     NextTo,
     Under,
     Touching,
-    Open,
 ])
 
 
@@ -57,6 +57,8 @@ def get_all_states():
 
 
 def get_states_for_ability(ability):
+    if ability not in _ABILITY_TO_STATE_MAPPING:
+        return []
     return _ABILITY_TO_STATE_MAPPING[ability]
 
 
@@ -110,16 +112,21 @@ def prepare_object_states(obj, abilities=None, online=True):
 
     # Map the ability params to the states immediately imported by the abilities
     for ability, params in abilities.items():
-        state_types_and_params.extend((state_type, params) for state_type in get_states_for_ability(ability))
+        state_types_and_params.extend(
+            (state_name, params) for state_name in get_states_for_ability(ability))
 
-    obj.states = dict()
-    for state_type, params in state_types_and_params:
-        obj.states[state_type] = get_object_state_instance(state_type, obj, params)
-
+    # Add the dependencies into the list, too.
+    for state_type, _ in state_types_and_params:
         # Add each state's dependencies, too. Note that only required dependencies are added.
-        for dependency in obj.states[state_type].get_dependencies():
-            if (dependency, {}) not in state_types_and_params:
+        for dependency in state_type.get_dependencies():
+            if all(other_state != dependency for other_state, _ in state_types_and_params):
                 state_types_and_params.append((dependency, {}))
+
+    # Now generate the states in topological order.
+    obj.states = dict()
+    for state_type, params in reversed(state_types_and_params):
+        obj.states[state_type] = get_object_state_instance(
+            state_type, obj, params)
 
 
 def get_state_dependency_graph():

@@ -5,6 +5,8 @@ import networkx as nx
 import numpy as np
 import pybullet as p
 from gibson2 import object_states
+from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order, \
+    prepare_object_states
 from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.articulated_object import URDFObject
@@ -113,6 +115,9 @@ def test_open():
         s.import_object(obj)
         obj.set_position([0, 0, 0.5])
 
+        obj.abilities = {"openable": {}}
+        prepare_object_states(obj, obj.abilities)
+
         # --------------------------------------------
         # PART 1: Run with joints at default position.
         # --------------------------------------------
@@ -163,10 +168,12 @@ def test_open():
     finally:
         s.disconnect()
 
+
 def test_state_graph():
     # Construct the state graph
     G = get_state_dependency_graph()
-    assert nx.algorithms.is_directed_acyclic_graph(G), "State dependency graph needs to be a DAG."
+    assert nx.algorithms.is_directed_acyclic_graph(
+        G), "State dependency graph needs to be a DAG."
 
     # Get the dependency-sorted list of states.
     ordered_states = get_states_by_dependency_order()
@@ -180,7 +187,8 @@ def test_toggle():
     try:
         scene = EmptyScene()
         s.import_scene(scene)
-        model_path = os.path.join(get_ig_model_path('sink', 'sink_1'), 'sink_1.urdf')
+        model_path = os.path.join(get_ig_model_path(
+            'sink', 'sink_1'), 'sink_1.urdf')
 
         sink = URDFObject(filename=model_path,
                           category='sink',
@@ -204,27 +212,27 @@ def test_dirty():
     try:
         scene = EmptyScene()
         s.import_scene(scene)
-        model_path = os.path.join(get_ig_model_path('sink', 'sink_1'), 'sink_1.urdf')
+        model_path = os.path.join(get_ig_model_path(
+            'sink', 'sink_1'), 'sink_1.urdf')
 
         sink = URDFObject(filename=model_path,
                           category='sink',
                           name='sink_1',
                           scale=np.array([0.8, 0.8, 0.8]),
-                          abilities={'dustable': {}}
+                          abilities={'dustyable': {}}
                           )
 
         s.import_object(sink)
         sink.set_position([1, 1, 0.8])
-        assert 'dustable' in sink.abilities
+        assert 'dustyable' in sink.abilities
         assert object_states.Dirty in sink.states
 
         for i in range(10):
             s.step()
 
-        assert len(sink.attached_particle_system) > 0
-
     finally:
         s.disconnect()
+
 
 def test_water_source():
     s = Simulator(mode='headless')
@@ -232,15 +240,17 @@ def test_water_source():
     try:
         scene = EmptyScene()
         s.import_scene(scene)
-        model_path = os.path.join(get_ig_model_path('sink', 'sink_1'), 'sink_1.urdf')
+        model_path = os.path.join(get_ig_model_path(
+            'sink', 'sink_1'), 'sink_1.urdf')
 
         sink = URDFObject(filename=model_path,
                           category='sink',
                           name='sink_1',
                           scale=np.array([0.8, 0.8, 0.8]),
-                          abilities={'water_source': {}}
+                          abilities={'water_source': {}, 'toggleable': {}}
                           )
 
+        sink.states[object_states.ToggledOn].set_value(True)
         s.import_object(sink)
         sink.set_position([1, 1, 0.8])
         assert 'water_source' in sink.abilities
@@ -249,8 +259,7 @@ def test_water_source():
         for i in range(10):
             s.step()
 
-        assert len(sink.attached_particle_system) > 0
-
+        # Check that we have some loaded particles here.
+        assert sink.states[object_states.WaterSource].water_stream.particles[0].body_id is not None
     finally:
         s.disconnect()
-

@@ -35,7 +35,8 @@ def sample_kinematics(predicate, objA, objB, binary_state):
     else:
         orientation = [0, 0, 0, 1]
 
-    objA.set_position_orientation([100, 100, 100], orientation)
+    old_pos, old_orn = objA.get_position_orientation()
+
     # objBorientation = objB.get_orientation()
     # orientation = quat_from_matrix(
     #     matrix_from_quat(objBorientation) @ matrix_from_quat(orientation))
@@ -103,6 +104,8 @@ def sample_kinematics(predicate, objA, objB, binary_state):
         if success:
             break
 
+    p.removeState(state_id)
+
     if success:
         objA.set_position_orientation(pos, orientation)
         # Let it fall for 0.2 second
@@ -113,4 +116,6 @@ def sample_kinematics(predicate, objA, objB, binary_state):
                 break
         return True
     else:
+        # move back so it's not in scene anymore
+        objA.set_position_orientation(old_pos, old_orn)
         return False

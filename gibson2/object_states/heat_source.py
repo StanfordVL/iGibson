@@ -1,4 +1,4 @@
-from gibson2.external.pybullet_tools.utils import link_from_name, get_link_state, AABB
+from gibson2.external.pybullet_tools.utils import get_link_position_from_name
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.open import Open
@@ -11,6 +11,7 @@ _HEATING_ELEMENT_LINK_NAME = "heat_source"
 _DEFAULT_TEMPERATURE = 200
 _DEFAULT_HEATING_RATE = 0.04
 _DEFAULT_DISTANCE_THRESHOLD = 0.2
+
 
 class HeatSource(CachingEnabledObjectState):
     """
@@ -84,11 +85,8 @@ class HeatSource(CachingEnabledObjectState):
             return None
 
         # Get heating element position from URDF
-        # This raises an error if element cannot be found, which we propagate.
-        body_id = self.obj.get_body_id()
-        link_id = link_from_name(body_id, _HEATING_ELEMENT_LINK_NAME)
-        heating_element_state = get_link_state(body_id, link_id)
-        return heating_element_state.linkWorldPosition
+        return get_link_position_from_name(self.obj.get_body_id(), _HEATING_ELEMENT_LINK_NAME)
 
     def set_value(self, new_value):
-        raise NotImplementedError("Setting heat source capability is not supported.")
+        raise NotImplementedError(
+            "Setting heat source capability is not supported.")
