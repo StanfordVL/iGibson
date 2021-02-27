@@ -52,8 +52,8 @@ device_settings:
     eye_tracking: False
     # TODO: Add button map here@
     action_button_map:
-      reset_agent: [0, 0]
-      overlay_toggle: [0, 0]
+      reset_agent: [33, 1]
+      overlay_toggle: [1, 1]
   # This device is used if current_device is not one of the above two devices
   # Insert another device here by copying one of the device settings above and changing them,
   # if you wish to add your own device with custom settings
