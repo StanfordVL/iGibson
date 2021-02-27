@@ -26,7 +26,7 @@ class VrAgent(object):
     use of this class is recommended for most VR applications, especially if you
     just want to get a VR scene up and running quickly.
     """
-    def __init__(self, sim, agent_num=1, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True, use_gripper=False, normal_color=True):
+    def __init__(self, sim, agent_num=1, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True, use_gripper=False, normal_color=True, test_shape=None):
         """
         Initializes VR body:
         sim - iGibson simulator object
@@ -49,16 +49,18 @@ class VrAgent(object):
         self.use_gaze_marker = use_gaze_marker
         self.use_gripper = use_gripper
         self.normal_color = normal_color
+        # TODO: Remove test shape!
+        self.test_shape = test_shape
 
         # Dictionary of vr object names to objects
         self.vr_dict = dict()
 
         if 'left' in self.hands:
-            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', use_constraints=self.use_constraints, normal_color=self.normal_color) if not use_gripper 
+            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', use_constraints=self.use_constraints, normal_color=self.normal_color, test_shape=self.test_shape) if not use_gripper 
                                         else VrGripper(self.sim, hand='left', use_constraints=self.use_constraints))
             self.vr_dict['left_hand'].hand_setup(self.z_coord)
         if 'right' in self.hands:
-            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', use_constraints=self.use_constraints, normal_color=self.normal_color) if not use_gripper 
+            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', use_constraints=self.use_constraints, normal_color=self.normal_color, test_shape=self.test_shape) if not use_gripper 
                                         else VrGripper(self.sim, hand='right', use_constraints=self.use_constraints))
             self.vr_dict['right_hand'].hand_setup(self.z_coord)
         if self.use_body:
@@ -89,11 +91,6 @@ class VrAgent(object):
             trig_frac, touch_x, touch_y = self.sim.get_button_data_for_controller(vr_device)
             if hand == self.sim.vr_settings.movement_controller and self.sim.vr_settings.touchpad_movement:
                 new_offset = calc_offset(self.sim, touch_x, touch_y, self.sim.vr_settings.movement_speed, self.sim.vr_settings.relative_movement_device)
-        
-            # Offset z coordinate using menu press
-            if self.sim.query_vr_event(vr_device, 'menu_press'):
-                vr_z_offset = 0.01 if hand == 'right' else -0.01
-                new_offset = [new_offset[0], new_offset[1], new_offset[2] + vr_z_offset]
 
             self.sim.set_vr_offset(new_offset)
 
@@ -190,11 +187,11 @@ class VrBody(ArticulatedObject):
 
             # Reset the body position to the HMD if either of the controller reset buttons are pressed
             if vr_data:
-                grip_press =(['left_controller', 'grip_press'] in vr_data.query('event_data') 
-                            or ['right_controller', 'grip_press'] in vr_data.query('event_data'))
+                reset_agent =(('left_controller', 'reset_agent') in vr_data.query('event_data') 
+                            or ('right_controller', 'reset_agent') in vr_data.query('event_data'))
             else:
-                grip_press = (self.sim.query_vr_event('left_controller', 'grip_press') or self.sim.query_vr_event('right_controller', 'grip_press'))
-            if grip_press:
+                reset_agent = (self.sim.query_vr_event('left_controller', 'reset_agent') or self.sim.query_vr_event('right_controller', 'reset_agent'))
+            if reset_agent:
                 self.set_position(hmd_pos)
                 self.set_orientation(p.getQuaternionFromEuler([0, 0, hmd_z]))
 
@@ -246,7 +243,7 @@ class VrHandBase(ArticulatedObject):
     """
     def __init__(self, s, fpath, hand='right', use_constraints=True, base_rot=[0,0,0,1]):
         """
-        Initializes VrHandBase.'
+        Initializes VrHandBase.
         s is the simulator, fpath is the filepath of the VrHandBase, hand is either left or right 
         and use_constraints determines whether pybullet physics constraints should be used to control the hand.
         This is left on by default, and is only turned off in special circumstances, such as in state replay mode.
@@ -304,26 +301,16 @@ class VrHandBase(ArticulatedObject):
         if is_valid:
             # Detect hand-relevant VR events
             if vr_data:
-                grip_press = [self.vr_device, 'grip_press'] in vr_data.query('event_data')
+                reset_agent = (self.vr_device, 'reset_agent') in vr_data.query('event_data')
             else:
-                grip_press = self.sim.query_vr_event(self.vr_device, 'grip_press')
+                reset_agent = self.sim.query_vr_event(self.vr_device, 'reset_agent')
 
             # Reset the hand if the grip has been pressed
-            if grip_press:
+            if reset_agent:
                 self.set_position(trans)
                 # Apply base rotation first so the virtual controller is properly aligned with the real controller
                 final_rot = multQuatLists(rot, self.base_rot)
                 self.set_orientation(final_rot)
-
-            # Note: adjusting the player height can only be done in VR
-            if not vr_data:
-                # Move the vr offset up/down if menu button is pressed - this can be used
-                # to adjust user height in the VR experience
-                if self.sim.query_vr_event(self.vr_device, 'menu_press'):
-                    # Right menu button moves up, left menu button moves down
-                    vr_z_offset = 0.01 if self.hand == 'right' else -0.01
-                    curr_offset = self.sim.get_vr_offset()
-                    self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
 
             self.move(trans, rot)
             self.set_close_fraction(trig_frac)
@@ -373,11 +360,19 @@ class VrHand(VrHandBase):
     Joint index 9, name b'Iproximal__palm', type 0
     Joint index 10, name b'Imiddle__Iproximal', type 0
     """
-    def __init__(self, s, hand='right', use_constraints=True, normal_color=True):
+    # TODO: Remove test parameter and suffix
+    def __init__(self, s, hand='right', use_constraints=True, normal_color=True, test_shape=None):
         self.normal_color = normal_color
         hand_path = 'normal_color' if self.normal_color else 'alternative_color'
         self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', hand_path)
-        super(VrHand, self).__init__(s, os.path.join(self.vr_hand_folder, 'vr_hand_{}.urdf'.format(hand)),
+        if test_shape == 'cylinder':
+            suffix = 'vr_hand_cyl_test'
+        elif test_shape == 'box':
+            suffix = 'vr_hand_box_test'
+        else:
+            suffix = 'vr_hand'.format(hand)
+        final_suffix = '{}_{}.urdf'.format(suffix, hand)
+        super(VrHand, self).__init__(s, os.path.join(self.vr_hand_folder, final_suffix),
                                     hand=hand, use_constraints=use_constraints, base_rot=p.getQuaternionFromEuler([0, 160, -80 if hand == 'right' else 80]))
 
         # Lists of joint indices for hand part

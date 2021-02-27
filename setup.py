@@ -159,6 +159,7 @@ setup(
             'networkx>=2.0',
             'PyYAML',
             'tqdm',
+            'freetype-py',
             'matplotlib',
             'cloudpickle',
             'aenum',
