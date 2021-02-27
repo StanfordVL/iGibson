@@ -34,7 +34,7 @@ class Challenge:
             assert False, 'unknown task: {}'.format(task)
 
         num_episodes_per_scene = self.eval_episodes_per_scene
-        output_dir = os.path.join(self.result_output_dir, self.split)
+        output_dir = self.result_output_dir
         split_dir = os.path.join(self.episode_dir, self.split)
 
         assert os.path.isdir(split_dir)
@@ -94,6 +94,6 @@ class Challenge:
 
 if __name__ == '__main__':
     challenge = Challenge()
-    # challenge.submit(None)
+    challenge.submit(None)
     # debugging purposes
-    challenge.submit(RandomAgent())
+    # challenge.submit(RandomAgent())
