@@ -26,7 +26,7 @@ from gibson2 import assets_path
 # Note: the scene will automatically load in walls/ceilings/floors in addition to these objects
 benchmark_names = [
     'bottom_cabinet',
-    'counter',
+    'countertop',
     'dishwasher',
     'door',
     'fridge',
@@ -68,7 +68,7 @@ def main():
                 use_fixed_fps = True,
                 rendering_settings=vr_rendering_settings)
 
-    scene = InteractiveIndoorScene('Rs_int', load_object_categories=benchmark_names)
+    scene = InteractiveIndoorScene('Rs_int', load_object_categories=benchmark_names, load_room_types=['kitchen', 'lobby'])
     # scene.load_object_categories(benchmark_names)
         
     s.import_ig_scene(scene)
