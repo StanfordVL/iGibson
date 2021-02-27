@@ -16,8 +16,9 @@ class Challenge:
         self.split = os.environ['SPLIT']
         self.episode_dir = os.environ['EPISODE_DIR']
         self.result_output_dir = os.environ['OUTPUT_DIR']
-        self.eval_episodes_per_scene = os.environ.get(
-            'EVAL_EPISODES_PER_SCENE', 100)
+        # self.eval_episodes_per_scene = os.environ.get(
+        #     'EVAL_EPISODES_PER_SCENE', 100)
+        self.eval_episodes_per_scene = 3
 
     def submit(self, agent):
         env_config = parse_config(self.config_file)
@@ -93,6 +94,6 @@ class Challenge:
 
 if __name__ == '__main__':
     challenge = Challenge()
-    challenge.submit(None)
+    # challenge.submit(None)
     # debugging purposes
-    # challenge.submit(RandomAgent())
+    challenge.submit(RandomAgent())
