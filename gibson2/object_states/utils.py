@@ -87,7 +87,8 @@ def sample_kinematics(predicate, objA, objB, binary_state):
                 link_pos, link_orn = get_link_pose(body_id, link_id)
             pos = matrix_from_quat(link_orn).dot(pos) + np.array(link_pos)
         else:
-            _, pos = objB.get_random_point()
+            _, pos = objB.scene.get_random_point_by_room_instance(
+                objB.room_instance)
 
         pos[2] += z_offset
 
