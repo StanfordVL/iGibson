@@ -2,6 +2,10 @@ from gibson2.object_states.touching import Touching
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 from gibson2.object_states.utils import sample_kinematics, get_center_extent, clear_cached_states
+from collections import namedtuple
+
+RoomFloor = namedtuple(
+    'RoomFloor', ['category', 'name', 'scene', 'room_instance'])
 
 
 class OnFloor(KinematicsMixin, RelativeObjectState, BooleanState):
@@ -25,6 +29,13 @@ class OnFloor(KinematicsMixin, RelativeObjectState, BooleanState):
     def get_value(self, other):
         objA_states = self.obj.states
         center, extent = get_center_extent(objA_states)
-        is_in_room = other.is_in_room(center[:2])
-        touching = self.obj.states[Touching].get_value(other)
+        room_instance = other.scene.get_room_instance_by_point(center[:2])
+        is_in_room = room_instance == other.room_instance
+
+        floors = other.scene.objects_by_category['floors']
+        assert len(floors) == 1, 'has more than one floor object'
+        # Use the floor object in the scene to detect contact points
+        scene_floor = floors[0]
+
+        touching = self.obj.states[Touching].get_value(scene_floor)
         return is_in_room and touching

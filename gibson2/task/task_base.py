@@ -6,7 +6,7 @@ import gibson2
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import URDFObject
-from gibson2.objects.room_floor import RoomFloor
+from gibson2.object_states.on_floor import RoomFloor
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
@@ -102,7 +102,9 @@ class iGTNTask(TaskNetTask):
                         # Create a RoomFloor for each room instance
                         # This object is NOT imported by the simulator
                         scene_objs = [
-                            RoomFloor(scene=self.scene,
+                            RoomFloor(category='room_floor',
+                                      name='room_floor_{}'.format(room_inst),
+                                      scene=self.scene,
                                       room_instance=room_inst)
                         ]
                     else:
