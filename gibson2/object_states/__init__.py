@@ -19,3 +19,4 @@ from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.touching import Touching
 from gibson2.object_states.under import Under
 from gibson2.object_states.water_source import WaterSource
+from gibson2.object_states.on_floor import OnFloor
