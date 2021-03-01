@@ -34,6 +34,10 @@ layout (std140) uniform PBRData {
     vec4 pbr_data[MAX_ARRAY_SIZE];
 };
 
+layout (std140) uniform Hidden {
+    vec4 hidden_array[MAX_ARRAY_SIZE];
+};
+
 uniform sampler2D depthMap;
 uniform int shadow_pass;
 
@@ -105,6 +109,8 @@ void main() {
     vec4 curr_pbr_data = pbr_data[Draw_id];
     int use_pbr = int(curr_pbr_data.x);
     vec2 texelSize = 1.0 / textureSize(depthMap, 0);
+    float hidden = hidden_array[Draw_id].x;
+    float highlight = hidden_array[Draw_id].y;
 
     float shadow = 0.0;
 
@@ -218,6 +224,7 @@ void main() {
         PCColour = vec4(Pos_cam, 1);
     }
     outputColour = outputColour *  (1 - shadow * 0.5);
+    outputColour = outputColour * (1-highlight * 0.5) + vec4(1,0,1,1) * highlight * 0.5;
     SceneFlowColour =  vec4(Pos_cam - Pos_cam_prev,1);
     OpticalFlowColour =  vec4(Optical_flow,0,1);
 }

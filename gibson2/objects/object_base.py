@@ -13,6 +13,16 @@ class Object(object):
 
         # initialize with empty states
         self.states = dict()
+        # handle to instances in the renderer
+        self.renderer_instances = []
+
+    def highlight(self):
+        for instance in self.renderer_instances:
+            instance.set_highlight(True)
+
+    def unhighlight(self):
+        for instance in self.renderer_instances:
+            instance.set_highlight(False)
 
     def load(self):
         """
