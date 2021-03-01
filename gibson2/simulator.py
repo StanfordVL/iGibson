@@ -881,9 +881,8 @@ class Simulator:
         """
         # Step the object states in global topological order.
         for state_type in self.object_state_types:
-            for obj in self.scene.get_objects():
-                if state_type in obj.states:
-                    obj.states[state_type].update(self)
+            for obj in self.scene.get_objects_with_state(state_type):
+                obj.states[state_type].update(self)
 
     def step_vr(self, print_stats=False):
         """
