@@ -18,7 +18,12 @@ class Material(object):
                  metallic_texture_id=None,
                  roughness_texture_id=None,
                  normal_texture_id=None,
-                 transform_param=[1, 1, 0]):
+                 transform_param=[1, 1, 0],
+                 repeat_x=1,
+                 repeat_y=1,
+                 texuniform=False,
+                 texture_type="2d"                 
+                 ):
         """
         :param material_type: color or texture
         :param kd: color parameters
@@ -35,6 +40,10 @@ class Material(object):
         self.roughness_texture_id = roughness_texture_id
         self.normal_texture_id = normal_texture_id
         self.transform_param = transform_param
+        self.repeat_x = repeat_x
+        self.repeat_y = repeat_y
+        self.texuniform = texuniform
+        self.texture_type = texture_type         
 
     def is_texture(self):
         """

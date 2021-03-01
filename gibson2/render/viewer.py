@@ -20,6 +20,8 @@ class Viewer:
                  simulator=None,
                  renderer=None,
                  min_cam_z=-1e6,
+                 mujoco_env=None,
+                 hide_robot=True                 
                  ):
         """
         iGibson GUI (Viewer) for navigation, manipulation and motion planning / execution
@@ -62,11 +64,13 @@ class Viewer:
 
         cv2.namedWindow('ExternalView')
         cv2.moveWindow("ExternalView", 0, 0)
-        cv2.namedWindow('RobotView')
+        # cv2.namedWindow('RobotView')
         cv2.setMouseCallback('ExternalView', self.mouse_callback)
         self.create_visual_object()
         self.planner = None
         self.block_command = False
+        self.mujoco_env = mujoco_env
+        self.hide_robot = hide_robot        
 
     def setup_motion_planner(self, planner=None):
         """
@@ -84,13 +88,13 @@ class Viewer:
             radius=0.04, rgba_color=[0, 0, 1, 1])
         self.constraint_marker2 = VisualMarker(visual_shape=p.GEOM_CAPSULE, radius=0.01, length=3,
                                                initial_offset=[0, 0, -1.5], rgba_color=[0, 0, 1, 1])
-        if self.simulator is not None:
-            self.simulator.import_object(
-                self.constraint_marker2, use_pbr=False)
-            self.simulator.import_object(self.constraint_marker, use_pbr=False)
+        # if self.simulator is not None:
+        #     self.simulator.import_object(
+        #         self.constraint_marker2, use_pbr=False)
+        #     self.simulator.import_object(self.constraint_marker, use_pbr=False)
 
-        self.constraint_marker.set_position([0, 0, -1])
-        self.constraint_marker2.set_position([0, 0, -1])
+        # self.constraint_marker.set_position([0, 0, -1])
+        # self.constraint_marker2.set_position([0, 0, -1])
 
     def apply_push_force(self, x, y, force):
         """

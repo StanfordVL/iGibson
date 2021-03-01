@@ -312,7 +312,8 @@ class MeshRenderer(object):
                     input_kd=None,
                     texture_scale=1.0,
                     load_texture=True,
-                    overwrite_material=None):
+                    overwrite_material=None,
+                    input_material=None):
         """
         Load a wavefront obj file into the renderer and create a VisualObject to manage it.
 
@@ -366,35 +367,56 @@ class MeshRenderer(object):
             logging.warning(
                 "passed in one material ends up overwriting multiple materials")
 
-        for i, item in enumerate(materials):
-            if overwrite_material is not None:
-                self.load_randomized_material(overwrite_material)
-                material = overwrite_material
-            elif item.diffuse_texname != '' and load_texture:
-                obj_dir = os.path.dirname(obj_path)
-                texture = self.load_texture_file(
-                    os.path.join(obj_dir, item.diffuse_texname))
-                texture_metallic = self.load_texture_file(
-                    os.path.join(obj_dir, item.metallic_texname))
-                texture_roughness = self.load_texture_file(
-                    os.path.join(obj_dir, item.roughness_texname))
-                texture_normal = self.load_texture_file(
-                    os.path.join(obj_dir, item.bump_texname))
-                material = Material('texture',
-                                    texture_id=texture,
-                                    metallic_texture_id=texture_metallic,
-                                    roughness_texture_id=texture_roughness,
-                                    normal_texture_id=texture_normal)
-            else:
-                material = Material('color', kd=item.diffuse)
-            self.materials_mapping[i + material_count] = material
+        # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a Material element for them
+        # or create plane color Material elements
+        num_existing_mats = len(self.materials_mapping)    # Number of current Material elements       
+        repeat_x = 1
+        repeat_y = 1
+        texuniform = False                  
+
+        if input_material is None:
+            for i, item in enumerate(materials):
+                if overwrite_material is not None:
+                    self.load_randomized_material(overwrite_material)
+                    material = overwrite_material
+                elif item.diffuse_texname != '' and load_texture:
+                    obj_dir = os.path.dirname(obj_path)
+                    texture = self.load_texture_file(
+                        os.path.join(obj_dir, item.diffuse_texname))
+                    texture_metallic = self.load_texture_file(
+                        os.path.join(obj_dir, item.metallic_texname))
+                    texture_roughness = self.load_texture_file(
+                        os.path.join(obj_dir, item.roughness_texname))
+                    texture_normal = self.load_texture_file(
+                        os.path.join(obj_dir, item.bump_texname))
+                    material = Material('texture',
+                                        texture_id=texture,
+                                        metallic_texture_id=texture_metallic,
+                                        roughness_texture_id=texture_roughness,
+                                        normal_texture_id=texture_normal)
+                else:
+                    material = Material('color', kd=item.diffuse)
+                self.materials_mapping[i + material_count] = material
+
+            num_added_materials = len(materials) 
+        
+        else:
+            print("Using input material")
+            repeat_x = input_material.repeat_x
+            repeat_y = input_material.repeat_y
+            texuniform = input_material.texuniform
+            self.materials_mapping[num_existing_mats] = input_material
+            num_added_materials = 1            
+        
 
         if input_kd is not None:  # append the default material in the end, in case material loading fails
-            self.materials_mapping[len(
-                materials) + material_count] = Material('color', kd=input_kd, texture_id=-1)
+            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=input_kd)
+            # self.materials_mapping[len(
+                # materials) + material_count] = Material('color', kd=input_kd, texture_id=-1)
         else:
-            self.materials_mapping[len(
-                materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5], texture_id=-1)
+            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=[0.5, 0.5, 0.5])
+            # self.materials_mapping[len(
+                # materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5], texture_id=-1)
 
         VAO_ids = []
 
@@ -405,10 +427,21 @@ class MeshRenderer(object):
         vertex_texcoord = np.array(attrib.texcoords).reshape(
             (len(attrib.texcoords) // 2, 2))
 
+        if texuniform and input_material.texture_type == "2d":
+            repeat_x = repeat_x * (np.max(vertex_texcoord[:,0]) - np.min(vertex_texcoord[:,0])) * scale[0]
+            repeat_y = repeat_y * (np.max(vertex_texcoord[:,1]) - np.min(vertex_texcoord[:,1])) * scale[1]
+
+        vertex_texcoord = vertex_texcoord * np.array([repeat_x, repeat_y])  
+
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
-            # assume one shape only has one material
-            material_id = shape.mesh.material_ids[0]
+            if input_material is None:
+                # assume one shape only has one material
+                material_id = shape.mesh.material_ids[0]
+            else:
+                # This will makes us use the input_material at self.materials_mapping[num_existing_mats + material_id=0]
+                material_id = 0             
+            
             logging.debug("material_id = {}".format(material_id))
             logging.debug("num_indices = {}".format(len(shape.mesh.indices)))
             n_indices = len(shape.mesh.indices)
@@ -482,9 +515,11 @@ class MeshRenderer(object):
             self.shapes.append(shape)
             # if material loading fails, use the default material
             if material_id == -1:
-                self.mesh_materials.append(len(materials) + material_count)
+                self.mesh_materials.append(num_existing_mats + len(materials))
+                # self.mesh_materials.append(len(materials) + material_count)
             else:
-                self.mesh_materials.append(material_id + material_count)
+                self.mesh_materials.append(num_existing_mats + material_id)
+                # self.mesh_materials.append(material_id + material_count)
 
             logging.debug('mesh_materials: {}'.format(self.mesh_materials))
             VAO_ids.append(self.get_num_objects() - 1)
@@ -505,7 +540,8 @@ class MeshRenderer(object):
                      softbody=False,
                      use_pbr=True,
                      use_pbr_mapping=True,
-                     shadow_caster=True):
+                     shadow_caster=True,
+                     parent_body=None):
         """
         Create instance for a visual object and link it to pybullet
 
@@ -538,7 +574,8 @@ class MeshRenderer(object):
                             softbody=softbody,
                             use_pbr=use_pbr,
                             use_pbr_mapping=use_pbr_mapping,
-                            shadow_caster=shadow_caster)
+                            shadow_caster=shadow_caster,
+                            parent_body=parent_body)
         self.instances.append(instance)
 
     def add_instance_group(self,
@@ -1000,7 +1037,7 @@ class MeshRenderer(object):
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
-    def render_robot_cameras(self, modes=('rgb')):
+    def render_robot_cameras(self, modes=('rgb'), hide_robot=True):
         """
         Render robot camera images
 
@@ -1009,18 +1046,60 @@ class MeshRenderer(object):
         frames = []
         for instance in self.instances:
             if isinstance(instance, Robot):
-                camera_pos = instance.robot.eyes.get_position()
-                orn = instance.robot.eyes.get_orientation()
-                mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
-                view_direction = mat.dot(np.array([1, 0, 0]))
-                self.set_camera(camera_pos, camera_pos +
-                                view_direction, [0, 0, 1], cache=True)
-                hidden_instances = []
-                if self.rendering_settings.hide_robot:
-                    hidden_instances.append(instance)
-                for item in self.render(modes=modes, hidden=hidden_instances):
-                    frames.append(item)
+                for camera in instance.robot.cameras:
+                    # print(camera.is_active(), type(camera))
+                    if camera.is_active():
+                        # import pdb; pdb.set_trace()
+                        camera_pose = camera.get_pose()
+                        camera_pos = camera_pose[:3]
+                        camera_ori = camera_pose[3:]
+                        camera_ori_mat = quat2rotmat([camera_ori[-1], camera_ori[0], camera_ori[1], camera_ori[2]])[:3, :3]
+                        camera_view_dir = camera_ori_mat.dot(np.array([0, 0, -1])) #Mujoco camera points in -z
+                        self.set_camera(camera_pos, camera_pos + camera_view_dir, [0, 0, 1])
+                        #TODO: use camera.modes to decide what to render instead of the argument. In that way, different cameras could 
+                        #render different modalities
+                        for item in self.render(modes=modes, hidden=[[],[instance]][hide_robot]):
+                            
+                            frames.append(item)                
+                # camera_pos = instance.robot.eyes.get_position()
+                # orn = instance.robot.eyes.get_orientation()
+                # mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+                # view_direction = mat.dot(np.array([1, 0, 0]))
+                # self.set_camera(camera_pos, camera_pos +
+                #                 view_direction, [0, 0, 1], cache=True)
+                # hidden_instances = []
+                # if self.rendering_settings.hide_robot:
+                #     hidden_instances.append(instance)
+                # for item in self.render(modes=modes, hidden=hidden_instances):
+                #     frames.append(item)
         return frames
+
+    def get_names_active_cameras(self):
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                for camera in instance.robot.cameras:
+                    if camera.is_active():
+                        names.append(camera.camera_name)
+        return names
+
+    def switch_camera(self, idx):
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                instance.robot.cameras[idx].switch()
+
+    def is_camera_active(self, idx):
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                return instance.robot.cameras[idx].is_active()
+
+    def get_camera_name(self, idx):
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                return instance.robot.cameras[idx].camera_name    
 
     def optimize_vertex_and_texture(self):
         """

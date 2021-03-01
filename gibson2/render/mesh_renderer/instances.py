@@ -247,6 +247,7 @@ class Instance(object):
                  pose_rot,
                  dynamic,
                  softbody,
+                 parent_body,
                  use_pbr=True,
                  use_pbr_mapping=True,
                  shadow_caster=True
@@ -285,6 +286,7 @@ class Instance(object):
         self.or_buffer_indices = None
         self.last_trans = np.copy(pose_trans)
         self.last_rot = np.copy(pose_rot)
+        self.parent_body = parent_body
 
     def render(self, shadow_pass=0):
         """
