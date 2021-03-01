@@ -267,6 +267,8 @@ class Simulator:
                                          load_texture=load_texture, render_floor_plane=render_floor_plane,
                                          use_pbr=False, use_pbr_mapping=False)
 
+            # TODO: add instance renferencing for iG v1 scenes
+
         self.scene = scene
         return new_object_pb_ids
 
@@ -295,7 +297,8 @@ class Simulator:
                     body_id,
                     class_id=class_id,
                     visual_mesh_to_material=visual_mesh_to_material,
-                    shadow_caster=shadow_caster)
+                    shadow_caster=shadow_caster,
+                    physical_object=scene.objects_by_id[body_id])
         else:
             # use default texture
             for body_id in new_object_ids:
@@ -315,7 +318,8 @@ class Simulator:
                     class_id=body_id,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
-                    shadow_caster=shadow_caster)
+                    shadow_caster=shadow_caster,
+                    physical_object=scene.objects_by_id[body_id])
         self.scene = scene
 
         return new_object_ids
@@ -395,7 +399,8 @@ class Simulator:
                     class_id,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
-                    shadow_caster=shadow_caster)
+                    shadow_caster=shadow_caster,
+                    physical_object=obj)
             else:
                 softbody = obj.__class__.__name__ == 'SoftObject'
                 self.load_object_in_renderer(
@@ -404,7 +409,8 @@ class Simulator:
                     softbody,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
-                    shadow_caster=shadow_caster)
+                    shadow_caster=shadow_caster,
+                    physical_object=obj)
 
         # if there are attached particle system, import them into simulation
         if len(obj.attached_particle_system) > 0:
@@ -427,7 +433,8 @@ class Simulator:
                                 render_floor_plane=False,
                                 use_pbr=True,
                                 use_pbr_mapping=True,
-                                shadow_caster=True
+                                shadow_caster=True,
+                                physical_object=None,
                                 ):
         """
         Load the object into renderer
@@ -441,6 +448,7 @@ class Simulator:
         :param use_pbr: Whether to use pbr
         :param use_pbr_mapping: Whether to use pbr mapping
         :param shadow_caster: Whether to cast shadow
+        :param physical_object: The reference to Object class
         """
         for shape in p.getVisualShapeData(object_pb_id):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
@@ -512,6 +520,8 @@ class Simulator:
                                            use_pbr_mapping=use_pbr_mapping,
                                            shadow_caster=shadow_caster
                                            )
+                if physical_object is not None:
+                    physical_object.renderer_instances.append(self.renderer.instances[-1])
 
     @load_without_pybullet_vis
     def load_articulated_object_in_renderer(self,
@@ -520,7 +530,8 @@ class Simulator:
                                             visual_mesh_to_material=None,
                                             use_pbr=True,
                                             use_pbr_mapping=True,
-                                            shadow_caster=True):
+                                            shadow_caster=True,
+                                            physical_object=None):
         """
         Load the articulated object into renderer
 
@@ -530,6 +541,7 @@ class Simulator:
         :param use_pbr: Whether to use pbr
         :param use_pbr_mapping: Whether to use pbr mapping
         :param shadow_caster: Whether to cast shadow
+        :param physical_object: The reference to Object class
         """
 
         visual_objects = []
@@ -611,6 +623,9 @@ class Simulator:
                                          use_pbr=use_pbr,
                                          use_pbr_mapping=use_pbr_mapping,
                                          shadow_caster=shadow_caster)
+
+        if physical_object is not None:
+            physical_object.renderer_instances.append(self.renderer.instances[-1])
 
     @load_without_pybullet_vis
     def import_robot(self,

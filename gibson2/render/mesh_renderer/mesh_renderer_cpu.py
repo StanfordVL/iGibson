@@ -789,7 +789,7 @@ class MeshRenderer(object):
                     i for i in self.instances if not i.shadow_caster and not i.hidden]
                 for instance in shadow_hidden_instances:
                     instance.hidden = True
-                self.update_hidden_state(shadow_hidden_instances)
+                self.update_hidden_highlight_state(shadow_hidden_instances)
                 self.r.updateDynamicData(
                     self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
                     self.last_rot_array, self.V, self.last_V, self.P,
@@ -797,7 +797,7 @@ class MeshRenderer(object):
                 self.r.renderOptimized(self.optimized_VAO)
                 for instance in shadow_hidden_instances:
                     instance.hidden = False
-                self.update_hidden_state(shadow_hidden_instances)
+                self.update_hidden_highlight_state(shadow_hidden_instances)
             else:
                 for instance in self.instances:
                     if (instance not in hidden) and instance.shadow_caster:
@@ -812,6 +812,12 @@ class MeshRenderer(object):
 
             self.r.readbuffer_meshrenderer_shadow_depth(
                 self.width, self.height, self.fbo, self.depth_tex_shadow)
+
+        if self.optimized:
+            all_instances = [
+                i for i in self.instances if i.or_buffer_indices is not None]
+            self.update_hidden_highlight_state(all_instances)
+            # TODO: support highlighting for non-optimized renderer
 
         # main pass
         if self.msaa:
@@ -1266,7 +1272,7 @@ class MeshRenderer(object):
                                self.depth_tex_shadow)
         self.optimization_process_executed = True
 
-    def update_hidden_state(self, instances):
+    def update_hidden_highlight_state(self, instances):
         """
         Updates the hidden state of a list of instances
         This function is called by instances and not every frame, since hiding is a very infrequent operation.
@@ -1277,8 +1283,13 @@ class MeshRenderer(object):
                 print(
                     'ERROR: trying to set hidden state of an instance that has no visual objects!')
             # Need to multiply buf_idxs by four so we index into the first element of the vec4 corresponding to each buffer index
+            print(buf_idxs)
             vec4_buf_idxs = [idx * 4 for idx in buf_idxs]
+            vec4_buf_idxs_highlight = [idx * 4+1 for idx in buf_idxs]
+
             self.merged_hidden_data[vec4_buf_idxs] = float(instance.hidden)
+            # highlight data stored in 4n + 1
+            self.merged_hidden_data[vec4_buf_idxs_highlight] = float(instance.highlight)
         self.r.updateHiddenData(self.shaderProgram, np.ascontiguousarray(
             self.merged_hidden_data, dtype=np.float32))
 
