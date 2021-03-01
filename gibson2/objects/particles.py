@@ -1,4 +1,5 @@
 import gibson2.object_states
+from gibson2 import object_states
 from gibson2.objects.object_base import Object
 import pybullet as p
 import numpy as np
