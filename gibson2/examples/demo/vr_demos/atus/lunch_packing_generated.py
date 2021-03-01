@@ -13,6 +13,7 @@ Important - VR functionality and where to find it:
 import numpy as np
 import os
 import pdb
+import tasknet
 
 import gibson2
 from gibson2.objects.vr_objects import VrAgent
@@ -34,6 +35,7 @@ def info(type, value, tb):
         pdb.post_mortem(tb)
         
 
+tasknet.set_backend("iGibson")
 
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = False
@@ -62,10 +64,11 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
 # VR system settings
 # Change use_vr to toggle VR mode on/off
 vr_settings = VrSettings(use_vr=True)
-s = Simulator(mode='vr', 
+s = Simulator(mode='gui', 
             rendering_settings=vr_rendering_settings,
             vr_settings=vr_settings)
-igtn_task = iGTNTask('assembling_gift_baskets_filtered', 0)
+
+igtn_task = iGTNTask('assembling_gift_baskets_filtered', 1)
 # igtn_task = iGTNTask('packing_lunches_filtered', 1)
 # igtn_task = iGTNTask('sorting_books_filtered', 0)
 # igtn_task.initialize_simulator(simulator=s, scene_id='Beechwood_0_int')
@@ -104,7 +107,7 @@ if mode == 'save':
 
 # Main simulation loop
 while True:
-    s.step(print_time=PRINT_FPS)
+    s.step()
 
     # Don't update VR agents or query events if we are not using VR
     if not vr_settings.use_vr:
