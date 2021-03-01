@@ -29,10 +29,8 @@ from gibson2.simulator import Simulator
 from gibson2.utils.vr_logging import VRLogReader, VRLogWriter
 from gibson2 import assets_path
 
-# IMPORTANT: Change this value if you have a more powerful machine
-VR_FPS = 30
 # Number of seconds to run the data saving for
-DATA_SAVE_RUNTIME = 30
+DATA_SAVE_RUNTIME = 45
 # Set to false to load entire Rs_int scene
 LOAD_PARTIAL = True
 
@@ -41,6 +39,7 @@ def run_state_sr(mode):
     Runs state save/replay. Mode can either be save or replay.
     """
     assert mode in ['save', 'replay']
+    is_save = (mode == 'save')
 
     # HDR files for PBR rendering
     hdr_texture = os.path.join(
@@ -64,10 +63,10 @@ def run_state_sr(mode):
                                                 msaa=True,
                                                 light_dimming_factor=1.0)
     # VR system settings
-    # Change use_vr to toggle VR mode on/off
-    vr_settings = VrSettings(use_vr=(mode == 'save'), vr_fps=VR_FPS)
+    vr_settings = VrSettings()
+    if not is_save:
+        vr_settings.turn_off_vr_mode()
     s = Simulator(mode='vr', 
-                use_fixed_fps=True,
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
     scene = InteractiveIndoorScene('Rs_int')
@@ -77,7 +76,10 @@ def run_state_sr(mode):
     s.import_ig_scene(scene)
 
     # Create a VrAgent and it will handle all initialization and importing under-the-hood
-    vr_agent = VrAgent(s, use_constraints=(mode == 'save'))
+    vr_agent = VrAgent(s, use_constraints=is_save)
+    if is_save:
+        # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
+        s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
 
     # Objects to interact with
     mass_list = [5, 10, 100, 500]
@@ -88,14 +90,10 @@ def run_state_sr(mode):
         mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
         p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
 
-    if vr_settings.use_vr:
-        # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
-        s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
-
     # Note: Modify this path to save to different files
     vr_log_path = 'vr_logs/vr_states_sr.h5'
 
-    if mode == 'save':
+    if is_save:
         # Saves every few seconds
         vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=False)
 
@@ -103,9 +101,10 @@ def run_state_sr(mode):
         # Despite having no actions, we need to call this function
         vr_writer.set_up_data_storage()
     else:
-        vr_reader = VRLogReader(log_filepath=vr_log_path, emulate_save_fps=True)
+        # Playback faster than FPS during saving - can set emulate_save_fps to True to emulate saving FPS
+        vr_reader = VRLogReader(vr_log_path, s, emulate_save_fps=False)
 
-    if mode == 'save':
+    if is_save:
         start_time = time.time()
         # Main simulation loop - run for as long as the user specified
         while (time.time() - start_time < DATA_SAVE_RUNTIME):
@@ -124,7 +123,7 @@ def run_state_sr(mode):
         # The VR reader automatically shuts itself down and performs cleanup once the while loop has finished running
         while vr_reader.get_data_left_to_read():
             vr_reader.pre_step()
-            s.step(sleep_until_dur=False, forced_timestep=vr_reader.get_phys_step_n())
+            s.step(forced_timestep=vr_reader.get_phys_step_n())
             vr_reader.read_frame(s, full_replay=True)
     
     s.disconnect()
