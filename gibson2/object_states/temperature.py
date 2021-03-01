@@ -51,7 +51,7 @@ class Temperature(AbsoluteObjectState):
             heat_source_position = heat_source.get_value()
             if heat_source_position:
                 # Compute the AABB center if needed.
-                if not center:
+                if center is None:
                     center = get_aabb_center(self.obj.states[AABB].get_value())
 
                 # Compute distance to heat source from the center of our AABB.
