@@ -1,26 +1,36 @@
 import json
 import logging
 import os
-
-import gibson2
-import numpy as np
+import random
+import sys
+import time
 import xml.etree.ElementTree as ET
 
-from gibson2.objects.stateful_object import StatefulObject
+import cv2
+import gibson2
+import numpy as np
 import pybullet as p
 import trimesh
-import random
-import cv2
-import time
-import random
+import math
 
-from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_aabb_urdf, get_base_link_name, \
-    add_fixed_link
-from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
-from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 from gibson2.external.pybullet_tools.utils import link_from_name
-from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
 from gibson2.object_states.factory import prepare_object_states
+from gibson2.objects.stateful_object import StatefulObject
+from gibson2.render.mesh_renderer.materials import RandomizedMaterial
+from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_base_link_name, \
+    add_fixed_link
+from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
+
+# Optionally import tasknet for object taxonomy.
+try:
+    from tasknet.object_taxonomy import ObjectTaxonomy
+
+    OBJECT_TAXONOMY = ObjectTaxonomy()
+except ImportError:
+    print("TaskNet could not be imported - object taxonomy / abilities will be unavailable.", file=sys.stderr)
+    OBJECT_TAXONOMY = None
 
 
 class ArticulatedObject(StatefulObject):
@@ -74,17 +84,19 @@ class URDFObject(StatefulObject):
                  filename,
                  name='object_0',
                  category='object',
-                 abilities=[],
+                 abilities=None,
                  model_path=None,
                  bounding_box=None,
                  scale=None,
                  fit_avg_dim_volume=False,
                  connecting_joint=None,
+                 initial_pos=None,
+                 initial_orn=None,
                  avg_obj_dims=None,
                  joint_friction=None,
                  in_rooms=None,
                  texture_randomization=False,
-                 overwrite_inertial=False,
+                 overwrite_inertial=True,
                  scene_instance_folder=None,
                  ):
         """
@@ -96,6 +108,8 @@ class URDFObject(StatefulObject):
         :param scale: scaling factor of this object
         :param: fit_avg_dim_volume: whether to fit the object to have the same volume as the average dimension while keeping the aspect ratio
         :param connecting_joint: connecting joint to the scene that defines the object's initial pose (optional)
+        :param initial_pos: initial position of the object (lower priority than connecting_joint)
+        :param initial_orn: initial orientation of the object (lower priority than connecting_joint)
         :param avg_obj_dims: average object dimension of this object
         :param joint_friction: joint friction for joints in this object
         :param in_rooms: which room(s) this object is in. It can be in more than one rooms if it sits at room boundary (e.g. doors)
@@ -109,11 +123,29 @@ class URDFObject(StatefulObject):
         self.category = category
         self.in_rooms = in_rooms
         self.connecting_joint = connecting_joint
+        self.initial_pos = initial_pos
+        self.initial_orn = initial_orn
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
+
+        # Load abilities from taxonomy if needed & possible
+        if abilities is None:
+            if OBJECT_TAXONOMY is not None:
+                taxonomy_class = (
+                    OBJECT_TAXONOMY.get_class_name_from_igibson_category(
+                        self.category))
+                if taxonomy_class is not None:
+                    abilities = OBJECT_TAXONOMY.get_abilities(taxonomy_class)
+                else:
+                    abilities = {}
+            else:
+                abilities = {}
+
+        assert isinstance(
+            abilities, dict), "Object abilities must be in dictionary form."
         self.abilities = abilities
-        self.states = prepare_object_states(self, abilities, online=True)
+
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
             self.joint_friction = joint_friction
@@ -159,6 +191,13 @@ class URDFObject(StatefulObject):
 
         logging.info("Category " + self.category)
         self.filename = filename
+        dirname = os.path.dirname(filename)
+        urdf = os.path.basename(filename)
+        urdf_name, _ = os.path.splitext(urdf)
+        simplified_urdf = os.path.join(dirname, urdf_name + "_simplified.urdf")
+        if os.path.exists(simplified_urdf):
+            self.filename = simplified_urdf
+            filename = simplified_urdf
         logging.info("Loading the following URDF template " + filename)
         self.object_tree = ET.parse(filename)  # Parse the URDF
 
@@ -180,7 +219,8 @@ class URDFObject(StatefulObject):
 
         meta_json = os.path.join(self.model_path, 'misc', 'metadata.json')
         bbox_json = os.path.join(self.model_path, 'misc', 'bbox.json')
-        meta_links = dict()  # In the format of {link_name: [linkX, linkY, linkZ]}
+        # In the format of {link_name: [linkX, linkY, linkZ]}
+        meta_links = dict()
         if os.path.isfile(meta_json):
             with open(meta_json, 'r') as f:
                 meta_data = json.load(f)
@@ -252,11 +292,13 @@ class URDFObject(StatefulObject):
         if self.texture_randomization:
             self.prepare_texture()
 
+        prepare_object_states(self, abilities, online=True)
+
     def compute_object_pose(self):
         if self.connecting_joint is not None:
             joint_type = self.connecting_joint.attrib['type']
             joint_xyz = np.array(
-                [float(val)for val in self.connecting_joint.find("origin").attrib["xyz"].split(" ")])
+                [float(val) for val in self.connecting_joint.find("origin").attrib["xyz"].split(" ")])
             if 'rpy' in self.connecting_joint.find("origin").attrib:
                 joint_rpy = np.array(
                     [float(val) for val in self.connecting_joint.find("origin").attrib["rpy"].split(" ")])
@@ -267,8 +309,14 @@ class URDFObject(StatefulObject):
             assert joint_parent == 'world'
         else:
             joint_type = 'floating'
-            joint_xyz = np.array([0., 0., 0.])
-            joint_rpy = np.array([0., 0., 0.])
+            if self.initial_pos is not None:
+                joint_xyz = self.initial_pos
+            else:
+                joint_xyz = np.array([0., 0., 0.])
+            if self.initial_orn is not None:
+                joint_rpy = self.initial_orn
+            else:
+                joint_rpy = np.array([0., 0., 0.])
             joint_name = None
             joint_parent = None
 
@@ -278,8 +326,9 @@ class URDFObject(StatefulObject):
         # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
         # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
         x, y, z = self.scaled_bbxc_in_blf
-        yaw = joint_rpy[2]
-        x, y = rotate_vector_2d(np.array([x, y]), -yaw)
+        roll, pitch, yaw = joint_rpy
+        x, y, z = rotate_vector_3d(
+            self.scaled_bbxc_in_blf, roll, pitch, yaw, False)
         joint_xyz += np.array([x, y, z])
 
         # if the joint is floating, we save the transformation of the floating joint to be used when we load the
@@ -371,12 +420,25 @@ class URDFObject(StatefulObject):
     def sample_orientation(self):
         if self.orientations is None:
             raise ValueError('No orientation probabilities set')
+        indices = list(range(len(self.orientations)))
         orientations = [np.array(o['rotation']) for o in self.orientations]
         probabilities = [o['prob'] for o in self.orientations]
-        chosen_orientation = random.choices(
-            orientations, weights=probabilities, k=1)[0]
-        # TODO do random variation about Z axis based on variation key
-        return chosen_orientation
+        variation = [o['variation'] for o in self.orientations]
+        probabilities = np.array(probabilities) / np.sum(probabilities)
+        chosen_orientation_idx = np.random.choice(indices, p=probabilities)
+        chosen_orientation = orientations[chosen_orientation_idx]
+        min_rotation = 0.05
+        rotation_variance = max(
+            variation[chosen_orientation_idx], min_rotation)
+
+        rot_num = np.random.random() * rotation_variance
+        rot_matrix = np.array([
+            [math.cos(math.pi*rot_num), -math.sin(math.pi*rot_num), 0.0],
+            [math.sin(math.pi*rot_num), math.cos(math.pi*rot_num), 0.0],
+            [0.0, 0.0, 1.0]])
+        rotated_quat = quat_from_matrix(
+            matrix_from_quat(chosen_orientation) @ rot_matrix)
+        return rotated_quat
 
     def rename_urdf(self):
         """
@@ -640,6 +702,16 @@ class URDFObject(StatefulObject):
                     new_scale = np.array([round_up(val, 10)
                                           for val in scale_in_lf])
                     mesh.set('scale', ' '.join(map(str, new_scale)))
+
+            for box in link.iter("box"):
+                if "size" in box.attrib:
+                    box_scale = np.array(
+                        [float(val) for val in box.attrib["size"].split(" ")])
+                    new_scale = np.multiply(box_scale, scale_in_lf)
+                    new_scale = np.array([round_up(val, 10)
+                                          for val in new_scale])
+                    box.attrib['size'] = ' '.join(map(str, new_scale))
+
             for origin in link.iter("origin"):
                 origin_xyz = np.array(
                     [float(val) for val in origin.attrib["xyz"].split(" ")])
@@ -816,6 +888,8 @@ class URDFObject(StatefulObject):
             for joint_id in range(p.getNumJoints(body_id)):
                 p.changeDynamics(body_id, joint_id,
                                  activationState=p.ACTIVATION_STATE_WAKE_UP)
+            p.changeDynamics(body_id, -1,
+                             activationState=p.ACTIVATION_STATE_WAKE_UP)
 
     def reset(self):
         """

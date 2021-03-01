@@ -158,11 +158,26 @@ Important - VR functionality and where to find it:
 
 You can find all the VR demos in iGibson/gibson2/examples/demo/vr_demos, which has the following structure:
 
-- vr demo files for normal VR, multi-user VR and robot embodiment VR
+- vr demo files for normal VR
+
+- atus folder containing lunch packing demo
 
 - data_save_replay folder containing save/replay demos
 
-- atus folder containing lunch packing demo
+- muvr folder containing multi-user VR demos
+
+- robot_embodiment folder containing robot embodiment VR demos
+
+Benchmarks:
+
+We have two benchmarks - a hand and speed benchmark, both of which can be found in the top leve of the vr_demos folder. In these demos, you can time yourself performing various challenges,
+such as putting objects away into specific containers/cabinets. Please see the comments in these demo files for more information.
+
+VR settings and button mapping:
+
+You can find the global vr settings in the vr_config.yaml in the gibson2 folder. Please change all VR settings from here. Within the settings, you will also find the button mapping from actions to buttons.
+Please run vr_demos/vr_button_mapping.py to figure out which physical controller buttons correspond to which indices in OpenVR. It is only necessary to do this if you are remapping an existing controller,
+or adding in a mapping for a new controller.
 
 Additional information:
 1) Most VR functions can be found in the gibson2/simulator.py
@@ -188,7 +203,7 @@ Note: we recommend looking at gibson2/render/mesh_renderer/mesh_renderer_vr.py t
 
 To use the VR assets, please access the Google drive folder at this link:
 https://drive.google.com/drive/folders/1zm3ZpPc7yHwyALEGfsb0_NybFMvV81Um?usp=sharing
-Please place all of these folders into your assets/models folder, with their original names.
+Please place all of these folders into your assets/models folder, with their original names. Place the fonts folder in the top-level assets directory.
 
 Have fun in VR!
 

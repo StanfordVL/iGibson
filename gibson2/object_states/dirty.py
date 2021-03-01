@@ -1,3 +1,5 @@
+from gibson2.object_states.aabb import AABB
+from gibson2.object_states.cleaning_tool import CleaningTool
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.particles import Dust
@@ -8,30 +10,41 @@ class Dirty(AbsoluteObjectState, BooleanState):
 
     def __init__(self, obj):
         super(Dirty, self).__init__(obj)
+        self.prev_value = False
         self.value = False
-        self.dust = Dust()
-        self.dust.register_parent_obj(self.obj)
+        self.dust = None
 
     def get_value(self):
         return self.value
 
     def set_value(self, new_value):
         self.value = new_value
-        if self.value:
-            self.dust.attach(self.obj)
-            for particle in self.dust.particles:
-                particle.active = True
-        else:
+        if not self.value:
             for particle in self.dust.particles:
                 self.dust.stash_particle(particle)
 
     def update(self, simulator):
+        # Nothing to do if not dusty.
+        if not self.value:
+            return
+
+        # Load the dust if necessary.
+        if self.dust is None:
+            self.dust = Dust(self.obj)
+            simulator.import_particle_system(self.dust)
+
+        # Attach if necessary
+        if self.value and not self.prev_value:
+            self.dust.attach(self.obj)
+            for particle in self.dust.particles:
+                particle.active = True
+
         # cleaning logic
-        cleaning_tools = simulator.scene.get_objects_with_state("cleaning_tool")
+        cleaning_tools = simulator.scene.get_objects_with_state(CleaningTool)
         for object in cleaning_tools:
             for particle in self.dust.particles:
                 particle_pos = particle.get_position()
-                aabb = object.states["aabb"].get_value()
+                aabb = object.states[AABB].get_value()
                 xmin = aabb[0][0]
                 xmax = aabb[1][0]
                 ymin = aabb[0][1]
@@ -52,12 +65,13 @@ class Dirty(AbsoluteObjectState, BooleanState):
                     self.dust.stash_particle(particle)
 
         # update self.value based on particle count
+        self.prev_value = self.value
         self.value = self.dust.get_num_active() > self.dust.get_num() * CLEAN_THRESHOLD
 
     @staticmethod
     def get_dependencies():
-        return ["aabb"]
+        return [AABB]
 
     @staticmethod
     def get_optional_dependencies():
-        return ["cleaning_tool"]
+        return [CleaningTool]

@@ -1,3 +1,4 @@
+from gibson2.object_states.temperature import Temperature
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 
 
@@ -8,7 +9,7 @@ class MaxTemperature(AbsoluteObjectState):
 
     @staticmethod
     def get_dependencies():
-        return AbsoluteObjectState.get_dependencies() + ["temperature"]
+        return AbsoluteObjectState.get_dependencies() + [Temperature]
 
     def __init__(self, obj):
         super(MaxTemperature, self).__init__(obj)
@@ -22,4 +23,4 @@ class MaxTemperature(AbsoluteObjectState):
         raise NotImplementedError("Setting max temperature is not supported - set temperature instead.")
 
     def update(self, simulator):
-        self.value = max(self.obj.states['temperature'].get_value(), self.value)
+        self.value = max(self.obj.states[Temperature].get_value(), self.value)

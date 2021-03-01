@@ -8,5 +8,5 @@ class StatefulObject(Object):
 
     def __init__(self):
         super(StatefulObject, self).__init__()
-        self.abilities = []
-        self.states = prepare_object_states(self, online=True)
+        self.abilities = {}
+        prepare_object_states(self, online=True)
