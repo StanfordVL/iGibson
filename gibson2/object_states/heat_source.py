@@ -1,4 +1,4 @@
-from gibson2.external.pybullet_tools.utils import get_link_position_from_name
+from gibson2.external.pybullet_tools.utils import link_from_name, get_link_state
 from gibson2.object_states.aabb import AABB
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.toggle import ToggledOn
@@ -68,6 +68,11 @@ class HeatSource(CachingEnabledObjectState):
         # we record that for use in the heat transfer process.
         self.requires_inside = requires_inside
 
+        # This variable indicates that the object does not have the necessary link.
+        self.link_missing = False
+        self.link_id = None
+        self.body_id = None
+
     @staticmethod
     def get_dependencies():
         return CachingEnabledObjectState.get_dependencies() + [AABB, Inside]
@@ -77,6 +82,21 @@ class HeatSource(CachingEnabledObjectState):
         return CachingEnabledObjectState.get_optional_dependencies() + [ToggledOn, Open]
 
     def _compute_value(self):
+        # If we've already attempted to find the link & it's missing, stop.
+        if self.link_missing:
+            return None
+
+        # If we need the link info, get it now.
+        if self.link_id is None or self.body_id is None:
+            # Get the body id
+            self.body_id = self.obj.get_body_id()
+
+            try:
+                self.link_id = link_from_name(self.body_id, _HEATING_ELEMENT_LINK_NAME)
+            except ValueError:
+                self.link_missing = True
+                return None
+
         # Check the toggle state.
         if self.requires_toggled_on and not self.obj.states[ToggledOn].get_value():
             return None
@@ -86,7 +106,7 @@ class HeatSource(CachingEnabledObjectState):
             return None
 
         # Get heating element position from URDF
-        return get_link_position_from_name(self.obj.get_body_id(), _HEATING_ELEMENT_LINK_NAME)
+        return get_link_state(self.body_id, self.link_id).linkWorldPosition
 
     def set_value(self, new_value):
         raise NotImplementedError(
