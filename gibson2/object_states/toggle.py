@@ -1,4 +1,5 @@
-from gibson2.external.pybullet_tools.utils import get_link_position_from_name
+from gibson2.external.pybullet_tools.utils import get_link_position_from_name, link_from_name, get_link_state
+from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.visual_marker import VisualMarker
@@ -9,8 +10,7 @@ TOGGLE_DISTANCE_THRESHOLD = 0.1
 _TOGGLE_LINK_NAME = "toggle_button"
 
 
-class ToggledOn(AbsoluteObjectState, BooleanState):
-
+class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
     def __init__(self, obj):
         super(ToggledOn, self).__init__(obj)
         self.value = False
@@ -34,8 +34,12 @@ class ToggledOn(AbsoluteObjectState, BooleanState):
     def set_value(self, new_value):
         self.value = new_value
 
+    @staticmethod
+    def get_state_link_name():
+        return _TOGGLE_LINK_NAME
+
     def update(self, simulator):
-        marker_on_position = get_link_position_from_name(self.obj.get_body_id(), _TOGGLE_LINK_NAME)
+        marker_on_position = self.get_link_position()
         if marker_on_position is None:
             return
 
