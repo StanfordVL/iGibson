@@ -1,6 +1,7 @@
 from gibson2.external.pybullet_tools.utils import link_from_name, get_link_state
 from gibson2.object_states.aabb import AABB
 from gibson2.object_states.inside import Inside
+from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.open import Open
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
@@ -14,7 +15,7 @@ _DEFAULT_HEATING_RATE = 0.04
 _DEFAULT_DISTANCE_THRESHOLD = 0.2
 
 
-class HeatSource(CachingEnabledObjectState):
+class HeatSource(CachingEnabledObjectState, LinkBasedStateMixin):
     """
     This state indicates the heat source state of the object.
 
@@ -68,11 +69,6 @@ class HeatSource(CachingEnabledObjectState):
         # we record that for use in the heat transfer process.
         self.requires_inside = requires_inside
 
-        # This variable indicates that the object does not have the necessary link.
-        self.link_missing = False
-        self.link_id = None
-        self.body_id = None
-
     @staticmethod
     def get_dependencies():
         return CachingEnabledObjectState.get_dependencies() + [AABB, Inside]
@@ -81,21 +77,17 @@ class HeatSource(CachingEnabledObjectState):
     def get_optional_dependencies():
         return CachingEnabledObjectState.get_optional_dependencies() + [ToggledOn, Open]
 
+    @staticmethod
+    def get_state_link_name():
+        return _HEATING_ELEMENT_LINK_NAME
+
     def _compute_value(self):
         # If we've already attempted to find the link & it's missing, stop.
+        # Note that we don't want to get the heating element position yet because
+        # there's cheaper things to check first (toggled / closed).
+        self.load_link()
         if self.link_missing:
             return None
-
-        # If we need the link info, get it now.
-        if self.link_id is None or self.body_id is None:
-            # Get the body id
-            self.body_id = self.obj.get_body_id()
-
-            try:
-                self.link_id = link_from_name(self.body_id, _HEATING_ELEMENT_LINK_NAME)
-            except ValueError:
-                self.link_missing = True
-                return None
 
         # Check the toggle state.
         if self.requires_toggled_on and not self.obj.states[ToggledOn].get_value():
@@ -105,8 +97,8 @@ class HeatSource(CachingEnabledObjectState):
         if self.requires_closed and self.obj.states[Open].get_value():
             return None
 
-        # Get heating element position from URDF
-        return get_link_state(self.body_id, self.link_id).linkWorldPosition
+        # Return the heating element position.
+        return self.get_link_position()
 
     def set_value(self, new_value):
         raise NotImplementedError(

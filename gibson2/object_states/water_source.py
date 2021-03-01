@@ -2,6 +2,7 @@ import numpy as np
 
 from gibson2.external.pybullet_tools.utils import get_link_position_from_name
 from gibson2.object_states.contact_bodies import ContactBodies
+from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.objects.particles import WaterStreamPhysicsBased
@@ -17,7 +18,7 @@ _WATER_SOURCE_LINK_NAME = "water_source"
 _OFFSET_FROM_LINK = np.array([0, 0, -0.1])
 
 
-class WaterSource(AbsoluteObjectState):
+class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
     def __init__(self, obj):
         super(WaterSource, self).__init__(obj)
@@ -25,8 +26,12 @@ class WaterSource(AbsoluteObjectState):
         # Reduced to a single water stream for now since annotations don't support more.
         self.water_stream = None
 
+    @staticmethod
+    def get_state_link_name():
+        return _WATER_SOURCE_LINK_NAME
+
     def update(self, simulator):
-        water_source_position = get_link_position_from_name(self.obj.get_body_id(), _WATER_SOURCE_LINK_NAME)
+        water_source_position = self.get_link_position()
         if water_source_position is None:
             return
 
