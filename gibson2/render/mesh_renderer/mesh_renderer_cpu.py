@@ -1283,7 +1283,6 @@ class MeshRenderer(object):
                 print(
                     'ERROR: trying to set hidden state of an instance that has no visual objects!')
             # Need to multiply buf_idxs by four so we index into the first element of the vec4 corresponding to each buffer index
-            print(buf_idxs)
             vec4_buf_idxs = [idx * 4 for idx in buf_idxs]
             vec4_buf_idxs_highlight = [idx * 4+1 for idx in buf_idxs]
 
