@@ -26,18 +26,19 @@ class VrAgent(object):
     use of this class is recommended for most VR applications, especially if you
     just want to get a VR scene up and running quickly.
     """
-    def __init__(self, sim, agent_num=1, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True, use_gripper=False, normal_color=True, test_shape=None):
+    def __init__(self, sim, agent_num=1, use_constraints=True, hands=['left', 'right'], use_body=True, use_gaze_marker=True, use_gripper=False, normal_color=True, use_hand_prim=True):
         """
         Initializes VR body:
-        sim - iGibson simulator object
-        agent_num - the number of the agent - used in multi-user VR
-        use_constraints - whether to use constraints to move agent (normally set to True - set to false in state replay mode)
-        hands - list containing left, right or no hands
-        use_body - true if using VrBody
-        use_gaze_marker - true if we want to visualize gaze point
-        use_gripper - whether the agent should use the pybullet gripper or the iGibson VR hand
-        normal_color - whether to use normal color (grey) (when True) or alternative color (blue-tinted). The alternative
-        color is helpful for distinguishing between the client and server in multi-user VR.
+        :parm sim: iGibson simulator object
+        :parm agent_num: the number of the agent - used in multi-user VR
+        :parm use_constraints: whether to use constraints to move agent (normally set to True - set to false in state replay mode)
+        :parm hands: list containing left, right or no hands
+        :parm use_body: true if using VrBody
+        :parm use_gaze_marker: true if we want to visualize gaze point
+        :parm use_gripper: whether the agent should use the pybullet gripper or the iGibson VR hand
+        :parm normal_color: whether to use normal color (grey) (when True) or alternative color (blue-tinted). The alternative
+        :parm color: is helpful for distinguishing between the client and server in multi-user VR.
+        :parm use_hand_prim: whether to use cylinder primitives for the VR hand's fingers, instead of VHACD meshes
         """
         self.sim = sim
         self.agent_num = agent_num
@@ -49,18 +50,17 @@ class VrAgent(object):
         self.use_gaze_marker = use_gaze_marker
         self.use_gripper = use_gripper
         self.normal_color = normal_color
-        # TODO: Remove test shape!
-        self.test_shape = test_shape
+        self.use_hand_prim = use_hand_prim
 
         # Dictionary of vr object names to objects
         self.vr_dict = dict()
 
         if 'left' in self.hands:
-            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', use_constraints=self.use_constraints, normal_color=self.normal_color, test_shape=self.test_shape) if not use_gripper 
+            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', use_constraints=self.use_constraints, normal_color=self.normal_color, use_prim=self.use_hand_prim) if not use_gripper 
                                         else VrGripper(self.sim, hand='left', use_constraints=self.use_constraints))
             self.vr_dict['left_hand'].hand_setup(self.z_coord)
         if 'right' in self.hands:
-            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', use_constraints=self.use_constraints, normal_color=self.normal_color, test_shape=self.test_shape) if not use_gripper 
+            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', use_constraints=self.use_constraints, normal_color=self.normal_color, use_prim=self.use_hand_prim) if not use_gripper 
                                         else VrGripper(self.sim, hand='right', use_constraints=self.use_constraints))
             self.vr_dict['right_hand'].hand_setup(self.z_coord)
         if self.use_body:
@@ -360,17 +360,15 @@ class VrHand(VrHandBase):
     Joint index 9, name b'Iproximal__palm', type 0
     Joint index 10, name b'Imiddle__Iproximal', type 0
     """
-    # TODO: Remove test parameter and suffix
-    def __init__(self, s, hand='right', use_constraints=True, normal_color=True, test_shape=None):
+    def __init__(self, s, hand='right', use_constraints=True, normal_color=True, use_prim=True):
         self.normal_color = normal_color
         hand_path = 'normal_color' if self.normal_color else 'alternative_color'
         self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', hand_path)
-        if test_shape == 'cylinder':
-            suffix = 'vr_hand_cyl_test'
-        elif test_shape == 'box':
-            suffix = 'vr_hand_box_test'
+        self.use_prim = use_prim
+        if self.use_prim:
+            suffix = 'vr_hand_prim'
         else:
-            suffix = 'vr_hand'.format(hand)
+            suffix = 'vr_hand_vhacd'
         final_suffix = '{}_{}.urdf'.format(suffix, hand)
         super(VrHand, self).__init__(s, os.path.join(self.vr_hand_folder, final_suffix),
                                     hand=hand, use_constraints=use_constraints, base_rot=p.getQuaternionFromEuler([0, 160, -80 if hand == 'right' else 80]))
@@ -393,7 +391,7 @@ class VrHand(VrHandBase):
         # Thumb does not close as much to match other fingers
         self.close_pos[7] = 0.7
         self.close_pos[8] = 0.7
-        self.hand_friction = 2.0
+        self.hand_friction = 2.0 if not self.use_prim else 3.0
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 
     def hand_setup(self, z_coord):
@@ -406,7 +404,8 @@ class VrHand(VrHandBase):
             # Make masses larger for greater stability
             # Mass is in kg, friction is coefficient
             info = p.getJointInfo(self.body_id, joint_index)
-            print("Joint index {}, name {}, type {}".format(info[0], info[1], info[2]))
+            # Note: uncomment this print statement for debugging VR hand joints
+            # print("Joint index {}, name {}, type {}".format(info[0], info[1], info[2]))
             p.changeDynamics(self.body_id, joint_index, mass=0.1, lateralFriction=self.hand_friction)
             open_pos = self.open_pos[joint_index]
             p.resetJointState(self.body_id, joint_index, targetValue=open_pos, targetVelocity=0.0)
