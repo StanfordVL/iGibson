@@ -61,11 +61,15 @@ class InstanceGroup(object):
         self.metalness = 0
         # Determines whether object will be rendered
         self.hidden = False
+        self.highlight = False
         # Indices into optimized buffers such as color information and transformation buffer
         # These values are used to set buffer information during simulation
         self.or_buffer_indices = None
         self.last_trans = [np.copy(item) for item in poses_trans]
         self.last_rot = [np.copy(item) for item in poses_rot]
+
+    def set_highlight(self, highlight):
+        self.highlight = highlight
 
     def render(self, shadow_pass=0):
         """
@@ -285,6 +289,10 @@ class Instance(object):
         self.or_buffer_indices = None
         self.last_trans = np.copy(pose_trans)
         self.last_rot = np.copy(pose_rot)
+        self.highlight = False
+
+    def set_highlight(self, highlight):
+        self.highlight = highlight
 
     def render(self, shadow_pass=0):
         """
