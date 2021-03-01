@@ -632,17 +632,29 @@ class Viewer:
             self.right_down = False
             self.manipulation_mode = (self.manipulation_mode + 1) % 3
 
+        elif q == ord('0') or q == ord('1') or q == ord('2') or q == ord('3') or q == ord('4') or q == ord('5'):
+            idxx = int(chr(q)) 
+            self.renderer.switch_camera(idxx)
+            if not self.renderer.is_camera_active(idxx):
+                cv2.destroyWindow(self.renderer.get_camera_name(idxx))        
+
         if self.recording and not self.pause_recording:
             cv2.imwrite(os.path.join(self.video_folder, '{:05d}.png'.format(self.frame_idx)),
                         (frame * 255).astype(np.uint8))
             self.frame_idx += 1
 
         if self.renderer is not None:
-            frames = self.renderer.render_robot_cameras(modes=('rgb'))
+            # frames = self.renderer.render_robot_cameras(modes=('rgb'))
+            frames = self.renderer.render_robot_cameras(modes=('rgb'), hide_robot=self.renderer.rendering_settings.hide_robot)
+            names = self.renderer.get_names_active_cameras()
+            assert len(frames) == len(names)
             if len(frames) > 0:
-                frame = cv2.cvtColor(np.concatenate(
-                    frames, axis=1), cv2.COLOR_RGB2BGR)
-                cv2.imshow('RobotView', frame)
+                # frame = cv2.cvtColor(np.concatenate(
+                #     frames, axis=1), cv2.COLOR_RGB2BGR)
+                # cv2.imshow('RobotView', frame)
+                for (rgb, cam_name) in zip(frames, names):
+                    frame = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+                    cv2.imshow(cam_name, frame)                   
 
 
 if __name__ == '__main__':
