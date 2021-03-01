@@ -6,11 +6,12 @@ import os
 import pybullet as p
 
 import gibson2
+from gibson2 import object_states
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.objects.vr_objects import VrAgent
 from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from gibson2.objects.articulated_object import URDFObject
@@ -60,11 +61,8 @@ else:
                 rendering_settings=vr_rendering_settings,
                 vr_settings=vr_settings)
 
-scene = InteractiveIndoorScene('Rs_int',
-                          build_graph=True,
-                          pybullet_load_texture=True)
-scene._set_first_n_objects(3)
-s.import_ig_scene(scene)
+scene = EmptyScene()
+s.import_scene(scene)
 
 if not VIEWER_MANIP:
     vr_agent = VrAgent(s, use_gripper=USE_GRIPPER, normal_color=False)
@@ -75,17 +73,18 @@ sink = URDFObject(filename=model_path,
                  category='sink',
                  name='sink_1',
                  scale=np.array([0.8,0.8,0.8]),
-                 abilities=['toggleable', 'water_source']
+                 abilities={'toggleable': {}, 'water_source': {}}
                  )
 
 s.import_object(sink)
 sink.set_position([1,1,0.8])
+sink.states[object_states.ToggledOn].set_value(True)
 
 block = YCBObject(name='036_wood_block')
 s.import_object(block)
 block.set_position([1, 1, 1.8])
 block.abilities = ["soakable", "cleaning_tool"]
-block.states = prepare_object_states(block, abilities=["soakable", "cleaning_tool"])
+prepare_object_states(block, abilities={"soakable": {}, "cleaning_tool": {}})
 # assume block can soak water
 
 model_path = os.path.join(get_ig_model_path('table', '19898'), '19898.urdf')
@@ -93,9 +92,10 @@ desk = URDFObject(filename=model_path,
                  category='table',
                  name='19898',
                  scale=np.array([0.8, 0.8, 0.8]),
-                 abilities=['dustable']
+                 abilities={'dustyable': {}}
                  )
 
+desk.states[object_states.Dirty].set_value(True)
 s.import_object(desk)
 desk.set_position([1, -2, 0.4])
 

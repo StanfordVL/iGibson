@@ -1,3 +1,6 @@
+from gibson2.object_states.aabb import AABB
+from gibson2.object_states.cleaning_tool import CleaningTool
+from gibson2.object_states.soaked import Soaked
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.particles import Stain
@@ -8,35 +11,46 @@ class Stained(AbsoluteObjectState, BooleanState):
 
     def __init__(self, obj):
         super(Stained, self).__init__(obj)
+        self.prev_value = False
         self.value = False
-        self.stain = Stain()
-        self.stain.register_parent_obj(self.obj)
+        self.stain = None
 
     def get_value(self):
         return self.value
 
     def set_value(self, new_value):
         self.value = new_value
-        if self.value:
-            self.stain.attach(self.obj)
-            for particle in self.stain.particles:
-                particle.active = True
-        else:
+        if not self.value:
             for particle in self.stain.particles:
                 self.stain.stash_particle(particle)
 
     def update(self, simulator):
+        # Nothing to do if not stained.
+        if not self.value:
+            return
+
+        # Load the stain if necessary.
+        if self.stain is None:
+            self.stain = Stain(self.obj)
+            simulator.import_particle_system(self.stain)
+
+        # Attach if we went to stained in this step.
+        if self.value and not self.prev_value:
+            self.stain.attach(self.obj)
+            for particle in self.stain.particles:
+                particle.active = True
+
         # cleaning logic
-        cleaning_tools = simulator.scene.get_objects_with_state("cleaning_tool")
+        cleaning_tools = simulator.scene.get_objects_with_state(CleaningTool)
         cleaning_tools_wet = []
         for tool in cleaning_tools:
-            if "soaked" in tool.states and tool.states["soaked"].get_value():
+            if Soaked in tool.states and tool.states[Soaked].get_value():
                 cleaning_tools_wet.append(tool)
 
         for object in cleaning_tools_wet:
             for particle in self.stain.particles:
                 particle_pos = particle.get_position()
-                aabb = object.states["aabb"].get_value()
+                aabb = object.states[AABB].get_value()
                 xmin = aabb[0][0]
                 xmax = aabb[1][0]
                 ymin = aabb[0][1]
@@ -57,13 +71,14 @@ class Stained(AbsoluteObjectState, BooleanState):
                     self.stain.stash_particle(particle)
 
         # update self.value based on particle count
+        self.prev_value = self.value
         self.value = self.stain.get_num_active() > self.stain.get_num() * CLEAN_THRESHOLD
 
 
     @staticmethod
     def get_dependencies():
-        return ["aabb"]
+        return [AABB]
 
     @staticmethod
     def get_optional_dependencies():
-        return ["soaked", "cleaning_tool"]
+        return [Soaked, CleaningTool]

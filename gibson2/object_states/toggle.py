@@ -1,3 +1,4 @@
+from gibson2.external.pybullet_tools.utils import get_link_position_from_name
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.visual_marker import VisualMarker
@@ -5,6 +6,8 @@ import numpy as np
 from collections import deque
 
 TOGGLE_DISTANCE_THRESHOLD = 0.1
+_TOGGLE_LINK_NAME = "toggle_button"
+
 
 class ToggledOn(AbsoluteObjectState, BooleanState):
 
@@ -32,19 +35,16 @@ class ToggledOn(AbsoluteObjectState, BooleanState):
         self.value = new_value
 
     def update(self, simulator):
+        marker_on_position = get_link_position_from_name(self.obj.get_body_id(), _TOGGLE_LINK_NAME)
+        if marker_on_position is None:
+            return
+
         if not self.marker_added:
             simulator.import_object(self.visual_marker_on)
             simulator.import_object(self.visual_marker_off)
             self.marker_added = True
 
         # TODO: currently marker position is hard coded, to get marker offset from annotation
-        marker_offset = [0,0,0.6]
-        aabb = self.obj.states['aabb'].get_value()
-        x_center = (aabb[0][0] + aabb[1][0]) / 2
-        y_center = (aabb[0][1] + aabb[1][1]) / 2
-        z_center = (aabb[0][2] + aabb[1][2]) / 2
-
-        marker_on_position = np.array([x_center, y_center, z_center]) + np.array(marker_offset)
         marker_off_position = [0,0,-100]
 
         vr_hands = []

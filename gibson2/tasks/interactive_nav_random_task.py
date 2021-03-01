@@ -62,6 +62,8 @@ class InteractiveNavRandomTask(PointNavRandomTask):
 
             env.land(obj, pos, orn)
 
+            p.removeState(state_id)
+
     def reset_scene(self, env):
         """
         Task-specific scene reset: reset the interactive objects after scene and agent reset
