@@ -50,7 +50,6 @@ device_settings:
       overlay_toggle: [1, 1]
   OCULUS:
     eye_tracking: False
-    # TODO: Add button map here@
     action_button_map:
       reset_agent: [33, 1]
       overlay_toggle: [1, 1]
