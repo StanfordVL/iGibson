@@ -11,10 +11,10 @@ from time import sleep
 from gibson2.utils.muvr_utils import IGVRTestClient, IGVRTestServer
 
 # Client and server settings
-SERVER_FPS  = 5.0
+SERVER_FPS  = 1.0
 # Note: size is measured in number of floats
 SERVER_PACKET_SIZE = 1000
-CLIENT_FPS = 300.0
+CLIENT_FPS = 30.0
 CLIENT_PACKET_SIZE = 1000
 
 
