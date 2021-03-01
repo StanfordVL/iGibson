@@ -875,7 +875,24 @@ class Simulator:
             raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
         return self.renderer.gen_static_overlay(image_fpath, width=width, pos=pos)
 
-    def _non_physics_step(self):
+    def set_hud_show_state(self, show_state):
+        """
+        Shows/hides the main VR HUD.
+        :param show_state: whether to show HUD or not
+        """
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+        self.renderer.vr_hud.set_overlay_show_state(show_state)
+
+    def get_hud_show_state(self):
+        """
+        Returns the show state of the main VR HUD.
+        """
+        if not self.can_access_vr_context:
+            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+        return self.renderer.vr_hud.get_overlay_show_state()
+
+    def _step_simulation(self):
         """
         Complete any non-physics steps such as state updates.
         """
