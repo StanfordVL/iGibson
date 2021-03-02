@@ -16,9 +16,11 @@ from PodSixNet.Server import Server
 
 
 # An FPS cap is needed to ensure that the client and server don't fall too far out of sync
-# 45 is a good cap that matches average VR speed and guarantees that the server frame data queue does not become backlogged
-MUVR_FPS_CAP = 45.0
+# 30 is a good cap that matches average VR speed and guarantees that the server frame data queue does not become backlogged
+MUVR_FPS_CAP = 30.0
 
+
+# Classes used in MUVR demos
 
 class IGVRClient(ConnectionListener):
     """ MUVR client that uses server's frame data to render and generates VR data for the server to consume. """
@@ -212,3 +214,100 @@ class IGVRServer(Server):
         time_until_min_dur = (1 / MUVR_FPS_CAP) - frame_dur
         if time_until_min_dur > 0:
             sleep(time_until_min_dur)
+
+# Test functions/classes used for debugging network issues
+
+def gen_test_packet(sender='server', size=3000):
+    """
+    Generates a simple test packet, containing a decent amount of data,
+    as well as the timestamp of generation and the sender.
+    """
+    # Packet containing 'size' floats
+    data = [0.0 if i % 2 == 0 else 1.0 for i in range(size)]
+    timestamp = '{}'.format(time.time())
+    packet = {
+        "data": data,
+        "timestamp": timestamp,
+        "sender": sender
+    }
+    return packet
+
+
+class IGVRTestClient(ConnectionListener):
+    """ Test client to debug connections. """
+    def __init__(self, host, port):
+        self.Connect((host, port))
+
+    def set_packet_size(self, size):
+        self.packet_size = size
+
+    def gen_packet(self):
+        self.packet = gen_test_packet(sender='client', size=self.packet_size)
+
+    def send_packet(self):
+        self.Send({"action": "client_packet", "packet": self.packet})
+
+    def Network_server_packet(self, data):
+        self.server_packet = data["packet"]
+        print('----- Packet received from {} -----'.format(self.server_packet["sender"]))
+        packet_tstamp = float(self.server_packet["timestamp"])
+        print('Packet Timestamp: {}'.format(packet_tstamp))
+        curr_time = time.time()
+        print('Current Timestamp: {}'.format(curr_time))
+        print('Delta (+ is delay): {}\n'.format(curr_time - packet_tstamp))
+
+    def Refresh(self):
+        # Receive data from connection's queue
+        self.Pump()
+        # Push data out to the network
+        connection.Pump()
+
+
+class IGVRTestChannel(Channel):
+    """ Server's representation of the IGVRTestClient. """
+    def __init__(self, *args, **kwargs):
+        Channel.__init__(self, *args, **kwargs)
+
+    def Close(self):
+        print(self, "Client disconnected")
+
+    def Network_client_packet(self, data):
+        self.client_packet = data["packet"]
+        print('----- Packet received from {} -----'.format(self.client_packet["sender"]))
+        packet_tstamp = float(self.client_packet["timestamp"])
+        print('Packet Timestamp: {}'.format(packet_tstamp))
+        curr_time = time.time()
+        print('Current Timestamp: {}'.format(curr_time))
+        print('Delta (+ is delay): {}\n'.format(curr_time - packet_tstamp))
+
+    def send_packet(self, packet):
+        self.Send({"action": "server_packet", "packet": packet})
+
+
+class IGVRTestServer(Server):
+    """ Test MUVR server. """
+    channelClass = IGVRTestChannel
+    
+    def __init__(self, *args, **kwargs):
+        Server.__init__(self, *args, **kwargs)
+        self.client = None
+
+    def Connected(self, channel, addr):
+        print("Someone connected to the server!")
+        self.client = channel
+
+    def client_connected(self):
+        return self.client is not None
+
+    def set_packet_size(self, size):
+        self.packet_size = size
+
+    def gen_packet(self):
+        self.packet = gen_test_packet(sender='server', size=self.packet_size)
+
+    def send_packet(self):
+        if self.client:
+            self.client.send_packet(self.packet)
+    
+    def Refresh(self):
+        self.Pump()
