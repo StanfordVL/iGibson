@@ -93,6 +93,57 @@ class VrStaticImageOverlay(VrOverlayBase):
         self.renderer.vrsys.createOverlay(self.overlay_name, self.width, self.pos[0], self.pos[1], self.pos[2], self.image_fpath)
 
 
+class VrConditionSwitcher(object):
+    """
+    Class that handles switching of various ATUS conditions - including overlays and objects.
+    """
+    def __init__(self, s):
+        """
+        :param s: reference to simulator
+        """
+        self.s = s
+        # Store list of previous objects, so they can be un-highlighted
+        self.prev_obj_list = []
+        # TODO: Feel free to change the default text!
+        self.start_text = 'Welcome!\nPlease press toggle\nto see the next condition!'
+        # TODO: Replace this dummy function with tasknet function - can insert as init argument, for example
+        def show_instruction():
+            sample_text = 'SAMPLE INSTRUCTION:\n\ncondition {}\ncondition {}\ncondition {}'.format(np.random.randint(100), 
+                                                                                  np.random.randint(100), 
+                                                                                  np.random.randint(100))
+            return (sample_text, [0,0,0.5], [])
+        self.show_instr_func = show_instruction
+
+        # TODO: Get rid of this
+        self.is_showing = True
+
+        # Text displaying next conditions
+        self.condition_text = s.add_vr_overlay_text(text_data=self.start_text, font_size=60, font_style='Regular', 
+                            color=[0,0,0], pos=[150, 150])
+    
+    def switch_condition(self):
+        """
+        Switches to the next condition. This involves displaying the text for
+        the new condition, as well as highlighting/un-highlighting the appropriate objects.
+        """
+        # 1) Query tasknet for next state - get (text, color, obj_list) tuple
+        new_text, new_color, new_obj_list = self.show_instr_func()
+        # 2) Render new text
+        self.condition_text.set_text(new_text)
+        self.condition_text.set_attribs(color=new_color)
+        # 3) Un-highlight previous objects, then highlight new objects
+        for prev_obj in self.prev_obj_list:
+            prev_obj.unhighlight()
+        for new_obj in new_obj_list:
+            new_obj.highlight()
+
+    def toggle_show_state(self):
+        """
+        Toggles show state of switcher (which is on by default)
+        """
+        self.s.set_hud_show_state(not self.s.get_hud_show_state())
+
+
 class VrSettings(object):
     """
     Class containing VR settings pertaining to both the VR renderer
