@@ -14,10 +14,7 @@ class LinkBasedStateMixin(object):
     def get_state_link_name():
         raise ValueError("LinkBasedState child should specify link name by overriding get_state_link_name.")
 
-    def load_link(self):
-        if self.link_missing:
-            return
-
+    def _load_link(self):
         # If we need the link info, get it now.
         if self.link_id is None or self.body_id is None:
             # Get the body id
@@ -29,10 +26,11 @@ class LinkBasedStateMixin(object):
                 self.link_missing = True
 
     def get_link_position(self):
-        # Load the link if necessary.
-        self.load_link()
-
+        # Stop if we already tried to find the link & couldn't.
         if self.link_missing:
-            return None
+            return
+
+        # Load the link if necessary.
+        self._load_link()
 
         return get_link_state(self.body_id, self.link_id).linkWorldPosition
