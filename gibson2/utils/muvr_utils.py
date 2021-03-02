@@ -254,7 +254,7 @@ class IGVRTestClient(ConnectionListener):
         print('Packet Timestamp: {}'.format(packet_tstamp))
         curr_time = time.time()
         print('Current Timestamp: {}'.format(curr_time))
-        print('Delta (+ is delay): {}'.format(curr_time - packet_tstamp))
+        print('Delta (+ is delay): {}\n'.format(curr_time - packet_tstamp))
 
     def Refresh(self):
         # Receive data from connection's queue
@@ -278,7 +278,7 @@ class IGVRTestChannel(Channel):
         print('Packet Timestamp: {}'.format(packet_tstamp))
         curr_time = time.time()
         print('Current Timestamp: {}'.format(curr_time))
-        print('Delta (+ is delay): {}'.format(curr_time - packet_tstamp))
+        print('Delta (+ is delay): {}\n'.format(curr_time - packet_tstamp))
 
     def send_packet(self, packet):
         self.Send({"action": "server_packet", "packet": packet})
