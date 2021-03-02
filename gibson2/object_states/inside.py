@@ -2,9 +2,10 @@ from gibson2.object_states import AABB
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
-from gibson2.external.pybullet_tools.utils import get_aabb_center, get_aabb_extent, aabb_contains_point, \
-    get_aabb_volume
+from gibson2.external.pybullet_tools.utils import get_aabb_center, get_aabb_extent, aabb_contains_point, get_aabb_volume
 import numpy as np
+import gibson2
+from IPython import embed
 
 
 class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
@@ -17,6 +18,9 @@ class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
                 clear_cached_states(other)
                 if self.get_value(other) != new_value:
                     sampling_success = False
+                if gibson2.debug_sampling:
+                    print('Inside checking', sampling_success)
+                    embed()
             if sampling_success:
                 break
 

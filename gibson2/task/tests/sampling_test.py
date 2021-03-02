@@ -4,9 +4,18 @@ import tasknet
 tasknet.set_backend("iGibson")
 
 
-igtn_task = iGTNTask('sampling_test', task_instance=4)
+igtn_task = iGTNTask('sampling_test', task_instance=6)
+scene_kwargs = {
+    'load_object_categories': ['coffee_table', 'breakfast_table', 'countertop', 'fridge', 'table_lamp', 'sofa'],
+    'not_load_object_categories': ['ceilings'],
+}
 igtn_task.initialize_simulator(
-    scene_id='Rs_int', mode='gui', load_clutter=False)
+    scene_id='Rs_int',
+    mode='gui',
+    load_clutter=False,
+    should_debug_sampling=True,
+    scene_kwargs=scene_kwargs
+)
 
 while True:
     igtn_task.simulator.step()

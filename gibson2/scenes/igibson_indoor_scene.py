@@ -42,6 +42,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  object_randomization_idx=None,
                  should_open_all_doors=False,
                  load_object_categories=None,
+                 not_load_object_categories=None,
                  load_room_types=None,
                  load_room_instances=None,
                  seg_map_resolution=0.1,
@@ -63,6 +64,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param object_randomization_idx: index of a pre-computed object randomization model that guarantees good scene quality
         :param should_open_all_doors: whether to open all doors after episode reset (usually required for navigation tasks)
         :param load_object_categories: only load these object categories into the scene (a list of str)
+        :param not_load_object_categories: do not load these object categories into the scene (a list of str)
         :param load_room_types: only load objects in these room types into the scene (a list of str)
         :param load_room_instances: only load objects in these room instances into the scene (a list of str)
         :param seg_map_resolution: room segmentation map resolution
@@ -128,7 +130,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Decide which room(s) and object categories to load
         self.filter_rooms_and_object_categories(
-            load_object_categories, load_room_types, load_room_instances)
+            load_object_categories, not_load_object_categories,
+            load_room_types, load_room_instances)
 
         # Load average object density if exists
         self.avg_obj_dims = get_ig_avg_category_specs()
@@ -151,6 +154,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 in_rooms = link.attrib.get('room', None)
                 if in_rooms is not None:
                     in_rooms = in_rooms.split(',')
+
+                # Do not load these object categories (potentially building structures as well)
+                if self.not_load_object_categories is not None and \
+                        category in self.not_load_object_categories:
+                    continue
 
                 # Find the urdf file that defines this object
                 if category in ["walls", "floors", "ceilings"]:
@@ -255,12 +263,14 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
     def filter_rooms_and_object_categories(self,
                                            load_object_categories,
+                                           not_load_object_categories,
                                            load_room_types,
                                            load_room_instances):
         """
         Handle partial scene loading based on object categories, room types or room instances
 
         :param load_object_categories: only load these object categories into the scene (a list of str)
+        :param not_load_object_categories: do not load these object categories into the scene (a list of str)
         :param load_room_types: only load objects in these room types into the scene (a list of str)
         :param load_room_instances: only load objects in these room instances into the scene (a list of str)
         """
@@ -268,6 +278,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if isinstance(load_object_categories, str):
             load_object_categories = [load_object_categories]
         self.load_object_categories = load_object_categories
+
+        if isinstance(not_load_object_categories, str):
+            not_load_object_categories = [not_load_object_categories]
+        self.not_load_object_categories = not_load_object_categories
 
         if load_room_instances is not None:
             if isinstance(load_room_instances, str):

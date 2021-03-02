@@ -3,6 +3,8 @@ from gibson2.object_states.object_state_base import BooleanState, RelativeObject
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
 from gibson2.external.pybullet_tools.utils import get_aabb_center, aabb_contains_point, aabb2d_from_aabb, AABB
 from gibson2.utils.constants import UNDER_OBJECTS
+import gibson2
+from IPython import embed
 
 
 class Under(KinematicsMixin, RelativeObjectState, BooleanState):
@@ -16,6 +18,9 @@ class Under(KinematicsMixin, RelativeObjectState, BooleanState):
                 clear_cached_states(other)
                 if self.get_value(other) != new_value:
                     sampling_success = False
+                if gibson2.debug_sampling:
+                    print('Under checking', sampling_success)
+                    embed()
             if sampling_success:
                 break
 
