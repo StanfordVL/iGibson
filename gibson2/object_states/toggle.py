@@ -1,10 +1,8 @@
-from gibson2.external.pybullet_tools.utils import get_link_position_from_name, link_from_name, get_link_state
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.visual_marker import VisualMarker
 import numpy as np
-from collections import deque
 
 TOGGLE_DISTANCE_THRESHOLD = 0.1
 _TOGGLE_LINK_NAME = "toggle_button"
