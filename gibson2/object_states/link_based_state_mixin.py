@@ -23,7 +23,7 @@ class LinkBasedStateMixin(object):
                 self.link_id = link_from_name(
                     self.body_id, self.get_state_link_name())
             except ValueError:
-                self.link_id = None
+                pass
 
     def get_link_position(self):
         # Load the link if it is the first time this function is called
