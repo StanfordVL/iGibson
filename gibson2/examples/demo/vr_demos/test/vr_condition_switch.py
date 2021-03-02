@@ -48,7 +48,7 @@ def main():
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
     scene = InteractiveIndoorScene('Rs_int')
-    scene._set_first_n_objects(10)
+    # scene._set_first_n_objects(10)
     s.import_ig_scene(scene)
 
     # Create a VrAgent and it will handle all initialization and importing under-the-hood

@@ -892,7 +892,7 @@ class Simulator:
             raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
         return self.renderer.vr_hud.get_overlay_show_state()
 
-    def _step_simulation(self):
+    def _non_physics_step(self):
         """
         Complete any non-physics steps such as state updates.
         """
