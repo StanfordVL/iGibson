@@ -1,11 +1,9 @@
-from gibson2.external.pybullet_tools.utils import link_from_name, get_link_state
 from gibson2.object_states.aabb import AABB
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.open import Open
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
-from gibson2.object_states.utils import get_aabb_center
 
 # The name of the heat source link inside URDF files.
 _HEATING_ELEMENT_LINK_NAME = "heat_source"

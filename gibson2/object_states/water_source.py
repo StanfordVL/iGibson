@@ -1,6 +1,5 @@
 import numpy as np
 
-from gibson2.external.pybullet_tools.utils import get_link_position_from_name
 from gibson2.object_states.contact_bodies import ContactBodies
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.toggle import ToggledOn
