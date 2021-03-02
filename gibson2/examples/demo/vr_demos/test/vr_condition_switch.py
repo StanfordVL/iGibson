@@ -32,23 +32,22 @@ background_texture = os.path.join(
 def main():
     # VR rendering settings
     vr_rendering_settings = MeshRendererSettings(optimized=True,
-                                                fullscreen=False,
-                                                env_texture_filename=hdr_texture,
-                                                env_texture_filename2=hdr_texture2,
-                                                env_texture_filename3=background_texture,
-                                                light_modulation_map_filename=light_modulation_map_filename,
-                                                enable_shadow=True, 
-                                                enable_pbr=True,
-                                                msaa=True,
-                                                light_dimming_factor=1.0)
+                                                 fullscreen=False,
+                                                 env_texture_filename=hdr_texture,
+                                                 env_texture_filename2=hdr_texture2,
+                                                 env_texture_filename3=background_texture,
+                                                 light_modulation_map_filename=light_modulation_map_filename,
+                                                 enable_shadow=True,
+                                                 enable_pbr=True,
+                                                 msaa=True,
+                                                 light_dimming_factor=1.0)
     # VR system settings
     # Change use_vr to toggle VR mode on/off
     vr_settings = VrSettings()
-    s = Simulator(mode='vr', 
-                rendering_settings=vr_rendering_settings, 
-                vr_settings=vr_settings)
+    s = Simulator(mode='vr',
+                  rendering_settings=vr_rendering_settings,
+                  vr_settings=vr_settings)
     scene = InteractiveIndoorScene('Rs_int')
-    scene._set_first_n_objects(10)
     s.import_ig_scene(scene)
 
     # Create a VrAgent and it will handle all initialization and importing under-the-hood
@@ -66,8 +65,10 @@ def main():
     mustard_start = [-1, 1.55, 1.2]
     for i in range(len(mass_list)):
         mustard = YCBObject('006_mustard_bottle')
-        s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
-        mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
+        s.import_object(mustard, use_pbr=False,
+                        use_pbr_mapping=False, shadow_caster=True)
+        mustard.set_position(
+            [mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
         p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
 
     # Main simulation loop
