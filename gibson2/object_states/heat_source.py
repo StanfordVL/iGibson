@@ -80,11 +80,9 @@ class HeatSource(CachingEnabledObjectState, LinkBasedStateMixin):
         return _HEATING_ELEMENT_LINK_NAME
 
     def _compute_value(self):
-        # If we've already attempted to find the link & it's missing, stop.
-        # Note that we don't want to get the heating element position yet because
-        # there's cheaper things to check first (toggled / closed).
-        self.load_link()
-        if self.link_missing:
+        # Find the link first.
+        heating_element_position = self.get_link_position()
+        if heating_element_position is None:
             return None
 
         # Check the toggle state.
@@ -96,7 +94,7 @@ class HeatSource(CachingEnabledObjectState, LinkBasedStateMixin):
             return None
 
         # Return the heating element position.
-        return self.get_link_position()
+        return heating_element_position
 
     def set_value(self, new_value):
         raise NotImplementedError(
