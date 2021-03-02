@@ -97,24 +97,17 @@ class VrConditionSwitcher(object):
     """
     Class that handles switching of various ATUS conditions - including overlays and objects.
     """
-    def __init__(self, s):
+    def __init__(self, s, show_instr_func, switch_instr_func):
         """
         :param s: reference to simulator
         """
         self.s = s
         # Store list of previous objects, so they can be un-highlighted
         self.prev_obj_list = []
-        # TODO: Feel free to change the default text!
-        self.start_text = 'Welcome!\nPlease press toggle\nto see the next condition!'
-        # TODO: Replace this dummy function with tasknet function - can insert as init argument, for example
-        def show_instruction():
-            sample_text = 'SAMPLE INSTRUCTION:\n\ncondition {}\ncondition {}\ncondition {}'.format(np.random.randint(100), 
-                                                                                  np.random.randint(100), 
-                                                                                  np.random.randint(100))
-            return (sample_text, [0,0,0.5], [])
-        self.show_instr_func = show_instruction
+        self.start_text = 'Welcome!\nPlease press toggle\nto see the next goal condition!'
+        self.show_instr_func = show_instr_func
+        self.switch_instr_func = switch_instr_func  
 
-        # TODO: Get rid of this
         self.is_showing = True
 
         # Text displaying next conditions
@@ -127,6 +120,7 @@ class VrConditionSwitcher(object):
         the new condition, as well as highlighting/un-highlighting the appropriate objects.
         """
         # 1) Query tasknet for next state - get (text, color, obj_list) tuple
+        self.switch_instr_func()
         new_text, new_color, new_obj_list = self.show_instr_func()
         # 2) Render new text
         self.condition_text.set_text(new_text)
@@ -134,14 +128,23 @@ class VrConditionSwitcher(object):
         # 3) Un-highlight previous objects, then highlight new objects
         for prev_obj in self.prev_obj_list:
             prev_obj.unhighlight()
-        for new_obj in new_obj_list:
-            new_obj.highlight()
+        if self.is_showing:
+            for new_obj in new_obj_list:
+                new_obj.highlight()
+        self.prev_obj_list = new_obj_list
 
     def toggle_show_state(self):
         """
         Toggles show state of switcher (which is on by default)
         """
         self.s.set_hud_show_state(not self.s.get_hud_show_state())
+        self.is_showing = not self.is_showing
+        if self.is_showing:
+            for obj in self.prev_obj_list:
+                obj.highlight()
+        else:
+            for obj in self.prev_obj_list:
+                obj.unhighlight()
 
 
 class VrSettings(object):
