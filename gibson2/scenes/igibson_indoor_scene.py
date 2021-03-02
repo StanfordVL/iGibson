@@ -112,6 +112,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.objects_by_name = {}
         self.objects_by_id = {}
         self.objects_by_room = {}
+        self.objects_by_state = {}
         self.category_ids = get_ig_category_ids()
 
         # Current time string to use to save the temporal urdfs
@@ -247,6 +248,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
     def get_objects(self):
         return list(self.objects_by_name.values())
+
+    def get_objects_with_state(self, state):
+        # We overload this method to provide a faster implementation.
+        return list(self.objects_by_state[state]) if state in self.objects_by_state else []
 
     def filter_rooms_and_object_categories(self,
                                            load_object_categories,
@@ -395,6 +400,13 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if category not in self.objects_by_category.keys():
             self.objects_by_category[category] = []
         self.objects_by_category[category].append(obj)
+
+        if hasattr(obj, "states"):
+            for state in obj.states:
+                if state not in self.objects_by_state:
+                    self.objects_by_state[state] = []
+
+                self.objects_by_state[state].append(obj)
 
         if hasattr(obj, "in_rooms"):
             in_rooms = obj.in_rooms

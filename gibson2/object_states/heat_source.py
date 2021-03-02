@@ -1,10 +1,9 @@
-from gibson2.external.pybullet_tools.utils import get_link_position_from_name
 from gibson2.object_states.aabb import AABB
 from gibson2.object_states.inside import Inside
+from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.open import Open
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
-from gibson2.object_states.utils import get_aabb_center
 
 # The name of the heat source link inside URDF files.
 _HEATING_ELEMENT_LINK_NAME = "heat_source"
@@ -14,7 +13,7 @@ _DEFAULT_HEATING_RATE = 0.04
 _DEFAULT_DISTANCE_THRESHOLD = 0.2
 
 
-class HeatSource(CachingEnabledObjectState):
+class HeatSource(CachingEnabledObjectState, LinkBasedStateMixin):
     """
     This state indicates the heat source state of the object.
 
@@ -76,7 +75,16 @@ class HeatSource(CachingEnabledObjectState):
     def get_optional_dependencies():
         return CachingEnabledObjectState.get_optional_dependencies() + [ToggledOn, Open]
 
+    @staticmethod
+    def get_state_link_name():
+        return _HEATING_ELEMENT_LINK_NAME
+
     def _compute_value(self):
+        # Find the link first.
+        heating_element_position = self.get_link_position()
+        if heating_element_position is None:
+            return None
+
         # Check the toggle state.
         if self.requires_toggled_on and not self.obj.states[ToggledOn].get_value():
             return None
@@ -85,8 +93,8 @@ class HeatSource(CachingEnabledObjectState):
         if self.requires_closed and self.obj.states[Open].get_value():
             return None
 
-        # Get heating element position from URDF
-        return get_link_position_from_name(self.obj.get_body_id(), _HEATING_ELEMENT_LINK_NAME)
+        # Return the heating element position.
+        return heating_element_position
 
     def set_value(self, new_value):
         raise NotImplementedError(

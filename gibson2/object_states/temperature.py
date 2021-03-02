@@ -42,7 +42,7 @@ class Temperature(AbsoluteObjectState):
 
         # Compute the center of our aabb.
         # TODO: We need to be more clever about this. Check shortest dist between aabb and heat source.
-        center = get_aabb_center(self.obj.states[AABB].get_value())
+        center = None
 
         # Find all heat source objects.
         for obj2 in simulator.scene.get_objects_with_state(HeatSource):
@@ -50,17 +50,22 @@ class Temperature(AbsoluteObjectState):
             heat_source = obj2.states[HeatSource]
             heat_source_position = heat_source.get_value()
             if heat_source_position:
+                # Compute the AABB center if needed.
+                if center is None:
+                    center = get_aabb_center(self.obj.states[AABB].get_value())
+
                 # Compute distance to heat source from the center of our AABB.
                 dist = l2_distance(heat_source_position, center)
+                if dist > heat_source.distance_threshold:
+                    continue
 
                 # Check whether the requires_inside criteria is satisfied.
-                inside_criteria_satisfied = True
                 if heat_source.requires_inside:
                     inside_criteria_satisfied = self.obj.states[Inside].get_value(obj2)
+                    if not inside_criteria_satisfied:
+                        continue
 
-                # If it is within range, we'll heat up.
-                if dist < heat_source.distance_threshold and inside_criteria_satisfied:
-                    new_temperature += ((heat_source.temperature - self.value) * heat_source.heating_rate *
-                                        simulator.physics_timestep)
+                new_temperature += ((heat_source.temperature - self.value) * heat_source.heating_rate *
+                                    simulator.render_timestep)
 
         self.value = new_temperature

@@ -3,7 +3,7 @@ from abc import abstractmethod, ABCMeta
 from future.utils import with_metaclass
 
 
-class BaseObjectState(with_metaclass(ABCMeta)):
+class BaseObjectState(with_metaclass(ABCMeta, object)):
     """
     Base ObjectState class. Do NOT inherit from this class directly - use either AbsoluteObjectState or
     RelativeObjectState.
@@ -34,6 +34,7 @@ class BaseObjectState(with_metaclass(ABCMeta)):
         return []
 
     def __init__(self, obj):
+        super(BaseObjectState, self).__init__()
         self.obj = obj
 
     def update(self, simulator):
