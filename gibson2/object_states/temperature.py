@@ -66,6 +66,6 @@ class Temperature(AbsoluteObjectState):
                         continue
 
                 new_temperature += ((heat_source.temperature - self.value) * heat_source.heating_rate *
-                                    simulator.physics_timestep)
+                                    simulator.render_timestep)
 
         self.value = new_temperature
