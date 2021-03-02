@@ -4,7 +4,6 @@ import cv2
 from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, stable_z_on_aabb
 from gibson2.object_states import AABB
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
-import pdb
 
 
 def get_center_extent(obj_states):
@@ -21,7 +20,6 @@ def clear_cached_states(obj):
 
 
 def sample_kinematics(predicate, objA, objB, binary_state):
-    # pdb.set_trace()
     if not binary_state:
         raise NotImplementedError()
 

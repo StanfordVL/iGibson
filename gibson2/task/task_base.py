@@ -1,6 +1,5 @@
 import numpy as np
 import os
-import pdb
 
 from tasknet.task_base import TaskNetTask
 import gibson2
@@ -207,8 +206,6 @@ class iGTNTask(TaskNetTask):
         # tasknet.condition_evaluation.HEAD, each with one child.
         # This chid is either a BinaryAtomicPredicate/BinaryAtomicPredicate or
         # a Negation of a BinaryAtomicPredicate/BinaryAtomicPredicate
-        # pdb.set_trace()
-
         for condition in self.initial_conditions:
             if isinstance(condition.children[0], Negation):
                 condition = condition.children[0].children[0]
@@ -245,7 +242,6 @@ class iGTNTask(TaskNetTask):
                                 binary_state=positive)
 
                             if not success:
-                                pdb.set_trace()
                                 break
                         if success:
                             scene_object_scope_filtered[room_type][scene_obj][room_inst].append(
@@ -266,7 +262,6 @@ class iGTNTask(TaskNetTask):
                     logging.warning(
                         'Room type [{}] of scene [{}] cannot sample all the objects needed.'.format(
                             room_type, self.scene.scene_id))
-                    pdb.set_trace()
                     return False
 
         # For each room instance, perform maximum bipartite matching between object instance in scope to simulator objects
@@ -303,7 +298,6 @@ class iGTNTask(TaskNetTask):
                 logging.warning(
                     'Room type [{}] of scene [{}] do not have enough successful sampling options to support all the objects needed'.format(
                         room_type, self.scene.scene_id))
-                pdb.set_trace()
                 return False
 
         # Do sampling again using the object instance -> simulator object mapping from maximum bipartite matching
@@ -323,7 +317,6 @@ class iGTNTask(TaskNetTask):
                 logging.warning(
                     'Sampleable object conditions failed: {}'.format(
                         condition.body))
-                pdb.set_trace()
                 return False
 
         return True
