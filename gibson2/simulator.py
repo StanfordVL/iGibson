@@ -904,7 +904,7 @@ class Simulator:
         physics_timestep_num = self.num_phys_steps
         for _ in range(physics_timestep_num):
             p.stepSimulation()
-        self._non_physics_step()
+            self._non_physics_step()
         physics_dur = time.perf_counter() - physics_start_time
 
         # Sync PyBullet bodies to renderer and then render to Viewer
@@ -974,7 +974,7 @@ class Simulator:
             1, int(self.render_timestep / self.physics_timestep))
         for _ in range(physics_timestep_num):
             p.stepSimulation()
-        self._non_physics_step()
+            self._non_physics_step()
         self.sync()
 
     def sync(self):
