@@ -16,7 +16,7 @@ from gibson2 import assets_path
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.utils import multQuatLists
-from gibson2.utils.vr_utils import move_player, calc_offset, translate_vr_position_by_vecs, calc_z_dropoff
+from gibson2.utils.vr_utils import move_player, calc_offset, translate_vr_position_by_vecs, calc_z_rot_from_right
 
 
 class VrAgent(object):
@@ -171,11 +171,11 @@ class VrBody(ArticulatedObject):
         """
         # Get HMD data
         if vr_data:
-            hmd_is_valid, _, hmd_rot, right, _, forward = vr_data.query('hmd')
+            hmd_is_valid, _, hmd_rot, right, up, forward = vr_data.query('hmd')
             hmd_pos, _ = vr_data.query('vr_positions')
         else:
             hmd_is_valid, _, hmd_rot = self.sim.get_data_for_vr_device('hmd')
-            right, _, forward = self.sim.get_device_coordinate_system('hmd')
+            right, up, forward = self.sim.get_device_coordinate_system('hmd')
             hmd_pos = self.sim.get_vr_pos()
 
         # Only update the body if the HMD data is valid - this also only teleports the body to the player
@@ -201,27 +201,14 @@ class VrBody(ArticulatedObject):
             dist_to_dest = np.linalg.norm(curr_pos - dest)
 
             if dist_to_dest < 2.0:
-                # Check whether angle between forward vector and pos/neg z direction is less than self.z_rot_thresh, and only
-                # update if this condition is fulfilled - this stops large body angle swings when HMD is pointed up/down
-                n_forward = np.array(forward)
-                # Normalized forward direction and z direction
-                n_forward = n_forward / np.linalg.norm(n_forward)
-                n_z = np.array([0.0, 0.0, 1.0])
-                # Calculate angle and convert to degrees
-                theta_z = np.arccos(np.dot(n_forward, n_z)) / np.pi * 180
-
-                # Move theta into range 0 to max_z
-                if theta_z > (180.0 - self.max_z):
-                    theta_z = 180.0 - theta_z
-
-                # Calculate z multiplication coefficient based on how much we are looking in up/down direction
-                z_mult = calc_z_dropoff(theta_z, self.min_z, self.max_z)
-                delta_z = hmd_z - curr_z
-                # Modulate rotation fraction by z_mult
-                new_z = curr_z + delta_z * z_mult
+                new_z = calc_z_rot_from_right(right)
                 new_body_rot = p.getQuaternionFromEuler([0, 0, new_z])
+                p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
 
-                # Update body transform constraint
+            """
+            if dist_to_dest < 2.0:
+                new_z = calc_z_rot_from_vecs(forward, up)
+                new_body_rot = p.getQuaternionFromEuler([0, 0, new_z])
                 p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
 
                 # Use 90% strength haptic pulse in both controllers for body collisions with walls - this should notify the user immediately
@@ -234,6 +221,7 @@ class VrBody(ArticulatedObject):
                                 is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
                                 if is_valid:
                                     self.sim.trigger_haptic_pulse(controller, 0.9)
+            """
 
 
 class VrHandBase(ArticulatedObject):
