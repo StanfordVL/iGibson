@@ -29,6 +29,8 @@ shared_settings:
   hud_pos: [0,0,-0.8]
   # Whether to use iGibson companion window (set to False by default - please use Steam VR mirror display (described in README))
   use_companion_window: False
+  # Whether to only store the first event per button, per frame (avoids multiple unwanted button presses)
+  store_only_first_event_per_button: True
 # Settings that are specific to different VR devices (eg. eye tracking, button mapping)
 device_settings:
   HTC_VIVE_PRO_EYE:
