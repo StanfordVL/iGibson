@@ -25,7 +25,7 @@ def main():
         # Print all button events that happen each frame
         event_data = s.get_vr_events()
         if event_data:
-            print('----- Next event data: -----')
+            print('----- Next set of event data (on current frame): -----')
             for event in event_data:
                 readable_event = ['left_controller' if event[0] == 0 else 'right_controller', event[1], event[2]]
                 print('Event (controller, button_idx, press_id): {}'.format(readable_event))

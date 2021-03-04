@@ -114,9 +114,6 @@ class VrConditionSwitcher(object):
             return (sample_text, [0,0,0.5], [])
         self.show_instr_func = show_instruction
 
-        # TODO: Get rid of this
-        self.is_showing = True
-
         # Text displaying next conditions
         self.condition_text = s.add_vr_overlay_text(text_data=self.start_text, font_size=60, font_style='Regular', 
                             color=[0,0,0], pos=[150, 150])
@@ -181,6 +178,7 @@ class VrSettings(object):
         self.hud_width = shared_settings['hud_width']
         self.hud_pos = shared_settings['hud_pos']
         self.use_companion_window = shared_settings['use_companion_window']
+        self.store_only_first_event_per_button = shared_settings['store_only_first_event_per_button']
 
         device_settings = vr_config['device_settings']
         curr_device_candidate = vr_config['current_device']

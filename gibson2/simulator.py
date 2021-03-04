@@ -867,16 +867,29 @@ class Simulator:
     
     def poll_vr_events(self):
         """
-        Returns VR event data as list of lists. Each sub-list contains deviceType and eventType. 
+        Returns VR event data as list of lists. 
         List is empty if all events are invalid. Components of a single event:
         controller: 0 (left_controller), 1 (right_controller)
-        event_idx: any valid idx in EVRButtonId enum in openvr.h header file
+        button_idx: any valid idx in EVRButtonId enum in openvr.h header file
         press: 0 (unpress), 1 (press)
         """
         if not self.can_access_vr_context:
             raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
         self.vr_event_data = self.renderer.vrsys.pollVREvents()
+        # Enforce store_first_button_press_per_frame option, if user has enabled it
+        if self.vr_settings.store_only_first_event_per_button:
+            temp_event_data = []
+            # Make sure we only store the first (button, press) combo of each type
+            event_set = set()
+            for ev_data in self.vr_event_data:
+                controller, button_idx, _ = ev_data
+                key = (controller, button_idx)
+                if key not in event_set:
+                    temp_event_data.append(ev_data)
+                    event_set.add(key)
+            self.vr_event_data = temp_event_data[:]
+        
         return self.vr_event_data
 
     def get_vr_events(self):
@@ -943,6 +956,22 @@ class Simulator:
         
         trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(controller_name)
         return [trigger_fraction, touch_x, touch_y]
+
+    def get_scroll_input(self):
+        """
+        Gets scroll input. This uses the non-movement-controller, and determines whether
+        the user wants to scroll by testing if they have pressed the touchpad, while keeping
+        their finger on the top/button of the pad.
+        """
+        mov_controller = self.vr_settings.movement_controller
+        other_controller = 'right' if mov_controller == 'left' else 'left'
+        other_controller = '{}_controller'.format(other_controller)
+        # Data indicating whether user has pressed top or bottom of the touchpad
+        _, _, touch_y = self.renderer.vrsys.getButtonDataForController(other_controller)
+        if self.query_vr_event(other_controller, 'ACTION'):
+            pass
+            # TODO: Test height, get it done!
+
     
     def get_eye_tracking_data(self):
         """
