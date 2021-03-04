@@ -14,7 +14,7 @@ _WATER_SOURCE_LINK_NAME = "water_source"
 # that touch a water source object are immediately destroyed. Ideally we should
 # replace this with some reasonable water sink logic, but for now we just create
 # the particles slightly lower.
-_OFFSET_FROM_LINK = np.array([0, 0, -0.1])
+_OFFSET_FROM_LINK = np.array([0, 0, -0.05])
 
 
 class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
