@@ -180,6 +180,7 @@ class VrSettings(object):
         self.vr_fps = shared_settings['vr_fps']
         self.hud_width = shared_settings['hud_width']
         self.hud_pos = shared_settings['hud_pos']
+        self.use_companion_window = shared_settings['use_companion_window']
 
         device_settings = vr_config['device_settings']
         curr_device_candidate = vr_config['current_device']
@@ -220,6 +221,8 @@ class MeshRendererVR(MeshRenderer):
         """
         self.vr_rendering_settings = rendering_settings
         self.vr_settings = vr_settings
+        # Override glfw window show settings
+        self.vr_rendering_settings.show_glfw_window = self.vr_settings.use_companion_window
         self.width = 1296
         self.height = 1440
         super().__init__(width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings)
