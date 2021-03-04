@@ -353,7 +353,7 @@ class Simulator:
             'import_particle_system can only be called with ParticleSystem'
 
         new_object_pb_ids = []
-        for o in obj.particles:
+        for o in obj.get_particles():
             particle_pb_id = self.import_object(o,
                                                 class_id=class_id,
                                                 use_pbr=use_pbr,
