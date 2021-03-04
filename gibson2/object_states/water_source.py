@@ -43,15 +43,13 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
         if ToggledOn in self.obj.states:
             # sync water source state with toggleable
-            self.water_stream.set_value(self.obj.states[ToggledOn].get_value())
+            self.water_stream.set_running(self.obj.states[ToggledOn].get_value())
         else:
-            self.water_stream.set_value(True)  # turn on the water by default
-
-        self.water_stream.step()
+            self.water_stream.set_running(True)  # turn on the water by default
 
         # water reusing logic
         contacted_water_body_ids = set(item[1] for item in list(self.obj.states[ContactBodies].get_value()))
-        for particle in self.water_stream.particles:
+        for particle in self.water_stream.get_active_particles():
             if particle.body_id in contacted_water_body_ids:
                 self.water_stream.stash_particle(particle)
 
