@@ -1,0 +1,96 @@
+# Example .yaml
+#
+#sim_model_path: data/models/similarity.pkl
+
+model:
+  name: test_test
+  #path: /nfs/diskstation/projects/mech_search/prob_pose/models/
+  path: ./models/
+  type: fcn
+  #max_iteration: 50000       # number of epochs to train for
+  max_iteration: 10       # number of epochs to train for
+  gpu: 0
+  #batch_size: 8
+  batch_size: 3
+  lr: 1e-4
+  momentum: 0.99
+  weight_decay: 0.0005
+
+dataset:
+  #path: /nfs/diskstation/projects/mech_search/prob_pose/datasets/soft_single_goal_datasets/box_1_combo_dataset/images/
+  path: ./dataset_imgs/box_1/
+  #imgs: 'combo_ims'
+  imgs: 'train_ims'
+  #lbls: 'soft_dist_ims'
+  lbls: 'label_ims'
+  mean: [193.8, 193.8, 0]
+
+# name of the config file to save (within the dataset folder)
+# note that this will be overwritten between multiple runs so
+# you should name this uniquely for each run.
+save_conf_name: test.yaml
+
+#image_height: 300 # just put in for now
+#image_width: 300
+
+images:  # some configuration
+vis: False
+num_heaps: 5
+num_images_per_heap: 2 # just arbitrary
+heaps_per_garbage_collect: 5 # I don't know
+
+### Copied from fridge_objects_env.yaml
+images:  # some configuration
+vis: False
+num_heaps: 5
+num_images_per_heap: 2 # just arbitrary
+heaps_per_garbage_collect: 5 # I don't know
+
+#!include fridge_objects_env.yaml
+#task: 'heap_reaching'
+# not really, data gen actually
+use_gibson_rendering: True
+display_pb_gui: True
+use_pb_rendering: False
+num_objects: 9
+action_space_bound: 0.05
+#heap_dir: '/cvgl2/u/jctaglic/learned_mech_search/data/heaps/triple/'
+camera_height: 0.9
+camera_x: 0.0
+camera_y: -0.8
+zoom_factor: 1.0
+
+image_height: 480
+image_width: 640
+obs_image_height: 192
+obs_image_width: 192
+observation_as_dict: True
+
+#cameraEyePosition=[0, -0.8, 0.9], cameraTargetPosition=[0, 0, 0.8], cameraUpVector=[0, 1, 0]
+
+save_initial_observation: False
+
+heatmap_softmax: False
+randomize_camera: False
+
+save_rollout_gifs: False
+action_viz: False
+#data_dir: ./data
+data_dir: .
+
+observation_components:
+#  - 'ee_pose'
+#  - 'object_pose'
+  - 'depth'
+  - 'rgb'
+#  - 'target_onehot'
+#  - 'all_objects_poses'
+#  - 'heatmap'
+#   - 'segmask'
+#  - 'scaled_depth'
+#  - 'combined_depth_heatmap'
+
+ground:
+  sim:
+    path: '/home/memo/virtual_envs/berk1/lib/python3.6/site-packages/pybullet_data/mjcf/ground_plane.xml' #'urdf_cache/plane/plane.urdf'  #'misc/plane/plane.urdf'
+    pose: [[0, 0, -0.9], [0, 0, 0]]

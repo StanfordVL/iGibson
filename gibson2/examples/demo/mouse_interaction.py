@@ -12,7 +12,7 @@ from gibson2.simulator import Simulator
 from gibson2.utils.utils import parse_config
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from gibson2.utils.assets_utils import get_ig_scene_path,get_cubicasa_scene_path,get_3dfront_scene_path
+from gibson2.utils.assets_utils import get_ig_scene_path, get_cubicasa_scene_path, get_3dfront_scene_path
 # human interaction demo
 
 
@@ -32,14 +32,14 @@ def test_import_igsdf(scene_name, scene_source):
     light_modulation_map_filename = os.path.join(
         scene_dir, 'layout', 'floor_lighttype_0.png')
     background_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 
+        gibson2.ig_dataset_path, 'scenes', 'background',
         'urban_street_01.jpg')
 
     scene = InteractiveIndoorScene(
-                    scene_name, 
-                    texture_randomization=False, 
-                    object_randomization=False,
-                    scene_source=scene_source)
+        scene_name,
+        texture_randomization=False,
+        object_randomization=False,
+        scene_source=scene_source)
 
     settings = MeshRendererSettings(env_texture_filename=hdr_texture,
                                     env_texture_filename2=hdr_texture2,
@@ -54,15 +54,16 @@ def test_import_igsdf(scene_name, scene_source):
     fpss = []
 
     np.random.seed(0)
-    _,(px,py,pz) = scene.get_random_point()
+    _, (px, py, pz) = scene.get_random_point()
     s.viewer.px = px
     s.viewer.py = py
     s.viewer.pz = 1.7
     s.viewer.update()
-    
+
     for i in range(3000):
         if i == 2500:
-            logId = p.startStateLogging(loggingType=p.STATE_LOGGING_PROFILE_TIMINGS, fileName='trace_beechwood')
+            logId = p.startStateLogging(
+                loggingType=p.STATE_LOGGING_PROFILE_TIMINGS, fileName='trace_beechwood')
         start = time.time()
         s.step()
         end = time.time()
@@ -72,14 +73,15 @@ def test_import_igsdf(scene_name, scene_source):
     p.stopStateLogging(logId)
     s.disconnect()
     print("end")
-    
+
     plt.plot(fpss)
     plt.show()
+
 
 def main():
     parser = argparse.ArgumentParser(
         description='Open a scene with iGibson interactive viewer.')
-    parser.add_argument('--scene', dest='scene_name', 
+    parser.add_argument('--scene', dest='scene_name',
                         type=str, default='Rs_int',
                         help='The name of the scene to load')
     parser.add_argument('--source', dest='scene_source',

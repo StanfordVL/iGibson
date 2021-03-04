@@ -1,10 +1,10 @@
 import os
 import gibson2
-from gibson2.objects.object_base import Object
+from gibson2.objects.stateful_object import StatefulObject
 import pybullet as p
+from gibson2.object_states.factory import prepare_object_states
 
-
-class YCBObject(Object):
+class YCBObject(StatefulObject):
     """
     YCB Object from assets/models/ycb
     Reference: https://www.ycbbenchmarks.com/
@@ -30,4 +30,8 @@ class YCBObject(Object):
                                     baseVisualShapeIndex=visual_id,
                                     basePosition=[0.2, 0.2, 1.5],
                                     baseMass=0.1)
+        self.body_id = body_id
         return body_id
+
+    def get_body_id(self):
+        return self.body_id

@@ -1624,7 +1624,7 @@ def link_from_name(body, name):
     for link in get_joints(body):
         if get_link_name(body, link) == name:
             return link
-    raise ValueError(body, name)
+    raise ValueError("Could not find link %s for body %d" % (name, body))
 
 
 def has_link(body, name):
@@ -1633,6 +1633,15 @@ def has_link(body, name):
     except ValueError:
         return False
     return True
+
+
+def get_link_position_from_name(body_id, name):
+    try:
+        link_id = link_from_name(body_id, name)
+    except ValueError:
+        return None
+
+    return get_link_state(body_id, link_id).linkWorldPosition
 
 
 LinkState = namedtuple('LinkState', ['linkWorldPosition', 'linkWorldOrientation',

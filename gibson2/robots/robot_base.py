@@ -181,6 +181,7 @@ class BodyPart:
         self.body_part_index = body_part_index
         self.initialPosition = self.get_position()
         self.initialOrientation = self.get_orientation()
+        self.movement_cid = -1
 
     def get_name(self):
         """Get name of body part"""

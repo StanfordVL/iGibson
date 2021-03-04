@@ -3,7 +3,8 @@ from setuptools.command.develop import develop
 from setuptools.command.install import install
 from subprocess import check_call
 from distutils.command.build_py import build_py as _build_py
-import sys, os.path
+import sys
+import os.path
 import re
 
 from setuptools import setup, Extension, find_packages
@@ -13,7 +14,7 @@ import subprocess
 import platform
 import codecs
 import platform
-import sys
+import shutil
 
 use_clang = False
 
@@ -49,20 +50,41 @@ class CMakeBuild(build_ext):
                                ", ".join(e.name for e in self.extensions))
 
         if platform.system() == "Windows":
-            cmake_version = LooseVersion(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
+            cmake_version = LooseVersion(
+                re.search(r'version\s*([\d.]+)', out.decode()).group(1))
             if cmake_version < '3.1.0':
                 raise RuntimeError("CMake >= 3.1.0 is required on Windows")
 
         for ext in self.extensions:
             self.build_extension(ext)
 
+        if platform.system() == "Windows":
+            mesh_renderer_dir = os.path.join(
+                here, 'gibson2', 'render', 'mesh_renderer')
+            release_dir = os.path.join(mesh_renderer_dir, 'Release')
+            for f in os.listdir(release_dir):
+                shutil.copy(os.path.join(release_dir, f), mesh_renderer_dir)
+
+            shutil.rmtree(release_dir)
+            vr_dll = os.path.join(here, 'gibson2', 'render',
+                                  'openvr', 'bin', 'win64', 'openvr_api.dll')
+            sr_ani_dir = os.path.join(
+                here, 'gibson2', 'render', 'sranipal', 'bin')
+            shutil.copy(vr_dll, mesh_renderer_dir)
+
+            for f in os.listdir(sr_ani_dir):
+                if f.endswith('dll'):
+                    shutil.copy(os.path.join(sr_ani_dir, f), mesh_renderer_dir)
+
     def build_extension(self, ext):
-        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
+        extdir = os.path.abspath(os.path.dirname(
+            self.get_ext_fullpath(ext.name)))
         cmake_args = [
             '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/render/mesh_renderer'),
+            os.path.join(extdir, 'gibson2', 'render', 'mesh_renderer'),
             '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/render/mesh_renderer', 'build'),
+            os.path.join(extdir, 'gibson2', 'render',
+                         'mesh_renderer', 'build'),
             '-DPYTHON_EXECUTABLE=' + sys.executable
         ]
 
@@ -80,7 +102,8 @@ class CMakeBuild(build_ext):
         build_args = ['--config', cfg]
 
         if platform.system() == "Windows":
-            cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir)]
+            cmake_args += [
+                '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY{}={}'.format(cfg.upper(), extdir)]
             if sys.maxsize > 2**32:
                 cmake_args += ['-A', 'x64']
             build_args += ['--', '/m']
@@ -93,8 +116,10 @@ class CMakeBuild(build_ext):
                                                               self.distribution.get_version())
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
-        subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
-        subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
+        subprocess.check_call(['cmake', ext.sourcedir] +
+                              cmake_args, cwd=self.build_temp, env=env)
+        subprocess.check_call(['cmake', '--build', '.'] +
+                              build_args, cwd=self.build_temp)
 
 
 '''
@@ -105,6 +130,7 @@ class PostInstallCommand(install):
                 check_call("bash realenv/envs/build.sh".split())
                 install.run(self)
 '''
+
 if sys.version_info.major == 3:
     with open("README.md", "r", encoding="utf-8") as fh:
         long_description = fh.read()
@@ -133,6 +159,7 @@ setup(
             'networkx>=2.0',
             'PyYAML',
             'tqdm',
+            'freetype-py',
             'matplotlib',
             'cloudpickle',
             'aenum',
@@ -146,12 +173,13 @@ setup(
             'recommonmark',
             'sphinx_rtd_theme'
     ],
-    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/render')],
+    ext_modules=[CMakeExtension(
+        'MeshRendererContext', sourcedir='gibson2/render')],
     cmdclass=dict(build_ext=CMakeBuild),
     tests_require=[],
     package_data={'': [
-    'gibson2/global_config.yaml',
-    'gibson2/render/mesh_renderer/shaders/*'
+        'gibson2/global_config.yaml',
+        'gibson2/render/mesh_renderer/shaders/*'
     ]},
     include_package_data=True,
-)   #yapf: disable
+)  # yapf: disable

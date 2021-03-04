@@ -10,6 +10,28 @@ from gibson2.utils.assets_utils import get_scene_path, get_texture_file, get_ig_
 import numpy as np
 import logging
 import math
+import trimesh
+
+
+def get_aabb_urdf(tree):
+    all_vertices = []
+    for mesh in tree.findall('link/collision/geometry/mesh'):
+        mesh_obj = trimesh.load(mesh.attrib['filename'])
+        all_vertices.append(mesh_obj.vertices)
+    all_vertices = np.vstack(all_vertices)
+    return all_vertices.min(axis=0), all_vertices.max(axis=0)
+
+
+def get_base_link_name(tree):
+    joints = tree.findall('joint')
+    links = tree.findall('link')
+    # Find the base link
+    children_links = [joint.find('child').attrib['link']
+                      for joint in joints]
+    return [
+        link.attrib['name']
+        for link in links
+        if link.attrib['name'] not in children_links][0]
 
 
 def parse_urdf(tree):
@@ -170,6 +192,21 @@ def transform_element_xyzrpy(element, transformation):
         *transform_rpy)
 
 
+def get_main_link_name(tree):
+    is_fixed = tree.find("link[@name='world']") is not None
+    joints = tree.findall('joint')
+    if is_fixed:
+        # Find the link that connects to the world link
+        main_link_name = [
+            joint.find('child').attrib['link']
+            for joint in joints
+            if joint.find('parent').attrib['link'] == 'world'][0]
+    else:
+        # Find the base link
+        main_link_name = get_base_link_name(tree)
+    return main_link_name
+
+
 def save_urdfs_without_floating_joints(tree, file_prefix):
     """
     Split one URDF into multiple URDFs if there are floating joints and save them
@@ -224,9 +261,11 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
                 if child_name in extended_splitted_dict[esd][3]:
                     extended_splitted_dict[esd] = (extended_splitted_dict[esd][0], extended_splitted_dict[esd][1], extended_splitted_dict[esd][2],
                                                    extended_splitted_dict[esd][3], transformation)
-
     logging.info("Number of splits: " + str(len(extended_splitted_dict)))
     logging.info("Instantiating scene into the following urdfs:")
+
+    main_link_name = get_main_link_name(tree)
+
     urdfs_no_floating = {}
     for esd_key in extended_splitted_dict:
         xml_tree_parent = ET.ElementTree(ET.fromstring(
@@ -253,10 +292,53 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
 
         # check if this object is fixed: look for "world" link
         is_fixed = xml_tree_parent.find("link[@name='world']") is not None
+        is_main_body = main_link_name == get_main_link_name(xml_tree_parent)
         transformation = extended_splitted_dict[esd_key][4]
         urdfs_no_floating[esd_key] = (
-            urdf_file_name, transformation, is_fixed)
+            urdf_file_name, transformation, is_fixed, is_main_body)
         xml_tree_parent.write(urdf_file_name, xml_declaration=True)
         logging.info(urdf_file_name)
 
+    # There should be exactly one main body
+    assert np.sum([val[3] for val in urdfs_no_floating.values()]) == 1
+
     return urdfs_no_floating
+
+
+def add_fixed_link(tree, link_name, offset):
+    """
+    Add a fixed link onto a URDF tree.
+
+    :param tree: The URDF tree (ElementTree) to add to.
+    :param link_name: The name of the link to add.
+    :param offset: The 3-length sequence XYZ offset of the link from the base.
+    :return: None
+    """
+    tree = tree.getroot()
+    base_link_name = get_base_link_name(tree)
+
+    # Assert that the link does not exist.
+    assert tree.find("link[@name='%s']" % link_name) is None
+
+    # Add the link.
+    link = ET.SubElement(tree, "link", {"name": link_name})
+
+    # The below commented code can be used to add a visual to the area.
+    # TODO: Either fully remove this or make it possible to toggle this using a global flag.
+    # visual = ET.SubElement(link, "visual")
+    # ET.SubElement(visual, "origin", {"xyz": "0 0 0", "rpy": "0 0 0"})
+    #
+    # geo = ET.SubElement(visual, "geometry")
+    # ET.SubElement(geo, "box", {"size": "0.1 0.1 0.1"})
+    #
+    # mat = ET.SubElement(visual, "material", {"name": "red"})
+    # ET.SubElement(mat, "color", {"rgba": "255 0 0 1.0"})
+
+    # Add the joint
+    joint = ET.SubElement(tree, "joint", {"name": link_name + "_joint", "type": "fixed"})
+    ET.SubElement(joint, "parent", {"link": base_link_name})
+    ET.SubElement(joint, "child", {"link": link_name})
+
+    # Finally, apply the offset
+    offset_str = "%.4f %.4f %.4f" % tuple(offset)
+    ET.SubElement(joint, "origin", {"rpy": "0 0 0", "xyz": offset_str})

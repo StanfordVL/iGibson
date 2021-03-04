@@ -2,7 +2,6 @@ import pybullet as p
 import os
 import gibson2
 
-
 class Object(object):
     """
     Base Object class
@@ -11,6 +10,19 @@ class Object(object):
     def __init__(self):
         self.body_id = None
         self.loaded = False
+
+        # initialize with empty states
+        self.states = dict()
+        # handle to instances in the renderer
+        self.renderer_instances = []
+
+    def highlight(self):
+        for instance in self.renderer_instances:
+            instance.set_highlight(True)
+
+    def unhighlight(self):
+        for instance in self.renderer_instances:
+            instance.set_highlight(False)
 
     def load(self):
         """
@@ -62,8 +74,15 @@ class Object(object):
     def set_position_orientation(self, pos, orn):
         """
         Set object position and orientation
-
         :param pos: position in xyz
         :param orn: quaternion in xyzw
         """
         p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+
+    def rotate_by(self, x=0, y=0, z=0):
+        """
+        Rotates an object by given euler angles
+        """
+        e_x, e_y, e_z = p.getEulerFromQuaternion(self.get_orientation())
+        self.set_orientation(p.getQuaternionFromEuler(
+            [e_x + x, e_y + y, e_z + z]))

@@ -1,10 +1,10 @@
 import os
 import gibson2
-from gibson2.objects.object_base import Object
+from gibson2.objects.stateful_object import StatefulObject
 import pybullet as p
 
 
-class Pedestrian(Object):
+class Pedestrian(StatefulObject):
     """
     Pedestiran object
     """

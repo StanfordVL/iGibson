@@ -3,14 +3,15 @@ import gibson2
 import logging
 import numpy as np
 from gibson2.objects.articulated_object import URDFObject
-from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from gibson2.utils.utils import rotate_vector_3d, rotate_vector_2d
 import pybullet as p
 import os
 import xml.etree.ElementTree as ET
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 import random
 import json
-from gibson2.utils.assets_utils import get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
+from gibson2.utils.assets_utils import get_ig_avg_category_specs, get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
+from gibson2.external.pybullet_tools.utils import euler_from_quat
 from PIL import Image
 
 SCENE_SOURCE = ['IG', 'CUBICASA', 'THREEDFRONT']
@@ -27,6 +28,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
     def __init__(self,
                  scene_id,
+                 urdf_file=None,
                  trav_map_resolution=0.1,
                  trav_map_erosion=2,
                  trav_map_type='with_obj',
@@ -47,6 +49,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  ):
         """
         :param scene_id: Scene id
+        :param urdf_file: Optional specification of which urdf file to load
         :param trav_map_resolution: traversability map resolution
         :param trav_map_erosion: erosion radius of traversability areas, should be robot footprint radius
         :param trav_map_type: type of traversability map, with_obj | no_obj
@@ -63,7 +66,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param load_room_types: only load objects in these room types into the scene (a list of str)
         :param load_room_instances: only load objects in these room instances into the scene (a list of str)
         :param seg_map_resolution: room segmentation map resolution
-        :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT 
+        :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT
         """
 
         super(InteractiveIndoorScene, self).__init__(
@@ -79,14 +82,17 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
         self.should_open_all_doors = should_open_all_doors
-        if object_randomization:
-            if object_randomization_idx is None:
-                fname = scene_id
+        if urdf_file is None:
+            if object_randomization:
+                if object_randomization_idx is None:
+                    fname = scene_id
+                else:
+                    fname = '{}_random_{}'.format(scene_id,
+                                                  object_randomization_idx)
             else:
-                fname = '{}_random_{}'.format(scene_id,
-                                              object_randomization_idx)
+                fname = '{}_best'.format(scene_id)
         else:
-            fname = '{}_best'.format(scene_id)
+            fname = urdf_file
         if scene_source not in SCENE_SOURCE:
             raise ValueError(
                 'Unsupported scene source: {}'.format(scene_source))
@@ -101,11 +107,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.scene_file = os.path.join(
             scene_dir, "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
-        self.first_n_objects = np.inf
         self.random_groups = {}
         self.objects_by_category = {}
         self.objects_by_name = {}
         self.objects_by_id = {}
+        self.objects_by_room = {}
+        self.objects_by_state = {}
         self.category_ids = get_ig_category_ids()
 
         # Current time string to use to save the temporal urdfs
@@ -124,7 +131,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             load_object_categories, load_room_types, load_room_instances)
 
         # Load average object density if exists
-        self.avg_obj_dims = self.load_avg_obj_dims()
+        self.avg_obj_dims = get_ig_avg_category_specs()
 
         # load overlapping bboxes in scene annotation
         self.overlapped_bboxes = self.load_overlapped_bboxes()
@@ -219,36 +226,32 @@ class InteractiveIndoorScene(StaticIndoorScene):
                      if joint.find("child").attrib["link"]
                      == object_name][0]
 
-                joint_xyz = np.array([float(val) for val in joint_connecting_embedded_link.find(
-                    "origin").attrib["xyz"].split(" ")])
-                joint_type = joint_connecting_embedded_link.attrib['type']
-                if 'rpy' in joint_connecting_embedded_link.find("origin").attrib:
-                    joint_rpy = \
-                        np.array([float(val) for val in
-                                  joint_connecting_embedded_link.find("origin").attrib["rpy"].split(" ")])
-                else:
-                    joint_rpy = np.array([0., 0., 0.])
+                obj = URDFObject(
+                    filename,
+                    name=object_name,
+                    category=category,
+                    model_path=model_path,
+                    bounding_box=bounding_box,
+                    scale=scale,
+                    connecting_joint=joint_connecting_embedded_link,
+                    avg_obj_dims=self.avg_obj_dims.get(category),
+                    in_rooms=in_rooms,
+                    texture_randomization=texture_randomization,
+                    overwrite_inertial=True,
+                    scene_instance_folder=self.scene_instance_folder)
 
-                joint_name = joint_connecting_embedded_link.attrib['name']
-                joint_parent = joint_connecting_embedded_link.find(
-                    "parent").attrib["link"]
+                self.add_object(obj)
 
-                self.add_object(category,
-                                model=model,
-                                model_path=model_path,
-                                filename=filename,
-                                bounding_box=bounding_box,
-                                scale=scale,
-                                object_name=object_name,
-                                joint_type=joint_type,
-                                position=joint_xyz,
-                                orientation_rpy=joint_rpy,
-                                joint_name=joint_name,
-                                joint_parent=joint_parent,
-                                in_rooms=in_rooms)
             elif link.attrib["name"] != "world":
                 logging.error(
                     "iGSDF should only contain links that represent embedded URDF objects")
+
+    def get_objects(self):
+        return list(self.objects_by_name.values())
+
+    def get_objects_with_state(self, state):
+        # We overload this method to provide a faster implementation.
+        return list(self.objects_by_state[state]) if state in self.objects_by_state else []
 
     def filter_rooms_and_object_categories(self,
                                            load_object_categories,
@@ -317,7 +320,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             (self.seg_map_size, self.seg_map_size), Image.NEAREST))
 
         room_categories = os.path.join(
-            gibson2.ig_dataset_path, 'metadata/room_categories.txt')
+            gibson2.ig_dataset_path, 'metadata', 'room_categories.txt')
         with open(room_categories, 'r') as fp:
             room_cats = [line.rstrip() for line in fp.readlines()]
 
@@ -357,18 +360,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.room_ins_map = img_ins
         self.room_sem_map = img_sem
 
-    def load_avg_obj_dims(self):
-        """
-        Load average object dimensions for scene objects
-        """
-        avg_obj_dim_file = os.path.join(
-            gibson2.ig_dataset_path, 'objects/avg_category_specs.json')
-        if os.path.isfile(avg_obj_dim_file):
-            with open(avg_obj_dim_file) as f:
-                return json.load(f)
-        else:
-            return {}
-
     def load_overlapped_bboxes(self):
         """
         Load overlapped bounding boxes in scene definition.
@@ -382,94 +373,48 @@ class InteractiveIndoorScene(StaticIndoorScene):
         else:
             return []
 
-    def add_object(self,
-                   category,
-                   model=None,
-                   model_path=None,
-                   filename=None,
-                   bounding_box=None,
-                   scale=None,
-                   object_name=None,
-                   joint_name=None,
-                   joint_type=None,
-                   joint_parent=None,
-                   position=None,
-                   orientation_rpy=None,
-                   in_rooms=None,
-                   ):
+    def _add_object(self, obj):
         """
         Adds an object to the scene
 
-        :param category: object category, e.g. door
-        :param model: object model in the object dataset
-        :param model_path: folder path of that object model
-        :param filename: urdf file path of that object model
-        :param bounding_box: bounding box of this object
-        :param scale: scaling factor of this object
-        :param object_name: object name, unique for each object instance, e.g. door_3
-        :param joint_name: name of the joint that connects the object to the scene
-        :param joint_type: type of the joint that connects the object to the scene
-        :param joint_parent: parent of the joint that connects the object to the scene (i.e. world)
-        :param position: position of the joint that connects the object to the scene
-        :param orientation_rpy: orientation of the joint that connects the object to the scene
-        :param in_rooms: which room(s) this object is in. It can be in more than one rooms if it sits at room boundary (e.g. doors)
+        :param obj: Object instance to add to scene.
         """
+        if hasattr(obj, "category"):
+            category = obj.category
+        else:
+            category = 'object'
+
+        if hasattr(obj, "name"):
+            object_name = obj.name
+        else:
+            object_name = '{}_{}'.format(
+                category, len(self.objects_by_category.get(category, [])))
 
         if object_name in self.objects_by_name.keys():
             logging.error(
                 "Object names need to be unique! Existing name " + object_name)
             exit(-1)
 
-        added_object = URDFObject(object_name,
-                                  category,
-                                  model=model,
-                                  model_path=model_path,
-                                  filename=filename,
-                                  bounding_box=bounding_box,
-                                  scale=scale,
-                                  avg_obj_dims=self.avg_obj_dims.get(category),
-                                  in_rooms=in_rooms)
         # Add object to database
-        self.objects_by_name[object_name] = added_object
+        self.objects_by_name[object_name] = obj
         if category not in self.objects_by_category.keys():
             self.objects_by_category[category] = []
-        self.objects_by_category[category].append(added_object)
+        self.objects_by_category[category].append(obj)
 
-        # Deal with the joint connecting the embedded urdf to the main link (world or building)
-        joint_frame = np.eye(4)
+        if hasattr(obj, "states"):
+            for state in obj.states:
+                if state not in self.objects_by_state:
+                    self.objects_by_state[state] = []
 
-        # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
-        # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
-        x, y, z = added_object.scaled_bbxc_in_blf
-        yaw = orientation_rpy[2]
-        x, y = rotate_vector_2d(np.array([x, y]), -yaw)
-        position += np.array([x, y, z])
+                self.objects_by_state[state].append(obj)
 
-        # if the joint is not floating, we add the joint and a link to the embedded urdf
-        if joint_type != "floating":
-            new_joint = ET.SubElement(added_object.object_tree.getroot(), "joint",
-                                      dict([("name", joint_name), ("type", joint_type)]))
-            ET.SubElement(new_joint, "origin",
-                          dict([("rpy", "{0:f} {1:f} {2:f}".format(
-                              *orientation_rpy)), ("xyz", "{0:f} {1:f} {2:f}".format(
-                                  *position))]))
-            ET.SubElement(new_joint, "parent",
-                          dict([("link", joint_parent)]))
-            ET.SubElement(new_joint, "child",
-                          dict([("link", object_name)]))
-            ET.SubElement(added_object.object_tree.getroot(), "link",
-                          dict([("name", joint_parent)]))  # "world")]))
-
-        # if the joint is floating, we save the transformation of the floating joint to be used when we load the
-        # embedded urdf
-        else:
-            joint_frame = get_transform_from_xyz_rpy(position, orientation_rpy)
-
-        # Save the transformation internally to be used when loading
-        added_object.joint_frame = joint_frame
-        added_object.remove_floating_joints(self.scene_instance_folder)
-        if self.texture_randomization:
-            added_object.prepare_texture()
+        if hasattr(obj, "in_rooms"):
+            in_rooms = obj.in_rooms
+            if in_rooms is not None:
+                for in_room in in_rooms:
+                    if in_room not in self.objects_by_room.keys():
+                        self.objects_by_room[in_room] = []
+                    self.objects_by_room[in_room].append(obj)
 
     def randomize_texture(self):
         """
@@ -634,7 +579,26 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         :param first_n_objects: only load the first N objects (integer)
         """
-        self.first_n_objects = first_n_objects
+        raise ValueError(
+            "The _set_first_n_object function is now deprecated due to "
+            "incompatibility with recent object state features. Please "
+            "use the load_object_categories method for limiting the "
+            "objects to be loaded from the scene.")
+
+    def _set_obj_names_to_load(self, obj_name_list):
+        """
+        Only load in objects with the given string names. Hidden API as is only
+        used internally in the VR benchmark. This function automatically
+        adds walls, floors and ceilings to the room.
+
+        :param obj_name_list: list of string object names. These names must
+            all be in the scene URDF file.
+        """
+        raise ValueError(
+            "The _set_obj_names_to_load function is now deprecated due "
+            "to incompatibility with recent object state features. Please "
+            "use the load_object_categories method for limiting the "
+            "objects to be loaded from the scene.")
 
     def open_one_obj(self, body_id, mode='random'):
         """
@@ -748,7 +712,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         return self.open_all_objs_by_category('door', mode='max')
 
-    def load(self):
+    def _load(self):
         """
         Load all scene objects into pybullet
         """
@@ -756,7 +720,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         body_ids = []
         fixed_body_ids = []
         visual_mesh_to_material = []
-        num_loaded = 0
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
             new_ids = obj.load()
@@ -767,9 +730,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
             fixed_body_ids += [body_id for body_id, is_fixed
                                in zip(obj.body_ids, obj.is_fixed)
                                if is_fixed]
-            num_loaded += 1
-            if num_loaded > self.first_n_objects:
-                break
 
         # disable collision between the fixed links of the fixed objects
         for i in range(len(fixed_body_ids)):
@@ -924,3 +884,65 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if self.objects_by_name[obj_name].body_id is not None:
                 ids.extend(self.objects_by_name[obj_name].body_id)
         return ids
+
+    def save_modified_urdf(self, urdf_name):
+        """
+        Saves a modified URDF file in the scene urdf directory having all objects added to the scene.
+
+        :param urdf_name: Name of urdf file to save (without .urdf)
+        """
+        TEMPLATE = """
+        <link bounding_box="{bounding_box}" category="{category}" model="{model}" name="{name}" room="{room}"/>
+        <joint name="j_{name}" type="floating">
+            <origin rpy="{rpy}" xyz="{xyz}"/>
+            <child link="{name}"/>
+            <parent link="world"/>
+        </joint>"""
+        with open(self.scene_file, 'r') as f:
+            urdf_string = f.read()
+        add_string = ''
+        for name in self.objects_by_name:
+            if name in urdf_string:
+                continue
+            obj = self.objects_by_name[name]
+            if not hasattr(obj, 'in_rooms') or obj.in_rooms is None:
+                continue
+            category = obj.category
+            model = name.split('|')[1]
+            room = obj.in_rooms[0]
+            bounding_box = ' '.join([str(b) for b in obj.bounding_box])
+
+            # Convert from center of mass to base link position
+            body_id = obj.body_ids[obj.main_body]
+            dynamics_info = p.getDynamicsInfo(body_id, -1)
+            inertial_pos = dynamics_info[3]
+            inertial_orn = dynamics_info[4]
+
+            pos, orn = obj.get_position_orientation()
+            inv_inertial_pos, inv_inertial_orn =\
+                p.invertTransform(inertial_pos, inertial_orn)
+            base_link_position, base_link_orientation = p.multiplyTransforms(
+                pos, orn, inv_inertial_pos, inv_inertial_orn)
+
+            # Convert to XYZ position for URDF
+            euler = euler_from_quat(obj.get_orientation())
+            roll, pitch, yaw = euler
+            offset = rotate_vector_3d(
+                obj.scaled_bbxc_in_blf, roll, pitch, yaw, False)
+            bbox_pos = base_link_position - offset
+
+            xyz = ' '.join([str(p) for p in bbox_pos])
+            rpy = ' '.join([str(e) for e in euler])
+            new_string = TEMPLATE.format(bounding_box=bounding_box,
+                                         category=category,
+                                         model=model,
+                                         name=name,
+                                         room=room,
+                                         rpy=rpy,
+                                         xyz=xyz)
+            add_string += new_string
+        add_string += '\n</robot>'
+        urdf_string = urdf_string.replace('</robot>', add_string)
+        path_to_urdf = os.path.join(self.scene_dir, 'urdf', urdf_name+'.urdf')
+        with open(path_to_urdf, 'w') as f:
+            f.write(urdf_string)
