@@ -189,7 +189,8 @@ def calc_z_rot_from_right(right):
     which represents a z rotation euler angle of 0. This is used for objects that need to rotate
     with the HMD (eg. VrBody), but which need to be robust to changes in orientation in the HMD.
     """
-    r = np.array(right)
+    # Project right vector onto xy plane
+    r = np.array([right[0], right[1], 0])
     z_zero_vec = np.array([1, 0, 0])
     # Get angle in radians
     z = np.arccos(np.dot(r, z_zero_vec))

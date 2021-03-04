@@ -203,7 +203,7 @@ class VrBody(ArticulatedObject):
             if dist_to_dest < 2.0:
                 new_z = calc_z_rot_from_right(right)
                 new_body_rot = p.getQuaternionFromEuler([0, 0, new_z])
-                p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
+                p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=50)
 
             """
             if dist_to_dest < 2.0:
