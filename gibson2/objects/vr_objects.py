@@ -342,6 +342,7 @@ class VrHand(VrHandBase):
     Joint index 10, name b'Imiddle__Iproximal', type 0
     """
     def __init__(self, s, hand='right', use_constraints=True, normal_color=True, use_prim=True):
+        self.s = s
         self.normal_color = normal_color
         hand_path = 'normal_color' if self.normal_color else 'alternative_color'
         self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', hand_path)
@@ -373,7 +374,22 @@ class VrHand(VrHandBase):
         self.close_pos[7] = 0.7
         self.close_pos[8] = 0.7
         self.hand_friction = 2.0 if not self.use_prim else 3.0
+        self.hand_close_force = 3
+        # Need non-zero minimum otherwise PyBullet will be unhappy!
+        #self.min_hand_close_force = 1
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+        # Variables for assisted grasping
+        self.object_in_hand = None
+        self.min_force = 0
+        self.max_force = 10
+        self.grasp_p = self.s.vr_settings.assisted_grasping_percentage
+        self.assisted_force = self.min_force + (self.max_force - self.min_force) * self.grasp_p
+        # As assisted force gets larger, reduce hand close force
+        # TODO: Add this back in?
+        #self.hand_close_force = self.min_hand_close_force + (self.hand_close_force - self.min_hand_close_force) * ((100 - self.grasp_p)/100.0)
+        self.trig_frac_thresh = 0.5
+        self.palm_link_idx = 0
+        self.obj_cid = None
 
     def hand_setup(self, z_coord):
         """
@@ -397,6 +413,78 @@ class VrHand(VrHandBase):
         if self.use_constraints:
             self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.start_pos)
 
+    def handle_assisted_grasping(self, vr_data=None):
+        """
+        Handles assisted grasping.
+        """
+        if vr_data:
+            trig_frac, _, _ = vr_data.query('{}_button'.format(self.vr_device))
+        else:
+            trig_frac, _, _ = self.s.get_button_data_for_controller(self.vr_device)
+
+        if not self.object_in_hand:
+            if trig_frac > self.trig_frac_thresh:
+                # Get collisions
+                cpts = p.getContactPoints(self.body_id)
+                if not cpts:
+                    return
+                # Count overall force applied to each body id
+                cpt_forces = {}
+                for i in range(len(cpts)):
+                    cpt = cpts[i]
+                    c_bid = cpt[2]
+                    # Get magnitude of normal force exerted by cpt onto the hand
+                    n_force = cpt[9]
+                    if c_bid in cpt_forces:
+                        cpt_forces[c_bid] += n_force
+                    else:
+                        cpt_forces[c_bid] = n_force
+
+                # Get body id of contact with most force
+                most_force_bid = sorted(cpt_forces.items(), key=lambda v: v[1])[::-1][0][0]
+
+                # Get palm pos/orn
+                palm_link_state = p.getLinkState(self.body_id, self.palm_link_idx)
+                palm_pos = palm_link_state[0]
+                palm_orn = palm_link_state[1]
+                # Calculate transform from object to palm center
+                body_pos, body_orn = p.getBasePositionAndOrientation(most_force_bid)
+                # Get inverse world transform of body frame
+                child_frame_trans_pos, child_frame_trans_orn = p.invertTransform(body_pos, body_orn)
+                # Multiple by world transform of palm to get correct transform
+                # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
+                child_frame_pos, child_frame_orn = p.multiplyTransforms(child_frame_trans_pos,
+                                                                        child_frame_trans_orn,
+                                                                        palm_pos,
+                                                                        palm_orn)
+
+                self.obj_cid = p.createConstraint(
+                                        parentBodyUniqueId=self.body_id,
+                                        parentLinkIndex=self.palm_link_idx,
+                                        childBodyUniqueId=most_force_bid,
+                                        childLinkIndex=-1,
+                                        jointType=p.JOINT_FIXED,
+                                        jointAxis=(0, 0, 0),
+                                        parentFramePosition=(0, 0, 0),
+                                        childFramePosition=child_frame_pos,
+                                        childFrameOrientation=child_frame_orn,
+                                    )
+                # Modify max force based on user-determined assist parameters
+                p.changeConstraint(self.obj_cid, maxForce=self.assisted_force)
+                self.object_in_hand = most_force_bid
+        else:
+            if trig_frac <= self.trig_frac_thresh:
+                p.removeConstraint(self.obj_cid)
+                self.object_in_hand = None
+
+    def update(self, vr_data=None):
+        """
+        Overriden update that can handle assisted grasping. Note that this only
+        available for the VrHand, and not the VrGripper.
+        """
+        super(VrHand, self).update(vr_data=vr_data)
+        self.handle_assisted_grasping(vr_data=vr_data)
+        
     def set_close_fraction(self, close_frac):
         """
         Sets close fraction of hands. Close frac of 1 indicates fully closed joint, 
@@ -408,7 +496,7 @@ class VrHand(VrHandBase):
             close_pos = self.close_pos[joint_index]
             interp_frac = (close_pos - open_pos) * close_frac
             target_pos = open_pos + interp_frac
-            p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=3)
+            p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=self.hand_close_force)
 
 
 class VrGripper(VrHandBase):

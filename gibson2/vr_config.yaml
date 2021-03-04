@@ -23,6 +23,8 @@ shared_settings:
   movement_speed: 0.01
   # Fixed frame rate of VR system
   vr_fps: 30.0
+  # Assisted grasping percentage (0 is fully physics-based, 1 is fully "magic")
+  assisted_grasping_percentage: 100.0
   # Width of HUD display in meters
   hud_width: 0.7
   # Position of HUD display relative to the HMD. X (left), Y (up), Z (away from HMD, into the scene)

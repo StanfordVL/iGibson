@@ -175,6 +175,7 @@ class VrSettings(object):
         assert self.relative_movement_device in ['hmd', 'left_controller', 'right_controller']
         self.movement_speed = shared_settings['movement_speed']
         self.vr_fps = shared_settings['vr_fps']
+        self.assisted_grasping_percentage = shared_settings['assisted_grasping_percentage']
         self.hud_width = shared_settings['hud_width']
         self.hud_pos = shared_settings['hud_pos']
         self.use_companion_window = shared_settings['use_companion_window']
@@ -205,6 +206,8 @@ class VrSettings(object):
         Turns off VR mode so the MeshRendererVR can be debugged.
         """
         self.use_vr = False
+        # Enable rendering of companion window
+        self.use_companion_window = True
 
 class MeshRendererVR(MeshRenderer):
     """

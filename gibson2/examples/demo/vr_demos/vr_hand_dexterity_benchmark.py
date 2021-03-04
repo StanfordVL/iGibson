@@ -44,7 +44,7 @@ benchmark_names = [
 ]
 
 # Set to true to print Simulator step() statistics
-PRINT_STATS = True
+PRINT_STATS = False
 # Set to true to use gripper instead of VR hands
 USE_GRIPPER = False
 # Set to true to print object information
@@ -127,7 +127,7 @@ def main():
 
     # Time how long demo takes
     time_text = s.add_vr_overlay_text(text_data='Current time: NOT STARTED', font_size=100, font_style='Bold', 
-                            color=[0,0,0], pos=[100, 100])
+                            color=[0,0,0], pos=[30, 30], size=[60, 60])
     timer = VrTimer()
 
     # Main simulation loop
