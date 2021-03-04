@@ -1,19 +1,23 @@
 from gibson2.object_states.aabb import AABB
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
+from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.open import Open
-from gibson2.object_states.object_state_base import CachingEnabledObjectState
 
 # The name of the heat source link inside URDF files.
+from gibson2.objects.visual_marker import VisualMarker
+
 _HEATING_ELEMENT_LINK_NAME = "heat_source"
+
+_HEATING_ELEMENT_MARKER_RADIUS = 0.1
 
 _DEFAULT_TEMPERATURE = 200
 _DEFAULT_HEATING_RATE = 0.04
 _DEFAULT_DISTANCE_THRESHOLD = 0.2
 
 
-class HeatSource(CachingEnabledObjectState, LinkBasedStateMixin):
+class HeatSource(AbsoluteObjectState, LinkBasedStateMixin):
     """
     This state indicates the heat source state of the object.
 
@@ -67,19 +71,23 @@ class HeatSource(CachingEnabledObjectState, LinkBasedStateMixin):
         # we record that for use in the heat transfer process.
         self.requires_inside = requires_inside
 
+        self.marker = None
+
+        self.position = None
+
     @staticmethod
     def get_dependencies():
-        return CachingEnabledObjectState.get_dependencies() + [AABB, Inside]
+        return AbsoluteObjectState.get_dependencies() + [AABB, Inside]
 
     @staticmethod
     def get_optional_dependencies():
-        return CachingEnabledObjectState.get_optional_dependencies() + [ToggledOn, Open]
+        return AbsoluteObjectState.get_optional_dependencies() + [ToggledOn, Open]
 
     @staticmethod
     def get_state_link_name():
         return _HEATING_ELEMENT_LINK_NAME
 
-    def _compute_value(self):
+    def _compute_position(self):
         # Find the link first.
         heating_element_position = self.get_link_position()
         if heating_element_position is None:
@@ -95,6 +103,22 @@ class HeatSource(CachingEnabledObjectState, LinkBasedStateMixin):
 
         # Return the heating element position.
         return heating_element_position
+
+    def update(self, simulator):
+        self.position = self._compute_position()
+
+        if self.marker is None:
+            self.marker = VisualMarker(
+                rgba_color=[1, 0, 0, 0.5],
+                radius=_HEATING_ELEMENT_MARKER_RADIUS,
+                initial_offset=[0, 0, 0])
+            simulator.import_object(self.marker)
+
+        marker_position = self.position if self.position is not None else [0, 0, -100]
+        self.marker.set_position(marker_position)
+
+    def get_value(self):
+        return self.position
 
     def set_value(self, new_value):
         raise NotImplementedError(
