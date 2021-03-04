@@ -637,7 +637,8 @@ class Simulator:
                  font_style='Regular',
                  font_size=48,
                  color=[0, 0, 0],
-                 pos=[0, 0],
+                 pos=[0, 100],
+                 size=[20, 20],
                  scale=1.0,
                  background_color=None):
         """
@@ -648,16 +649,22 @@ class Simulator:
         :param font_style: style of font - one of [regular, italic, bold]
         :param font_size: size of font to render
         :param color: [r, g, b] color
-        :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
+        :param pos: [x, y] position of top-left corner of text box, in percentage across screen
+        :param size: [w, h] size of text box in percentage across screen-space axes
         :param scale: scale factor for resizing text
         :param background_color: color of the background in form [r, g, b, a] - background will only appear if this is not None
         """
+        # Note: For pos/size - (0,0) is bottom-left and (100, 100) is top-right
+        # Calculate pixel positions for text
+        pixel_pos = [int(pos[0]/100.0 * self.renderer.width), int(pos[1]/100.0 * self.renderer.height)]
+        pixel_size = [int(size[0]/100.0 * self.renderer.width), int(size[1]/100.0 * self.renderer.height)]
         return self.renderer.add_text(text_data=text_data,
                                       font_name=font_name,
                                       font_style=font_style,
                                       font_size=font_size,
                                       color=color,
-                                      pos=pos,
+                                      pixel_pos=pixel_pos,
+                                      pixel_size=pixel_size,
                                       scale=scale,
                                       background_color=background_color,
                                       render_to_tex=False)
@@ -668,7 +675,8 @@ class Simulator:
                  font_style='Regular',
                  font_size=48,
                  color=[0, 0, 0],
-                 pos=[500, 500],
+                 pos=[20, 80],
+                 size=[70, 80],
                  scale=1.0,
                  background_color=[1,1,1,0.8]):
         """
@@ -679,7 +687,8 @@ class Simulator:
         :param font_style: style of font - one of [regular, italic, bold]
         :param font_size: size of font to render
         :param color: [r, g, b] color
-        :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
+        :param pos: [x, y] position of top-left corner of text box, in percentage across screen
+        :param size: [w, h] size of text box in percentage across screen-space axes
         :param scale: scale factor for resizing text
         :param background_color: color of the background in form [r, g, b, a] - default is semi-transparent white so text is easy to read in VR
         """
@@ -690,12 +699,17 @@ class Simulator:
             self.renderer.gen_vr_hud()
             self.vr_overlay_initialized = True
 
+        # Note: For pos/size - (0,0) is bottom-left and (100, 100) is top-right
+        # Calculate pixel positions for text
+        pixel_pos = [int(pos[0]/100.0 * self.renderer.width), int(pos[1]/100.0 * self.renderer.height)]
+        pixel_size = [int(size[0]/100.0 * self.renderer.width), int(size[1]/100.0 * self.renderer.height)]
         return self.renderer.add_text(text_data=text_data,
                                       font_name=font_name,
                                       font_style=font_style,
                                       font_size=font_size,
                                       color=color,
-                                      pos=pos,
+                                      pixel_pos=pixel_pos,
+                                      pixel_size=pixel_size,
                                       scale=scale,
                                       background_color=background_color,
                                       render_to_tex=True)
@@ -968,10 +982,11 @@ class Simulator:
         other_controller = '{}_controller'.format(other_controller)
         # Data indicating whether user has pressed top or bottom of the touchpad
         _, _, touch_y = self.renderer.vrsys.getButtonDataForController(other_controller)
-        if self.query_vr_event(other_controller, 'scroll_text'):
-            return touch_y >= 0
-        
-        return -1
+        # Detect no touch
+        if (-1e-5 < touch_y and touch_y < 1e-5) or touch_y < -1 or touch_y > 1:
+            return -1
+
+        return touch_y >= 0
     
     def get_eye_tracking_data(self):
         """

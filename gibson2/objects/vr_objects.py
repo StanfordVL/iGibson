@@ -162,7 +162,7 @@ class VrBody(ArticulatedObject):
             col_link_idxs = [-1] + [i for i in range(p.getNumJoints(col_id))]
             for body_link_idx in body_link_idxs:
                 for col_link_idx in col_link_idxs:
-                    p.setCollisionFilterPair(self.body_id, f_id, body_link_idx, col_link_idx, 0)
+                    p.setCollisionFilterPair(self.body_id, col_id, body_link_idx, col_link_idx, 0)
     
     def update(self, vr_data=None):
         """

@@ -75,7 +75,7 @@ class TextManager(object):
         :param font_size: vertical height of font letters in pixels
         """
         # Test if this font, style combination has already been loaded
-        key = (font_name, font_style)
+        key = (font_name, font_style, font_size)
         if key in self.font_data:
             return self.font_data[key]
 
@@ -104,7 +104,7 @@ class TextManager(object):
             font_chars[code] = next_c
         
         # Store font character dictionary in main font_data dictionary, under current font
-        self.font_data[(font_name, font_style)] = font_chars
+        self.font_data[(font_name, font_style, font_size)] = font_chars
         return font_chars
 
 
