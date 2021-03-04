@@ -57,7 +57,7 @@ class Particle(Object):
         activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + p.ACTIVATION_STATE_WAKE_UP
         p.changeDynamics(self.body_id, -1, activationState=activationState)
 
-class ParticleSystem:
+class ParticleSystem(object):
     def __init__(self, parent_obj, pos=(0, 0, 0), dim=0.1, offset=0.4, num=15, visual_only=False, mass=0.1, color=(1, 1, 1, 1),
                  base_shape="box"):
         self.parent_obj = parent_obj
@@ -72,6 +72,9 @@ class ParticleSystem:
                                            color=color,
                                            base_shape=base_shape))
         self.visual_only = visual_only
+
+    def step(self, simulator):
+        pass
 
     def get_num(self):
         return self.num
@@ -112,7 +115,7 @@ class WaterStreamAnimation(ParticleSystem):
         for particle in self.particles:
             particle.set_position(particle.get_position() + np.array([0,0,self.offset * 0.1]))
 
-    def step(self):
+    def step(self, simulator):
         # detect soakable around it, and change soakable state
         self.animate()
 
@@ -137,7 +140,7 @@ class WaterStreamPhysicsBased(ParticleSystem):
     def set_value(self, on):
         self.on = on
 
-    def step(self):
+    def step(self, simulator):
         if self.on:
             # every n steps, move to a particle the water source
             # detect sinks soakable around it, and change soakable state
