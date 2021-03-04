@@ -111,7 +111,7 @@ class MeshRenderer(object):
                 width, height,
                 int(self.rendering_settings.glfw_gl_version[0]),
                 int(self.rendering_settings.glfw_gl_version[1]),
-                False,
+                self.rendering_settings.show_glfw_window,
                 rendering_settings.fullscreen
             )
         elif self.platform == 'Windows':
@@ -120,7 +120,7 @@ class MeshRenderer(object):
                 width, height,
                 int(self.rendering_settings.glfw_gl_version[0]),
                 int(self.rendering_settings.glfw_gl_version[1]),
-                True,
+                self.rendering_settings.show_glfw_window,
                 rendering_settings.fullscreen
             )
         else:

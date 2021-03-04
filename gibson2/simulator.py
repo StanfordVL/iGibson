@@ -165,7 +165,7 @@ class Simulator:
         This will make the step much slower so should be avoided when training agents
         """
         if self.use_vr_renderer:
-            self.viewer = ViewerVR()
+            self.viewer = ViewerVR(self.vr_settings.use_companion_window)
         elif self.use_simple_viewer:
             self.viewer = ViewerSimple()
         else:

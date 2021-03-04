@@ -27,6 +27,8 @@ shared_settings:
   hud_width: 0.7
   # Position of HUD display relative to the HMD. X (left), Y (up), Z (away from HMD, into the scene)
   hud_pos: [0,0,-0.8]
+  # Whether to use iGibson companion window (set to False by default - please use Steam VR mirror display (described in README))
+  use_companion_window: False
 # Settings that are specific to different VR devices (eg. eye tracking, button mapping)
 device_settings:
   HTC_VIVE_PRO_EYE:
