@@ -4,7 +4,7 @@ from gibson2.object_states.contact_bodies import ContactBodies
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.objects.particles import WaterStreamPhysicsBased
+from gibson2.objects.particles import WaterStream
 
 _WATER_SOURCE_LINK_NAME = "water_source"
 
@@ -36,7 +36,7 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
         water_source_position = list(np.array(water_source_position) + _OFFSET_FROM_LINK)
         if self.water_stream is None:
-            self.water_stream = WaterStreamPhysicsBased(self.obj, pos=water_source_position, num=10)
+            self.water_stream = WaterStream(water_source_position, num=10)
             simulator.import_particle_system(self.water_stream)
         else:
             self.water_stream.water_source_pos = water_source_position
