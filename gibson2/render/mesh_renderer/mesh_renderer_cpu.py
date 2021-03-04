@@ -659,7 +659,8 @@ class MeshRenderer(object):
                  font_style='Regular',
                  font_size=48,
                  color=[0, 0, 0],
-                 pos=[0, 0],
+                 pixel_pos=[0, 0],
+                 pixel_size=[200, 200],
                  scale=1.0,
                  background_color=None,
                  render_to_tex=False):
@@ -671,7 +672,8 @@ class MeshRenderer(object):
         :param font_style: style of font - one of [regular, italic, bold]
         :param font_size: size of font to render
         :param color: [r, g, b] color
-        :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
+        :param pixel_pos: [x, y] position of top-left corner of text box, in pixel coordinates
+        :param pixel_size: [w, h] size of text box in pixel coordinates
         :param scale: scale factor for resizing text
         :param background_color: color of the background in form [r, g, b, a] - background will only appear if this is not None
         :param render_to_tex: whether text should be rendered to an OpenGL texture or the screen (the default)
@@ -681,10 +683,12 @@ class MeshRenderer(object):
                     font_style=font_style, 
                     font_size=font_size, 
                     color=color, 
-                    pos=pos,
+                    pos=pixel_pos,
                     scale=scale,
-                    background_color=background_color,
+                    tbox_height=pixel_size[1],
+                    tbox_width=pixel_size[0],
                     render_to_tex=render_to_tex,
+                    background_color=background_color,
                     text_manager=self.text_manager)
         self.texts.append(text)
         return text

@@ -127,9 +127,8 @@ def main():
             handle.set_orientation(orn)
             p.changeDynamics(handle.body_id, -1, mass=masses[i])
 
-    # Time how long demo takes
-    wrap_scroll_text = s.add_vr_overlay_text(text_data=gen_rand_string(), font_size=50, font_style='Bold', 
-                            color=[0,0,0], pos=[100, 1000])
+    # Text position/size is described in percentage of axes in screen space
+    wrap_scroll_text = s.add_vr_overlay_text(text_data=gen_rand_string(), font_size=70, font_style='Bold', color=[0,0,0])
 
     # Main simulation loop
     while True:
