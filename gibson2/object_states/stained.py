@@ -3,7 +3,7 @@ from gibson2.object_states.cleaning_tool import CleaningTool
 from gibson2.object_states.soaked import Soaked
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
-from gibson2.objects.particles import Stain
+from gibson2.objects.particles import Dirt
 
 CLEAN_THRESHOLD = 0.9
 
@@ -31,14 +31,12 @@ class Stained(AbsoluteObjectState, BooleanState):
 
         # Load the stain if necessary.
         if self.stain is None:
-            self.stain = Stain(self.obj)
+            self.stain = Dirt(self.obj)
             simulator.import_particle_system(self.stain)
 
         # Attach if we went to stained in this step.
         if self.value and not self.prev_value:
-            self.stain.attach(self.obj)
-            for particle in self.stain.particles:
-                particle.active = True
+            self.stain.randomize(self.obj)
 
         # cleaning logic
         cleaning_tools = simulator.scene.get_objects_with_state(CleaningTool)
@@ -48,7 +46,7 @@ class Stained(AbsoluteObjectState, BooleanState):
                 cleaning_tools_wet.append(tool)
 
         for object in cleaning_tools_wet:
-            for particle in self.stain.particles:
+            for particle in self.stain.get_active_particles():
                 particle_pos = particle.get_position()
                 aabb = object.states[AABB].get_value()
                 xmin = aabb[0][0]
