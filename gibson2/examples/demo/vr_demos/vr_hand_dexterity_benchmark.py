@@ -47,6 +47,8 @@ benchmark_names = [
 PRINT_STATS = True
 # Set to true to use gripper instead of VR hands
 USE_GRIPPER = False
+# Set to true to print object information
+PRINT_OBJECT_INFO = True
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -114,6 +116,14 @@ def main():
             handle.set_position(new_pos)
             handle.set_orientation(orn)
             p.changeDynamics(handle.body_id, -1, mass=masses[i])
+
+        print('Information for object: {}'.format(name))
+        print('Masses: {}'.format(masses))
+        aabbMin, aabbMax = p.getAABB(handle.body_id)
+        x = aabbMax[0] - aabbMin[0]
+        y = aabbMax[1] - aabbMin[1]
+        z = aabbMax[2] - aabbMin[2]
+        print('Dimensions - x: {}, y: {}, z: {}'.format(x, y, z))
 
     # Time how long demo takes
     time_text = s.add_vr_overlay_text(text_data='Current time: NOT STARTED', font_size=100, font_style='Bold', 
