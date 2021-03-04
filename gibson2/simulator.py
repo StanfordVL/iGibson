@@ -70,6 +70,8 @@ class Simulator:
 
         self.scene = None
 
+        self.particle_systems = []
+
         # TODO: remove this, currently used for testing only
         self.objects = []
 
@@ -358,6 +360,8 @@ class Simulator:
                                                 use_pbr_mapping=use_pbr_mapping,
                                                 shadow_caster=shadow_caster)
             new_object_pb_ids.append(particle_pb_id)
+
+        self.particle_systems.append(obj)
 
         return new_object_pb_ids
 
@@ -896,6 +900,10 @@ class Simulator:
         """
         Complete any non-physics steps such as state updates.
         """
+        # Step all of the particle systems.
+        for particle_system in self.particle_systems:
+            particle_system.step(self)
+
         # Step the object states in global topological order.
         for state_type in self.object_state_types:
             for obj in self.scene.get_objects_with_state(state_type):
