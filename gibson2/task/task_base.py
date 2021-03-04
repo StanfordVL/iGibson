@@ -241,6 +241,8 @@ class iGTNTask(TaskNetTask):
                         self.object_scope[scene_obj] = obj
 
                         success = True
+                        # If this object is not involved in any initial conditions,
+                        # success will be True by default and any simulator obj will qualify
                         for condition, positive in non_sampleable_obj_conditions:
                             # Only sample conditions that involve this object
                             if scene_obj not in condition.body:
@@ -334,13 +336,9 @@ class iGTNTask(TaskNetTask):
                 return False
 
         # Do sampling again using the object instance -> simulator object mapping from maximum bipartite matching
-        num_trials = 10
         for condition, positive in non_sampleable_obj_conditions:
-            for _ in range(num_trials):
-                success = condition.sample(binary_state=positive)
-                # This should always succeed because it has succeeded before.
-                if success:
-                    break
+            success = condition.sample(binary_state=positive)
+            # This should always succeed because it has succeeded before.
             assert success
 
         # Do sampling that only involves sampleable object (e.g. apple is cooked)
