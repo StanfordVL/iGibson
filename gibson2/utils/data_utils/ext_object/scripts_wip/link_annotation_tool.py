@@ -4,6 +4,7 @@ import os
 import gibson2
 from pynput import keyboard
 import numpy as np
+import pybullet as p
 
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.objects.visual_marker import VisualMarker
@@ -112,14 +113,19 @@ def main():
                         print("New position:", offset)
                         m.set_position(obj_pos + offset)
 
-            px, py, pz = tuple(offset)
-            print("('%s', '%s'): [%.3f, %.3f, %.3f]," % (cat, objdir, px, py, pz))
-
             # Record it into the meta file.
             if 'links' not in meta:
                 meta['links'] = dict()
 
-            meta['links'][LINK_NAME] = list(offset)
+            dynamics_info = p.getDynamicsInfo(obj.get_body_id(), -1)
+            inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+
+            rel_position, _ = p.multiplyTransforms(
+                offset, [0, 0, 0, 1], inertial_pos, inertial_orn)
+
+            meta['links'][LINK_NAME] = list(rel_position)
+            px, py, pz = tuple(rel_position)
+            print("('%s', '%s'): [%.3f, %.3f, %.3f]," % (cat, objdir, px, py, pz))
 
             with open(mfn, "w") as mf:
                 json.dump(meta, mf)
