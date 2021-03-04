@@ -961,17 +961,17 @@ class Simulator:
         """
         Gets scroll input. This uses the non-movement-controller, and determines whether
         the user wants to scroll by testing if they have pressed the touchpad, while keeping
-        their finger on the top/button of the pad.
+        their finger on the top/button of the pad. Return True for up and False for down (-1 for no scroll)
         """
         mov_controller = self.vr_settings.movement_controller
         other_controller = 'right' if mov_controller == 'left' else 'left'
         other_controller = '{}_controller'.format(other_controller)
         # Data indicating whether user has pressed top or bottom of the touchpad
         _, _, touch_y = self.renderer.vrsys.getButtonDataForController(other_controller)
-        if self.query_vr_event(other_controller, 'ACTION'):
-            pass
-            # TODO: Test height, get it done!
-
+        if self.query_vr_event(other_controller, 'scroll_text'):
+            return touch_y >= 0
+        
+        return -1
     
     def get_eye_tracking_data(self):
         """
