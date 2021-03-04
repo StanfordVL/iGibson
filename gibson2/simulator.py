@@ -902,7 +902,7 @@ class Simulator:
         """
         # Step all of the particle systems.
         for particle_system in self.particle_systems:
-            particle_system.step(self)
+            particle_system.update(self)
 
         # Step the object states in global topological order.
         for state_type in self.object_state_types:
