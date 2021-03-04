@@ -2,7 +2,7 @@ from gibson2.object_states.aabb import AABB
 from gibson2.object_states.cleaning_tool import CleaningTool
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
-from gibson2.objects.particles import Dust
+from gibson2.objects.particles import Dirt
 
 CLEAN_THRESHOLD = 0.9
 
@@ -30,19 +30,17 @@ class Dirty(AbsoluteObjectState, BooleanState):
 
         # Load the dust if necessary.
         if self.dust is None:
-            self.dust = Dust(self.obj)
+            self.dust = Dirt(self.obj)
             simulator.import_particle_system(self.dust)
 
         # Attach if necessary
         if self.value and not self.prev_value:
-            self.dust.attach(self.obj)
-            for particle in self.dust.particles:
-                particle.active = True
+            self.dust.randomize(self.obj)
 
         # cleaning logic
         cleaning_tools = simulator.scene.get_objects_with_state(CleaningTool)
         for object in cleaning_tools:
-            for particle in self.dust.particles:
+            for particle in self.dust.get_active_particles():
                 particle_pos = particle.get_position()
                 aabb = object.states[AABB].get_value()
                 xmin = aabb[0][0]
