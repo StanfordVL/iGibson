@@ -52,6 +52,7 @@ device_settings:
       reset_agent: [2, 1]
       # This action registers a press (1) of the HTC Vive controller application menu button (1)
       overlay_toggle: [1, 1]
+      scroll_text: [32, 1] 
   OCULUS:
     eye_tracking: False
     action_button_map:
@@ -66,3 +67,4 @@ device_settings:
     action_button_map:
       reset_agent: [2, 1]
       overlay_toggle: [1, 1]
+      scroll_text: [32, 1] 

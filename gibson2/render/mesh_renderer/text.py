@@ -143,6 +143,8 @@ class Text(object):
             raise ValueError('Each Text object requires a TextManager reference')
         self.font_name = font_name
         self.font_style = font_style
+        # Padding that appears at start and end of text
+        self.text_pad = '-----'
         # Note: font size is in pixels
         self.font_size = font_size
         self.render_to_tex = render_to_tex
@@ -171,7 +173,10 @@ class Text(object):
         :param input_text: text to display - lines must be separated by the newline character
         """
         self.text = input_text.splitlines()
-        self.gen_tex_pos()
+        # By default add '-----' to the start/end of the text to indicate the top/bottom
+        self.text.insert(0, self.text_pad)
+        self.text.append(self.text_pad)
+        self.gen_text_pos()
 
     def set_attribs(self, pos=None, scale=None, color=None):
         """
@@ -187,7 +192,7 @@ class Text(object):
         if color:
             self.color = color
 
-        self.gen_tex_pos()
+        self.gen_text_pos()
 
     def set_show_state(self, state):
         """
@@ -202,7 +207,7 @@ class Text(object):
         """
         return self.show_text
 
-    def gen_tex_pos(self):
+    def gen_text_pos(self):
         """
         Generates position for all characters in text. This is called every time
         some attribute of the text changes - either the text itself, or its pos, color, etc.
@@ -246,11 +251,26 @@ class Text(object):
                 
             line_num += 1
 
-    # Scrolling - move up/down line_sep, check if top/bottom text to enable/disable
-    # Take in simple command and handle checking inside class
-    # Make all text scrollable by default - or maybe make scrollable text instead?
-    # Have a text box class? And a scrollable text box class?
-    # Have self-adjusting text as well???
+    def scroll_text(self, up=True):
+        """
+        Scrolls text within the text box. The "up" direction
+        is one where the user scrolls to see higher up text,
+        which results in the text box moving down.
+        :param up: True to scroll up, False to scroll down.
+        """
+        if up:
+            # Check if first line is on screen
+            highest_char = sorted(self.char_render_data, key=lambda x: x[1] + x[3])[::-1][0]
+            highest_y_pos = highest_char[1] + highest_char[3]
+            if highest_y_pos > self.pos[1] - self.background_margin:
+                # Only scroll up if highest line is not displayed
+                self.char_render_data = [(t[0], t[1] - self.line_sep, t[2], t[3], t[4]) for t in self.char_render_data]
+        else:
+            # Check if last line is on screen
+            lowest_y_pos = sorted(self.char_render_data, key=lambda x: x[1])[0][1]
+            if lowest_y_pos < self.pos[1] - self.tbox_height + self.background_margin:
+                # Only scroll down if lowest line is not displayed
+                self.char_render_data = [(t[0], t[1] + self.line_sep, t[2], t[3], t[4]) for t in self.char_render_data]
 
     def render(self):
         """
@@ -280,10 +300,11 @@ class Text(object):
             self.tm.renderer.r.renderBackgroundQuad(bottom_left_x, bottom_left_y, b_w, b_h, self.VBO, 
                                                     self.tm.renderer.textShaderProgram, b_a, b_r, b_g, b_b)
 
-        # Finally render all characters
+        # Finally render characters - but only those within the text box
         for r_data in self.char_render_data:
             xpos, ypos, w, h, tex_id = r_data
-            self.tm.renderer.r.renderChar(xpos, ypos, w, h, tex_id, self.VBO)
+            if ypos + h <= self.pos[1] - self.background_margin and ypos >= self.pos[1] - self.tbox_height + self.background_margin:
+                self.tm.renderer.r.renderChar(xpos, ypos, w, h, tex_id, self.VBO)
 
         # Perform render clean-up
         self.tm.renderer.r.postRenderText()
