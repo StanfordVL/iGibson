@@ -63,7 +63,7 @@ def main():
     for _ in range(100):
         p.stepSimulation()
 
-    desk.states[object_states.Dirty].set_value(True)
+    desk.states[object_states.Dusty].set_value(True)
 
     for i in range(10000):
         with Profiler('Simulator step'):

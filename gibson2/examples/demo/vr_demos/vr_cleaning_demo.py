@@ -95,7 +95,7 @@ desk = URDFObject(filename=model_path,
                  abilities={'dustyable': {}}
                  )
 
-desk.states[object_states.Dirty].set_value(True)
+desk.states[object_states.Dusty].set_value(True)
 s.import_object(desk)
 desk.set_position([1, -2, 0.4])
 

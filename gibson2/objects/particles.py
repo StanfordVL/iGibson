@@ -341,3 +341,9 @@ class Dirt(AttachedParticleSystem):
                 # We've found a nice attachment point. Let's go.
                 self.unstash_particle(hit_pos, [0, 0, 0, 1])
                 break
+
+class Dust(Dirt):
+    pass
+
+class Stain(Dirt):
+    pass
