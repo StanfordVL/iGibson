@@ -177,7 +177,7 @@ class Simulator:
         This will make the step much slower so should be avoided when training agents
         """
         if self.use_vr_renderer:
-            self.viewer = ViewerVR()
+            self.viewer = ViewerVR(self.vr_settings.use_companion_window)
         elif self.use_simple_viewer:
             self.viewer = ViewerSimple()
         else:
@@ -799,7 +799,8 @@ class Simulator:
                  font_style='Regular',
                  font_size=48,
                  color=[0, 0, 0],
-                 pos=[0, 0],
+                 pos=[0, 100],
+                 size=[20, 20],
                  scale=1.0,
                  background_color=None):
         """
@@ -810,16 +811,22 @@ class Simulator:
         :param font_style: style of font - one of [regular, italic, bold]
         :param font_size: size of font to render
         :param color: [r, g, b] color
-        :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
+        :param pos: [x, y] position of top-left corner of text box, in percentage across screen
+        :param size: [w, h] size of text box in percentage across screen-space axes
         :param scale: scale factor for resizing text
         :param background_color: color of the background in form [r, g, b, a] - background will only appear if this is not None
         """
+        # Note: For pos/size - (0,0) is bottom-left and (100, 100) is top-right
+        # Calculate pixel positions for text
+        pixel_pos = [int(pos[0]/100.0 * self.renderer.width), int(pos[1]/100.0 * self.renderer.height)]
+        pixel_size = [int(size[0]/100.0 * self.renderer.width), int(size[1]/100.0 * self.renderer.height)]
         return self.renderer.add_text(text_data=text_data,
                                       font_name=font_name,
                                       font_style=font_style,
                                       font_size=font_size,
                                       color=color,
-                                      pos=pos,
+                                      pixel_pos=pixel_pos,
+                                      pixel_size=pixel_size,
                                       scale=scale,
                                       background_color=background_color,
                                       render_to_tex=False)
@@ -830,7 +837,8 @@ class Simulator:
                  font_style='Regular',
                  font_size=48,
                  color=[0, 0, 0],
-                 pos=[500, 500],
+                 pos=[20, 80],
+                 size=[70, 80],
                  scale=1.0,
                  background_color=[1,1,1,0.8]):
         """
@@ -841,7 +849,8 @@ class Simulator:
         :param font_style: style of font - one of [regular, italic, bold]
         :param font_size: size of font to render
         :param color: [r, g, b] color
-        :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
+        :param pos: [x, y] position of top-left corner of text box, in percentage across screen
+        :param size: [w, h] size of text box in percentage across screen-space axes
         :param scale: scale factor for resizing text
         :param background_color: color of the background in form [r, g, b, a] - default is semi-transparent white so text is easy to read in VR
         """
@@ -852,12 +861,17 @@ class Simulator:
             self.renderer.gen_vr_hud()
             self.vr_overlay_initialized = True
 
+        # Note: For pos/size - (0,0) is bottom-left and (100, 100) is top-right
+        # Calculate pixel positions for text
+        pixel_pos = [int(pos[0]/100.0 * self.renderer.width), int(pos[1]/100.0 * self.renderer.height)]
+        pixel_size = [int(size[0]/100.0 * self.renderer.width), int(size[1]/100.0 * self.renderer.height)]
         return self.renderer.add_text(text_data=text_data,
                                       font_name=font_name,
                                       font_style=font_style,
                                       font_size=font_size,
                                       color=color,
-                                      pos=pos,
+                                      pixel_pos=pixel_pos,
+                                      pixel_size=pixel_size,
                                       scale=scale,
                                       background_color=background_color,
                                       render_to_tex=True)
@@ -977,6 +991,40 @@ class Simulator:
         self.frame_count += 1
         self.frame_end_time = time.perf_counter()
 
+    def step_block_test(self, sleep_time):
+        """
+        Function that sleeps and renders simple scene to VR, to figure
+        out relationship between frame time and VR blocking time.
+        """
+        non_vr_start = time.perf_counter()
+        # Takes less than 3ms
+        render_start_time = time.perf_counter()
+        for _ in range(1):
+            p.stepSimulation()
+        self.sync()
+        render_dur = time.perf_counter() - render_start_time
+
+        # Sleep for remainder of frame
+        # First frame is invalid, so return None
+        if sleep_time < render_dur:
+            return (None, None)
+
+        time.sleep(sleep_time - render_dur)
+        non_vr_dur = time.perf_counter() - non_vr_start
+
+        # Do VR system stuff
+        vr_system_start = time.perf_counter()
+        self.sync_vr_compositor()
+        self.poll_vr_events()
+        self.fix_eye_tracking_value()
+        self.perform_vr_start_pos_move()
+        self.renderer.update_vr_data()
+        vr_system_dur = time.perf_counter() - vr_system_start
+
+        # Return Vr system duration to user, as well as non-vr frame time
+        # Values are in ms
+        return (vr_system_dur * 1000, non_vr_dur * 1000)
+
     def step(self, print_stats=False, forced_timestep=None):
         """
         Step the simulation at self.render_timestep and update positions in renderer
@@ -1046,10 +1094,10 @@ class Simulator:
     # touchpad_touch, touchpad_untouch, menu_press, menu_unpress (menu is the application button)
     def poll_vr_events(self):
         """
-        Returns VR event data as list of lists. Each sub-list contains deviceType and eventType. 
+        Returns VR event data as list of lists. 
         List is empty if all events are invalid. Components of a single event:
         controller: 0 (left_controller), 1 (right_controller)
-        event_idx: any valid idx in EVRButtonId enum in openvr.h header file
+        button_idx: any valid idx in EVRButtonId enum in openvr.h header file
         press: 0 (unpress), 1 (press)
         """
         if not self.can_access_vr_context:
@@ -1057,6 +1105,19 @@ class Simulator:
                 'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
         self.vr_event_data = self.renderer.vrsys.pollVREvents()
+        # Enforce store_first_button_press_per_frame option, if user has enabled it
+        if self.vr_settings.store_only_first_event_per_button:
+            temp_event_data = []
+            # Make sure we only store the first (button, press) combo of each type
+            event_set = set()
+            for ev_data in self.vr_event_data:
+                controller, button_idx, _ = ev_data
+                key = (controller, button_idx)
+                if key not in event_set:
+                    temp_event_data.append(ev_data)
+                    event_set.add(key)
+            self.vr_event_data = temp_event_data[:]
+        
         return self.vr_event_data
 
     def get_vr_events(self):
@@ -1125,6 +1186,23 @@ class Simulator:
         
         trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(controller_name)
         return [trigger_fraction, touch_x, touch_y]
+
+    def get_scroll_input(self):
+        """
+        Gets scroll input. This uses the non-movement-controller, and determines whether
+        the user wants to scroll by testing if they have pressed the touchpad, while keeping
+        their finger on the top/button of the pad. Return True for up and False for down (-1 for no scroll)
+        """
+        mov_controller = self.vr_settings.movement_controller
+        other_controller = 'right' if mov_controller == 'left' else 'left'
+        other_controller = '{}_controller'.format(other_controller)
+        # Data indicating whether user has pressed top or bottom of the touchpad
+        _, _, touch_y = self.renderer.vrsys.getButtonDataForController(other_controller)
+        # Detect no touch
+        if (-1e-5 < touch_y and touch_y < 1e-5) or touch_y < -1 or touch_y > 1:
+            return -1
+
+        return touch_y >= 0
     
     def get_eye_tracking_data(self):
         """

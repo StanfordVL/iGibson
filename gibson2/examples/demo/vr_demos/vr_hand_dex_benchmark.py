@@ -1,6 +1,5 @@
 """ This VR hand dexterity benchmark allows the user to interact with many types of objects
 and interactive objects, and provides a good way to qualitatively measure the dexterity of a VR hand.
-
 You can use the left and right controllers to start/stop/reset the timer,
 as well as show/hide its display. The "overlay toggle" action and its
 corresponding button index mapping can be found in the vr_config.yaml file in the gibson2 folder.
@@ -110,9 +109,125 @@ def main():
             handle.set_orientation(orn)
             p.changeDynamics(handle.body_id, -1, mass=masses[i])
 
+    table_objects_to_load = {
+        "tray" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "tray", "tray_000", "tray_000.urdf"),
+            "pos": (1.100000, 0.200000, 0.650000),
+            "orn": (0.000000, 0.00000, 0.707107, 0.707107),
+            "scale": 0.15
+        },
+        "plate_1" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
+            "pos": (0.700000, -0.300000, 0.650000),
+            "orn": (0.000000, 0.00000, 0.707107, 0.707107),
+            "scale": 0.01
+        },
+        "plate_2" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
+            "pos": (1.100000, -0.300000, 0.650000),
+            "orn": (0.000000, 0.00000, 0.707107, 0.707107),
+            "scale": 0.01
+        },
+        "plate_3" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
+            "pos": (0.700000, -1.200000, 0.000000),
+            "orn": (0.000000, 0.00000, 0.707107, 0.707107),
+            "scale": 0.01
+        },
+        "plate_4" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
+            "pos": (1.100000, -1.200000, 0.000000),
+            "orn": (0.000000, 0.00000, 0.707107, 0.707107),
+            "scale": 0.01
+        },
+        "chip_1" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "chip", "40", "40.urdf"),
+            "pos": (0.700000, -0.800000, 0.750000),
+            "orn": (0.000000, 0.00000, 0.707107, 0.707107),
+            "scale": 1
+        },
+        "chip_2" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "chip", "40", "40.urdf"),
+            "pos": (1.100000, -0.800000, 0.750000),
+            "orn": (0.000000, 0.00000, 0.707107, 0.707107),
+            "scale": 1
+        },
+        "cherry_1" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "cherry", "02_0", "02_0.urdf"),
+            "pos": (0.700000, -0.600000, 0.680000),
+            "orn": (0.000000, 0.00000, 0.707107, 0.707107),
+            "scale": 1
+        },
+        "cherry_2" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "cherry", "02_0", "02_0.urdf"),
+            "pos": (1.100000, -0.600000, 0.680000),
+            "orn": (0.000000, 0.00000, 0.707107, 0.707107),
+            "scale": 1
+        },
+        "shelf" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "shelf", "de3b28f255111570bc6a557844fbbce9", "de3b28f255111570bc6a557844fbbce9.urdf"),
+            "pos": (1.700000, -3.500000, 1.15000), 
+            "orn": (0.000000, 0.00000, -0.707107, 0.707107),
+            "scale": 2.50
+        },
+        "wine_bottle_1" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
+            "pos": (1.700000, -3.500000, 1.90000), 
+            "orn": (0.000000, 0.00000, -0.707107, 0.707107),
+            "scale": 1
+        },
+        "wine_bottle_2" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
+            "pos": (1.700000, -3.2500000, 1.90000), 
+            "orn": (0.000000, 0.00000, -0.707107, 0.707107),
+            "scale": 1
+        },
+        "wine_bottle_3" : {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
+            "pos": (1.700000, -3.750000, 1.90000), 
+            "orn": (0.000000, 0.00000, -0.707107, 0.707107),
+            "scale": 1
+        },
+        "chair": {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "armchair", "fc131dfba15fafb2fdeed357dfbe708a", "fc131dfba15fafb2fdeed357dfbe708a.urdf"),
+            "pos": (-1.500000, -0.20000, 0.500000), 
+            "orn": (0.000000, 0.000000, 0.707107, 0.707107),
+            "scale": 1
+        },
+        "floor_map": {
+            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "floor_lamp", "lamp_0035", "lamp_0035.urdf"),
+            "pos": (-1.500000, 0.00000, 0.500000), 
+            "orn": (0.000000, 0.000000, 0.707107, 0.707107),
+            "scale": 1
+        },
+        "table_1": {
+            "urdf": "table/table.urdf", 
+            "pos": (1.000000, -0.200000, 0.000000), 
+            "orn": (0.000000, 0.000000, 0.707107, 0.707107),
+            "scale": 1
+        },
+        "table_2": {
+            "urdf": "table/table.urdf", 
+            "pos": (-1.500000, -3.000000, 0.000000), 
+            "orn": (0.000000, 0.000000, 0.707107, 0.707107),
+            "scale": 1
+        },
+    }
+
+    objs_loaded = []
+    for item in table_objects_to_load.values():
+        fpath = item['urdf']
+        pos = item['pos']
+        orn = item['orn']
+        scale = item['scale']
+        item_ob = ArticulatedObject(fpath, scale=scale)
+        s.import_object(item_ob, use_pbr=False, use_pbr_mapping=False)
+        item_ob.set_position(pos)
+        item_ob.set_orientation(orn)
+        objs_loaded.append(item_ob)
     # Time how long demo takes
     time_text = s.add_vr_overlay_text(text_data='Current time: NOT STARTED', font_size=100, font_style='Bold', 
-                            color=[0,0,0], pos=[100, 100])
+                            color=[0,0,0], pos=[0, 90], size=[50, 50])
     timer = VrTimer()
 
     # Main simulation loop
