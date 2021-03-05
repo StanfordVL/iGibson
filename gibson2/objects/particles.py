@@ -81,7 +81,7 @@ class Particle(Object):
 
 
 class ParticleSystem(object):
-    def __init__(self, num=30, visual_only=False, **kwargs):
+    def __init__(self, num=20, visual_only=False, **kwargs):
         self._active_particles = []
         self._stashed_particles = deque()
 
