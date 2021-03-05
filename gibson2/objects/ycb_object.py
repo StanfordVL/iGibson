@@ -35,3 +35,14 @@ class YCBObject(StatefulObject):
 
     def get_body_id(self):
         return self.body_id
+
+    def reset(self):
+        pass
+
+    def force_wakeup(self):
+        """
+        Force wakeup sleeping objects
+        """
+        body_id = self.get_body_id()
+        p.changeDynamics(body_id, -1,
+                         activationState=p.ACTIVATION_STATE_WAKE_UP)

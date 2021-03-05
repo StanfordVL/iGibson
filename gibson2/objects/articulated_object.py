@@ -195,9 +195,10 @@ class URDFObject(StatefulObject):
         urdf = os.path.basename(filename)
         urdf_name, _ = os.path.splitext(urdf)
         simplified_urdf = os.path.join(dirname, urdf_name + "_simplified.urdf")
-        if os.path.exists(simplified_urdf):
-            self.filename = simplified_urdf
-            filename = simplified_urdf
+        # skip loading simplfied urdf for relmogen demo
+        # if os.path.exists(simplified_urdf):
+        #    self.filename = simplified_urdf
+        #    filename = simplified_urdf
         logging.info("Loading the following URDF template " + filename)
         self.object_tree = ET.parse(filename)  # Parse the URDF
 

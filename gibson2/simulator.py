@@ -674,7 +674,8 @@ class Simulator:
                        min_distance_to_existing_object > distance:
                         min_distance_to_existing_object = distance
 
-                if min_distance_to_existing_object < min_distance:
+                if min_distance_to_existing_object is None or \
+                        min_distance_to_existing_object < min_distance:
                     add = False
                     break
 

@@ -8,7 +8,6 @@ trav_map_type: no_obj
 trav_map_resolution: 0.1
 trav_map_erosion: 3
 should_open_all_doors: true
-_set_first_n_objects: 10
 
 # domain randomization
 texture_randomization_freq: null
@@ -22,17 +21,17 @@ arm_velocity: 0.8
 
 # task
 task: room_rearrangement
-load_object_categories: [
-  bottom_cabinet,
-  bottom_cabinet_no_top,
-  top_cabinet,
-  dishwasher,
-  fridge,
-  microwave,
-  oven,
-  washer
-  dryer,
-]
+# load_object_categories: [
+#   bottom_cabinet,
+#   bottom_cabinet_no_top,
+#   top_cabinet,
+#   dishwasher,
+#   fridge,
+#   microwave,
+#   oven,
+#   washer
+#   dryer,
+# ]
 
 # reward
 potential_reward_weight: 1.0

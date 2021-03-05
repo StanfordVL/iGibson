@@ -882,7 +882,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
         ids = []
         for obj_name in self.objects_by_name:
             if self.objects_by_name[obj_name].body_id is not None:
-                ids.extend(self.objects_by_name[obj_name].body_id)
+                body_id = self.objects_by_name[obj_name].body_id
+                if isinstance(body_id, list):
+                    ids.extend(body_id)
+                elif isinstance(body_id, int):
+                    ids.append(body_id)
         return ids
 
     def save_modified_urdf(self, urdf_name):
