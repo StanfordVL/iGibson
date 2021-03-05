@@ -175,7 +175,7 @@ class VrSettings(object):
         assert self.relative_movement_device in ['hmd', 'left_controller', 'right_controller']
         self.movement_speed = shared_settings['movement_speed']
         self.vr_fps = shared_settings['vr_fps']
-        self.assisted_grasping_percentage = shared_settings['assisted_grasping_percentage']
+        self.assist_percent = shared_settings['assist_percent']
         self.hud_width = shared_settings['hud_width']
         self.hud_pos = shared_settings['hud_pos']
         self.use_companion_window = shared_settings['use_companion_window']

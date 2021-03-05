@@ -373,23 +373,32 @@ class VrHand(VrHandBase):
         # Thumb does not close as much to match other fingers
         self.close_pos[7] = 0.7
         self.close_pos[8] = 0.7
-        self.hand_friction = 2.0 if not self.use_prim else 3.0
+        # TODO: Change this back!
+        self.hand_friction = 10
+        #self.hand_friction = 2.0 if not self.use_prim else 3.0
         self.hand_close_force = 3
         # Need non-zero minimum otherwise PyBullet will be unhappy!
         #self.min_hand_close_force = 1
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         # Variables for assisted grasping
         self.object_in_hand = None
-        self.min_force = 0
-        self.max_force = 10
-        self.grasp_p = self.s.vr_settings.assisted_grasping_percentage
-        self.assisted_force = self.min_force + (self.max_force - self.min_force) * self.grasp_p
-        # As assisted force gets larger, reduce hand close force
-        # TODO: Add this back in?
-        #self.hand_close_force = self.min_hand_close_force + (self.hand_close_force - self.min_hand_close_force) * ((100 - self.grasp_p)/100.0)
+        self.assist_percent = self.s.vr_settings.assist_percent
+        self.min_assist_force = 0
+        self.max_assist_force = 100
+        self.assist_force = self.min_assist_force + (self.max_assist_force - self.min_assist_force) * self.assist_percent / 100.0
         self.trig_frac_thresh = 0.5
         self.palm_link_idx = 0
         self.obj_cid = None
+        # Number of frames to ramp down release of constrained object
+        self.release_ramp_down_frames = 3
+        self.current_ramp_down_frame = None
+        self.should_ramp_down = False
+        self.can_close_hand = True
+        self.should_disable_grasping_collision = False
+
+        # TODO: Clean up variables here
+        self.finger_link_idxs = [2, 4, 6, 8, 10]
+        self.obj_cids = []
 
     def hand_setup(self, z_coord):
         """
@@ -413,6 +422,43 @@ class VrHand(VrHandBase):
         if self.use_constraints:
             self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.start_pos)
 
+    def set_coll_filter_for_body(self, target_id, enable):
+        """
+        Sets collision filters for a body - to enable or disable them
+        :param target_id: body to enable/disable collisions with
+        :param enable: whether to enable/disable collisions
+        """
+        target_link_idxs = [-1] + [i for i in range(p.getNumJoints(target_id))]
+        body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.body_id))]
+
+        for body_link_idx in body_link_idxs:
+            for target_link_idx in target_link_idxs:
+                p.setCollisionFilterPair(self.body_id, target_id, body_link_idx, target_link_idx, 1 if enable else 0)
+
+    def init_ramp_down(self):
+        """
+        Initializes ramp-down sequence for releasing an object.
+        """
+        self.current_ramp_down_frame = self.release_ramp_down_frames
+
+    def release_object_ramp_down(self):
+        """
+        Handles ramp-down of object release over a few frames, to avoid
+        immediate expulsion of constraint object.
+        """
+        if self.current_ramp_down_frame == 1:
+            p.removeConstraint(self.obj_cid)
+            # Re-enable collisions with this object
+            self.set_coll_filter_for_body(self.object_in_hand, True)
+            self.object_in_hand = None
+            self.can_close_hand = True
+            self.should_ramp_down = False
+            return
+
+        force = self.assisted_force * float(self.current_ramp_down_frame)/self.release_ramp_down_frames
+        p.changeConstraint(self.obj_cid, maxForce=self.assisted_force)
+        self.current_ramp_down_frame -= 1
+
     def handle_assisted_grasping(self, vr_data=None):
         """
         Handles assisted grasping.
@@ -421,6 +467,10 @@ class VrHand(VrHandBase):
             trig_frac, _, _ = vr_data.query('{}_button'.format(self.vr_device))
         else:
             trig_frac, _, _ = self.s.get_button_data_for_controller(self.vr_device)
+
+        #if self.should_ramp_down:
+        #    self.release_object_ramp_down()
+        #    return
 
         if not self.object_in_hand:
             if trig_frac > self.trig_frac_thresh:
@@ -442,48 +492,69 @@ class VrHand(VrHandBase):
 
                 # Get body id of contact with most force
                 most_force_bid = sorted(cpt_forces.items(), key=lambda v: v[1])[::-1][0][0]
-
-                # Get palm pos/orn
-                palm_link_state = p.getLinkState(self.body_id, self.palm_link_idx)
-                palm_pos = palm_link_state[0]
-                palm_orn = palm_link_state[1]
                 # Calculate transform from object to palm center
                 body_pos, body_orn = p.getBasePositionAndOrientation(most_force_bid)
                 # Get inverse world transform of body frame
-                child_frame_trans_pos, child_frame_trans_orn = p.invertTransform(body_pos, body_orn)
-                # Multiple by world transform of palm to get correct transform
-                # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
-                child_frame_pos, child_frame_orn = p.multiplyTransforms(child_frame_trans_pos,
-                                                                        child_frame_trans_orn,
-                                                                        palm_pos,
-                                                                        palm_orn)
+                inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
 
-                self.obj_cid = p.createConstraint(
-                                        parentBodyUniqueId=self.body_id,
-                                        parentLinkIndex=self.palm_link_idx,
-                                        childBodyUniqueId=most_force_bid,
-                                        childLinkIndex=-1,
-                                        jointType=p.JOINT_FIXED,
-                                        jointAxis=(0, 0, 0),
-                                        parentFramePosition=(0, 0, 0),
-                                        childFramePosition=child_frame_pos,
-                                        childFrameOrientation=child_frame_orn,
-                                    )
-                # Modify max force based on user-determined assist parameters
-                p.changeConstraint(self.obj_cid, maxForce=self.assisted_force)
-                self.object_in_hand = most_force_bid
+                # Loop through all fingers
+                for finger_link_idx in self.finger_link_idxs:
+                    link_state = p.getLinkState(self.body_id, finger_link_idx)
+                    link_pos = link_state[0]
+                    link_orn = link_state[1]
+                    # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
+                    child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos,
+                                                                            inv_body_orn,
+                                                                            link_pos,
+                                                                            link_orn)
+
+                    next_cid = p.createConstraint(
+                                            parentBodyUniqueId=self.body_id,
+                                            parentLinkIndex=finger_link_idx,
+                                            childBodyUniqueId=most_force_bid,
+                                            childLinkIndex=-1,
+                                            jointType=p.JOINT_FIXED,
+                                            jointAxis=(0, 0, 0),
+                                            parentFramePosition=(0, 0, 0),
+                                            childFramePosition=child_frame_pos,
+                                            childFrameOrientation=child_frame_orn
+                                        )
+                    # Modify max force based on user-determined assist parameters
+                    p.changeConstraint(next_cid, maxForce=self.assist_force)
+                    self.obj_cids.append(next_cid)
+                    self.object_in_hand = most_force_bid
+
+                    # Disable hand opening/closing while holding on to an object
+                    #self.can_close_hand = False
+                    # This will activate on the next frame
+                    #self.should_disable_grasping_collision = True
         else:
+            #if self.should_disable_grasping_collision:
+            #    # Disable collisions with this object, to prevent fingers moving when grasping
+            #    self.set_coll_filter_for_body(self.object_in_hand, False)
+            #    self.should_disable_grasping_collision = False
+
             if trig_frac <= self.trig_frac_thresh:
-                p.removeConstraint(self.obj_cid)
+                #self.init_ramp_down()
+                #self.should_ramp_down = True
+                # TODO: Remove all finger constraints
+                for cid in self.obj_cids:
+                    p.removeConstraint(cid)
+                self.obj_cids = []
+                # Re-enable collisions with this object
+                #self.set_coll_filter_for_body(self.object_in_hand, True)
                 self.object_in_hand = None
+                #self.can_close_hand = True
+                #self.should_ramp_down = False
 
     def update(self, vr_data=None):
         """
         Overriden update that can handle assisted grasping. Note that this only
         available for the VrHand, and not the VrGripper.
         """
+        #if self.assist_percent > 0:
+        #    self.handle_assisted_grasping(vr_data=vr_data)
         super(VrHand, self).update(vr_data=vr_data)
-        self.handle_assisted_grasping(vr_data=vr_data)
         
     def set_close_fraction(self, close_frac):
         """
@@ -491,6 +562,8 @@ class VrHand(VrHandBase):
         and close frac of 0 indicates fully open joint. Joints move smoothly between 
         their values in self.open_pos and self.close_pos.
         """
+        if not self.can_close_hand:
+            return
         for joint_index in range(p.getNumJoints(self.body_id)):
             open_pos = self.open_pos[joint_index]
             close_pos = self.close_pos[joint_index]

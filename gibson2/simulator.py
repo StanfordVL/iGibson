@@ -823,6 +823,40 @@ class Simulator:
         self.frame_count += 1
         self.frame_end_time = time.perf_counter()
 
+    def step_block_test(self, sleep_time):
+        """
+        Function that sleeps and renders simple scene to VR, to figure
+        out relationship between frame time and VR blocking time.
+        """
+        non_vr_start = time.perf_counter()
+        # Takes less than 3ms
+        render_start_time = time.perf_counter()
+        for _ in range(1):
+            p.stepSimulation()
+        self.sync()
+        render_dur = time.perf_counter() - render_start_time
+
+        # Sleep for remainder of frame
+        # First frame is invalid, so return None
+        if sleep_time < render_dur:
+            return (None, None)
+
+        time.sleep(sleep_time - render_dur)
+        non_vr_dur = time.perf_counter() - non_vr_start
+
+        # Do VR system stuff
+        vr_system_start = time.perf_counter()
+        self.sync_vr_compositor()
+        self.poll_vr_events()
+        self.fix_eye_tracking_value()
+        self.perform_vr_start_pos_move()
+        self.renderer.update_vr_data()
+        vr_system_dur = time.perf_counter() - vr_system_start
+
+        # Return Vr system duration to user, as well as non-vr frame time
+        # Values are in ms
+        return (vr_system_dur * 1000, non_vr_dur * 1000)
+
     def step(self, print_stats=False, forced_timestep=None):
         """
         Step the simulation at self.render_timestep and update positions in renderer
