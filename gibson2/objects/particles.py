@@ -155,6 +155,7 @@ class AttachedParticleSystem(ParticleSystem):
         super(AttachedParticleSystem, self).update(simulator)
 
         # Move every particle to their known parent object offsets.
+        # TODO: Find the surface link so that we can attach to the correct link rather than main body.
         base_pos, base_orn = self._parent_obj.get_position(), self._parent_obj.get_orientation()
         for particle in self.get_active_particles():
             pos_offset, orn_offset = self._attachment_offsets[particle]
