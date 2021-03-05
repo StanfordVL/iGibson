@@ -225,7 +225,7 @@ def test_dirty():
         s.import_object(sink)
         sink.set_position([1, 1, 0.8])
         assert 'dustyable' in sink.abilities
-        assert object_states.Dirty in sink.states
+        assert object_states.Dusty in sink.states
 
         for i in range(10):
             s.step()

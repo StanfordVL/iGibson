@@ -52,11 +52,11 @@ def main():
                       category='table',
                       name='19898',
                       scale=np.array([0.8, 0.8, 0.8]),
-                      abilities={'dustyable': {}}
+                      abilities={'scrubbable': {}}
                       )
 
     print(desk.states.keys())
-    desk.states[object_states.Dirty].set_value(True)
+    desk.states[object_states.Stained].set_value(True)
     s.import_object(desk)
     desk.set_position([1, -2, 0.4])
 
