@@ -10,8 +10,9 @@ _STASH_POSITION = [0, 0, -100]
 
 _DIRT_MAX_SAMPLING_ATTEMPTS = 10
 _DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY = 0.1
-_DIRT_SAMPLING_BIMODAL_MEAN_FRACTION = 0.95
-_DIRT_SAMPLING_BIMODAL_STDEV_FRACTION = 0.1
+_DIRT_SAMPLING_AXIS_PROBABILITIES = [0.25, 0.25, 0.5]
+_DIRT_SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
+_DIRT_SAMPLING_BIMODAL_STDEV_FRACTION = 0.2
 _DIRT_RAY_CASTING_AABB_OFFSET = 0.1
 _DIRT_RAY_CASTING_PARALLEL_RAY_SOURCE_OFFSET = 0.05
 _DIRT_RAY_CASTING_PARALLEL_HIT_NORMAL_ANGLE_TOLERANCE = 0.2
@@ -252,7 +253,7 @@ class Dirt(AttachedParticleSystem):
         uniforms = np.random.uniform(mins, maxes, (count, mins.shape[0]))
 
         # Finally merge them so that only one axis, randomly chosen with weights, is from the bimodal.
-        dim_for_bimodal = np.random.choice([0, 1, 2], size=count, p=[0.15, 0.15, 0.7])
+        dim_for_bimodal = np.random.choice([0, 1, 2], size=count, p=_DIRT_SAMPLING_AXIS_PROBABILITIES)
         uniforms[np.arange(count), dim_for_bimodal] = bimodals[np.arange(count), dim_for_bimodal]
 
         return uniforms
