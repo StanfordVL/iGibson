@@ -1,0 +1,18 @@
+"""
+Simple script to visualize the collision mesh of the VR hand in Pybullet
+"""
+
+from gibson2 import assets_path
+import os
+import pybullet as p
+import time
+
+p.connect(p.GUI)
+
+vr_hand_col_path = os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', 
+                                'collision_mesh_vis', 'vr_hand_collision_mesh_vis.urdf')
+p.loadURDF(vr_hand_col_path)
+
+p.setRealTimeSimulation(0)
+while (True):
+  time.sleep(0.01)

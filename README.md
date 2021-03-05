@@ -117,6 +117,15 @@ https://hub.vive.com/en-US/download
 
 Download the VIVE_SRanipalInstaller msi file and install SRAnipal.
 
+Companion Window:
+=============================
+
+iGibson VR utilizes Steam VR's built-in companion window to visualize what the user sees in their headset. To open this window, launch Steam VR. Then click on the hamburger menu in the top-left corner of the VR status menu (the dark blue window with icons for the VR devices).
+Within that menu, locate the "Display VR View" button and click it. From this view, you can change which eye you are looking at (or look at both), and can make the window fullscreen.
+Note that this window will be black until an application is running, and the headset is detected by the lighthouse sensors.
+
+We also support a custom-build companion window that can run in iGibson - this can be enabled in the vr_config file, described below (although it is off by default).
+
 Gibson
 ======
 

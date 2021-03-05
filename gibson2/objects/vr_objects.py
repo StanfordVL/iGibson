@@ -16,7 +16,7 @@ from gibson2 import assets_path
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.utils import multQuatLists
-from gibson2.utils.vr_utils import move_player, calc_offset, translate_vr_position_by_vecs, calc_z_dropoff
+from gibson2.utils.vr_utils import move_player, calc_offset, translate_vr_position_by_vecs, calc_z_rot_from_right
 
 
 class VrAgent(object):
@@ -154,15 +154,15 @@ class VrBody(ArticulatedObject):
         """
         Sets VrBody's collision filters.
         """
-        # Get body ids of the floor
-        floor_ids = self.sim.get_category_ids('floors')
+        # Get body ids of the floor and carpets
+        no_col_ids = self.sim.get_category_ids('floors') + self.sim.get_category_ids('carpet')
         body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.body_id))]
 
-        for f_id in floor_ids:
-            floor_link_idxs = [-1] + [i for i in range(p.getNumJoints(f_id))]
+        for col_id in no_col_ids:
+            col_link_idxs = [-1] + [i for i in range(p.getNumJoints(col_id))]
             for body_link_idx in body_link_idxs:
-                for floor_link_idx in floor_link_idxs:
-                    p.setCollisionFilterPair(self.body_id, f_id, body_link_idx, floor_link_idx, 0)
+                for col_link_idx in col_link_idxs:
+                    p.setCollisionFilterPair(self.body_id, col_id, body_link_idx, col_link_idx, 0)
     
     def update(self, vr_data=None):
         """
@@ -171,11 +171,11 @@ class VrBody(ArticulatedObject):
         """
         # Get HMD data
         if vr_data:
-            hmd_is_valid, _, hmd_rot, right, _, forward = vr_data.query('hmd')
+            hmd_is_valid, _, hmd_rot, right, up, forward = vr_data.query('hmd')
             hmd_pos, _ = vr_data.query('vr_positions')
         else:
             hmd_is_valid, _, hmd_rot = self.sim.get_data_for_vr_device('hmd')
-            right, _, forward = self.sim.get_device_coordinate_system('hmd')
+            right, up, forward = self.sim.get_device_coordinate_system('hmd')
             hmd_pos = self.sim.get_vr_pos()
 
         # Only update the body if the HMD data is valid - this also only teleports the body to the player
@@ -201,28 +201,9 @@ class VrBody(ArticulatedObject):
             dist_to_dest = np.linalg.norm(curr_pos - dest)
 
             if dist_to_dest < 2.0:
-                # Check whether angle between forward vector and pos/neg z direction is less than self.z_rot_thresh, and only
-                # update if this condition is fulfilled - this stops large body angle swings when HMD is pointed up/down
-                n_forward = np.array(forward)
-                # Normalized forward direction and z direction
-                n_forward = n_forward / np.linalg.norm(n_forward)
-                n_z = np.array([0.0, 0.0, 1.0])
-                # Calculate angle and convert to degrees
-                theta_z = np.arccos(np.dot(n_forward, n_z)) / np.pi * 180
-
-                # Move theta into range 0 to max_z
-                if theta_z > (180.0 - self.max_z):
-                    theta_z = 180.0 - theta_z
-
-                # Calculate z multiplication coefficient based on how much we are looking in up/down direction
-                z_mult = calc_z_dropoff(theta_z, self.min_z, self.max_z)
-                delta_z = hmd_z - curr_z
-                # Modulate rotation fraction by z_mult
-                new_z = curr_z + delta_z * z_mult
+                new_z = calc_z_rot_from_right(right)
                 new_body_rot = p.getQuaternionFromEuler([0, 0, new_z])
-
-                # Update body transform constraint
-                p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=2000)
+                p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=50)
 
                 # Use 90% strength haptic pulse in both controllers for body collisions with walls - this should notify the user immediately
                 # Note: haptics can't be used in networking situations like MUVR (due to network latency)
@@ -361,6 +342,7 @@ class VrHand(VrHandBase):
     Joint index 10, name b'Imiddle__Iproximal', type 0
     """
     def __init__(self, s, hand='right', use_constraints=True, normal_color=True, use_prim=True):
+        self.s = s
         self.normal_color = normal_color
         hand_path = 'normal_color' if self.normal_color else 'alternative_color'
         self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', hand_path)
@@ -391,8 +373,23 @@ class VrHand(VrHandBase):
         # Thumb does not close as much to match other fingers
         self.close_pos[7] = 0.7
         self.close_pos[8] = 0.7
-        self.hand_friction = 2.0 if not self.use_prim else 3.0
+        self.hand_friction = 2.5
+        #self.hand_friction = 2.0 if not self.use_prim else 3.0
+        self.hand_close_force = 3
+        # Need non-zero minimum otherwise PyBullet will be unhappy!
+        #self.min_hand_close_force = 1
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+        # Variables for assisted grasping
+        self.object_in_hand = None
+        self.assist_percent = self.s.vr_settings.assist_percent
+        self.min_assist_force = 0
+        self.max_assist_force = 200
+        self.assist_force = self.min_assist_force + (self.max_assist_force - self.min_assist_force) * self.assist_percent / 100.0
+        self.trig_frac_thresh = 0.5
+        self.palm_link_idx = 0
+        self.obj_cid = None
+        self.should_freeze_joints = False
+        self.mass_threshold = 15.0
 
     def hand_setup(self, z_coord):
         """
@@ -416,18 +413,138 @@ class VrHand(VrHandBase):
         if self.use_constraints:
             self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.start_pos)
 
+    def set_coll_filter_for_body(self, target_id, enable):
+        """
+        Sets collision filters for a body - to enable or disable them
+        :param target_id: body to enable/disable collisions with
+        :param enable: whether to enable/disable collisions
+        """
+        target_link_idxs = [-1] + [i for i in range(p.getNumJoints(target_id))]
+        body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.body_id))]
+
+        for body_link_idx in body_link_idxs:
+            for target_link_idx in target_link_idxs:
+                p.setCollisionFilterPair(self.body_id, target_id, body_link_idx, target_link_idx, 1 if enable else 0)
+
+    def gen_freeze_vals(self):
+        """
+        Generate joint values to freeze joints at.
+        """
+        self.freeze_vals = {}
+        for joint_index in range(p.getNumJoints(self.body_id)):
+            j_val = p.getJointState(self.body_id, joint_index)[0]
+            self.freeze_vals[joint_index] = j_val
+
+    def freeze_joints(self):
+        """
+        Freezes hand joints - used in assisted grasping.
+        """
+        for joint_index, j_val in self.freeze_vals.items():
+            p.resetJointState(self.body_id, joint_index, targetValue=j_val, targetVelocity=0.0)
+
+    def handle_assisted_grasping(self, vr_data=None):
+        """
+        Handles assisted grasping.
+        """
+        if vr_data:
+            trig_frac, _, _ = vr_data.query('{}_button'.format(self.vr_device))
+        else:
+            trig_frac, _, _ = self.s.get_button_data_for_controller(self.vr_device)
+
+        if not self.object_in_hand:
+            if trig_frac > self.trig_frac_thresh:
+                # Get collisions
+                cpts = p.getContactPoints(self.body_id)
+                if not cpts:
+                    return
+                # Count overall force applied to each body id
+                cpt_forces = {}
+                for i in range(len(cpts)):
+                    cpt = cpts[i]
+                    c_bid = cpt[2]
+                    c_link = cpt[4]
+                    c_mass = p.getDynamicsInfo(c_bid, c_link)[0]
+                    # Don't attach to objects that are too heavy (eg. walls, floor, tables)
+                    if c_mass > self.mass_threshold:
+                        continue
+                    # Get magnitude of normal force exerted by cpt onto the hand
+                    n_force = cpt[9]
+                    c_key = (c_bid, c_link)
+                    if c_bid in cpt_forces:
+                        cpt_forces[c_key] += n_force
+                    else:
+                        cpt_forces[c_key] = n_force
+
+                # Exit if not valid contact points
+                if not cpt_forces:
+                    return
+
+                # Get body id of contact with most force
+                most_force_bid, most_force_link = sorted(cpt_forces.items(), key=lambda v: v[1])[::-1][0][0]
+                # Calculate transform from object to palm center
+                body_pos, body_orn = p.getBasePositionAndOrientation(most_force_bid)
+                # Get inverse world transform of body frame
+                inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
+                link_state = p.getLinkState(self.body_id, self.palm_link_idx)
+                link_pos = link_state[0]
+                link_orn = link_state[1]
+                # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
+                child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos,
+                                                                        inv_body_orn,
+                                                                        link_pos,
+                                                                        link_orn)
+
+                self.obj_cid = p.createConstraint(
+                                        parentBodyUniqueId=self.body_id,
+                                        parentLinkIndex=self.palm_link_idx,
+                                        childBodyUniqueId=most_force_bid,
+                                        childLinkIndex=most_force_link,
+                                        jointType=p.JOINT_FIXED,
+                                        jointAxis=(0, 0, 0),
+                                        parentFramePosition=(0, 0, 0),
+                                        childFramePosition=child_frame_pos,
+                                        childFrameOrientation=child_frame_orn
+                                    )
+                # Modify max force based on user-determined assist parameters
+                p.changeConstraint(self.obj_cid, maxForce=self.assist_force)
+                self.object_in_hand = most_force_bid
+                self.should_freeze_joints = True
+                self.gen_freeze_vals()
+        else:
+            if trig_frac <= self.trig_frac_thresh:
+                p.removeConstraint(self.obj_cid)
+                self.object_in_hand = None
+                self.should_freeze_joints = False
+
+    def update(self, vr_data=None):
+        """
+        Overriden update that can handle assisted grasping. Note that this only
+        available for the VrHand, and not the VrGripper.
+        """
+        if self.assist_percent > 0:
+            self.handle_assisted_grasping(vr_data=vr_data)
+
+        super(VrHand, self).update(vr_data=vr_data)
+
+        # Freeze joints if object is actively being assistively grasping
+        if self.should_freeze_joints:
+            self.freeze_joints()
+        
     def set_close_fraction(self, close_frac):
         """
         Sets close fraction of hands. Close frac of 1 indicates fully closed joint, 
         and close frac of 0 indicates fully open joint. Joints move smoothly between 
         their values in self.open_pos and self.close_pos.
         """
+        if self.should_freeze_joints:
+            return
+            
         for joint_index in range(p.getNumJoints(self.body_id)):
             open_pos = self.open_pos[joint_index]
             close_pos = self.close_pos[joint_index]
             interp_frac = (close_pos - open_pos) * close_frac
             target_pos = open_pos + interp_frac
-            p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=3)
+            p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=self.hand_close_force)
 
 
 class VrGripper(VrHandBase):
