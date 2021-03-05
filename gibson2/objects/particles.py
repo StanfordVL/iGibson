@@ -198,13 +198,13 @@ class WaterStream(ParticleSystem):
 
 
 class Dirt(AttachedParticleSystem):
-    def __init__(self, parent_obj, **kwargs):
+    def __init__(self, parent_obj, color, **kwargs):
         super(Dirt, self).__init__(
             parent_obj,
             dim=0.01,
             visual_only=True,
             mass=0,
-            color=(0, 0, 0, 1),
+            color=color,
             **kwargs
         )
 
@@ -343,7 +343,9 @@ class Dirt(AttachedParticleSystem):
                 break
 
 class Dust(Dirt):
-    pass
+    def __init__(self, parent_obj, **kwargs):
+        super(Dust, self).__init__(parent_obj, (0, 0, 0, 1), **kwargs)
 
 class Stain(Dirt):
-    pass
+    def __init__(self, parent_obj, **kwargs):
+        super(Stain, self).__init__(parent_obj, (0.4, 0, 0, 1), **kwargs)
