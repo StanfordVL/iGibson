@@ -674,13 +674,15 @@ class Simulator:
                        min_distance_to_existing_object > distance:
                         min_distance_to_existing_object = distance
 
-                if min_distance_to_existing_object is None or \
-                        min_distance_to_existing_object < min_distance:
-                    add = False
-                    break
+                # if min_distance_to_existing_object is not None or \
+                #         min_distance_to_existing_object < min_distance:
+                #     add = False
+                #     break
 
                 pos[2] += 0.01  # slighly above to not touch furniture
                 p.resetBasePositionAndOrientation(body_id, pos, orn)
+
+            print(min_distance_to_existing_object, min_distance, add, body_id)
 
             # Filter based on collisions with any existing object
             if add:
@@ -694,6 +696,7 @@ class Simulator:
 
             if add:
                 objects_to_add.append(obj)
+                print("OBJECT ADDED")
 
             for body_id in body_ids:
                 p.removeBody(body_id)

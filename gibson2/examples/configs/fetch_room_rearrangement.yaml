@@ -55,8 +55,8 @@ output: [rgb, depth, scan, occupancy_grid, seg]
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
 fisheye: false
-image_width: 512
-image_height: 512
+image_width: 1024
+image_height: 1024
 vertical_fov: 90
 # depth
 depth_low: 0.35
