@@ -182,8 +182,10 @@ class VrSettings(object):
         self.movement_speed = shared_settings['movement_speed']
         self.vr_fps = shared_settings['vr_fps']
         self.assist_percent = shared_settings['assist_percent']
+        self.assist_grasp_mass_thresh = shared_settings['assist_grasp_mass_thresh']
         self.hud_width = shared_settings['hud_width']
         self.hud_pos = shared_settings['hud_pos']
+        self.height_bounds = shared_settings['height_bounds']
         self.use_companion_window = shared_settings['use_companion_window']
         self.store_only_first_event_per_button = shared_settings['store_only_first_event_per_button']
 

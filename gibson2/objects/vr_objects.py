@@ -239,6 +239,7 @@ class VrHandBase(ArticulatedObject):
         self.use_constraints = use_constraints
         self.base_rot = base_rot
         self.vr_device = '{}_controller'.format(self.hand)
+        self.height_bounds = self.sim.vr_settings.height_bounds
         if self.hand not in ['left', 'right']:
             raise RuntimeError('ERROR: VrHandBase can only accept left or right as a hand argument!')
         super(VrHandBase, self).__init__(filename=self.fpath, scale=1)
@@ -293,6 +294,19 @@ class VrHandBase(ArticulatedObject):
                 final_rot = multQuatLists(rot, self.base_rot)
                 self.set_orientation(final_rot)
 
+            # Adjust user height based on analog stick press
+            if self.hand != self.vr_settings.movement_controller:
+                curr_offset = self.sim.get_vr_offset()
+                _, _, hmd_height = self.sim.get_hmd_world_pos()
+                if touch_x < -0.7:
+                    vr_z_offset = -0.01
+                    if hmd_height + curr_offset[2] + vr_z_offset >= self.height_bounds[0]:
+                        self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
+                elif touch_x > 0.7:
+                    vr_z_offset = 0.01
+                    if hmd_height + curr_offset[2] + vr_z_offset <= self.height_bounds[1]:
+                        self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
+
             self.move(trans, rot)
             self.set_close_fraction(trig_frac)
 
@@ -316,7 +330,7 @@ class VrHandBase(ArticulatedObject):
         dist_to_dest = np.linalg.norm(curr_pos - dest)
         if dist_to_dest < 2.0:
             final_rot = multQuatLists(rot, self.base_rot)
-            p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=150)
+            p.changeConstraint(self.movement_cid, trans, final_rot, maxForce=300)
 
     def set_close_fraction(self, close_frac):
         """
@@ -383,13 +397,13 @@ class VrHand(VrHandBase):
         self.object_in_hand = None
         self.assist_percent = self.s.vr_settings.assist_percent
         self.min_assist_force = 0
-        self.max_assist_force = 200
+        self.max_assist_force = 500
         self.assist_force = self.min_assist_force + (self.max_assist_force - self.min_assist_force) * self.assist_percent / 100.0
         self.trig_frac_thresh = 0.5
         self.palm_link_idx = 0
         self.obj_cid = None
         self.should_freeze_joints = False
-        self.mass_threshold = 15.0
+        self.finger_tip_link_idxs = [2, 4, 6, 8, 10]
 
     def hand_setup(self, z_coord):
         """
@@ -461,11 +475,13 @@ class VrHand(VrHandBase):
                 cpt_forces = {}
                 for i in range(len(cpts)):
                     cpt = cpts[i]
+                    # Don't attach to links that are not finger tip
+                    if cpt[3] not in self.finger_tip_link_idxs:
+                        continue
                     c_bid = cpt[2]
                     c_link = cpt[4]
-                    c_mass = p.getDynamicsInfo(c_bid, c_link)[0]
-                    # Don't attach to objects that are too heavy (eg. walls, floor, tables)
-                    if c_mass > self.mass_threshold:
+                    # Make sure object is in an assisted-grasping-enabled category
+                    if not self.s.can_assisted_grasp(c_bid, c_link):
                         continue
                     # Get magnitude of normal force exerted by cpt onto the hand
                     n_force = cpt[9]
