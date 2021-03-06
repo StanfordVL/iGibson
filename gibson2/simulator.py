@@ -19,6 +19,7 @@ from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 
 import pybullet as p
 import gibson2
+import json
 import os
 import numpy as np
 import platform
@@ -151,6 +152,8 @@ class Simulator:
         self.body_links_awake = 0
         # First sync always sync all objects (regardless of their sleeping states)
         self.first_sync = True
+        # List of categories that can be grasped by assisted grasping
+        self.assist_grap_category_allow_list = []
 
         self.object_state_types = get_states_by_dependency_order()
 
@@ -1087,11 +1090,28 @@ class Simulator:
         """
         self.eye_tracking_data = self.renderer.vrsys.getEyeTrackingData()
 
-    # Returns VR event data as list of lists. Each sub-list contains deviceType and eventType.
-    # List is empty if all events are invalid.
-    # deviceType: left_controller, right_controller
-    # eventType: grip_press, grip_unpress, trigger_press, trigger_unpress, touchpad_press, touchpad_unpress,
-    # touchpad_touch, touchpad_untouch, menu_press, menu_unpress (menu is the application button)
+    def gen_assisted_grasping_categories(self):
+        """
+        Generates list of categories that can be grasped using assisted grasping,
+        based on the average mass of that category.
+        """
+        av_category_specs_path = os.path.join(gibson2.ig_dataset_path, 'objects', 'av_category_specs.json')
+        av_cat_data = json.load(av_category_specs_path)
+        for k, v in av_cat_data.items():
+            if v['mass'] < self.vr_settings.assist_grasp_mass_thresh:
+                self.assist_grap_category_allow_list.append(k)
+
+    def can_assisted_grasp(self, body_id, c_link):
+        """
+        Checks to see if an object with the given body_id can be grasped. This is done
+        by checking its category to see if is in the allowlist.
+        """
+        if body_id not in self.scene.objects_by_id or self.scene.objects_by_id[body_id].category == 'object':
+            mass = p.getDynamicsInfo(body_id, c_link)[0]
+            return mass <= self.vr_settings.assist_grasp_mass_thresh
+        else:
+            return self.scene.objects_by_id[body_id].category in self.assist_grap_category_allow_list
+
     def poll_vr_events(self):
         """
         Returns VR event data as list of lists. 
@@ -1198,11 +1218,13 @@ class Simulator:
         other_controller = '{}_controller'.format(other_controller)
         # Data indicating whether user has pressed top or bottom of the touchpad
         _, _, touch_y = self.renderer.vrsys.getButtonDataForController(other_controller)
-        # Detect no touch
-        if (-1e-5 < touch_y and touch_y < 1e-5) or touch_y < -1 or touch_y > 1:
+        # Detect no touch in extreme regions of y axis
+        if touch_y > 0.7 and touch_y <= 1.0:
+            return 1
+        elif touch_y < -0.7 and touch_y >= -1.0:
+            return 0
+        else:
             return -1
-
-        return touch_y >= 0
     
     def get_eye_tracking_data(self):
         """

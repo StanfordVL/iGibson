@@ -37,7 +37,7 @@ benchmark_names = [
 ]
 
 # Set to true to print Simulator step() statistics
-PRINT_STATS = True
+PRINT_STATS = False
 # Set to true to use gripper instead of VR hands
 USE_GRIPPER = False
 
@@ -108,126 +108,147 @@ def main():
             handle.set_position(new_pos)
             handle.set_orientation(orn)
             p.changeDynamics(handle.body_id, -1, mass=masses[i])
+            minBox, maxBox = p.getAABB(handle.body_id)
+            dims = [maxBox[i] - minBox[i] for i in range(3)]
+            print('Name {} and masses: {}'.format(name, masses))
+            print('XYZ dimensions: {}'.format(dims))
 
     table_objects_to_load = {
         "tray" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "tray", "tray_000", "tray_000.urdf"),
             "pos": (1.100000, 0.200000, 0.650000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
-            "scale": 0.15
+            "scale": 0.15,
+            "mass": 1.7
         },
         "plate_1" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
             "pos": (0.700000, -0.300000, 0.650000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
-            "scale": 0.01
+            "scale": 0.01,
+            "mass": 1.5
         },
         "plate_2" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
             "pos": (1.100000, -0.300000, 0.650000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
-            "scale": 0.01
+            "scale": 0.01,
+            "mass": 1.5
         },
         "plate_3" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
             "pos": (0.700000, -1.200000, 0.000000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
-            "scale": 0.01
+            "scale": 0.01,
+            "mass": 1.5
         },
         "plate_4" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
             "pos": (1.100000, -1.200000, 0.000000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
-            "scale": 0.01
+            "scale": 0.01,
+            "mass": 1.5
         },
         "chip_1" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "chip", "40", "40.urdf"),
             "pos": (0.700000, -0.800000, 0.750000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
-            "scale": 1
+            "scale": 1,
+            "mass": 0.22
         },
         "chip_2" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "chip", "40", "40.urdf"),
             "pos": (1.100000, -0.800000, 0.750000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
-            "scale": 1
+            "scale": 1,
+            "mass": 0.22
         },
         "cherry_1" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "cherry", "02_0", "02_0.urdf"),
             "pos": (0.700000, -0.600000, 0.680000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
-            "scale": 1
+            "scale": 1,
+            "mass": 0.02
         },
         "cherry_2" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "cherry", "02_0", "02_0.urdf"),
             "pos": (1.100000, -0.600000, 0.680000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
-            "scale": 1
+            "scale": 1,
+            "mass": 0.02
         },
         "shelf" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "shelf", "de3b28f255111570bc6a557844fbbce9", "de3b28f255111570bc6a557844fbbce9.urdf"),
             "pos": (1.700000, -3.500000, 1.15000), 
             "orn": (0.000000, 0.00000, -0.707107, 0.707107),
-            "scale": 2.50
+            "scale": 2.50,
+            "mass": 11
         },
         "wine_bottle_1" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
             "pos": (1.700000, -3.500000, 1.90000), 
             "orn": (0.000000, 0.00000, -0.707107, 0.707107),
-            "scale": 1
+            "scale": 1,
+            "mass": 1.2
         },
         "wine_bottle_2" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
             "pos": (1.700000, -3.2500000, 1.90000), 
             "orn": (0.000000, 0.00000, -0.707107, 0.707107),
-            "scale": 1
+            "scale": 1,
+            "mass": 1.2
         },
         "wine_bottle_3" : {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
             "pos": (1.700000, -3.750000, 1.90000), 
             "orn": (0.000000, 0.00000, -0.707107, 0.707107),
-            "scale": 1
+            "scale": 1,
+            "mass": 1.2
         },
-        "chair": {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "armchair", "fc131dfba15fafb2fdeed357dfbe708a", "fc131dfba15fafb2fdeed357dfbe708a.urdf"),
-            "pos": (-1.500000, -0.20000, 0.500000), 
-            "orn": (0.000000, 0.000000, 0.707107, 0.707107),
-            "scale": 1
-        },
-        "floor_map": {
+        "floor_lamp": {
             "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "floor_lamp", "lamp_0035", "lamp_0035.urdf"),
             "pos": (-1.500000, 0.00000, 0.500000), 
             "orn": (0.000000, 0.000000, 0.707107, 0.707107),
-            "scale": 1
+            "scale": 1,
+            "mass": 4.3
         },
         "table_1": {
             "urdf": "table/table.urdf", 
-            "pos": (1.000000, -0.200000, 0.000000), 
+            "pos": (1.000000, -0.200000, 0.01), 
             "orn": (0.000000, 0.000000, 0.707107, 0.707107),
-            "scale": 1
+            "scale": 1,
+            "mass": 20
         },
         "table_2": {
             "urdf": "table/table.urdf", 
-            "pos": (-1.500000, -3.000000, 0.000000), 
+            "pos": (-1.500000, -3.000000, 0.01), 
             "orn": (0.000000, 0.000000, 0.707107, 0.707107),
-            "scale": 1
+            "scale": 1,
+            "mass": 20
         },
     }
 
     objs_loaded = []
-    for item in table_objects_to_load.values():
+    for it_name, item in table_objects_to_load.items():
         fpath = item['urdf']
         pos = item['pos']
         orn = item['orn']
         scale = item['scale']
+        mass = item['mass']
         item_ob = ArticulatedObject(fpath, scale=scale)
         s.import_object(item_ob, use_pbr=False, use_pbr_mapping=False)
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
         objs_loaded.append(item_ob)
+        minBox, maxBox = p.getAABB(item_ob.body_id)
+        dims = [maxBox[i] - minBox[i] for i in range(3)]
+        p.changeDynamics(item_ob.body_id, -1, mass=mass)
+        print('Name {} and mass: {}'.format(it_name, mass))
+        print('XYZ dimensions: {}'.format(dims))
+
     # Time how long demo takes
-    time_text = s.add_vr_overlay_text(text_data='Current time: NOT STARTED', font_size=100, font_style='Bold', 
-                            color=[0,0,0], pos=[0, 90], size=[50, 50])
+    time_text = s.add_vr_overlay_text(text_data='Current time: NOT STARTED', 
+                                    font_size=40, font_style='Bold', color=[0,0,0], pos=[0, 90], size=[50, 50])
     timer = VrTimer()
 
     # Main simulation loop
@@ -252,6 +273,11 @@ def main():
 
         # Update timer value
         time_text.set_text('Current time: {}'.format(round(timer.get_timer_val(), 1)))
+
+        # Update scroll text
+        scroll_dir = s.get_scroll_input()
+        if scroll_dir > -1:
+            time_text.scroll_text(up=scroll_dir)
 
         # Update VR agent
         vr_agent.update()

@@ -25,10 +25,14 @@ shared_settings:
   vr_fps: 30.0
   # Assisted grasping percentage (0 if fully physics-based, 100 is magic graspin)
   assist_percent: 100
+  # Mass threshold for assisted grasping
+  assist_grasp_mass_thresh: 15.0
   # Width of HUD display in meters
   hud_width: 0.7
   # Position of HUD display relative to the HMD. X (left), Y (up), Z (away from HMD, into the scene)
   hud_pos: [0,0,-0.8]
+  # Height boundaries for VR user (2m is the upper limit)
+  height_bounds: [0, 2.0]
   # Whether to use iGibson companion window (set to False by default - please use Steam VR mirror display (described in README))
   use_companion_window: False
   # Whether to only store the first event per button, per frame (avoids multiple unwanted button presses)
