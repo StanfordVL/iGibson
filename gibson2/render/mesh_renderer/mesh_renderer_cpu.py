@@ -16,7 +16,7 @@ from gibson2.render.mesh_renderer.visual_object import VisualObject
 from PIL import Image
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 Image.MAX_IMAGE_PIXELS = None
-
+import py360convert
 
 class MeshRenderer(object):
     """
@@ -1416,3 +1416,81 @@ class MeshRenderer(object):
 
         self.set_fov(original_fov)
         return lidar_readings
+
+    def get_cube(self, mode, use_robot_camera, fixed_orientation):
+        """
+        :param mode: simulator rendering mode, 'rgb' or '3d'
+        :param fixed_orientation: Whether to use a fixed orientation when rendering
+        :param use_robot_camera: Whether to use camera from a robot
+        :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
+        """
+        orig_fov = self.vertical_fov
+        self.set_fov(90)
+        frames = []
+
+        def render_cube(instance=None, camera_pos=[0,0,0]):
+            frames = []
+            if instance is not None:
+                camera_pos = instance.robot.eyes.get_position()
+            if fixed_orientation:
+                view_direction = np.array([1, 0, 0])
+            else:
+                orn = instance.robot.eyes.get_orientation()
+                mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+                view_direction = mat.dot(np.array([1, 0, 0]))
+            orig_view_direction = view_direction
+            self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+            r2 = np.array(
+                [[np.cos(-np.pi / 2), -np.sin(-np.pi / 2), 0], [np.sin(-np.pi / 2), np.cos(-np.pi / 2), 0],
+                 [0, 0, 1]])
+
+            for i in range(4):
+                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                for item in self.render(modes=(mode), hidden=[instance]):
+                    frames.append(item)
+                view_direction = r2.dot(view_direction)
+
+            # Up
+            view_direction = [0, 0, 1]  # Up
+            self.set_camera(camera_pos, camera_pos + view_direction, -orig_view_direction)
+            for item in self.render(modes=(mode), hidden=[instance]):
+                frames.append(item)
+
+            # Down
+            view_direction = [0, 0, -1]  # Down
+            self.set_camera(camera_pos, camera_pos + view_direction, orig_view_direction)
+            for item in self.render(modes=(mode), hidden=[instance]):
+                frames.append(item)
+
+            return frames
+
+        if use_robot_camera:
+            for instance in self.instances:
+                if isinstance(instance, Robot):
+                    frames += render_cube(instance=instance)
+        else:
+            frames += render_cube(instance=None, camera_pos=self.camera)
+
+        print(frames)
+        # Reorder frames so adjacent views are consecutively ordered
+        n_cameras = int(len(frames) / 6)
+        cube_frames = []
+        for i in range(n_cameras):
+            for j in range(6):
+                cube_frames.append(frames[i * n_cameras + j])
+
+        # Reset fov
+        self.set_fov(orig_fov)
+        return cube_frames
+
+    def get_equi(self, mode, use_robot_camera, fixed_orientation):
+        """
+        :param mode: simulator rendering mode, 'rgb' or '3d'
+        :param fixed_orientation: Whether to use a fixed orientation when rendering
+        :param use_robot_camera: Whether to use camera from a robot
+        :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
+        """
+        frames = self.get_cube(mode=mode, use_robot_camera=use_robot_camera, fixed_orientation=fixed_orientation)
+        equi = py360convert.c2e(cubemap=frames, h=frames[0].shape[0], w=frames[0].shape[0] * 2, cube_format='list')
+        equi = (equi * 255).astype(np.uint8)
+        return equi
