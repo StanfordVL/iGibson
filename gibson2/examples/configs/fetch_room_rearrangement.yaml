@@ -9,6 +9,8 @@ trav_map_resolution: 0.1
 trav_map_erosion: 3
 should_open_all_doors: true
 
+enable_shadow: true
+
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
@@ -55,8 +57,8 @@ output: [rgb, depth, scan, occupancy_grid, seg]
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
 fisheye: false
-image_width: 1024
-image_height: 1024
+image_width: 512
+image_height: 512
 vertical_fov: 90
 # depth
 depth_low: 0.35

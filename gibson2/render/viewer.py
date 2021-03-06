@@ -105,6 +105,7 @@ class Viewer:
         self.create_visual_object()
         self.planner = None
         self.block_command = False
+        self.pano = False
 
     def setup_motion_planner(self, planner=None):
         """
@@ -582,9 +583,13 @@ class Viewer:
                 camera_pose, camera_pose + self.view_direction, self.up)
 
         if self.renderer is not None:
-            frame = cv2.cvtColor(
-                np.concatenate(self.renderer.render(modes=('rgb')), axis=1),
-                cv2.COLOR_RGB2BGR)
+            if self.pano:
+                frame = self.renderer.get_equi(mode='rgb', fixed_orientation=True, use_robot_camera=False)
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            else:
+                frame = cv2.cvtColor(
+                   np.concatenate(self.renderer.render(modes=('rgb')), axis=1),
+                   cv2.COLOR_RGB2BGR)
         else:
             frame = np.zeros((300, 300, 3)).astype(np.uint8)
 
@@ -692,6 +697,8 @@ class Viewer:
             self.right_down = False
             self.subgoal_mode = (self.subgoal_mode + 1) % 4
 
+        elif q == ord('o'):
+            self.pano = not self.pano
         if self.recording and not self.pause_recording:
             cv2.imwrite(os.path.join(self.video_folder, '{:05d}.png'.format(self.frame_idx)),
                         (frame * 255).astype(np.uint8))
