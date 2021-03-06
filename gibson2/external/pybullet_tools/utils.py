@@ -26,6 +26,24 @@ from gibson2.utils.constants import OccupancyGridState
 #from ..motion.motion_planners.rrt_connect import birrt, direct_path
 import cv2
 
+############ DEBUG ############
+import pdb
+# import sys
+def info(type, value, tb):
+    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
+        # we are in interactive mode or we don't have a tty-like
+        # device, so we call the default hook
+        sys.__excepthook__(type, value, tb)
+    else:
+        import traceback, pdb
+        # we are NOT in interactive mode, print the exception...
+        traceback.print_exception(type, value, tb)
+        print
+        # ...then start the debugger in post-mortem mode.
+        pdb.post_mortem(tb)
+sys.excepthook = info
+###############################
+
 # from future_builtins import map, filter
 # from builtins import input # TODO - use future
 try:
