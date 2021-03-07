@@ -98,6 +98,7 @@ class URDFObject(StatefulObject):
                  texture_randomization=False,
                  overwrite_inertial=True,
                  scene_instance_folder=None,
+                 tasknet_object_scope=None
                  ):
         """
         :param filename: urdf file path of that object model
@@ -116,6 +117,7 @@ class URDFObject(StatefulObject):
         :param texture_randomization: whether to enable texture randomization
         :param overwrite_inertial: whether to overwrite the inertial frame of the original URDF using trimesh + density estimate
         :param scene_instance_folder: scene instance folder to split and save sub-URDFs
+        :param tasknet_object_scope: tasknet object scope name, e.g. chip.n.04_2
         """
         super(URDFObject, self).__init__()
 
@@ -128,6 +130,7 @@ class URDFObject(StatefulObject):
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
+        self.tasknet_object_scope = tasknet_object_scope
 
         # Load abilities from taxonomy if needed & possible
         if abilities is None:

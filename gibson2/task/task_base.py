@@ -36,7 +36,8 @@ class iGTNTask(TaskNetTask):
                              simulator=None,
                              load_clutter=False,
                              should_debug_sampling=False,
-                             scene_kwargs=None):
+                             scene_kwargs=None,
+                             online_sampling=True):
         '''
         Get scene populated with objects such that scene satisfies initial conditions
         :param simulator: Simulator class, populated simulator that should completely
@@ -55,7 +56,8 @@ class iGTNTask(TaskNetTask):
         self.load_clutter = load_clutter
         self.should_debug_sampling = should_debug_sampling
         self.initialize(InteractiveIndoorScene,
-                        scene_id=scene_id, scene_kwargs=scene_kwargs)
+                        scene_id=scene_id, scene_kwargs=scene_kwargs,
+                        online_sampling=online_sampling)
 
     def check_scene(self):
         room_type_to_obj_inst = {}
@@ -207,6 +209,36 @@ class iGTNTask(TaskNetTask):
     def import_scene(self):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
+        if not self.online_sampling:
+            for obj_inst in self.object_scope:
+                matched_sim_obj = None
+
+                if 'floor.n.01' in obj_inst:
+                    for _, sim_obj in self.scene.objects_by_name.items():
+                        if sim_obj.tasknet_object_scope is not None and \
+                                obj_inst in sim_obj.tasknet_object_scope:
+                            tasknet_object_scope = \
+                                sim_obj.tasknet_object_scope.split(',')
+                            tasknet_object_scope = {
+                                item.split(':')[0]: item.split(':')[1]
+                                for item in tasknet_object_scope
+                            }
+                            assert obj_inst in tasknet_object_scope
+                            room_inst = tasknet_object_scope[obj_inst].replace(
+                                'room_floor_', '')
+
+                            matched_sim_obj = \
+                                RoomFloor(category='room_floor',
+                                          name=tasknet_object_scope[obj_inst],
+                                          scene=self.scene,
+                                          room_instance=room_inst)
+                else:
+                    for _, sim_obj in self.scene.objects_by_name.items():
+                        if sim_obj.tasknet_object_scope == obj_inst:
+                            matched_sim_obj = sim_obj
+                            break
+                assert matched_sim_obj is not None, obj_inst
+                self.object_scope[obj_inst] = matched_sim_obj
 
     def sample(self):
         non_sampleable_obj_conditions = []
@@ -386,14 +418,15 @@ class iGTNTask(TaskNetTask):
         scene_id = self.scene.scene_id
         clutter_scene = InteractiveIndoorScene(
             scene_id, '{}_clutter'.format(scene_id))
-        existing_objects = list(self.object_scope.values())
+        existing_objects = [
+            value for key, value in self.object_scope.items()
+            if 'floor.n.01' not in key]
         self.simulator.import_non_colliding_objects(
             objects=clutter_scene.objects_by_name,
             existing_objects=existing_objects,
             min_distance=0.5)
 
     #### CHECKERS ####
-
     def onTop(self, objA, objB):
         '''
         Checks if one object is on top of another.
