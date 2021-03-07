@@ -4,6 +4,8 @@ import cv2
 from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, stable_z_on_aabb
 from gibson2.object_states import AABB
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
+import gibson2
+from IPython import embed
 
 
 def get_center_extent(obj_states):
@@ -102,6 +104,10 @@ def sample_kinematics(predicate, objA, objB, binary_state):
         p.stepSimulation()
         success = len(p.getContactPoints(objA.get_body_id())) == 0
         p.restoreState(state_id)
+
+        if gibson2.debug_sampling:
+            print('sample_kinematics', success)
+            embed()
 
         if success:
             break

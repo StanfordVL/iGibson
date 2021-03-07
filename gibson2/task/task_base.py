@@ -34,7 +34,9 @@ class iGTNTask(TaskNetTask):
                              mode='iggui',
                              scene_id=None,
                              simulator=None,
-                             load_clutter=False):
+                             load_clutter=False,
+                             should_debug_sampling=False,
+                             scene_kwargs=None):
         '''
         Get scene populated with objects such that scene satisfies initial conditions
         :param simulator: Simulator class, populated simulator that should completely
@@ -51,7 +53,9 @@ class iGTNTask(TaskNetTask):
             print('INITIALIZING TASK WITH PREDEFINED SIMULATOR')
             self.simulator = simulator
         self.load_clutter = load_clutter
-        self.initialize(InteractiveIndoorScene, scene_id=scene_id)
+        self.should_debug_sampling = should_debug_sampling
+        self.initialize(InteractiveIndoorScene,
+                        scene_id=scene_id, scene_kwargs=scene_kwargs)
 
     def check_scene(self):
         room_type_to_obj_inst = {}
@@ -135,16 +139,22 @@ class iGTNTask(TaskNetTask):
                 *[set(room_type_to_scene_objs[room_type][obj_inst].keys())
                   for obj_inst in room_type_to_scene_objs[room_type]]
             )
+            if len(room_inst_satisfied) == 0:
+                logging.warning(
+                    'Room type [{}] of scene [{}] does not contain all the objects needed.'.format(
+                        room_type, self.scene.scene_id))
+                for obj_inst in room_type_to_scene_objs[room_type]:
+                    logging.warning(obj_inst)
+                    logging.warning(
+                        room_type_to_scene_objs[room_type][obj_inst].keys())
+                return False
+
             for obj_inst in room_type_to_scene_objs[room_type]:
                 room_type_to_scene_objs[room_type][obj_inst] = \
                     {key: val for key, val
                      in room_type_to_scene_objs[room_type][obj_inst].items()
                      if key in room_inst_satisfied}
-                if len(room_type_to_scene_objs[room_type][obj_inst]) == 0:
-                    logging.warning(
-                        'Room type [{}] of scene [{}] does not contain all the objects needed.'.format(
-                            room_type, self.scene.scene_id))
-                    return False
+                assert len(room_type_to_scene_objs[room_type][obj_inst]) != 0
 
         self.non_sampleable_object_scope = room_type_to_scene_objs
 
@@ -227,23 +237,27 @@ class iGTNTask(TaskNetTask):
             for scene_obj in self.non_sampleable_object_scope[room_type]:
                 scene_object_scope_filtered[room_type][scene_obj] = {}
                 for room_inst in self.non_sampleable_object_scope[room_type][scene_obj]:
-                    scene_object_scope_filtered[room_type][scene_obj][room_inst] = [
-                    ]
                     for obj in self.non_sampleable_object_scope[room_type][scene_obj][room_inst]:
                         self.object_scope[scene_obj] = obj
 
                         success = True
+                        # If this object is not involved in any initial conditions,
+                        # success will be True by default and any simulator obj will qualify
                         for condition, positive in non_sampleable_obj_conditions:
                             # Only sample conditions that involve this object
                             if scene_obj not in condition.body:
                                 continue
-                            print(room_type, scene_obj, room_inst, obj.name)
-                            success = condition.sample(
-                                binary_state=positive)
+                            success = condition.sample(binary_state=positive)
+                            print('sampling', room_type, scene_obj, room_inst,
+                                  obj.name, type(condition), condition.body,
+                                  success)
 
                             if not success:
                                 break
                         if success:
+                            if room_inst not in scene_object_scope_filtered[room_type][scene_obj]:
+                                scene_object_scope_filtered[room_type][scene_obj][room_inst] = [
+                                ]
                             scene_object_scope_filtered[room_type][scene_obj][room_inst].append(
                                 obj)
 
@@ -254,40 +268,59 @@ class iGTNTask(TaskNetTask):
                 *[set(scene_object_scope_filtered[room_type][obj_inst].keys())
                   for obj_inst in scene_object_scope_filtered[room_type]]
             )
-            for obj_inst in scene_object_scope_filtered[room_type]:
-                scene_object_scope_filtered[room_type][obj_inst] = {key: val for key, val
-                                                                    in scene_object_scope_filtered[room_type][obj_inst].items()
-                                                                    if key in room_inst_satisfied}
-                if len(scene_object_scope_filtered[room_type][obj_inst]) == 0:
+
+            if len(room_inst_satisfied) == 0:
+                logging.warning(
+                    'Room type [{}] of scene [{}] cannot sample all the objects needed.'.format(
+                        room_type, self.scene.scene_id))
+                for obj_inst in scene_object_scope_filtered[room_type]:
+                    logging.warning(obj_inst)
                     logging.warning(
-                        'Room type [{}] of scene [{}] cannot sample all the objects needed.'.format(
-                            room_type, self.scene.scene_id))
-                    return False
+                        scene_object_scope_filtered[room_type][obj_inst].keys())
+                if self.should_debug_sampling:
+                    self.debug_sampling(scene_object_scope_filtered,
+                                        non_sampleable_obj_conditions)
+                return False
+
+            for obj_inst in scene_object_scope_filtered[room_type]:
+                scene_object_scope_filtered[room_type][obj_inst] = \
+                    {key: val for key, val
+                     in scene_object_scope_filtered[room_type][obj_inst].items()
+                     if key in room_inst_satisfied}
+                assert len(
+                    scene_object_scope_filtered[room_type][obj_inst]) != 0
 
         # For each room instance, perform maximum bipartite matching between object instance in scope to simulator objects
         # Left nodes: a list of object instance in scope
         # Right nodes: a list of simulator objects
         # Edges: if the simulator object can support the sampling requirement of ths object instance
         for room_type in scene_object_scope_filtered:
+            # The same room instances will be shared across all scene obj in a given room type
             some_obj = list(scene_object_scope_filtered[room_type].keys())[0]
             room_insts = list(scene_object_scope_filtered[room_type][some_obj].keys(
             ))
             success = False
+            # Loop through each room instance
             for room_inst in room_insts:
                 graph = nx.Graph()
+                # For this given room instance, gether mapping from obj instance to a list of simulator obj
                 obj_inst_to_obj_per_room_inst = {}
                 for obj_inst in scene_object_scope_filtered[room_type]:
                     obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered[room_type][obj_inst][room_inst]
                 top_nodes = []
+                print('MBM for room instance [{}]'.format(room_inst))
                 for obj_inst in obj_inst_to_obj_per_room_inst:
                     for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
+                        # Create an edge between obj instance and each of the simulator obj that supports sampling
                         graph.add_edge(obj_inst, obj)
+                        print('Adding edge: {} <-> {}'.format(obj_inst, obj.name))
                         top_nodes.append(obj_inst)
                 # Need to provide top_nodes that contain all nodes in one bipartite node set
                 # The matches will have two items for each match (e.g. A -> B, B -> A)
                 matches = nx.bipartite.maximum_matching(
                     graph, top_nodes=top_nodes)
                 if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
+                    print('Object scope finalized:')
                     for obj_inst, obj in matches.items():
                         if obj_inst in obj_inst_to_obj_per_room_inst:
                             self.object_scope[obj_inst] = obj
@@ -296,18 +329,16 @@ class iGTNTask(TaskNetTask):
                     break
             if not success:
                 logging.warning(
-                    'Room type [{}] of scene [{}] do not have enough successful sampling options to support all the objects needed'.format(
+                    'Room type [{}] of scene [{}] do not have enough '
+                    'successful sampling options to support all the '
+                    'objects needed'.format(
                         room_type, self.scene.scene_id))
                 return False
 
         # Do sampling again using the object instance -> simulator object mapping from maximum bipartite matching
-        num_trials = 10
         for condition, positive in non_sampleable_obj_conditions:
-            for _ in range(num_trials):
-                success = condition.sample(binary_state=positive)
-                # This should always succeed because it has succeeded before.
-                if success:
-                    break
+            success = condition.sample(binary_state=positive)
+            # This should always succeed because it has succeeded before.
             assert success
 
         # Do sampling that only involves sampleable object (e.g. apple is cooked)
@@ -320,6 +351,33 @@ class iGTNTask(TaskNetTask):
                 return False
 
         return True
+
+    def debug_sampling(self, scene_object_scope_filtered, non_sampleable_obj_conditions):
+        gibson2.debug_sampling = True
+        for room_type in self.non_sampleable_object_scope:
+            for scene_obj in self.non_sampleable_object_scope[room_type]:
+                if len(scene_object_scope_filtered[room_type][scene_obj].keys()) != 0:
+                    continue
+                for room_inst in self.non_sampleable_object_scope[room_type][scene_obj]:
+                    for obj in self.non_sampleable_object_scope[room_type][scene_obj][room_inst]:
+                        self.object_scope[scene_obj] = obj
+
+                        success = True
+                        for condition, positive in non_sampleable_obj_conditions:
+                            # Only sample conditions that involve this object
+                            if scene_obj not in condition.body:
+                                continue
+                            print('debug sampling', room_type, scene_obj, room_inst,
+                                  obj.name, type(condition), condition.body)
+                            obj_pos = obj.get_position()
+                            # Set the pybullet camera to have a bird's eye view
+                            # of the sampling process
+                            p.resetDebugVisualizerCamera(
+                                cameraDistance=3.0, cameraYaw=0,
+                                cameraPitch=-89.99999,
+                                cameraTargetPosition=obj_pos)
+                            success = condition.sample(binary_state=positive)
+                            print('success', success)
 
     def clutter_scene(self):
         if not self.load_clutter:
