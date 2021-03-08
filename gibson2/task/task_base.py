@@ -55,9 +55,9 @@ class iGTNTask(TaskNetTask):
             self.simulator = simulator
         self.load_clutter = load_clutter
         self.should_debug_sampling = should_debug_sampling
-        self.initialize(InteractiveIndoorScene,
-                        scene_id=scene_id, scene_kwargs=scene_kwargs,
-                        online_sampling=online_sampling)
+        return self.initialize(InteractiveIndoorScene,
+                               scene_id=scene_id, scene_kwargs=scene_kwargs,
+                               online_sampling=online_sampling)
 
     def check_scene(self):
         room_type_to_obj_inst = {}
@@ -246,8 +246,8 @@ class iGTNTask(TaskNetTask):
 
         # TODO: currently we assume self.initial_conditions is a list of
         # tasknet.condition_evaluation.HEAD, each with one child.
-        # This chid is either a BinaryAtomicPredicate/BinaryAtomicPredicate or
-        # a Negation of a BinaryAtomicPredicate/BinaryAtomicPredicate
+        # This chid is either a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate or
+        # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
         for condition in self.initial_conditions:
             if isinstance(condition.children[0], Negation):
                 condition = condition.children[0].children[0]
@@ -286,12 +286,15 @@ class iGTNTask(TaskNetTask):
 
                             if not success:
                                 break
-                        if success:
-                            if room_inst not in scene_object_scope_filtered[room_type][scene_obj]:
-                                scene_object_scope_filtered[room_type][scene_obj][room_inst] = [
-                                ]
-                            scene_object_scope_filtered[room_type][scene_obj][room_inst].append(
-                                obj)
+
+                        if not success:
+                            continue
+
+                        if room_inst not in scene_object_scope_filtered[room_type][scene_obj]:
+                            scene_object_scope_filtered[room_type][scene_obj][room_inst] = [
+                            ]
+                        scene_object_scope_filtered[room_type][scene_obj][room_inst].append(
+                            obj)
 
         for room_type in scene_object_scope_filtered:
             # For each room_type, filter in room_inst that has successful
@@ -416,8 +419,10 @@ class iGTNTask(TaskNetTask):
             return
 
         scene_id = self.scene.scene_id
+        clutter_ids = [''] + list(range(2, 5))
+        clutter_id = np.random.choice(clutter_ids)
         clutter_scene = InteractiveIndoorScene(
-            scene_id, '{}_clutter'.format(scene_id))
+            scene_id, '{}_clutter{}'.format(scene_id, clutter_id))
         existing_objects = [
             value for key, value in self.object_scope.items()
             if 'floor.n.01' not in key]
