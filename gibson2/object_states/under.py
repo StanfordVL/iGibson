@@ -1,7 +1,8 @@
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
+from gibson2.object_states.aabb import AABB
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
-from gibson2.external.pybullet_tools.utils import get_aabb_center, aabb_contains_point, aabb2d_from_aabb, AABB
+from gibson2.external.pybullet_tools.utils import get_aabb_center, aabb_contains_point, aabb2d_from_aabb
 from gibson2.utils.constants import UNDER_OBJECTS
 import gibson2
 from IPython import embed
