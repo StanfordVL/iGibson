@@ -13,6 +13,7 @@ import transforms3d
 from transforms3d import quaternions
 import logging
 import gibson2
+from pathlib import Path
 
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
@@ -173,6 +174,8 @@ class iGibsonMujocoBridge:
         textures = {}
         texture_ids = {}
         normal_ids = {}
+        roughness_ids = {}
+        metallic_ids = {}
         for texture in xml_root.iter('texture'):
             # import pdb; pdb.set_trace();
             texture_type = texture.get('type')
@@ -180,11 +183,26 @@ class iGibsonMujocoBridge:
             # print(texture.get('type'), texture.get('name'), texture.get('file'))
             if texture.get('file') is not None:
                 textures[texture.get('name')] = texture.attrib
-                texture_ids[texture.get('name')] = (self.renderer.r.loadTexture(texture.get('file'), self.settings.texture_scale) , texture_type)
+                texture_ids[texture.get('name')] = (self.renderer.r.loadTexture(texture.get('file'), self.settings.texture_scale), texture_type)
+                p = Path(texture.get('file'))
+                roughness_fname = p.parent / (p.name + '-roughness.png')
+                normal_fname = p.parent / p.name + '-normal.png'
+                metallic_fname = p.parent / p.name + '-metallic.png'
+                if roughness_fname.exists():
+                    roughness_ids[texture.get('name')] = self.renderer.r.loadTexture(roughness_fname, self.settings.texture_scale)
+                if normal_fname.exists():
+                    normal_ids[texture.get('name')] = self.renderer.r.loadTexture(normal_fname, self.settings.texture_scale)
+                if metallic_fname.exists():
+                    metallic_ids[texture.get('name')] = self.renderer.r.loadTexture(metallic_fname, self.settings.texture_scale)                    
+
             else:
                 value_str = texture.get('rgb1').split()
                 value = [float(pp) for pp in value_str]
-                texture_ids[texture.get('name')] = (np.array(value), texture_type)            
+                texture_ids[texture.get('name')] = (np.array(value), texture_type)  
+                roughness_ids[texture.get('name')] = None
+                normal_ids[texture.get('name')] = None
+                metallic_ids[texture.get('name')] = None
+
 
         if verbose: print("Textures:")
         if verbose: pp.pprint(textures)
@@ -199,6 +217,8 @@ class iGibsonMujocoBridge:
             texture_name = material.get('texture')
             if texture_name is not None:
                 (texture_id, texture_type) = texture_ids[texture_name]
+                roughness_id = roughness_ids[texture_name]
+                normal_id = roughness_ids[texture_name]
                 # import pdb; pdb.set_trace();
                 # print((texture_id, texture_type))
 
@@ -220,6 +240,9 @@ class iGibsonMujocoBridge:
                                                                    texture_id=texture_id,
                                                                    repeat_x=repeat[0], 
                                                                    repeat_y=repeat[1], 
+                                                                   metallic_texture_id=metallic_id,
+                                                                   roughness_texture_id=roughness_id,
+                                                                   normal_texture_id=normal_id,
                                                                    texuniform=texuniform, 
                                                                    texture_type = texture_type)
                 else:                    
