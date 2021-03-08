@@ -181,8 +181,13 @@ class VrSettings(object):
         assert self.relative_movement_device in ['hmd', 'left_controller', 'right_controller']
         self.movement_speed = shared_settings['movement_speed']
         self.vr_fps = shared_settings['vr_fps']
+        self.assist_percent = shared_settings['assist_percent']
+        self.assist_grasp_mass_thresh = shared_settings['assist_grasp_mass_thresh']
         self.hud_width = shared_settings['hud_width']
         self.hud_pos = shared_settings['hud_pos']
+        self.height_bounds = shared_settings['height_bounds']
+        self.use_companion_window = shared_settings['use_companion_window']
+        self.store_only_first_event_per_button = shared_settings['store_only_first_event_per_button']
 
         device_settings = vr_config['device_settings']
         curr_device_candidate = vr_config['current_device']
@@ -209,6 +214,8 @@ class VrSettings(object):
         Turns off VR mode so the MeshRendererVR can be debugged.
         """
         self.use_vr = False
+        # Enable rendering of companion window
+        self.use_companion_window = True
 
 class MeshRendererVR(MeshRenderer):
     """
@@ -223,6 +230,8 @@ class MeshRendererVR(MeshRenderer):
         """
         self.vr_rendering_settings = rendering_settings
         self.vr_settings = vr_settings
+        # Override glfw window show settings
+        self.vr_rendering_settings.show_glfw_window = self.vr_settings.use_companion_window
         self.width = 1296
         self.height = 1440
         super().__init__(width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings)
