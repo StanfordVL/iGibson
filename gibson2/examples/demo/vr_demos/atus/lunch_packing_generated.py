@@ -52,7 +52,7 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                              light_dimming_factor=1.0)
 # VR system settings
 # Change use_vr to toggle VR mode on/off
-vr_settings = VrSettings(use_vr=True)
+vr_settings = VrSettings()
 s = Simulator(mode='vr',
               rendering_settings=vr_rendering_settings,
               vr_settings=vr_settings)

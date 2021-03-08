@@ -12,7 +12,6 @@ Important - VR functionality and where to find it:
 
 import numpy as np
 import os
-import pdb
 import tasknet
 
 import gibson2
@@ -69,8 +68,9 @@ s = Simulator(mode='vr',
             rendering_settings=vr_rendering_settings,
             vr_settings=vr_settings)
 
-igtn_task = iGTNTask('assembling_gift_baskets_filtered', 0)
+igtn_task = iGTNTask("serving_hors_d_oeuvres_filtered", 1)
 igtn_task.initialize_simulator(simulator=s)
+igtn_task.gen_ground_goal_conditions()
 
 kitchen_middle = [-3.7, -2.7, 1.8]
 
