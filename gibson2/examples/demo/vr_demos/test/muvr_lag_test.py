@@ -11,11 +11,11 @@ from time import sleep
 from gibson2.utils.muvr_utils import IGVRTestClient, IGVRTestServer
 
 # Client and server settings
-SERVER_FPS  = 1.0
+SERVER_FPS  = 30.0
 # Note: size is measured in number of floats
-SERVER_PACKET_SIZE = 1000
+SERVER_PACKET_SIZE = 100000
 CLIENT_FPS = 30.0
-CLIENT_PACKET_SIZE = 1000
+CLIENT_PACKET_SIZE = 100000
 
 
 def run_lag_test(mode='server', host='localhost', port='7500'):
