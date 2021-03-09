@@ -111,8 +111,8 @@ class VrConditionSwitcher(object):
         self.is_showing = True
 
         # Text displaying next conditions
-        self.condition_text = s.add_vr_overlay_text(text_data=self.start_text, font_size=60, font_style='Regular', 
-                            color=[0,0,0], pos=[150, 150])
+        self.condition_text = s.add_vr_overlay_text(text_data=self.start_text, font_size=40, font_style='Bold', 
+                                                    color=[0,0,0], pos=[0, 90], size=[90, 50])
     
     def switch_condition(self):
         """
