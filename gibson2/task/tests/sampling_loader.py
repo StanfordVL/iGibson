@@ -5,11 +5,11 @@ import tasknet
 tasknet.set_backend("iGibson")
 
 
-igtn_task = iGTNTask('sampling_test', task_instance=6)
+igtn_task = iGTNTask('re-shelving_library_books_filtered', task_instance=0)
 scene_kwargs = {
-    # 'load_object_categories': ['coffee_table', 'breakfast_table', 'countertop', 'fridge', 'table_lamp', 'sofa'],
+    # 'load_object_categories': ['coffee_table', 'breakfast_table', 'countertop', 'fridge', 'table_lamp', 'sofa', 'bottom_cabinet', 'bottom_cabinet_no_top', 'top_cabinet'],
     'not_load_object_categories': ['ceilings'],
-    'urdf_file': 'Rs_int_sampling_test_6_0'
+    'urdf_file': 'Rs_int_re-shelving_library_books_filtered_0_0'
 }
 igtn_task.initialize_simulator(
     scene_id='Rs_int',
