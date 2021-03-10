@@ -4,6 +4,7 @@
   "valid_surfaces": [
       {
         "name": "top",
+        "link": "root",
         "offset_from_base": [0.00, 0.0742, 0.5298],
         "size": [0.7649, 0.8362],
         "max_height": 10000.0,
@@ -11,6 +12,7 @@
       },
       {
         "name": "tray1",
+        "link": "link_1",
         "offset_from_base": [0.000, -0.055, 0.3],
         "size": [0.52, 0.57],
         "max_height": 0.4974,

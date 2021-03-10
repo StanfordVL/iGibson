@@ -474,15 +474,22 @@
 
 	<link bounding_box="1.8 0.5 0.9" category="console_table" model="19836" name="desk_76" room="living_room_0"/>
 	<joint name="j_desk_76" type="fixed">
-		<origin rpy="0 0 0" xyz="-11.15 2.2 0.45"/>
+		<origin rpy="0 0 -0.5236" xyz="-9.15 2.2 0.45"/>
 		<child link="desk_76"/>
 		<parent link="world"/>
 	</joint>
 
 	<link bounding_box="0.6 0.5 0.9" category="bottom_cabinet" model="49140" name="cabinet_77" room="living_room_0"/>
 	<joint name="j_cabinet_77" type="fixed">
-		<origin rpy="0 0 3.141593" xyz="-11.15 -2.2 0.45"/>
+		<origin rpy="0 0 4.1888" xyz="-9.15 -2.2 0.45"/>
 		<child link="cabinet_77"/>
+		<parent link="world"/>
+	</joint>
+
+	<link bounding_box="0.610000 0.570000 0.891000" category="dishwasher" model="12349" name="dishwasher_78" room="living_room_0"/>
+	<joint name="j_dishwasher_78" type="fixed">
+		<origin rpy="0 0 1.5708" xyz="-13. 0.0 0.450000"/>
+		<child link="dishwasher_78"/>
 		<parent link="world"/>
 	</joint>
 

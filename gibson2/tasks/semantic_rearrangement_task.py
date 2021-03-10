@@ -67,6 +67,7 @@ class SemanticRearrangementTask(BaseTask):
         self.randomize_initial_robot_pos = randomize_initial_robot_pos
         self.init_pos_range = np.array(self.config.get("pos_range", np.zeros((2,3))))
         self.init_rot_range = np.array(self.config.get("rot_range", np.zeros(2)))
+        self.init_sample_by_group = self.config.get("sample_by_group", False)
         self.target_object_init_pos = None                        # will be initial x,y,z sampled placement in active episode
         # Observation mode
         self.task_obs_format = self.config.get("task_obs_format", "global") # Options are global, egocentric
@@ -221,11 +222,21 @@ class SemanticRearrangementTask(BaseTask):
         if self.randomize_initial_robot_pos:
             _, initial_pos = env.scene.get_random_point(floor=self.floor_num)
         else:
-            # We may be sampling one of multiple pos / ori, infer via range shape
-            init_pos_range = self.init_pos_range[np.random.choice(self.init_pos_range.shape[0])] \
-                if len(self.init_pos_range.shape) > 2 else self.init_pos_range
-            init_rot_range = self.init_rot_range[np.random.choice(self.init_rot_range.shape[0])] \
-                if len(self.init_rot_range.shape) > 1 else self.init_rot_range
+            # If we sample by group, make sure both number of ranges are the same
+            if self.init_sample_by_group:
+                assert self.init_pos_range.shape[0] == self.init_rot_range.shape[0],\
+                    "If sampling initial robot pose by group, must have same number of pos and rot ranges!"
+                sampled_ranges = np.random.choice(self.init_pos_range.shape[0])
+                init_pos_range = self.init_pos_range[sampled_ranges]
+                init_rot_range = self.init_rot_range[sampled_ranges]
+            else:
+                init_pos_range = self.init_rot_range
+                init_rot_range = self.init_rot_range
+            # We may (still) be sampling one of multiple pos / ori, infer via range shape
+            if len(init_pos_range.shape) > 2:
+                init_pos_range = init_pos_range[np.random.choice(init_pos_range.shape[0])]
+            if len(init_rot_range.shape) > 1:
+                init_rot_range = init_rot_range[np.random.choice(init_rot_range.shape[0])]
 
             initial_pos = np.random.uniform(init_pos_range[0], init_pos_range[1])
         initial_orn = np.array([0, 0, np.random.uniform(init_rot_range[0], init_rot_range[1])])
