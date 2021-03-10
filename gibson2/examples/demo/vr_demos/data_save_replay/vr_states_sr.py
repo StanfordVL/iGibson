@@ -31,8 +31,6 @@ from gibson2 import assets_path
 
 # Number of seconds to run the data saving for
 DATA_SAVE_RUNTIME = 45
-# Set to false to load entire Rs_int scene
-LOAD_PARTIAL = True
 
 def run_state_sr(mode):
     """
@@ -70,9 +68,6 @@ def run_state_sr(mode):
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
     scene = InteractiveIndoorScene('Rs_int')
-    # Turn this on when debugging to speed up loading
-    if LOAD_PARTIAL:
-        scene._set_first_n_objects(10)
     s.import_ig_scene(scene)
 
     # Create a VrAgent and it will handle all initialization and importing under-the-hood
