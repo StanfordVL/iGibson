@@ -23,10 +23,10 @@ shared_settings:
   movement_speed: 0.01
   # Fixed frame rate of VR system
   vr_fps: 30.0
-  # Assisted grasping percentage (0 if fully physics-based, 100 is magic graspin)
+  # Assisted grasping percentage (0 if fully physics-based, 100 is magic grasping)
   assist_percent: 100
-  # Mass threshold for assisted grasping
-  assist_grasp_mass_thresh: 15.0
+  # Mass threshold for assisted grasping - this is only used for non-URDF objects
+  assist_grasp_mass_thresh: 10.0
   # Width of HUD display in meters
   hud_width: 0.7
   # Position of HUD display relative to the HMD. X (left), Y (up), Z (away from HMD, into the scene)

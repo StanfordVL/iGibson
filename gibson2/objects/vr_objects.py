@@ -63,8 +63,15 @@ class VrAgent(object):
             self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', use_constraints=self.use_constraints, normal_color=self.normal_color, use_prim=self.use_hand_prim) if not use_gripper 
                                         else VrGripper(self.sim, hand='right', use_constraints=self.use_constraints))
             self.vr_dict['right_hand'].hand_setup(self.z_coord)
+
+        # Store reference between hands
+        if 'left' in self.hands and 'right' in self.hands:
+            self.vr_dict['left_hand'].set_other_hand(self.vr_dict['right_hand'])
+            self.vr_dict['right_hand'].set_other_hand(self.vr_dict['left_hand'])
         if self.use_body:
             self.vr_dict['body'] = VrBody(self.sim, self.z_coord, use_constraints=self.use_constraints, normal_color=self.normal_color)
+            self.vr_dict['left_hand'].set_body(self.vr_dict['body'])
+            self.vr_dict['right_hand'].set_body(self.vr_dict['body'])
         if self.use_gaze_marker:
             self.vr_dict['gaze_marker'] = VrGazeMarker(self.sim, self.z_coord, normal_color=self.normal_color)
 
@@ -236,6 +243,8 @@ class VrHandBase(ArticulatedObject):
         self.vr_settings = self.sim.vr_settings
         self.fpath = fpath
         self.hand = hand
+        self.other_hand = None
+        self.body = None
         self.use_constraints = use_constraints
         self.base_rot = base_rot
         self.vr_device = '{}_controller'.format(self.hand)
@@ -252,6 +261,20 @@ class VrHandBase(ArticulatedObject):
                              flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
         return body_id
+
+    def set_other_hand(self, other_hand):
+        """
+        Sets reference to the other hand - eg. right hand if this is the left hand
+        :param other_hand: reference to another VrHandBase instance
+        """
+        self.other_hand = other_hand
+
+    def set_body(self, body):
+        """
+        Sets reference to VrBody
+        :param body: VrBody instance
+        """
+        self.body = body
 
     def hand_setup(self, z_coord):
         """
@@ -272,9 +295,13 @@ class VrHandBase(ArticulatedObject):
         if vr_data:
             transform_data = vr_data.query(self.vr_device)[:3]
             touch_data = vr_data.query('{}_button'.format(self.vr_device))
+            curr_offset = vr_data.query('vr_positions')[3:]
+            _, _, hmd_height = vr_data.query('hmd')[1:4]
         else:
             transform_data = self.sim.get_data_for_vr_device(self.vr_device)
             touch_data = self.sim.get_button_data_for_controller(self.vr_device)
+            curr_offset = self.sim.get_vr_offset()
+            _, _, hmd_height = self.sim.get_hmd_world_pos()
 
         # Unpack transform and touch data
         is_valid, trans, rot = transform_data
@@ -295,9 +322,7 @@ class VrHandBase(ArticulatedObject):
                 self.set_orientation(final_rot)
 
             # Adjust user height based on analog stick press
-            if self.hand != self.vr_settings.movement_controller:
-                curr_offset = self.sim.get_vr_offset()
-                _, _, hmd_height = self.sim.get_hmd_world_pos()
+            if not vr_data and self.hand != self.vr_settings.movement_controller:
                 if touch_x < -0.7:
                     vr_z_offset = -0.01
                     if hmd_height + curr_offset[2] + vr_z_offset >= self.height_bounds[0]:
@@ -497,6 +522,12 @@ class VrHand(VrHandBase):
 
                 # Get body id of contact with most force
                 most_force_bid, most_force_link = sorted(cpt_forces.items(), key=lambda v: v[1])[::-1][0][0]
+                # Don't grasp if this object is being assisted-grasped by the other hand
+                if self.other_hand and self.other_hand.object_in_hand == most_force_bid:
+                    return
+                # Don't grasp the user's body
+                if self.body and self.body.body_id == most_force_bid:
+                    return
                 # Calculate transform from object to palm center
                 body_pos, body_orn = p.getBasePositionAndOrientation(most_force_bid)
                 # Get inverse world transform of body frame
