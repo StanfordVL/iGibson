@@ -183,6 +183,32 @@ def calc_z_dropoff(theta, t_min, t_max):
 
     return z_mult
 
+def calc_z_rot_from_right(right):
+    """
+    Calculates z rotation of an object based on its right vector, relative to the positive x axis,
+    which represents a z rotation euler angle of 0. This is used for objects that need to rotate
+    with the HMD (eg. VrBody), but which need to be robust to changes in orientation in the HMD.
+    """
+    # Project right vector onto xy plane
+    r = np.array([right[0], right[1], 0])
+    z_zero_vec = np.array([1, 0, 0])
+    # Get angle in radians
+    z = np.arccos(np.dot(r, z_zero_vec))
+    # Flip sign if on the right side of the xy plane
+    if r[1] < 0:
+        z *= -1
+    # Add pi/2 to get forward direction, but need to deal with jumping
+    # over quadrant boundaries
+    if 0 <= z and z <= np.pi/2:
+        return z + np.pi/2
+    elif np.pi/2 < z and z <= np.pi:
+        angle_from_ax = np.pi/2 - (np.pi - z)
+        return -np.pi + angle_from_ax
+    elif -np.pi <= z and z <= -np.pi/2:
+        return z + np.pi/2
+    else:
+        return np.pi/2 + z
+
 def convert_button_data_to_binary(bdata):
     """
     Converts a list of button data tuples of the form (button_idx, press_id) to a binary list,
@@ -230,3 +256,9 @@ def translate_vr_position_by_vecs(right_frac, forward_frac, right, forward, curr
     """direction vectors of the chosen VR device (HMD/controller), and adds this vector to the current offset."""
     vr_offset_vec = get_normalized_translation_vec(right_frac, forward_frac, right, forward)
     return [curr_offset[i] + vr_offset_vec[i] * movement_speed for i in range(3)]
+
+if __name__ == '__main__':
+    f = [-1, -0.2, 0]
+    u = [0, 0, 1]
+    z = calc_z_rot_from_vecs(f, u)
+    print(z)

@@ -16,17 +16,27 @@ shared_settings:
   # Whether user can move by using the touchpad/joystick
   touchpad_movement: True
   # Which controller to use to control touchpad/joystick movement (must be left or right)
-  movement_controller: "right"
+  movement_controller: "left"
   # Device whose pose will be used to control touchpad/joystick movement (must be in [hmd, left_controller, right_controller])
   relative_movement_device: "hmd"
   # Speed of touchpad/joystick movement
   movement_speed: 0.01
   # Fixed frame rate of VR system
   vr_fps: 30.0
+  # Assisted grasping percentage (0 if fully physics-based, 100 is magic grasping)
+  assist_percent: 100
+  # Mass threshold for assisted grasping - this is only used for non-URDF objects
+  assist_grasp_mass_thresh: 10.0
   # Width of HUD display in meters
   hud_width: 0.7
   # Position of HUD display relative to the HMD. X (left), Y (up), Z (away from HMD, into the scene)
   hud_pos: [0,0,-0.8]
+  # Height boundaries for VR user (2m is the upper limit)
+  height_bounds: [0, 2.0]
+  # Whether to use iGibson companion window (set to False by default - please use Steam VR mirror display (described in README))
+  use_companion_window: False
+  # Whether to only store the first event per button, per frame (avoids multiple unwanted button presses)
+  store_only_first_event_per_button: True
 # Settings that are specific to different VR devices (eg. eye tracking, button mapping)
 device_settings:
   HTC_VIVE_PRO_EYE:
