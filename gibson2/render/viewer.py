@@ -14,13 +14,19 @@ from gibson2.utils.utils import rotate_vector_2d
 
 
 class ViewerVR:
-    def __init__(self):
+    def __init__(self, use_companion_window):
+        """
+        :param use_companion_window: whether to render companion window (passed in automatically from VrSettings)
+        """
         self.renderer = None
-
+        self.use_companion_window = use_companion_window
+    
     def update(self):
+        if not self.renderer:
+            raise RuntimeError('Unable to render without a renderer attached to the ViewerVR!')
         self.renderer.render()
-        # Viewer is responsible for calling companion window rendering function
-        self.renderer.render_companion_window()
+        if self.use_companion_window:
+            self.renderer.render_companion_window()
 
 
 class ViewerSimple:
