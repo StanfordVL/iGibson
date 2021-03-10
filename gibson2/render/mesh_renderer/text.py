@@ -183,7 +183,7 @@ class Text(object):
         Sets various text attributes.
         :param pos: [x, y] position of text box's top-left corner on screen, in pixels
         :param scale: scale factor for resizing text
-        :param color: color of text
+        :param color: color of text in form [R, G, B] where R, G, B are in [0, 1]
         """
         if pos:
             self.pos = pos
@@ -192,7 +192,9 @@ class Text(object):
         if color:
             self.color = color
 
-        self.gen_text_pos()
+        # Don't need to regenerate text if color has been changed
+        if pos or scale:
+            self.gen_text_pos()
 
     def set_show_state(self, state):
         """
@@ -210,7 +212,7 @@ class Text(object):
     def gen_text_pos(self):
         """
         Generates position for all characters in text. This is called every time
-        some attribute of the text changes - either the text itself, or its pos, color, etc.
+        some attribute of the text changes - either the text itself, or its pos, scale, etc.
         """
         # Use stack (deque) to support quick removal/addition of lines
         text_render_q = deque(self.text)
