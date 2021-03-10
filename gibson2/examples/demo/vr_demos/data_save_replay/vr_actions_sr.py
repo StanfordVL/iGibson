@@ -81,7 +81,6 @@ def run_action_sr(mode):
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
     scene = InteractiveIndoorScene('Rs_int')
-    scene._set_first_n_objects(2)
     s.import_ig_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 

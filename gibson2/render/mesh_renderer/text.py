@@ -1,3 +1,4 @@
+from collections import deque
 import freetype as ft
 from gibson2 import assets_path
 import matplotlib.pyplot as plt
@@ -74,7 +75,7 @@ class TextManager(object):
         :param font_size: vertical height of font letters in pixels
         """
         # Test if this font, style combination has already been loaded
-        key = (font_name, font_style)
+        key = (font_name, font_style, font_size)
         if key in self.font_data:
             return self.font_data[key]
 
@@ -103,7 +104,7 @@ class TextManager(object):
             font_chars[code] = next_c
         
         # Store font character dictionary in main font_data dictionary, under current font
-        self.font_data[(font_name, font_style)] = font_chars
+        self.font_data[(font_name, font_style, font_size)] = font_chars
         return font_chars
 
 
@@ -119,6 +120,8 @@ class Text(object):
                  color=[0, 0, 0],
                  pos=[0, 0],
                  scale=1.0,
+                 tbox_height=500,
+                 tbox_width=500,
                  render_to_tex=False,
                  background_color=None,
                  text_manager=None):
@@ -128,27 +131,34 @@ class Text(object):
         :param font_size: size of font to render
         :param font_style: style of font - one of [regular, italic, bold]
         :param color: [r, g, b] color
-        :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
+        :param pos: [x, y] position of text box's top-left corner on screen, in pixels
         :param scale: scale factor for resizing text
-        :param background_color: color of the background in form [r, g, b, a] - background will only appear if this is not None
+        :param tbox_height: height of text box
+        :param tbox_width: width of text box
         :param render_to_tex: whether text should be rendered to an OpenGL texture or the screen (the default)
+        :param background_color: color of the background in form [r, g, b, a] - background will only appear if this is not None
         :param text_manager: TextManager object that handles raw character data for fonts
         """
         if not text_manager:
             raise ValueError('Each Text object requires a TextManager reference')
         self.font_name = font_name
         self.font_style = font_style
+        # Padding that appears at start and end of text
+        self.text_pad = '-----'
         # Note: font size is in pixels
         self.font_size = font_size
         self.render_to_tex = render_to_tex
-        self.line_sep = 2 * self.font_size
+        self.line_sep = 1.5 * self.font_size
         self.space_x = int(self.font_size / 2)
         # Text stores list of lines, which are each rendered
-        self.set_text(text_data)
-        self.set_attribs(pos=pos, scale=scale, color=color)
+        self.pos = pos
+        self.scale = scale
+        self.color = color
         self.background_color = background_color
         # Background margin in pixels (in both x and y directions)
         self.background_margin = 15
+        self.tbox_height = tbox_height
+        self.tbox_width = tbox_width
         # Text manager stores data for characters in a font
         self.tm = text_manager
         # Load font and extract character data
@@ -156,19 +166,24 @@ class Text(object):
         self.VAO, self.VBO = self.tm.renderer.r.setupTextRender()
         # Text shows by default after it is first created
         self.show_text = True
+        self.set_text(text_data)
 
     def set_text(self, input_text):
         """
         :param input_text: text to display - lines must be separated by the newline character
         """
         self.text = input_text.splitlines()
+        # By default add '-----' to the start/end of the text to indicate the top/bottom
+        self.text.insert(0, self.text_pad)
+        self.text.append(self.text_pad)
+        self.gen_text_pos()
 
     def set_attribs(self, pos=None, scale=None, color=None):
         """
         Sets various text attributes.
-        :param pos: [x, y] position of text box's bottom-left corner on screen, in pixels
+        :param pos: [x, y] position of text box's top-left corner on screen, in pixels
         :param scale: scale factor for resizing text
-        :param color: color of text
+        :param color: color of text in form [R, G, B] where R, G, B are in [0, 1]
         """
         if pos:
             self.pos = pos
@@ -176,6 +191,10 @@ class Text(object):
             self.scale = scale
         if color:
             self.color = color
+
+        # Don't need to regenerate text if color has been changed
+        if pos or scale:
+            self.gen_text_pos()
 
     def set_show_state(self, state):
         """
@@ -189,6 +208,71 @@ class Text(object):
         Returns show state of Text.
         """
         return self.show_text
+
+    def gen_text_pos(self):
+        """
+        Generates position for all characters in text. This is called every time
+        some attribute of the text changes - either the text itself, or its pos, scale, etc.
+        """
+        # Use stack (deque) to support quick removal/addition of lines
+        text_render_q = deque(self.text)
+        # Store character render data as list of tuples (xpos, ypos, w, h, tex_id)
+        self.char_render_data = []
+        line_num = 1
+        while text_render_q:
+            line = text_render_q.popleft()
+            next_x = self.pos[0] + self.background_margin
+            next_y = self.pos[1] - line_num * self.line_sep
+            for i in range(len(line)):
+                # Convert character to ASCII
+                c = ord(line[i])
+                # Spaces are allowed to run into margins
+                if c <= 32 or c >= 127:
+                    next_x += self.space_x
+                    continue
+
+                c_data = self.char_data[c]
+                xpos = next_x + c_data.bearing[0] * self.scale
+                ypos = next_y - (c_data.size[1] - c_data.bearing[1]) * self.scale
+                w = c_data.size[0] * self.scale
+                h = c_data.size[1] * self.scale
+                is_over_margin = xpos + w > self.pos[0] + self.tbox_width - self.background_margin
+
+                if i == 0:
+                    self.char_render_data.append((xpos, ypos, w, h, c_data.tex_id))
+                else:
+                    if is_over_margin:
+                        remaining_line = '-' + line[i:]
+                        text_render_q.appendleft(remaining_line)
+                        break
+                    else:
+                        self.char_render_data.append((xpos, ypos, w, h, c_data.tex_id))
+
+                # Advance x position to next glyph - advance is stored in units of 1/64 pixels, so we need to divide by 64
+                next_x += ((c_data.advance / 64.0) * self.scale)
+                
+            line_num += 1
+
+    def scroll_text(self, up=True):
+        """
+        Scrolls text within the text box. The "up" direction
+        is one where the user scrolls to see higher up text,
+        which results in the text box moving down.
+        :param up: True to scroll up, False to scroll down.
+        """
+        if up:
+            # Check if first line is on screen
+            highest_char = sorted(self.char_render_data, key=lambda x: x[1] + x[3])[::-1][0]
+            highest_y_pos = highest_char[1] + highest_char[3]
+            if highest_y_pos > self.pos[1] - self.background_margin:
+                # Only scroll up if highest line is not displayed
+                self.char_render_data = [(t[0], t[1] - self.line_sep, t[2], t[3], t[4]) for t in self.char_render_data]
+        else:
+            # Check if last line is on screen
+            lowest_y_pos = sorted(self.char_render_data, key=lambda x: x[1])[0][1]
+            if lowest_y_pos < self.pos[1] - self.tbox_height + self.background_margin:
+                # Only scroll down if lowest line is not displayed
+                self.char_render_data = [(t[0], t[1] + self.line_sep, t[2], t[3], t[4]) for t in self.char_render_data]
 
     def render(self):
         """
@@ -205,54 +289,12 @@ class Text(object):
         # Pass in -1 if we want to render to the screen
         self.tm.renderer.r.preRenderText(self.tm.renderer.textShaderProgram, self.tm.FBO if self.render_to_tex else -1, self.VAO, self.color[0], self.color[1], self.color[2])
 
-        # Precalculate render data for each character so we can figure out the bounds of the background quad
-        text_to_render = self.text[::-1]
-        # Store characte render data as list of tuples (xpos, ypos, w, h, tex_id)
-        char_render_data = []
-        for i in range(len(text_to_render)):
-            line = text_to_render[i]
-            # x pos resets back to left each time a new line is rendered
-            next_x = self.pos[0]
-            next_y = self.pos[1] + i * self.line_sep
-            for c in line:
-                # Convert character to ASCII
-                c = ord(c)
-                # Deal with spaces - and add space for unrecognized characters
-                if c <= 32 or c >= 127:
-                    next_x += self.space_x
-                    continue
-
-                c_data = self.char_data[c]
-                xpos = next_x + c_data.bearing[0] * self.scale
-                ypos = next_y - (c_data.size[1] - c_data.bearing[1]) * self.scale
-                w = c_data.size[0] * self.scale
-                h = c_data.size[1] * self.scale
-
-                char_render_data.append((xpos, ypos, w, h, c_data.tex_id))
-
-                # Advance x position to next glyph - advance is stored in units of 1/64 pixels, so we need to divide by 64
-                next_x += ((c_data.advance / 64.0) * self.scale)
-
         # Optionally render background first so alpha blending works correctly
         if self.background_color:
-            # Find bottom-left corner
-            min_x = sorted(char_render_data, key=lambda x: x[0])[0][0]
-            min_y = sorted(char_render_data, key=lambda x: x[1])[0][1]
-            bottom_left_x = min_x - self.background_margin
-            bottom_left_y = min_y - self.background_margin
-            # Find top-right corner
-            max_x, max_y = 0.0, 0.0
-            for d in char_render_data:
-                letter_right = d[0] + d[2]
-                letter_top = d[1] + d[3]
-                if letter_right > max_x:
-                    max_x = letter_right
-                if letter_top > max_y:
-                    max_y = letter_top
-            top_right_x = max_x + self.background_margin
-            top_right_y = max_y + self.background_margin
-            b_w = top_right_x - bottom_left_x
-            b_h = top_right_y - bottom_left_y
+            bottom_left_x = self.pos[0]
+            bottom_left_y = self.pos[1] - self.tbox_height
+            b_w = self.tbox_width
+            b_h = self.tbox_height
 
             # Unpack color data
             b_r, b_g, b_b, b_a = self.background_color
@@ -260,10 +302,11 @@ class Text(object):
             self.tm.renderer.r.renderBackgroundQuad(bottom_left_x, bottom_left_y, b_w, b_h, self.VBO, 
                                                     self.tm.renderer.textShaderProgram, b_a, b_r, b_g, b_b)
 
-        # Finally render all characters
-        for r_data in char_render_data:
+        # Finally render characters - but only those within the text box
+        for r_data in self.char_render_data:
             xpos, ypos, w, h, tex_id = r_data
-            self.tm.renderer.r.renderChar(xpos, ypos, w, h, tex_id, self.VBO)
+            if ypos + h <= self.pos[1] - self.background_margin and ypos >= self.pos[1] - self.tbox_height + self.background_margin:
+                self.tm.renderer.r.renderChar(xpos, ypos, w, h, tex_id, self.VBO)
 
         # Perform render clean-up
         self.tm.renderer.r.postRenderText()

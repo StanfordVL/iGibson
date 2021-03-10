@@ -98,6 +98,7 @@ class URDFObject(StatefulObject):
                  texture_randomization=False,
                  overwrite_inertial=True,
                  scene_instance_folder=None,
+                 visualize_primitives = False,
                  ):
         """
         :param filename: urdf file path of that object model
@@ -116,6 +117,7 @@ class URDFObject(StatefulObject):
         :param texture_randomization: whether to enable texture randomization
         :param overwrite_inertial: whether to overwrite the inertial frame of the original URDF using trimesh + density estimate
         :param scene_instance_folder: scene instance folder to split and save sub-URDFs
+        :param visualize_primitives: whether to render geometric primitives
         """
         super(URDFObject, self).__init__()
 
@@ -200,6 +202,12 @@ class URDFObject(StatefulObject):
             filename = simplified_urdf
         logging.info("Loading the following URDF template " + filename)
         self.object_tree = ET.parse(filename)  # Parse the URDF
+
+        if not visualize_primitives:
+            for link in self.object_tree.findall('link'):
+                for element in link:
+                    if element.tag == 'visual' and len(element.findall('.//box')) > 0:
+                        link.remove(element)
 
         self.model_path = model_path
         if self.model_path is None:
