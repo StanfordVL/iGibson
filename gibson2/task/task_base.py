@@ -209,6 +209,7 @@ class iGTNTask(TaskNetTask):
     def import_scene(self):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
+
         if not self.online_sampling:
             for obj_inst in self.object_scope:
                 matched_sim_obj = None
@@ -280,8 +281,13 @@ class iGTNTask(TaskNetTask):
                             if scene_obj not in condition.body:
                                 continue
                             success = condition.sample(binary_state=positive)
-                            print('sampling', room_type, scene_obj, room_inst,
-                                  obj.name, type(condition), condition.body,
+                            print('initial condition sampling',
+                                  room_type,
+                                  scene_obj,
+                                  room_inst,
+                                  obj.name,
+                                  condition.STATE_NAME,
+                                  condition.body,
                                   success)
 
                             if not success:
@@ -296,85 +302,156 @@ class iGTNTask(TaskNetTask):
                         scene_object_scope_filtered[room_type][scene_obj][room_inst].append(
                             obj)
 
-        for room_type in scene_object_scope_filtered:
-            # For each room_type, filter in room_inst that has successful
-            # sampling options for all obj_inst in this room_type
-            room_inst_satisfied = set.intersection(
-                *[set(scene_object_scope_filtered[room_type][obj_inst].keys())
-                  for obj_inst in scene_object_scope_filtered[room_type]]
-            )
+        np.random.shuffle(self.ground_goal_state_options)
+        print('number of ground_goal_state_options',
+              len(self.ground_goal_state_options))
+        num_goal_condition_set_to_test = 10
+        for goal_condition_set in \
+                self.ground_goal_state_options[:num_goal_condition_set_to_test]:
+            goal_condition_set_success = True
+            scene_object_scope_filtered_goal_cond = {}
+            for room_type in scene_object_scope_filtered:
+                scene_object_scope_filtered_goal_cond[room_type] = {}
+                for scene_obj in scene_object_scope_filtered[room_type]:
+                    scene_object_scope_filtered_goal_cond[room_type][scene_obj] = {
+                    }
+                    for room_inst in scene_object_scope_filtered[room_type][scene_obj]:
+                        for obj in scene_object_scope_filtered[room_type][scene_obj][room_inst]:
+                            self.object_scope[scene_obj] = obj
 
-            if len(room_inst_satisfied) == 0:
-                logging.warning(
-                    'Room type [{}] of scene [{}] cannot sample all the objects needed.'.format(
-                        room_type, self.scene.scene_id))
-                for obj_inst in scene_object_scope_filtered[room_type]:
-                    logging.warning(obj_inst)
+                            success = True
+                            for goal_condition in goal_condition_set:
+                                goal_condition = goal_condition.children[0]
+                                if isinstance(goal_condition, Negation):
+                                    continue
+                                if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under']:
+                                    continue
+                                if scene_obj not in goal_condition.body:
+                                    continue
+                                success = goal_condition.sample(
+                                    binary_state=True)
+                                print('goal condition sampling',
+                                      room_type,
+                                      scene_obj,
+                                      room_inst, obj.name,
+                                      goal_condition.STATE_NAME,
+                                      goal_condition.body,
+                                      success)
+                                if not success:
+                                    break
+                            if not success:
+                                continue
+
+                            if room_inst not in scene_object_scope_filtered_goal_cond[room_type][scene_obj]:
+                                scene_object_scope_filtered_goal_cond[room_type][scene_obj][room_inst] = [
+                                ]
+                            scene_object_scope_filtered_goal_cond[room_type][scene_obj][room_inst].append(
+                                obj)
+
+            for room_type in scene_object_scope_filtered_goal_cond:
+                # For each room_type, filter in room_inst that has successful
+                # sampling options for all obj_inst in this room_type
+                room_inst_satisfied = set.intersection(
+                    *[set(scene_object_scope_filtered_goal_cond[room_type][obj_inst].keys())
+                      for obj_inst in scene_object_scope_filtered_goal_cond[room_type]]
+                )
+
+                if len(room_inst_satisfied) == 0:
                     logging.warning(
-                        scene_object_scope_filtered[room_type][obj_inst].keys())
-                if self.should_debug_sampling:
-                    self.debug_sampling(scene_object_scope_filtered,
-                                        non_sampleable_obj_conditions)
-                return False
+                        'Room type [{}] of scene [{}] cannot sample all the objects needed.'.format(
+                            room_type, self.scene.scene_id))
+                    for obj_inst in scene_object_scope_filtered_goal_cond[room_type]:
+                        logging.warning(obj_inst)
+                        logging.warning(
+                            scene_object_scope_filtered_goal_cond[room_type][obj_inst].keys())
 
-            for obj_inst in scene_object_scope_filtered[room_type]:
-                scene_object_scope_filtered[room_type][obj_inst] = \
-                    {key: val for key, val
-                     in scene_object_scope_filtered[room_type][obj_inst].items()
-                     if key in room_inst_satisfied}
-                assert len(
-                    scene_object_scope_filtered[room_type][obj_inst]) != 0
-
-        # For each room instance, perform maximum bipartite matching between object instance in scope to simulator objects
-        # Left nodes: a list of object instance in scope
-        # Right nodes: a list of simulator objects
-        # Edges: if the simulator object can support the sampling requirement of ths object instance
-        for room_type in scene_object_scope_filtered:
-            # The same room instances will be shared across all scene obj in a given room type
-            some_obj = list(scene_object_scope_filtered[room_type].keys())[0]
-            room_insts = list(scene_object_scope_filtered[room_type][some_obj].keys(
-            ))
-            success = False
-            # Loop through each room instance
-            for room_inst in room_insts:
-                graph = nx.Graph()
-                # For this given room instance, gether mapping from obj instance to a list of simulator obj
-                obj_inst_to_obj_per_room_inst = {}
-                for obj_inst in scene_object_scope_filtered[room_type]:
-                    obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered[room_type][obj_inst][room_inst]
-                top_nodes = []
-                print('MBM for room instance [{}]'.format(room_inst))
-                for obj_inst in obj_inst_to_obj_per_room_inst:
-                    for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
-                        # Create an edge between obj instance and each of the simulator obj that supports sampling
-                        graph.add_edge(obj_inst, obj)
-                        print('Adding edge: {} <-> {}'.format(obj_inst, obj.name))
-                        top_nodes.append(obj_inst)
-                # Need to provide top_nodes that contain all nodes in one bipartite node set
-                # The matches will have two items for each match (e.g. A -> B, B -> A)
-                matches = nx.bipartite.maximum_matching(
-                    graph, top_nodes=top_nodes)
-                if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
-                    print('Object scope finalized:')
-                    for obj_inst, obj in matches.items():
-                        if obj_inst in obj_inst_to_obj_per_room_inst:
-                            self.object_scope[obj_inst] = obj
-                            print(obj_inst, obj.name)
-                    success = True
+                    if self.should_debug_sampling:
+                        self.debug_sampling(scene_object_scope_filtered_goal_cond,
+                                            non_sampleable_obj_conditions,
+                                            goal_condition_set)
+                    goal_condition_set_success = False
                     break
-            if not success:
-                logging.warning(
-                    'Room type [{}] of scene [{}] do not have enough '
-                    'successful sampling options to support all the '
-                    'objects needed'.format(
-                        room_type, self.scene.scene_id))
-                return False
+
+                for obj_inst in scene_object_scope_filtered_goal_cond[room_type]:
+                    scene_object_scope_filtered_goal_cond[room_type][obj_inst] = \
+                        {key: val for key, val
+                         in scene_object_scope_filtered_goal_cond[room_type][obj_inst].items()
+                         if key in room_inst_satisfied}
+                    assert len(
+                        scene_object_scope_filtered_goal_cond[room_type][obj_inst]) != 0
+
+            if not goal_condition_set_success:
+                continue
+            # For each room instance, perform maximum bipartite matching between object instance in scope to simulator objects
+            # Left nodes: a list of object instance in scope
+            # Right nodes: a list of simulator objects
+            # Edges: if the simulator object can support the sampling requirement of ths object instance
+            for room_type in scene_object_scope_filtered_goal_cond:
+                # The same room instances will be shared across all scene obj in a given room type
+                some_obj = list(
+                    scene_object_scope_filtered_goal_cond[room_type].keys())[0]
+                room_insts = list(scene_object_scope_filtered_goal_cond[room_type][some_obj].keys(
+                ))
+                success = False
+                # Loop through each room instance
+                for room_inst in room_insts:
+                    graph = nx.Graph()
+                    # For this given room instance, gether mapping from obj instance to a list of simulator obj
+                    obj_inst_to_obj_per_room_inst = {}
+                    for obj_inst in scene_object_scope_filtered_goal_cond[room_type]:
+                        obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered_goal_cond[room_type][obj_inst][room_inst]
+                    top_nodes = []
+                    print('MBM for room instance [{}]'.format(room_inst))
+                    for obj_inst in obj_inst_to_obj_per_room_inst:
+                        for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
+                            # Create an edge between obj instance and each of the simulator obj that supports sampling
+                            graph.add_edge(obj_inst, obj)
+                            print(
+                                'Adding edge: {} <-> {}'.format(obj_inst, obj.name))
+                            top_nodes.append(obj_inst)
+                    # Need to provide top_nodes that contain all nodes in one bipartite node set
+                    # The matches will have two items for each match (e.g. A -> B, B -> A)
+                    matches = nx.bipartite.maximum_matching(
+                        graph, top_nodes=top_nodes)
+                    if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
+                        print('Object scope finalized:')
+                        for obj_inst, obj in matches.items():
+                            if obj_inst in obj_inst_to_obj_per_room_inst:
+                                self.object_scope[obj_inst] = obj
+                                print(obj_inst, obj.name)
+                        success = True
+                        break
+                if not success:
+                    logging.warning(
+                        'Room type [{}] of scene [{}] do not have enough '
+                        'successful sampling options to support all the '
+                        'objects needed'.format(
+                            room_type, self.scene.scene_id))
+                    goal_condition_set_success = False
+                    break
+
+            if not goal_condition_set_success:
+                continue
+
+            assert goal_condition_set_success
+            break
+
+        if not goal_condition_set_success:
+            return False
 
         # Do sampling again using the object instance -> simulator object mapping from maximum bipartite matching
         for condition, positive in non_sampleable_obj_conditions:
-            success = condition.sample(binary_state=positive)
-            # This should always succeed because it has succeeded before.
-            assert success
+            num_trials = 10
+            for _ in range(num_trials):
+                success = condition.sample(binary_state=positive)
+                # This should always succeed because it has succeeded before.
+                if success:
+                    break
+            if not success:
+                logging.warning(
+                    'Non-sampleable object conditions failed even after successful matching: {}'.format(
+                        condition.body))
+                return False
 
         # Do sampling that only involves sampleable object (e.g. apple is cooked)
         for condition, positive in sampleable_obj_conditions:
@@ -387,7 +464,10 @@ class iGTNTask(TaskNetTask):
 
         return True
 
-    def debug_sampling(self, scene_object_scope_filtered, non_sampleable_obj_conditions):
+    def debug_sampling(self,
+                       scene_object_scope_filtered,
+                       non_sampleable_obj_conditions,
+                       goal_condition_set):
         gibson2.debug_sampling = True
         for room_type in self.non_sampleable_object_scope:
             for scene_obj in self.non_sampleable_object_scope[room_type]:
@@ -397,13 +477,17 @@ class iGTNTask(TaskNetTask):
                     for obj in self.non_sampleable_object_scope[room_type][scene_obj][room_inst]:
                         self.object_scope[scene_obj] = obj
 
-                        success = True
                         for condition, positive in non_sampleable_obj_conditions:
                             # Only sample conditions that involve this object
                             if scene_obj not in condition.body:
                                 continue
-                            print('debug sampling', room_type, scene_obj, room_inst,
-                                  obj.name, type(condition), condition.body)
+                            print('debug initial condition sampling',
+                                  room_type,
+                                  scene_obj,
+                                  room_inst,
+                                  obj.name,
+                                  condition.STATE_NAME,
+                                  condition.body)
                             obj_pos = obj.get_position()
                             # Set the pybullet camera to have a bird's eye view
                             # of the sampling process
@@ -412,6 +496,31 @@ class iGTNTask(TaskNetTask):
                                 cameraPitch=-89.99999,
                                 cameraTargetPosition=obj_pos)
                             success = condition.sample(binary_state=positive)
+                            print('success', success)
+
+                        for goal_condition in goal_condition_set:
+                            goal_condition = goal_condition.children[0]
+                            if isinstance(goal_condition, Negation):
+                                continue
+                            if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under']:
+                                continue
+                            if scene_obj not in goal_condition.body:
+                                continue
+                            print('goal condition sampling',
+                                  room_type,
+                                  scene_obj,
+                                  room_inst, obj.name,
+                                  goal_condition.STATE_NAME,
+                                  goal_condition.body)
+                            obj_pos = obj.get_position()
+                            # Set the pybullet camera to have a bird's eye view
+                            # of the sampling process
+                            p.resetDebugVisualizerCamera(
+                                cameraDistance=3.0, cameraYaw=0,
+                                cameraPitch=-89.99999,
+                                cameraTargetPosition=obj_pos)
+                            success = goal_condition.sample(
+                                binary_state=True)
                             print('success', success)
 
     def clutter_scene(self):
