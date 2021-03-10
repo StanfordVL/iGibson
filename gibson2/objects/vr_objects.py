@@ -295,9 +295,13 @@ class VrHandBase(ArticulatedObject):
         if vr_data:
             transform_data = vr_data.query(self.vr_device)[:3]
             touch_data = vr_data.query('{}_button'.format(self.vr_device))
+            curr_offset = vr_data.query('vr_positions')[3:]
+            _, _, hmd_height = vr_data.query('hmd')[1:4]
         else:
             transform_data = self.sim.get_data_for_vr_device(self.vr_device)
             touch_data = self.sim.get_button_data_for_controller(self.vr_device)
+            curr_offset = self.sim.get_vr_offset()
+            _, _, hmd_height = self.sim.get_hmd_world_pos()
 
         # Unpack transform and touch data
         is_valid, trans, rot = transform_data
@@ -318,9 +322,7 @@ class VrHandBase(ArticulatedObject):
                 self.set_orientation(final_rot)
 
             # Adjust user height based on analog stick press
-            if self.hand != self.vr_settings.movement_controller:
-                curr_offset = self.sim.get_vr_offset()
-                _, _, hmd_height = self.sim.get_hmd_world_pos()
+            if not vr_data and self.hand != self.vr_settings.movement_controller:
                 if touch_x < -0.7:
                     vr_z_offset = -0.01
                     if hmd_height + curr_offset[2] + vr_z_offset >= self.height_bounds[0]:
