@@ -16,6 +16,7 @@ from gibson2.robots.robot_base import BaseRobot
 from gibson2.objects.object_base import Object
 from gibson2.objects.particles import ParticleSystem
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
+from gibson2.utils.assets_utils import get_ig_avg_category_specs
 
 import pybullet as p
 import gibson2
@@ -153,7 +154,8 @@ class Simulator:
         # First sync always sync all objects (regardless of their sleeping states)
         self.first_sync = True
         # List of categories that can be grasped by assisted grasping
-        self.assist_grap_category_allow_list = []
+        self.assist_grasp_category_allow_list = []
+        self.gen_assisted_grasping_categories()
 
         self.object_state_types = get_states_by_dependency_order()
 
@@ -1093,13 +1095,12 @@ class Simulator:
     def gen_assisted_grasping_categories(self):
         """
         Generates list of categories that can be grasped using assisted grasping,
-        based on the average mass of that category.
+        using labels provided in average category specs file.
         """
-        av_category_specs_path = os.path.join(gibson2.ig_dataset_path, 'objects', 'av_category_specs.json')
-        av_cat_data = json.load(av_category_specs_path)
-        for k, v in av_cat_data.items():
-            if v['mass'] < self.vr_settings.assist_grasp_mass_thresh:
-                self.assist_grap_category_allow_list.append(k)
+        avg_category_spec = get_ig_avg_category_specs()
+        for k, v in avg_category_spec.items():
+            if v['enable_ag']:
+                self.assist_grasp_category_allow_list.append(k)
 
     def can_assisted_grasp(self, body_id, c_link):
         """
@@ -1110,7 +1111,7 @@ class Simulator:
             mass = p.getDynamicsInfo(body_id, c_link)[0]
             return mass <= self.vr_settings.assist_grasp_mass_thresh
         else:
-            return self.scene.objects_by_id[body_id].category in self.assist_grap_category_allow_list
+            return self.scene.objects_by_id[body_id].category in self.assist_grasp_category_allow_list
 
     def poll_vr_events(self):
         """
