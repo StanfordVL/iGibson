@@ -38,6 +38,17 @@ class SemanticRearrangementTask(BaseTask):
         ]
         # Goal
         self.goal_pos = np.array(goal_pos)
+        self.success_condition = self.config.get("success_condition", "lift")
+        assert self.success_condition in {"lift", "pick_place"}, \
+            f"Invalid success condition specified, got: {self.success_condition}"
+        self.goal_location = None
+        self.goal_location_id = None
+        self.goal_surface = None
+        self.goal_surface_id = None
+        # Get goal location and surface if we're using pick-place
+        if self.success_condition == "pick_place":
+            self.goal_location = self.config["goal"]["location"]
+            self.goal_surface = self.config["goal"]["surface"]
         # Reward-free task currently
         self.reward_functions = [
             NullReward(self.config),
@@ -59,12 +70,18 @@ class SemanticRearrangementTask(BaseTask):
         self.target_object_init_pos = None                        # will be initial x,y,z sampled placement in active episode
         # Observation mode
         self.task_obs_format = self.config.get("task_obs_format", "global") # Options are global, egocentric
+        self.task_use_memory_obs = self.config.get("task_use_memory_obs", False)
         assert self.task_obs_format in {"global", "egocentric"}, \
             f"Task obs format must be one of: [global, egocentric]. Got: {self.task_obs_format}"
+        self.memory_state = None            # Includes bit-wise encoded memory state of places we've visited so far
+        self.location_id_to_memory_id = None    # Dict that maps loc (body) --> sub location (link) --> memory id (what element in memory state corresponds to this sublocation being visited)
         # Store all possible scene locations for the target object
         self.target_locations = None
         self.target_location = None         # Where the object is actually located this episode
         self.target_location_ids = None     # maps location names to id number
+
+        # Obstacles
+        self.obstacles = self._create_obstacles(env=env)
 
         # Store env
         self.env = env
@@ -88,6 +105,25 @@ class SemanticRearrangementTask(BaseTask):
         # Return created objects
         return objs
 
+    def _create_obstacles(self, env):
+        """
+        Helper function to create obstacles
+
+        Returns:
+            dict: obstacles mapped from name to BaseObject instances
+        """
+        obstacles = OrderedDict()
+        # Loop over all objects from the config file and load them
+        for obj_config in self.config.get("obstacles", []):
+            obj = CustomWrappedObject(env=env, only_top=self.sampling_args.get("only_top", False), **obj_config)
+            # Import this object into the simulator
+            env.simulator.import_object(obj=obj, class_id=obj.class_id)
+            # Store a reference to this object
+            obstacles[obj_config["name"]] = obj
+
+        # Return created objects
+        return obstacles
+
     def reset_scene(self, env):
         """
         Reset all scene objects as well as objects belonging to this task.
@@ -100,6 +136,21 @@ class SemanticRearrangementTask(BaseTask):
             env.scene.force_wakeup_scene_objects()
 
         env.simulator.sync()
+
+        # Setup obstacles
+        for obstacle in self.obstacles.values():
+            # Sample location, checking for collisions
+            success = False
+            for i in range(100):
+                pos, ori = obstacle.sample_pose()
+                obstacle.set_position_orientation(pos, ori)
+                p.stepSimulation()
+                if not self.check_obj_contact(obj=obstacle):
+                    success = True
+                    break
+
+            # If we haven't had a success, raise an error
+            assert success, "Failed to successfully sample valid obstacle locations!"
 
         # Sample new target object and reset exlude body ids
         self.target_object = np.random.choice(list(self.target_objects.values()))
@@ -120,6 +171,8 @@ class SemanticRearrangementTask(BaseTask):
 
         # Store location info
         self.update_location_info()
+        # Zero out memory state
+        self.memory_state *= 0.0
 
     def update_location_info(self):
         """
@@ -136,6 +189,27 @@ class SemanticRearrangementTask(BaseTask):
         self.target_location_ids = {
             name: i for i, name in enumerate(location_names)
         }
+        # Store memory state for all sublocations at each location (only do this once)
+        if self.memory_state is None:
+            self.location_id_to_memory_id = {}
+            memory_size = 0
+            for loc in self.target_locations.values():
+                subloc_id_to_memory_id = {}
+                for surface in loc.sampling_surfaces.keys():
+                    # Get the pybullet link ID for this surface, and set its memory id to the current memory size
+                    surface_id = loc.get_surface_link_id(surface)
+                    subloc_id_to_memory_id[surface_id] = memory_size
+                    # Increment memory size
+                    memory_size += 1
+                # Add all the sublocation mappings to the top level dict
+                self.location_id_to_memory_id[loc.body_ids[0]] = subloc_id_to_memory_id
+            # Create the memory buffer
+            self.memory_state = np.zeros(memory_size)
+        # Store relevant goal info if we're doing pick place
+        if self.success_condition == "pick_place":
+            self.goal_pos = self.target_locations[self.goal_location].get_surface_position(self.goal_surface)
+            self.goal_location_id = self.target_locations[self.goal_location].body_ids[0]
+            self.goal_surface_id = self.target_locations[self.goal_location].get_surface_link_id(self.goal_surface)
 
     def sample_initial_pose(self, env):
         """
@@ -147,8 +221,14 @@ class SemanticRearrangementTask(BaseTask):
         if self.randomize_initial_robot_pos:
             _, initial_pos = env.scene.get_random_point(floor=self.floor_num)
         else:
-            initial_pos = np.random.uniform(self.init_pos_range[0], self.init_pos_range[1])
-        initial_orn = np.array([0, 0, np.random.uniform(self.init_rot_range[0], self.init_rot_range[1])])
+            # We may be sampling one of multiple pos / ori, infer via range shape
+            init_pos_range = self.init_pos_range[np.random.choice(self.init_pos_range.shape[0])] \
+                if len(self.init_pos_range.shape) > 2 else self.init_pos_range
+            init_rot_range = self.init_rot_range[np.random.choice(self.init_rot_range.shape[0])] \
+                if len(self.init_rot_range.shape) > 1 else self.init_rot_range
+
+            initial_pos = np.random.uniform(init_pos_range[0], init_pos_range[1])
+        initial_orn = np.array([0, 0, np.random.uniform(init_rot_range[0], init_rot_range[1])])
         return initial_pos, initial_orn
 
     def reset_agent(self, env):
@@ -223,6 +303,22 @@ class SemanticRearrangementTask(BaseTask):
             task_obs["robot_location"] = self.target_location_ids[robot_location]
         # Object location
         task_obs["target_obj_location"] = self.target_location_ids[self.target_location]
+        # Total number of locations
+        # task_obs["num_locations"] = len(list(self.target_locations.keys()))
+
+        # Ground truth memory state obs if requested
+        if self.task_use_memory_obs:
+            # If we're touching a specific surface, then we assume that we've visited that place before
+            collisions = list(p.getContactPoints(bodyA=self.robot_body_id, linkIndexA=self.robot_gripper_joint_ids[0]))
+            for item in collisions:
+                # Check if any body id is part of the target locations
+                if item[2] in self.location_id_to_memory_id:
+                    # Check if any link id is part of the target location surfaces
+                    if item[4] in self.location_id_to_memory_id[item[2]]:
+                        # We've contacted a relevant surface, set that memory bit to 1
+                        self.memory_state[self.location_id_to_memory_id[item[2]][item[4]]] = 1.0
+            # Return (copy of) memory state
+            task_obs["memory_state"] = np.array(self.memory_state)
 
         return task_obs
 
@@ -272,22 +368,43 @@ class SemanticRearrangementTask(BaseTask):
         Returns:
             dict: Success criteria mapped to bools
         """
-        # Task is considered success if target object is touching both gripper fingers and lifted by small margin
-        collisions = list(p.getContactPoints(bodyA=self.target_object.body_id, bodyB=self.robot_body_id))
-        touching_left_finger, touching_right_finger = False, False
         task_success = False
-        if self.target_object.get_position()[2] - self.target_object_init_pos[2] > 0.05:
-            # Object is lifted, now check for gripping contact
-            for item in collisions:
-                if touching_left_finger and touching_right_finger:
-                    # No need to continue iterating
+        # Lift success condition
+        if self.success_condition == "lift":
+            # Task is considered success if target object is touching both gripper fingers and lifted by small margin
+            collisions = list(p.getContactPoints(bodyA=self.target_object.body_id, bodyB=self.robot_body_id))
+            touching_left_finger, touching_right_finger = False, False
+            if self.target_object.get_position()[2] - self.target_object_init_pos[2] > 0.05:
+                # Object is lifted, now check for gripping contact
+                for item in collisions:
+                    if touching_left_finger and touching_right_finger:
+                        # No need to continue iterating
+                        task_success = True
+                        break
+                    # check linkB to see if it matches either gripper finger
+                    if item[4] == self.robot_gripper_joint_ids[0]:
+                        touching_right_finger = True
+                    elif item[4] == self.robot_gripper_joint_ids[1]:
+                        touching_left_finger = True
+        elif self.success_condition == "pick_place":
+            # See if height condition is met
+            if self.target_object.get_position()[2] > self.goal_pos[2]:
+                # Make sure target object is only touching desired surface
+                touching_surface = False
+                touching_other_objects = False
+                collisions = list(p.getContactPoints(bodyA=self.target_object.body_id))
+                for item in collisions:
+                    if touching_other_objects:
+                        # This is automatically a failure, we can quit immediately
+                        break
+                    # check bodyB, linkB to see if they match the goal surface
+                    if item[2] == self.goal_location_id and item[4] == self.goal_surface_id:
+                        touching_surface = True
+                    else:
+                        # We're in contact with some other object
+                        touching_other_objects = True
+                if touching_surface and not touching_other_objects:
                     task_success = True
-                    break
-                # check linkB to see if it matches either gripper finger
-                if item[4] == self.robot_gripper_joint_ids[0]:
-                    touching_right_finger = True
-                elif item[4] == self.robot_gripper_joint_ids[1]:
-                    touching_left_finger = True
 
         # Compose and success dict
         success_dict = {"task": task_success}

@@ -51,13 +51,14 @@ ObjectConfig = namedtuple(
 )
 
 
-def create_uniform_pos_sampler(low, high):
+def create_uniform_pos_sampler(low, high, bottom_offset=0.0):
     """
     Utility function to create uniform cartesian position sampler.
 
     Args:
         low (3-array): Minimum (x, y, z) values to sample
         high (3-array): Maximum (x, y, z) values to sample
+        bottom_offset (float): Offset value to apply to z axis
 
     Returns:
         function: Sampling function that takes no arguments and returns a sampled (x,y,z) position value
@@ -66,7 +67,7 @@ def create_uniform_pos_sampler(low, high):
 
     # Define and return sampler
     def sampler():
-        return low + np.random.rand(3) * (high - low)
+        return low + np.random.rand(3) * (high - low) - np.array([0, 0, bottom_offset])
 
     return sampler
 

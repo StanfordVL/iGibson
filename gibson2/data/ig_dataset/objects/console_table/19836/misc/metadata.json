@@ -4,6 +4,7 @@
   "valid_surfaces": [
     {
       "name": "top",
+      "link": "root",
       "offset_from_base": [-0.1327, 0.0733, 0.3484],
       "size": [1.288, 0.8646],
       "max_height": 10000.0,
@@ -11,6 +12,7 @@
     },
     {
       "name": "drawer1",
+      "link": "link_0",
       "offset_from_base": [0.2712, 0.0091, 0.0956],
       "size": [0.4368, 0.622],
       "max_height": 0.1399,
@@ -18,6 +20,7 @@
     },
     {
       "name": "drawer2",
+      "link": "link_1",
       "offset_from_base": [0.2712, 0.0091, -0.1167],
       "size": [0.4368, 0.622],
       "max_height": 0.1399,

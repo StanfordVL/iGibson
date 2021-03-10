@@ -4,6 +4,7 @@
   "valid_surfaces": [
     {
       "name": "top",
+      "link": "root",
       "offset_from_base": [0.00, 0.00, 0.6868],
       "size": [0.9321, 0.9276],
       "max_height": 10000.0,
@@ -11,6 +12,7 @@
     },
     {
       "name": "drawer1",
+      "link": "link_4",
       "offset_from_base": [0.002, -0.0287, 0.4272],
       "size": [0.9321, 0.9276],
       "max_height": 0.2052,
@@ -18,6 +20,7 @@
     },
     {
       "name": "drawer2",
+      "link": "link_3",
       "offset_from_base": [0.002, -0.0287, 0.0799],
       "size": [0.9321, 0.9276],
       "max_height": 0.2052,
@@ -25,6 +28,7 @@
     },
     {
       "name": "drawer3",
+      "link": "link_2",
       "offset_from_base": [0.002, -0.0287, -0.2675],
       "size": [0.9321, 0.9276],
       "max_height": 0.2052,
@@ -32,6 +36,7 @@
     },
     {
       "name": "drawer4",
+      "link": "link_1",
       "offset_from_base": [0.002, -0.0287, -0.6149],
       "size": [0.9321, 0.9276],
       "max_height": 0.2052,

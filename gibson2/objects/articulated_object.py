@@ -10,6 +10,7 @@ from gibson2.objects.object_base import Object
 import pybullet as p
 import trimesh
 
+import gibson2.external.pybullet_tools.utils as PBU
 from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial
@@ -199,6 +200,7 @@ class URDFObject(Object):
             if surfaces is not None:
                 for surface in surfaces:
                     self.sampling_surfaces[surface["name"]] = {
+                        "link": surface["link"],
                         "offset_from_base": np.array(surface["offset_from_base"]) * scale,
                         "size": np.array(surface["size"]) * scale[:2],
                         "max_height": np.array(surface["max_height"]) * scale[2],
@@ -778,3 +780,47 @@ class URDFObject(Object):
 
         # Return the sampled position
         return sampled_location
+
+    def get_surface_position(self, surface_name):
+        """
+        Gets the surface global (x,y,z) position
+
+        Args:
+            surface_name (str): Name of surface on the object to get position
+
+        Returns:
+            np.array: (x,y,z) global position of the surface
+        """
+        # Get surface
+        surface = self.sampling_surfaces[surface_name]
+        # Get global location
+        # Relative values
+        loc = np.array(surface["offset_from_base"]) + np.array(self.scaled_bbxc_in_blf)
+        # Rotate the x, y values according to init_ori (yaw value, rotation about z axis)
+        z_rot = self.init_ori[2]
+        loc[:2] = np.array(
+            [[np.cos(z_rot), -np.sin(z_rot)], [np.sin(z_rot), np.cos(z_rot)]]) @ loc[:2]
+        # Offset this value by the base global position
+        loc += self.init_pos
+
+        return loc
+
+    def get_surface_link_id(self, surface_name):
+        """
+        Gets the link id associated with the given surface.
+
+        Args:
+            surface_name (str): Name of surface on the object to get link
+
+        Returns:
+            int: Link ID associated with the surface
+        """
+        # Get link name
+        link_name_raw = self.sampling_surfaces[surface_name]["link"]
+        # Link name is always prefixed by this object's name
+        link_name = self.name
+        if link_name_raw != "root":
+            # We add on the raw name
+            link_name += f"_{link_name_raw}"
+        # Get link ID
+        return PBU.link_from_name(body=self.body_ids[0], name=link_name)
