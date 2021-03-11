@@ -114,13 +114,14 @@ class VrConditionSwitcher(object):
         self.condition_text = s.add_vr_overlay_text(text_data=self.start_text, font_size=40, font_style='Bold', 
                                                     color=[0,0,0], pos=[0, 90], size=[90, 50])
     
-    def switch_condition(self):
+    def refresh_condition(self, switch = True):
         """
         Switches to the next condition. This involves displaying the text for
         the new condition, as well as highlighting/un-highlighting the appropriate objects.
         """
         # 1) Query tasknet for next state - get (text, color, obj_list) tuple
-        self.switch_instr_func()
+        if switch:
+            self.switch_instr_func()
         new_text, new_color, new_obj_list = self.show_instr_func()
         # 2) Render new text
         self.condition_text.set_text(new_text)
