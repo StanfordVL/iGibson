@@ -7,6 +7,7 @@ import numpy as np
 _TOGGLE_DISTANCE_THRESHOLD = 0.1
 _TOGGLE_LINK_NAME = "toggle_button"
 _TOGGLE_BUTTON_RADIUS = 0.05
+_TOGGLE_MARKER_OFF_POSITION = [0, 0, -100]
 
 
 class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
@@ -47,9 +48,6 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
             simulator.import_object(self.visual_marker_off)
             self.marker_added = True
 
-        # TODO: currently marker position is hard coded, to get marker offset from annotation
-        marker_off_position = [0,0,-100]
-
         vr_hands = []
         for object in simulator.scene.get_objects():
             if object.__class__.__name__ == "VrHand":
@@ -71,9 +69,11 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
             self.value = not self.value
 
         # swap two types of markers when toggled
+        # TODO: Currently we're not showing the on-marker either since it is not camera-ready.
+        # The on-marker should be moved to the marker_on_position when this works properly.
         if self.get_value():
-            self.visual_marker_on.set_position(marker_on_position)
-            self.visual_marker_off.set_position(marker_off_position)
+            self.visual_marker_on.set_position(_TOGGLE_MARKER_OFF_POSITION)
+            self.visual_marker_off.set_position(_TOGGLE_MARKER_OFF_POSITION)
         else:
-            self.visual_marker_on.set_position(marker_off_position)
-            self.visual_marker_off.set_position(marker_on_position)
+            self.visual_marker_on.set_position(_TOGGLE_MARKER_OFF_POSITION)
+            self.visual_marker_off.set_position(_TOGGLE_MARKER_OFF_POSITION)
