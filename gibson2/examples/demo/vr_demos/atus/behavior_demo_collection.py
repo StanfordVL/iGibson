@@ -102,13 +102,19 @@ def main():
         vr_writer = VRLogWriter(frames_before_write=200, log_filepath=args.vr_log_path, profiling_mode=args.profile)
         vr_writer.set_up_data_storage()
 
+    satisfied_predicates_cached = {}
     while True:
         igtn_task.simulator.step(print_stats=args.profile)
+        task_done, satisfied_predicates = igtn_task.check_success()
 
         vr_agent.update()
 
+        if satisfied_predicates != satisfied_predicates_cached:
+            vr_cs.refresh_condition(switch=False)
+            satisfied_predicates_cached = satisfied_predicates
+
         if igtn_task.simulator.query_vr_event('right_controller', 'overlay_toggle'):
-            vr_cs.switch_condition()
+            vr_cs.refresh_condition()
         
         if igtn_task.simulator.query_vr_event('left_controller', 'overlay_toggle'):
             vr_cs.toggle_show_state()
