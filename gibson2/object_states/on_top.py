@@ -1,18 +1,16 @@
 from gibson2.object_states.touching import Touching
-from gibson2.object_states.adjacency import Adjacency
+from gibson2.object_states.vertical_adjacency import VerticalAdjacency
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
-import pybullet as p
 import gibson2
-import numpy as np
 from IPython import embed
 
 
 class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
     @staticmethod
     def get_dependencies():
-        return KinematicsMixin.get_dependencies() + [Touching, Adjacency]
+        return KinematicsMixin.get_dependencies() + [Touching, VerticalAdjacency]
 
     def set_value(self, other, new_value):
         for _ in range(10):
@@ -32,7 +30,8 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         return sampling_success
 
     def get_value(self, other):
-        adjacency = self.obj.states[Adjacency].get_value()
+        adjacency = self.obj.states[VerticalAdjacency].get_value()
         touching = self.obj.states[Touching].get_value(other)
 
+        print(adjacency[0])
         return adjacency[0] == other.body_id and touching

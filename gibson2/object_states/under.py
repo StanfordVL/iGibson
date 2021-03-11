@@ -1,4 +1,4 @@
-from gibson2.object_states.adjacency import Adjacency
+from gibson2.object_states.vertical_adjacency import VerticalAdjacency
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
@@ -9,7 +9,7 @@ from IPython import embed
 class Under(KinematicsMixin, RelativeObjectState, BooleanState):
     @staticmethod
     def get_dependencies():
-        return KinematicsMixin.get_dependencies() + [Adjacency]
+        return KinematicsMixin.get_dependencies() + [VerticalAdjacency]
 
     def set_value(self, other, new_value):
         for _ in range(10):
@@ -29,6 +29,6 @@ class Under(KinematicsMixin, RelativeObjectState, BooleanState):
         return sampling_success
 
     def get_value(self, other):
-        adjacency = self.obj.states[Adjacency].get_value()
+        adjacency = self.obj.states[VerticalAdjacency].get_value()
 
         return adjacency[1] == other.body_id
