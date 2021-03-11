@@ -1,18 +1,16 @@
-from gibson2.object_states import AABB
 from gibson2.object_states.touching import Touching
+from gibson2.object_states.vertical_adjacency import VerticalAdjacency
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
-from gibson2.object_states.utils import sample_kinematics, get_center_extent, clear_cached_states
-from gibson2.external.pybullet_tools.utils import aabb_contains_point, aabb2d_from_aabb
+from gibson2.object_states.utils import sample_kinematics, clear_cached_states
 import gibson2
-import numpy as np
 from IPython import embed
 
 
 class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
     @staticmethod
     def get_dependencies():
-        return KinematicsMixin.get_dependencies() + [Touching]
+        return KinematicsMixin.get_dependencies() + [Touching, VerticalAdjacency]
 
     def set_value(self, other, new_value):
         for _ in range(10):
@@ -32,25 +30,8 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         return sampling_success
 
     def get_value(self, other):
-        objA_states = self.obj.states
-        objB_states = other.states
-
-        # This tolerance is needed because pybullet getAABB is not accurate
-        # (prone to over-estimation)
-        epsilon = 0.025
-
-        center, extent = get_center_extent(objA_states)
-        assert AABB in objB_states
-        bottom_aabb = objB_states[AABB].get_value()
-
-        base_center = center - np.array([0, 0, extent[2]])/2
-        top_z_min = base_center[2]
-        bottom_z_max = bottom_aabb[1][2]
-        height_correct = \
-            (bottom_z_max - epsilon) <= top_z_min <= (bottom_z_max + epsilon)
-        bbox_contain = (aabb_contains_point(
-            base_center[:2], aabb2d_from_aabb(bottom_aabb)))
-
+        adjacency = self.obj.states[VerticalAdjacency].get_value()
         touching = self.obj.states[Touching].get_value(other)
 
-        return height_correct and bbox_contain and touching
+        print(adjacency[0])
+        return adjacency[0] == other.body_id and touching
