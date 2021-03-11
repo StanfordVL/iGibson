@@ -4,6 +4,7 @@ from gibson2.object_states.object_state_base import BaseObjectState
 
 _ALL_STATES = frozenset([
     AABB,
+    Adjacency,
     Burnt,
     ContactBodies,
     Cooked,
