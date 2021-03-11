@@ -1,4 +1,5 @@
 from gibson2.object_states.aabb import AABB
+from gibson2.object_states.adjacency import Adjacency
 from gibson2.object_states.burnt import Burnt
 from gibson2.object_states.cleaning_tool import CleaningTool
 from gibson2.object_states.contact_bodies import ContactBodies
