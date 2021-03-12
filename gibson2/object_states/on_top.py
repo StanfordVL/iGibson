@@ -33,5 +33,4 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         adjacency = self.obj.states[VerticalAdjacency].get_value()
         touching = self.obj.states[Touching].get_value(other)
 
-        print(adjacency[0])
-        return adjacency[0] == other.body_id and touching
+        return adjacency[0] == other.get_body_id() and touching

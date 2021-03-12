@@ -31,4 +31,4 @@ class Under(KinematicsMixin, RelativeObjectState, BooleanState):
     def get_value(self, other):
         adjacency = self.obj.states[VerticalAdjacency].get_value()
 
-        return adjacency[1] == other.body_id
+        return adjacency[1] == other.get_body_id()

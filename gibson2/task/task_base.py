@@ -185,6 +185,9 @@ class iGTNTask(TaskNetTask):
                 category = np.random.choice(categories)
                 category_path = get_ig_category_path(category)
                 model = np.random.choice(os.listdir(category_path))
+                # we can ONLY put stuff into this specific bag model
+                # if category == 'bag':
+                #     model = 'bag_001'
                 model_path = get_ig_model_path(category, model)
                 filename = os.path.join(model_path, model + ".urdf")
                 obj_name = '{}_{}'.format(
