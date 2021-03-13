@@ -51,6 +51,7 @@ def parse_args():
     parser.add_argument('--vr_log_path', type=str, help='Path (and filename) of vr log')
     parser.add_argument('--scene', type=str, choices=scene_choices, nargs='?', help='Scene name/ID matching iGibson interactive scenes.')
     parser.add_argument('--disable_save', action='store_true', help='Whether to disable saving logfiles.')
+    parser.add_argument('--disable_scene_cache', action='store_true', help='Whether to disable using pre-initialized scene caches.')
     parser.add_argument('--profile', action='store_true', help='Whether to print profiling data.')
     return parser.parse_args()
 
@@ -85,7 +86,17 @@ def main():
     # VR system settings
     s = Simulator(mode='vr', rendering_settings=vr_rendering_settings)
     igtn_task = iGTNTask(args.task, args.task_id)
-    igtn_task.initialize_simulator(simulator=s, scene_id=args.scene, load_clutter=True)
+
+    scene_kwargs = None
+    online_sampling = True
+
+    if not args.disable_scene_cache:
+        scene_kwargs = {
+                'urdf_file': '{}_task_{}_{}_0'.format(args.scene, args.task, args.task_id),
+        }
+        online_sampling = False
+
+    igtn_task.initialize_simulator(simulator=s, scene_id=args.scene, load_clutter=True, scene_kwargs=scene_kwargs, online_sampling=online_sampling)
 
     vr_agent = VrAgent(igtn_task.simulator)
     igtn_task.simulator.set_vr_start_pos([0,0,1.8], vr_height_offset=-0.1)
