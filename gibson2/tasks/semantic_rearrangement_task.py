@@ -230,7 +230,7 @@ class SemanticRearrangementTask(BaseTask):
                 init_pos_range = self.init_pos_range[sampled_ranges]
                 init_rot_range = self.init_rot_range[sampled_ranges]
             else:
-                init_pos_range = self.init_rot_range
+                init_pos_range = self.init_pos_range
                 init_rot_range = self.init_rot_range
             # We may (still) be sampling one of multiple pos / ori, infer via range shape
             if len(init_pos_range.shape) > 2:
