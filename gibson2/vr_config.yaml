@@ -27,6 +27,8 @@ shared_settings:
   assist_percent: 100
   # Mass threshold for assisted grasping - this is only used for non-URDF objects
   assist_grasp_mass_thresh: 10.0
+  # Time to wait (in ms) until re-enabling collision with grasped object
+  release_window: 100
   # Width of HUD display in meters
   hud_width: 0.7
   # Position of HUD display relative to the HMD. X (left), Y (up), Z (away from HMD, into the scene)
