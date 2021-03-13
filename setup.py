@@ -13,7 +13,7 @@ import subprocess
 import platform
 import codecs
 import platform
-
+import sys
 
 use_clang = False
 
@@ -60,9 +60,9 @@ class CMakeBuild(build_ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
         cmake_args = [
             '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/core/render/mesh_renderer'),
+            os.path.join(extdir, 'gibson2/render/mesh_renderer'),
             '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/core/render/mesh_renderer', 'build'),
+            os.path.join(extdir, 'gibson2/render/mesh_renderer', 'build'),
             '-DPYTHON_EXECUTABLE=' + sys.executable
         ]
 
@@ -105,12 +105,17 @@ class PostInstallCommand(install):
                 check_call("bash realenv/envs/build.sh".split())
                 install.run(self)
 '''
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+if sys.version_info.major == 3:
+    with open("README.md", "r", encoding="utf-8") as fh:
+        long_description = fh.read()
+else:
+    # for python2
+    with open("README.md", "r") as fh:
+        long_description = fh.read()
 
 setup(
     name='gibson2',
-    version='0.0.5',
+    version='1.0.1',
     author='Stanford University',
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -123,7 +128,7 @@ setup(
             'scipy>=1.2.1',
             'pybullet>=2.6.4',
             'transforms3d>=0.3.1',
-            'opencv-python>=4.0.0',
+            'opencv-python>=3.4.8',
             'Pillow>=5.4.0',
             'networkx>=2.0',
             'PyYAML',
@@ -135,13 +140,18 @@ setup(
             'ipython',
             'pytest',
             'future',
+            'trimesh',
+            'sphinx_markdown_tables',
+            'sphinx>=1.8.0',
+            'recommonmark',
+            'sphinx_rtd_theme'
     ],
-    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/core/render')],
+    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/render')],
     cmdclass=dict(build_ext=CMakeBuild),
     tests_require=[],
     package_data={'': [
     'gibson2/global_config.yaml',
-    'gibson2/core/render/mesh_renderer/shaders/*'
+    'gibson2/render/mesh_renderer/shaders/*'
     ]},
     include_package_data=True,
 )   #yapf: disable

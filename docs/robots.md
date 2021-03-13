@@ -38,42 +38,46 @@ def apply_robot_action(action):
 ```
 Note that `robot_action` is a normalized joint velocity, i.e. `robot_action[n] == 1.0` means executing the maximum joint velocity for the nth joint. The limits of joint position, velocity and torque are extracted from the URDF file of the robot.
 
-Most of the code can be found here: [gibson2/core/physics/robot_locomotors.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/core/physics/robot_locomotors.py).
+Most of the code can be found here: [gibson2/robots](https://github.com/StanfordVL/iGibson/blob/master/gibson2/robots).
 
 ### Examples
-In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: [examples/demo/robot_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/robot_example.py).
+In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: [gibson2/examples/demo/robot_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/robot_example.py).
 
 ```python
-from gibson2.core.physics.robot_locomotors import Locobot, Turtlebot, JR2_Kinova, Fetch
+from gibson2.robots.locobot_robot import Locobot
+from gibson2.robots.turtlebot_robot import Turtlebot
+from gibson2.robots.jr2_kinova_robot import JR2_Kinova
+from gibson2.robots.fetch_robot import Fetch
 from gibson2.utils.utils import parse_config
 import os
 import time
 import numpy as np
 import pybullet as p
 import pybullet_data
+import gibson2
 
 def main():
     p.connect(p.GUI)
-    p.setGravity(0,0,-9.8)
+    p.setGravity(0, 0, -9.8)
     p.setTimeStep(1./240.)
 
     floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
     p.loadMJCF(floor)
 
     robots = []
-    config = parse_config('../configs/fetch_p2p_nav.yaml')
+    config = parse_config(os.path.join(gibson2.example_config_path, 'fetch_reaching.yaml'))
     fetch = Fetch(config)
     robots.append(fetch)
 
-    config = parse_config('../configs/jr_p2p_nav.yaml')
+    config = parse_config(os.path.join(gibson2.example_config_path,'jr_reaching.yaml'))
     jr = JR2_Kinova(config)
     robots.append(jr)
 
-    config = parse_config('../configs/locobot_p2p_nav.yaml')
+    config = parse_config(os.path.join(gibson2.example_config_path, 'locobot_point_nav.yaml'))
     locobot = Locobot(config)
     robots.append(locobot)
 
-    config = parse_config('../configs/turtlebot_p2p_nav.yaml')
+    config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_point_nav.yaml'))
     turtlebot = Turtlebot(config)
     robots.append(turtlebot)
 

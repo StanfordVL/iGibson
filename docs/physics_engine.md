@@ -8,11 +8,11 @@ Typically, we use `p.createMultiBody` and `p.loadURDF` to load scenes, objects a
 More info can be found in here: [PyBullet documentation](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA).
 
 ### Examples
-In this example, we import a scene, a robot and an object into PyBullet and step through a few seconds of simulation. The code can be found here:[examples/demo/physics_engine_example.py](https://github.com/StanfordVL/iGibson/blob/master/examples/demo/physics_engine_example.py).
+In this example, we import a scene, a robot and an object into PyBullet and step through a few seconds of simulation. The code can be found here:[gibson2/examples/demo/physics_engine_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/physics_engine_example.py).
 
 ```python
 import pybullet as p
-from gibson2.utils.assets_utils import get_model_path, get_texture_file
+from gibson2.utils.assets_utils import get_scene_path, get_texture_file
 import gibson2
 
 import os
@@ -24,7 +24,7 @@ def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:
-        model_path = os.path.join(get_model_path('Rs'), 'mesh_z_up.obj')
+        model_path = os.path.join(get_scene_path('Rs'), 'mesh_z_up.obj')
 
     p.connect(p.GUI)
     p.setGravity(0,0,-9.8)

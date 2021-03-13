@@ -1,15 +1,14 @@
 # Tests
 ### Overview
-We provide tests in [test](https://github.com/StanfordVL/iGibson/tree/master/test). You can run them by this:
+We provide tests in [test](https://github.com/StanfordVL/iGibson/tree/master/gibson2/test). You can run them by this:
 ```bash
-cd test
-pytest
+cd gibson2/test
+pytest --ignore disabled --ignore benchmark
 ```
 It will take a few minutes. If all tests pass, you will see something like this
 ```bash
 =============================== test session starts ================================
 platform linux -- Python 3.5.6, pytest-4.6.9, py-1.5.3, pluggy-0.13.1
-rootdir: /cvgl2/u/chengshu/gibsonv2
 plugins: openfiles-0.3.0, doctestplus-0.1.3, arraydiff-0.2
 collected 27 items
 
@@ -22,5 +21,4 @@ test_scene_importing.py ....                                                 [ 9
 test_simulator.py .                                                          [ 96% ]
 test_viewer.py
 ```
-We will further improve our test coverage in the next few weeks.
 

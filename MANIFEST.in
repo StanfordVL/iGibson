@@ -1,5 +1,5 @@
 include LICENSE
 
-recursive-include gibson2/core *
+recursive-include gibson2 *
 
 include gibson2/global_config.yaml
