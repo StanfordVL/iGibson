@@ -11,19 +11,16 @@ class VerticalAdjacency(CachingEnabledObjectState):
         downwards_ray_start = ray_start
         upwards_ray_start = ray_start
 
-        downwards_ray_end = [ray_start[0], ray_start[1], -0.1]
-        upwards_ray_end = [ray_start[0], ray_start[1], 5]
-
         above_obj_found = False
         below_obj_found = False
 
         above_obj_id = -1
         below_obj_id = -1
 
-        for _ in range(5):
+        for _ in range(10):
             ray_result = p.rayTestBatch(
                 [downwards_ray_start, upwards_ray_start],
-                [downwards_ray_end, upwards_ray_end]
+                [downwards_ray_start - np.array([0, 0, 2]), upwards_ray_start + np.array([0, 0, 2])]
             )
             downwards_ray_start = ray_result[0][3] - np.array([0, 0, 0.001])
             upwards_ray_start = ray_result[1][3] + np.array([0, 0, 0.001])
