@@ -2,6 +2,7 @@ import gym
 import numpy as np
 import pybullet as p
 from gibson2.robots.robot_locomotor import LocomotorRobot
+import time
 
 
 class Humanoid_hri(LocomotorRobot):
@@ -14,8 +15,15 @@ class Humanoid_hri(LocomotorRobot):
     def __init__(self, config):
         self.config = config
         self.velocity = config.get("velocity", 1.0)
+        self.knee = config.get("knee", False)
+
+        if self.knee:
+            file = "humanoid_hri/humanoid_hri_knee.urdf"
+        else:
+            file = "humanoid_hri/humanoid_hri.urdf"
+
         LocomotorRobot.__init__(self,
-                                "humanoid_hri/humanoid_hri.urdf",
+                                file,
                                 action_dim=2,
                                 scale=config.get("robot_scale", 1.0),
                                 is_discrete=config.get("is_discrete", False),
@@ -60,19 +68,39 @@ class Humanoid_hri(LocomotorRobot):
             j.reset_joint_state(0.0, 0.0)
 
     def base_reset(self, pos):
+        self.pelvis_id = 4
+        self.base_cons = p.createConstraint(self.robot_ids[0], self.pelvis_id, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], pos, [0, 0, 0, 1]) # pelvis
+        self.current_base_pos = np.array(pos)
+        p.changeConstraint(self.base_cons, self.current_base_pos, maxForce=3000.0)
 
-        self.base_cons = p.createConstraint(self.robot_ids[0], 4, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], pos, [0, 0, 0, 1]) # pelvis
-        self.current_base_pos = pos
-
-        self.current_hand_pos = [0.3932078205093461, -0.1700037605678417, 1.6820246348771142]
-        self.current_hand_ori = [0.237, 0.0, 0.4744, 0.8478]
-        self.gripper = 0.0
-
-    def apply_robot_action(self, action):
-        solutions = list(p.calculateInverseKinematics(self.robot_ids[0], 31, self.current_hand_pos, self.current_hand_ori))
-        print(len(solutions))
+    def pose_reset(self, hand_pos, hand_ori):
+        self.hand_id = 31
+        self.current_hand_pos = np.array(hand_pos)
+        self.current_hand_ori = np.array(hand_ori)
 
         goal_joints = [0.0 for i in range(p.getNumJoints(self.robot_ids[0]))]
+        if self.knee:
+            goal_joints[7] = -1.57
+            goal_joints[9] = -1.57
+            goal_joints[18] = -1.77
+        p.setJointMotorControlArray(self.robot_ids[0], [i for i in range(p.getNumJoints(self.robot_ids[0]))], p.POSITION_CONTROL, goal_joints)
+
+    def apply_action(self, action):
+        delta_base_action = np.array(action[:3])
+        delta_hand_action_pos = np.array(action[3:6])
+        self.gripper = action[-1]
+
+        self.current_base_pos += delta_base_action
+        self.current_hand_pos += delta_hand_action_pos
+
+        solutions = list(p.calculateInverseKinematics(self.robot_ids[0], self.hand_id, self.current_base_pos + self.current_hand_pos, self.current_hand_ori))[-11:]
+
+        goal_joints = [0.0 for i in range(p.getNumJoints(self.robot_ids[0]))]
+        if self.knee:
+            goal_joints[7] = -1.57
+            goal_joints[9] = -1.57
+            goal_joints[18] = -1.77
+
         goal_joints[23] = solutions[0]
         goal_joints[24] = solutions[1]
         goal_joints[26] = solutions[2]
@@ -83,18 +111,6 @@ class Humanoid_hri(LocomotorRobot):
         goal_joints[34] = self.gripper
 
         p.setJointMotorControlArray(self.robot_ids[0], [i for i in range(p.getNumJoints(self.robot_ids[0]))], p.POSITION_CONTROL, goal_joints)
-
-        self.current_hand_pos[-1] += 0.01
-        if self.current_hand_pos[-1] > 1.9:
-            self.current_hand_pos[-1] = 1.2
-        self.gripper += 0.1
-        if self.gripper > 1.0:
-            self.gripper = 0.0
-
-        self.current_base_pos[-1] += 0.01
-        if self.current_base_pos[-1] > 1.9:
-            self.current_base_pos[-1] = 1.2
-
-        p.changeConstraint(self.base_cons, self.current_base_pos)
+        p.changeConstraint(self.base_cons, self.current_base_pos, maxForce = 3000.0)
 
         return

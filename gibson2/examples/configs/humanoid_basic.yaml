@@ -17,6 +17,7 @@ object_randomization_freq: null
 robot: Humanoid_hri
 is_discrete: false
 velocity: 1.0
+knee: true
 
 # task
 task: hri
