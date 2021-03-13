@@ -10,7 +10,7 @@ import time
 p.connect(p.GUI)
 
 vr_hand_col_path = os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', 
-                                'collision_mesh_vis', 'vr_hand_collision_mesh_vis.urdf')
+                                'normal_color', 'vr_hand_reduced_vis_coll.urdf')
 p.loadURDF(vr_hand_col_path)
 
 p.setRealTimeSimulation(0)
