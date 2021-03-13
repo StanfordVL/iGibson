@@ -519,6 +519,9 @@ class VrHand(VrHandBase):
                 # Don't grasp the user's body
                 if self.body and self.body.body_id == most_force_bid:
                     return
+                # Don't grasp other hand
+                if self.other_hand and self.other_hand.body_id == most_force_bid:
+                    return
                 # Calculate transform from object to palm center
                 body_pos, body_orn = p.getBasePositionAndOrientation(most_force_bid)
                 # Get inverse world transform of body frame
