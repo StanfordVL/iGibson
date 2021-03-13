@@ -481,7 +481,7 @@
 
 	<link bounding_box="0.6 0.5 0.9" category="bottom_cabinet" model="49140" name="cabinet_77" room="living_room_0"/>
 	<joint name="j_cabinet_77" type="fixed">
-		<origin rpy="0 0 4.1888" xyz="-9.15 -2.2 0.45"/>
+		<origin rpy="0 0 -2.6180" xyz="-9.15 -2.2 0.45"/>
 		<child link="cabinet_77"/>
 		<parent link="world"/>
 	</joint>
