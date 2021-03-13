@@ -88,6 +88,7 @@ class Humanoid_hri(LocomotorRobot):
     def apply_action(self, action):
         delta_base_action = np.array(action[:3])
         delta_hand_action_pos = np.array(action[3:6])
+        self.current_hand_ori = np.array(action[6:-1])
         self.gripper = action[-1]
 
         self.current_base_pos += delta_base_action
@@ -110,7 +111,7 @@ class Humanoid_hri(LocomotorRobot):
         goal_joints[32] = self.gripper
         goal_joints[34] = self.gripper
 
-        p.setJointMotorControlArray(self.robot_ids[0], [i for i in range(p.getNumJoints(self.robot_ids[0]))], p.POSITION_CONTROL, goal_joints)
+        p.setJointMotorControlArray(self.robot_ids[0], [i for i in range(p.getNumJoints(self.robot_ids[0]))], p.POSITION_CONTROL, goal_joints, forces = [100.0 for i in range(p.getNumJoints(self.robot_ids[0]))])
         p.changeConstraint(self.base_cons, self.current_base_pos, maxForce = 3000.0)
 
         return

@@ -50,8 +50,8 @@ output: [rgb, depth]
 # ASUS Xtion PRO LIVE
 # https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE
 fisheye: false
-image_width: 160
-image_height: 120
+image_width: 320
+image_height: 240
 vertical_fov: 45
 # depth
 depth_low: 0.8
