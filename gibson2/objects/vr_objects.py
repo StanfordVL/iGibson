@@ -11,6 +11,7 @@ also be individually created. These are:
 import numpy as np
 import os
 import pybullet as p
+import time
 
 from gibson2 import assets_path
 from gibson2.objects.articulated_object import ArticulatedObject
@@ -366,57 +367,30 @@ class VrHandBase(ArticulatedObject):
 class VrHand(VrHandBase):
     """
     Represents the human hand used for VR programs. Has 11 joints, including invisible base joint.
-    Joint information:
-
-    Joint index 0, name b'palm__base', type 4 (fixed)
-    Joint index 1, name b'Rproximal__palm', type 0 (revolute)
-    Joint index 2, name b'Rmiddle__Rproximal', type 0
-    Joint index 3, name b'Mproximal__palm', type 0
-    Joint index 4, name b'Mmiddle__Mproximal', type 0
-    Joint index 5, name b'Pproximal__palm', type 0
-    Joint index 6, name b'Pmiddle__Pproximal', type 0
-    Joint index 7, name b'Tproximal__palm', type 0
-    Joint index 8, name b'Tmiddle__Tproximal', type 0
-    Joint index 9, name b'Iproximal__palm', type 0
-    Joint index 10, name b'Imiddle__Iproximal', type 0
     """
     def __init__(self, s, hand='right', use_constraints=True, normal_color=True, use_prim=True):
         self.s = s
+        self.use_reduced_joint_hand = (self.s.vr_settings.assist_percent > 0)
         self.normal_color = normal_color
         hand_path = 'normal_color' if self.normal_color else 'alternative_color'
         self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', hand_path)
         self.use_prim = use_prim
-        if self.use_prim:
-            suffix = 'vr_hand_prim'
+        # Reduced joint hand takes priority over other two types
+        if self.use_reduced_joint_hand:
+            suffix = 'vr_hand_reduced'
         else:
-            suffix = 'vr_hand_vhacd'
+            if self.use_prim:
+                suffix = 'vr_hand_prim'
+            else:
+                suffix = 'vr_hand_vhacd'
         final_suffix = '{}_{}.urdf'.format(suffix, hand)
         super(VrHand, self).__init__(s, os.path.join(self.vr_hand_folder, final_suffix),
                                     hand=hand, use_constraints=use_constraints, base_rot=p.getQuaternionFromEuler([0, 160, -80 if hand == 'right' else 80]))
-
-        # Lists of joint indices for hand part
-        self.base_idxs = [0]
-        # Proximal indices for non-thumb fingers
-        self.proximal_idxs = [1, 4, 7, 14]
-        # Middle indices for non-thumb fingers
-        self.middle_idxs = [2, 5, 8, 15]
-        # Tip indices for non-thumb fingers
-        self.tip_idxs = [3, 6, 9, 16]
-        # Thumb base (rotates instead of contracting)
-        self.thumb_base_idxs = [10]
-        # Thumb indices (proximal, middle, tip)
-        self.thumb_idxs = [11, 12, 13]
-        # Open and positions for all joints
-        self.open_pos = [0] * 11
-        self.close_pos = [1.0] * 11
-        # Thumb does not close as much to match other fingers
-        self.close_pos[7] = 0.7
-        self.close_pos[8] = 0.7
+        self.open_pos = 0
+        self.finger_close_pos = 1.2
+        self.thumb_close_pos = 0.6
         self.hand_friction = 2.5
-        #self.hand_friction = 2.0 if not self.use_prim else 3.0
         self.hand_close_force = 3
-        # Need non-zero minimum otherwise PyBullet will be unhappy!
-        #self.min_hand_close_force = 1
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         # Variables for assisted grasping
         self.object_in_hand = None
@@ -424,11 +398,17 @@ class VrHand(VrHandBase):
         self.min_assist_force = 0
         self.max_assist_force = 500
         self.assist_force = self.min_assist_force + (self.max_assist_force - self.min_assist_force) * self.assist_percent / 100.0
-        self.trig_frac_thresh = 0.5
+        self.trig_frac_thresh = 0.6
         self.palm_link_idx = 0
         self.obj_cid = None
         self.should_freeze_joints = False
-        self.finger_tip_link_idxs = [2, 4, 6, 8, 10]
+        self.release_start_time = None
+        self.should_execute_release = False
+        self.release_window = self.s.vr_settings.release_window
+        if self.use_reduced_joint_hand:
+            self.finger_tip_link_idxs = [1, 2, 3, 4, 5]
+        else:
+            self.finger_tip_link_idxs = [2, 4, 6, 8, 10]
 
     def hand_setup(self, z_coord):
         """
@@ -443,19 +423,18 @@ class VrHand(VrHandBase):
             # Note: uncomment this print statement for debugging VR hand joints
             # print("Joint index {}, name {}, type {}".format(info[0], info[1], info[2]))
             p.changeDynamics(self.body_id, joint_index, mass=0.1, lateralFriction=self.hand_friction)
-            open_pos = self.open_pos[joint_index]
-            p.resetJointState(self.body_id, joint_index, targetValue=open_pos, targetVelocity=0.0)
-            p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.POSITION_CONTROL, targetPosition=open_pos, 
+            p.resetJointState(self.body_id, joint_index, targetValue=0, targetVelocity=0.0)
+            p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.POSITION_CONTROL, targetPosition=0, 
                                     targetVelocity=0.0, positionGain=0.1, velocityGain=0.1, force=0)
             p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
         # Create constraint that can be used to move the hand
         if self.use_constraints:
             self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.start_pos)
 
-    def set_coll_filter_for_body(self, target_id, enable):
+    def set_hand_coll_filter(self, target_id, enable):
         """
-        Sets collision filters for a body - to enable or disable them
-        :param target_id: body to enable/disable collisions with
+        Sets collision filters for hand - to enable or disable them
+        :param target_id: physics body to enable/disable collisions with
         :param enable: whether to enable/disable collisions
         """
         target_link_idxs = [-1] + [i for i in range(p.getNumJoints(target_id))]
@@ -489,6 +468,18 @@ class VrHand(VrHandBase):
             trig_frac, _, _ = vr_data.query('{}_button'.format(self.vr_device))
         else:
             trig_frac, _, _ = self.s.get_button_data_for_controller(self.vr_device)
+
+        # Execute gradual release of object
+        if self.should_execute_release and self.release_start_time:
+            time_since_release = time.perf_counter() - self.release_start_time
+            if time_since_release >= self.release_window / 1000.0:
+                self.set_hand_coll_filter(self.object_in_hand, True)
+                self.object_in_hand = None
+                self.should_execute_release = False
+                self.release_start_time = None
+            else:
+                # Can't pick-up object while it is being released
+                return
 
         if not self.object_in_hand:
             if trig_frac > self.trig_frac_thresh:
@@ -556,12 +547,15 @@ class VrHand(VrHandBase):
                 p.changeConstraint(self.obj_cid, maxForce=self.assist_force)
                 self.object_in_hand = most_force_bid
                 self.should_freeze_joints = True
+                # Disable collisions while picking things up
+                self.set_hand_coll_filter(most_force_bid, False)
                 self.gen_freeze_vals()
         else:
             if trig_frac <= self.trig_frac_thresh:
                 p.removeConstraint(self.obj_cid)
-                self.object_in_hand = None
                 self.should_freeze_joints = False
+                self.should_execute_release = True
+                self.release_start_time = time.perf_counter()
 
     def update(self, vr_data=None):
         """
@@ -585,12 +579,17 @@ class VrHand(VrHandBase):
         """
         if self.should_freeze_joints:
             return
-            
+
         for joint_index in range(p.getNumJoints(self.body_id)):
-            open_pos = self.open_pos[joint_index]
-            close_pos = self.close_pos[joint_index]
-            interp_frac = (close_pos - open_pos) * close_frac
-            target_pos = open_pos + interp_frac
+            jf = p.getJointInfo(self.body_id, joint_index)
+            j_name = jf[1]
+            # Thumb has different close fraction to fingers
+            if j_name[0] == 'T':
+                close_pos = self.thumb_close_pos
+            else:
+                close_pos = self.finger_close_pos
+            interp_frac = (close_pos - self.open_pos) * close_frac
+            target_pos = self.open_pos + interp_frac
             p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=self.hand_close_force)
 
 
