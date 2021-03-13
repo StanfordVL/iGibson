@@ -89,13 +89,13 @@
     <axis xyz="0.0 -1.0 0.0"/>
     <parent link="base_link"/>
     <child link="link_3"/>
-    <limit lower="0.035" upper="1.0"/>
+    <limit lower="0.045" upper="1.0"/>
   </joint>
   <joint name="joint_4" type="prismatic">
     <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0"/>
     <axis xyz="0.0 -1.0 0.0"/>
     <parent link="base_link"/>
     <child link="link_4"/>
-    <limit lower="0.03" upper="1.0"/>
+    <limit lower="0.04" upper="1.0"/>
   </joint>
 </robot>
