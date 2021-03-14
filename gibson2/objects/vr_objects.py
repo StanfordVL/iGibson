@@ -395,6 +395,7 @@ class VrHand(VrHandBase):
         # Variables for assisted grasping
         self.object_in_hand = None
         self.assist_percent = self.s.vr_settings.assist_percent
+        self.articulated_assist_percentage = 0.05
         self.min_assist_force = 0
         self.max_assist_force = 500
         self.assist_force = self.min_assist_force + (self.max_assist_force - self.min_assist_force) * self.assist_percent / 100.0
@@ -523,7 +524,11 @@ class VrHand(VrHandBase):
                 if self.other_hand and self.other_hand.body_id == most_force_bid:
                     return
                 # Calculate transform from object to palm center
-                body_pos, body_orn = p.getBasePositionAndOrientation(most_force_bid)
+                if most_force_link == -1:
+                    body_pos, body_orn = p.getBasePositionAndOrientation(most_force_bid)
+                else:
+                    body_pos, body_orn  = p.getLinkState(most_force_bid, most_force_link)[:2]
+
                 # Get inverse world transform of body frame
                 inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
                 link_state = p.getLinkState(self.body_id, self.palm_link_idx)
@@ -535,25 +540,39 @@ class VrHand(VrHandBase):
                                                                         link_pos,
                                                                         link_orn)
 
+                # if grab children link of urdfs, create p2p joint
+
+                if most_force_link == -1:
+                    joint_type = p.JOINT_FIXED
+                else:
+                    joint_type = p.JOINT_POINT2POINT
+
                 self.obj_cid = p.createConstraint(
                                         parentBodyUniqueId=self.body_id,
                                         parentLinkIndex=self.palm_link_idx,
                                         childBodyUniqueId=most_force_bid,
                                         childLinkIndex=most_force_link,
-                                        jointType=p.JOINT_FIXED,
+                                        jointType=joint_type,
                                         jointAxis=(0, 0, 0),
                                         parentFramePosition=(0, 0, 0),
                                         childFramePosition=child_frame_pos,
                                         childFrameOrientation=child_frame_orn
                                     )
                 # Modify max force based on user-determined assist parameters
-                p.changeConstraint(self.obj_cid, maxForce=self.assist_force)
+
+                if most_force_link == -1:
+                    p.changeConstraint(self.obj_cid, maxForce=self.assist_force)
+                else:
+                    p.changeConstraint(self.obj_cid, maxForce=self.assist_force * self.articulated_assist_percentage)
+                    # apply some tiny assistance on articulated objects
                 self.object_in_hand = most_force_bid
                 self.should_freeze_joints = True
                 # Disable collisions while picking things up
                 self.set_hand_coll_filter(most_force_bid, False)
                 self.gen_freeze_vals()
         else:
+
+
             if trig_frac <= self.trig_frac_thresh:
                 p.removeConstraint(self.obj_cid)
                 self.should_freeze_joints = False
