@@ -183,9 +183,12 @@ class iGTNTask(TaskNetTask):
                     continue
 
                 category = np.random.choice(categories)
+                # # we always select pop, not pop_case
+                # if 'pop' in categories:
+                #     category = 'pop'
                 category_path = get_ig_category_path(category)
                 model = np.random.choice(os.listdir(category_path))
-                # we can ONLY put stuff into this specific bag model
+                # # we can ONLY put stuff into this specific bag model
                 # if category == 'bag':
                 #     model = 'bag_001'
                 model_path = get_ig_model_path(category, model)

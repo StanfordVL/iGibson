@@ -4,26 +4,37 @@ from IPython import embed
 import tasknet
 tasknet.set_backend("iGibson")
 
+task_choices = [
+    "packing_lunches_filtered",
+    "assembling_gift_baskets_filtered",
+    "organizing_school_stuff_filtered",
+    "re-shelving_library_books_filtered",
+    "serving_hors_d_oeuvres_filtered",
+    "putting_away_toys_filtered",
+    "putting_away_Christmas_decorations_filtered",
+    "putting_dishes_away_after_cleaning_filtered",
+    "cleaning_out_drawers_filtered",
+]
+task = 'packing_lunches_filtered'
+task_id = 1
+scene = 'Ihlen_1_int'
 
-igtn_task = iGTNTask('re-shelving_library_books_filtered', task_instance=0)
+igtn_task = iGTNTask(task, task_instance=task_id)
 scene_kwargs = {
-    # 'load_object_categories': ['coffee_table', 'breakfast_table', 'countertop', 'fridge', 'table_lamp', 'sofa', 'bottom_cabinet', 'bottom_cabinet_no_top', 'top_cabinet'],
+    # 'load_object_categories': ['oven', 'fridge', 'countertop', 'cherry', 'sausage', 'tray'],
     'not_load_object_categories': ['ceilings'],
-    'urdf_file': 'Rs_int_re-shelving_library_books_filtered_0_0'
+    'urdf_file': '{}_task_{}_{}_0'.format(scene, task, task_id),
 }
-igtn_task.initialize_simulator(
-    scene_id='Rs_int',
+init_success = igtn_task.initialize_simulator(
+    scene_id=scene,
     mode='gui',
     load_clutter=True,
     should_debug_sampling=False,
     scene_kwargs=scene_kwargs,
     online_sampling=False,
 )
-# sim_obj_to_pddl_obj = {
-#     value.name: {'object_scope': key} for key, value in igtn_task.object_scope.items()}
-# print('initialize_simulator')
-# igtn_task.scene.save_modified_urdf('test', sim_obj_to_pddl_obj)
-print('saving done')
+
+print('loading done')
 embed()
 
 while True:

@@ -916,31 +916,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         for name in self.objects_by_name:
             obj = self.objects_by_name[name]
             link = scene_tree.find('link[@name="{}"]'.format(name))
-            # The object is already in the scene URDF
-            if link is not None:
-                if obj.category == 'floors':
-                    floor_names = \
-                        [obj_name for obj_name in additional_attribs_by_name
-                         if 'room_floor' in obj_name]
-                    if len(floor_names) > 0:
-                        floor_name = floor_names[0]
-                        for key in additional_attribs_by_name[floor_name]:
-                            floor_mappings = []
-                            for floor_name in floor_names:
-                                floor_mappings.append('{}:{}'.format(
-                                    additional_attribs_by_name[floor_name][key], floor_name))
-                            link.attrib[key] = ','.join(floor_mappings)
-                else:
-                    if name in additional_attribs_by_name:
-                        for key in additional_attribs_by_name[name]:
-                            link.attrib[key] = additional_attribs_by_name[name][key]
-                continue
-
-            category = obj.category
-            model = os.path.basename(obj.model_path)
-            room = self.get_room_instance_by_point(
-                np.array(obj.get_position())[:2])
-            bounding_box = ' '.join([str(b) for b in obj.bounding_box])
 
             # Convert from center of mass to base link position
             body_id = obj.body_ids[obj.main_body]
@@ -963,6 +938,43 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
             xyz = ' '.join([str(p) for p in bbox_pos])
             rpy = ' '.join([str(e) for e in euler])
+
+            # The object is already in the scene URDF
+            if link is not None:
+                if obj.category == 'floors':
+                    floor_names = \
+                        [obj_name for obj_name in additional_attribs_by_name
+                         if 'room_floor' in obj_name]
+                    if len(floor_names) > 0:
+                        floor_name = floor_names[0]
+                        for key in additional_attribs_by_name[floor_name]:
+                            floor_mappings = []
+                            for floor_name in floor_names:
+                                floor_mappings.append('{}:{}'.format(
+                                    additional_attribs_by_name[floor_name][key], floor_name))
+                            link.attrib[key] = ','.join(floor_mappings)
+                else:
+                    # If some scene objects are used as task-relevant objects
+                    if name in additional_attribs_by_name:
+                        # Add tasknet_scope
+                        for key in additional_attribs_by_name[name]:
+                            link.attrib[key] = additional_attribs_by_name[name][key]
+                        # Overwrite the original pose based on the results of
+                        # the initial condition sampling
+                        link.attrib['rpy'] = rpy
+                        link.attrib['xyz'] = xyz
+                        joint = scene_tree.find(
+                            'joint[@name="{}"]'.format('j_{}'.format(name)))
+                        origin = joint.find('origin')
+                        origin.attrib['rpy'] = rpy
+                        origin.attrib['xyz'] = xyz
+                continue
+
+            category = obj.category
+            model = os.path.basename(obj.model_path)
+            room = self.get_room_instance_by_point(
+                np.array(obj.get_position())[:2])
+            bounding_box = ' '.join([str(b) for b in obj.bounding_box])
 
             new_link = ET.SubElement(tree_root, 'link')
             new_link.attrib = {

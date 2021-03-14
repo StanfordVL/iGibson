@@ -69,21 +69,21 @@ def main():
     }
     igtn_task = iGTNTask(task, task_instance=task_id)
     for scene_id in scene_choices:
-        for _ in range(num_trials):
-            success = igtn_task.initialize_simulator(
-                simulator=simulator,
-                scene_id=scene_id,
-                mode='headless',
-                load_clutter=True,
-                should_debug_sampling=False,
-                scene_kwargs=scene_kwargs,
-                online_sampling=True,
-            )
-            if success:
-                break
+        # for _ in range(num_trials):
+        #     success = igtn_task.initialize_simulator(
+        #         simulator=simulator,
+        #         scene_id=scene_id,
+        #         mode='headless',
+        #         load_clutter=True,
+        #         should_debug_sampling=False,
+        #         scene_kwargs=scene_kwargs,
+        #         online_sampling=True,
+        #     )
+        #     if success:
+        #         break
 
-        if not success:
-            continue
+        # if not success:
+        #     continue
 
         for init_id in range(num_initializations):
             for _ in range(num_trials):

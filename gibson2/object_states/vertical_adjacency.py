@@ -6,37 +6,35 @@ import pybullet as p
 class VerticalAdjacency(CachingEnabledObjectState):
 
     def _compute_value(self):
+
+        above_obj_id_set = set()
+        below_obj_id_set = set()
+
         ray_start = self.obj.get_position()
+        # Assume the ray will only hit maximum 10 objects
+        max_iter = 10
 
-        downwards_ray_start = ray_start
-        upwards_ray_start = ray_start
-
-        above_obj_found = False
-        below_obj_found = False
-
-        above_obj_id = -1
-        below_obj_id = -1
-
-        for _ in range(10):
+        for i in range(max_iter):
             ray_result = p.rayTestBatch(
-                [downwards_ray_start, upwards_ray_start],
-                [downwards_ray_start - np.array([0, 0, 2]), upwards_ray_start + np.array([0, 0, 2])]
+                [ray_start, ray_start],
+                [ray_start - np.array([0, 0, 5]),
+                 ray_start + np.array([0, 0, 5])],
+                reportHitNumber=i,
+                fractionEpsilon=1,
             )
-            downwards_ray_start = ray_result[0][3] - np.array([0, 0, 0.001])
-            upwards_ray_start = ray_result[1][3] + np.array([0, 0, 0.001])
+            above_obj_id = ray_result[0][0]
+            below_obj_id = ray_result[1][0]
 
-            if ray_result[0][0] != self.obj.get_body_id() and not above_obj_found:
-                above_obj_found = True
-                above_obj_id = ray_result[0][0]
-
-            if ray_result[1][0] != self.obj.get_body_id() and not below_obj_found:
-                below_obj_found = True
-                below_obj_id = ray_result[1][0]
-
-            if above_obj_found and below_obj_found:
+            if above_obj_id == -1 and below_obj_id == -1:
                 break
 
-        return [above_obj_id, below_obj_id]
+            if above_obj_id != -1 and above_obj_id != self.obj.get_body_id():
+                above_obj_id_set.add(above_obj_id)
+
+            if below_obj_id != -1 and below_obj_id != self.obj.get_body_id():
+                below_obj_id_set.add(below_obj_id)
+
+        return [above_obj_id_set, below_obj_id_set]
 
     def set_value(self, new_value):
         raise NotImplementedError(

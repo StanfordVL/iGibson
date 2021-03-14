@@ -30,7 +30,7 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
         return sampling_success
 
     def get_value(self, other):
-        adjacency = self.obj.states[VerticalAdjacency].get_value()
         touching = self.obj.states[Touching].get_value(other)
+        adjacency = self.obj.states[VerticalAdjacency].get_value()
 
-        return adjacency[0] == other.get_body_id() and touching
+        return other.get_body_id() in adjacency[0] and touching
