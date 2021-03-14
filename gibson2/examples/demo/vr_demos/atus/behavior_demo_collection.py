@@ -4,6 +4,7 @@ Main BEHAVIOR demo collection entrypoint
 
 import argparse
 import os
+import datetime
 
 import gibson2
 from gibson2.objects.vr_objects import VrAgent
@@ -108,9 +109,10 @@ def main():
     )
 
     if not args.disable_save:
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if args.vr_log_path == None:
-            args.vr_log_path = "{}_{}_{}".format(args.task, args.task_id, args.scene)
-        vr_writer = VRLogWriter(frames_before_write=200, log_filepath=args.vr_log_path, profiling_mode=args.profile)
+            args.vr_log_path = "{}_{}_{}_{}.hdf5".format(args.task, args.task_id, args.scene, timestamp)
+        vr_writer = VRLogWriter(s, igtn_task, vr_agent, frames_before_write=200, log_filepath=args.vr_log_path, profiling_mode=args.profile)
         vr_writer.set_up_data_storage()
 
     satisfied_predicates_cached = {}
