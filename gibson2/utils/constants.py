@@ -32,10 +32,11 @@ class PyBulletSleepState(IntEnum):
 
 
 # iGATUS-related
-with open(os.path.join(gibson2.ig_dataset_path, 'metadata/non_sampleable_categories.txt')) as f:
-    NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines()]
 FLOOR_SYNSET = 'floor.n.01'
-NON_SAMPLEABLE_OBJECTS.append(FLOOR_SYNSET)
+with open(os.path.join(gibson2.ig_dataset_path, 'metadata/non_sampleable_categories.txt')) as f:
+    NON_SAMPLEABLE_OBJECTS = [FLOOR_SYNSET] + \
+        [line.strip() for line in f.readlines()]
+
 
 UNDER_OBJECTS = [
     'breakfast_table',

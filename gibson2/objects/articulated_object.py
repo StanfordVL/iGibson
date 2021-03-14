@@ -448,7 +448,7 @@ class URDFObject(StatefulObject):
             [math.sin(math.pi*rot_num), math.cos(math.pi*rot_num), 0.0],
             [0.0, 0.0, 1.0]])
         rotated_quat = quat_from_matrix(
-            rot_matrix @ matrix_from_quat(chosen_orientation))
+            np.dot(rot_matrix, matrix_from_quat(chosen_orientation)))
         return rotated_quat
 
     def rename_urdf(self):
