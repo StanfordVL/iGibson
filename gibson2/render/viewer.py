@@ -195,7 +195,6 @@ class Viewer:
             object_id, link_id, _, hit_pos, hit_normal = res[0]
             p.changeDynamics(
                 object_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
-            link_pos, link_orn = None, None
             if link_id == -1:
                 link_pos, link_orn = p.getBasePositionAndOrientation(object_id)
             else:
@@ -225,6 +224,34 @@ class Viewer:
             p.changeConstraint(cid, maxForce=100)
             self.cid.append(cid)
             self.interaction_x, self.interaction_y = x, y
+
+    def monitor_constraint_violation(self):
+        for cid in self.cid:
+            parent_body, parent_link, child_body, child_link, _, _, joint_position_parent, joint_position_child \
+                = p.getConstraintInfo(cid)[:8]
+
+            if parent_link == -1:
+                parent_link_pos, parent_link_orn = p.getBasePositionAndOrientation(parent_body)
+            else:
+                parent_link_pos, parent_link_orn = p.getLinkState(parent_body, parent_link)[:2]
+
+            if child_link == -1:
+                child_link_pos, child_link_orn = p.getBasePositionAndOrientation(child_body)
+            else:
+                child_link_pos, child_link_orn = p.getLinkState(child_body, child_link)[:2]
+
+            joint_pos_in_parent_world = p.multiplyTransforms(parent_link_pos,
+                                                             parent_link_orn,
+                                                             joint_position_parent,
+                                                             [0, 0, 0, 1])[0]
+            joint_pos_in_child_world = p.multiplyTransforms(child_link_pos,
+                                                            child_link_orn,
+                                                            joint_position_child,
+                                                            [0, 0, 0, 1])[0]
+
+            diff = np.linalg.norm(np.array(joint_pos_in_parent_world) - np.array(joint_pos_in_child_world))
+            if diff > 0.2:
+                self.remove_constraint()
 
     def get_hit(self, x, y):
         """
@@ -289,6 +316,7 @@ class Viewer:
         self.constraint_marker.set_position(position_world[:3])
         self.constraint_marker2.set_position(position_world[:3])
         self.interaction_x, self.interaction_y = x, y
+        self.monitor_constraint_violation()
 
     def move_constraint_z(self, dy):
         """
@@ -317,6 +345,7 @@ class Viewer:
         position_world /= position_world[3]
         self.constraint_marker.set_position(position_world[:3])
         self.constraint_marker2.set_position(position_world[:3])
+        self.monitor_constraint_violation()
 
     def mouse_callback(self, event, x, y, flags, params):
         """
