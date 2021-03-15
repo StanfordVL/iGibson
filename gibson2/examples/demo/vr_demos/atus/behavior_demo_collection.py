@@ -4,6 +4,7 @@ Main BEHAVIOR demo collection entrypoint
 
 import argparse
 import os
+import datetime
 
 import gibson2
 from gibson2.objects.vr_objects import VrAgent
@@ -51,6 +52,7 @@ def parse_args():
     parser.add_argument('--vr_log_path', type=str, help='Path (and filename) of vr log')
     parser.add_argument('--scene', type=str, choices=scene_choices, nargs='?', help='Scene name/ID matching iGibson interactive scenes.')
     parser.add_argument('--disable_save', action='store_true', help='Whether to disable saving logfiles.')
+    parser.add_argument('--disable_scene_cache', action='store_true', help='Whether to disable using pre-initialized scene caches.')
     parser.add_argument('--profile', action='store_true', help='Whether to print profiling data.')
     return parser.parse_args()
 
@@ -85,7 +87,17 @@ def main():
     # VR system settings
     s = Simulator(mode='vr', rendering_settings=vr_rendering_settings)
     igtn_task = iGTNTask(args.task, args.task_id)
-    igtn_task.initialize_simulator(simulator=s, scene_id=args.scene, load_clutter=True)
+
+    scene_kwargs = None
+    online_sampling = True
+
+    if not args.disable_scene_cache:
+        scene_kwargs = {
+                'urdf_file': '{}_task_{}_{}_0'.format(args.scene, args.task, args.task_id),
+        }
+        online_sampling = False
+
+    igtn_task.initialize_simulator(simulator=s, scene_id=args.scene, load_clutter=True, scene_kwargs=scene_kwargs, online_sampling=online_sampling)
 
     vr_agent = VrAgent(igtn_task.simulator)
     igtn_task.simulator.set_vr_start_pos([0,0,1.8], vr_height_offset=-0.1)
@@ -97,18 +109,25 @@ def main():
     )
 
     if not args.disable_save:
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if args.vr_log_path == None:
-            args.vr_log_path = "{}_{}_{}".format(args.task, args.task_id, args.scene)
-        vr_writer = VRLogWriter(frames_before_write=200, log_filepath=args.vr_log_path, profiling_mode=args.profile)
+            args.vr_log_path = "{}_{}_{}_{}.hdf5".format(args.task, args.task_id, args.scene, timestamp)
+        vr_writer = VRLogWriter(s, igtn_task, vr_agent, frames_before_write=200, log_filepath=args.vr_log_path, profiling_mode=args.profile)
         vr_writer.set_up_data_storage()
 
+    satisfied_predicates_cached = {}
     while True:
         igtn_task.simulator.step(print_stats=args.profile)
+        task_done, satisfied_predicates = igtn_task.check_success()
 
         vr_agent.update()
 
+        if satisfied_predicates != satisfied_predicates_cached:
+            vr_cs.refresh_condition(switch=False)
+            satisfied_predicates_cached = satisfied_predicates
+
         if igtn_task.simulator.query_vr_event('right_controller', 'overlay_toggle'):
-            vr_cs.switch_condition()
+            vr_cs.refresh_condition()
         
         if igtn_task.simulator.query_vr_event('left_controller', 'overlay_toggle'):
             vr_cs.toggle_show_state()
