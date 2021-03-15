@@ -395,11 +395,12 @@ class VrHand(VrHandBase):
         # Variables for assisted grasping
         self.object_in_hand = None
         self.assist_percent = self.s.vr_settings.assist_percent
-        self.articulated_assist_percentage = 0.05
+        self.articulated_assist_percentage = 0.15
         self.min_assist_force = 0
         self.max_assist_force = 500
         self.assist_force = self.min_assist_force + (self.max_assist_force - self.min_assist_force) * self.assist_percent / 100.0
         self.trig_frac_thresh = 0.6
+        self.violation_threshold = 0.1 # constraint violation to break the constraint
         self.palm_link_idx = 0
         self.obj_cid = None
         self.should_freeze_joints = False
@@ -571,13 +572,38 @@ class VrHand(VrHandBase):
                 self.set_hand_coll_filter(most_force_bid, False)
                 self.gen_freeze_vals()
         else:
-
-
-            if trig_frac <= self.trig_frac_thresh:
+            constraint_violation = self.get_constraint_violation(self.obj_cid)
+            if trig_frac <= self.trig_frac_thresh or constraint_violation > self.violation_threshold:
                 p.removeConstraint(self.obj_cid)
                 self.should_freeze_joints = False
                 self.should_execute_release = True
                 self.release_start_time = time.perf_counter()
+
+    def get_constraint_violation(self, cid):
+        parent_body, parent_link, child_body, child_link, _, _, joint_position_parent, joint_position_child \
+            = p.getConstraintInfo(cid)[:8]
+
+        if parent_link == -1:
+            parent_link_pos, parent_link_orn = p.getBasePositionAndOrientation(parent_body)
+        else:
+            parent_link_pos, parent_link_orn = p.getLinkState(parent_body, parent_link)[:2]
+
+        if child_link == -1:
+            child_link_pos, child_link_orn = p.getBasePositionAndOrientation(child_body)
+        else:
+            child_link_pos, child_link_orn = p.getLinkState(child_body, child_link)[:2]
+
+        joint_pos_in_parent_world = p.multiplyTransforms(parent_link_pos,
+                                                         parent_link_orn,
+                                                         joint_position_parent,
+                                                         [0, 0, 0, 1])[0]
+        joint_pos_in_child_world = p.multiplyTransforms(child_link_pos,
+                                                        child_link_orn,
+                                                        joint_position_child,
+                                                        [0, 0, 0, 1])[0]
+
+        diff = np.linalg.norm(np.array(joint_pos_in_parent_world) - np.array(joint_pos_in_child_world))
+        return diff
 
     def update(self, vr_data=None):
         """
