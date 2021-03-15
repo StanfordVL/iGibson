@@ -4,43 +4,7 @@ import glob
 import gibson2
 import os
 import numpy as np
-
-
-def rotation_matrix_to_euler(R):
-    beta = -np.arcsin(R[2, 0])
-    alpha = np.arctan2(R[2, 1] / np.cos(beta), R[2, 2] / np.cos(beta))
-    gamma = np.arctan2(R[1, 0] / np.cos(beta), R[0, 0] / np.cos(beta))
-    return np.array((alpha, beta, gamma))
-
-
-def euler_to_rotation_matrix(theta):
-
-    R = np.array(
-        [
-            [
-                np.cos(theta[1]) * np.cos(theta[2]),
-                np.sin(theta[0]) * np.sin(theta[1]) * np.cos(theta[2])
-                - np.sin(theta[2]) * np.cos(theta[0]),
-                np.sin(theta[1]) * np.cos(theta[0]) * np.cos(theta[2])
-                + np.sin(theta[0]) * np.sin(theta[2]),
-            ],
-            [
-                np.sin(theta[2]) * np.cos(theta[1]),
-                np.sin(theta[0]) * np.sin(theta[1]) * np.sin(theta[2])
-                + np.cos(theta[0]) * np.cos(theta[2]),
-                np.sin(theta[1]) * np.sin(theta[2]) * np.cos(theta[0])
-                - np.sin(theta[0]) * np.cos(theta[2]),
-            ],
-            [
-                -np.sin(theta[1]),
-                np.sin(theta[0]) * np.cos(theta[1]),
-                np.cos(theta[0]) * np.cos(theta[1]),
-            ],
-        ]
-    )
-
-    return R
-
+from gibson2.utils.utils import get_rpy_from_transform
 
 def insert_geometric_primitive(obj, insert_visual_mesh=True):
     tree = ET.parse(obj['urdf'])
@@ -105,7 +69,7 @@ if __name__ == "__main__":
                             "mvbb_meta": mvbb_meta,
                             "base_link_offset": np.array(metadata['base_link_offset']),
                             "size": size,
-                            "euler": rotation_matrix_to_euler(np.reshape(object_data["transform"], [3, 3]))
+                            "euler": get_rpy_from_transform(np.reshape(object_data["transform"], [3, 3]))
                         }
                         idx += 1
     new_urdfs = []
