@@ -183,14 +183,17 @@ class iGTNTask(TaskNetTask):
                     continue
 
                 category = np.random.choice(categories)
-                # # we always select pop, not pop_case
-                # if 'pop' in categories:
-                #     category = 'pop'
+                # we always select pop, not pop_case
+                if 'pop' in categories:
+                    category = 'pop'
+                # # cantaloup is a suitable category for melon.n.01
+                # if 'cantaloup' in categories:
+                #     category = 'cantaloup'
                 category_path = get_ig_category_path(category)
                 model = np.random.choice(os.listdir(category_path))
-                # # we can ONLY put stuff into this specific bag model
-                # if category == 'bag':
-                #     model = 'bag_001'
+                # we can ONLY put stuff into this specific bag model
+                if category == 'bag':
+                    model = 'bag_001'
                 model_path = get_ig_model_path(category, model)
                 filename = os.path.join(model_path, model + ".urdf")
                 obj_name = '{}_{}'.format(
