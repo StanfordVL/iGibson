@@ -395,12 +395,12 @@ class VrHand(VrHandBase):
         # Variables for assisted grasping
         self.object_in_hand = None
         self.assist_percent = self.s.vr_settings.assist_percent
-        self.articulated_assist_percentage = 0.05
+        self.articulated_assist_percentage = 0.15
         self.min_assist_force = 0
         self.max_assist_force = 500
         self.assist_force = self.min_assist_force + (self.max_assist_force - self.min_assist_force) * self.assist_percent / 100.0
         self.trig_frac_thresh = 0.6
-        self.violation_threshold = 0.2 # constraint violation to break the constraint
+        self.violation_threshold = 0.1 # constraint violation to break the constraint
         self.palm_link_idx = 0
         self.obj_cid = None
         self.should_freeze_joints = False
