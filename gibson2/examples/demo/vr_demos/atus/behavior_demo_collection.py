@@ -93,7 +93,7 @@ def main():
 
     if not args.disable_scene_cache:
         scene_kwargs = {
-                'urdf_file': '{}_task_{}_{}_0'.format(args.scene, args.task, args.task_id),
+                'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(args.scene, args.task, args.task_id),
         }
         online_sampling = False
 
