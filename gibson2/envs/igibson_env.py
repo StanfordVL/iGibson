@@ -11,6 +11,7 @@ from gibson2.sensors.vision_sensor import VisionSensor
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
 from gibson2.sensors.bump_sensor import BumpSensor
+from gibson2.sensors.panorama_sensor import PanoramaSensor
 
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -188,11 +189,20 @@ class iGibsonEnv(BaseEnv):
                                                        shape=(1,))
             sensors['bump'] = BumpSensor(self)
 
+        if 'pano' in self.output:
+            observation_space['pano'] = gym.spaces.Box(low=0.0,
+                                                       high=1.0,
+                                                       shape=(self.image_height,
+                                                              self.image_width * 2, 1))
+
         if len(vision_modalities) > 0:
             sensors['vision'] = VisionSensor(self, vision_modalities)
 
         if len(scan_modalities) > 0:
             sensors['scan_occ'] = ScanSensor(self, scan_modalities)
+
+        if 'pano' in self.output:
+            sensors['pano'] =PanoramaSensor(self, modalities=['rgb']) # TODO: currently only support rgb panorama
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.sensors = sensors
@@ -242,6 +252,8 @@ class iGibsonEnv(BaseEnv):
                 state[modality] = scan_obs[modality]
         if 'bump' in self.sensors:
             state['bump'] = self.sensors['bump'].get_obs(self)
+        if 'pano' in self.sensors:
+            state['pano'] = self.sensors['pano'].get_obs(self)
 
         return state
 

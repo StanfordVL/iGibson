@@ -4,6 +4,8 @@ from gibson2.utils.assets_utils import download_assets, download_demo_data
 from gibson2.sensors.scan_sensor import ScanSensor
 from gibson2.sensors.vision_sensor import VisionSensor
 from gibson2.sensors.velodyne_sensor import VelodyneSensor
+from gibson2.sensors.panorama_sensor import PanoramaSensor
+
 import numpy as np
 import os
 
@@ -58,3 +60,13 @@ def test_velodyne():
     velodyne_sensor = VelodyneSensor(env)
     velodyne_obs = velodyne_sensor.get_obs(env)
     assert(velodyne_obs.shape[1] == 3)
+
+def test_panorama():
+    download_assets()
+    download_demo_data()
+    config_filename = os.path.join(
+        gibson2.root_path, 'test', 'test_house_square.yaml')
+    env = iGibsonEnv(config_file=config_filename, mode='headless')
+    panorama_sensor = PanoramaSensor(env, modalities=['rgb'])
+    panorama_obs = panorama_sensor.get_obs(env)
+    #TODO: somehow the robot is not hidden
