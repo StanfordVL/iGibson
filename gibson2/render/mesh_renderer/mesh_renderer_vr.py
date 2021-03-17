@@ -163,6 +163,8 @@ class VrSettings(object):
         self.reset_sim = True
         # Fixed FPS is used by default
         self.use_fixed_fps = True
+        # No frame save path by default
+        self.frame_save_path = None
 
         mesh_renderer_folder = os.path.abspath(os.path.dirname(__file__))
         self.vr_config_path = os.path.join(mesh_renderer_folder, '..', '..', 'vr_config.yaml')
@@ -218,6 +220,12 @@ class VrSettings(object):
         self.use_vr = False
         # Enable rendering of companion window
         self.use_companion_window = True
+
+    def set_frame_save_path(self, frame_save_path):
+        """
+        :param frame_save_path: sets path to save frames (used in action replay)
+        """
+        self.frame_save_path = frame_save_path
 
 class MeshRendererVR(MeshRenderer):
     """
@@ -282,7 +290,7 @@ class MeshRendererVR(MeshRenderer):
         """
         self.vrsys.updateVRData()
 
-    def render(self):
+    def render(self, return_frame=False):
         """
         Renders VR scenes.
         """
@@ -313,7 +321,8 @@ class MeshRendererVR(MeshRenderer):
             if self.vr_hud:
                 self.vr_hud.refresh_text()
         else:
-            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
+            if return_frame:
+                return super().render(modes=('rgb'), return_buffer=return_frame, render_shadow_pass=True)
 
     def vr_compositor_update(self):
         """
