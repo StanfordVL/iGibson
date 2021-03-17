@@ -14,19 +14,35 @@ from gibson2.utils.utils import rotate_vector_2d
 
 
 class ViewerVR:
-    def __init__(self, use_companion_window):
+    def __init__(self, use_companion_window, frame_save_path=None):
         """
         :param use_companion_window: whether to render companion window (passed in automatically from VrSettings)
         """
         self.renderer = None
         self.use_companion_window = use_companion_window
+        self.frame_save_path = frame_save_path
+        self.frame_counter = 0
     
     def update(self):
+        """
+        :param return_frame: whether to return a frame (cv2 image) or not
+        """
         if not self.renderer:
             raise RuntimeError('Unable to render without a renderer attached to the ViewerVR!')
-        self.renderer.render()
+        if self.frame_save_path:
+            frame = cv2.cvtColor(
+                np.concatenate(self.renderer.render(return_frame=True), axis=1),
+                cv2.COLOR_RGB2BGR)
+            # Add frame counter to image path and add image extension
+            final_save_path = '{}_frame{}.jpg'.format(self.frame_save_path, self.frame_counter)
+            cv2.imwrite(final_save_path, frame)
+        else:
+            self.renderer.render()
+
         if self.use_companion_window:
             self.renderer.render_companion_window()
+        
+        self.frame_counter += 1
 
 
 class ViewerSimple:
