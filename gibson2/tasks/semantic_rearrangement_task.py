@@ -172,8 +172,6 @@ class SemanticRearrangementTask(BaseTask):
 
         # Store location info
         self.update_location_info()
-        # Zero out memory state
-        self.memory_state *= 0.0
 
     def update_location_info(self):
         """
@@ -206,6 +204,9 @@ class SemanticRearrangementTask(BaseTask):
                 self.location_id_to_memory_id[loc.body_ids[0]] = subloc_id_to_memory_id
             # Create the memory buffer
             self.memory_state = np.zeros(memory_size)
+        # Otherwise, we just reset the memory state
+        else:
+            self.memory_state *= 0.0
         # Store relevant goal info if we're doing pick place
         if self.success_condition == "pick_place":
             self.goal_pos = self.target_locations[self.goal_location].get_surface_position(self.goal_surface)
