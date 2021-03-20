@@ -14,19 +14,51 @@ from gibson2.utils.utils import rotate_vector_2d
 
 
 class ViewerVR:
-    def __init__(self, use_companion_window):
+    def __init__(self, use_companion_window, frame_save_path=None):
         """
         :param use_companion_window: whether to render companion window (passed in automatically from VrSettings)
         """
         self.renderer = None
         self.use_companion_window = use_companion_window
-    
+        self.frame_save_path = frame_save_path
+        self.frame_counter = 0
+        self.frame_save_video_handler = None
+
     def update(self):
+        """
+        :param return_frame: whether to return a frame (cv2 image) or not
+        """
         if not self.renderer:
-            raise RuntimeError('Unable to render without a renderer attached to the ViewerVR!')
-        self.renderer.render()
+            raise RuntimeError(
+                'Unable to render without a renderer attached to the ViewerVR!')
+        if self.frame_save_path:
+            frame = cv2.cvtColor(
+                self.renderer.render(return_frame=True)[0],
+                cv2.COLOR_RGB2BGR)
+            frame = (frame * 255).astype(np.uint8)
+            # Save as a video
+            if self.frame_save_path.endswith('.mp4'):
+                if self.frame_save_video_handler is None:
+                    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+                    self.frame_save_video_handler = cv2.VideoWriter(
+                        self.frame_save_path, fourcc, 30.0, (self.renderer.width, self.renderer.height))
+                self.frame_save_video_handler.write(frame)
+            # Save as a folder of images
+            else:
+                if not os.path.isdir(self.frame_save_path):
+                    os.mkdir(self.frame_save_path)
+                final_save_path = os.path.join(
+                    self.frame_save_path,
+                    '%05d.jpg' % self.frame_counter)
+                cv2.imwrite(final_save_path, frame)
+        else:
+            self.renderer.render()
+
         if self.use_companion_window:
             self.renderer.render_companion_window()
+
+        self.frame_counter += 1
+        print(self.frame_counter)
 
 
 class ViewerSimple:
@@ -201,7 +233,8 @@ class Viewer:
                 link_state = p.getLinkState(object_id, link_id)
                 link_pos, link_orn = link_state[:2]
 
-            child_frame_trans_pos, child_frame_trans_orn = p.invertTransform(link_pos, link_orn)
+            child_frame_trans_pos, child_frame_trans_orn = p.invertTransform(
+                link_pos, link_orn)
             child_frame_pos, child_frame_orn = \
                 p.multiplyTransforms(child_frame_trans_pos,
                                      child_frame_trans_orn,
@@ -231,14 +264,18 @@ class Viewer:
                 = p.getConstraintInfo(cid)[:8]
 
             if parent_link == -1:
-                parent_link_pos, parent_link_orn = p.getBasePositionAndOrientation(parent_body)
+                parent_link_pos, parent_link_orn = p.getBasePositionAndOrientation(
+                    parent_body)
             else:
-                parent_link_pos, parent_link_orn = p.getLinkState(parent_body, parent_link)[:2]
+                parent_link_pos, parent_link_orn = p.getLinkState(
+                    parent_body, parent_link)[:2]
 
             if child_link == -1:
-                child_link_pos, child_link_orn = p.getBasePositionAndOrientation(child_body)
+                child_link_pos, child_link_orn = p.getBasePositionAndOrientation(
+                    child_body)
             else:
-                child_link_pos, child_link_orn = p.getLinkState(child_body, child_link)[:2]
+                child_link_pos, child_link_orn = p.getLinkState(
+                    child_body, child_link)[:2]
 
             joint_pos_in_parent_world = p.multiplyTransforms(parent_link_pos,
                                                              parent_link_orn,
@@ -249,7 +286,8 @@ class Viewer:
                                                             joint_position_child,
                                                             [0, 0, 0, 1])[0]
 
-            diff = np.linalg.norm(np.array(joint_pos_in_parent_world) - np.array(joint_pos_in_child_world))
+            diff = np.linalg.norm(
+                np.array(joint_pos_in_parent_world) - np.array(joint_pos_in_child_world))
             if diff > 0.2:
                 self.remove_constraint()
 
