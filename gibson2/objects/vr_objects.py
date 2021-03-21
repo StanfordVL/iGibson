@@ -577,7 +577,7 @@ class VrHand(VrHandBase):
                 p.removeConstraint(self.obj_cid)
                 self.should_freeze_joints = False
                 self.should_execute_release = True
-                self.release_start_time = self.sim.frame_count
+                self.release_start_time = time.perf_counter()
 
     def get_constraint_violation(self, cid):
         parent_body, parent_link, child_body, child_link, _, _, joint_position_parent, joint_position_child \
