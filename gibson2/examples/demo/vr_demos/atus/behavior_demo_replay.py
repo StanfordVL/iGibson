@@ -17,6 +17,8 @@ from gibson2.utils.vr_logging import VRLogReader
 from gibson2.utils.vr_logging import VRLogWriter
 import tasknet
 
+import numpy as np
+import pybullet as p
 
 def parse_args():
     scene_choices = [
@@ -61,6 +63,8 @@ def parse_args():
                         help='Whether to disable using pre-initialized scene caches.')
     parser.add_argument('--disable_save',
                         action='store_true', help='Whether to disable saving log of replayed trajectory.')
+    parser.add_argument('--highlight_gaze', action='store_true',
+                        help='Whether to highlight the object at gaze location.')
     parser.add_argument('--profile', action='store_true',
                         help='Whether to print profiling data.')
     return parser.parse_args()
@@ -142,8 +146,27 @@ def main():
         vr_writer.set_up_data_storage()
 
 
+    disallowed_categories = ['walls', 'floors', 'ceilings']
+    target_obj = -1
+    gaze_max_distance = 100.0
     satisfied_predicates_cached = {}
     while vr_reader.get_data_left_to_read():
+
+        if args.highlight_gaze:
+            if vr_agent.vr_dict['gaze_marker'].eye_data_valid:
+                if target_obj in s.scene.objects_by_id:
+                    s.scene.objects_by_id[target_obj].unhighlight()
+
+                origin = vr_agent.vr_dict['gaze_marker'].position_vector
+                direction = vr_agent.vr_dict['gaze_marker'].orientation_vector
+                intersection = p.rayTest(origin, np.array(origin) + (np.array(direction) * gaze_max_distance))
+                target_obj = intersection[0][0]
+
+                if target_obj in s.scene.objects_by_id:
+                    obj = s.scene.objects_by_id[target_obj]
+                    if obj.category not in disallowed_categories:
+                        obj.highlight()
+
         vr_reader.pre_step()
         igtn_task.simulator.step(
             print_stats=args.profile, forced_timestep=vr_reader.get_phys_step_n())
