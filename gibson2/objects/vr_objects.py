@@ -473,7 +473,7 @@ class VrHand(VrHandBase):
 
         # Execute gradual release of object
         if self.should_execute_release and self.release_start_time:
-            time_since_release = time.perf_counter() - self.release_start_time
+            time_since_release = (self.sim.frame_count - self.release_start_time) * self.sim.num_phys_steps
             if time_since_release >= self.release_window / 1000.0:
                 self.set_hand_coll_filter(self.object_in_hand, True)
                 self.object_in_hand = None
@@ -577,7 +577,7 @@ class VrHand(VrHandBase):
                 p.removeConstraint(self.obj_cid)
                 self.should_freeze_joints = False
                 self.should_execute_release = True
-                self.release_start_time = time.perf_counter()
+                self.release_start_time = self.sim.frame_count
 
     def get_constraint_violation(self, cid):
         parent_body, parent_link, child_body, child_link, _, _, joint_position_parent, joint_position_child \
