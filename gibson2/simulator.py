@@ -1046,6 +1046,7 @@ class Simulator:
             p.stepSimulation()
         self._non_physics_step()
         self.sync()
+        self.frame_count += 1
 
     def sync(self):
         """
