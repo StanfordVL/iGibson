@@ -698,6 +698,9 @@ class VrGazeMarker(VisualMarker):
         # We store a reference to the simulator so that VR data can be acquired under the hood
         self.sim = s
         self.normal_color = normal_color
+        self.orientation_vector = None
+        self.position_vector = None
+        self.eye_data_valid = None
         super(VrGazeMarker, self).__init__(visual_shape=p.GEOM_SPHERE, radius=0.02, rgba_color=[1, 0, 0, 1] if self.normal_color else [0, 0, 1, 1])
         s.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
         # Set high above scene initially
@@ -717,5 +720,8 @@ class VrGazeMarker(VisualMarker):
         if is_eye_data_valid:
             updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
             self.set_position(updated_marker_pos)
+            self.position_vector = origin
+            self.orientation_vector = dir
+            self.eye_data_valid = is_eye_data_valid
 
 
