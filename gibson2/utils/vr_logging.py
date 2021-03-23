@@ -104,7 +104,7 @@ class VRLogWriter():
         # TODO: if the objects change after scene initialization, this will be invalid
         self.filter_objects = filter_objects
         if filter_objects:
-            self.tracked_objects = self.task.scene.object_scope
+            self.tracked_objects = self.task.object_scope
         else:
             self.tracked_objects = self.task.scene.objects_by_id
         self.joint_map = {str(obj_name): p.getNumJoints(obj.body_id[0]) for (obj_name, obj) in self.tracked_objects.items()}
@@ -531,7 +531,7 @@ class VRLogReader():
         Args:
             s (simulator): used to set camera view and projection matrices
             full_replay: boolean indicating if we should replay full state of the world or not.
-                If this value is set to false, we simply increment the frame counter each frame, 
+                If this value is set to false, we simply increment the frame counter each frame,
                 and let the user take control of processing actions and simulating them
             print_vr_data: boolean indicating whether all vr data should be printed each frame (for debugging purposes)
         """
@@ -595,7 +595,7 @@ class VRLogReader():
         """
         full_action_path = 'action/' + action_path
         return self.hf[full_action_path][self.frame_counter]
-    
+
     # TIMELINE: Use this as the while loop condition to keep reading frames
     def get_data_left_to_read(self):
         """Returns whether there is still data left to read."""
