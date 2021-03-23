@@ -1,10 +1,11 @@
-""" 
+"""
 Main BEHAVIOR demo replay entrypoint
 """
 
 import argparse
 import os
 import datetime
+import h5py
 
 import gibson2
 from gibson2.objects.vr_objects import VrAgent
@@ -13,6 +14,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, V
 from gibson2.simulator import Simulator
 from gibson2.task.task_base import iGTNTask
 from gibson2.utils.vr_logging import VRLogReader
+from gibson2.utils.vr_logging import VRLogWriter
 import tasknet
 
 
@@ -49,18 +51,16 @@ def parse_args():
     task_id_choices = [0, 1]
     parser = argparse.ArgumentParser(
         description='Run and collect an ATUS demo')
-    parser.add_argument('--task', type=str, required=True, choices=task_choices,
-                        nargs='?', help='Name of ATUS task matching PDDL parent folder in tasknet.')
-    parser.add_argument('--task_id', type=int, required=True, choices=task_id_choices,
-                        nargs='?', help='PDDL integer ID, matching suffix of pddl.')
     parser.add_argument('--vr_log_path', type=str,
                         help='Path (and filename) of vr log to replay')
+    parser.add_argument('--vr_replay_log_path', type=str,
+                        help='Path (and filename) of file to save replay to (for debugging)')
     parser.add_argument('--frame_save_path', type=str,
                         help='Path to save frames (frame number added automatically, as well as .jpg extension)')
-    parser.add_argument('--scene', type=str, choices=scene_choices, nargs='?',
-                        help='Scene name/ID matching iGibson interactive scenes.')
     parser.add_argument('--disable_scene_cache', action='store_true',
                         help='Whether to disable using pre-initialized scene caches.')
+    parser.add_argument('--disable_save',
+                        action='store_true', help='Whether to disable saving log of replayed trajectory.')
     parser.add_argument('--profile', action='store_true',
                         help='Whether to print profiling data.')
     return parser.parse_args()
@@ -100,21 +100,31 @@ def main():
     vr_replay_settings.set_frame_save_path(args.frame_save_path)
     vr_replay_settings.use_companion_window = False
 
+    f = h5py.File(args.vr_log_path, 'r')
+    task = f.attrs['/metadata/task_name']
+    task_id = f.attrs['/metadata/task_instance']
+    scene = f.attrs['/metadata/scene_id']
+
+    if 'metadata/filter_objects' in f.attrs:
+        filter_objects = f.attrs['metadata/filter_objects']
+    else:
+        filter_objects = True
+
     # VR system settings
     s = Simulator(mode='vr', rendering_settings=vr_rendering_settings,
                   vr_settings=vr_replay_settings)
-    igtn_task = iGTNTask(args.task, args.task_id)
+    igtn_task = iGTNTask(task, task_id)
 
     scene_kwargs = None
-    online_sampling = True
 
+    online_sampling = True
     if not args.disable_scene_cache:
         scene_kwargs = {
-            'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(args.scene, args.task, args.task_id),
+            'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(scene, task, task_id),
         }
         online_sampling = False
 
-    igtn_task.initialize_simulator(simulator=s, scene_id=args.scene, load_clutter=True,
+    igtn_task.initialize_simulator(simulator=s, scene_id=scene, load_clutter=True,
                                    scene_kwargs=scene_kwargs, online_sampling=online_sampling)
 
     vr_agent = VrAgent(igtn_task.simulator)
@@ -123,6 +133,14 @@ def main():
         raise RuntimeError('Must provide a VR log path to run action replay!')
     vr_reader = VRLogReader(args.vr_log_path, s,
                             emulate_save_fps=False, log_status=False)
+
+    if not args.disable_save:
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        if args.vr_replay_log_path == None:
+            args.vr_replay_log_path = "{}_{}_{}_{}.hdf5".format(task, task_id, scene, timestamp)
+        vr_writer = VRLogWriter(s, igtn_task, vr_agent, frames_before_write=200, log_filepath=args.vr_replay_log_path, profiling_mode=args.profile, filter_objects=filter_objects)
+        vr_writer.set_up_data_storage()
+
 
     satisfied_predicates_cached = {}
     while vr_reader.get_data_left_to_read():
@@ -140,6 +158,9 @@ def main():
 
         if satisfied_predicates != satisfied_predicates_cached:
             satisfied_predicates_cached = satisfied_predicates
+
+        if not args.disable_save:
+            vr_writer.process_frame(s, store_vr_data=False)
 
     s.disconnect()
 
