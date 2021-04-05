@@ -1191,6 +1191,24 @@ class Simulator:
         is_valid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(device_name)
         return [is_valid, translation, rotation]
 
+    def get_data_for_vr_tracker(self, tracker_serial_number):
+        """
+        Returns the data for a tracker with a specific serial number. This number can be found
+        by looking in the SteamVR device information.
+        :param tracker_serial_number: the serial number of the tracker
+        """
+        if not self.can_access_vr_context:
+            raise RuntimeError(
+                'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+
+        tracker_data = self.renderer.vrsys.getDataForVRTracker(tracker_serial_number)
+        # Set is_valid to false, and assume the user will check for invalid data
+        if not tracker_data:
+            return [False, None, None]
+        
+        is_valid, translation, rotation = tracker_data
+        return [is_valid, translation, rotation]
+
     def get_hmd_world_pos(self):
         """
         Get world position of HMD without offset
