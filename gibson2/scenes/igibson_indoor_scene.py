@@ -13,6 +13,9 @@ import json
 from gibson2.utils.assets_utils import get_ig_avg_category_specs, get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
 from gibson2.external.pybullet_tools.utils import euler_from_quat
 from PIL import Image
+from xml.dom import minidom
+from IPython import embed
+
 
 SCENE_SOURCE = ['IG', 'CUBICASA', 'THREEDFRONT']
 
@@ -234,6 +237,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                      if joint.find("child").attrib["link"]
                      == object_name][0]
 
+                tasknet_object_scope = link.attrib.get('object_scope', None)
+
                 obj = URDFObject(
                     filename,
                     name=object_name,
@@ -246,7 +251,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     in_rooms=in_rooms,
                     texture_randomization=texture_randomization,
                     overwrite_inertial=True,
-                    scene_instance_folder=self.scene_instance_folder)
+                    scene_instance_folder=self.scene_instance_folder,
+                    tasknet_object_scope=tasknet_object_scope)
 
                 self.add_object(obj)
 
@@ -899,32 +905,17 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 ids.extend(self.objects_by_name[obj_name].body_id)
         return ids
 
-    def save_modified_urdf(self, urdf_name):
+    def save_modified_urdf(self, urdf_name, additional_attribs_by_name={}):
         """
         Saves a modified URDF file in the scene urdf directory having all objects added to the scene.
 
         :param urdf_name: Name of urdf file to save (without .urdf)
         """
-        TEMPLATE = """
-        <link bounding_box="{bounding_box}" category="{category}" model="{model}" name="{name}" room="{room}"/>
-        <joint name="j_{name}" type="floating">
-            <origin rpy="{rpy}" xyz="{xyz}"/>
-            <child link="{name}"/>
-            <parent link="world"/>
-        </joint>"""
-        with open(self.scene_file, 'r') as f:
-            urdf_string = f.read()
-        add_string = ''
+        scene_tree = ET.parse(self.scene_file)
+        tree_root = scene_tree.getroot()
         for name in self.objects_by_name:
-            if name in urdf_string:
-                continue
             obj = self.objects_by_name[name]
-            if not hasattr(obj, 'in_rooms') or obj.in_rooms is None:
-                continue
-            category = obj.category
-            model = name.split('|')[1]
-            room = obj.in_rooms[0]
-            bounding_box = ' '.join([str(b) for b in obj.bounding_box])
+            link = scene_tree.find('link[@name="{}"]'.format(name))
 
             # Convert from center of mass to base link position
             body_id = obj.body_ids[obj.main_body]
@@ -947,16 +938,72 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
             xyz = ' '.join([str(p) for p in bbox_pos])
             rpy = ' '.join([str(e) for e in euler])
-            new_string = TEMPLATE.format(bounding_box=bounding_box,
-                                         category=category,
-                                         model=model,
-                                         name=name,
-                                         room=room,
-                                         rpy=rpy,
-                                         xyz=xyz)
-            add_string += new_string
-        add_string += '\n</robot>'
-        urdf_string = urdf_string.replace('</robot>', add_string)
+
+            # The object is already in the scene URDF
+            if link is not None:
+                if obj.category == 'floors':
+                    floor_names = \
+                        [obj_name for obj_name in additional_attribs_by_name
+                         if 'room_floor' in obj_name]
+                    if len(floor_names) > 0:
+                        floor_name = floor_names[0]
+                        for key in additional_attribs_by_name[floor_name]:
+                            floor_mappings = []
+                            for floor_name in floor_names:
+                                floor_mappings.append('{}:{}'.format(
+                                    additional_attribs_by_name[floor_name][key], floor_name))
+                            link.attrib[key] = ','.join(floor_mappings)
+                else:
+                    # If some scene objects are used as task-relevant objects
+                    if name in additional_attribs_by_name:
+                        # Add tasknet_scope
+                        for key in additional_attribs_by_name[name]:
+                            link.attrib[key] = additional_attribs_by_name[name][key]
+                        # Overwrite the original pose based on the results of
+                        # the initial condition sampling
+                        link.attrib['rpy'] = rpy
+                        link.attrib['xyz'] = xyz
+                        joint = scene_tree.find(
+                            'joint[@name="{}"]'.format('j_{}'.format(name)))
+                        origin = joint.find('origin')
+                        origin.attrib['rpy'] = rpy
+                        origin.attrib['xyz'] = xyz
+                continue
+
+            category = obj.category
+            model = os.path.basename(obj.model_path)
+            room = self.get_room_instance_by_point(
+                np.array(obj.get_position())[:2])
+            bounding_box = ' '.join([str(b) for b in obj.bounding_box])
+
+            new_link = ET.SubElement(tree_root, 'link')
+            new_link.attrib = {
+                'bounding_box': bounding_box,
+                'category': category,
+                'model': model,
+                'name': name,
+                'rpy': rpy,
+                'xyz': xyz,
+            }
+            if room is not None:
+                new_link.attrib['room'] = room
+
+            if name in additional_attribs_by_name:
+                for key in additional_attribs_by_name[name]:
+                    new_link.attrib[key] = additional_attribs_by_name[name][key]
+
+            new_joint = ET.SubElement(tree_root, 'joint')
+            new_joint.attrib = {
+                'name': 'j_{}'.format(name), 'type': 'floating'}
+            new_origin = ET.SubElement(new_joint, 'origin')
+            new_origin.attrib = {'rpy': rpy, 'xyz': xyz}
+            new_child = ET.SubElement(new_joint, 'child')
+            new_child.attrib['link'] = name
+            new_parent = ET.SubElement(new_joint, 'parent')
+            new_parent.attrib['link'] = 'world'
+
         path_to_urdf = os.path.join(self.scene_dir, 'urdf', urdf_name+'.urdf')
-        with open(path_to_urdf, 'w') as f:
-            f.write(urdf_string)
+        xmlstr = minidom.parseString(
+            ET.tostring(tree_root).replace(b'\n', b'').replace(b'\t', b'')).toprettyxml()
+        with open(path_to_urdf, "w") as f:
+            f.write(xmlstr)

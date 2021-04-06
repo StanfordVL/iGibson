@@ -114,13 +114,14 @@ class VrConditionSwitcher(object):
         self.condition_text = s.add_vr_overlay_text(text_data=self.start_text, font_size=40, font_style='Bold', 
                                                     color=[0,0,0], pos=[0, 75], size=[90, 50])
     
-    def switch_condition(self):
+    def refresh_condition(self, switch = True):
         """
         Switches to the next condition. This involves displaying the text for
         the new condition, as well as highlighting/un-highlighting the appropriate objects.
         """
         # 1) Query tasknet for next state - get (text, color, obj_list) tuple
-        self.switch_instr_func()
+        if switch:
+            self.switch_instr_func()
         new_text, new_color, new_obj_list = self.show_instr_func()
         # 2) Render new text
         self.condition_text.set_text(new_text)
@@ -162,6 +163,8 @@ class VrSettings(object):
         self.reset_sim = True
         # Fixed FPS is used by default
         self.use_fixed_fps = True
+        # No frame save path by default
+        self.frame_save_path = None
 
         mesh_renderer_folder = os.path.abspath(os.path.dirname(__file__))
         self.vr_config_path = os.path.join(mesh_renderer_folder, '..', '..', 'vr_config.yaml')
@@ -183,6 +186,7 @@ class VrSettings(object):
         self.vr_fps = shared_settings['vr_fps']
         self.assist_percent = shared_settings['assist_percent']
         self.assist_grasp_mass_thresh = shared_settings['assist_grasp_mass_thresh']
+        self.release_window = shared_settings['release_window']
         self.hud_width = shared_settings['hud_width']
         self.hud_pos = shared_settings['hud_pos']
         self.height_bounds = shared_settings['height_bounds']
@@ -216,6 +220,12 @@ class VrSettings(object):
         self.use_vr = False
         # Enable rendering of companion window
         self.use_companion_window = True
+
+    def set_frame_save_path(self, frame_save_path):
+        """
+        :param frame_save_path: sets path to save frames (used in action replay)
+        """
+        self.frame_save_path = frame_save_path
 
 class MeshRendererVR(MeshRenderer):
     """
@@ -280,7 +290,7 @@ class MeshRendererVR(MeshRenderer):
         """
         self.vrsys.updateVRData()
 
-    def render(self):
+    def render(self, return_frame=False):
         """
         Renders VR scenes.
         """
@@ -311,7 +321,8 @@ class MeshRendererVR(MeshRenderer):
             if self.vr_hud:
                 self.vr_hud.refresh_text()
         else:
-            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
+            if return_frame:
+                return super().render(modes=('rgb'), return_buffer=return_frame, render_shadow_pass=True)
 
     def vr_compositor_update(self):
         """
