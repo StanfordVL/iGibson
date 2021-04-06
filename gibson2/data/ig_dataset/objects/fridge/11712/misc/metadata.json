@@ -4,6 +4,7 @@
   "valid_surfaces": [
       {
         "name": "top",
+        "link": "root",
         "offset_from_base": [0.000, -0.0228, 0.8749],
         "size": [0.6585, 0.5727],
         "max_height": 10000.0,
@@ -11,6 +12,7 @@
       },
       {
         "name": "shelf1",
+        "link": "root",
         "offset_from_base": [0.000, -0.0228, 0.4955],
         "size": [0.6585, 0.5727],
         "max_height": 0.3365,
@@ -18,6 +20,7 @@
       },
       {
         "name": "shelf2",
+        "link": "root",
         "offset_from_base": [0.000, -0.0228, 0.0659],
         "size": [0.6585, 0.5727],
         "max_height": 0.3866,
@@ -25,6 +28,7 @@
       },
       {
         "name": "shelf3",
+        "link": "root",
         "offset_from_base": [0.000, -0.0228, -0.292],
         "size": [0.6585, 0.5727],
         "max_height": 0.315,
@@ -32,6 +36,7 @@
       },
       {
         "name": "shelf4",
+        "link": "root",
         "offset_from_base": [0.000, -0.0228, -0.6357],
         "size": [0.6585, 0.5727],
         "max_height": 0.3007,
@@ -39,6 +44,7 @@
       },
       {
         "name": "shelf5",
+        "link": "root",
         "offset_from_base": [0.000, -0.0228, -0.8504],
         "size": [0.6585, 0.5727],
         "max_height": 0.1718,
