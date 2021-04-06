@@ -98,7 +98,8 @@ class URDFObject(StatefulObject):
                  texture_randomization=False,
                  overwrite_inertial=True,
                  scene_instance_folder=None,
-                 visualize_primitives = False,
+                 tasknet_object_scope=None,
+                 visualize_primitives=False,
                  ):
         """
         :param filename: urdf file path of that object model
@@ -117,6 +118,7 @@ class URDFObject(StatefulObject):
         :param texture_randomization: whether to enable texture randomization
         :param overwrite_inertial: whether to overwrite the inertial frame of the original URDF using trimesh + density estimate
         :param scene_instance_folder: scene instance folder to split and save sub-URDFs
+        :param tasknet_object_scope: tasknet object scope name, e.g. chip.n.04_2
         :param visualize_primitives: whether to render geometric primitives
         """
         super(URDFObject, self).__init__()
@@ -130,6 +132,7 @@ class URDFObject(StatefulObject):
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
+        self.tasknet_object_scope = tasknet_object_scope
 
         # Load abilities from taxonomy if needed & possible
         if abilities is None:
@@ -445,7 +448,7 @@ class URDFObject(StatefulObject):
             [math.sin(math.pi*rot_num), math.cos(math.pi*rot_num), 0.0],
             [0.0, 0.0, 1.0]])
         rotated_quat = quat_from_matrix(
-            matrix_from_quat(chosen_orientation) @ rot_matrix)
+            np.dot(rot_matrix, matrix_from_quat(chosen_orientation)))
         return rotated_quat
 
     def rename_urdf(self):

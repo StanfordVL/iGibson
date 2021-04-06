@@ -91,7 +91,9 @@ def test_inside():
         # Now check that the box is inside / touching the upper cabinet
         assert obj3.states[object_states.Touching].get_value(obj2)
         assert obj3.states[object_states.Inside].get_value(obj2)
-        assert not obj3.states[object_states.OnTop].get_value(obj2)
+
+        # Now onTop will also return True because of ray casting
+        # assert not obj3.states[object_states.OnTop].get_value(obj2)
 
         # Now check that the box is not inside / touching the upper cabinet
         assert not obj3.states[object_states.Touching].get_value(obj1)
@@ -179,7 +181,9 @@ def test_state_graph():
     ordered_states = get_states_by_dependency_order()
     assert object_states.Inside in ordered_states
     assert object_states.AABB in ordered_states
-    assert ordered_states.index(object_states.AABB) < ordered_states.index(object_states.Inside), "Each state should be preceded by its deps."
+    assert ordered_states.index(object_states.AABB) < ordered_states.index(
+        object_states.Inside), "Each state should be preceded by its deps."
+
 
 def test_toggle():
     s = Simulator(mode='headless')

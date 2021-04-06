@@ -62,9 +62,11 @@ import h5py
 import numpy as np
 import pybullet as p
 import time
+import datetime
 import copy
 
 from gibson2.utils.vr_utils import VrData, convert_button_data_to_binary, VR_BUTTON_COMBO_NUM
+from gibson2.object_states import AABB, Pose
 
 
 class VRLogWriter():
@@ -82,7 +84,7 @@ class VRLogWriter():
     """
 
     # TIMELINE: Initialize the VRLogger just before simulation starts, once all bodies have been loaded
-    def __init__(self, frames_before_write, log_filepath, profiling_mode=False, log_status=True):
+    def __init__(self, sim, task, vr_agent, frames_before_write, log_filepath, filter_objects=True, profiling_mode=False, log_status=True):
         # The number of frames to store data on the stack before writing to HDF5.
         # We buffer and flush data like this to cause a small an impact as possible
         # on the VR frame-rate.
@@ -93,10 +95,19 @@ class VRLogWriter():
         self.profiling_mode = profiling_mode
         # Whether to log status during program run time
         self.log_status = log_status
+        # Reuse online checking calls
+        self.sim = sim
+        self.task = task
+        self.vr_agent = vr_agent
         # PyBullet body ids to be saved
-        self.pb_ids = [p.getBodyUniqueId(i) for i in range(p.getNumBodies())]
-        self.joint_map = {pbid: p.getNumJoints(pbid) for pbid in self.pb_ids}
         self.data_map = None
+        # TODO: if the objects change after scene initialization, this will be invalid
+        self.filter_objects = filter_objects
+        if filter_objects:
+            self.tracked_objects = self.task.object_scope
+        else:
+            self.tracked_objects = self.task.scene.objects_by_id
+        self.joint_map = {str(obj_name): p.getNumJoints(obj.body_id[0]) for (obj_name, obj) in self.tracked_objects.items()}
         # Sentinel that indicates a certain value was not set in the HDF5
         self.default_fill_sentinel = -1.0
         # Numpy dtype common to all values
@@ -118,13 +129,16 @@ class VRLogWriter():
         Eg. ['vr', 'vr_camera', 'right_eye_view']."""
         self.name_path_data.extend([['frame_data']])
 
-        for n in self.pb_ids:
-            base = ['physics_data', 'body_id_{0}'.format(n)]
+        for obj in self.tracked_objects:
+            obj = str(obj)
+            base = ['physics_data', obj]
             for registered_property in ['position', 'orientation', 'aabb', 'joint_state']:
                 self.name_path_data.append(
                     copy.deepcopy(base) + [registered_property])
 
         self.name_path_data.extend([
+            ['goal_status', 'satisfied'],
+            ['goal_status', 'unsatisfied'],
             ['vr', 'vr_camera', 'right_eye_view'],
             ['vr', 'vr_camera', 'right_eye_proj'],
             ['vr', 'vr_camera', 'right_camera_pos'],
@@ -147,10 +161,20 @@ class VRLogWriter():
         self.data_map['frame_data'] = np.full(
             (self.frames_before_write, 5), self.default_fill_sentinel, dtype=self.np_dtype)
 
+        self.task.check_success()
+        self.total_goals = len(self.task.current_goal_status["satisfied"]) + len(self.task.current_goal_status["unsatisfied"])
+
+        self.data_map['goal_status'] = {
+            "satisfied": np.full((self.frames_before_write, self.total_goals), self.default_fill_sentinel),
+            "unsatisfied": np.full((self.frames_before_write, self.total_goals), self.default_fill_sentinel),
+        }
+
         self.data_map['physics_data'] = dict()
-        for pb_id in self.pb_ids:
-            self.data_map['physics_data']['body_id_{0}'.format(pb_id)] = dict()
-            handle = self.data_map['physics_data']['body_id_{0}'.format(pb_id)]
+
+        for obj in self.tracked_objects:
+            obj = str(obj)
+            self.data_map['physics_data'][obj] = dict()
+            handle = self.data_map['physics_data'][obj]
             handle['position'] = np.full(
                 (self.frames_before_write, 3), self.default_fill_sentinel)
             handle['orientation'] = np.full(
@@ -158,7 +182,7 @@ class VRLogWriter():
             handle['aabb'] = np.full(
                 (self.frames_before_write, 6), self.default_fill_sentinel)
             handle['joint_state'] = np.full(
-                (self.frames_before_write, self.joint_map[pb_id]), self.default_fill_sentinel)
+                (self.frames_before_write, self.joint_map[obj]), self.default_fill_sentinel)
 
         self.data_map['vr'] = {
             'vr_camera': {
@@ -168,9 +192,9 @@ class VRLogWriter():
             },
             'vr_device_data': {
                 'hmd': np.full((self.frames_before_write, 17), self.default_fill_sentinel, dtype=self.np_dtype),
-                'left_controller': np.full((self.frames_before_write, 17), self.default_fill_sentinel, dtype=self.np_dtype),
-                'right_controller': np.full((self.frames_before_write, 17), self.default_fill_sentinel, dtype=self.np_dtype),
-                'vr_position_data': np.full((self.frames_before_write, 6), self.default_fill_sentinel, dtype=self.np_dtype)
+                'left_controller': np.full((self.frames_before_write, 23), self.default_fill_sentinel, dtype=self.np_dtype),
+                'right_controller': np.full((self.frames_before_write, 23), self.default_fill_sentinel, dtype=self.np_dtype),
+                'vr_position_data': np.full((self.frames_before_write, 12), self.default_fill_sentinel, dtype=self.np_dtype)
             },
             'vr_button_data': {
                 'left_controller': np.full((self.frames_before_write, 3), self.default_fill_sentinel, dtype=self.np_dtype),
@@ -236,6 +260,11 @@ class VRLogWriter():
         hf.close()
         # Now open in r+ mode to append to the file
         self.hf = h5py.File(self.log_filepath, 'r+')
+        self.hf.attrs['/metadata/task_name'] =  self.task.atus_activity
+        self.hf.attrs['/metadata/filter_objects'] =  self.filter_objects
+        self.hf.attrs['/metadata/task_instance'] = self.task.task_instance
+        self.hf.attrs['/metadata/scene_id'] = self.task.scene.scene_id
+        self.hf.attrs['/metadata/start_time'] = str(datetime.datetime.now())
 
     def get_data_for_name_path(self, name_path):
         """Resolves a list of names (group/dataset) into a numpy array.
@@ -293,6 +322,10 @@ class VRLogWriter():
         self.data_map['vr']['vr_camera']['right_eye_proj'][self.frame_counter, ...] = s.renderer.P
         self.data_map['vr']['vr_camera']['right_camera_pos'][self.frame_counter, ...] = s.renderer.camera
 
+        forces = {
+            'left_controller': p.getConstraintState(self.vr_agent.vr_dict['left_hand'].movement_cid),
+            'right_controller': p.getConstraintState(self.vr_agent.vr_dict['right_hand'].movement_cid),
+        }
         for device in ['hmd', 'left_controller', 'right_controller']:
             is_valid, trans, rot = s.get_data_for_vr_device(device)
             right, up, forward = s.get_device_coordinate_system(device)
@@ -303,6 +336,8 @@ class VRLogWriter():
                 data_list.extend(list(right))
                 data_list.extend(list(up))
                 data_list.extend(list(forward))
+                if device in forces:
+                    data_list.extend(list(forces[device]))
                 self.data_map['vr']['vr_device_data'][device][self.frame_counter, ...] = np.array(data_list)
 
             if device == 'left_controller' or device == 'right_controller':
@@ -314,6 +349,7 @@ class VRLogWriter():
         vr_pos_data = []
         vr_pos_data.extend(list(s.get_vr_pos()))
         vr_pos_data.extend(list(s.get_vr_offset()))
+        vr_pos_data.extend(p.getConstraintState(self.vr_agent.vr_dict['body'].movement_cid))
         self.data_map['vr']['vr_device_data']['vr_position_data'][self.frame_counter, ...] = np.array(
             vr_pos_data)
 
@@ -340,29 +376,43 @@ class VRLogWriter():
 
     def write_pybullet_data_to_map(self):
         """Write all pybullet data to the class' internal map."""
-        for pb_id in self.pb_ids:
-            data_list = []
-            pos, orn = p.getBasePositionAndOrientation(pb_id)
-            pos = np.array(pos)
-            orn = np.array(orn)
-            aabb = p.getAABB(pb_id)
-            handle = self.data_map['physics_data']['body_id_{0}'.format(pb_id)]
+        for obj_name, obj in self.tracked_objects.items():
+            obj_name = str(obj_name)
+            pos, orn = obj.states[Pose].get_value()
+            aabb = obj.states[AABB].get_value()
+            handle = self.data_map['physics_data'][obj_name]
             handle['position'][self.frame_counter] = pos
             handle['orientation'][self.frame_counter] = orn
-            handle['aabb'][self.frame_counter] = np.array(
-                [*aabb[0]] + [*aabb[1]])
+            handle['aabb'][self.frame_counter] = np.concatenate([aabb[0], aabb[1]])
             handle['joint_state'][self.frame_counter] = np.array(
-                [p.getJointState(pb_id, n)[0] for n in range(self.joint_map[pb_id])])
+                [p.getJointState(obj.body_id[0], n)[0] for n in range(self.joint_map[obj_name])])
 
     def _print_pybullet_data(self):
         """Print pybullet debug data - hidden API since this is used for debugging purposes only."""
         print("----- PyBullet data at the end of frame {} -----".format(self.persistent_frame_count))
-        for pb_id in self.pb_ids:
-            pos, orn = p.getBasePositionAndOrientation(pb_id)
-            print("{} - pos: {} and orn: {}".format(pb_id, pos, orn))
+        for obj_name, obj in self.tracked_objects.items():
+            obj_name = str(obj_name)
+            pos, orn = obj.states[Pose].get_value()
+            print("{} - pos: {} and orn: {}".format(obj_name, pos, orn))
+
+    @staticmethod
+    def one_hot_encoding(hits, categories):
+        if len(hits) > 0:
+            hits = np.array(hits)
+            one_hot = np.eye(categories)[hits]
+            return np.sum(one_hot, axis=0)
+        else:
+            return np.zeros(categories)
+
+    def write_predicate_data_to_map(self):
+        satisfied = self.task.current_goal_status["satisfied"]
+        unsatisfied = self.task.current_goal_status["unsatisfied"]
+
+        self.data_map['goal_status']['unsatisfied'][self.frame_counter] = self.one_hot_encoding(unsatisfied, self.total_goals)
+        self.data_map['goal_status']['satisfied'][self.frame_counter] = self.one_hot_encoding(satisfied, self.total_goals)
 
     # TIMELINE: Call this at the end of each frame (eg. at end of while loop)
-    def process_frame(self, s, print_vr_data=False):
+    def process_frame(self, s, print_vr_data=False, store_vr_data=True):
         """Asks the VRLogger to process frame data. This includes:
         -- updating pybullet data
         -- incrementing frame counter by 1
@@ -371,8 +421,10 @@ class VRLogWriter():
             s (simulator): used to extract information about VR system
         """
         self.write_frame_data_to_map(s)
-        self.write_vr_data_to_map(s)
+        if store_vr_data:
+            self.write_vr_data_to_map(s)
         self.write_pybullet_data_to_map()
+        self.write_predicate_data_to_map()
         self.frame_counter += 1
         self.persistent_frame_count += 1
         if (self.frame_counter >= self.frames_before_write):
@@ -479,7 +531,7 @@ class VRLogReader():
         Args:
             s (simulator): used to set camera view and projection matrices
             full_replay: boolean indicating if we should replay full state of the world or not.
-                If this value is set to false, we simply increment the frame counter each frame, 
+                If this value is set to false, we simply increment the frame counter each frame,
                 and let the user take control of processing actions and simulating them
             print_vr_data: boolean indicating whether all vr data should be printed each frame (for debugging purposes)
         """
@@ -543,7 +595,7 @@ class VRLogReader():
         """
         full_action_path = 'action/' + action_path
         return self.hf[full_action_path][self.frame_counter]
-    
+
     # TIMELINE: Use this as the while loop condition to keep reading frames
     def get_data_left_to_read(self):
         """Returns whether there is still data left to read."""
