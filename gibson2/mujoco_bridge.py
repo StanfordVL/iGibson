@@ -95,7 +95,7 @@ class iGibsonMujocoBridge:
         # mrs_tensor = MeshRendererSettings(msaa=True)
         # mrs_no_tensor = MeshRendererSettings(msaa=True, enable_shadow=True)
         mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=False, enable_shadow=True, optimized=False)
-        mrs_no_tensor = MeshRendererSettings(msaa=True, enable_shadow=True, enable_pbr=False, optimized=False)
+        mrs_no_tensor = MeshRendererSettings(msaa=True, enable_pbr=False, enable_shadow=True, optimized=False)
 
 
         if self.render_to_tensor:
@@ -185,15 +185,25 @@ class iGibsonMujocoBridge:
                 textures[texture.get('name')] = texture.attrib
                 texture_ids[texture.get('name')] = (self.renderer.r.loadTexture(texture.get('file'), self.settings.texture_scale), texture_type)
                 p = Path(texture.get('file'))
-                roughness_fname = p.parent / (p.name + '-roughness.png')
-                normal_fname = p.parent / p.name + '-normal.png'
-                metallic_fname = p.parent / p.name + '-metallic.png'
+                roughness_fname = p.parent / (p.stem + '-roughness.png')
+                normal_fname = p.parent / (p.stem + '-normal.png')
+                metallic_fname = p.parent / (p.stem + '-metallic.png')
+                
                 if roughness_fname.exists():
-                    roughness_ids[texture.get('name')] = self.renderer.r.loadTexture(roughness_fname, self.settings.texture_scale)
+                    roughness_ids[texture.get('name')] = self.renderer.r.loadTexture(str(roughness_fname), self.settings.texture_scale)
+                    # print(texture.get('name'), roughness_ids)
+                else:
+                    roughness_ids[texture.get('name')] = None
+
                 if normal_fname.exists():
-                    normal_ids[texture.get('name')] = self.renderer.r.loadTexture(normal_fname, self.settings.texture_scale)
+                    normal_ids[texture.get('name')] = self.renderer.r.loadTexture(str(normal_fname), self.settings.texture_scale)
+                else:
+                    normal_ids[texture.get('name')] = None
+
                 if metallic_fname.exists():
-                    metallic_ids[texture.get('name')] = self.renderer.r.loadTexture(metallic_fname, self.settings.texture_scale)                    
+                    metallic_ids[texture.get('name')] = self.renderer.r.loadTexture(str(metallic_fname), self.settings.texture_scale)  
+                else:
+                    metallic_ids[texture.get('name')] = None               
 
             else:
                 value_str = texture.get('rgb1').split()
@@ -203,7 +213,12 @@ class iGibsonMujocoBridge:
                 normal_ids[texture.get('name')] = None
                 metallic_ids[texture.get('name')] = None
 
-
+        # print(texture_ids)
+        # print(roughness_ids)
+        # print(normal_ids)
+        # print(metallic_ids)
+        # print(p)
+        # exit()
         if verbose: print("Textures:")
         if verbose: pp.pprint(textures)
         # import pdb; pdb.set_trace();
@@ -211,6 +226,7 @@ class iGibsonMujocoBridge:
         #Create a dictionary of all materials and Material objects
         materials = {}
         material_objs = {}
+        print(roughness_ids)
         for material in xml_root.iter('material'):
             # import pdb; pdb.set_trace();
             materials[material.get('name')] = material.attrib
@@ -218,7 +234,8 @@ class iGibsonMujocoBridge:
             if texture_name is not None:
                 (texture_id, texture_type) = texture_ids[texture_name]
                 roughness_id = roughness_ids[texture_name]
-                normal_id = roughness_ids[texture_name]
+                normal_id = normal_ids[texture_name]
+                metallic_id = metallic_ids[texture_name]
                 # import pdb; pdb.set_trace();
                 # print((texture_id, texture_type))
 
@@ -431,7 +448,14 @@ class iGibsonMujocoBridge:
                     
                 elif geom_type == 'mesh':
                     filename = meshes[geom.attrib['mesh']]['file']
+                    scale = meshes[geom.attrib['mesh']].get('scale',  "1 1 1")
+                    scale = [float(s) for s in scale.split()]
                     filename = os.path.splitext(filename)[0]+'.obj'
+                    # print(meshes)
+                    # print(filename)
+                    # exit()
+                    if filename.startswith('robotiq_arg2f_85'):
+                        import pdb; pdb.set_trace()
 
                     geom_orn = np.array([geom_orn[1],geom_orn[2],geom_orn[3],geom_orn[0]])
 
@@ -444,6 +468,7 @@ class iGibsonMujocoBridge:
                     print(filename)
                     print(geom_material)
                     self.renderer.load_object(filename,
+                                            scale=scale,
                                             transform_orn=geom_orn,
                                             transform_pos=geom_pos,
                                             input_kd=properties['rgba'][0:3],
