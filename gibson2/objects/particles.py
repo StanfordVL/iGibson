@@ -2,21 +2,16 @@ from collections import deque
 
 import numpy as np
 import pybullet as p
-from scipy.stats import truncnorm
-from gibson2 import object_states
 from gibson2.objects.object_base import Object
+from gibson2.utils import sampling_utils
 
 _STASH_POSITION = [0, 0, -100]
 
-_DIRT_MAX_SAMPLING_ATTEMPTS = 10
 _DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY = 0.1
 _DIRT_SAMPLING_AXIS_PROBABILITIES = [0.25, 0.25, 0.5]
 _DIRT_SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
 _DIRT_SAMPLING_BIMODAL_STDEV_FRACTION = 0.2
-_DIRT_RAY_CASTING_AABB_OFFSET = 0.1
 _DIRT_RAY_CASTING_PARALLEL_RAY_SOURCE_OFFSET = 0.05
-_DIRT_RAY_CASTING_PARALLEL_HIT_NORMAL_ANGLE_TOLERANCE = 0.2
-_DIRT_MAX_ANGLE_WITH_Z_AXIS = 3 * np.pi / 4
 
 _WATER_SOURCE_PERIOD = 0.3  # new water every this many seconds.
 
@@ -209,125 +204,23 @@ class Dirt(AttachedParticleSystem):
             **kwargs
         )
 
-    @staticmethod
-    def sample_origin_positions(mins, maxes, count):
-        """
-        Sample ray casting origin positions with a given distribution.
-
-        The way the sampling works is that for each particle, it will sample two coordinates uniformly and one
-        using a bimodal truncated normal distribution. This way, the particles will mostly be close to the faces
-        of the AABB (given a correctly parameterized bimodal truncated normal) and will be spread across each face,
-        but there will still be a small number of particles spawned inside the object if it has an interior.
-
-        :param mins: The minimum coordinate along each axis.
-        :param maxes: The maximum coordinate along each axis.
-        :param count: Number of origins to sample.
-        :return: List of (bimodal dimension index, [x, y, z]) pairs.
-        """
-        assert len(mins.shape) == 1
-        assert mins.shape == maxes.shape
-
-        results = []
-        for i in range(count):
-            # Get the uniform sample first.
-            position = np.random.rand(3)
-
-            # Sample the bimodal normal.
-            bottom = (0 - _DIRT_SAMPLING_BIMODAL_MEAN_FRACTION) / _DIRT_SAMPLING_BIMODAL_STDEV_FRACTION
-            top = (1 - _DIRT_SAMPLING_BIMODAL_MEAN_FRACTION) / _DIRT_SAMPLING_BIMODAL_STDEV_FRACTION
-            bimodal_sample = truncnorm.rvs(bottom, top, loc=_DIRT_SAMPLING_BIMODAL_MEAN_FRACTION,
-                             scale=_DIRT_SAMPLING_BIMODAL_STDEV_FRACTION)
-
-            # Pick which axis the bimodal normal sample should go to.
-            bimodal_axis = np.random.choice([0, 1, 2], p=_DIRT_SAMPLING_AXIS_PROBABILITIES)
-
-            # We want the bottom side to show up much less often.
-            side_selection_p = (
-                [0.5, 0.5] if bimodal_axis != 2 else
-                [1 - _DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY, _DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY])
-
-            # Choose which side of the axis to sample from.
-            bimodal_axis_top_side = np.random.choice([True, False], p=side_selection_p)
-            position[bimodal_axis] = bimodal_sample if bimodal_axis_top_side else 1 - bimodal_sample
-            scaled_position = mins + (maxes - mins) * position
-            results.append((bimodal_axis, bimodal_axis_top_side, scaled_position))
-
-        return results
-
     def randomize(self, obj):
-        aabb = obj.states[object_states.AABB].get_value()
-        aabb_min = np.array(aabb[0])
-        aabb_max = np.array(aabb[1])
+        # Sample points using the raycasting sampler.
+        results = sampling_utils.sample_points_on_object(
+            obj, self.get_num_stashed(), _DIRT_RAY_CASTING_PARALLEL_RAY_SOURCE_OFFSET,
+            _DIRT_SAMPLING_BIMODAL_MEAN_FRACTION, _DIRT_SAMPLING_BIMODAL_STDEV_FRACTION,
+            _DIRT_SAMPLING_AXIS_PROBABILITIES, _DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY, refuse_downwards=True)
 
-        sampling_aabb_min = aabb_min - _DIRT_RAY_CASTING_AABB_OFFSET
-        sampling_aabb_max = aabb_max + _DIRT_RAY_CASTING_AABB_OFFSET
+        # Use the sampled points to set the dirt positions.
+        for position, normal, reasons in results:
+            if position is not None:
+                self.unstash_particle(position, [0, 0, 0, 1])
 
-        body_id = obj.get_body_id()
-        pos = obj.get_position()
-
-        for i in range(self.get_num_stashed()):
-            # Sample the starting positions in advance.
-            samples = self.sample_origin_positions(sampling_aabb_min, sampling_aabb_max, _DIRT_MAX_SAMPLING_ATTEMPTS)
-
-            # Try each sampled position in the AABB.
-            for axis, is_top, start_pos in samples:
-                # Get the ray casting direction - we want to do it parallel to the sample axis.
-                ray_direction = np.array([0, 0, 0])
-                ray_direction[axis] = 1
-                ray_direction *= -1 if is_top else 1
-
-                # Extend vector until it intersects one of the AABB's faces.
-                point_to_min = aabb_min - start_pos
-                point_to_max = aabb_max - start_pos
-                closer_point_on_each_axis = np.where(ray_direction < 0, point_to_min, point_to_max)
-                multiple_to_face_on_each_axis = closer_point_on_each_axis / ray_direction
-                multiple_to_face = np.min(multiple_to_face_on_each_axis)
-                point_on_face = start_pos + ray_direction * multiple_to_face
-
-                # We will cast multiple parallel rays to check that we have a nice flat area.
-                # Get the two perpendicular vectors to the ray direction vector.
-                perpendicular_vectors = np.array(
-                    [v for v in np.eye(3) if np.linalg.norm(np.cross(v, ray_direction)) != 0])
-                assert len(perpendicular_vectors) == 2, "There should be exactly 2 perpendicular vectors."
-
-                # Use the perpendicular vectors to cast some parallel rays.
-                ray_offsets = np.array([(-1, -1), (-1, 1), (1, 1), (1, -1)]) * _DIRT_RAY_CASTING_PARALLEL_RAY_SOURCE_OFFSET
-                sources = [start_pos] + [start_pos + np.dot(offsets, perpendicular_vectors) for offsets in ray_offsets]
-                destinations = [point_on_face] + [point_on_face + np.dot(offsets, perpendicular_vectors) for offsets in ray_offsets]
-
-                # Time to cast the rays.
-                res = p.rayTestBatch(rayFromPositions=sources, rayToPositions=destinations)
-
-                # Check that the center ray has hit our object.
-                if res[0][0] != body_id:
-                    continue
-
-                # Get the candidate dirt position.
-                hit_pos = np.array(res[0][3])
-
-                # Reject anything facing more than 45deg downwards. These are hard to clean.
-                hit_normal = np.array(res[0][4])
-                hit_normal /= np.linalg.norm(hit_normal)
-                hit_angle_with_z = np.arccos(np.dot(hit_normal, np.array([0, 0, 1])))
-                if hit_angle_with_z > _DIRT_MAX_ANGLE_WITH_Z_AXIS:
-                    continue
-
-                # Check that none of the parallel rays' hit normal differs from center ray by more than threshold.
-                all_rays_hit_with_similar_normal = all(
-                    ray_res[0] == body_id and
-                    (np.arccos(np.dot(hit_normal, ray_res[4] / np.linalg.norm(ray_res[4]))) <
-                        _DIRT_RAY_CASTING_PARALLEL_HIT_NORMAL_ANGLE_TOLERANCE)
-                    for ray_res in res[1:])
-                if not all_rays_hit_with_similar_normal:
-                    continue
-
-                # We've found a nice attachment point. Let's go.
-                self.unstash_particle(hit_pos, [0, 0, 0, 1])
-                break
 
 class Dust(Dirt):
     def __init__(self, parent_obj, **kwargs):
         super(Dust, self).__init__(parent_obj, (0, 0, 0, 1), **kwargs)
+
 
 class Stain(Dirt):
     def __init__(self, parent_obj, **kwargs):
